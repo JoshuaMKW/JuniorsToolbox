@@ -30,30 +30,87 @@ namespace Toolbox::Object {
         UNKNOWN,
     };
 
+    struct TemplateEnum;
+    struct TemplateMember;
+    struct TemplateStruct;
+
     template <typename T, bool comment = false> struct TemplateTypeMap {
         static constexpr TemplateType value = TemplateType::UNKNOWN;
+    };
+
+    template <> struct TemplateTypeMap<bool, false> {
+        static constexpr TemplateType value = TemplateType::BOOL;
+    };
+
+    template <> struct TemplateTypeMap<s8, false> {
+        static constexpr TemplateType value = TemplateType::S8;
+    };
+
+    template <> struct TemplateTypeMap<u8, false> {
+        static constexpr TemplateType value = TemplateType::U8;
+    };
+
+    template <> struct TemplateTypeMap<s16, false> {
+        static constexpr TemplateType value = TemplateType::S16;
+    };
+
+    template <> struct TemplateTypeMap<u16, false> {
+        static constexpr TemplateType value = TemplateType::U16;
+    };
+
+    template <> struct TemplateTypeMap<s32, false> {
+        static constexpr TemplateType value = TemplateType::S32;
+    };
+
+    template <> struct TemplateTypeMap<u32, false> {
+        static constexpr TemplateType value = TemplateType::U32;
+    };
+
+    template <> struct TemplateTypeMap<f32, false> {
+        static constexpr TemplateType value = TemplateType::F32;
+    };
+
+    template <> struct TemplateTypeMap<f64, false> {
+        static constexpr TemplateType value = TemplateType::F64;
+    };
+
+    template <> struct TemplateTypeMap<std::string, false> {
+        static constexpr TemplateType value = TemplateType::STRING;
+    };
+
+    template <> struct TemplateTypeMap<TemplateEnum, false> {
+        static constexpr TemplateType value = TemplateType::TRANSFORM;
+    };
+
+    template <> struct TemplateTypeMap<TemplateStruct, false> {
+        static constexpr TemplateType value = TemplateType::STRUCT;
+    };
+
+    template <> struct TemplateTypeMap<std::string, true> {
+        static constexpr TemplateType value = TemplateType::COMMENT;
     };
 
     class TemplateValue {
     public:
         TemplateValue() = delete;
-        template <typename T, bool comment = false> TemplateValue(T value) : m_value(value) {
-            setValue<T, comment>(value);
+        template <typename T> TemplateValue(T value) : m_value(value) {
+            set<T, false>(value);
         }
 
         [[nodiscard]] TemplateType type() const { return m_type; }
 
         template <typename T, bool comment = false>
-        [[nodiscard]] std::expected<T, std::string> value() const {
+        [[nodiscard]] std::expected<T, std::string> get() const {
             if (m_type != TemplateTypeMap<T, comment>::value)
-                return std::unexpected("Type record mismatch") try {
-                    return std::any_cast<T>(m_value);
-                } catch (const std::bad_any_cast &e) {
-                    return std::unexpected(e.what());
-                }
+                return std::unexpected("Type record mismatch");
+            try {
+                return std::any_cast<T>(m_value);
+            } catch (const std::bad_any_cast &e) {
+                return std::unexpected(e.what());
+            }
         }
 
-        template <typename T, bool comment = false> bool setValue(const T &value) {
+        template <typename T, bool comment = false> bool set(const T &value) {
             if constexpr (std::is_same_v<std::remove_reference_t<T>, std::string> && comment) {
                 m_type = TemplateType::COMMENT;
             } else {
@@ -65,7 +122,7 @@ namespace Toolbox::Object {
 
     private:
         std::any m_value;
-        TemplateType m_type;
+        TemplateType m_type = TemplateType::UNKNOWN;
     };
 
     struct TemplateEnum {

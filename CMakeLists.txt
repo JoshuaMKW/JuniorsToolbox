@@ -29,5 +29,4 @@ file(GLOB TOOLBOX_SRC
 )
 
 add_executable(JuniorsToolbox ${TOOLBOX_SRC})
-add_subdirectory(lib/glm)
 target_include_directories(JuniorsToolbox PRIVATE "include" "lib")
