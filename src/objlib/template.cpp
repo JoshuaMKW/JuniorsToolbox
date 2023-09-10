@@ -3,6 +3,16 @@
 #include <optional>
 
 namespace Toolbox::Object {
+    constexpr QualifiedName TemplateStruct::getQualifiedName() const {
+        TemplateStruct *parent = m_parent;
+        std::vector<std::string> scopes = {m_name};
+        while (parent) {
+            scopes.push_back(parent->m_name);
+            parent = parent->m_parent;
+        }
+        std::reverse(scopes.begin(), scopes.end());
+        return QualifiedName(scopes);
+    }
 
     bool TemplateStruct::operator==(const TemplateStruct &other) const = default;
 
@@ -200,6 +210,17 @@ namespace Toolbox::Object {
         }
 
         return result;
+    }
+
+    constexpr QualifiedName TemplateMember::getQualifiedName() const {
+        TemplateStruct *parent          = m_parent;
+        std::vector<std::string> scopes = {m_name};
+        while (parent) {
+            scopes.push_back(std::string(parent->name()));
+            parent = parent->parent();
+        }
+        std::reverse(scopes.begin(), scopes.end());
+        return QualifiedName(scopes);
     }
 
     bool TemplateMember::operator==(const TemplateMember &other) const = default;

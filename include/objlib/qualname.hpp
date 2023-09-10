@@ -20,6 +20,7 @@ namespace Toolbox::Object {
             : m_scopes(parent.m_scopes) {
             m_scopes.push_back(name);
         }
+        QualifiedName(const std::vector<std::string> &scopes) : m_scopes(scopes) {}
         QualifiedName(std::initializer_list<std::string> scopes) : m_scopes(scopes) {}
         QualifiedName(const QualifiedName &other) = default;
         QualifiedName(QualifiedName &&other)      = default;
@@ -28,6 +29,9 @@ namespace Toolbox::Object {
         QualifiedName &operator=(const QualifiedName &other) = default;
         QualifiedName &operator=(QualifiedName &&other)      = default;
         QualifiedName &operator=(const std::string &name) { return *this = QualifiedName(name); }
+        QualifiedName &operator=(const std::vector<std::string> &scopes) {
+            return *this = QualifiedName(scopes);
+        }
         QualifiedName &operator=(std::initializer_list<std::string> scopes) {
             return *this = QualifiedName(scopes);
         }

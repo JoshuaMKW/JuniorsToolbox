@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include "qualname.hpp"
 
 using json = nlohmann::json;
 
@@ -166,12 +167,16 @@ namespace Toolbox::Object {
 
         [[nodiscard]] constexpr std::string_view name() const { return m_name; }
         [[nodiscard]] constexpr std::vector<TemplateMember> members() const { return m_members; }
+        [[nodiscard]] constexpr TemplateStruct *parent() const { return m_parent; }
+
+        [[nodiscard]] constexpr QualifiedName getQualifiedName() const;
 
         bool operator==(const TemplateStruct &other) const;
 
     private:
         std::string m_name;
         std::vector<TemplateMember> m_members = {};
+        TemplateStruct *m_parent              = nullptr;
     };
 
     class TemplateEnum {
@@ -230,8 +235,7 @@ namespace Toolbox::Object {
 
         [[nodiscard]] std::optional<value_type> find(std::string_view name) const;
 
-        template <typename T>
-        [[nodiscard]] std::optional<value_type> vfind(T value) const {
+        template <typename T> [[nodiscard]] std::optional<value_type> vfind(T value) const {
             return {};
         }
         template <> [[nodiscard]] std::optional<value_type> vfind<s8>(s8 value) const;
@@ -304,6 +308,9 @@ namespace Toolbox::Object {
         [[nodiscard]] std::string rawName() const { return m_name; }
         [[nodiscard]] std::string strippedName() const;
         [[nodiscard]] std::string formattedName(int index) const;
+        [[nodiscard]] constexpr TemplateStruct *parent() const { return m_parent; }
+
+        [[nodiscard]] constexpr QualifiedName getQualifiedName() const;
 
         [[nodiscard]] constexpr bool isArray() const { return m_values.size() > 1; }
         [[nodiscard]] constexpr bool isTypeEnum() const {
@@ -366,6 +373,7 @@ namespace Toolbox::Object {
     private:
         std::string m_name;
         std::vector<TemplateValue> m_values;
+        TemplateStruct *m_parent;
     };
 
     struct TemplateWizard {
