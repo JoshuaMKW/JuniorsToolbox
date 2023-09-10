@@ -167,6 +167,8 @@ namespace Toolbox::Object {
         [[nodiscard]] constexpr std::string_view name() const { return m_name; }
         [[nodiscard]] constexpr std::vector<TemplateMember> members() const { return m_members; }
 
+        bool operator==(const TemplateStruct &other) const;
+
     private:
         std::string m_name;
         std::vector<TemplateMember> m_members = {};
@@ -241,6 +243,8 @@ namespace Toolbox::Object {
 
         void dump(std::ostream &out, int indention = 0, int indention_width = 2) const;
 
+        constexpr bool operator==(const TemplateEnum &rhs) const;
+
     private:
         TemplateType m_type;
         std::string m_name;
@@ -278,6 +282,10 @@ namespace Toolbox::Object {
             m_value = value;
             return true;
         }
+
+        [[nodiscard]] std::string toString() const;
+
+        bool operator==(const TemplateValue &rhs) const;
 
     private:
         value_type m_value;
@@ -352,6 +360,8 @@ namespace Toolbox::Object {
         [[nodiscard]] constexpr bool isTypeUnknown() const {
             return m_values[0].type() == TemplateType::UNKNOWN;
         }
+
+        bool operator==(const TemplateMember &other) const;
 
     private:
         std::string m_name;

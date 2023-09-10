@@ -4,6 +4,8 @@
 
 namespace Toolbox::Object {
 
+    bool TemplateStruct::operator==(const TemplateStruct &other) const = default;
+
     constexpr TemplateEnum::iterator TemplateEnum::begin() { return m_values.begin(); }
     constexpr TemplateEnum::const_iterator TemplateEnum::begin() const { return m_values.begin(); }
     constexpr TemplateEnum::const_iterator TemplateEnum::cbegin() const {
@@ -30,8 +32,7 @@ namespace Toolbox::Object {
         return m_values.crend();
     }
 
-    std::optional<TemplateEnum::value_type>
-    TemplateEnum::find(std::string_view name) const {
+    std::optional<TemplateEnum::value_type> TemplateEnum::find(std::string_view name) const {
         for (const auto &v : m_values) {
             if (v.first == name)
                 return v;
@@ -39,8 +40,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    template <>
-    std::optional<TemplateEnum::value_type> TemplateEnum::vfind<s8>(s8 value) const {
+    template <> std::optional<TemplateEnum::value_type> TemplateEnum::vfind<s8>(s8 value) const {
         for (const auto &v : m_values) {
             auto _v = v.second.get<s8>();
             if (_v.has_value() && *_v == value)
@@ -49,8 +49,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    template <>
-    std::optional<TemplateEnum::value_type> TemplateEnum::vfind<u8>(u8 value) const {
+    template <> std::optional<TemplateEnum::value_type> TemplateEnum::vfind<u8>(u8 value) const {
         for (const auto &v : m_values) {
             auto _v = v.second.get<u8>();
             if (_v.has_value() && *_v == value)
@@ -59,8 +58,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    template <>
-    std::optional<TemplateEnum::value_type> TemplateEnum::vfind<s16>(s16 value) const {
+    template <> std::optional<TemplateEnum::value_type> TemplateEnum::vfind<s16>(s16 value) const {
         for (const auto &v : m_values) {
             auto _v = v.second.get<s16>();
             if (_v && *_v == value)
@@ -69,8 +67,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    template <>
-    std::optional<TemplateEnum::value_type> TemplateEnum::vfind<u16>(u16 value) const {
+    template <> std::optional<TemplateEnum::value_type> TemplateEnum::vfind<u16>(u16 value) const {
         for (const auto &v : m_values) {
             auto _v = v.second.get<u16>();
             if (_v.has_value() && *_v == value)
@@ -79,8 +76,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    template <>
-    std::optional<TemplateEnum::value_type> TemplateEnum::vfind<s32>(s32 value) const {
+    template <> std::optional<TemplateEnum::value_type> TemplateEnum::vfind<s32>(s32 value) const {
         for (const auto &v : m_values) {
             auto _v = v.second.get<s32>();
             if (_v.has_value() && *_v == value)
@@ -89,8 +85,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    template <>
-    std::optional<TemplateEnum::value_type> TemplateEnum::vfind<u32>(u32 value) const {
+    template <> std::optional<TemplateEnum::value_type> TemplateEnum::vfind<u32>(u32 value) const {
         for (const auto &v : m_values) {
             auto _v = v.second.get<u32>();
             if (_v.has_value() && *_v == value)
@@ -104,34 +99,35 @@ namespace Toolbox::Object {
         std::string value_indent = std::string((indention + 1) * indention_width, ' ');
         out << self_indent << "enum " << m_name << "<" << template_type_name(m_type) << "> {\n";
         for (const auto &v : m_values) {
-            out << value_indent << v.first << " = ";
-            switch (m_type) {
-            case TemplateType::S8:
-                out << static_cast<s32>(v.second.get<s8>().value());
-                break;
-            case TemplateType::U8:
-                out << static_cast<u32>(v.second.get<u8>().value());
-                break;
-            case TemplateType::S16:
-                out << static_cast<s32>(v.second.get<s16>().value());
-                break;
-            case TemplateType::U16:
-                out << static_cast<u32>(v.second.get<u16>().value());
-                break;
-            case TemplateType::S32:
-                out << v.second.get<s32>().value();
-                break;
-            case TemplateType::U32:
-                out << v.second.get<u32>().value();
-                break;
-            default:
-                out << "null";
-                break;
-            }
-            out << ",\n";
+            out << value_indent << v.first << " = " << v.second.toString() << ",\n";
         }
         out << self_indent << "}\n";
     }
+
+    constexpr bool TemplateEnum::operator==(const TemplateEnum &rhs) const = default;
+
+    std::string TemplateValue::toString() const {
+        switch (m_type) {
+        case TemplateType::S8:
+            return std::to_string(std::get<s8>(m_value));
+        case TemplateType::U8:
+            return std::to_string(std::get<u8>(m_value));
+        case TemplateType::S16:
+            return std::to_string(std::get<s16>(m_value));
+        case TemplateType::U16:
+            return std::to_string(std::get<u16>(m_value));
+        case TemplateType::S32:
+            return std::to_string(std::get<s32>(m_value));
+        case TemplateType::U32:
+            return std::to_string(std::get<u32>(m_value));
+        case TemplateType::STRING:
+            return std::get<std::string>(m_value);
+        default:
+            return "null";
+        }
+    }
+
+    bool TemplateValue::operator==(const TemplateValue &rhs) const = default;
 
     std::string TemplateMember::strippedName() const {
         std::string result = m_name;
@@ -205,6 +201,8 @@ namespace Toolbox::Object {
 
         return result;
     }
+
+    bool TemplateMember::operator==(const TemplateMember &other) const = default;
 
     std::optional<TemplateEnum> Template::getEnum(const std::string &name) const {
         for (const auto &e : m_enums) {
