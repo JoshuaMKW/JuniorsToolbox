@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../serial.hpp"
+#include "qualname.hpp"
+#include "serial.hpp"
 #include <optional>
 #include <string>
 #include <string_view>
@@ -19,7 +20,20 @@ namespace Toolbox::Object {
             m_name      = name;
         }
 
-        [[nodiscard]] virtual std::optional<NameRef> find(std::string_view name) const { return {}; }
+        [[nodiscard]] virtual std::optional<NameRef> find(std::string_view name) const {
+            return {};
+        }
+
+        [[nodiscard]] std::optional<NameRef> qfind(const QualifiedName &qname) const {
+            NameRef current = *this;
+            for (auto &scope : qname) {
+                auto result = find(scope);
+                if (!result)
+                    return {};
+                current = *result;
+            }
+            return current;
+        }
 
         virtual void serialize(Serializer &serializer) const override {
             serializer.write<u16, std::endian::big>(m_name_hash);
