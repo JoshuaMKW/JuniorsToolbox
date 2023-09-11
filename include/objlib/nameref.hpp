@@ -24,16 +24,16 @@ namespace Toolbox::Object {
             return {};
         }
 
-        [[nodiscard]] std::optional<NameRef> qfind(const QualifiedName &qname) const {
+        /*[[nodiscard]] std::optional<NameRef> qfind(const Toolbox::Object::QualifiedName &qname) const {
             NameRef current = *this;
             for (auto &scope : qname) {
-                auto result = find(scope);
+                auto result = find(std::string_view(scope.begin(), scope.end()));
                 if (!result)
                     return {};
                 current = *result;
             }
             return current;
-        }
+        }*/
 
         virtual void serialize(Serializer &serializer) const override {
             serializer.write<u16, std::endian::big>(m_name_hash);

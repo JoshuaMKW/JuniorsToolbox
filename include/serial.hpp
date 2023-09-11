@@ -10,7 +10,7 @@ class Serializer {
 public:
     Serializer(std::streambuf *out) : m_out(out) {}
 
-    template <typename T, std::endian E = std::endian::native> int write(const T &t) {
+    template <typename T, std::endian E = std::endian::native> size_t write(const T &t) {
         if constexpr (E == std::endian::native) {
             return writeBytes(std::span(reinterpret_cast<const char *>(&t), sizeof(T)));
         } else {
@@ -19,13 +19,13 @@ public:
         }
     }
 
-    template <std::endian E = std::endian::native> int writeString(const std::string &str) {
+    template <std::endian E = std::endian::native> size_t writeString(const std::string &str) {
         auto len = write<u16, E>(str.size() & 0xFFFF);
         writeBytes(std::span(str.data(), str.size()));
         return len;
     }
 
-    int writeBytes(std::span<const char> bytes) {
+    size_t writeBytes(std::span<const char> bytes) {
         m_out.write(bytes.data(), bytes.size());
         return bytes.size();
     }
@@ -51,7 +51,7 @@ public:
         }
     }
 
-    template <typename T, std::endian E = std::endian::native> int read(T &t) {
+    template <typename T, std::endian E = std::endian::native> size_t read(T &t) {
         if constexpr (E == std::endian::native) {
             return readBytes(std::span(reinterpret_cast<char *>(&t), sizeof(T)));
         } else {
@@ -70,14 +70,14 @@ public:
         return str;
     }
 
-    int readString(std::string &str) {
+    size_t readString(std::string &str) {
         auto len = read<u16>();
         str.resize(len);
         readBytes(std::span(str.data(), len));
         return len;
     }
 
-    int readBytes(std::span<char> bytes) {
+    size_t readBytes(std::span<char> bytes) {
         m_in.read(bytes.data(), bytes.size());
         return bytes.size();
     }
