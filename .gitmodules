@@ -1,0 +1,3 @@
+[submodule "lib/J3DUltra"]
+	path = lib/J3DUltra
+	url = https://github.com/Sage-of-Mirrors/J3DUltra.git
