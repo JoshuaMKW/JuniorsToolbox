@@ -133,6 +133,19 @@ namespace Toolbox::Object {
         constexpr MetaValue(const MetaValue &other) = default;
         constexpr MetaValue(MetaValue &&other)      = default;
 
+        constexpr MetaValue &operator=(const MetaValue &other) = default;
+        constexpr MetaValue &operator=(MetaValue &&other)      = default;
+        template <typename T> constexpr MetaValue &operator=(T &&value) {
+            set<T, false>(value);
+            return *this;
+        }
+        template <typename T> constexpr MetaValue &operator=(const T &value) {
+            set<T, false>(value);
+            return *this;
+        }
+
+        [[nodiscard]] constexpr bool is_comment() const { return m_type == MetaType::COMMENT; }
+
         [[nodiscard]] constexpr MetaType type() const { return m_type; }
 
         template <typename T, bool comment = false>

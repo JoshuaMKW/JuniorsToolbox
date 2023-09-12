@@ -23,10 +23,15 @@ file(GLOB TOOLBOX_SRC
     "include/*.h"
     "src/objlib/*.cpp"
     "include/objlib/*.hpp"
+    "src/objlib/meta/*.cpp"
+    "include/objlib/meta/*.hpp"
     "src/io/*.cpp"
     "include/io/*.hpp"
     "include/ImGuiFileDialog/*.h"
 )
 
+
 add_executable(JuniorsToolbox ${TOOLBOX_SRC})
-target_include_directories(JuniorsToolbox PRIVATE "include" "lib")
+add_subdirectory(lib/j3dultra)
+target_link_libraries(JuniorsToolbox PRIVATE j3dultra)
+target_include_directories(JuniorsToolbox PRIVATE "include" "lib/nlohmann" "lib/glm::glm", "lib/j3dultra")

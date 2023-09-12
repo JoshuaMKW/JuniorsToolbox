@@ -42,14 +42,20 @@ namespace Toolbox::Object {
             return *this = QualifiedName(scopes);
         }
 
-        constexpr bool operator==(const QualifiedName &other) const {
+        [[nodiscard]] constexpr bool operator==(const QualifiedName &other) const {
             return m_scopes == other.m_scopes;
         }
-        constexpr bool operator!=(const QualifiedName &other) const {
+        [[nodiscard]] constexpr bool operator!=(const QualifiedName &other) const {
             return m_scopes != other.m_scopes;
         }
 
-        constexpr std::string toString() const {
+        [[nodiscard]] constexpr std::string_view operator[](size_t index) const {
+            return m_scopes[index];
+        }
+
+        [[nodiscard]] constexpr bool empty() const { return m_scopes.empty(); }
+
+        [[nodiscard]] constexpr std::string toString() const {
             std::string result;
             for (const auto &scope : m_scopes) {
                 result += scope + "::";
@@ -57,7 +63,7 @@ namespace Toolbox::Object {
             return result.substr(0, result.size() - 2);
         }
 
-        constexpr std::string toString(const std::string &separator) const {
+        [[nodiscard]] constexpr std::string toString(const std::string &separator) const {
             std::string result;
             for (const auto &scope : m_scopes) {
                 result += scope + separator;
@@ -65,17 +71,17 @@ namespace Toolbox::Object {
             return result.substr(0, result.size() - separator.size());
         }
 
-        constexpr std::string name() const { return m_scopes.back(); }
-        constexpr size_t depth() const { return m_scopes.size(); }
+        [[nodiscard]] constexpr std::string name() const { return m_scopes.back(); }
+        [[nodiscard]] constexpr size_t depth() const { return m_scopes.size(); }
 
-        constexpr QualifiedName parent() const {
+        [[nodiscard]] constexpr QualifiedName parent() const {
             if (m_scopes.size() == 1) {
                 return {};
             }
             return QualifiedName(m_scopes.begin(), m_scopes.end() - 1);
         }
 
-        constexpr bool isParentOf(const QualifiedName &other) const {
+        [[nodiscard]] constexpr bool isParentOf(const QualifiedName &other) const {
             if (m_scopes.size() >= other.m_scopes.size()) {
                 return false;
             }
@@ -87,17 +93,17 @@ namespace Toolbox::Object {
             return true;
         }
 
-        constexpr iterator begin() { return m_scopes.begin(); }
-        constexpr const_iterator begin() const { return m_scopes.begin(); }
+        [[nodiscard]] constexpr iterator begin() { return m_scopes.begin(); }
+        [[nodiscard]] constexpr const_iterator begin() const { return m_scopes.begin(); }
 
-        constexpr iterator end() { return m_scopes.end(); }
-        constexpr const_iterator end() const { return m_scopes.end(); }
+        [[nodiscard]] constexpr iterator end() { return m_scopes.end(); }
+        [[nodiscard]] constexpr const_iterator end() const { return m_scopes.end(); }
 
-        constexpr reverse_iterator rbegin() { return m_scopes.rbegin(); }
-        constexpr const_reverse_iterator rbegin() const { return m_scopes.rbegin(); }
+        [[nodiscard]] constexpr reverse_iterator rbegin() { return m_scopes.rbegin(); }
+        [[nodiscard]] constexpr const_reverse_iterator rbegin() const { return m_scopes.rbegin(); }
 
-        constexpr reverse_iterator rend() { return m_scopes.rend(); }
-        constexpr const_reverse_iterator rend() const { return m_scopes.rend(); }
+        [[nodiscard]] constexpr reverse_iterator rend() { return m_scopes.rend(); }
+        [[nodiscard]] constexpr const_reverse_iterator rend() const { return m_scopes.rend(); }
 
     private:
         std::vector<std::string> m_scopes;
