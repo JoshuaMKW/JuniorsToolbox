@@ -23,6 +23,9 @@ namespace Toolbox::Object {
         if (name.empty())
             return {};
 
+        if (m_member_cache.contains(name))
+            return m_member_cache.at(name);
+
         auto current_scope = name[0];
         int array_index    = 0;
         {
@@ -42,14 +45,21 @@ namespace Toolbox::Object {
                 auto s = m->value<MetaStruct>(array_index)->lock();
                 if (s->name() != current_scope)
                     continue;
-                if (name.depth() > 1)
-                    return s->getMember(QualifiedName(name.begin() + 1, name.end()));
+                if (name.depth() > 1) {
+                    auto member = s->getMember(QualifiedName(name.begin() + 1, name.end()));
+                    if (member.has_value()) {
+                        m_member_cache[name] = member.value();
+                    }
+                    return member;
+                }
+                m_member_cache[name] = s;
                 return s;
             }
             if (m->formattedName(array_index) != current_scope)
                 continue;
             if (name.depth() > 1)
                 continue;
+            m_member_cache[name] = m;
             return m;
         }
     }

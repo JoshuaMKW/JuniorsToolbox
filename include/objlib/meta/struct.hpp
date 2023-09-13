@@ -5,6 +5,7 @@
 #include <expected>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace Toolbox::Object {
@@ -13,9 +14,9 @@ namespace Toolbox::Object {
 
     class MetaStruct {
     public:
-        using GetMemberT =
-            std::expected<std::variant<std::weak_ptr<MetaMember>, std::weak_ptr<MetaStruct>>,
-                          MetaScopeError>;
+        using MemberT = std::variant<std::weak_ptr<MetaMember>, std::weak_ptr<MetaStruct>>;
+        using GetMemberT = std::expected<MemberT, MetaScopeError>;
+        using CacheMemberT = std::unordered_map<QualifiedName, MemberT>;
 
         constexpr MetaStruct() = delete;
         constexpr MetaStruct(std::string_view name) : m_name(name) {}
@@ -55,6 +56,8 @@ namespace Toolbox::Object {
         std::string m_name;
         std::vector<std::shared_ptr<MetaMember>> m_members = {};
         MetaStruct *m_parent                               = nullptr;
+
+        mutable CacheMemberT m_member_cache;
     };
 
 }  // namespace Toolbox::Object

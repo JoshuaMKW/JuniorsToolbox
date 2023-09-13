@@ -2,6 +2,7 @@
 
 #include "types.hpp"
 #include <expected>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -26,98 +27,215 @@ namespace Toolbox::Object {
     };
 
     template <typename T, bool comment = false> struct map_to_type_enum {
-        static constexpr MetaType value        = MetaType::UNKNOWN;
-        static constexpr std::string_view name = "unknown";
+        static constexpr MetaType value = MetaType::UNKNOWN;
     };
 
     template <> struct map_to_type_enum<bool, false> {
-        static constexpr MetaType value        = MetaType::BOOL;
-        static constexpr std::string_view name = "bool";
+        static constexpr MetaType value = MetaType::BOOL;
     };
 
     template <> struct map_to_type_enum<s8, false> {
-        static constexpr MetaType value        = MetaType::S8;
-        static constexpr std::string_view name = "s8";
+        static constexpr MetaType value = MetaType::S8;
     };
 
     template <> struct map_to_type_enum<u8, false> {
-        static constexpr MetaType value        = MetaType::U8;
-        static constexpr std::string_view name = "u8";
+        static constexpr MetaType value = MetaType::U8;
     };
 
     template <> struct map_to_type_enum<s16, false> {
-        static constexpr MetaType value        = MetaType::S16;
-        static constexpr std::string_view name = "s16";
+        static constexpr MetaType value = MetaType::S16;
     };
 
     template <> struct map_to_type_enum<u16, false> {
-        static constexpr MetaType value        = MetaType::U16;
-        static constexpr std::string_view name = "u16";
+        static constexpr MetaType value = MetaType::U16;
     };
 
     template <> struct map_to_type_enum<s32, false> {
-        static constexpr MetaType value        = MetaType::S32;
-        static constexpr std::string_view name = "s32";
+        static constexpr MetaType value = MetaType::S32;
     };
 
     template <> struct map_to_type_enum<u32, false> {
-        static constexpr MetaType value        = MetaType::U32;
-        static constexpr std::string_view name = "u32";
+        static constexpr MetaType value = MetaType::U32;
     };
 
     template <> struct map_to_type_enum<f32, false> {
-        static constexpr MetaType value        = MetaType::F32;
-        static constexpr std::string_view name = "f32";
+        static constexpr MetaType value = MetaType::F32;
     };
 
     template <> struct map_to_type_enum<f64, false> {
-        static constexpr MetaType value        = MetaType::F64;
-        static constexpr std::string_view name = "f64";
+        static constexpr MetaType value = MetaType::F64;
     };
 
     template <> struct map_to_type_enum<std::string, false> {
-        static constexpr MetaType value        = MetaType::STRING;
-        static constexpr std::string_view name = "string";
+        static constexpr MetaType value = MetaType::STRING;
     };
 
     template <> struct map_to_type_enum<std::string, true> {
-        static constexpr MetaType value        = MetaType::COMMENT;
-        static constexpr std::string_view name = "comment";
+        static constexpr MetaType value = MetaType::COMMENT;
     };
 
     template <typename T, bool comment = false>
     static constexpr MetaType template_type_v = map_to_type_enum<T, comment>::value;
 
-    template <typename T, bool comment = false>
-    static constexpr std::string_view template_type_name_v = map_to_type_enum<T, comment>::name;
+    template <MetaType T> struct meta_type_info {
+        static constexpr std::string_view name = "unknown";
+        static constexpr size_t size           = 0;
+        static constexpr size_t alignment      = 0;
+    };
+
+    template <> struct meta_type_info<MetaType::BOOL> {
+        static constexpr std::string_view name = "bool";
+        static constexpr size_t size           = sizeof(bool);
+        static constexpr size_t alignment      = alignof(bool);
+    };
+
+    template <> struct meta_type_info<MetaType::S8> {
+        static constexpr std::string_view name = "s8";
+        static constexpr size_t size           = sizeof(s8);
+        static constexpr size_t alignment      = alignof(s8);
+    };
+
+    template <> struct meta_type_info<MetaType::U8> {
+        static constexpr std::string_view name = "u8";
+        static constexpr size_t size           = sizeof(u8);
+        static constexpr size_t alignment      = alignof(u8);
+    };
+
+    template <> struct meta_type_info<MetaType::S16> {
+        static constexpr std::string_view name = "s16";
+        static constexpr size_t size           = sizeof(s16);
+        static constexpr size_t alignment      = alignof(s16);
+    };
+
+    template <> struct meta_type_info<MetaType::U16> {
+        static constexpr std::string_view name = "u16";
+        static constexpr size_t size           = sizeof(u16);
+        static constexpr size_t alignment      = alignof(u16);
+    };
+
+    template <> struct meta_type_info<MetaType::S32> {
+        static constexpr std::string_view name = "s32";
+        static constexpr size_t size           = sizeof(s32);
+        static constexpr size_t alignment      = alignof(s32);
+    };
+
+    template <> struct meta_type_info<MetaType::U32> {
+        static constexpr std::string_view name = "u32";
+        static constexpr size_t size           = sizeof(u32);
+        static constexpr size_t alignment      = alignof(u32);
+    };
+
+    template <> struct meta_type_info<MetaType::F32> {
+        static constexpr std::string_view name = "f32";
+        static constexpr size_t size           = sizeof(f32);
+        static constexpr size_t alignment      = alignof(f32);
+    };
+
+    template <> struct meta_type_info<MetaType::F64> {
+        static constexpr std::string_view name = "f64";
+        static constexpr size_t size           = sizeof(f64);
+        static constexpr size_t alignment      = alignof(f64);
+    };
+
+    template <> struct meta_type_info<MetaType::STRING> {
+        static constexpr std::string_view name = "string";
+        static constexpr size_t size           = 2;
+        static constexpr size_t alignment      = 4;
+    };
+
+    template <> struct meta_type_info<MetaType::COMMENT> {
+        static constexpr std::string_view name = "comment";
+        static constexpr size_t size           = 0;
+        static constexpr size_t alignment      = 0;
+    };
 
     constexpr std::string_view meta_type_name(MetaType type) {
         switch (type) {
         case MetaType::BOOL:
-            return template_type_name_v<bool>;
+            return meta_type_info<MetaType::BOOL>::name;
         case MetaType::S8:
-            return template_type_name_v<s8>;
+            return meta_type_info<MetaType::S8>::name;
         case MetaType::U8:
-            return template_type_name_v<u8>;
+            return meta_type_info<MetaType::U8>::name;
         case MetaType::S16:
-            return template_type_name_v<s16>;
+            return meta_type_info<MetaType::S16>::name;
         case MetaType::U16:
-            return template_type_name_v<u16>;
+            return meta_type_info<MetaType::U16>::name;
         case MetaType::S32:
-            return template_type_name_v<s32>;
+            return meta_type_info<MetaType::S32>::name;
         case MetaType::U32:
-            return template_type_name_v<u32>;
+            return meta_type_info<MetaType::U32>::name;
         case MetaType::F32:
-            return template_type_name_v<f32>;
+            return meta_type_info<MetaType::F32>::name;
         case MetaType::F64:
-            return template_type_name_v<f64>;
+            return meta_type_info<MetaType::F64>::name;
         case MetaType::STRING:
-            return template_type_name_v<std::string>;
+            return meta_type_info<MetaType::STRING>::name;
         case MetaType::COMMENT:
-            return template_type_name_v<std::string, true>;
+            return meta_type_info<MetaType::COMMENT>::name;
         case MetaType::UNKNOWN:
         default:
-            return template_type_name_v<void>;
+            return meta_type_info<MetaType::UNKNOWN>::name;
+        }
+    }
+
+    constexpr size_t meta_type_size(MetaType type) {
+        switch (type) {
+        case MetaType::BOOL:
+            return meta_type_info<MetaType::BOOL>::size;
+        case MetaType::S8:
+            return meta_type_info<MetaType::S8>::size;
+        case MetaType::U8:
+            return meta_type_info<MetaType::U8>::size;
+        case MetaType::S16:
+            return meta_type_info<MetaType::S16>::size;
+        case MetaType::U16:
+            return meta_type_info<MetaType::U16>::size;
+        case MetaType::S32:
+            return meta_type_info<MetaType::S32>::size;
+        case MetaType::U32:
+            return meta_type_info<MetaType::U32>::size;
+        case MetaType::F32:
+            return meta_type_info<MetaType::F32>::size;
+        case MetaType::F64:
+            return meta_type_info<MetaType::F64>::size;
+        case MetaType::STRING:
+            return meta_type_info<MetaType::STRING>::size;
+        case MetaType::COMMENT:
+            return meta_type_info<MetaType::COMMENT>::size;
+        case MetaType::UNKNOWN:
+        default:
+            return meta_type_info<MetaType::UNKNOWN>::size;
+        }
+    }
+
+    constexpr size_t meta_type_alignment(MetaType type) {
+        switch (type) {
+        case MetaType::BOOL:
+            return meta_type_info<MetaType::BOOL>::alignment;
+        case MetaType::S8:
+            return meta_type_info<MetaType::S8>::alignment;
+        case MetaType::U8:
+            return meta_type_info<MetaType::U8>::alignment;
+        case MetaType::S16:
+            return meta_type_info<MetaType::S16>::alignment;
+        case MetaType::U16:
+            return meta_type_info<MetaType::U16>::alignment;
+        case MetaType::S32:
+            return meta_type_info<MetaType::S32>::alignment;
+        case MetaType::U32:
+            return meta_type_info<MetaType::U32>::alignment;
+        case MetaType::F32:
+            return meta_type_info<MetaType::F32>::alignment;
+        case MetaType::F64:
+            return meta_type_info<MetaType::F64>::alignment;
+        case MetaType::STRING:
+            return meta_type_info<MetaType::STRING>::alignment;
+        case MetaType::COMMENT:
+            return meta_type_info<MetaType::COMMENT>::alignment;
+        case MetaType::UNKNOWN:
+        default:
+            return meta_type_info<MetaType::UNKNOWN>::alignment;
         }
     }
 
