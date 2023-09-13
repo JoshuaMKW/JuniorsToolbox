@@ -6,7 +6,7 @@ namespace Toolbox::Object {
         auto ctrl = getAnimationControl();
         if (ctrl.expired())
             return 0;
-        return 0;
+        return ctrl.lock()->GetLength();
     }
 
     float ISceneObject::getAnimationFrame() const {
