@@ -215,8 +215,8 @@ namespace Toolbox::Object {
 
     public:
         // Inherited via ISerializable
-        void serialize(Serializer &out) const override;
-        void deserialize(Deserializer &in) override;
+        std::expected<void, SerialError> serialize(Serializer &out) const override;
+        std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
     protected:
         std::string m_type;
@@ -246,8 +246,8 @@ namespace Toolbox::Object {
         void dump(std::ostream &out, int indention, int indention_width) const override;
 
         // Inherited via ISerializable
-        void serialize(Serializer &out) const override;
-        void deserialize(Deserializer &in) override;
+        std::expected<void, SerialError> serialize(Serializer &out) const override;
+        std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
     private:
         std::vector<std::shared_ptr<ISceneObject>> m_children;
@@ -344,8 +344,8 @@ namespace Toolbox::Object {
 
     public:
         // Inherited via ISerializable
-        void serialize(Serializer &out) const override;
-        void deserialize(Deserializer &in) override;
+        std::expected<void, SerialError> serialize(Serializer &out) const override;
+        std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
     private:
         std::string m_type;

@@ -1,9 +1,14 @@
+#include "objlib/template.hpp"
+#include "jsonlib.hpp"
+#include "magic_enum.hpp"
 #include "objlib/meta/enum.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/struct.hpp"
-#include "objlib/template.hpp"
 #include "objlib/transform.hpp"
+#include <expected>
 #include <optional>
+
+using json = nlohmann::json;
 
 namespace Toolbox::Object {
 
@@ -36,6 +41,71 @@ namespace Toolbox::Object {
             if (w.m_name == name)
                 return w;
         }
+        return {};
+    }
+
+    std::expected<void, SerialError> Template::serialize(Serializer &out) const {}
+
+    std::expected<void, SerialError> Template::deserialize(Deserializer &in) {
+        json template_json;
+
+        auto result = tryJSON(template_json, [&](json &j) {
+            in.stream() >> j;
+
+            m_name = j.at(0).get<std::string>();
+
+            json metadata = j[m_name];
+            {
+                json enums = metadata["Enums"];
+                for (const auto &item : enums.items()) {
+                    const auto &e = item.value();
+                    auto enum_type = magic_enum::enum_cast<MetaType>(e["type"].get<std::string>());
+                    if (!enum_type.has_value()) {
+                        continue;
+                    }
+                    bool enum_bitmask = e["Multi"].get<bool>();
+                    std::vector<MetaEnum::enum_type> values;
+                    for (auto &value : e["Flags"].items()) {
+                        auto vs = value.value().get<std::string>();
+                        MetaEnum::enum_type enumv = {value.key(),
+                                                     MetaValue(std::stoi(vs, nullptr, 0))};
+                        values.push_back(enumv);
+                    }
+                    MetaEnum menum(item.key(), enum_type.value(), values, enum_bitmask);
+                    m_enums.emplace_back(e);
+                }
+            }
+            {
+                json structs = metadata["Structs"];
+                for (const auto &s : structs) {
+                    m_structs.emplace_back(s);
+                }
+            }
+            {
+                json members = metadata["Members"];
+                for (const auto &m : members) {
+                    m_members.emplace_back(m);
+                }
+            }
+            {
+                json wizards = metadata["Wizard"];
+                for (const auto &w : wizards) {
+                    TemplateWizard wizard;
+                    wizard.m_name = w["name"].get<std::string>();
+                    for (const auto &m : w["members"]) {
+                        wizard.m_init_members.emplace_back(m);
+                    }
+                    m_wizards.emplace_back(wizard);
+                }
+            }
+        });
+
+        if (!result) {
+            JSONError &err = result.error();
+            return std::unexpected(
+                make_serial_error(err.m_message, err.m_reason, err.m_byte, in.filepath()));
+        }
+
         return {};
     }
 

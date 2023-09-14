@@ -100,7 +100,7 @@ namespace Toolbox::Object {
         size_t offset = 0;
         return offset;
     }
-    size_t VirtualSceneObject::getMemberSize(const QualifiedName &name) const {
+    size_t VirtualSceneObject::getMemberSize(const QualifiedName &name, int index) const {
         size_t size = 0;
         return size;
     }
@@ -111,9 +111,9 @@ namespace Toolbox::Object {
 
     void VirtualSceneObject::dump(std::ostream &out, int indention, int indention_width) const {}
 
-    void VirtualSceneObject::serialize(Serializer &out) const {}
+    std::expected<void, SerialError> VirtualSceneObject::serialize(Serializer &out) const {}
 
-    void VirtualSceneObject::deserialize(Deserializer &in) {}
+    std::expected<void, SerialError> VirtualSceneObject::deserialize(Deserializer &in) {}
 
     /* GROUP SCENE OBJECT */
 
@@ -205,9 +205,9 @@ namespace Toolbox::Object {
 
     void GroupSceneObject::dump(std::ostream &out, int indention, int indention_width) const {}
 
-    void GroupSceneObject::serialize(Serializer &out) const {}
+    std::expected<void, SerialError> GroupSceneObject::serialize(Serializer &out) const {}
 
-    void GroupSceneObject::deserialize(Deserializer &in) {}
+    std::expected<void, SerialError> GroupSceneObject::deserialize(Deserializer &in) {}
 
     /* PHYSICAL SCENE OBJECT */
 
@@ -272,6 +272,14 @@ namespace Toolbox::Object {
     size_t PhysicalSceneObject::getMemberSize(const QualifiedName &name, int index) const {
         size_t size = 0;
         return size;
+    }
+
+    std::expected<void, SerialError> PhysicalSceneObject::serialize(Serializer &out) const {
+        return std::expected<void, SerialError>();
+    }
+
+    std::expected<void, SerialError> PhysicalSceneObject::deserialize(Deserializer &in) {
+        return std::expected<void, SerialError>();
     }
 
 }  // namespace Toolbox::Object

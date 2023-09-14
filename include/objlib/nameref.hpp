@@ -35,12 +35,12 @@ namespace Toolbox::Object {
             return current;
         }*/
 
-        virtual void serialize(Serializer &serializer) const override {
+        std::expected<void, SerialError> serialize(Serializer &serializer) const override {
             serializer.write<u16, std::endian::big>(m_name_hash);
             serializer.writeString<std::endian::big>(m_name);
         }
 
-        virtual void deserialize(Deserializer &deserializer) override {
+        std::expected<void, SerialError> deserialize(Deserializer &deserializer) override {
             m_name_hash = deserializer.read<u16, std::endian::big>();
             m_name      = deserializer.readString<std::endian::big>();
         }
