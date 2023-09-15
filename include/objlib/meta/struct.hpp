@@ -1,5 +1,6 @@
 #pragma once
 
+#include "clonable.hpp"
 #include "error.hpp"
 #include "objlib/qualname.hpp"
 #include <expected>
@@ -12,19 +13,22 @@ namespace Toolbox::Object {
 
     class MetaMember;
 
-    class MetaStruct {
+    class MetaStruct : public IClonable {
     public:
-        using MemberT = std::variant<std::weak_ptr<MetaMember>, std::weak_ptr<MetaStruct>>;
+        using MemberT = std::variant<std::shared_ptr<MetaMember>, std::shared_ptr<MetaStruct>>;
         using GetMemberT = std::expected<MemberT, MetaScopeError>;
-        using CacheMemberT = std::unordered_map<QualifiedName, MemberT>;
+        using CacheMemberT = std::unordered_map<std::string, MemberT>;
 
-        constexpr MetaStruct() = delete;
-        constexpr MetaStruct(std::string_view name) : m_name(name) {}
+        MetaStruct(std::string_view name) : m_name(name) {}
         MetaStruct(std::string_view name, std::vector<MetaMember> members);
-        constexpr MetaStruct(const MetaStruct &other) = default;
-        constexpr MetaStruct(MetaStruct &&other)      = default;
-        constexpr ~MetaStruct()                       = default;
+        MetaStruct(const MetaStruct &other) = default;
+        MetaStruct(MetaStruct &&other)      = default;
+        ~MetaStruct()                       = default;
 
+    protected:
+        MetaStruct() = default;
+
+    public:
         [[nodiscard]] constexpr std::string_view name() const { return m_name; }
 
         [[nodiscard]] constexpr std::vector<std::weak_ptr<MetaMember>> members() const {
@@ -51,6 +55,8 @@ namespace Toolbox::Object {
         void dump(std::ostream &out) const { dump(out, 0, 2, false); }
 
         bool operator==(const MetaStruct &other) const;
+
+        std::unique_ptr<IClonable> clone(bool deep) const override;
 
     private:
         std::string m_name;

@@ -23,7 +23,7 @@ namespace Toolbox::Object {
         auto ctrl = getAnimationControl(type);
         if (ctrl.expired())
             return;
-        ctrl.lock()->SetFrame(frame);
+        ctrl.lock()->SetFrame(static_cast<u16>(frame));
     }
 
     bool ISceneObject::startAnimation(AnimationType type) {
@@ -56,50 +56,44 @@ namespace Toolbox::Object {
         if (name.empty())
             return {};
 
-        if (m_member_cache.contains(name))
-            return m_member_cache.at(name);
+        const auto name_str = name.toString();
+
+        if (m_member_cache.contains(name_str))
+            return m_member_cache.at(name_str);
 
         auto current_scope = name[0];
-        int array_index    = 0;
-        {
-            size_t lidx = current_scope.find('[');
-            if (lidx != std::string::npos) {
-                size_t ridx = current_scope.find(']', lidx);
-                if (ridx == std::string::npos)
-                    return {};
-
-                auto arystr = current_scope.substr(lidx + 1, ridx - lidx);
-                array_index = std::atoi(arystr.data());
-            }
+        auto array_index   = getArrayIndex(name, 0);
+        if (!array_index) {
+            return std::unexpected(array_index.error());
         }
 
         for (auto m : m_members) {
-            if (m->isTypeStruct()) {
-                auto s = m->value<MetaStruct>(array_index)->lock();
-                if (s->name() != current_scope)
-                    continue;
-                if (name.depth() > 1) {
-                    auto member = s->getMember(QualifiedName(name.begin() + 1, name.end()));
-                    if (member.has_value()) {
-                        m_member_cache[name] = member.value();
-                    }
-                    return member;
-                }
-                m_member_cache[name] = s;
-                return s;
+            if (m->name() != current_scope)
+                continue;
+
+            if (name.depth() == 1) {
+                m_member_cache[name_str] = m;
+                return m;
             }
-            if (m->formattedName(array_index) != current_scope)
-                continue;
-            if (name.depth() > 1)
-                continue;
-            m_member_cache[name] = m;
-            return m;
+
+            if (m->isTypeStruct()) {
+                auto s      = m->value<MetaStruct>(*array_index)->lock();
+                auto member = s->getMember(QualifiedName(name.begin() + 1, name.end()));
+                if (member.has_value()) {
+                    m_member_cache[name_str] = member.value();
+                }
+                return member;
+            }
         }
+
+        return {};
     }
+
     size_t VirtualSceneObject::getMemberOffset(const QualifiedName &name, int index) const {
         size_t offset = 0;
         return offset;
     }
+
     size_t VirtualSceneObject::getMemberSize(const QualifiedName &name, int index) const {
         size_t size = 0;
         return size;
@@ -111,9 +105,13 @@ namespace Toolbox::Object {
 
     void VirtualSceneObject::dump(std::ostream &out, int indention, int indention_width) const {}
 
-    std::expected<void, SerialError> VirtualSceneObject::serialize(Serializer &out) const {}
+    std::expected<void, SerialError> VirtualSceneObject::serialize(Serializer &out) const {
+        return {};
+    }
 
-    std::expected<void, SerialError> VirtualSceneObject::deserialize(Deserializer &in) {}
+    std::expected<void, SerialError> VirtualSceneObject::deserialize(Deserializer &in) {
+        return {};
+    }
 
     /* GROUP SCENE OBJECT */
 
@@ -205,9 +203,11 @@ namespace Toolbox::Object {
 
     void GroupSceneObject::dump(std::ostream &out, int indention, int indention_width) const {}
 
-    std::expected<void, SerialError> GroupSceneObject::serialize(Serializer &out) const {}
+    std::expected<void, SerialError> GroupSceneObject::serialize(Serializer &out) const {
+        return {};
+    }
 
-    std::expected<void, SerialError> GroupSceneObject::deserialize(Deserializer &in) {}
+    std::expected<void, SerialError> GroupSceneObject::deserialize(Deserializer &in) { return {}; }
 
     /* PHYSICAL SCENE OBJECT */
 
@@ -223,45 +223,37 @@ namespace Toolbox::Object {
         if (name.empty())
             return {};
 
-        if (m_member_cache.contains(name))
-            return m_member_cache.at(name);
+        const auto name_str = name.toString();
+
+        if (m_member_cache.contains(name_str))
+            return m_member_cache.at(name_str);
 
         auto current_scope = name[0];
-        int array_index    = 0;
-        {
-            size_t lidx = current_scope.find('[');
-            if (lidx != std::string::npos) {
-                size_t ridx = current_scope.find(']', lidx);
-                if (ridx == std::string::npos)
-                    return {};
-
-                auto arystr = current_scope.substr(lidx + 1, ridx - lidx);
-                array_index = std::atoi(arystr.data());
-            }
+        auto array_index   = getArrayIndex(name, 0);
+        if (!array_index) {
+            return std::unexpected(array_index.error());
         }
 
         for (auto m : m_members) {
-            if (m->isTypeStruct()) {
-                auto s = m->value<MetaStruct>(array_index)->lock();
-                if (s->name() != current_scope)
-                    continue;
-                if (name.depth() > 1) {
-                    auto member = s->getMember(QualifiedName(name.begin() + 1, name.end()));
-                    if (member.has_value()) {
-                        m_member_cache[name] = member.value();
-                    }
-                    return member;
-                }
-                m_member_cache[name] = s;
-                return s;
+            if (m->name() != current_scope)
+                continue;
+
+            if (name.depth() == 1) {
+                m_member_cache[name_str] = m;
+                return m;
             }
-            if (m->formattedName(array_index) != current_scope)
-                continue;
-            if (name.depth() > 1)
-                continue;
-            m_member_cache[name] = m;
-            return m;
+
+            if (m->isTypeStruct()) {
+                auto s      = m->value<MetaStruct>(*array_index)->lock();
+                auto member = s->getMember(QualifiedName(name.begin() + 1, name.end()));
+                if (member.has_value()) {
+                    m_member_cache[name_str] = member.value();
+                }
+                return member;
+            }
         }
+
+        return {};
     }
 
     size_t PhysicalSceneObject::getMemberOffset(const QualifiedName &name, int index) const {

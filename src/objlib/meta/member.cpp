@@ -8,79 +8,6 @@
 
 namespace Toolbox::Object {
 
-    std::string MetaMember::strippedName() const {
-        std::string result = m_name;
-        {
-            size_t pos = 0;
-            while ((pos = result.find("{c}")) != std::string::npos) {
-                result.replace(pos, 3, "");
-            }
-        }
-
-        {
-            size_t pos = 0;
-            while ((pos = result.find("{C}")) != std::string::npos) {
-                result.replace(pos, 3, "");
-            }
-        }
-
-        {
-            size_t pos = 0;
-            while ((pos = result.find("{i}")) != std::string::npos) {
-                result.replace(pos, 3, "");
-            }
-        }
-
-        return result;
-    }
-
-    std::string MetaMember::formattedName(int index) const {
-        std::string chars = "";
-
-        // Append a-z depending on the index
-        int charIndex = index;
-        for (int i = 0; i < 4; ++i) {
-            chars += static_cast<char>(('a' + charIndex) % 26);
-            if (charIndex < 26)
-                break;
-            charIndex /= 26;
-            charIndex -= 1;
-        }
-
-        std::reverse(chars.begin(), chars.end());
-
-        std::string uchars = chars;
-        std::transform(uchars.begin(), uchars.end(), uchars.begin(), ::toupper);
-
-        // Find and replace all {c} with the chars
-        std::string result = m_name;
-        {
-            size_t pos = 0;
-            while ((pos = result.find("{c}")) != std::string::npos) {
-                result.replace(pos, 3, chars);
-            }
-        }
-
-        // Find and replace all {C} with the uppercase chars
-        {
-            size_t pos = 0;
-            while ((pos = result.find("{C}")) != std::string::npos) {
-                result.replace(pos, 3, uchars);
-            }
-        }
-
-        // Find and replace all {i} with the index
-        {
-            size_t pos    = 0;
-            auto indexstr = std::to_string(index);
-            while ((pos = result.find("{i}")) != std::string::npos) {
-                result.replace(pos, 3, indexstr);
-            }
-        }
-
-        return result;
-    }
-
     QualifiedName MetaMember::qualifiedName() const {
         MetaStruct *parent              = m_parent;
         std::vector<std::string> scopes = {m_name};
@@ -94,11 +21,11 @@ namespace Toolbox::Object {
 
     template <>
     std::expected<std::weak_ptr<MetaStruct>, MetaError>
-    MetaMember::value<MetaStruct>(int index) const {
+    MetaMember::value<MetaStruct>(size_t index) const {
         if (index >= m_values.size() || index < 0) {
             return make_meta_error<std::weak_ptr<MetaStruct>>(m_name, index, m_values.size());
         }
-        if (!isTypeValue()) {
+        if (!isTypeStruct()) {
             return make_meta_error<std::weak_ptr<MetaStruct>>(
                 m_name, "MetaStruct", isTypeValue() ? "MetaValue" : "MetaEnum");
         }
@@ -106,11 +33,12 @@ namespace Toolbox::Object {
     }
 
     template <>
-    std::expected<std::weak_ptr<MetaEnum>, MetaError> MetaMember::value<MetaEnum>(int index) const {
+    std::expected<std::weak_ptr<MetaEnum>, MetaError>
+    MetaMember::value<MetaEnum>(size_t index) const {
         if (index >= m_values.size() || index < 0) {
             return make_meta_error<std::weak_ptr<MetaEnum>>(m_name, index, m_values.size());
         }
-        if (!isTypeValue()) {
+        if (!isTypeEnum()) {
             return make_meta_error<std::weak_ptr<MetaEnum>>(
                 m_name, "MetaEnum", isTypeValue() ? "MetaValue" : "MetaStruct");
         }
@@ -119,7 +47,7 @@ namespace Toolbox::Object {
 
     template <>
     std::expected<std::weak_ptr<MetaValue>, MetaError>
-    MetaMember::value<MetaValue>(int index) const {
+    MetaMember::value<MetaValue>(size_t index) const {
         if (index >= m_values.size() || index < 0) {
             return make_meta_error<std::weak_ptr<MetaValue>>(m_name, index, m_values.size());
         }
@@ -156,20 +84,18 @@ namespace Toolbox::Object {
 
         if (isTypeStruct()) {
             out << self_indent << std::get<std::shared_ptr<MetaStruct>>(m_values[0])->name() << " "
-                << m_name
-                << " = [\n";
+                << m_name << " = [\n";
             for (const auto &v : m_values) {
                 auto _struct = std::get<std::shared_ptr<MetaStruct>>(v);
                 std::cout << value_indent;
                 std::get<std::shared_ptr<MetaStruct>>(v)->dump(out, indention + 1, indention_width,
-                                                              true);
+                                                               true);
                 std::cout << ",\n";
             }
             out << self_indent << "];\n";
         } else if (isTypeEnum()) {
             out << self_indent << std::get<std::shared_ptr<MetaEnum>>(m_values[0])->name() << " "
-                << m_name
-                << " = [\n";
+                << m_name << " = [\n";
             for (const auto &v : m_values) {
                 auto _enum = std::get<std::shared_ptr<MetaEnum>>(v);
                 out << _enum->value().toString() << ",\n";
@@ -177,8 +103,8 @@ namespace Toolbox::Object {
             out << self_indent << "];\n";
         } else if (isTypeValue()) {
             out << self_indent
-                << meta_type_name(std::get<std::shared_ptr<MetaEnum>>(m_values[0])->type()) << m_name
-                << " = [\n";
+                << meta_type_name(std::get<std::shared_ptr<MetaEnum>>(m_values[0])->type())
+                << m_name << " = [\n";
             for (const auto &v : m_values) {
                 auto _value = std::get<std::shared_ptr<MetaValue>>(v);
                 out << value_indent << meta_type_name(_value->type()) << m_name << " = "
@@ -186,6 +112,41 @@ namespace Toolbox::Object {
             }
             out << self_indent << "];\n";
         }
+    }
+
+    std::unique_ptr<IClonable> MetaMember::clone(bool deep) const {
+        struct protected_ctor_handler : public MetaMember {};
+
+        std::unique_ptr<MetaMember> member = std::make_unique<protected_ctor_handler>();
+        member->m_name   = m_name;
+        member->m_parent = m_parent;
+
+        if (deep) {
+            for (auto &value : m_values) {
+                if (isTypeStruct()) {
+                    member->m_values.push_back(std::reinterpret_pointer_cast<MetaStruct, IClonable>(
+                        std::get<std::shared_ptr<MetaStruct>>(value)->clone(true)));
+                } else {
+                    auto _copy =
+                        std::make_shared<MetaValue>(*std::get<std::shared_ptr<MetaValue>>(value));
+                    member->m_values.push_back(_copy);
+                }
+            }
+        } else {
+            for (auto &value : m_values) {
+                if (isTypeStruct()) {
+                    auto _copy =
+                        std::make_shared<MetaStruct>(*std::get<std::shared_ptr<MetaStruct>>(value));
+                    member->m_values.push_back(_copy);
+                } else {
+                    auto _copy =
+                        std::make_shared<MetaValue>(*std::get<std::shared_ptr<MetaValue>>(value));
+                    member->m_values.push_back(_copy);
+                }
+            }
+        }
+
+        return member;
     }
 
 }  // namespace Toolbox::Object

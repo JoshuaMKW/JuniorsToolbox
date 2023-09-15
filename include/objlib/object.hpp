@@ -128,7 +128,7 @@ namespace Toolbox::Object {
     public:
         VirtualSceneObject(const Template &template_)
             : ISceneObject(), ISerializable(), m_nameref() {
-            m_type = template_.name();
+            m_type = template_.type();
             // TODO: Transform template structure to members of object
         }
         VirtualSceneObject(const Template &template_, Deserializer &in)
@@ -257,7 +257,7 @@ namespace Toolbox::Object {
     public:
         PhysicalSceneObject(const Template &template_)
             : ISceneObject(), ISerializable(), m_nameref(), m_transform() {
-            m_type = template_.name();
+            m_type = template_.type();
             // TODO: Transform template structure to members of object
         }
         PhysicalSceneObject(const Template &template_, Deserializer &in)

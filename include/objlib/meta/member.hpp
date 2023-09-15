@@ -1,5 +1,6 @@
 #pragma once
 
+#include "clonable.hpp"
 #include "enum.hpp"
 #include "error.hpp"
 #include "objlib/qualname.hpp"
@@ -13,12 +14,44 @@
 
 namespace Toolbox::Object {
 
-    class MetaMember {
+    inline std::string makeNameArrayIndex(std::string_view name, size_t index) {
+        return std::format("{}[{}]", name, index);
+    }
+
+    inline void makeNameArrayIndex(QualifiedName &name, size_t scopeidx, size_t index) {
+        if (scopeidx >= name.depth())
+            return;
+        auto name_str = name[scopeidx];
+        name[scopeidx] = makeNameArrayIndex(name_str, index);
+    }
+
+    inline std::expected<size_t, MetaScopeError> getArrayIndex(const QualifiedName &name,
+                                                                  size_t scopeidx) {
+        auto name_str = name[scopeidx];
+
+        auto pos = name_str.find('[');
+        if (pos == std::string_view::npos)
+            return std::string_view::npos;
+
+        auto end = name_str.find(']', pos);
+        if (end == std::string_view::npos) {
+            return make_meta_error<size_t>(name.toString(), name.getAbsIndexOf(scopeidx, static_cast<int>(pos)),
+                                           "Array specifier missing end token `]'");
+        }
+
+        auto index = name_str.substr(pos + 1, end - pos - 1);
+        return std::stoi(std::string(index), nullptr, 0);
+    }
+
+    inline std::expected<size_t, MetaScopeError> getArrayIndex(std::string_view name) {
+        return getArrayIndex(name, 0);
+    }
+
+    class MetaMember : public IClonable {
     public:
         using value_type = std::variant<std::shared_ptr<MetaStruct>, std::shared_ptr<MetaEnum>,
                                         std::shared_ptr<MetaValue>>;
 
-        MetaMember() = delete;
         MetaMember(std::string_view name, const MetaValue &value) : m_name(name), m_values() {
             auto p = std::make_shared<MetaValue>(value);
             m_values.emplace_back(std::move(p));
@@ -56,26 +89,30 @@ namespace Toolbox::Object {
         MetaMember(MetaMember &&)      = default;
         ~MetaMember()                  = default;
 
-        [[nodiscard]] std::string rawName() const { return m_name; }
-        [[nodiscard]] std::string strippedName() const;
-        [[nodiscard]] std::string formattedName(int index) const;
-        [[nodiscard]] QualifiedName qualifiedName() const;
+    protected:
+        MetaMember() = default;
+
+    public:
+        [[nodiscard]] constexpr std::string name() const { return m_name; }
         [[nodiscard]] constexpr MetaStruct *parent() const { return m_parent; }
 
-        template <typename T> std::expected<std::weak_ptr<T>, MetaError> value(int index) const {
+        [[nodiscard]] QualifiedName qualifiedName() const;
+
+        template <typename T> std::expected<std::weak_ptr<T>, MetaError> value(size_t index) const {
             return std::unexpected("Invalid type");
         }
         template <>
-        std::expected<std::weak_ptr<MetaStruct>, MetaError> value<MetaStruct>(int index) const;
+        std::expected<std::weak_ptr<MetaStruct>, MetaError> value<MetaStruct>(size_t index) const;
         template <>
-        std::expected<std::weak_ptr<MetaEnum>, MetaError> value<MetaEnum>(int index) const;
+        std::expected<std::weak_ptr<MetaEnum>, MetaError> value<MetaEnum>(size_t index) const;
         template <>
-        std::expected<std::weak_ptr<MetaValue>, MetaError> value<MetaValue>(int index) const;
+        std::expected<std::weak_ptr<MetaValue>, MetaError> value<MetaValue>(size_t index) const;
 
+        [[nodiscard]] size_t arraysize() const { return m_values.size(); }
+        [[nodiscard]] bool isArray() const { return m_values.size() > 1; }
         [[nodiscard]] bool isTypeBitMasked() const {
             return isTypeEnum() && value<MetaEnum>(0).value().lock()->isBitMasked();
         }
-        [[nodiscard]] bool isArray() const { return m_values.size() > 1; }
         [[nodiscard]] bool isTypeStruct() const {
             return std::holds_alternative<std::shared_ptr<MetaStruct>>(m_values[0]);
         }
@@ -119,6 +156,12 @@ namespace Toolbox::Object {
             return isTypeValue() &&
                    value<MetaValue>(0).value().lock()->type() == MetaType::TRANSFORM;
         }
+        [[nodiscard]] bool isTypeRGB() const {
+            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::RGB;
+        }
+        [[nodiscard]] bool isTypeRGBA() const {
+            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::RGBA;
+        }
         [[nodiscard]] bool isTypeComment() const {
             return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::COMMENT;
         }
@@ -131,6 +174,8 @@ namespace Toolbox::Object {
         void dump(std::ostream &out) const { dump(out, 0, 2); }
 
         bool operator==(const MetaMember &other) const;
+
+        std::unique_ptr<IClonable> clone(bool deep) const override;
 
     protected:
         constexpr bool isTypeValue() const {

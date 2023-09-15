@@ -14,54 +14,52 @@ namespace Toolbox::Object {
         }
     }
 
-    MetaStruct::GetMemberT
-    MetaStruct::getMember(std::string_view name) const {
-        return std::weak_ptr<MetaMember>();
+    MetaStruct::GetMemberT MetaStruct::getMember(std::string_view name) const {
+        return getMember(QualifiedName(name));
     }
 
     MetaStruct::GetMemberT MetaStruct::getMember(const QualifiedName &name) const {
         if (name.empty())
             return {};
 
-        if (m_member_cache.contains(name))
-            return m_member_cache.at(name);
+        const auto name_str = name.toString();
+
+        if (m_member_cache.contains(name_str))
+            return m_member_cache.at(name_str);
 
         auto current_scope = name[0];
-        int array_index    = 0;
-        {
-            size_t lidx = current_scope.find('[');
-            if (lidx != std::string::npos) {
-                size_t ridx = current_scope.find(']', lidx);
-                if (ridx == std::string::npos)
-                    return {};
+        auto array_result  = getArrayIndex(name, 0);
+        if (!array_result) {
+            return std::unexpected(array_result.error());
+        }
 
-                auto arystr = current_scope.substr(lidx + 1, ridx - lidx);
-                array_index = std::atoi(arystr.data());
-            }
+        size_t array_index = array_result.value();
+        if (array_index != std::string_view::npos) {
+            current_scope = current_scope.substr(0, current_scope.find_first_of('['));
+        } else {
+            array_index = 0;
         }
 
         for (auto m : m_members) {
-            if (m->isTypeStruct()) {
-                auto s = m->value<MetaStruct>(array_index)->lock();
-                if (s->name() != current_scope)
-                    continue;
-                if (name.depth() > 1) {
-                    auto member = s->getMember(QualifiedName(name.begin() + 1, name.end()));
-                    if (member.has_value()) {
-                        m_member_cache[name] = member.value();
-                    }
-                    return member;
-                }
-                m_member_cache[name] = s;
-                return s;
+            if (m->name() != current_scope)
+                continue;
+
+            if (name.depth() == 1) {
+                m_member_cache[name_str] = m;
+                return m;
             }
-            if (m->formattedName(array_index) != current_scope)
-                continue;
-            if (name.depth() > 1)
-                continue;
-            m_member_cache[name] = m;
-            return m;
+
+            if (m->isTypeStruct()) {
+                auto s      = m->value<MetaStruct>(array_index)->lock();
+                auto member = s->getMember(QualifiedName(name.begin() + 1, name.end()));
+                if (member.has_value()) {
+                    m_member_cache[name_str] = member.value();
+                }
+                return member;
+            }
         }
+
+        return {};
     }
 
     constexpr QualifiedName MetaStruct::getQualifiedName() const {
@@ -93,5 +91,28 @@ namespace Toolbox::Object {
     }
 
     bool MetaStruct::operator==(const MetaStruct &other) const = default;
+
+    std::unique_ptr<IClonable> MetaStruct::clone(bool deep) const {
+        struct protected_ctor_handler : public MetaStruct {};
+
+        std::unique_ptr<MetaStruct> struct_ = std::make_unique<protected_ctor_handler>();
+        struct_->m_name                     = m_name;
+        struct_->m_parent                   = m_parent;
+
+        if (deep) {
+            for (auto &member : m_members) {
+                auto copy =
+                    std::reinterpret_pointer_cast<MetaMember, IClonable>(member->clone(true));
+                struct_->m_members.push_back(copy);
+            }
+        } else {
+            for (auto &member : m_members) {
+                auto copy = std::make_shared<MetaMember>(*member);
+                struct_->m_members.push_back(copy);
+            }
+        }
+
+        return struct_;
+    }
 
 }  // namespace Toolbox::Object

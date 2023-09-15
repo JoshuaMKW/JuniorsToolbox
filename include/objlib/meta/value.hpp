@@ -1,5 +1,8 @@
 #pragma once
 
+#include <glm/glm.hpp>
+#include "color.hpp"
+#include "objlib/transform.hpp"
 #include "types.hpp"
 #include <expected>
 #include <functional>
@@ -22,6 +25,8 @@ namespace Toolbox::Object {
         STRING,
         VEC3,
         TRANSFORM,
+        RGB,
+        RGBA,
         COMMENT,
         UNKNOWN,
     };
@@ -68,6 +73,22 @@ namespace Toolbox::Object {
 
     template <> struct map_to_type_enum<std::string, false> {
         static constexpr MetaType value = MetaType::STRING;
+    };
+
+    template <> struct map_to_type_enum<glm::vec3, false> {
+        static constexpr MetaType value = MetaType::VEC3;
+    };
+
+    template <> struct map_to_type_enum<Transform, false> {
+        static constexpr MetaType value = MetaType::TRANSFORM;
+    };
+
+    template <> struct map_to_type_enum<Color::RGB24, false> {
+        static constexpr MetaType value = MetaType::RGB;
+    };
+
+    template <> struct map_to_type_enum<Color::RGBA32, false> {
+        static constexpr MetaType value = MetaType::RGBA;
     };
 
     template <> struct map_to_type_enum<std::string, true> {
@@ -143,6 +164,30 @@ namespace Toolbox::Object {
         static constexpr size_t alignment      = 4;
     };
 
+    template <> struct meta_type_info<MetaType::VEC3> {
+        static constexpr std::string_view name = "vec3";
+        static constexpr size_t size           = 12;
+        static constexpr size_t alignment      = 4;
+    };
+
+    template <> struct meta_type_info<MetaType::TRANSFORM> {
+        static constexpr std::string_view name = "transform";
+        static constexpr size_t size           = 36;
+        static constexpr size_t alignment      = 16;
+    };
+
+    template <> struct meta_type_info<MetaType::RGB> {
+        static constexpr std::string_view name = "rgb";
+        static constexpr size_t size           = 3;
+        static constexpr size_t alignment      = 1;
+    };
+
+    template <> struct meta_type_info<MetaType::RGBA> {
+        static constexpr std::string_view name = "rgba";
+        static constexpr size_t size           = 4;
+        static constexpr size_t alignment      = 1;
+    };
+
     template <> struct meta_type_info<MetaType::COMMENT> {
         static constexpr std::string_view name = "comment";
         static constexpr size_t size           = 0;
@@ -171,6 +216,14 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::F64>::name;
         case MetaType::STRING:
             return meta_type_info<MetaType::STRING>::name;
+        case MetaType::VEC3:
+            return meta_type_info<MetaType::VEC3>::name;
+        case MetaType::TRANSFORM:
+            return meta_type_info<MetaType::TRANSFORM>::name;
+        case MetaType::RGB:
+            return meta_type_info<MetaType::RGB>::name;
+         case MetaType::RGBA:
+            return meta_type_info<MetaType::RGBA>::name;
         case MetaType::COMMENT:
             return meta_type_info<MetaType::COMMENT>::name;
         case MetaType::UNKNOWN:
@@ -201,6 +254,12 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::F64>::size;
         case MetaType::STRING:
             return meta_type_info<MetaType::STRING>::size;
+        case MetaType::TRANSFORM:
+            return meta_type_info<MetaType::TRANSFORM>::size;
+        case MetaType::RGB:
+            return meta_type_info<MetaType::RGB>::size;
+        case MetaType::RGBA:
+            return meta_type_info<MetaType::RGBA>::size;
         case MetaType::COMMENT:
             return meta_type_info<MetaType::COMMENT>::size;
         case MetaType::UNKNOWN:
@@ -233,6 +292,12 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::STRING>::alignment;
         case MetaType::COMMENT:
             return meta_type_info<MetaType::COMMENT>::alignment;
+        case MetaType::TRANSFORM:
+            return meta_type_info<MetaType::TRANSFORM>::alignment;
+        case MetaType::RGB:
+            return meta_type_info<MetaType::RGB>::alignment;
+        case MetaType::RGBA:
+            return meta_type_info<MetaType::RGBA>::alignment;
         case MetaType::UNKNOWN:
         default:
             return meta_type_info<MetaType::UNKNOWN>::alignment;
@@ -242,7 +307,7 @@ namespace Toolbox::Object {
     class MetaValue {
     public:
         using value_type =
-            std::variant<bool, s8, u8, s16, u16, s32, u32, s64, u64, f32, f64, std::string>;
+            std::variant<bool, s8, u8, s16, u16, s32, u32, s64, u64, f32, f64, std::string, glm::vec3, Transform, Color::RGBA32, Color::RGB24>;
 
         constexpr MetaValue() = delete;
         template <typename T> explicit constexpr MetaValue(T value) : m_value(value) {

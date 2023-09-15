@@ -16,7 +16,7 @@ namespace Toolbox::Object {
     };
 
     struct MetaArrayError {
-        int m_error_index;
+        size_t m_error_index;
         size_t m_array_size;
         std::vector<std::string> m_message;
         std::stacktrace m_stacktrace;
@@ -45,36 +45,28 @@ namespace Toolbox::Object {
     }
 
     template <typename _Ret>
-    inline std::expected<_Ret, MetaError> make_meta_error(std::string_view context, int error_index,
-                                                          size_t array_size) {
+    inline std::expected<_Ret, MetaArrayError> make_meta_error(std::string_view context,
+                                                               size_t error_index, size_t array_size) {
         MetaArrayError err;
-        if (error_index >= 0) {
-            err = {error_index,
-                   array_size,
-                   {std::format("{}: IndexError: Index {} exceeds array size {}.", context,
-                                error_index, array_size)},
-                   std::stacktrace::current()};
-        } else {
-            err = {error_index,
-                   array_size,
-                   {std::format("{}: IndexError: Index {} is an invalid index.", context,
-                                error_index, array_size)},
-                   std::stacktrace::current()};
-        }
-        return std::unexpected<MetaError>(err);
+        err = {error_index,
+                array_size,
+                {std::format("{}: IndexError: Index {} exceeds array size {}.", context,
+                            error_index, array_size)},
+                std::stacktrace::current()};
+        return std::unexpected<MetaArrayError>(err);
     }
 
     template <typename _Ret>
-    inline std::expected<_Ret, MetaError>
+    inline std::expected<_Ret, MetaScopeError>
     make_meta_error(const QualifiedName &scope, size_t error_index, std::string_view reason) {
-        MetaTypeError err = {
+        MetaScopeError err = {
             scope,
             error_index,
             {std::format("ScopeError: {}", reason), scope.toString("."),
-              std::string(' ', error_index) + "^"},
+              std::string(error_index, ' ') + "^"},
             std::stacktrace::current()
         };
-        return std::unexpected<MetaError>(err);
+        return std::unexpected<MetaScopeError>(err);
     }
 
 }  // namespace Toolbox::Object

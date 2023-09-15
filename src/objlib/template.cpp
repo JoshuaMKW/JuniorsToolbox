@@ -6,45 +6,19 @@
 #include "objlib/meta/struct.hpp"
 #include "objlib/transform.hpp"
 #include <expected>
+#include <glm/glm.hpp>
 #include <optional>
 
 using json = nlohmann::json;
 
 namespace Toolbox::Object {
 
-    std::optional<MetaEnum> Template::getEnum(const std::string &name) const {
-        for (const auto &e : m_enums) {
-            if (e.name() == name)
-                return e;
-        }
-        return {};
+    std::expected<std::vector<MetaMember>, SerialError>
+    Template::getMembers(std::string_view wizard) const {
+        return std::expected<std::vector<MetaMember>, SerialError>();
     }
 
-    std::optional<MetaStruct> Template::getStruct(const std::string &name) const {
-        for (const auto &s : m_structs) {
-            if (s.name() == name)
-                return s;
-        }
-        return {};
-    }
-
-    std::optional<MetaMember> Template::getMember(const std::string &name) const {
-        for (const auto &m : m_members) {
-            if (m.formattedName(0) == name)
-                return m;
-        }
-        return {};
-    }
-
-    std::optional<TemplateWizard> Template::getWizard(const std::string &name) const {
-        for (const auto &w : m_wizards) {
-            if (w.m_name == name)
-                return w;
-        }
-        return {};
-    }
-
-    std::expected<void, SerialError> Template::serialize(Serializer &out) const {}
+    std::expected<void, SerialError> Template::serialize(Serializer &out) const { return {}; }
 
     std::expected<void, SerialError> Template::deserialize(Deserializer &in) {
         json template_json;
@@ -83,7 +57,7 @@ namespace Toolbox::Object {
                 values.push_back(enumv);
             }
             MetaEnum menum(item.key(), enum_type.value(), values, enum_bitmask);
-            m_enum_cache.emplace_back(e);
+            m_enum_cache.emplace_back(menum);
         }
     }
 
@@ -106,6 +80,44 @@ namespace Toolbox::Object {
         std::vector<MetaValue> values;
         values.reserve(array_size);
         for (size_t i = 0; i < array_size; ++i) {
+            switch (vtype.value()) {
+            case MetaType::BOOL:
+                values.emplace_back(MetaValue(false));
+                break;
+            case MetaType::S8:
+                values.emplace_back(MetaValue(static_cast<s8>(0)));
+                break;
+            case MetaType::U8:
+                values.emplace_back(MetaValue(static_cast<u8>(0)));
+                break;
+            case MetaType::S16:
+                values.emplace_back(MetaValue(static_cast<s16>(0)));
+                break;
+            case MetaType::U16:
+                values.emplace_back(MetaValue(static_cast<u16>(0)));
+                break;
+            case MetaType::S32:
+                values.emplace_back(MetaValue(static_cast<s32>(0)));
+                break;
+            case MetaType::U32:
+                values.emplace_back(MetaValue(static_cast<u32>(0)));
+                break;
+            case MetaType::F32:
+                values.emplace_back(MetaValue(static_cast<f32>(0)));
+                break;
+            case MetaType::F64:
+                values.emplace_back(MetaValue(static_cast<f64>(0)));
+                break;
+            case MetaType::STRING:
+                values.emplace_back(MetaValue(std::string()));
+                break;
+            case MetaType::VEC3:
+                values.emplace_back(glm::vec3());
+                break;
+            default:
+                // Unsupported type
+                return {};
+            }
         }
         return MetaMember(name, values);
     }

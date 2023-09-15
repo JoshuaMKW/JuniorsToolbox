@@ -32,13 +32,10 @@ namespace Toolbox::Object {
         Template(Template &&)      = default;
         ~Template()                = default;
 
-        [[nodiscard]] std::string_view name() const { return m_type; }
+        [[nodiscard]] std::string_view type() const { return m_type; }
         [[nodiscard]] std::string_view longName() const { return m_name; }
 
-        [[nodiscard]] std::optional<MetaEnum> getEnum(const std::string &name) const;
-        [[nodiscard]] std::optional<MetaStruct> getStruct(const std::string &name) const;
-        [[nodiscard]] std::optional<MetaMember> getMember(const std::string &name) const;
-        [[nodiscard]] std::optional<TemplateWizard> getWizard(const std::string &name) const;
+        std::expected<std::vector<MetaMember>, SerialError> getMembers(std::string_view wizard) const;
 
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
