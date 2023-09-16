@@ -202,6 +202,9 @@ namespace Toolbox::Object {
                 return {};
             }
         }
+        if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
+            return MetaMember(name, values, std::get<std::shared_ptr<MetaValue>>(array_size));
+        }
         return MetaMember(name, values);
     }
 
