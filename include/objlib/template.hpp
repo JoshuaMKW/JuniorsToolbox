@@ -54,7 +54,7 @@ namespace Toolbox::Object {
         std::optional<MetaMember>
         loadMemberPrimitive(std::string_view name, std::string_view type, MetaMember::size_type array_size);
 
-        void loadMembers(json &members, json &structs, json &enums, std::vector<MetaMember> out);
+        void loadMembers(json &members, std::vector<MetaMember> out);
         void loadWizards(json &wizards);
 
     private:

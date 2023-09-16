@@ -38,7 +38,7 @@ namespace Toolbox::Object {
 
             cacheEnums(enum_data);
             cacheStructs(struct_data);
-            loadMembers(member_data, struct_data, enum_data, default_wizard.m_init_members);
+            loadMembers(member_data, default_wizard.m_init_members);
 
             m_wizards.push_back(default_wizard);
 
@@ -78,50 +78,10 @@ namespace Toolbox::Object {
         for (const auto &item : structs.items()) {
             auto name         = item.key();
             auto json_members = item.value();
+
             std::vector<MetaMember> members;
+            loadMembers(json_members, members);
 
-            for (auto &value : json_members.items()) {
-                auto member_name = value.key();
-                auto member_info = value.value();
-
-                auto member_type = member_info["type"].get<std::string>();
-                auto member_size = member_info["size"].get<size_t>();
-
-                auto member_type_enum = magic_enum::enum_cast<MetaType>(member_type);
-                if (!member_type_enum.has_value()) {
-                    // This is a struct or enum
-                    {
-                        auto enum_it =
-                            std::find_if(m_enum_cache.begin(), m_enum_cache.end(),
-                                         [&](const auto &e) { return e.name() == member_type; });
-                        if (enum_it != m_enum_cache.end()) {
-                            auto member = loadMemberEnum(member_name, member_type, member_size);
-                            if (member) {
-                                members.push_back(member.value());
-                            }
-                            continue;
-                        }
-                    }
-
-                    {
-                        auto struct_it =
-                            std::find_if(m_struct_cache.begin(), m_struct_cache.end(),
-                                         [&](const auto &e) { return e.name() == member_type; });
-                        if (struct_it != m_struct_cache.end()) {
-                            auto member = loadMemberStruct(member_name, member_type, member_size);
-                            if (member) {
-                                members.push_back(member.value());
-                            }
-                            continue;
-                        }
-                    }
-                } else {
-                    auto member = loadMemberPrimitive(member_name, member_type, member_size);
-                    if (member) {
-                        members.push_back(member.value());
-                    }
-                }
-            }
             MetaStruct mstruct(item.key(), members);
             m_struct_cache.emplace_back(mstruct);
         }
@@ -245,9 +205,7 @@ namespace Toolbox::Object {
         return MetaMember(name, values);
     }
 
-    void Template::loadMembers(json &members, json &structs, json &enums,
-                               std::vector<MetaMember> out) {
-
+    void Template::loadMembers(json &members, std::vector<MetaMember> out) {
         for (const auto &item : members.items()) {
             auto member_name = item.key();
             auto member_info = item.value();
