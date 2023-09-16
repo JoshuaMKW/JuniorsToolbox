@@ -58,6 +58,10 @@ namespace Toolbox::Object {
             return m_scopes[index];
         }
 
+        [[nodiscard]] constexpr std::string &operator[](size_t index) {
+            return m_scopes[index];
+        }
+
         [[nodiscard]] constexpr bool empty() const { return m_scopes.empty(); }
 
         [[nodiscard]] constexpr std::string name() const { return m_scopes.back(); }

@@ -21,8 +21,8 @@ namespace Toolbox::Object {
     inline void makeNameArrayIndex(QualifiedName &name, size_t scopeidx, size_t index) {
         if (scopeidx >= name.depth())
             return;
-        auto name_str = name[scopeidx];
-        name[scopeidx] = makeNameArrayIndex(name_str, index);
+        auto name_str = std::string(name[scopeidx]);
+        name[scopeidx] = makeNameArrayIndex(std::string_view(name_str), index);
     }
 
     inline std::expected<size_t, MetaScopeError> getArrayIndex(const QualifiedName &name,
