@@ -1,7 +1,27 @@
 #include "objlib/meta/value.hpp"
 #include "color.hpp"
+#include "objlib/transform.hpp"
 #include <format>
+#include <glm/glm.hpp>
 #include <string>
+
+template <> struct std::formatter<glm::vec3> : std::formatter<string_view> {
+    template <typename FormatContext> auto format(const glm::vec3 &obj, FormatContext &ctx) {
+        std::string outstr;
+        std::format_to(std::back_inserter(outstr), "(x: {}, y: {}, z: {})", obj.x, obj.y, obj.z);
+        return std::formatter<string_view>::format(outstr, ctx);
+    }
+};
+
+template <> struct std::formatter<Toolbox::Object::Transform> : std::formatter<string_view> {
+    template <typename FormatContext>
+    auto format(const Toolbox::Object::Transform &obj, FormatContext &ctx) {
+        std::string outstr;
+        std::format_to(std::back_inserter(outstr), "(T: {}, R: {}, S: {})", obj.m_translation,
+                       obj.m_rotation, obj.m_scale);
+        return std::formatter<string_view>::format(outstr, ctx);
+    }
+};
 
 namespace Toolbox::Object {
 
@@ -25,10 +45,14 @@ namespace Toolbox::Object {
             return std::format("{}", std::get<f64>(m_value));
         case MetaType::STRING:
             return std::get<std::string>(m_value);
+        case MetaType::VEC3:
+            return std::format("{}", std::get<glm::vec3>(m_value));
+        case MetaType::TRANSFORM:
+            return std::format("{}", std::get<Transform>(m_value));
         case MetaType::RGB:
             return std::format("{}", std::get<Color::RGB24>(m_value));
         case MetaType::RGBA:
-             return std::format("{}", std::get<Color::RGBA32>(m_value));
+            return std::format("{}", std::get<Color::RGBA32>(m_value));
         case MetaType::COMMENT:
             return std::get<std::string>(m_value);
         default:
