@@ -31,8 +31,8 @@ namespace Toolbox::Object {
     public:
         [[nodiscard]] constexpr std::string_view name() const { return m_name; }
 
-        [[nodiscard]] constexpr std::vector<std::weak_ptr<MetaMember>> members() const {
-            std::vector<std::weak_ptr<MetaMember>> ret;
+        [[nodiscard]] constexpr std::vector<std::shared_ptr<MetaMember>> members() const {
+            std::vector<std::shared_ptr<MetaMember>> ret;
             ret.reserve(m_members.size());
             for (auto &member : m_members) {
                 ret.emplace_back(member);

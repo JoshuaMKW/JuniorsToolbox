@@ -46,13 +46,13 @@ namespace Toolbox::Object {
         void cacheStructs(json &structs);
 
         std::optional<MetaMember>
-        loadMemberEnum(std::string_view name, std::string_view type, size_t array_size);
+        loadMemberEnum(std::string_view name, std::string_view type, MetaMember::size_type array_size);
 
         std::optional<MetaMember>
-        loadMemberStruct(std::string_view name, std::string_view type, size_t array_size);
+        loadMemberStruct(std::string_view name, std::string_view type, MetaMember::size_type array_size);
 
         std::optional<MetaMember>
-        loadMemberPrimitive(std::string_view name, std::string_view type, size_t array_size);
+        loadMemberPrimitive(std::string_view name, std::string_view type, MetaMember::size_type array_size);
 
         void loadMembers(json &members, json &structs, json &enums, std::vector<MetaMember> out);
         void loadWizards(json &wizards);

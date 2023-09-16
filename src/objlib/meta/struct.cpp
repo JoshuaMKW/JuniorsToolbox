@@ -51,7 +51,7 @@ namespace Toolbox::Object {
             }
 
             if (m->isTypeStruct()) {
-                auto s      = m->value<MetaStruct>(array_index)->lock();
+                auto s      = m->value<MetaStruct>(array_index).value();
                 auto member = s->getMember(QualifiedName(name.begin() + 1, name.end()));
                 if (member.has_value()) {
                     m_member_cache[name_str] = member.value();

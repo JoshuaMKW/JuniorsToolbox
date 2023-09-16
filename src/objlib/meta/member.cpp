@@ -20,39 +20,39 @@ namespace Toolbox::Object {
     }
 
     template <>
-    std::expected<std::weak_ptr<MetaStruct>, MetaError>
+    std::expected<std::shared_ptr<MetaStruct>, MetaError>
     MetaMember::value<MetaStruct>(size_t index) const {
-        if (index >= m_values.size() || index < 0) {
-            return make_meta_error<std::weak_ptr<MetaStruct>>(m_name, index, m_values.size());
+        if (!validateIndex(index)) {
+            return make_meta_error<std::shared_ptr<MetaStruct>>(m_name, index, m_values.size());
         }
         if (!isTypeStruct()) {
-            return make_meta_error<std::weak_ptr<MetaStruct>>(
+            return make_meta_error<std::shared_ptr<MetaStruct>>(
                 m_name, "MetaStruct", isTypeValue() ? "MetaValue" : "MetaEnum");
         }
         return std::get<std::shared_ptr<MetaStruct>>(m_values[index]);
     }
 
     template <>
-    std::expected<std::weak_ptr<MetaEnum>, MetaError>
+    std::expected<std::shared_ptr<MetaEnum>, MetaError>
     MetaMember::value<MetaEnum>(size_t index) const {
-        if (index >= m_values.size() || index < 0) {
-            return make_meta_error<std::weak_ptr<MetaEnum>>(m_name, index, m_values.size());
+        if (!validateIndex(index)) {
+            return make_meta_error<std::shared_ptr<MetaEnum>>(m_name, index, m_values.size());
         }
         if (!isTypeEnum()) {
-            return make_meta_error<std::weak_ptr<MetaEnum>>(
+            return make_meta_error<std::shared_ptr<MetaEnum>>(
                 m_name, "MetaEnum", isTypeValue() ? "MetaValue" : "MetaStruct");
         }
         return std::get<std::shared_ptr<MetaEnum>>(m_values[index]);
     }
 
     template <>
-    std::expected<std::weak_ptr<MetaValue>, MetaError>
+    std::expected<std::shared_ptr<MetaValue>, MetaError>
     MetaMember::value<MetaValue>(size_t index) const {
-        if (index >= m_values.size() || index < 0) {
-            return make_meta_error<std::weak_ptr<MetaValue>>(m_name, index, m_values.size());
+        if (!validateIndex(index)) {
+            return make_meta_error<std::shared_ptr<MetaValue>>(m_name, index, m_values.size());
         }
         if (!isTypeValue()) {
-            return make_meta_error<std::weak_ptr<MetaValue>>(
+            return make_meta_error<std::shared_ptr<MetaValue>>(
                 m_name, "MetaValue", isTypeStruct() ? "MetaStruct" : "MetaEnum");
         }
         return std::get<std::shared_ptr<MetaValue>>(m_values[index]);
@@ -118,8 +118,8 @@ namespace Toolbox::Object {
         struct protected_ctor_handler : public MetaMember {};
 
         std::unique_ptr<MetaMember> member = std::make_unique<protected_ctor_handler>();
-        member->m_name   = m_name;
-        member->m_parent = m_parent;
+        member->m_name                     = m_name;
+        member->m_parent                   = m_parent;
 
         if (deep) {
             for (auto &value : m_values) {

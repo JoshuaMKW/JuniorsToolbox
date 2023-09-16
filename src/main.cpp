@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
     auto name_member = test_struct_npc_info_copy.getMember("mName");
     if (name_member) {
         auto &name = std::get<std::shared_ptr<MetaMember>>(name_member.value());
-        name->value<MetaValue>(0)->lock()->set(std::string("Jane"));
+        name->value<MetaValue>(0).value()->set(std::string("Jane"));
     } else {
         std::cout << "Member not found" << std::endl;
     }
@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
         auto name_member = deep_copy->getMember("mName");
         if (name_member) {
             auto &name = std::get<std::shared_ptr<MetaMember>>(name_member.value());
-            name->value<MetaValue>(0)->lock()->set(std::string("Josh"));
+            name->value<MetaValue>(0).value()->set(std::string("Josh"));
         } else {
             std::cout << "Member not found" << std::endl;
         }

@@ -52,6 +52,7 @@ namespace Toolbox::Object {
     public:
         using value_type = std::variant<std::shared_ptr<MetaStruct>, std::shared_ptr<MetaEnum>,
                                         std::shared_ptr<MetaValue>>;
+        using size_type  = std::variant<size_t, std::shared_ptr<MetaValue>>;
 
         MetaMember(std::string_view name, const MetaValue &value) : m_name(name), m_values() {
             auto p = std::make_shared<MetaValue>(value);
@@ -86,7 +87,8 @@ namespace Toolbox::Object {
                 m_values.emplace_back(std::move(p));
             }
         }
-        MetaMember(std::string_view name, const std::vector<MetaValue> &values, std::shared_ptr<MetaValue> arraysize)
+        MetaMember(std::string_view name, const std::vector<MetaValue> &values,
+                   std::shared_ptr<MetaValue> arraysize)
             : m_name(name), m_values(), m_arraysize(arraysize) {
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaValue>(value);
@@ -122,15 +124,16 @@ namespace Toolbox::Object {
 
         [[nodiscard]] QualifiedName qualifiedName() const;
 
-        template <typename T> std::expected<std::weak_ptr<T>, MetaError> value(size_t index) const {
+        template <typename T>
+        std::expected<std::shared_ptr<T>, MetaError> value(size_t index) const {
             return std::unexpected("Invalid type");
         }
         template <>
-        std::expected<std::weak_ptr<MetaStruct>, MetaError> value<MetaStruct>(size_t index) const;
+        std::expected<std::shared_ptr<MetaStruct>, MetaError> value<MetaStruct>(size_t index) const;
         template <>
-        std::expected<std::weak_ptr<MetaEnum>, MetaError> value<MetaEnum>(size_t index) const;
+        std::expected<std::shared_ptr<MetaEnum>, MetaError> value<MetaEnum>(size_t index) const;
         template <>
-        std::expected<std::weak_ptr<MetaValue>, MetaError> value<MetaValue>(size_t index) const;
+        std::expected<std::shared_ptr<MetaValue>, MetaError> value<MetaValue>(size_t index) const;
 
         [[nodiscard]] size_t arraysize() const {
             if (std::holds_alternative<std::shared_ptr<MetaValue>>(m_arraysize)) {
@@ -142,64 +145,80 @@ namespace Toolbox::Object {
             }
             return std::get<size_t>(m_arraysize);
         }
-        [[nodiscard]] bool isArray() const { return arraysize() > 1; }
+        [[nodiscard]] bool isEmpty() const { return m_values.empty(); }
+        [[nodiscard]] bool isArray() const { return m_values.size() > 1; }
         [[nodiscard]] bool isTypeBitMasked() const {
-            return isTypeEnum() && value<MetaEnum>(0).value().lock()->isBitMasked();
+            return !isEmpty() && isTypeEnum() && value<MetaEnum>(0).value()->isBitMasked();
         }
         [[nodiscard]] bool isTypeStruct() const {
-            return std::holds_alternative<std::shared_ptr<MetaStruct>>(m_values[0]);
+            return !isEmpty() && std::holds_alternative<std::shared_ptr<MetaStruct>>(m_values[0]);
         }
         [[nodiscard]] bool isTypeEnum() const {
-            return std::holds_alternative<std::shared_ptr<MetaEnum>>(m_values[0]);
+            return !isEmpty() && std::holds_alternative<std::shared_ptr<MetaEnum>>(m_values[0]);
         }
         [[nodiscard]] bool isTypeBool() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::BOOL;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::BOOL;
         }
         [[nodiscard]] bool isTypeS8() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::S8;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::S8;
         }
         [[nodiscard]] bool isTypeU8() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::U8;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::U8;
         }
         [[nodiscard]] bool isTypeS16() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::S16;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::S16;
         }
         [[nodiscard]] bool isTypeU16() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::U16;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::U16;
         }
         [[nodiscard]] bool isTypeS32() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::S32;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::S32;
         }
         [[nodiscard]] bool isTypeU32() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::U32;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::U32;
         }
         [[nodiscard]] bool isTypeF32() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::F32;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::F32;
         }
         [[nodiscard]] bool isTypeF64() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::F64;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::F64;
         }
         [[nodiscard]] bool isTypeString() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::STRING;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::STRING;
         }
         [[nodiscard]] bool isTypeVec3() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::VEC3;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::VEC3;
         }
         [[nodiscard]] bool isTypeTransform() const {
-            return isTypeValue() &&
-                   value<MetaValue>(0).value().lock()->type() == MetaType::TRANSFORM;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::TRANSFORM;
         }
         [[nodiscard]] bool isTypeRGB() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::RGB;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::RGB;
         }
         [[nodiscard]] bool isTypeRGBA() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::RGBA;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::RGBA;
         }
         [[nodiscard]] bool isTypeComment() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::COMMENT;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::COMMENT;
         }
         [[nodiscard]] bool isTypeUnknown() const {
-            return isTypeValue() && value<MetaValue>(0).value().lock()->type() == MetaType::UNKNOWN;
+            return !isEmpty() && isTypeValue() &&
+                   value<MetaValue>(0).value()->type() == MetaType::UNKNOWN;
         }
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const;
@@ -215,10 +234,20 @@ namespace Toolbox::Object {
             return std::holds_alternative<std::shared_ptr<MetaValue>>(m_values[0]);
         }
 
+        void syncArray() {
+            size_t asize = arraysize();
+            if (m_values.size() != asize)
+                m_values.resize(asize);
+        }
+
+        bool validateIndex(size_t index) const {
+            return index < m_values.size();
+        }
+
     private:
         std::string m_name;
         std::vector<value_type> m_values;
-        std::variant<size_t, std::shared_ptr<MetaValue>> m_arraysize;
+        size_type m_arraysize;
         MetaStruct *m_parent = nullptr;
     };
 

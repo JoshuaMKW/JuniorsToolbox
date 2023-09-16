@@ -128,44 +128,72 @@ namespace Toolbox::Object {
     }
 
     std::optional<MetaMember> Template::loadMemberEnum(std::string_view name, std::string_view type,
-                                                       size_t array_size) {
+                                                       MetaMember::size_type array_size) {
         auto enum_ = std::find_if(m_enum_cache.begin(), m_enum_cache.end(),
                                   [&](const auto &e) { return e.name() == type; });
         if (enum_ == m_enum_cache.end()) {
             return {};
         }
         std::vector<MetaEnum> enums;
-        enums.reserve(array_size);
-        for (size_t i = 0; i < array_size; ++i) {
+
+        size_t asize = 1;
+        if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
+            asize = std::get<std::shared_ptr<MetaValue>>(array_size)->get<size_t>().value();
+        } else {
+            asize = std::get<size_t>(array_size);
+        }
+
+        enums.reserve(asize);
+        for (size_t i = 0; i < asize; ++i) {
             enums.emplace_back(*enum_);
         }
         return MetaMember(name, enums);
     }
 
     std::optional<MetaMember> Template::loadMemberStruct(std::string_view name,
-                                                         std::string_view type, size_t array_size) {
+                                                         std::string_view type,
+                                                         MetaMember::size_type array_size) {
         auto struct_ = std::find_if(m_struct_cache.begin(), m_struct_cache.end(),
                                     [&](const auto &e) { return e.name() == type; });
         if (struct_ == m_struct_cache.end()) {
             return {};
         }
         std::vector<MetaStruct> structs;
-        structs.reserve(array_size);
-        for (size_t i = 0; i < array_size; ++i) {
+
+        size_t asize = 1;
+        if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
+            asize = std::get<std::shared_ptr<MetaValue>>(array_size)->get<size_t>().value();
+        } else {
+            asize = std::get<size_t>(array_size);
+        }
+
+        structs.reserve(asize);
+
+        for (size_t i = 0; i < asize; ++i) {
             structs.emplace_back(*struct_);
         }
         return MetaMember(name, structs);
     }
 
-    std::optional<MetaMember>
-    Template::loadMemberPrimitive(std::string_view name, std::string_view type, size_t array_size) {
+    std::optional<MetaMember> Template::loadMemberPrimitive(std::string_view name,
+                                                            std::string_view type,
+                                                            MetaMember::size_type array_size) {
         auto vtype = magic_enum::enum_cast<MetaType>(type);
         if (!vtype)
             return {};
 
         std::vector<MetaValue> values;
-        values.reserve(array_size);
-        for (size_t i = 0; i < array_size; ++i) {
+
+        size_t asize = 1;
+        if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
+            asize = std::get<std::shared_ptr<MetaValue>>(array_size)->get<size_t>().value();
+        } else {
+            asize = std::get<size_t>(array_size);
+        }
+
+        values.reserve(asize);
+
+        for (size_t i = 0; i < asize; ++i) {
             switch (vtype.value()) {
             case MetaType::BOOL:
                 values.emplace_back(MetaValue(false));
@@ -225,7 +253,23 @@ namespace Toolbox::Object {
             auto member_info = item.value();
 
             auto member_type = member_info["type"].get<std::string>();
-            size_t member_size = member_info["size"].get<size_t>();
+            MetaMember::size_type member_size;
+
+            auto member_size_info = member_info["size"];
+            if (member_size_info.is_number()) {
+                member_size = member_size_info.get<size_t>();
+            } else {
+                auto member_size_str = member_size_info.get<std::string>();
+                auto member_it       = std::find_if(out.begin(), out.end(), [&](const auto &e) {
+                    return e.name() == member_size_str;
+                });
+                if (member_it != out.end()) {
+                    auto value = member_it->value<MetaValue>(0);
+                    if (value) {
+                        member_size = value.value();
+                    }
+                }
+            }
 
             auto member_type_enum = magic_enum::enum_cast<MetaType>(member_type);
             if (!member_type_enum.has_value()) {
