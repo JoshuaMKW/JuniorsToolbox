@@ -4,13 +4,13 @@
 
 namespace Toolbox {
 
-    class Iclone {
+    class IClonable {
     public:
-        virtual ~Iclone() = default;
+        virtual ~IClonable() = default;
 
-        virtual std::unique_ptr<Iclone> clone(bool deep) const    = 0;
+        virtual std::unique_ptr<IClonable> clone(bool deep) const = 0;
 
-        bool operator==(const Iclone &other) const { return true; }
+        bool operator==(const IClonable &other) const { return true; }
     };
 
 }  // namespace Toolbox

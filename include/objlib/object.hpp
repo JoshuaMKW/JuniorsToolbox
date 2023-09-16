@@ -88,8 +88,8 @@ namespace Toolbox::Object {
         virtual std::expected<void, ObjectGroupError> removeChild(const QualifiedName &name) = 0;
         virtual std::expected<std::vector<ISceneObject *>, ObjectGroupError> getChildren()   = 0;
 
-        [[nodiscard]] virtual Transform getTransform() const  = 0;
-        virtual void setTransform(const Transform &transform) = 0;
+        [[nodiscard]] virtual J3DTransformInfo getTransform() const  = 0;
+        virtual void setTransform(const J3DTransformInfo &transform) = 0;
 
         [[nodiscard]] virtual std::optional<std::filesystem::path> getAnimationsPath() const = 0;
         virtual std::optional<std::string_view> getAnimationName(AnimationType type) const   = 0;
@@ -97,9 +97,10 @@ namespace Toolbox::Object {
 
         virtual std::weak_ptr<J3DLight> getLightData(int index) = 0;
 
-        virtual std::expected<void, ObjectError> performScene() = 0;
+        virtual std::expected<void, ObjectError>
+        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) = 0;
 
-        virtual void dump(std::ostream &out, int indention, int indention_width) const = 0;
+        virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
 
     protected:
         /* PROTECTED ABSTRACT INTERFACE */
@@ -120,7 +121,7 @@ namespace Toolbox::Object {
         bool startAnimation(AnimationType type);
         bool stopAnimation(AnimationType type);
 
-        void dump(std::ostream &out, int indention) const { dump(out, indention, 2); }
+        void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
     };
 
@@ -193,8 +194,8 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        [[nodiscard]] Transform getTransform() const override { return {}; }
-        void setTransform(const Transform &transform) override {}
+        [[nodiscard]] J3DTransformInfo getTransform() const override { return {}; }
+        void setTransform(const J3DTransformInfo &transform) override {}
 
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
             return {};
@@ -204,9 +205,10 @@ namespace Toolbox::Object {
         }
         bool loadAnimationData(std::string_view name, AnimationType type) override { return false; }
 
-        std::expected<void, ObjectError> performScene() override;
+        std::expected<void, ObjectError>
+        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) override;
 
-        void dump(std::ostream &out, int indention, int indention_width) const override;
+        void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
     protected:
         std::weak_ptr<J3DAnimationInstance> getAnimationControl(AnimationType type) const override {
@@ -241,9 +243,10 @@ namespace Toolbox::Object {
         std::expected<void, ObjectGroupError> removeChild(ISceneObject *child) override;
         std::expected<void, ObjectGroupError> removeChild(const QualifiedName &name) override;
         std::expected<std::vector<ISceneObject *>, ObjectGroupError> getChildren() override;
-        std::expected<void, ObjectError> performScene() override;
+        std::expected<void, ObjectError>
+        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) override;
 
-        void dump(std::ostream &out, int indention, int indention_width) const override;
+        void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
         // Inherited via ISerializable
         std::expected<void, SerialError> serialize(Serializer &out) const override;
@@ -322,8 +325,8 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        [[nodiscard]] Transform getTransform() const override { return m_transform; }
-        void setTransform(const Transform &transform) override { m_transform = transform; }
+        [[nodiscard]] J3DTransformInfo getTransform() const override { return m_transform; }
+        void setTransform(const J3DTransformInfo &transform) override { m_transform = transform; }
 
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
             return "./scene/mapobj/";
@@ -333,9 +336,10 @@ namespace Toolbox::Object {
         }
         bool loadAnimationData(std::string_view name, AnimationType type) override { return false; }
 
-        std::expected<void, ObjectError> performScene() override;
+        std::expected<void, ObjectError>
+        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) override;
 
-        void dump(std::ostream &out, int indention, int indention_width) const override;
+        void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
     protected:
         std::weak_ptr<J3DAnimationInstance> getAnimationControl(AnimationType type) const override {
@@ -355,7 +359,7 @@ namespace Toolbox::Object {
 
         mutable MetaStruct::CacheMemberT m_member_cache;
 
-        Transform m_transform;
+        J3DTransformInfo m_transform;
         std::shared_ptr<J3DModelInstance> m_model_instance = {};
     };
 

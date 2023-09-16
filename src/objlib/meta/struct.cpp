@@ -1,3 +1,4 @@
+#include "clone.hpp"
 #include "objlib/meta/struct.hpp"
 #include "objlib/meta/enum.hpp"
 #include "objlib/meta/error.hpp"

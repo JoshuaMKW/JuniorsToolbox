@@ -2,7 +2,7 @@
 #include <expected>
 
 namespace Toolbox::Object {
-    
+
     /* INTERFACE */
 
     size_t ISceneObject::getAnimationFrames(AnimationType type) const {
@@ -99,11 +99,23 @@ namespace Toolbox::Object {
         return size;
     }
 
-    std::expected<void, ObjectError> VirtualSceneObject::performScene() {
-        return std::expected<void, ObjectError>();
+    std::expected<void, ObjectError>
+    VirtualSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &) {
+        return {};
     }
 
-    void VirtualSceneObject::dump(std::ostream &out, int indention, int indention_width) const {}
+    void VirtualSceneObject::dump(std::ostream &out, size_t indention,
+                                  size_t indention_width) const {
+        indention_width          = std::min(indention_width, size_t(8));
+        std::string self_indent  = std::string(indention * indention_width, ' ');
+        std::string value_indent = std::string((indention + 1) * indention_width, ' ');
+        out << self_indent << m_type << " " << m_nameref.name() << " {\n";
+        out << self_indent << "members:\n";
+        for (auto m : m_members) {
+            m->dump(out, indention + 1, indention_width);
+        }
+        out << self_indent << "}\n";
+    }
 
     std::expected<void, SerialError> VirtualSceneObject::serialize(Serializer &out) const {
         return {};
@@ -179,7 +191,8 @@ namespace Toolbox::Object {
         return ret;
     }
 
-    std::expected<void, ObjectError> GroupSceneObject::performScene() {
+    std::expected<void, ObjectError>
+    GroupSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) {
         ObjectGroupError err;
         {
             err.m_message = std::format("ObjectGroupError: {} ({}): There were errors "
@@ -190,7 +203,7 @@ namespace Toolbox::Object {
         }
 
         for (auto child : m_children) {
-            auto result = child->performScene();
+            auto result = child->performScene(renderables);
             if (!result)
                 err.m_child_errors.push_back(result.error());
         }
@@ -201,7 +214,21 @@ namespace Toolbox::Object {
         return {};
     }
 
-    void GroupSceneObject::dump(std::ostream &out, int indention, int indention_width) const {}
+    void GroupSceneObject::dump(std::ostream &out, size_t indention, size_t indention_width) const {
+        indention_width          = std::min(indention_width, size_t(8));
+        std::string self_indent  = std::string(indention * indention_width, ' ');
+        std::string value_indent = std::string((indention + 1) * indention_width, ' ');
+        out << self_indent << m_type << " " << m_nameref.name() << " {\n";
+        out << self_indent << "members:\n";
+        for (auto m : m_members) {
+            m->dump(out, indention + 1, indention_width);
+        }
+        out << "\n" << self_indent << "children:\n";
+        for (auto c : m_children) {
+            c->dump(out, indention + 1, indention_width);
+        }
+        out << self_indent << "}\n";
+    }
 
     std::expected<void, SerialError> GroupSceneObject::serialize(Serializer &out) const {
         return {};
@@ -264,6 +291,25 @@ namespace Toolbox::Object {
     size_t PhysicalSceneObject::getMemberSize(const QualifiedName &name, int index) const {
         size_t size = 0;
         return size;
+    }
+
+    std::expected<void, ObjectError>
+    PhysicalSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) {
+        renderables.push_back(m_model_instance);
+        return {};
+    }
+
+    void PhysicalSceneObject::dump(std::ostream &out, size_t indention,
+                                   size_t indention_width) const {
+        indention_width          = std::min(indention_width, size_t(8));
+        std::string self_indent  = std::string(indention * indention_width, ' ');
+        std::string value_indent = std::string((indention + 1) * indention_width, ' ');
+        out << self_indent << m_type << " " << m_nameref.name() << " {\n";
+        out << self_indent << "members:\n";
+        for (auto m : m_members) {
+            m->dump(out, indention + 1, indention_width);
+        }
+        out << self_indent << "}\n";
     }
 
     std::expected<void, SerialError> PhysicalSceneObject::serialize(Serializer &out) const {
