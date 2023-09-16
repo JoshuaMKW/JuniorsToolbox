@@ -8,21 +8,23 @@ namespace Toolbox::Color {
 
     class BaseColor : public ISerializable {
     public:
-        void setColor(f32 r, f32 g, f32 b, f32 a) { transformInputAndSet(r, g, b, a); }
-        void setColor(f32 r, f32 g, f32 b) { setColor(r, g, b, 1.0f); }
-        void getColor(f32 &r, f32 &g, f32 &b, f32 &a) const { transformOutputAndGet(r, g, b, a); }
+        constexpr void setColor(f32 r, f32 g, f32 b, f32 a) { transformInputAndSet(r, g, b, a); }
+        constexpr void setColor(f32 r, f32 g, f32 b) { setColor(r, g, b, 1.0f); }
+        constexpr void getColor(f32 &r, f32 &g, f32 &b, f32 &a) const {
+            transformOutputAndGet(r, g, b, a);
+        }
 
     protected:
-        virtual void transformInputAndSet(f32 r, f32 g, f32 b, f32 a)        = 0;
-        virtual void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const = 0;
+        constexpr virtual void transformInputAndSet(f32 r, f32 g, f32 b, f32 a)            = 0;
+        constexpr virtual void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const = 0;
     };
 
     class RGBAShader final : public BaseColor {
     public:
         f32 m_r, m_g, m_b, m_a;
 
-        RGBAShader() = default;
-        RGBAShader(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
+        constexpr RGBAShader() = default;
+        constexpr RGBAShader(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
 
         std::expected<void, SerialError> serialize(Serializer &out) const override {
             out.write(m_r);
@@ -41,13 +43,13 @@ namespace Toolbox::Color {
         }
 
     protected:
-        void transformInputAndSet(f32 r, f32 g, f32 b, f32 a) override {
+        constexpr void transformInputAndSet(f32 r, f32 g, f32 b, f32 a) override {
             m_r = r;
             m_g = g;
             m_b = b;
             m_a = a;
         }
-        void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const override {
+        constexpr void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const override {
             r = m_r;
             g = m_g;
             b = m_b;
@@ -59,8 +61,8 @@ namespace Toolbox::Color {
     public:
         f32 m_r, m_g, m_b;
 
-        RGBShader() = default;
-        RGBShader(f32 r, f32 g, f32 b) { setColor(r, g, b, 1.0f); }
+        constexpr RGBShader() = default;
+        constexpr RGBShader(f32 r, f32 g, f32 b) { setColor(r, g, b, 1.0f); }
 
         std::expected<void, SerialError> serialize(Serializer &out) const override {
             out.write(m_r);
@@ -77,12 +79,12 @@ namespace Toolbox::Color {
         }
 
     protected:
-        void transformInputAndSet(f32 r, f32 g, f32 b, f32 a) override {
+        constexpr void transformInputAndSet(f32 r, f32 g, f32 b, f32 a) override {
             m_r = r;
             m_g = g;
             m_b = b;
         }
-        void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const override {
+        constexpr void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const override {
             r = m_r;
             g = m_g;
             b = m_b;
@@ -94,8 +96,8 @@ namespace Toolbox::Color {
     public:
         u8 m_r, m_g, m_b, m_a;
 
-        RGBA32() = default;
-        RGBA32(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
+        constexpr RGBA32() = default;
+        constexpr RGBA32(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
 
         std::expected<void, SerialError> serialize(Serializer &out) const override {
             out.write<u8, std::endian::big>(m_r);
@@ -114,13 +116,13 @@ namespace Toolbox::Color {
         }
 
     protected:
-        void transformInputAndSet(f32 r, f32 g, f32 b, f32 a) override {
+        constexpr void transformInputAndSet(f32 r, f32 g, f32 b, f32 a) override {
             m_r = static_cast<u8>(r * 255);
             m_g = static_cast<u8>(g * 255);
             m_b = static_cast<u8>(b * 255);
             m_a = static_cast<u8>(a * 255);
         }
-        void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const override {
+        constexpr void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const override {
             r = static_cast<f32>(m_r) / 255;
             g = static_cast<f32>(m_g) / 255;
             b = static_cast<f32>(m_b) / 255;
@@ -137,8 +139,8 @@ namespace Toolbox::Color {
             u8 m_a : 3;
         } m_color;
 
-        RGB5A3() = default;
-        RGB5A3(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
+        constexpr RGB5A3() = default;
+        constexpr RGB5A3(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
 
         std::expected<void, SerialError> serialize(Serializer &out) const override {
             out.writeBytes({reinterpret_cast<const char *>(&m_color), sizeof(m_color)});
@@ -151,13 +153,13 @@ namespace Toolbox::Color {
         }
 
     protected:
-        void transformInputAndSet(f32 r, f32 g, f32 b, f32 a) override {
+        constexpr void transformInputAndSet(f32 r, f32 g, f32 b, f32 a) override {
             m_color.m_r = static_cast<u8>(r * 255) >> 3;
             m_color.m_g = static_cast<u8>(g * 255) >> 3;
             m_color.m_b = static_cast<u8>(b * 255) >> 3;
             m_color.m_a = static_cast<u8>(a * 255) >> 5;
         }
-        void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const override {
+        constexpr void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const override {
             r = static_cast<f32>(m_color.m_r << 3) / 255;
             g = static_cast<f32>(m_color.m_g << 3) / 255;
             b = static_cast<f32>(m_color.m_b << 3) / 255;
@@ -169,8 +171,8 @@ namespace Toolbox::Color {
     public:
         u8 m_r, m_g, m_b;
 
-        RGB24() = default;
-        RGB24(f32 r, f32 g, f32 b) { setColor(r, g, b, 1.0f); }
+        constexpr RGB24() = default;
+        constexpr RGB24(f32 r, f32 g, f32 b) { setColor(r, g, b, 1.0f); }
 
         std::expected<void, SerialError> serialize(Serializer &out) const override {
             out.write<u8, std::endian::big>(m_r);
@@ -187,12 +189,12 @@ namespace Toolbox::Color {
         }
 
     protected:
-        void transformInputAndSet(f32 r, f32 g, f32 b, f32 a) override {
+        constexpr void transformInputAndSet(f32 r, f32 g, f32 b, f32 a) override {
             m_r = static_cast<u8>(r * 255);
             m_g = static_cast<u8>(g * 255);
             m_b = static_cast<u8>(b * 255);
         }
-        void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const override {
+        constexpr void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const override {
             r = static_cast<f32>(m_r) / 255;
             g = static_cast<f32>(m_g) / 255;
             b = static_cast<f32>(m_b) / 255;
@@ -208,8 +210,8 @@ namespace Toolbox::Color {
             u8 m_b : 5;
         } m_color;
 
-        RGB565() = default;
-        RGB565(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
+        constexpr RGB565() = default;
+        constexpr RGB565(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
 
         std::expected<void, SerialError> serialize(Serializer &out) const override {
             out.writeBytes({reinterpret_cast<const char *>(&m_color), sizeof(m_color)});
@@ -222,12 +224,12 @@ namespace Toolbox::Color {
         }
 
     protected:
-        void transformInputAndSet(f32 r, f32 g, f32 b, f32 a) override {
+        constexpr void transformInputAndSet(f32 r, f32 g, f32 b, f32 a) override {
             m_color.m_r = static_cast<u8>(r * 255) >> 3;
             m_color.m_g = static_cast<u8>(g * 255) >> 2;
             m_color.m_b = static_cast<u8>(b * 255) >> 3;
         }
-        void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const override {
+        constexpr void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const override {
             r = static_cast<f32>(m_color.m_r << 3) / 255;
             g = static_cast<f32>(m_color.m_g << 2) / 255;
             b = static_cast<f32>(m_color.m_b << 3) / 255;
@@ -235,3 +237,43 @@ namespace Toolbox::Color {
     };
 
 }  // namespace Toolbox::Color
+
+template <> struct std::formatter<Toolbox::Color::RGBA32> : std::formatter<std::string_view> {
+    template <typename FormatContext>
+    auto format(const Toolbox::Color::RGBA32 &obj, FormatContext &ctx) {
+        std::string outstr;
+        std::format_to(std::back_inserter(outstr), "(r: {}, g: {}, b: {}, a: {})", obj.m_r, obj.m_g,
+                       obj.m_b, obj.m_a);
+        return std::formatter<string_view>::format(outstr, ctx);
+    }
+};
+
+template <> struct std::formatter<Toolbox::Color::RGB5A3> : std::formatter<std::string_view> {
+    template <typename FormatContext>
+    auto format(const Toolbox::Color::RGB5A3 &obj, FormatContext &ctx) {
+        std::string outstr;
+        std::format_to(std::back_inserter(outstr), "{r: {}, g: {}, b: {}, a: {}}", obj.m_color.m_r,
+                       obj.m_color.m_g, obj.m_color.m_b, obj.m_color.m_a);
+        return std::formatter<string_view>::format(outstr, ctx);
+    }
+};
+
+template <> struct std::formatter<Toolbox::Color::RGB24> : std::formatter<std::string_view> {
+    template <typename FormatContext>
+    auto format(const Toolbox::Color::RGB24 &obj, FormatContext &ctx) {
+        std::string outstr;
+        std::format_to(std::back_inserter(outstr), "(r: {}, g: {}, b: {})", obj.m_r,
+                       obj.m_g, obj.m_b);
+        return std::formatter<string_view>::format(outstr, ctx);
+    }
+};
+
+template <> struct std::formatter<Toolbox::Color::RGB565> : std::formatter<string_view> {
+    template <typename FormatContext>
+    auto format(const Toolbox::Color::RGB565 &obj, FormatContext &ctx) {
+        std::string outstr;
+        std::format_to(std::back_inserter(outstr), "(r: {}, g: {}, b: {})", obj.m_color.m_r,
+                       obj.m_color.m_g, obj.m_color.m_b);
+        return std::formatter<string_view>::format(outstr, ctx);
+    }
+};

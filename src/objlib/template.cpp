@@ -1,4 +1,5 @@
 #include "objlib/template.hpp"
+#include "color.hpp"
 #include "jsonlib.hpp"
 #include "magic_enum.hpp"
 #include "objlib/meta/enum.hpp"
@@ -113,6 +114,15 @@ namespace Toolbox::Object {
                 break;
             case MetaType::VEC3:
                 values.emplace_back(glm::vec3());
+                break;
+            case MetaType::TRANSFORM:
+                values.emplace_back(Transform());
+                break;
+            case MetaType::RGB:
+                values.emplace_back(Color::RGB24());
+                break;
+            case MetaType::RGBA:
+                values.emplace_back(Color::RGBA32());
                 break;
             default:
                 // Unsupported type

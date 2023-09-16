@@ -1,4 +1,5 @@
 #include "objlib/meta/value.hpp"
+#include "color.hpp"
 #include <format>
 #include <string>
 
@@ -24,6 +25,10 @@ namespace Toolbox::Object {
             return std::format("{}", std::get<f64>(m_value));
         case MetaType::STRING:
             return std::get<std::string>(m_value);
+        case MetaType::RGB:
+            return std::format("{}", std::get<Color::RGB24>(m_value));
+        case MetaType::RGBA:
+             return std::format("{}", std::get<Color::RGBA32>(m_value));
         case MetaType::COMMENT:
             return std::get<std::string>(m_value);
         default:
