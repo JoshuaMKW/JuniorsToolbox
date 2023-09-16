@@ -21,12 +21,12 @@ namespace Toolbox::Object {
     inline void makeNameArrayIndex(QualifiedName &name, size_t scopeidx, size_t index) {
         if (scopeidx >= name.depth())
             return;
-        auto name_str = std::string(name[scopeidx]);
+        auto name_str  = std::string(name[scopeidx]);
         name[scopeidx] = makeNameArrayIndex(std::string_view(name_str), index);
     }
 
     inline std::expected<size_t, MetaScopeError> getArrayIndex(const QualifiedName &name,
-                                                                  size_t scopeidx) {
+                                                               size_t scopeidx) {
         auto name_str = name[scopeidx];
 
         auto pos = name_str.find('[');
@@ -35,7 +35,8 @@ namespace Toolbox::Object {
 
         auto end = name_str.find(']', pos);
         if (end == std::string_view::npos) {
-            return make_meta_error<size_t>(name.toString(), name.getAbsIndexOf(scopeidx, static_cast<int>(pos)),
+            return make_meta_error<size_t>(name.toString(),
+                                           name.getAbsIndexOf(scopeidx, static_cast<int>(pos)),
                                            "Array specifier missing end token `]'");
         }
 
@@ -65,21 +66,44 @@ namespace Toolbox::Object {
             m_values.emplace_back(std::move(p));
         }
         MetaMember(std::string_view name, const std::vector<MetaValue> &values)
-            : m_name(name), m_values() {
+            : m_name(name), m_values(), m_arraysize(values.size()) {
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaValue>(value);
                 m_values.emplace_back(std::move(p));
             }
         }
         MetaMember(std::string_view name, const std::vector<MetaStruct> &values)
-            : m_name(name), m_values() {
+            : m_name(name), m_values(), m_arraysize(values.size()) {
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaStruct>(value);
                 m_values.emplace_back(std::move(p));
             }
         }
         MetaMember(std::string_view name, const std::vector<MetaEnum> &values)
-            : m_name(name), m_values() {
+            : m_name(name), m_values(), m_arraysize(values.size()) {
+            for (const auto &value : values) {
+                auto p = std::make_shared<MetaEnum>(value);
+                m_values.emplace_back(std::move(p));
+            }
+        }
+        MetaMember(std::string_view name, const std::vector<MetaValue> &values, std::shared_ptr<MetaValue> arraysize)
+            : m_name(name), m_values(), m_arraysize(arraysize) {
+            for (const auto &value : values) {
+                auto p = std::make_shared<MetaValue>(value);
+                m_values.emplace_back(std::move(p));
+            }
+        }
+        MetaMember(std::string_view name, const std::vector<MetaStruct> &values,
+                   std::shared_ptr<MetaValue> arraysize)
+            : m_name(name), m_values(), m_arraysize(arraysize) {
+            for (const auto &value : values) {
+                auto p = std::make_shared<MetaStruct>(value);
+                m_values.emplace_back(std::move(p));
+            }
+        }
+        MetaMember(std::string_view name, const std::vector<MetaEnum> &values,
+                   std::shared_ptr<MetaValue> arraysize)
+            : m_name(name), m_values(), m_arraysize(arraysize) {
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaEnum>(value);
                 m_values.emplace_back(std::move(p));
@@ -108,8 +132,17 @@ namespace Toolbox::Object {
         template <>
         std::expected<std::weak_ptr<MetaValue>, MetaError> value<MetaValue>(size_t index) const;
 
-        [[nodiscard]] size_t arraysize() const { return m_values.size(); }
-        [[nodiscard]] bool isArray() const { return m_values.size() > 1; }
+        [[nodiscard]] size_t arraysize() const {
+            if (std::holds_alternative<std::shared_ptr<MetaValue>>(m_arraysize)) {
+                auto vptr = std::get<std::shared_ptr<MetaValue>>(m_arraysize);
+                auto size = vptr->get<size_t>();
+                if (!size)
+                    return 0;
+                return *size;
+            }
+            return std::get<size_t>(m_arraysize);
+        }
+        [[nodiscard]] bool isArray() const { return arraysize() > 1; }
         [[nodiscard]] bool isTypeBitMasked() const {
             return isTypeEnum() && value<MetaEnum>(0).value().lock()->isBitMasked();
         }
@@ -185,6 +218,7 @@ namespace Toolbox::Object {
     private:
         std::string m_name;
         std::vector<value_type> m_values;
+        std::variant<size_t, std::shared_ptr<MetaValue>> m_arraysize;
         MetaStruct *m_parent = nullptr;
     };
 
