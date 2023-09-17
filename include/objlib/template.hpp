@@ -26,6 +26,7 @@ namespace Toolbox::Object {
     class Template : public ISerializable {
     public:
         Template() = delete;
+        Template(std::string_view type);
         Template(std::string_view type, std::string_view name) : m_type(type), m_name(name) {}
         Template(std::string_view type, Deserializer &in) : m_type(type) { deserialize(in); }
         Template(const Template &) = default;
@@ -34,9 +35,6 @@ namespace Toolbox::Object {
 
         [[nodiscard]] std::string_view type() const { return m_type; }
         [[nodiscard]] std::string_view longName() const { return m_name; }
-
-        std::expected<std::vector<MetaMember>, SerialError>
-        getMembers(std::string_view wizard) const;
 
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
@@ -61,7 +59,6 @@ namespace Toolbox::Object {
         std::string m_type;
         std::string m_name;
 
-        std::vector<MetaMember> m_members     = {};
         std::vector<TemplateWizard> m_wizards = {};
 
         std::vector<MetaStruct> m_struct_cache = {};

@@ -227,17 +227,17 @@ namespace Toolbox::Object {
 
         bool operator==(const MetaMember &other) const;
 
+        void syncArray() {
+            size_t asize = arraysize();
+            if (m_values.size() != asize)
+                m_values.resize(asize);
+        }
+
         std::unique_ptr<IClonable> clone(bool deep) const override;
 
     protected:
         constexpr bool isTypeValue() const {
             return std::holds_alternative<std::shared_ptr<MetaValue>>(m_values[0]);
-        }
-
-        void syncArray() {
-            size_t asize = arraysize();
-            if (m_values.size() != asize)
-                m_values.resize(asize);
         }
 
         bool validateIndex(size_t index) const {

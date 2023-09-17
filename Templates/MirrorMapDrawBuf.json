@@ -1,0 +1,33 @@
+{
+    "Mirror Draw Buffer": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Unknown": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Unknown^2": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Unknown": 3,
+                "Unknown^2": 32
+            }
+        }
+    }
+}

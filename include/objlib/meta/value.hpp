@@ -1,11 +1,12 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include "color.hpp"
+#include "jsonlib.hpp"
 #include "objlib/transform.hpp"
 #include "types.hpp"
 #include <expected>
 #include <functional>
+#include <glm/glm.hpp>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -222,7 +223,7 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::TRANSFORM>::name;
         case MetaType::RGB:
             return meta_type_info<MetaType::RGB>::name;
-         case MetaType::RGBA:
+        case MetaType::RGBA:
             return meta_type_info<MetaType::RGBA>::name;
         case MetaType::COMMENT:
             return meta_type_info<MetaType::COMMENT>::name;
@@ -307,7 +308,8 @@ namespace Toolbox::Object {
     class MetaValue {
     public:
         using value_type =
-            std::variant<bool, s8, u8, s16, u16, s32, u32, s64, u64, f32, f64, std::string, glm::vec3, Transform, Color::RGBA32, Color::RGB24>;
+            std::variant<bool, s8, u8, s16, u16, s32, u32, s64, u64, f32, f64, std::string,
+                         glm::vec3, Transform, Color::RGBA32, Color::RGB24>;
 
         constexpr MetaValue() = delete;
         template <typename T> explicit constexpr MetaValue(T value) : m_value(value) {
@@ -351,6 +353,8 @@ namespace Toolbox::Object {
             m_value = value;
             return true;
         }
+
+        std::expected<void, JSONError> loadJSON(const nlohmann::json &json_value);
 
         [[nodiscard]] std::string toString() const;
 

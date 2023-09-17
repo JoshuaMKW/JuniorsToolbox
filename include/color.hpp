@@ -97,6 +97,7 @@ namespace Toolbox::Color {
         u8 m_r, m_g, m_b, m_a;
 
         constexpr RGBA32() = default;
+        constexpr RGBA32(u8 r, u8 g, u8 b, u8 a) : m_r(r), m_g(g), m_b(b), m_a(a) {}
         constexpr RGBA32(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
 
         std::expected<void, SerialError> serialize(Serializer &out) const override {
@@ -169,9 +170,10 @@ namespace Toolbox::Color {
 
     class RGB24 final : public BaseColor {
     public:
-        u8 m_r, m_g, m_b;
+        u8 m_r = 0, m_g = 0, m_b = 0;
 
         constexpr RGB24() = default;
+        constexpr RGB24(u8 r, u8 g, u8 b) : m_r(r), m_g(g), m_b(b) {}
         constexpr RGB24(f32 r, f32 g, f32 b) { setColor(r, g, b, 1.0f); }
 
         std::expected<void, SerialError> serialize(Serializer &out) const override {

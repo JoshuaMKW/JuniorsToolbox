@@ -32,12 +32,7 @@ namespace Toolbox::Object {
         [[nodiscard]] constexpr std::string_view name() const { return m_name; }
 
         [[nodiscard]] constexpr std::vector<std::shared_ptr<MetaMember>> members() const {
-            std::vector<std::shared_ptr<MetaMember>> ret;
-            ret.reserve(m_members.size());
-            for (auto &member : m_members) {
-                ret.emplace_back(member);
-            }
-            return ret;
+            return m_members;
         }
 
         [[nodiscard]] GetMemberT getMember(std::string_view name) const;

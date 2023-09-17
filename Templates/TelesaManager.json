@@ -1,0 +1,38 @@
+{
+    "Boo Manager": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxObjs": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "MActorSets": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Character": "テレサマネージャー キャラ",
+                "MaxObjs": 50,
+                "MActorSets": 3
+            }
+        }
+    }
+}

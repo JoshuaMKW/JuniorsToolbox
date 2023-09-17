@@ -88,5 +88,7 @@ int main(int argc, char **argv) {
         std::cout << "Member not found" << std::endl;
     }
 
+    Template template_("MapObjGeneral");
+
     return 0;
 }

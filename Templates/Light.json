@@ -1,0 +1,48 @@
+{
+    "Light": {
+        "Enums": {
+        },
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Position": {
+                "Type": "VEC3F",
+                "ArraySize": 1
+            },
+            "Color": {
+                "Type": "RGBA8",
+                "ArraySize": 1
+            },
+            "Intensity": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Position": [
+                    0,
+                    0,
+                    0
+                ],
+                "Color": [
+                    255,
+                    255,
+                    255,
+                    255
+                ],
+                "Intensity": 0
+            }
+        }
+    }
+}

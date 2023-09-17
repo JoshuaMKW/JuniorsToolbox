@@ -25,6 +25,72 @@ template <> struct std::formatter<Toolbox::Object::Transform> : std::formatter<s
 
 namespace Toolbox::Object {
 
+    std::expected<void, JSONError> MetaValue::loadJSON(const nlohmann::json &json_value) {
+        return tryJSON(json_value, [this](const json &j) {
+            switch (m_type) {
+            case MetaType::S8:
+                m_value = j.get<s8>();
+                break;
+            case MetaType::U8:
+                m_value = j.get<u8>();
+                break;
+            case MetaType::S16:
+                m_value = j.get<s16>();
+                break;
+            case MetaType::U16:
+                m_value = j.get<u16>();
+                break;
+            case MetaType::S32:
+                m_value = j.get<s32>();
+                break;
+            case MetaType::U32:
+                m_value = j.get<u32>();
+                break;
+            case MetaType::F32:
+                m_value = j.get<f32>();
+                break;
+            case MetaType::F64:
+                m_value = j.get<f64>();
+                break;
+            case MetaType::STRING:
+                m_value = j.get<std::string>();
+                break;
+            case MetaType::VEC3: {
+                glm::vec3 new_value;
+                new_value.x = j[0].get<f32>();
+                new_value.y = j[1].get<f32>();
+                new_value.z = j[2].get<f32>();
+                m_value = new_value;
+                break;
+            }
+            case MetaType::TRANSFORM: {
+                Transform new_value;
+                new_value.m_translation.x = j[0][0].get<f32>();
+                new_value.m_translation.y = j[0][1].get<f32>();
+                new_value.m_translation.z = j[0][2].get<f32>();
+                new_value.m_rotation.x    = j[1][0].get<f32>();
+                new_value.m_rotation.y    = j[1][1].get<f32>();
+                new_value.m_rotation.z    = j[1][2].get<f32>();
+                new_value.m_scale.x       = j[2][0].get<f32>();
+                new_value.m_scale.y       = j[2][1].get<f32>();
+                new_value.m_scale.z       = j[2][2].get<f32>();
+                m_value                       = new_value;
+                break;
+            }
+            case MetaType::RGB: {
+                Color::RGB24 new_value(j[0].get<u8>(), j[1].get<u8>(), j[2].get<u8>());
+                m_value = new_value;
+                break;
+            }
+            case MetaType::RGBA: {
+                Color::RGBA32 new_value(j[0].get<u8>(), j[1].get<u8>(), j[2].get<u8>(), j[3].get<u8>());
+                m_value = new_value;
+                break;
+            }
+            }
+        });
+    }
+
     std::string MetaValue::toString() const {
         switch (m_type) {
         case MetaType::S8:
@@ -44,7 +110,7 @@ namespace Toolbox::Object {
         case MetaType::F64:
             return std::format("{}", std::get<f64>(m_value));
         case MetaType::STRING:
-            return std::get<std::string>(m_value);
+            return std::format("\"{}\"", std::get<std::string>(m_value));
         case MetaType::VEC3:
             return std::format("{}", std::get<glm::vec3>(m_value));
         case MetaType::TRANSFORM:

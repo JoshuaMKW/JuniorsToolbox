@@ -7,16 +7,25 @@
 #include "objlib/meta/struct.hpp"
 #include "objlib/transform.hpp"
 #include <expected>
+#include <fstream>
 #include <glm/glm.hpp>
 #include <optional>
 
 using json = nlohmann::json;
 
 namespace Toolbox::Object {
+    Template::Template(std::string_view type) : m_type(type) {
+        auto p = std::filesystem::current_path();
+        std::ifstream file("./Templates/" + std::string(type) + ".json", std::ios::in);
+        if (!file.is_open()) {
+            throw std::runtime_error("Failed to open template file: " + std::string(type));
+        }
 
-    std::expected<std::vector<MetaMember>, SerialError>
-    Template::getMembers(std::string_view wizard) const {
-        return std::expected<std::vector<MetaMember>, SerialError>();
+        Deserializer in(file.rdbuf());
+        auto result = deserialize(in);
+        if (!result) {
+            throw std::runtime_error("Failed to deserialize template: " + std::string(type));
+        }
     }
 
     std::expected<void, SerialError> Template::serialize(Serializer &out) const { return {}; }
@@ -269,13 +278,60 @@ namespace Toolbox::Object {
         }
     }
 
+    static MetaMember loadWizardMember(json &member_json, MetaMember default_member) {
+        default_member.syncArray();
+
+        if (default_member.isTypeStruct()) {
+            std::vector<MetaStruct> inst_structs;
+            for (size_t i = 0; i < default_member.arraysize(); ++i) {
+                std::vector<MetaMember> inst_struct_members;
+                auto struct_ = default_member.value<MetaStruct>(i).value();
+                for (auto &mbr : struct_->members()) {
+                    auto mbr_json = member_json[mbr->name()];
+                    inst_struct_members.push_back(loadWizardMember(mbr_json, *mbr));
+                }
+                inst_structs.emplace_back(struct_->name(), inst_struct_members);
+            }
+            return MetaMember(default_member.name(), inst_structs);
+        }
+
+        if (default_member.isTypeEnum()) {
+            std::vector<MetaEnum> inst_enums;
+            for (size_t i = 0; i < default_member.arraysize(); ++i) {
+                inst_enums.push_back(MetaEnum(*default_member.value<MetaEnum>(i).value()));
+            }
+            return MetaMember(default_member.name(), inst_enums);
+        }
+
+        std::vector<MetaValue> inst_values;
+        for (size_t i = 0; i < default_member.arraysize(); ++i) {
+            inst_values.push_back(MetaValue(*default_member.value<MetaValue>(i).value()));
+        }
+        return MetaMember(default_member.name(), inst_values);
+    }
+
     void Template::loadWizards(json &wizards) {
+        if (m_wizards.size() == 0) {
+            return;
+        }
+
+        TemplateWizard &default_wizard = m_wizards[0];
+
         for (const auto &item : wizards.items()) {
             TemplateWizard wizard;
-            wizard.m_name = item.key();
-            for (const auto &mi : item.value()["members"].items()) {
-                /* TODO: Properly initialize these according to members */
-                wizard.m_init_members.emplace_back(MetaMember(mi.key(), MetaValue(0)));
+            wizard.m_name    = item.key();
+            auto wizard_json = item.value();
+            for (auto &member_item : wizard_json.items()) {
+                auto member_name = member_item.key();
+                auto member_info = member_item.value();
+
+                auto member_it = std::find_if(
+                    default_wizard.m_init_members.begin(), default_wizard.m_init_members.end(),
+                    [&](const auto &e) { return e.name() == member_name; });
+                if (member_it != default_wizard.m_init_members.end()) {
+                    auto member = loadWizardMember(member_info, *member_it);
+                    wizard.m_init_members.emplace_back(member);
+                }
             }
             m_wizards.emplace_back(wizard);
         }

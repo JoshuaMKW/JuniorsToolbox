@@ -1,0 +1,73 @@
+{
+    "General Cube": {
+        "Enums": {
+        },
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Unknown": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightCount": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Light{i}": {
+                "Type": "LightInfo",
+                "ArraySize": "LightCount"
+            },
+            "Other": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Layer": {
+                "Type": "STR",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                "Unknown": 128,
+                "LightCount": 0,
+                "Light{i}": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Other": 128,
+                "Layer": "Layer1"
+            }
+        }
+    }
+}

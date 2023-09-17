@@ -1,0 +1,72 @@
+{
+    "Flag": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightCount": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Light{i}": {
+                "Type": "LightInfo",
+                "ArraySize": "LightCount"
+            },
+            "Model": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Flag": {
+                "Type": "COMMENT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Red Sun Flag": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        4.3,
+                        7
+                    ]
+                ],
+                "Character": "flagRedsun キャラ",
+                "LightCount": 0,
+                "Light{i}": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "flagRedsun",
+                "Flag": "Generated from Bin Editor Template by Junior's Toolbox"
+            }
+        }
+    }
+}
