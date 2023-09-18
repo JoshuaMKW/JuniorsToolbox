@@ -274,6 +274,8 @@ namespace Toolbox::Object {
             return {};
         }
 
+        std::expected<void, JSONError> loadJSON(const nlohmann::json &json);
+
         void dump(std::ostream &out, size_t indention, size_t indention_width) const;
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }

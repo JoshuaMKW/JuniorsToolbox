@@ -23,7 +23,7 @@ namespace Toolbox {
         Serializer(std::streambuf *out, std::string_view file_path)
             : m_out(out), m_file_path(file_path) {}
         Serializer(const Serializer &) = default;
-        Serializer(Serializer &&) = default;
+        Serializer(Serializer &&)      = default;
 
         std::ostream &stream() { return m_out; }
         std::string_view filepath() const { return m_file_path; }
@@ -32,8 +32,16 @@ namespace Toolbox {
             if constexpr (E == std::endian::native) {
                 return writeBytes(std::span(reinterpret_cast<const char *>(&t), sizeof(T)));
             } else {
-                T t2 = std::byteswap(t);
-                return writeBytes(std::span(reinterpret_cast<const char *>(&t2), sizeof(T)));
+                if constexpr (std::is_same_v<T, f32>) {
+                    u32 t2 = std::byteswap(std::bit_cast<u32>(t));
+                    return write<u32, E>(t2);
+                } else if constexpr (std::is_same_v<T, f64>) {
+                    u64 t2 = std::byteswap(std::bit_cast<u64>(t));
+                    return write<u64, E>(t2);
+                } else {
+                    T t2 = std::byteswap(t);
+                    return writeBytes(std::span(reinterpret_cast<const char *>(&t2), sizeof(T)));
+                }
             }
         }
 
@@ -70,10 +78,22 @@ namespace Toolbox {
                 readBytes(std::span(reinterpret_cast<char *>(&t), sizeof(T)));
                 return t;
             } else {
-                T t2{};
-                readBytes(std::span(reinterpret_cast<char *>(&t2), sizeof(T)));
-                t = std::byteswap(t2);
-                return t;
+                if constexpr (std::is_same_v<T, f32>) {
+                    u32 t2{};
+                    readBytes(std::span(reinterpret_cast<char *>(&t2), sizeof(u32)));
+                    t = std::bit_cast<f32>(std::byteswap(t2));
+                    return t;
+                } else if constexpr (std::is_same_v<T, f64>) {
+                    u64 t2{};
+                    readBytes(std::span(reinterpret_cast<char *>(&t2), sizeof(u64)));
+                    t = std::bit_cast<f64>(std::byteswap(t2));
+                    return t;
+                } else {
+                    T t2{};
+                    readBytes(std::span(reinterpret_cast<char *>(&t2), sizeof(T)));
+                    t = std::byteswap(t2);
+                    return t;
+                }
             }
         }
 
@@ -144,7 +164,8 @@ namespace Toolbox {
         return make_serial_error(s, reason, 0);
     }
 
-    inline SerialError make_serial_error(Deserializer &s, std::string_view reason, int error_adjust) {
+    inline SerialError make_serial_error(Deserializer &s, std::string_view reason,
+                                         int error_adjust) {
         return make_serial_error("Unexpected byte at position {} ({:X}).", reason,
                                  std::size_t(s.stream().tellg()) + error_adjust, s.filepath());
     }

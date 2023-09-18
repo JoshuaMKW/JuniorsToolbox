@@ -4,7 +4,7 @@
         "Structs": {
             "LightInfo": {
                 "ID": {
-                    "Type": "INT",
+                    "Type": "S32",
                     "ArraySize": 1
                 },
                 "Name": {
@@ -23,7 +23,7 @@
                 "ArraySize": 1
             },
             "LightCount": {
-                "Type": "INT",
+                "Type": "S32",
                 "ArraySize": 1
             },
             "Light{i}": {

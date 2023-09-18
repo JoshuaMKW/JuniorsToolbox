@@ -11,8 +11,6 @@
 #include <glm/glm.hpp>
 #include <optional>
 
-using json = nlohmann::json;
-
 namespace Toolbox::Object {
     Template::Template(std::string_view type) : m_type(type) {
         auto p = std::filesystem::current_path();
@@ -31,27 +29,30 @@ namespace Toolbox::Object {
     std::expected<void, SerialError> Template::serialize(Serializer &out) const { return {}; }
 
     std::expected<void, SerialError> Template::deserialize(Deserializer &in) {
-        json template_json;
+        json_t template_json;
 
-        auto result = tryJSON(template_json, [&](json &j) {
+        auto result = tryJSON(template_json, [&](json_t &j) {
             in.stream() >> j;
 
-            m_name = j.at(0).get<std::string>();
+            for (auto &item : j.items()) {
+                m_name = item.key();
 
-            json &metadata    = j[m_name];
-            json &member_data = metadata["Members"];
-            json &struct_data = metadata["Structs"];
-            json &enum_data   = metadata["Enums"];
+                json_t &metadata    = item.value();
+                json_t &member_data = metadata["Members"];
+                json_t &struct_data = metadata["Structs"];
+                json_t &enum_data   = metadata["Enums"];
 
-            TemplateWizard default_wizard;
+                TemplateWizard default_wizard;
 
-            cacheEnums(enum_data);
-            cacheStructs(struct_data);
-            loadMembers(member_data, default_wizard.m_init_members);
+                cacheEnums(enum_data);
+                cacheStructs(struct_data);
+                loadMembers(member_data, default_wizard.m_init_members);
 
-            m_wizards.push_back(default_wizard);
+                m_wizards.push_back(default_wizard);
 
-            loadWizards(metadata["Wizard"]);
+                loadWizards(metadata["Wizard"]);
+                break;
+            }
         });
 
         if (!result) {
@@ -63,10 +64,10 @@ namespace Toolbox::Object {
         return {};
     }
 
-    void Template::cacheEnums(json &enums) {
+    void Template::cacheEnums(json_t &enums) {
         for (const auto &item : enums.items()) {
             const auto &e  = item.value();
-            auto enum_type = magic_enum::enum_cast<MetaType>(e["type"].get<std::string>());
+            auto enum_type = magic_enum::enum_cast<MetaType>(e["Type"].get<std::string>());
             if (!enum_type.has_value()) {
                 continue;
             }
@@ -82,7 +83,7 @@ namespace Toolbox::Object {
         }
     }
 
-    void Template::cacheStructs(json &structs) {
+    void Template::cacheStructs(json_t &structs) {
         std::vector<std::string> visited;
         for (const auto &item : structs.items()) {
             auto name         = item.key();
@@ -107,14 +108,17 @@ namespace Toolbox::Object {
 
         size_t asize = 1;
         if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
-            asize = std::get<std::shared_ptr<MetaValue>>(array_size)->get<size_t>().value();
+            asize = std::get<std::shared_ptr<MetaValue>>(array_size)->get<u32>().value();
         } else {
-            asize = std::get<size_t>(array_size);
+            asize = std::get<u32>(array_size);
         }
 
         enums.reserve(asize);
         for (size_t i = 0; i < asize; ++i) {
             enums.emplace_back(*enum_);
+        }
+        if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
+            return MetaMember(name, enums, std::get<std::shared_ptr<MetaValue>>(array_size));
         }
         return MetaMember(name, enums);
     }
@@ -131,15 +135,18 @@ namespace Toolbox::Object {
 
         size_t asize = 1;
         if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
-            asize = std::get<std::shared_ptr<MetaValue>>(array_size)->get<size_t>().value();
+            asize = std::get<std::shared_ptr<MetaValue>>(array_size)->get<s32>().value();
         } else {
-            asize = std::get<size_t>(array_size);
+            asize = std::get<u32>(array_size);
         }
 
         structs.reserve(asize);
 
         for (size_t i = 0; i < asize; ++i) {
             structs.emplace_back(*struct_);
+        }
+        if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
+            return MetaMember(name, structs, std::get<std::shared_ptr<MetaValue>>(array_size));
         }
         return MetaMember(name, structs);
     }
@@ -155,9 +162,9 @@ namespace Toolbox::Object {
 
         size_t asize = 1;
         if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
-            asize = std::get<std::shared_ptr<MetaValue>>(array_size)->get<size_t>().value();
+            asize = std::get<std::shared_ptr<MetaValue>>(array_size)->get<u32>().value();
         } else {
-            asize = std::get<size_t>(array_size);
+            asize = std::get<u32>(array_size);
         }
 
         values.reserve(asize);
@@ -217,17 +224,20 @@ namespace Toolbox::Object {
         return MetaMember(name, values);
     }
 
-    void Template::loadMembers(json &members, std::vector<MetaMember> out) {
+    void Template::loadMembers(json_t &members, std::vector<MetaMember> &out) {
         for (const auto &item : members.items()) {
             auto member_name = item.key();
             auto member_info = item.value();
 
-            auto member_type = member_info["type"].get<std::string>();
+            auto member_type = member_info["Type"].get<std::string>();
+            if (member_type == "INT") {
+                member_type = "S32";
+            }
             MetaMember::size_type member_size;
 
-            auto member_size_info = member_info["size"];
+            auto member_size_info = member_info["ArraySize"];
             if (member_size_info.is_number()) {
-                member_size = member_size_info.get<size_t>();
+                member_size = member_size_info.get<u32>();
             } else {
                 auto member_size_str = member_size_info.get<std::string>();
                 auto member_it       = std::find_if(out.begin(), out.end(), [&](const auto &e) {
@@ -278,7 +288,7 @@ namespace Toolbox::Object {
         }
     }
 
-    static MetaMember loadWizardMember(json &member_json, MetaMember default_member) {
+    static MetaMember loadWizardMember(Template::json_t &member_json, MetaMember default_member) {
         default_member.syncArray();
 
         if (default_member.isTypeStruct()) {
@@ -295,22 +305,28 @@ namespace Toolbox::Object {
             return MetaMember(default_member.name(), inst_structs);
         }
 
+        // Todo: Actually use member_json  here :P
+
         if (default_member.isTypeEnum()) {
             std::vector<MetaEnum> inst_enums;
             for (size_t i = 0; i < default_member.arraysize(); ++i) {
-                inst_enums.push_back(MetaEnum(*default_member.value<MetaEnum>(i).value()));
+                auto value = MetaEnum(*default_member.value<MetaEnum>(i).value());
+                value.loadJSON(member_json);
+                inst_enums.push_back(value);
             }
             return MetaMember(default_member.name(), inst_enums);
         }
 
         std::vector<MetaValue> inst_values;
         for (size_t i = 0; i < default_member.arraysize(); ++i) {
-            inst_values.push_back(MetaValue(*default_member.value<MetaValue>(i).value()));
+            auto value = MetaValue(*default_member.value<MetaValue>(i).value());
+            value.loadJSON(member_json);
+            inst_values.push_back(value);
         }
         return MetaMember(default_member.name(), inst_values);
     }
 
-    void Template::loadWizards(json &wizards) {
+    void Template::loadWizards(json_t &wizards) {
         if (m_wizards.size() == 0) {
             return;
         }

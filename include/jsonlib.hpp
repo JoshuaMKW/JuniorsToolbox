@@ -16,8 +16,8 @@ struct JSONError {
 };
 
 // Pass a callback function that operates on a json object and potentially returns a value.
-template <class _Func>
-inline auto tryJSON(json &j, _Func json_op)
+template <class _JsonT, class _Func>
+inline auto tryJSON(_JsonT &j, _Func json_op)
     -> std::enable_if_t<!std::is_same_v<decltype(json_op(j)), void>,
                         std::expected<decltype(json_op(j)), JSONError>> {
     try {
@@ -46,8 +46,8 @@ inline auto tryJSON(json &j, _Func json_op)
 }
 
 // Pass a callback function that operates on a json object and potentially returns a value.
-template <class _Func>
-inline auto tryJSON(json &j, _Func json_op)
+template <class _JsonT, class _Func>
+inline auto tryJSON(_JsonT &j, _Func json_op)
     -> std::enable_if_t<std::is_same_v<decltype(json_op(j)), void>,
                         std::expected<void, JSONError>> {
     try {
@@ -77,8 +77,8 @@ inline auto tryJSON(json &j, _Func json_op)
 }
 
 // Pass a callback function that operates on a json object and potentially returns a value.
-template <class _Func>
-inline auto tryJSON(const json &j, _Func json_op)
+template <class _JsonT, class _Func>
+inline auto tryJSON(const _JsonT &j, _Func json_op)
     -> std::enable_if_t<!std::is_same_v<decltype(json_op(j)), void>,
                         std::expected<decltype(json_op(j)), JSONError>> {
     try {
@@ -107,8 +107,8 @@ inline auto tryJSON(const json &j, _Func json_op)
 }
 
 // Pass a callback function that operates on a json object and potentially returns a value.
-template <class _Func>
-inline auto tryJSON(const json &j, _Func json_op)
+template <class _JsonT, class _Func>
+inline auto tryJSON(const _JsonT &j, _Func json_op)
     -> std::enable_if_t<std::is_same_v<decltype(json_op(j)), void>,
                         std::expected<void, JSONError>> {
     try {

@@ -52,8 +52,9 @@ namespace Toolbox::Object {
     public:
         using value_type = std::variant<std::shared_ptr<MetaStruct>, std::shared_ptr<MetaEnum>,
                                         std::shared_ptr<MetaValue>>;
-        using size_type  = std::variant<size_t, std::shared_ptr<MetaValue>>;
+        using size_type  = std::variant<u32, std::shared_ptr<MetaValue>>;
 
+        MetaMember(std::string_view name, std::shared_ptr<MetaValue> arraysize) : m_name(name), m_values(), m_arraysize(arraysize) {}
         MetaMember(std::string_view name, const MetaValue &value) : m_name(name), m_values() {
             auto p = std::make_shared<MetaValue>(value);
             m_values.emplace_back(std::move(p));
@@ -67,21 +68,21 @@ namespace Toolbox::Object {
             m_values.emplace_back(std::move(p));
         }
         MetaMember(std::string_view name, const std::vector<MetaValue> &values)
-            : m_name(name), m_values(), m_arraysize(values.size()) {
+            : m_name(name), m_values(), m_arraysize(static_cast<u32>(values.size())) {
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaValue>(value);
                 m_values.emplace_back(std::move(p));
             }
         }
         MetaMember(std::string_view name, const std::vector<MetaStruct> &values)
-            : m_name(name), m_values(), m_arraysize(values.size()) {
+            : m_name(name), m_values(), m_arraysize(static_cast<u32>(values.size())) {
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaStruct>(value);
                 m_values.emplace_back(std::move(p));
             }
         }
         MetaMember(std::string_view name, const std::vector<MetaEnum> &values)
-            : m_name(name), m_values(), m_arraysize(values.size()) {
+            : m_name(name), m_values(), m_arraysize(static_cast<u32>(values.size())) {
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaEnum>(value);
                 m_values.emplace_back(std::move(p));
@@ -135,15 +136,15 @@ namespace Toolbox::Object {
         template <>
         std::expected<std::shared_ptr<MetaValue>, MetaError> value<MetaValue>(size_t index) const;
 
-        [[nodiscard]] size_t arraysize() const {
+        [[nodiscard]] u32 arraysize() const {
             if (std::holds_alternative<std::shared_ptr<MetaValue>>(m_arraysize)) {
                 auto vptr = std::get<std::shared_ptr<MetaValue>>(m_arraysize);
-                auto size = vptr->get<size_t>();
+                auto size = vptr->get<u32>();
                 if (!size)
                     return 0;
                 return *size;
             }
-            return std::get<size_t>(m_arraysize);
+            return std::get<u32>(m_arraysize);
         }
         [[nodiscard]] bool isEmpty() const { return m_values.empty(); }
         [[nodiscard]] bool isArray() const { return m_values.size() > 1; }
@@ -236,12 +237,12 @@ namespace Toolbox::Object {
         std::unique_ptr<IClonable> clone(bool deep) const override;
 
     protected:
-        constexpr bool isTypeValue() const {
-            return std::holds_alternative<std::shared_ptr<MetaValue>>(m_values[0]);
+        bool isTypeValue() const {
+            return !isEmpty() && std::holds_alternative<std::shared_ptr<MetaValue>>(m_values[0]);
         }
 
         bool validateIndex(size_t index) const {
-            return index < m_values.size();
+            return static_cast<u32>(index) < m_values.size();
         }
 
     private:

@@ -5,6 +5,13 @@ namespace Toolbox::Object {
 
     /* INTERFACE */
 
+    QualifiedName ISceneObject::getQualifiedName() const {
+        auto parent = getParent();
+        if (parent)
+            return QualifiedName(getNameRef().name(), parent->getQualifiedName());
+        return QualifiedName(getNameRef().name());
+    }
+
     size_t ISceneObject::getAnimationFrames(AnimationType type) const {
         auto ctrl = getAnimationControl(type);
         if (ctrl.expired())
@@ -109,7 +116,7 @@ namespace Toolbox::Object {
         indention_width          = std::min(indention_width, size_t(8));
         std::string self_indent  = std::string(indention * indention_width, ' ');
         std::string value_indent = std::string((indention + 1) * indention_width, ' ');
-        out << self_indent << m_type << " " << m_nameref.name() << " {\n";
+        out << self_indent << m_type << " (" << m_nameref.name() << ") {\n";
         out << self_indent << "members:\n";
         for (auto m : m_members) {
             m->dump(out, indention + 1, indention_width);
@@ -218,7 +225,7 @@ namespace Toolbox::Object {
         indention_width          = std::min(indention_width, size_t(8));
         std::string self_indent  = std::string(indention * indention_width, ' ');
         std::string value_indent = std::string((indention + 1) * indention_width, ' ');
-        out << self_indent << m_type << " " << m_nameref.name() << " {\n";
+        out << self_indent << m_type << " (" << m_nameref.name() << ") {\n";
         out << self_indent << "members:\n";
         for (auto m : m_members) {
             m->dump(out, indention + 1, indention_width);
@@ -304,7 +311,7 @@ namespace Toolbox::Object {
         indention_width          = std::min(indention_width, size_t(8));
         std::string self_indent  = std::string(indention * indention_width, ' ');
         std::string value_indent = std::string((indention + 1) * indention_width, ' ');
-        out << self_indent << m_type << " " << m_nameref.name() << " {\n";
+        out << self_indent << m_type << " (" << m_nameref.name() << ") {\n";
         out << self_indent << "members:\n";
         for (auto m : m_members) {
             m->dump(out, indention + 1, indention_width);
