@@ -8,12 +8,13 @@
 using namespace Toolbox::Object;
 
 int main(int argc, char **argv) {
-    Template template_("MapObjGeneral");
+    auto t = TemplateFactory::create("MapObjGeneral");
+    auto g = TemplateFactory::create("GroupObj");
 
-    Toolbox::Object::GroupSceneObject group(Template("GroupObj"));
+    Toolbox::Object::GroupSceneObject group(*g.value());
 
-    auto biancoLamp = std::make_shared<Toolbox::Object::PhysicalSceneObject>(template_, "Bianco Hills Lamp");
-    auto defaultObj = std::make_shared<Toolbox::Object::PhysicalSceneObject>(template_);
+    auto biancoLamp = std::make_shared<Toolbox::Object::PhysicalSceneObject>(*t.value(), "Bianco Hills Lamp");
+    auto defaultObj = std::make_shared<Toolbox::Object::PhysicalSceneObject>(*t.value());
 
     group.addChild(biancoLamp);
     group.addChild(defaultObj);

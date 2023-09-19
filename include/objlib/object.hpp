@@ -59,7 +59,7 @@ namespace Toolbox::Object {
 
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
-    class ISceneObject {
+    class ISceneObject : public ISerializable {
     public:
         /* ABSTRACT INTERFACE */
         virtual ~ISceneObject() = default;
@@ -69,7 +69,7 @@ namespace Toolbox::Object {
         [[nodiscard]] virtual std::string type() const = 0;
 
         [[nodiscard]] virtual NameRef getNameRef() const = 0;
-        virtual void setNameRef(NameRef name)           = 0;
+        virtual void setNameRef(NameRef name)            = 0;
 
         [[nodiscard]] virtual ISceneObject *getParent() const                         = 0;
         virtual std::expected<void, ObjectGroupError> setParent(ISceneObject *parent) = 0;
@@ -128,10 +128,10 @@ namespace Toolbox::Object {
         void dump(std::ostream &out) const { dump(out, 0, 2); }
     };
 
-    class VirtualSceneObject : public ISceneObject, public ISerializable {
+    class VirtualSceneObject : public ISceneObject {
     public:
         VirtualSceneObject(const Template &template_)
-            : ISceneObject(), ISerializable(), m_nameref() {
+            : ISceneObject(), m_nameref() {
             m_type = template_.type();
 
             auto wizard = template_.getWizard();
@@ -139,12 +139,13 @@ namespace Toolbox::Object {
                 return;
 
             for (auto &member : wizard->m_init_members) {
-                m_members.emplace_back(std::reinterpret_pointer_cast<MetaMember, IClonable>(member.clone(true)));
+                m_members.emplace_back(
+                    std::reinterpret_pointer_cast<MetaMember, IClonable>(member.clone(true)));
             }
         }
 
         VirtualSceneObject(const Template &template_, std::string_view wizard_name)
-            : ISceneObject(), ISerializable(), m_nameref() {
+            : ISceneObject(),  m_nameref() {
             m_type = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);
@@ -153,7 +154,8 @@ namespace Toolbox::Object {
 
             m_nameref.setName(wizard_name);
             for (auto &member : wizard->m_init_members) {
-                m_members.emplace_back(std::reinterpret_pointer_cast<MetaMember, IClonable>(member.clone(true)));
+                m_members.emplace_back(
+                    std::reinterpret_pointer_cast<MetaMember, IClonable>(member.clone(true)));
             }
         }
 
@@ -268,11 +270,15 @@ namespace Toolbox::Object {
         mutable MetaStruct::CacheMemberT m_member_cache;
     };
 
-    class GroupSceneObject final : public VirtualSceneObject {
+    class GroupSceneObject : public VirtualSceneObject {
     public:
-        GroupSceneObject(const Template &template_) : VirtualSceneObject(template_) {}
+        GroupSceneObject(const Template &template_) : VirtualSceneObject(template_) {
+            m_group_size = std::make_shared<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
+        }
         GroupSceneObject(const Template &template_, std::string_view wizard_name)
-            : VirtualSceneObject(template_, wizard_name) {}
+            : VirtualSceneObject(template_, wizard_name) {
+            m_group_size = std::make_shared<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
+        }
         GroupSceneObject(const Template &template_, Deserializer &in)
             : GroupSceneObject(template_) {
             deserialize(in);
@@ -301,14 +307,15 @@ namespace Toolbox::Object {
 
         [[nodiscard]] bool isGroupObject() const override { return true; }
 
-        std::vector<s8> getData() const override;
-        size_t getDataSize() const override;
+        [[nodiscard]] std::vector<s8> getData() const override;
+        [[nodiscard]] size_t getDataSize() const override;
 
         std::expected<void, ObjectGroupError>
         addChild(std::shared_ptr<ISceneObject> child) override;
         std::expected<void, ObjectGroupError> removeChild(ISceneObject *child) override;
         std::expected<void, ObjectGroupError> removeChild(const QualifiedName &name) override;
-        std::expected<std::vector<ISceneObject *>, ObjectGroupError> getChildren() override;
+        [[nodiscard]] std::expected<std::vector<ISceneObject *>, ObjectGroupError>
+        getChildren() override;
         std::expected<void, ObjectError>
         performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) override;
 
@@ -318,27 +325,36 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
+        [[nodiscard]] size_t getGroupSize() const;
+        [[nodiscard]] std::shared_ptr<MetaMember> getGroupSizeM() const { return m_group_size; }
+
+    protected:
+        void setGroupSize(size_t size);
+        void updateGroupSize();
+
     private:
+        std::shared_ptr<MetaMember> m_group_size;
         std::vector<std::shared_ptr<ISceneObject>> m_children = {};
     };
 
-    class PhysicalSceneObject : public ISceneObject, public ISerializable {
+    class PhysicalSceneObject : public ISceneObject {
     public:
         PhysicalSceneObject(const Template &template_)
-            : ISceneObject(), ISerializable(), m_nameref(), m_transform() {
-            m_type      = template_.type();
+            : ISceneObject(), m_nameref(), m_transform() {
+            m_type = template_.type();
 
             auto wizard = template_.getWizard();
             if (!wizard)
                 return;
 
             for (auto &member : wizard->m_init_members) {
-                m_members.emplace_back(std::reinterpret_pointer_cast<MetaMember, IClonable>(member.clone(true)));
+                m_members.emplace_back(
+                    std::reinterpret_pointer_cast<MetaMember, IClonable>(member.clone(true)));
             }
         }
 
         PhysicalSceneObject(const Template &template_, std::string_view wizard_name)
-            : ISceneObject(), ISerializable(), m_nameref(), m_transform() {
+            : ISceneObject(), m_nameref(), m_transform() {
             m_type = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);
@@ -347,7 +363,8 @@ namespace Toolbox::Object {
 
             m_nameref.setName(wizard_name);
             for (auto &member : wizard->m_init_members) {
-                m_members.emplace_back(std::reinterpret_pointer_cast<MetaMember, IClonable>(member.clone(true)));
+                m_members.emplace_back(
+                    std::reinterpret_pointer_cast<MetaMember, IClonable>(member.clone(true)));
             }
         }
 
@@ -356,7 +373,8 @@ namespace Toolbox::Object {
             deserialize(in);
         }
 
-        PhysicalSceneObject(const Template &template_, std::string_view wizard_name, Deserializer &in)
+        PhysicalSceneObject(const Template &template_, std::string_view wizard_name,
+                            Deserializer &in)
             : PhysicalSceneObject(template_, wizard_name) {
             deserialize(in);
         }
@@ -364,7 +382,8 @@ namespace Toolbox::Object {
             : PhysicalSceneObject(template_, in) {
             parent->addChild(std::shared_ptr<PhysicalSceneObject>(this));
         }
-        PhysicalSceneObject(const Template &template_, std::string_view wizard_name, Deserializer &in, ISceneObject *parent)
+        PhysicalSceneObject(const Template &template_, std::string_view wizard_name,
+                            Deserializer &in, ISceneObject *parent)
             : PhysicalSceneObject(template_, wizard_name, in) {
             parent->addChild(std::shared_ptr<PhysicalSceneObject>(this));
         }
@@ -382,9 +401,7 @@ namespace Toolbox::Object {
         std::string type() const override { return m_type; }
 
         NameRef getNameRef() const override { return m_nameref; }
-        void setNameRef(NameRef nameref) override {
-            m_nameref = nameref;
-        }
+        void setNameRef(NameRef nameref) override { m_nameref = nameref; }
 
         ISceneObject *getParent() const override { return m_parent; }
         std::expected<void, ObjectGroupError> setParent(ISceneObject *parent) override {
@@ -463,6 +480,21 @@ namespace Toolbox::Object {
 
         J3DTransformInfo m_transform;
         std::shared_ptr<J3DModelInstance> m_model_instance = {};
+    };
+
+    class ObjectFactory {
+    public:
+        using create_ret_t = std::shared_ptr<ISceneObject>;
+        using create_err_t = SerialError;
+        using create_t     = std::expected<create_ret_t, create_err_t>;
+
+        static create_t create(Deserializer &in);
+
+    protected:
+        static bool isGroupObject(std::string_view type);
+        static bool isGroupObject(Deserializer &in);
+        static bool isPhysicalObject(std::string_view type);
+        static bool isPhysicalObject(Deserializer &in);
     };
 
 }  // namespace Toolbox::Object

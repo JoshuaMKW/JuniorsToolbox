@@ -14,6 +14,14 @@ namespace Toolbox::Color {
             transformOutputAndGet(r, g, b, a);
         }
 
+        constexpr bool operator==(const BaseColor& other) const {
+            f32 r, g, b, a;
+            other.getColor(r, g, b, a);
+            f32 r2, g2, b2, a2;
+            getColor(r2, g2, b2, a2);
+            return r == r2 && g == g2 && b == b2 && a == a2;
+        }
+
     protected:
         constexpr virtual void transformInputAndSet(f32 r, f32 g, f32 b, f32 a)            = 0;
         constexpr virtual void transformOutputAndGet(f32 &r, f32 &g, f32 &b, f32 &a) const = 0;

@@ -4,6 +4,7 @@
 #include <bit>
 #include <expected>
 #include <iostream>
+#include <queue>
 #include <span>
 #include <stacktrace>
 #include <vector>
@@ -28,36 +29,54 @@ namespace Toolbox {
         std::ostream &stream() { return m_out; }
         std::string_view filepath() const { return m_file_path; }
 
-        template <typename T, std::endian E = std::endian::native> size_t write(const T &t) {
+        template <typename T, std::endian E = std::endian::native> Serializer &write(const T &t) {
             if constexpr (E == std::endian::native) {
-                return writeBytes(std::span(reinterpret_cast<const char *>(&t), sizeof(T)));
+                writeBytes(std::span(reinterpret_cast<const char *>(&t), sizeof(T)));
+                return *this;
             } else {
                 if constexpr (std::is_same_v<T, f32>) {
                     u32 t2 = std::byteswap(std::bit_cast<u32>(t));
-                    return write<u32, E>(t2);
+                    writeBytes(std::span(reinterpret_cast<const char *>(&t2), sizeof(u32)));
+                    return *this;
                 } else if constexpr (std::is_same_v<T, f64>) {
                     u64 t2 = std::byteswap(std::bit_cast<u64>(t));
-                    return write<u64, E>(t2);
+                    writeBytes(std::span(reinterpret_cast<const char *>(&t2), sizeof(u64)));
+                    return *this;
                 } else {
                     T t2 = std::byteswap(t);
-                    return writeBytes(std::span(reinterpret_cast<const char *>(&t2), sizeof(T)));
+                    writeBytes(std::span(reinterpret_cast<const char *>(&t2), sizeof(T)));
+                    return *this;
                 }
             }
         }
 
-        template <std::endian E = std::endian::native> size_t writeString(const std::string &str) {
-            auto len = write<u16, E>(str.size() & 0xFFFF);
+        template <std::endian E = std::endian::native>
+        Serializer &writeString(const std::string &str) {
+            write<u16, E>(str.size() & 0xFFFF);
             writeBytes(std::span(str.data(), str.size()));
-            return len;
+            return *this;
         }
 
-        size_t writeBytes(std::span<const char> bytes) {
+        Serializer &writeBytes(std::span<const char> bytes) {
             m_out.write(bytes.data(), bytes.size());
-            return bytes.size();
+            return *this;
         }
+
+        Serializer &seek(std::streamoff off, std::ios_base::seekdir way) {
+            m_out.seekp(off, way);
+            return *this;
+        }
+
+        Serializer &seek(std::streampos pos) { return seek(pos, std::ios::cur); }
+
+        std::streampos tell() { return m_out.tellp(); }
+
+        void pushBreakpoint();
+        std::expected<void, SerialError> popBreakpoint();
 
     private:
         std::ostream m_out;
+        std::queue<std::streampos> m_breakpoints;
         std::string m_file_path = "[unknown path]";
     };
 
@@ -97,14 +116,15 @@ namespace Toolbox {
             }
         }
 
-        template <typename T, std::endian E = std::endian::native> size_t read(T &t) {
+        template <typename T, std::endian E = std::endian::native> Deserializer &read(T &t) {
             if constexpr (E == std::endian::native) {
-                return readBytes(std::span(reinterpret_cast<char *>(&t), sizeof(T)));
+                readBytes(std::span(reinterpret_cast<char *>(&t), sizeof(T)));
+                return *this;
             } else {
                 T t2{};
-                int ret = readBytes(std::span(reinterpret_cast<char *>(&t2), sizeof(T)));
-                t       = std::byteswap(t2);
-                return ret;
+                readBytes(std::span(reinterpret_cast<char *>(&t2), sizeof(T)));
+                t = std::byteswap(t2);
+                return *this;
             }
         }
 
@@ -116,20 +136,33 @@ namespace Toolbox {
             return str;
         }
 
-        size_t readString(std::string &str) {
+        Deserializer &readString(std::string &str) {
             auto len = read<u16>();
             str.resize(len);
             readBytes(std::span(str.data(), len));
-            return len;
+            return *this;
         }
 
-        size_t readBytes(std::span<char> bytes) {
+        Deserializer &readBytes(std::span<char> bytes) {
             m_in.read(bytes.data(), bytes.size());
-            return bytes.size();
+            return *this;
         }
+
+        Deserializer &seek(std::streamoff off, std::ios_base::seekdir way) {
+            m_in.seekg(off, way);
+            return *this;
+        }
+
+        Deserializer &seek(std::streampos pos) { return seek(pos, std::ios::cur); }
+
+        std::streampos tell() { return m_in.tellg(); }
+
+        void pushBreakpoint();
+        std::expected<void, SerialError> popBreakpoint();
 
     private:
         std::istream m_in;
+        std::queue<std::streampos> m_breakpoints;
         std::string m_file_path = "[unknown path]";
     };
 
@@ -140,6 +173,8 @@ namespace Toolbox {
 
         virtual std::expected<void, SerialError> serialize(Serializer &out) const = 0;
         virtual std::expected<void, SerialError> deserialize(Deserializer &in)    = 0;
+
+        [[nodiscard]] bool operator==(const ISerializable &other) { return true; }
 
         void operator<<(Serializer &out) { serialize(out); }
         void operator>>(Deserializer &in) { deserialize(in); }

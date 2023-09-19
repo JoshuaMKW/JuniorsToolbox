@@ -58,7 +58,10 @@ namespace Toolbox::Object {
         return std::get<std::shared_ptr<MetaValue>>(m_values[index]);
     }
 
-    bool MetaMember::operator==(const MetaMember &other) const = default;
+    bool MetaMember::operator==(const MetaMember &other) const {
+        return m_name == other.m_name && m_values == other.m_values &&
+               m_arraysize == other.m_arraysize && m_parent == other.m_parent;
+    }
 
     void MetaMember::dump(std::ostream &out, size_t indention, size_t indention_width) const {
         indention_width   = std::min(indention_width, size_t(8));
@@ -112,6 +115,59 @@ namespace Toolbox::Object {
             }
             out << self_indent << "];\n";
         }
+    }
+
+    std::expected<void, SerialError> MetaMember::serialize(Serializer &out) const {
+        for (u32 i = 0; i < arraysize(); ++i) {
+            if (isTypeStruct()) {
+                auto _struct = std::get<std::shared_ptr<MetaStruct>>(m_values[i]);
+                auto result  = _struct->serialize(out);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            } else if (isTypeEnum()) {
+                auto _enum = std::get<std::shared_ptr<MetaEnum>>(m_values[i]);
+                auto result = _enum->serialize(out);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            } else if (isTypeValue()) {
+                auto _value = std::get<std::shared_ptr<MetaValue>>(m_values[i]);
+                auto result = _value->serialize(out);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            }
+        }
+        return {};
+    }
+
+    std::expected<void, SerialError> MetaMember::deserialize(Deserializer &in) {
+        syncArray();
+        for (u32 i = 0; i < arraysize(); ++i) {
+            if (isTypeStruct()) {
+                auto _struct = std::get<std::shared_ptr<MetaStruct>>(m_values[i]);
+                _struct->deserialize(in);
+                auto result = _struct->deserialize(in);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            } else if (isTypeEnum()) {
+                auto _enum = std::get<std::shared_ptr<MetaEnum>>(m_values[i]);
+                _enum->deserialize(in);
+                auto result = _enum->deserialize(in);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            } else if (isTypeValue()) {
+                auto _value = std::get<std::shared_ptr<MetaValue>>(m_values[i]);
+                auto result = _value->deserialize(in);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            }
+        }
+        return {};
     }
 
     std::unique_ptr<IClonable> MetaMember::clone(bool deep) const {

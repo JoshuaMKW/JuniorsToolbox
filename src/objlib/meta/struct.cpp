@@ -1,5 +1,5 @@
-#include "clone.hpp"
 #include "objlib/meta/struct.hpp"
+#include "clone.hpp"
 #include "objlib/meta/enum.hpp"
 #include "objlib/meta/error.hpp"
 #include "objlib/template.hpp"
@@ -91,7 +91,29 @@ namespace Toolbox::Object {
             out << "\n";
     }
 
-    bool MetaStruct::operator==(const MetaStruct &other) const = default;
+    bool MetaStruct::operator==(const MetaStruct& other) const {
+        return m_name == other.m_name && m_members == other.m_members && m_parent == other.m_parent;
+    }
+
+    std::expected<void, SerialError> MetaStruct::serialize(Serializer &out) const {
+        for (auto m : m_members) {
+            auto result = m->serialize(out);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+        return {};
+    }
+
+    std::expected<void, SerialError> MetaStruct::deserialize(Deserializer &in) {
+        for (auto m : m_members) {
+            auto result = m->deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+        return {};
+    }
 
     std::unique_ptr<IClonable> MetaStruct::clone(bool deep) const {
         struct protected_ctor_handler : public MetaStruct {};

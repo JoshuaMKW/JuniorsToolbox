@@ -4,6 +4,7 @@
 #include "enum.hpp"
 #include "error.hpp"
 #include "objlib/qualname.hpp"
+#include "serial.hpp"
 #include "struct.hpp"
 #include "value.hpp"
 #include <expected>
@@ -48,7 +49,7 @@ namespace Toolbox::Object {
         return getArrayIndex(name, 0);
     }
 
-    class MetaMember : public IClonable {
+    class MetaMember : public ISerializable, public IClonable {
     public:
         using value_type = std::variant<std::shared_ptr<MetaStruct>, std::shared_ptr<MetaEnum>,
                                         std::shared_ptr<MetaValue>>;
@@ -233,6 +234,9 @@ namespace Toolbox::Object {
             if (m_values.size() != asize)
                 m_values.resize(asize);
         }
+
+        std::expected<void, SerialError> serialize(Serializer &out) const override;
+        std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
         std::unique_ptr<IClonable> clone(bool deep) const override;
 

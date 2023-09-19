@@ -15,6 +15,8 @@ namespace Toolbox::Object {
         virtual ~NameRef() = default;
 
         [[nodiscard]] std::string_view name() const { return m_name; }
+        [[nodiscard]] u16 code() const { return m_name_hash; }
+
         void setName(std::string_view name) {
             m_name_hash = calcKeyCode(name);
             m_name      = name;

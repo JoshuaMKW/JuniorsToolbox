@@ -1,6 +1,7 @@
 #pragma once
 
-#include "json.hpp"
+#include "jsonlib.hpp"
+#include "fsystem.hpp"
 #include "meta/member.hpp"
 #include "objlib/meta/enum.hpp"
 #include "objlib/meta/value.hpp"
@@ -23,18 +24,21 @@ namespace Toolbox::Object {
 
     class Template : public ISerializable {
     public:
+        friend class TemplateFactory;
+
         using json_t = nlohmann::ordered_json;
 
         Template() = delete;
-        Template(std::string_view type);
-        Template(std::string_view type, std::string_view name) : m_type(type), m_name(name) {}
-        Template(std::string_view type, Deserializer &in) : m_type(type) { deserialize(in); }
         Template(const Template &) = default;
         Template(Template &&)      = default;
         ~Template()                = default;
 
+    protected:
+        Template(std::string_view type);
+        Template(std::string_view type, Deserializer &in) : m_type(type) { deserialize(in); }
+
+    public:
         [[nodiscard]] std::string_view type() const { return m_type; }
-        [[nodiscard]] std::string_view longName() const { return m_name; }
 
         [[nodiscard]] std::vector<TemplateWizard> wizards() const { return m_wizards; }
 
@@ -69,12 +73,21 @@ namespace Toolbox::Object {
 
     private:
         std::string m_type;
-        std::string m_name;
 
         std::vector<TemplateWizard> m_wizards = {};
 
         std::vector<MetaStruct> m_struct_cache = {};
         std::vector<MetaEnum> m_enum_cache     = {};
+    };
+
+    class TemplateFactory {
+    public:
+        using create_ret_t = std::shared_ptr<Template>;
+        using create_err_t = std::variant<FSError, JSONError>;
+        using create_t = std::expected<create_ret_t, create_err_t>;
+
+        // Cached create method
+        static create_t create(std::string_view type);
     };
 
 }  // namespace Toolbox::Object

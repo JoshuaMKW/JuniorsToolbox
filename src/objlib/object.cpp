@@ -129,6 +129,67 @@ namespace Toolbox::Object {
     }
 
     std::expected<void, SerialError> VirtualSceneObject::deserialize(Deserializer &in) {
+        // Metadata
+        auto length = in.read<u32>();
+        std::streampos endpos = static_cast<std::size_t>(in.tell()) + length + 4;
+
+        // Type
+        NameRef type;
+        {
+            auto result = type.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        // Name
+        NameRef name;
+        {
+            auto result = name.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        m_type = type.name();
+        setNameRef(name);
+
+        auto template_result = TemplateFactory::create(m_type);
+        if (!template_result) {
+            auto error_v = template_result.error();
+            if (std::holds_alternative<FSError>(error_v)) {
+                auto error        = std::get<FSError>(error_v);
+                auto serial_error = make_serial_error(in, error.m_message);
+                return std::unexpected(serial_error);
+            } else {
+                auto error        = std::get<JSONError>(error_v);
+                auto serial_error = make_serial_error(in, error.m_message);
+                return std::unexpected(serial_error);
+            }
+        }
+
+        auto template_ = template_result.value();
+        auto wizard    = template_->getWizard();
+
+        // Members
+        for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
+            if (in.tell() >= endpos) {
+                auto err = make_serial_error(
+                    in, std::format(
+                            "Unexpected end of file. {} ({}) expected {} members but only found {}",
+                            m_type, m_nameref.name(), wizard->m_init_members.size(), i + 1));
+                return std::unexpected(err);
+            }
+            auto &m = wizard->m_init_members[i];
+            auto this_member = std::reinterpret_pointer_cast<MetaMember, IClonable>(m.clone(true));
+            auto result      = this_member->deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            m_members.push_back(this_member);
+        }
+
+        in.seek(endpos);
         return {};
     }
 
@@ -149,6 +210,7 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
         m_children.push_back(child);
+        updateGroupSize();
         return {};
     }
 
@@ -161,6 +223,7 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
         m_children.erase(it);
+        updateGroupSize();
         return {};
     }
 
@@ -183,6 +246,7 @@ namespace Toolbox::Object {
 
         if (name.depth() == 1) {
             m_children.erase(it);
+            updateGroupSize();
             return {};
         }
 
@@ -241,7 +305,114 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::expected<void, SerialError> GroupSceneObject::deserialize(Deserializer &in) { return {}; }
+    std::expected<void, SerialError> GroupSceneObject::deserialize(Deserializer &in) {
+        // Metadata
+        auto length           = in.read<u32>();
+        std::streampos endpos = static_cast<std::size_t>(in.tell()) + length + 4;
+
+        // Type
+        NameRef obj_type;
+        {
+            auto result = obj_type.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        // Name
+        NameRef obj_name;
+        {
+            auto result = obj_name.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        m_type = obj_type.name();
+        setNameRef(obj_name);
+
+        auto template_result = TemplateFactory::create(m_type);
+        if (!template_result) {
+            auto error_v = template_result.error();
+            if (std::holds_alternative<FSError>(error_v)) {
+                auto error        = std::get<FSError>(error_v);
+                auto serial_error = make_serial_error(in, error.m_message);
+                return std::unexpected(serial_error);
+            } else {
+                auto error        = std::get<JSONError>(error_v);
+                auto serial_error = make_serial_error(in, error.m_message);
+                return std::unexpected(serial_error);
+            }
+        }
+
+        auto template_ = template_result.value();
+        auto wizard    = template_->getWizard();
+
+        // Members
+        bool late_group_size = (obj_type.code() == 15406 || obj_type.code() == 9858);
+        for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
+            if (in.tell() >= endpos) {
+                auto err = make_serial_error(
+                    in,
+                    std::format(
+                        "Unexpected end of file. {} ({}) expected {} members but only found {}",
+                        m_type, m_nameref.name(), wizard->m_init_members.size(), i + 1));
+                return std::unexpected(err);
+            }
+            if (late_group_size && i == 1) {
+                m_group_size->deserialize(in);
+                continue;
+            } else if (i == 0) {
+                m_group_size->deserialize(in);
+                continue;
+            }
+            auto &m          = wizard->m_init_members[i];
+            auto this_member = std::reinterpret_pointer_cast<MetaMember, IClonable>(m.clone(true));
+            auto result      = this_member->deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            m_members.push_back(this_member);
+        }
+
+        // Children
+        for (size_t i = 0; i < getGroupSize(); ++i) {
+            if (in.tell() >= endpos) {
+                auto err = make_serial_error(
+                    in,
+                    std::format(
+                        "Unexpected end of file. {} ({}) expected {} children but only found {}",
+                        m_type, m_nameref.name(), getGroupSize(), i + 1));
+                return std::unexpected(err);
+            }
+            auto result = ObjectFactory::create(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            addChild(result.value());
+        }
+
+        in.seek(endpos);
+        return {};
+    }
+
+    size_t GroupSceneObject::getGroupSize() const {
+        auto group_size = m_group_size->value<MetaValue>(0);
+        if (!group_size) {
+            return 0;
+        }
+        return group_size.value()->get<u32>().value();
+    }
+
+    void GroupSceneObject::setGroupSize(size_t size) {
+        auto group_size = m_group_size->value<MetaValue>(0);
+        if (!group_size) {
+            return;
+        }
+        group_size.value()->set(static_cast<u32>(size));
+    }
+
+    void GroupSceneObject::updateGroupSize() { setGroupSize(m_children.size()); }
 
     /* PHYSICAL SCENE OBJECT */
 
@@ -324,7 +495,106 @@ namespace Toolbox::Object {
     }
 
     std::expected<void, SerialError> PhysicalSceneObject::deserialize(Deserializer &in) {
-        return std::expected<void, SerialError>();
+        // Metadata
+        auto length           = in.read<u32>();
+        std::streampos endpos = static_cast<std::size_t>(in.tell()) + length + 4;
+
+        // Type
+        NameRef type;
+        {
+            auto result = type.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        // Name
+        NameRef name;
+        {
+            auto result = name.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        m_type = type.name();
+        setNameRef(name);
+
+        auto template_result = TemplateFactory::create(m_type);
+        if (!template_result) {
+            auto error_v = template_result.error();
+            if (std::holds_alternative<FSError>(error_v)) {
+                auto error        = std::get<FSError>(error_v);
+                auto serial_error = make_serial_error(in, error.m_message);
+                return std::unexpected(serial_error);
+            } else {
+                auto error        = std::get<JSONError>(error_v);
+                auto serial_error = make_serial_error(in, error.m_message);
+                return std::unexpected(serial_error);
+            }
+        }
+
+        auto template_ = template_result.value();
+        auto wizard    = template_->getWizard();
+
+        // Members
+        for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
+            if (in.tell() >= endpos) {
+                auto err = make_serial_error(
+                    in, std::format(
+                            "Unexpected end of file. {} ({}) expected {} members but only found {}",
+                            m_type, m_nameref.name(), wizard->m_init_members.size(), i + 1));
+                return std::unexpected(err);
+            }
+            auto &m          = wizard->m_init_members[i];
+            auto this_member = std::reinterpret_pointer_cast<MetaMember, IClonable>(m.clone(true));
+            auto result      = this_member->deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            m_members.push_back(this_member);
+        }
+
+        in.seek(endpos);
+        return {};
     }
+
+    ObjectFactory::create_t ObjectFactory::create(Deserializer &in) {
+        struct protected_ctor_handler_group : public GroupSceneObject {};
+        struct protected_ctor_handler_physical : public PhysicalSceneObject {};
+
+        std::shared_ptr<ISceneObject> object = {};
+        if (isGroupObject(in)) {
+            object = std::make_shared<protected_ctor_handler_group>();
+        } else {
+            object = std::make_shared<protected_ctor_handler_physical>();
+        }
+        auto result = object->deserialize(in);
+        if (!result) {
+            return std::unexpected(result.error());
+        }
+        return object;
+    }
+
+    static std::vector<u16> s_group_hashes = {16824, 15406, 28318, 18246, 43971, 9858, 25289, 33769,
+                                              49941, 13756, 65459, 38017, 47488, 8719, 22637};
+
+    bool ObjectFactory::isGroupObject(std::string_view type) {
+        u16 hash = NameRef::calcKeyCode(type);
+        return std::find(s_group_hashes.begin(), s_group_hashes.end(), hash) !=
+               s_group_hashes.end();
+    }
+    bool ObjectFactory::isGroupObject(Deserializer &in) {
+        in.pushBreakpoint();
+        in.seek(4);
+        u16 hash = in.read<u16>();
+        in.popBreakpoint();
+        return std::find(s_group_hashes.begin(), s_group_hashes.end(), hash) !=
+               s_group_hashes.end();
+    }
+
+    bool ObjectFactory::isPhysicalObject(std::string_view type) { return false; }
+
+    bool ObjectFactory::isPhysicalObject(Deserializer &in) { return false; }
 
 }  // namespace Toolbox::Object

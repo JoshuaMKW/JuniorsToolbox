@@ -3,6 +3,7 @@
 #include "color.hpp"
 #include "jsonlib.hpp"
 #include "objlib/transform.hpp"
+#include "serial.hpp"
 #include "types.hpp"
 #include <expected>
 #include <functional>
@@ -305,7 +306,7 @@ namespace Toolbox::Object {
         }
     }
 
-    class MetaValue {
+    class MetaValue : public ISerializable {
     public:
         using value_type =
             std::variant<bool, s8, u8, s16, u16, s32, u32, s64, u64, f32, f64, std::string,
@@ -344,7 +345,7 @@ namespace Toolbox::Object {
             }
         }
 
-        template <typename T, bool comment = false> constexpr bool set(const T &value) {
+      template <typename T, bool comment = false> constexpr bool set(const T &value) {
             if constexpr (std::is_same_v<std::remove_reference_t<T>, std::string> && comment) {
                 m_type = MetaType::COMMENT;
             } else {
@@ -358,7 +359,10 @@ namespace Toolbox::Object {
 
         [[nodiscard]] std::string toString() const;
 
-        constexpr bool operator==(const MetaValue &rhs) const = default;
+        bool operator==(const MetaValue &other) const;
+
+        std::expected<void, SerialError> serialize(Serializer &out) const override;
+        std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
     private:
         value_type m_value;

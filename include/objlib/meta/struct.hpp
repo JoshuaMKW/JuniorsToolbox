@@ -3,6 +3,7 @@
 #include "clone.hpp"
 #include "error.hpp"
 #include "objlib/qualname.hpp"
+#include "serial.hpp"
 #include <expected>
 #include <string>
 #include <string_view>
@@ -13,10 +14,10 @@ namespace Toolbox::Object {
 
     class MetaMember;
 
-    class MetaStruct : public IClonable {
+    class MetaStruct : public ISerializable, public IClonable {
     public:
-        using MemberT = std::variant<std::shared_ptr<MetaMember>, std::shared_ptr<MetaStruct>>;
-        using GetMemberT = std::expected<MemberT, MetaScopeError>;
+        using MemberT      = std::variant<std::shared_ptr<MetaMember>, std::shared_ptr<MetaStruct>>;
+        using GetMemberT   = std::expected<MemberT, MetaScopeError>;
         using CacheMemberT = std::unordered_map<std::string, MemberT>;
 
         MetaStruct(std::string_view name) : m_name(name) {}
@@ -50,6 +51,9 @@ namespace Toolbox::Object {
         void dump(std::ostream &out) const { dump(out, 0, 2, false); }
 
         bool operator==(const MetaStruct &other) const;
+
+        std::expected<void, SerialError> serialize(Serializer &out) const override;
+        std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
         std::unique_ptr<IClonable> clone(bool deep) const override;
 

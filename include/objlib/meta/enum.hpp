@@ -2,6 +2,7 @@
 
 #include "types.hpp"
 #include "value.hpp"
+#include "serial.hpp"
 #include <expected>
 #include <optional>
 #include <string>
@@ -10,7 +11,7 @@
 
 namespace Toolbox::Object {
 
-    class MetaEnum {
+    class MetaEnum : public ISerializable {
     public:
         using enum_type = std::pair<std::string, MetaValue>;
 
@@ -280,7 +281,10 @@ namespace Toolbox::Object {
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
 
-        constexpr bool operator==(const MetaEnum &rhs) const = default;
+        constexpr bool operator==(const MetaEnum &other) const;
+
+        std::expected<void, SerialError> serialize(Serializer &out) const override;
+        std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
     private:
         MetaType m_type;

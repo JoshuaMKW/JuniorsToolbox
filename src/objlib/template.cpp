@@ -12,6 +12,7 @@
 #include <optional>
 
 namespace Toolbox::Object {
+
     Template::Template(std::string_view type) : m_type(type) {
         auto p = std::filesystem::current_path();
         std::ifstream file("./Templates/" + std::string(type) + ".json", std::ios::in);
@@ -35,8 +36,6 @@ namespace Toolbox::Object {
             in.stream() >> j;
 
             for (auto &item : j.items()) {
-                m_name = item.key();
-
                 json_t &metadata    = item.value();
                 json_t &member_data = metadata["Members"];
                 json_t &struct_data = metadata["Structs"];
@@ -351,6 +350,30 @@ namespace Toolbox::Object {
             }
             m_wizards.emplace_back(wizard);
         }
+    }
+
+    TemplateFactory::create_t TemplateFactory::create(std::string_view type) {
+        struct protected_ctor_handler : public Template {
+            protected_ctor_handler(std::string_view type) : Template(type) {}
+        };
+
+        static std::unordered_map<std::string, std::shared_ptr<Template>> s_template_cache;
+
+        auto type_str = std::string(type);
+        if (s_template_cache.contains(type_str)) {
+            return s_template_cache[type_str];
+        }
+
+        std::shared_ptr<Template> template_;
+        try {
+            template_ = std::make_shared<protected_ctor_handler>(type);
+        } catch (std::runtime_error &e) {
+            auto err = make_fs_error(std::error_code(), e.what());
+            return std::unexpected(err);
+        }
+
+        s_template_cache[type_str] = template_;
+        return template_;
     }
 
 }  // namespace Toolbox::Object
