@@ -25,6 +25,7 @@ namespace Toolbox::Scene {
         void setRoot(std::shared_ptr<Object::GroupSceneObject> root) { m_root = root; }
 
         std::shared_ptr<Object::ISceneObject> findObject(std::string_view name) const;
+        std::shared_ptr<Object::ISceneObject> findObject(const QualifiedName &name) const;
 
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
