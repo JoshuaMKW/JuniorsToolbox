@@ -13,13 +13,13 @@
                 }
             },
             "Warp": {
-                "Point{i}": {
+                "PointArray": {
                     "Type": "WarpPoint",
                     "ArraySize": 2
                 }
             },
             "VertexRender": {
-                "Vertex{i}": {
+                "VertexArray": {
                     "Type": "INT",
                     "ArraySize": 2
                 }
@@ -51,18 +51,18 @@
                 "ArraySize": 1
             },
             "WarpCount": {
-                "Type": "INT",
+                "Type": "U32",
                 "ArraySize": 1
             },
             "InitWarpID": {
                 "Type": "INT",
                 "ArraySize": 1
             },
-            "VertexRender{C}": {
+            "VertexRenderArray": {
                 "Type": "VertexRender",
                 "ArraySize": "WarpCount"
             },
-            "Warp{C}": {
+            "WarpArray": {
                 "Type": "Warp",
                 "ArraySize": "WarpCount"
             }
@@ -77,11 +77,11 @@
                 "BGCheckListWarpCount": 0,
                 "WarpCount": 0,
                 "InitWarpID": 0,
-                "VertexRender{C}": {
-                    "Vertex{i}": 0
+                "VertexRenderArray": {
+                    "VertexArray": 0
                 },
-                "Warp{C}": {
-                    "Point{i}": {
+                "WarpArray": {
+                    "PointArray": {
                         "Name": "(null)",
                         "Transform": [
                             [

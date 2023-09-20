@@ -126,7 +126,7 @@ namespace Toolbox::Object {
         case MetaType::RGBA:
             return std::format("{}", std::get<Color::RGBA32>(m_value));
         case MetaType::COMMENT:
-            return std::get<std::string>(m_value);
+            //return std::get<std::string>(m_value);
         default:
             return "null";
         }

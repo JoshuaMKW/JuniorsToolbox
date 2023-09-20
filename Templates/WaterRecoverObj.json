@@ -23,10 +23,10 @@
                 "ArraySize": 1
             },
             "LightCount": {
-                "Type": "INT",
+                "Type": "U32",
                 "ArraySize": 1
             },
-            "Light{i}": {
+            "LightArray": {
                 "Type": "LightInfo",
                 "ArraySize": "LightCount"
             },
@@ -56,7 +56,7 @@
                 ],
                 "Character": "水回復透明オブジェ キャラ",
                 "LightCount": 0,
-                "Light{i}": {
+                "LightArray": {
                     "ID": 0,
                     "Name": "LightX"
                 },

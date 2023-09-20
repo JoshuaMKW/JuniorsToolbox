@@ -2,6 +2,7 @@
 #include "objlib/object.hpp"
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"
+#include <chrono>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -9,22 +10,20 @@
 using namespace Toolbox::Object;
 
 int main(int argc, char **argv) {
-    /*auto t = TemplateFactory::create("MapObjGeneral");
-    auto g = TemplateFactory::create("GroupObj");
+    using std::chrono::duration;
+    using std::chrono::duration_cast;
+    using std::chrono::high_resolution_clock;
+    using std::chrono::milliseconds;
 
-    Toolbox::Object::GroupSceneObject group(*g.value());
-
-    auto biancoLamp = std::make_shared<Toolbox::Object::PhysicalSceneObject>(*t.value(), "Bianco
-    Hills Lamp"); auto defaultObj =
-    std::make_shared<Toolbox::Object::PhysicalSceneObject>(*t.value());
-
-    group.addChild(biancoLamp);
-    group.addChild(defaultObj);
-
-    group.dump(std::cout, 0, 4);*/
+    auto t1 = high_resolution_clock::now();
 
     Toolbox::Scene::SceneInstance scene("C:/Users/Kyler-Josh/Dropbox/Master_Builds/Eclipse_"
                                         "Master/files/data/scene/dolpic10.szs_ext/scene");
-    scene.dump(std::cout);
+
+    auto t2 = high_resolution_clock::now();
+
+    auto ms_int = duration_cast<milliseconds>(t2 - t1);
+    std::cout << "Scene loaded in " << ms_int.count() << "ms\n";
+
     return 0;
 }

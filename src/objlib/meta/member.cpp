@@ -121,7 +121,7 @@ namespace Toolbox::Object {
             out << self_indent << "];\n";
         } else if (isTypeValue()) {
             out << self_indent
-                << meta_type_name(std::get<std::shared_ptr<MetaEnum>>(m_values[0])->type())
+                << meta_type_name(std::get<std::shared_ptr<MetaValue>>(m_values[0])->type())
                 << m_name << " = [\n";
             for (const auto &v : m_values) {
                 auto _value = std::get<std::shared_ptr<MetaValue>>(v);
@@ -162,14 +162,12 @@ namespace Toolbox::Object {
         for (u32 i = 0; i < arraysize(); ++i) {
             if (isTypeStruct()) {
                 auto _struct = std::get<std::shared_ptr<MetaStruct>>(m_values[i]);
-                _struct->deserialize(in);
                 auto result = _struct->deserialize(in);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
             } else if (isTypeEnum()) {
                 auto _enum = std::get<std::shared_ptr<MetaEnum>>(m_values[i]);
-                _enum->deserialize(in);
                 auto result = _enum->deserialize(in);
                 if (!result) {
                     return std::unexpected(result.error());
@@ -190,6 +188,7 @@ namespace Toolbox::Object {
         member.m_name      = m_name;
         member.m_parent    = m_parent;
         member.m_arraysize = m_arraysize;
+        member.m_default   = m_default;
 
         if (deep) {
             for (auto &value : m_values) {

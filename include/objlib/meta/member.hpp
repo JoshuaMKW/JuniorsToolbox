@@ -55,71 +55,96 @@ namespace Toolbox::Object {
             std::shared_ptr<MetaValue> m_ref;
             std::string m_name;
 
-            bool operator==(const ReferenceInfo& other) const {
+            bool operator==(const ReferenceInfo &other) const {
                 return m_ref == other.m_ref && m_name == other.m_name;
             }
         };
 
         using value_type = std::variant<std::shared_ptr<MetaStruct>, std::shared_ptr<MetaEnum>,
                                         std::shared_ptr<MetaValue>>;
-        using size_type  = std::variant<u32, ReferenceInfo>;
+        using const_value_type =
+            std::variant<std::shared_ptr<const MetaStruct>, std::shared_ptr<const MetaEnum>,
+                         std::shared_ptr<const MetaValue>>;
+        using size_type = std::variant<u32, ReferenceInfo>;
 
-        MetaMember(std::string_view name, const ReferenceInfo &arraysize)
-            : m_name(name), m_values(), m_arraysize(arraysize) {}
-        MetaMember(std::string_view name, const MetaValue &value) : m_name(name), m_values(), m_arraysize(static_cast<u32>(1)) {
+        MetaMember(std::string_view name, const ReferenceInfo &arraysize, value_type default_value)
+            : m_name(name), m_values(), m_arraysize(arraysize), m_default(default_value) {}
+        MetaMember(std::string_view name, const MetaValue &value)
+            : m_name(name), m_values(), m_arraysize(static_cast<u32>(1)) {
             auto p = std::make_shared<MetaValue>(value);
             m_values.emplace_back(std::move(p));
+            m_default = std::make_shared<MetaValue>(value);
         }
         MetaMember(std::string_view name, const MetaStruct &value)
             : m_name(name), m_values(), m_arraysize(static_cast<u32>(1)) {
             auto p = std::make_shared<MetaStruct>(value);
             m_values.emplace_back(std::move(p));
+            m_default = std::make_shared<MetaStruct>(value);
         }
         MetaMember(std::string_view name, const MetaEnum &value)
             : m_name(name), m_values(), m_arraysize(static_cast<u32>(1)) {
             auto p = std::make_shared<MetaEnum>(value);
             m_values.emplace_back(std::move(p));
-        }
-        MetaMember(std::string_view name, const std::vector<MetaValue> &values)
-            : m_name(name), m_values(), m_arraysize(static_cast<u32>(values.size())) {
-            for (const auto &value : values) {
-                auto p = std::make_shared<MetaValue>(value);
-                m_values.emplace_back(std::move(p));
-            }
-        }
-        MetaMember(std::string_view name, const std::vector<MetaStruct> &values)
-            : m_name(name), m_values(), m_arraysize(static_cast<u32>(values.size())) {
-            for (const auto &value : values) {
-                auto p = std::make_shared<MetaStruct>(value);
-                m_values.emplace_back(std::move(p));
-            }
-        }
-        MetaMember(std::string_view name, const std::vector<MetaEnum> &values)
-            : m_name(name), m_values(), m_arraysize(static_cast<u32>(values.size())) {
-            for (const auto &value : values) {
-                auto p = std::make_shared<MetaEnum>(value);
-                m_values.emplace_back(std::move(p));
-            }
+            m_default = std::make_shared<MetaEnum>(value);
         }
         MetaMember(std::string_view name, const std::vector<MetaValue> &values,
-                   const ReferenceInfo &arraysize)
-            : m_name(name), m_values(), m_arraysize(arraysize) {
+                   value_type default_value)
+            : m_name(name), m_values(), m_arraysize(static_cast<u32>(values.size())),
+              m_default(default_value) {
+            if (values.empty())
+                return;
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaValue>(value);
                 m_values.emplace_back(std::move(p));
             }
         }
         MetaMember(std::string_view name, const std::vector<MetaStruct> &values,
-                   const ReferenceInfo &arraysize)
-            : m_name(name), m_values(), m_arraysize(arraysize) {
+                   value_type default_value)
+            : m_name(name), m_values(), m_arraysize(static_cast<u32>(values.size())),
+              m_default(default_value) {
+            if (values.empty())
+                return;
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaStruct>(value);
                 m_values.emplace_back(std::move(p));
             }
         }
         MetaMember(std::string_view name, const std::vector<MetaEnum> &values,
-                   const ReferenceInfo &arraysize)
-            : m_name(name), m_values(), m_arraysize(arraysize) {
+                   value_type default_value)
+            : m_name(name), m_values(), m_arraysize(static_cast<u32>(values.size())),
+              m_default(default_value) {
+            if (values.empty())
+                return;
+            for (const auto &value : values) {
+                auto p = std::make_shared<MetaEnum>(value);
+                m_values.emplace_back(std::move(p));
+            }
+        }
+        MetaMember(std::string_view name, const std::vector<MetaValue> &values,
+                   const ReferenceInfo &arraysize, value_type default_value)
+            : m_name(name), m_values(), m_arraysize(arraysize), m_default(default_value) {
+            if (values.empty())
+                return;
+            for (const auto &value : values) {
+                auto p = std::make_shared<MetaValue>(value);
+                m_values.emplace_back(std::move(p));
+            }
+        }
+        MetaMember(std::string_view name, const std::vector<MetaStruct> &values,
+                   const ReferenceInfo &arraysize, value_type default_value)
+            : m_name(name), m_values(), m_arraysize(arraysize), m_default(default_value) {
+            if (values.empty())
+                return;
+            for (const auto &value : values) {
+                auto p = std::make_shared<MetaStruct>(value);
+                m_values.emplace_back(std::move(p));
+            }
+        }
+        MetaMember(std::string_view name, const std::vector<MetaEnum> &values,
+                   const ReferenceInfo &arraysize, value_type default_value)
+            : m_name(name), m_values(), m_arraysize(arraysize), m_default(default_value) {
+            if (values.empty())
+                return;
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaEnum>(value);
                 m_values.emplace_back(std::move(p));
@@ -139,15 +164,19 @@ namespace Toolbox::Object {
         [[nodiscard]] QualifiedName qualifiedName() const;
 
         template <typename T>
-        std::expected<std::shared_ptr<T>, MetaError> value(size_t index) const {
+        [[nodiscard]] std::expected<std::shared_ptr<T>, MetaError> value(size_t index) const {
             return std::unexpected("Invalid type");
         }
         template <>
-        std::expected<std::shared_ptr<MetaStruct>, MetaError> value<MetaStruct>(size_t index) const;
+        [[nodiscard]] std::expected<std::shared_ptr<MetaStruct>, MetaError>
+        value<MetaStruct>(size_t index) const;
         template <>
-        std::expected<std::shared_ptr<MetaEnum>, MetaError> value<MetaEnum>(size_t index) const;
+        [[nodiscard]] std::expected<std::shared_ptr<MetaEnum>, MetaError>
+        value<MetaEnum>(size_t index) const;
         template <>
-        std::expected<std::shared_ptr<MetaValue>, MetaError> value<MetaValue>(size_t index) const;
+        [[nodiscard]] std::expected<std::shared_ptr<MetaValue>, MetaError>
+        value<MetaValue>(size_t index) const;
+        [[nodiscard]] value_type defaultValue() const { return m_default; }
 
         [[nodiscard]] u32 arraysize() const {
             if (std::holds_alternative<ReferenceInfo>(m_arraysize)) {
@@ -245,8 +274,17 @@ namespace Toolbox::Object {
 
         void syncArray() {
             size_t asize = arraysize();
-            if (m_values.size() != asize)
+            if (m_values.size() == asize)
+                return;
+
+            if (m_values.size() > asize) {
                 m_values.resize(asize);
+                return;
+            }
+
+            for (size_t i = m_values.size(); i < asize; ++i) {
+                m_values.emplace_back(m_default);
+            }
         }
 
         std::expected<void, SerialError> serialize(Serializer &out) const override;
@@ -265,6 +303,7 @@ namespace Toolbox::Object {
         std::string m_name;
         std::vector<value_type> m_values;
         size_type m_arraysize;
+        MetaMember::value_type m_default;
         MetaStruct *m_parent = nullptr;
     };
 

@@ -14,14 +14,14 @@
             }
         },
         "Members": {
-            "WarpPoint{i}": {
+            "WarpPointArray": {
                 "Type": "Warp",
                 "ArraySize": 0
             }
         },
         "Wizard": {
             "Default": {
-                "WarpPoint{i}": {
+                "WarpPointArray": {
                     "Name": "WarpXY",
                     "Transform": [
                         [

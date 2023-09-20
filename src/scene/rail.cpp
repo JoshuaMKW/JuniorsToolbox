@@ -18,13 +18,15 @@ namespace Toolbox::Scene {
 
         m_flags = std::make_shared<MetaMember>("Flags", MetaValue(flags));
 
-        std::vector<MetaValue> values;
-        values.push_back(MetaValue(static_cast<s16>(-1)));
-        values.push_back(MetaValue(static_cast<s16>(-1)));
-        values.push_back(MetaValue(static_cast<s16>(-1)));
-        values.push_back(MetaValue(static_cast<s16>(-1)));
+        MetaValue values_default = MetaValue(static_cast<s16>(-1));
 
-        m_values = std::make_shared<MetaMember>("Values", values);
+        std::vector<MetaValue> values;
+        values.push_back(values_default);
+        values.push_back(values_default);
+        values.push_back(values_default);
+        values.push_back(values_default);
+
+        m_values = std::make_shared<MetaMember>("Values", values, std::make_shared<MetaValue>(values_default));
 
         m_connection_count =
             std::make_shared<MetaMember>("ConnectionCount", MetaValue(static_cast<s16>(0)));
@@ -32,8 +34,10 @@ namespace Toolbox::Scene {
         auto connection_value          = m_connection_count->value<MetaValue>(0).value();
         MetaMember::ReferenceInfo info = {connection_value, "ConnectionCount"};
 
-        m_connections = std::make_shared<MetaMember>("Connections", info);
-        m_distances   = std::make_shared<MetaMember>("Periods", info);
+        m_connections = std::make_shared<MetaMember>(
+            "Connections", info, std::make_shared<MetaValue>(MetaValue(static_cast<s16>(0))));
+        m_distances = std::make_shared<MetaMember>(
+            "Distances", info, std::make_shared<MetaValue>(MetaValue(static_cast<f32>(0))));
     }
 
     glm::vec3 RailNode::getPosition() const {
@@ -224,6 +228,7 @@ namespace Toolbox::Scene {
             return std::unexpected(connection.error());
         }
         connection.value()->set<s16>(value);
+        return {};
     }
 
     std::expected<void, MetaError> RailNode::setConnectionDistance(int connection,

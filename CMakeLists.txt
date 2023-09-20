@@ -38,6 +38,7 @@ add_subdirectory(lib/j3dultra)
 target_link_libraries(JuniorsToolbox PRIVATE j3dultra)
 target_include_directories(JuniorsToolbox PRIVATE "include" "lib/nlohmann" "lib/glm::glm", "lib/j3dultra")
 
+
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
                        ${CMAKE_SOURCE_DIR}/Templates/ $<TARGET_FILE_DIR:JuniorsToolbox>/Templates/)

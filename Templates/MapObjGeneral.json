@@ -26,7 +26,7 @@
                 "Type": "S32",
                 "ArraySize": 1
             },
-            "Light{i}": {
+            "LightArray": {
                 "Type": "LightInfo",
                 "ArraySize": "LightCount"
             },
@@ -60,7 +60,7 @@
                 ],
                 "Character": "LampBianco キャラ",
                 "LightCount": 0,
-                "Light{i}": {
+                "LightArray": {
                     "ID": 0,
                     "Name": "LightX"
                 },

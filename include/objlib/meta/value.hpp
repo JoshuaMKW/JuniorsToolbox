@@ -316,6 +316,52 @@ namespace Toolbox::Object {
         template <typename T> explicit constexpr MetaValue(T value) : m_value(value) {
             set<T, false>(value);
         }
+        constexpr MetaValue(MetaType type) : m_type(type) {
+            switch (type) {
+            case MetaType::BOOL:
+                m_value = false;
+                break;
+            case MetaType::S8:
+                m_value = static_cast<s8>(0);
+                break;
+            case MetaType::U8:
+                m_value = static_cast<u8>(0);
+                break;
+            case MetaType::S16:
+                m_value = static_cast<s16>(0);
+                break;
+            case MetaType::U16:
+                m_value = static_cast<u16>(0);
+                break;
+            case MetaType::S32:
+                m_value = static_cast<s32>(0);
+                break;
+            case MetaType::U32:
+                m_value = static_cast<u32>(0);
+                break;
+            case MetaType::F32:
+                m_value = static_cast<f32>(0);
+                break;
+            case MetaType::F64:
+                m_value = static_cast<f64>(0);
+                break;
+            case MetaType::STRING:
+                m_value = std::string();
+                break;
+            case MetaType::VEC3:
+                m_value = glm::vec3();
+                break;
+            case MetaType::TRANSFORM:
+                m_value = Transform();
+                break;
+            case MetaType::RGB:
+                m_value = Color::RGB24();
+                break;
+            case MetaType::RGBA:
+                m_value = Color::RGBA32();
+                break;
+            }
+        }
         constexpr MetaValue(const MetaValue &other) = default;
         constexpr MetaValue(MetaValue &&other)      = default;
 

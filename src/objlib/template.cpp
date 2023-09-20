@@ -117,9 +117,10 @@ namespace Toolbox::Object {
             enums.emplace_back(*enum_);
         }
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
-            return MetaMember(name, enums, std::get<MetaMember::ReferenceInfo>(array_size));
+            return MetaMember(name, enums, std::get<MetaMember::ReferenceInfo>(array_size),
+                              std::make_shared<MetaEnum>(*enum_));
         }
-        return MetaMember(name, enums);
+        return MetaMember(name, enums, std::make_shared<MetaEnum>(*enum_));
     }
 
     std::optional<MetaMember> Template::loadMemberStruct(std::string_view name,
@@ -134,7 +135,7 @@ namespace Toolbox::Object {
 
         size_t asize = 1;
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
-            asize = std::get<MetaMember::ReferenceInfo>(array_size).m_ref->get<s32>().value();
+            asize = std::get<MetaMember::ReferenceInfo>(array_size).m_ref->get<u32>().value();
         } else {
             asize = std::get<u32>(array_size);
         }
@@ -145,9 +146,10 @@ namespace Toolbox::Object {
             structs.emplace_back(*struct_);
         }
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
-            return MetaMember(name, structs, std::get<MetaMember::ReferenceInfo>(array_size));
+            return MetaMember(name, structs, std::get<MetaMember::ReferenceInfo>(array_size),
+                              std::make_shared<MetaStruct>(*struct_));
         }
-        return MetaMember(name, structs);
+        return MetaMember(name, structs, std::make_shared<MetaStruct>(*struct_));
     }
 
     std::optional<MetaMember> Template::loadMemberPrimitive(std::string_view name,
@@ -169,58 +171,13 @@ namespace Toolbox::Object {
         values.reserve(asize);
 
         for (size_t i = 0; i < asize; ++i) {
-            switch (vtype.value()) {
-            case MetaType::BOOL:
-                values.emplace_back(MetaValue(false));
-                break;
-            case MetaType::S8:
-                values.emplace_back(MetaValue(static_cast<s8>(0)));
-                break;
-            case MetaType::U8:
-                values.emplace_back(MetaValue(static_cast<u8>(0)));
-                break;
-            case MetaType::S16:
-                values.emplace_back(MetaValue(static_cast<s16>(0)));
-                break;
-            case MetaType::U16:
-                values.emplace_back(MetaValue(static_cast<u16>(0)));
-                break;
-            case MetaType::S32:
-                values.emplace_back(MetaValue(static_cast<s32>(0)));
-                break;
-            case MetaType::U32:
-                values.emplace_back(MetaValue(static_cast<u32>(0)));
-                break;
-            case MetaType::F32:
-                values.emplace_back(MetaValue(static_cast<f32>(0)));
-                break;
-            case MetaType::F64:
-                values.emplace_back(MetaValue(static_cast<f64>(0)));
-                break;
-            case MetaType::STRING:
-                values.emplace_back(MetaValue(std::string()));
-                break;
-            case MetaType::VEC3:
-                values.emplace_back(glm::vec3());
-                break;
-            case MetaType::TRANSFORM:
-                values.emplace_back(Transform());
-                break;
-            case MetaType::RGB:
-                values.emplace_back(Color::RGB24());
-                break;
-            case MetaType::RGBA:
-                values.emplace_back(Color::RGBA32());
-                break;
-            default:
-                // Unsupported type
-                return {};
-            }
+            values.emplace_back(MetaValue(vtype.value()));
         }
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
-            return MetaMember(name, values, std::get<MetaMember::ReferenceInfo>(array_size));
+            return MetaMember(name, values, std::get<MetaMember::ReferenceInfo>(array_size),
+                              std::make_shared<MetaValue>(vtype.value()));
         }
-        return MetaMember(name, values);
+        return MetaMember(name, values, std::make_shared<MetaValue>(vtype.value()));
     }
 
     void Template::loadMembers(json_t &members, std::vector<MetaMember> &out) {
@@ -260,7 +217,7 @@ namespace Toolbox::Object {
                 if (member_it != out.end()) {
                     auto value = member_it->value<MetaValue>(0);
                     if (value) {
-                        member_size = MetaMember::ReferenceInfo(value.value(), member_name);
+                        member_size = MetaMember::ReferenceInfo(value.value(), member_it->name());
                     }
                 }
             }
@@ -316,7 +273,7 @@ namespace Toolbox::Object {
                 }
                 inst_structs.emplace_back(struct_->name(), inst_struct_members);
             }
-            return MetaMember(default_member.name(), inst_structs);
+            return MetaMember(default_member.name(), inst_structs, default_member.defaultValue());
         }
 
         // Todo: Actually use member_json  here :P
@@ -328,7 +285,7 @@ namespace Toolbox::Object {
                 value.loadJSON(member_json);
                 inst_enums.push_back(value);
             }
-            return MetaMember(default_member.name(), inst_enums);
+            return MetaMember(default_member.name(), inst_enums, default_member.defaultValue());
         }
 
         std::vector<MetaValue> inst_values;
@@ -337,7 +294,7 @@ namespace Toolbox::Object {
             value.loadJSON(member_json);
             inst_values.push_back(value);
         }
-        return MetaMember(default_member.name(), inst_values);
+        return MetaMember(default_member.name(), inst_values, default_member.defaultValue());
     }
 
     void Template::loadWizards(json_t &wizards) {

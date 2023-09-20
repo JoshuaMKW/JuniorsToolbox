@@ -524,7 +524,7 @@ namespace Toolbox::Object {
                 obj.m_parent  = m_parent;
                 obj.m_members.reserve(m_members.size());
                 for (const auto &member : m_members) {
-                    auto new_member = make_deep_clone<MetaMember>(*member);
+                    auto new_member = make_deep_clone<MetaMember>(member);
                     obj.m_members.push_back(new_member);
                 }
                 obj.m_transform      = m_transform;
