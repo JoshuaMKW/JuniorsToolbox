@@ -191,8 +191,9 @@ namespace Toolbox {
     }
 
     inline SerialError make_serial_error(Serializer &s, std::string_view reason, int error_adjust) {
-        return make_serial_error("Unexpected byte at position {} ({:X}).", reason,
-                                 std::size_t(s.stream().tellp()) + error_adjust, s.filepath());
+        auto pos = std::max(static_cast<size_t>(s.tell()) + error_adjust, static_cast<size_t>(0));
+        return make_serial_error(std::format("Unexpected byte at position {} ({:X}).", pos, pos), reason,
+                                 pos + error_adjust, s.filepath());
     }
 
     inline SerialError make_serial_error(Serializer &s, std::string_view reason) {
@@ -201,8 +202,9 @@ namespace Toolbox {
 
     inline SerialError make_serial_error(Deserializer &s, std::string_view reason,
                                          int error_adjust) {
-        return make_serial_error("Unexpected byte at position {} ({:X}).", reason,
-                                 std::size_t(s.stream().tellg()) + error_adjust, s.filepath());
+        auto pos = std::max(static_cast<size_t>(s.tell()) + error_adjust, static_cast<size_t>(0));
+        return make_serial_error(std::format("Unexpected byte at position {} ({:X}).", pos, pos),
+                                 reason, pos + error_adjust, s.filepath());
     }
 
     inline SerialError make_serial_error(Deserializer &s, std::string_view reason) {

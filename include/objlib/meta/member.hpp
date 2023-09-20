@@ -66,15 +66,17 @@ namespace Toolbox::Object {
 
         MetaMember(std::string_view name, const ReferenceInfo &arraysize)
             : m_name(name), m_values(), m_arraysize(arraysize) {}
-        MetaMember(std::string_view name, const MetaValue &value) : m_name(name), m_values() {
+        MetaMember(std::string_view name, const MetaValue &value) : m_name(name), m_values(), m_arraysize(static_cast<u32>(1)) {
             auto p = std::make_shared<MetaValue>(value);
             m_values.emplace_back(std::move(p));
         }
-        MetaMember(std::string_view name, const MetaStruct &value) : m_name(name), m_values() {
+        MetaMember(std::string_view name, const MetaStruct &value)
+            : m_name(name), m_values(), m_arraysize(static_cast<u32>(1)) {
             auto p = std::make_shared<MetaStruct>(value);
             m_values.emplace_back(std::move(p));
         }
-        MetaMember(std::string_view name, const MetaEnum &value) : m_name(name), m_values() {
+        MetaMember(std::string_view name, const MetaEnum &value)
+            : m_name(name), m_values(), m_arraysize(static_cast<u32>(1)) {
             auto p = std::make_shared<MetaEnum>(value);
             m_values.emplace_back(std::move(p));
         }

@@ -89,16 +89,20 @@ namespace Toolbox::Object {
         addChild(std::shared_ptr<ISceneObject> child)                                        = 0;
         virtual std::expected<void, ObjectGroupError> removeChild(ISceneObject *name)        = 0;
         virtual std::expected<void, ObjectGroupError> removeChild(const QualifiedName &name) = 0;
-        virtual std::expected<std::vector<ISceneObject *>, ObjectGroupError> getChildren()   = 0;
+        [[nodiscard]] virtual std::expected<std::vector<ISceneObject *>, ObjectGroupError>
+        getChildren() = 0;
+        [[nodiscard]] virtual std::optional<std::shared_ptr<ISceneObject>>
+        getChild(const QualifiedName &name) = 0;
 
         [[nodiscard]] virtual J3DTransformInfo getTransform() const  = 0;
         virtual void setTransform(const J3DTransformInfo &transform) = 0;
 
         [[nodiscard]] virtual std::optional<std::filesystem::path> getAnimationsPath() const = 0;
-        virtual std::optional<std::string_view> getAnimationName(AnimationType type) const   = 0;
-        virtual bool loadAnimationData(std::string_view name, AnimationType type)            = 0;
+        [[nodiscard]] virtual std::optional<std::string_view>
+        getAnimationName(AnimationType type) const                                = 0;
+        virtual bool loadAnimationData(std::string_view name, AnimationType type) = 0;
 
-        virtual J3DLight getLightData(int index) = 0;
+        [[nodiscard]] virtual J3DLight getLightData(int index) = 0;
 
         virtual std::expected<void, ObjectError>
         performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) = 0;
@@ -107,16 +111,23 @@ namespace Toolbox::Object {
 
     protected:
         /* PROTECTED ABSTRACT INTERFACE */
-        virtual std::weak_ptr<J3DAnimationInstance>
+        [[nodiscard]] virtual std::weak_ptr<J3DAnimationInstance>
         getAnimationControl(AnimationType type) const = 0;
 
     public:
-        QualifiedName getQualifiedName() const;
+        [[nodiscard]] QualifiedName getQualifiedName() const;
 
         /* NON-VIRTUAL HELPERS */
-        bool hasMember(const std::string &name) const { return hasMember(QualifiedName(name)); }
-        MetaStruct::GetMemberT getMember(const std::string &name) const {
+        [[nodiscard]] bool hasMember(const std::string &name) const {
+            return hasMember(QualifiedName(name));
+        }
+        [[nodiscard]] MetaStruct::GetMemberT getMember(const std::string &name) const {
             return getMember(QualifiedName(name));
+        }
+
+        [[nodiscard]] std::optional<std::shared_ptr<ISceneObject>>
+        getChild(const std::string &name) {
+            return getChild(QualifiedName(name));
         }
 
         [[nodiscard]] size_t getAnimationFrames(AnimationType type) const;
@@ -223,10 +234,15 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        std::expected<std::vector<ISceneObject *>, ObjectGroupError> getChildren() override {
+        [[nodiscard]] std::expected<std::vector<ISceneObject *>, ObjectGroupError>
+        getChildren() override {
             ObjectGroupError err = {"Cannot get the children of a non-group object.",
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
+        }
+        [[nodiscard]] std::optional<std::shared_ptr<ISceneObject>>
+        getChild(const QualifiedName &name) override {
+            return {};
         }
 
         [[nodiscard]] J3DTransformInfo getTransform() const override { return {}; }
@@ -235,12 +251,13 @@ namespace Toolbox::Object {
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
             return {};
         }
-        std::optional<std::string_view> getAnimationName(AnimationType type) const override {
+        [[nodiscard]] std::optional<std::string_view>
+        getAnimationName(AnimationType type) const override {
             return {};
         }
         bool loadAnimationData(std::string_view name, AnimationType type) override { return false; }
 
-        J3DLight getLightData(int index) override { return {}; }
+        [[nodiscard]] J3DLight getLightData(int index) override { return {}; }
 
         std::expected<void, ObjectError>
         performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) override;
@@ -248,7 +265,8 @@ namespace Toolbox::Object {
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
     protected:
-        std::weak_ptr<J3DAnimationInstance> getAnimationControl(AnimationType type) const override {
+        [[nodiscard]] std::weak_ptr<J3DAnimationInstance>
+        getAnimationControl(AnimationType type) const override {
             return {};
         }
 
@@ -318,7 +336,10 @@ namespace Toolbox::Object {
         GroupSceneObject(GroupSceneObject &&)      = default;
 
     protected:
-        GroupSceneObject() = default;
+        GroupSceneObject() : VirtualSceneObject() {
+            m_group_size =
+                std::make_shared<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
+        }
 
     public:
         ~GroupSceneObject() override = default;
@@ -334,6 +355,9 @@ namespace Toolbox::Object {
         std::expected<void, ObjectGroupError> removeChild(const QualifiedName &name) override;
         [[nodiscard]] std::expected<std::vector<ISceneObject *>, ObjectGroupError>
         getChildren() override;
+        [[nodiscard]] std::optional<std::shared_ptr<ISceneObject>>
+        getChild(const QualifiedName &name) override;
+
         std::expected<void, ObjectError>
         performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) override;
 
@@ -457,6 +481,10 @@ namespace Toolbox::Object {
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
         }
+        [[nodiscard]] std::optional<std::shared_ptr<ISceneObject>>
+        getChild(const QualifiedName &name) override {
+            return {};
+        }
 
         [[nodiscard]] J3DTransformInfo getTransform() const override { return m_transform; }
         void setTransform(const J3DTransformInfo &transform) override { m_transform = transform; }
@@ -499,7 +527,7 @@ namespace Toolbox::Object {
                     auto new_member = make_deep_clone<MetaMember>(*member);
                     obj.m_members.push_back(new_member);
                 }
-                obj.m_transform = m_transform;
+                obj.m_transform      = m_transform;
                 obj.m_model_instance = m_model_instance;
                 return std::make_unique<PhysicalSceneObject>(std::move(obj));
             }

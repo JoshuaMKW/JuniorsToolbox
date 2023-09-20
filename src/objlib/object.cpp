@@ -140,8 +140,8 @@ namespace Toolbox::Object {
 
     std::expected<void, SerialError> VirtualSceneObject::deserialize(Deserializer &in) {
         // Metadata
-        auto length           = in.read<u32>();
-        std::streampos endpos = static_cast<std::size_t>(in.tell()) + length + 4;
+        auto length           = in.read<u32, std::endian::big>();
+        std::streampos endpos = static_cast<std::size_t>(in.tell()) + length - 4;
 
         // Type
         NameRef type;
@@ -178,12 +178,12 @@ namespace Toolbox::Object {
             }
         }
 
-        auto template_ = template_result.value();
+        auto template_ = std::move(template_result.value());
         auto wizard    = template_->getWizard();
 
         // Members
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
-            if (in.tell() >= endpos) {
+            if (in.tell() > endpos) {
                 auto err = make_serial_error(
                     in, std::format(
                             "Unexpected end of file. {} ({}) expected {} members but only found {}",
@@ -199,7 +199,7 @@ namespace Toolbox::Object {
             m_members.push_back(this_member);
         }
 
-        in.seek(endpos);
+        in.seek(endpos, std::ios::beg);
         return {};
     }
 
@@ -272,6 +272,18 @@ namespace Toolbox::Object {
         return ret;
     }
 
+    std::optional<std::shared_ptr<ISceneObject>>
+    GroupSceneObject::getChild(const QualifiedName &name) {
+        auto scope = name[0];
+        auto it    = std::find_if(m_children.begin(), m_children.end(),
+                                  [&](const auto &ptr) { return ptr->getNameRef().name() == scope; });
+        if (it == m_children.end())
+            return {};
+        if (name.depth() == 1)
+            return *it;
+        return it->get()->getChild(QualifiedName(name.begin() + 1, name.end()));
+    }
+
     std::expected<void, ObjectError>
     GroupSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) {
         ObjectGroupError err;
@@ -305,8 +317,12 @@ namespace Toolbox::Object {
             m->dump(out, indention + 1, indention_width);
         }
         out << "\n" << self_indent << "children:\n";
-        for (auto c : m_children) {
-            c->dump(out, indention + 1, indention_width);
+        if (m_children.size() > 0) {
+            for (size_t i = 0; i < m_children.size() - 1; ++i) {
+                m_children[i]->dump(out, indention + 1, indention_width);
+                out << "\n";
+            }
+            m_children.back()->dump(out, indention + 1, indention_width);
         }
         out << self_indent << "}\n";
     }
@@ -317,8 +333,8 @@ namespace Toolbox::Object {
 
     std::expected<void, SerialError> GroupSceneObject::deserialize(Deserializer &in) {
         // Metadata
-        auto length           = in.read<u32>();
-        std::streampos endpos = static_cast<std::size_t>(in.tell()) + length + 4;
+        auto length           = in.read<u32, std::endian::big>();
+        std::streampos endpos = static_cast<std::size_t>(in.tell()) + length - 4;
 
         // Type
         NameRef obj_type;
@@ -341,6 +357,8 @@ namespace Toolbox::Object {
         m_type = obj_type.name();
         setNameRef(obj_name);
 
+        const char *type_cstr = m_type.c_str();
+
         auto template_result = TemplateFactory::create(m_type);
         if (!template_result) {
             auto error_v = template_result.error();
@@ -355,25 +373,22 @@ namespace Toolbox::Object {
             }
         }
 
-        auto template_ = template_result.value();
+        auto template_ = std::move(template_result.value());
         auto wizard    = template_->getWizard();
 
         // Members
         bool late_group_size = (obj_type.code() == 15406 || obj_type.code() == 9858);
+        if (!late_group_size) {
+            m_group_size->deserialize(in);
+        }
+
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
-            if (in.tell() >= endpos) {
+            if (in.tell() > endpos) {
                 auto err = make_serial_error(
                     in, std::format(
                             "Unexpected end of file. {} ({}) expected {} members but only found {}",
                             m_type, m_nameref.name(), wizard->m_init_members.size(), i + 1));
                 return std::unexpected(err);
-            }
-            if (late_group_size && i == 1) {
-                m_group_size->deserialize(in);
-                continue;
-            } else if (i == 0) {
-                m_group_size->deserialize(in);
-                continue;
             }
             auto &m          = wizard->m_init_members[i];
             auto this_member = std::static_pointer_cast<MetaMember, IClonable>(m.clone(true));
@@ -384,14 +399,20 @@ namespace Toolbox::Object {
             m_members.push_back(this_member);
         }
 
+        if (late_group_size) {
+            m_group_size->deserialize(in);
+        }
+
+        size_t num_children = getGroupSize();
+
         // Children
-        for (size_t i = 0; i < getGroupSize(); ++i) {
+        for (size_t i = 0; i < num_children; ++i) {
             if (in.tell() >= endpos) {
                 auto err = make_serial_error(
                     in,
                     std::format(
                         "Unexpected end of file. {} ({}) expected {} children but only found {}",
-                        m_type, m_nameref.name(), getGroupSize(), i + 1));
+                        m_type, m_nameref.name(), num_children, i + 1));
                 return std::unexpected(err);
             }
             ObjectFactory::create_t result = ObjectFactory::create(in);
@@ -401,7 +422,7 @@ namespace Toolbox::Object {
             addChild(std::move(result.value()));
         }
 
-        in.seek(endpos);
+        in.seek(endpos, std::ios::beg);
         return {};
     }
 
@@ -515,8 +536,8 @@ namespace Toolbox::Object {
 
     std::expected<void, SerialError> PhysicalSceneObject::deserialize(Deserializer &in) {
         // Metadata
-        auto length           = in.read<u32>();
-        std::streampos endpos = static_cast<std::size_t>(in.tell()) + length + 4;
+        auto length           = in.read<u32, std::endian::big>();
+        std::streampos endpos = static_cast<std::size_t>(in.tell()) + length - 4;
 
         // Type
         NameRef type;
@@ -553,12 +574,12 @@ namespace Toolbox::Object {
             }
         }
 
-        auto template_ = template_result.value();
+        auto template_ = std::move(template_result.value());
         auto wizard    = template_->getWizard();
 
         // Members
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
-            if (in.tell() >= endpos) {
+            if (in.tell() > endpos) {
                 auto err = make_serial_error(
                     in, std::format(
                             "Unexpected end of file. {} ({}) expected {} members but only found {}",
@@ -574,7 +595,7 @@ namespace Toolbox::Object {
             m_members.push_back(this_member);
         }
 
-        in.seek(endpos);
+        in.seek(endpos, std::ios::beg);
         return {};
     }
 
@@ -608,7 +629,7 @@ namespace Toolbox::Object {
     bool ObjectFactory::isGroupObject(Deserializer &in) {
         in.pushBreakpoint();
         in.seek(4);
-        u16 hash = in.read<u16>();
+        u16 hash = in.read<u16, std::endian::big>();
         in.popBreakpoint();
         return std::find(s_group_hashes.begin(), s_group_hashes.end(), hash) !=
                s_group_hashes.end();

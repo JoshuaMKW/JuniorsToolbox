@@ -224,14 +224,29 @@ namespace Toolbox::Object {
     }
 
     void Template::loadMembers(json_t &members, std::vector<MetaMember> &out) {
+        static const std::unordered_map<std::string, std::string> s_alias_map = {
+            {"BYTE",   "S8" },
+            {"SHORT",  "S16"},
+            {"INT",    "S32"},
+            {"LONG",   "S64"},
+            {"UBYTE",  "U8" },
+            {"USHORT", "U16"},
+            {"UINT",   "U32"},
+            {"ULONG",  "U64"},
+            {"FLOAT",  "F32"},
+            {"DOUBLE", "F64"},
+            {"VEC3F",  "VEC3"},
+        };
+
         for (const auto &item : members.items()) {
             auto member_name = item.key();
             auto member_info = item.value();
 
             auto member_type = member_info["Type"].get<std::string>();
-            if (member_type == "INT") {
-                member_type = "S32";
+            if (s_alias_map.contains(member_type)) {
+                member_type = s_alias_map.at(member_type);
             }
+
             MetaMember::size_type member_size;
 
             auto member_size_info = member_info["ArraySize"];
@@ -353,27 +368,31 @@ namespace Toolbox::Object {
     }
 
     TemplateFactory::create_t TemplateFactory::create(std::string_view type) {
-        struct protected_ctor_handler : public Template {
-            protected_ctor_handler(std::string_view type) : Template(type) {}
-        };
-
-        static std::unordered_map<std::string, std::shared_ptr<Template>> s_template_cache;
+        static std::unordered_map<std::string, Template> s_template_cache;
 
         auto type_str = std::string(type);
         if (s_template_cache.contains(type_str)) {
-            return s_template_cache[type_str];
+            return std::make_unique<Template>(s_template_cache[type_str]);
         }
 
-        std::shared_ptr<Template> template_;
+        Template template_;
         try {
-            template_ = std::make_shared<protected_ctor_handler>(type);
+            template_ = Template(type);
+        } catch (std::runtime_error &e) {
+            auto err = make_fs_error(std::error_code(), e.what());
+            return std::unexpected(err);
+        }
+
+        TemplateFactory::create_ret_t template_ptr;
+        try {
+            template_ptr = std::make_unique<Template>(template_);
         } catch (std::runtime_error &e) {
             auto err = make_fs_error(std::error_code(), e.what());
             return std::unexpected(err);
         }
 
         s_template_cache[type_str] = template_;
-        return template_;
+        return std::make_unique<Template>(template_);
     }
 
 }  // namespace Toolbox::Object

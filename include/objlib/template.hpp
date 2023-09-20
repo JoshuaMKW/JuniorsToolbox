@@ -1,7 +1,7 @@
 #pragma once
 
-#include "jsonlib.hpp"
 #include "fsystem.hpp"
+#include "jsonlib.hpp"
 #include "meta/member.hpp"
 #include "objlib/meta/enum.hpp"
 #include "objlib/meta/value.hpp"
@@ -20,6 +20,14 @@ namespace Toolbox::Object {
     struct TemplateWizard {
         std::string m_name = "default_init";
         std::vector<MetaMember> m_init_members;
+
+        TemplateWizard& operator=(const TemplateWizard& other) { m_name = other.m_name;
+            m_init_members.clear();
+            for (auto &m : other.m_init_members) {
+                m_init_members.push_back(m);
+            }
+            return *this;
+        }
     };
 
     class Template : public ISerializable {
@@ -28,7 +36,7 @@ namespace Toolbox::Object {
 
         using json_t = nlohmann::ordered_json;
 
-        Template() = delete;
+        Template() = default;
         Template(const Template &) = default;
         Template(Template &&)      = default;
         ~Template()                = default;
@@ -52,10 +60,27 @@ namespace Toolbox::Object {
             return {};
         }
 
+        Template &operator=(const Template &other) {
+            m_type         = other.m_type;
+            m_wizards      = other.m_wizards;
+            
+            m_struct_cache.clear();
+            for (auto &s : other.m_struct_cache) {
+                m_struct_cache.push_back(s);
+            }
+
+            m_enum_cache.clear();
+            for (auto &e : other.m_enum_cache) {
+                m_enum_cache.push_back(e);
+            }
+
+            return *this;
+        }
+
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-    private:
+    protected:
         void cacheEnums(json_t &enums);
         void cacheStructs(json_t &structs);
 
@@ -82,9 +107,9 @@ namespace Toolbox::Object {
 
     class TemplateFactory {
     public:
-        using create_ret_t = std::shared_ptr<Template>;
+        using create_ret_t = std::unique_ptr<Template>;
         using create_err_t = std::variant<FSError, JSONError>;
-        using create_t = std::expected<create_ret_t, create_err_t>;
+        using create_t     = std::expected<create_ret_t, create_err_t>;
 
         // Cached create method
         static create_t create(std::string_view type);
