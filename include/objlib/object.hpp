@@ -59,8 +59,10 @@ namespace Toolbox::Object {
 
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
-    class ISceneObject : public ISerializable {
+    class ISceneObject : public ISerializable, public IClonable {
     public:
+        friend class ObjectFactory;
+
         /* ABSTRACT INTERFACE */
         virtual ~ISceneObject() = default;
 
@@ -130,33 +132,27 @@ namespace Toolbox::Object {
 
     class VirtualSceneObject : public ISceneObject {
     public:
-        VirtualSceneObject(const Template &template_)
-            : ISceneObject(), m_nameref() {
+        friend class ObjectFactory;
+
+        VirtualSceneObject(const Template &template_) : ISceneObject(), m_nameref() {
             m_type = template_.type();
 
             auto wizard = template_.getWizard();
             if (!wizard)
                 return;
 
-            for (auto &member : wizard->m_init_members) {
-                m_members.emplace_back(
-                    std::reinterpret_pointer_cast<MetaMember, IClonable>(member.clone(true)));
-            }
+            applyWizard(*wizard);
         }
 
         VirtualSceneObject(const Template &template_, std::string_view wizard_name)
-            : ISceneObject(),  m_nameref() {
+            : ISceneObject(), m_nameref() {
             m_type = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);
             if (!wizard)
                 return;
 
-            m_nameref.setName(wizard_name);
-            for (auto &member : wizard->m_init_members) {
-                m_members.emplace_back(
-                    std::reinterpret_pointer_cast<MetaMember, IClonable>(member.clone(true)));
-            }
+            applyWizard(*wizard);
         }
 
         VirtualSceneObject(const Template &template_, Deserializer &in)
@@ -256,10 +252,28 @@ namespace Toolbox::Object {
             return {};
         }
 
+        void applyWizard(const TemplateWizard &wizard);
+
     public:
         // Inherited via ISerializable
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
+
+        std::unique_ptr<IClonable> clone(bool deep) const override {
+            if (deep) {
+                VirtualSceneObject obj;
+                obj.m_type    = m_type;
+                obj.m_nameref = m_nameref;
+                obj.m_parent  = m_parent;
+                obj.m_members.reserve(m_members.size());
+                for (const auto &member : m_members) {
+                    auto new_member = make_deep_clone<MetaMember>(member);
+                    obj.m_members.push_back(new_member);
+                }
+                return std::make_unique<VirtualSceneObject>(std::move(obj));
+            }
+            return std::make_unique<VirtualSceneObject>(*this);
+        }
 
     protected:
         std::string m_type;
@@ -272,12 +286,16 @@ namespace Toolbox::Object {
 
     class GroupSceneObject : public VirtualSceneObject {
     public:
+        friend class ObjectFactory;
+
         GroupSceneObject(const Template &template_) : VirtualSceneObject(template_) {
-            m_group_size = std::make_shared<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
+            m_group_size =
+                std::make_shared<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
         }
         GroupSceneObject(const Template &template_, std::string_view wizard_name)
             : VirtualSceneObject(template_, wizard_name) {
-            m_group_size = std::make_shared<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
+            m_group_size =
+                std::make_shared<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
         }
         GroupSceneObject(const Template &template_, Deserializer &in)
             : GroupSceneObject(template_) {
@@ -339,6 +357,8 @@ namespace Toolbox::Object {
 
     class PhysicalSceneObject : public ISceneObject {
     public:
+        friend class ObjectFactory;
+
         PhysicalSceneObject(const Template &template_)
             : ISceneObject(), m_nameref(), m_transform() {
             m_type = template_.type();
@@ -349,7 +369,7 @@ namespace Toolbox::Object {
 
             for (auto &member : wizard->m_init_members) {
                 m_members.emplace_back(
-                    std::reinterpret_pointer_cast<MetaMember, IClonable>(member.clone(true)));
+                    std::static_pointer_cast<MetaMember, IClonable>(member.clone(true)));
             }
         }
 
@@ -361,11 +381,7 @@ namespace Toolbox::Object {
             if (!wizard)
                 return;
 
-            m_nameref.setName(wizard_name);
-            for (auto &member : wizard->m_init_members) {
-                m_members.emplace_back(
-                    std::reinterpret_pointer_cast<MetaMember, IClonable>(member.clone(true)));
-            }
+            applyWizard(*wizard);
         }
 
         PhysicalSceneObject(const Template &template_, Deserializer &in)
@@ -465,10 +481,30 @@ namespace Toolbox::Object {
             return {};
         }
 
+        void applyWizard(const TemplateWizard &wizard);
+
     public:
         // Inherited via ISerializable
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
+
+        std::unique_ptr<IClonable> clone(bool deep) const override {
+            if (deep) {
+                PhysicalSceneObject obj;
+                obj.m_type    = m_type;
+                obj.m_nameref = m_nameref;
+                obj.m_parent  = m_parent;
+                obj.m_members.reserve(m_members.size());
+                for (const auto &member : m_members) {
+                    auto new_member = make_deep_clone<MetaMember>(*member);
+                    obj.m_members.push_back(new_member);
+                }
+                obj.m_transform = m_transform;
+                obj.m_model_instance = m_model_instance;
+                return std::make_unique<PhysicalSceneObject>(std::move(obj));
+            }
+            return std::make_unique<PhysicalSceneObject>(*this);
+        }
 
     private:
         std::string m_type;
@@ -484,7 +520,7 @@ namespace Toolbox::Object {
 
     class ObjectFactory {
     public:
-        using create_ret_t = std::shared_ptr<ISceneObject>;
+        using create_ret_t = std::unique_ptr<ISceneObject>;
         using create_err_t = SerialError;
         using create_t     = std::expected<create_ret_t, create_err_t>;
 

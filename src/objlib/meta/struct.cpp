@@ -116,26 +116,24 @@ namespace Toolbox::Object {
     }
 
     std::unique_ptr<IClonable> MetaStruct::clone(bool deep) const {
-        struct protected_ctor_handler : public MetaStruct {};
-
-        std::unique_ptr<MetaStruct> struct_ = std::make_unique<protected_ctor_handler>();
-        struct_->m_name                     = m_name;
-        struct_->m_parent                   = m_parent;
+        MetaStruct struct_;
+        struct_.m_name                     = m_name;
+        struct_.m_parent                   = m_parent;
 
         if (deep) {
             for (auto &member : m_members) {
                 auto copy =
-                    std::reinterpret_pointer_cast<MetaMember, IClonable>(member->clone(true));
-                struct_->m_members.push_back(copy);
+                    make_deep_clone<MetaMember>(member);
+                struct_.m_members.push_back(copy);
             }
         } else {
             for (auto &member : m_members) {
-                auto copy = std::make_shared<MetaMember>(*member);
-                struct_->m_members.push_back(copy);
+                auto copy = make_clone<MetaMember>(member);
+                struct_.m_members.push_back(copy);
             }
         }
 
-        return struct_;
+        return std::make_unique<MetaStruct>(struct_);
     }
 
 }  // namespace Toolbox::Object

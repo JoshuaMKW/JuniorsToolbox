@@ -63,6 +63,21 @@ namespace Toolbox::Object {
                m_arraysize == other.m_arraysize && m_parent == other.m_parent;
     }
 
+    void MetaMember::updateReferenceToList(const std::vector<std::shared_ptr<MetaMember>> &list) {
+        if (!std::holds_alternative<ReferenceInfo>(m_arraysize))
+            return;
+
+        auto reference    = std::get<ReferenceInfo>(m_arraysize);
+        auto reference_it = std::find_if(list.begin(), list.end(),
+                                         [&reference](const std::shared_ptr<MetaMember> &m) {
+                                             return m->name() == reference.m_name;
+                                         });
+        if (reference_it != list.end()) {
+            reference.m_ref = (*reference_it)->value<MetaValue>(0).value();
+            m_arraysize     = reference;
+        }
+    }
+
     void MetaMember::dump(std::ostream &out, size_t indention, size_t indention_width) const {
         indention_width   = std::min(indention_width, size_t(8));
         auto self_indent  = std::string(indention * indention_width, ' ');
@@ -126,7 +141,7 @@ namespace Toolbox::Object {
                     return std::unexpected(result.error());
                 }
             } else if (isTypeEnum()) {
-                auto _enum = std::get<std::shared_ptr<MetaEnum>>(m_values[i]);
+                auto _enum  = std::get<std::shared_ptr<MetaEnum>>(m_values[i]);
                 auto result = _enum->serialize(out);
                 if (!result) {
                     return std::unexpected(result.error());
@@ -171,38 +186,36 @@ namespace Toolbox::Object {
     }
 
     std::unique_ptr<IClonable> MetaMember::clone(bool deep) const {
-        struct protected_ctor_handler : public MetaMember {};
-
-        std::unique_ptr<MetaMember> member = std::make_unique<protected_ctor_handler>();
-        member->m_name                     = m_name;
-        member->m_parent                   = m_parent;
+        MetaMember member;
+        member.m_name      = m_name;
+        member.m_parent    = m_parent;
+        member.m_arraysize = m_arraysize;
 
         if (deep) {
             for (auto &value : m_values) {
                 if (isTypeStruct()) {
-                    member->m_values.push_back(std::reinterpret_pointer_cast<MetaStruct, IClonable>(
-                        std::get<std::shared_ptr<MetaStruct>>(value)->clone(true)));
+                    member.m_values.push_back(
+                        make_deep_clone<MetaStruct>(std::get<std::shared_ptr<MetaStruct>>(value)));
                 } else {
                     auto _copy =
                         std::make_shared<MetaValue>(*std::get<std::shared_ptr<MetaValue>>(value));
-                    member->m_values.push_back(_copy);
+                    member.m_values.push_back(_copy);
                 }
             }
         } else {
             for (auto &value : m_values) {
                 if (isTypeStruct()) {
-                    auto _copy =
-                        std::make_shared<MetaStruct>(*std::get<std::shared_ptr<MetaStruct>>(value));
-                    member->m_values.push_back(_copy);
+                    member.m_values.push_back(
+                        make_clone<MetaStruct>(std::get<std::shared_ptr<MetaStruct>>(value)));
                 } else {
                     auto _copy =
                         std::make_shared<MetaValue>(*std::get<std::shared_ptr<MetaValue>>(value));
-                    member->m_values.push_back(_copy);
+                    member.m_values.push_back(_copy);
                 }
             }
         }
 
-        return member;
+        return std::make_unique<MetaMember>(member);
     }
 
 }  // namespace Toolbox::Object

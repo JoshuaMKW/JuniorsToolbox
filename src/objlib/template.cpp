@@ -106,8 +106,8 @@ namespace Toolbox::Object {
         std::vector<MetaEnum> enums;
 
         size_t asize = 1;
-        if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
-            asize = std::get<std::shared_ptr<MetaValue>>(array_size)->get<u32>().value();
+        if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
+            asize = std::get<MetaMember::ReferenceInfo>(array_size).m_ref->get<u32>().value();
         } else {
             asize = std::get<u32>(array_size);
         }
@@ -116,8 +116,8 @@ namespace Toolbox::Object {
         for (size_t i = 0; i < asize; ++i) {
             enums.emplace_back(*enum_);
         }
-        if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
-            return MetaMember(name, enums, std::get<std::shared_ptr<MetaValue>>(array_size));
+        if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
+            return MetaMember(name, enums, std::get<MetaMember::ReferenceInfo>(array_size));
         }
         return MetaMember(name, enums);
     }
@@ -133,8 +133,8 @@ namespace Toolbox::Object {
         std::vector<MetaStruct> structs;
 
         size_t asize = 1;
-        if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
-            asize = std::get<std::shared_ptr<MetaValue>>(array_size)->get<s32>().value();
+        if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
+            asize = std::get<MetaMember::ReferenceInfo>(array_size).m_ref->get<s32>().value();
         } else {
             asize = std::get<u32>(array_size);
         }
@@ -144,8 +144,8 @@ namespace Toolbox::Object {
         for (size_t i = 0; i < asize; ++i) {
             structs.emplace_back(*struct_);
         }
-        if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
-            return MetaMember(name, structs, std::get<std::shared_ptr<MetaValue>>(array_size));
+        if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
+            return MetaMember(name, structs, std::get<MetaMember::ReferenceInfo>(array_size));
         }
         return MetaMember(name, structs);
     }
@@ -160,8 +160,8 @@ namespace Toolbox::Object {
         std::vector<MetaValue> values;
 
         size_t asize = 1;
-        if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
-            asize = std::get<std::shared_ptr<MetaValue>>(array_size)->get<u32>().value();
+        if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
+            asize = std::get<MetaMember::ReferenceInfo>(array_size).m_ref->get<u32>().value();
         } else {
             asize = std::get<u32>(array_size);
         }
@@ -217,8 +217,8 @@ namespace Toolbox::Object {
                 return {};
             }
         }
-        if (std::holds_alternative<std::shared_ptr<MetaValue>>(array_size)) {
-            return MetaMember(name, values, std::get<std::shared_ptr<MetaValue>>(array_size));
+        if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
+            return MetaMember(name, values, std::get<MetaMember::ReferenceInfo>(array_size));
         }
         return MetaMember(name, values);
     }
@@ -245,7 +245,7 @@ namespace Toolbox::Object {
                 if (member_it != out.end()) {
                     auto value = member_it->value<MetaValue>(0);
                     if (value) {
-                        member_size = value.value();
+                        member_size = MetaMember::ReferenceInfo(value.value(), member_name);
                     }
                 }
             }

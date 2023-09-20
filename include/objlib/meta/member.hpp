@@ -51,11 +51,21 @@ namespace Toolbox::Object {
 
     class MetaMember : public ISerializable, public IClonable {
     public:
+        struct ReferenceInfo {
+            std::shared_ptr<MetaValue> m_ref;
+            std::string m_name;
+
+            bool operator==(const ReferenceInfo& other) const {
+                return m_ref == other.m_ref && m_name == other.m_name;
+            }
+        };
+
         using value_type = std::variant<std::shared_ptr<MetaStruct>, std::shared_ptr<MetaEnum>,
                                         std::shared_ptr<MetaValue>>;
-        using size_type  = std::variant<u32, std::shared_ptr<MetaValue>>;
+        using size_type  = std::variant<u32, ReferenceInfo>;
 
-        MetaMember(std::string_view name, std::shared_ptr<MetaValue> arraysize) : m_name(name), m_values(), m_arraysize(arraysize) {}
+        MetaMember(std::string_view name, const ReferenceInfo &arraysize)
+            : m_name(name), m_values(), m_arraysize(arraysize) {}
         MetaMember(std::string_view name, const MetaValue &value) : m_name(name), m_values() {
             auto p = std::make_shared<MetaValue>(value);
             m_values.emplace_back(std::move(p));
@@ -90,7 +100,7 @@ namespace Toolbox::Object {
             }
         }
         MetaMember(std::string_view name, const std::vector<MetaValue> &values,
-                   std::shared_ptr<MetaValue> arraysize)
+                   const ReferenceInfo &arraysize)
             : m_name(name), m_values(), m_arraysize(arraysize) {
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaValue>(value);
@@ -98,7 +108,7 @@ namespace Toolbox::Object {
             }
         }
         MetaMember(std::string_view name, const std::vector<MetaStruct> &values,
-                   std::shared_ptr<MetaValue> arraysize)
+                   const ReferenceInfo &arraysize)
             : m_name(name), m_values(), m_arraysize(arraysize) {
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaStruct>(value);
@@ -106,7 +116,7 @@ namespace Toolbox::Object {
             }
         }
         MetaMember(std::string_view name, const std::vector<MetaEnum> &values,
-                   std::shared_ptr<MetaValue> arraysize)
+                   const ReferenceInfo &arraysize)
             : m_name(name), m_values(), m_arraysize(arraysize) {
             for (const auto &value : values) {
                 auto p = std::make_shared<MetaEnum>(value);
@@ -138,9 +148,9 @@ namespace Toolbox::Object {
         std::expected<std::shared_ptr<MetaValue>, MetaError> value<MetaValue>(size_t index) const;
 
         [[nodiscard]] u32 arraysize() const {
-            if (std::holds_alternative<std::shared_ptr<MetaValue>>(m_arraysize)) {
-                auto vptr = std::get<std::shared_ptr<MetaValue>>(m_arraysize);
-                auto size = vptr->get<u32>();
+            if (std::holds_alternative<ReferenceInfo>(m_arraysize)) {
+                auto vptr = std::get<ReferenceInfo>(m_arraysize);
+                auto size = vptr.m_ref->get<u32>();
                 if (!size)
                     return 0;
                 return *size;
@@ -229,6 +239,8 @@ namespace Toolbox::Object {
 
         bool operator==(const MetaMember &other) const;
 
+        void updateReferenceToList(const std::vector<std::shared_ptr<MetaMember>> &list);
+
         void syncArray() {
             size_t asize = arraysize();
             if (m_values.size() != asize)
@@ -245,9 +257,7 @@ namespace Toolbox::Object {
             return !isEmpty() && std::holds_alternative<std::shared_ptr<MetaValue>>(m_values[0]);
         }
 
-        bool validateIndex(size_t index) const {
-            return static_cast<u32>(index) < m_values.size();
-        }
+        bool validateIndex(size_t index) const { return static_cast<u32>(index) < m_values.size(); }
 
     private:
         std::string m_name;

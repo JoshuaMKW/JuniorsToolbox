@@ -28,10 +28,12 @@ namespace Toolbox::Scene {
 
         m_connection_count =
             std::make_shared<MetaMember>("ConnectionCount", MetaValue(static_cast<s16>(0)));
-        m_connections =
-            std::make_shared<MetaMember>("Connections", *m_connection_count->value<MetaValue>(0));
-        m_distances =
-            std::make_shared<MetaMember>("Periods", *m_connection_count->value<MetaValue>(0));
+
+        auto connection_value          = m_connection_count->value<MetaValue>(0).value();
+        MetaMember::ReferenceInfo info = {connection_value, "ConnectionCount"};
+
+        m_connections = std::make_shared<MetaMember>("Connections", info);
+        m_distances   = std::make_shared<MetaMember>("Periods", info);
     }
 
     glm::vec3 RailNode::getPosition() const {
@@ -241,19 +243,26 @@ namespace Toolbox::Scene {
     }
 
     std::unique_ptr<IClonable> RailNode::clone(bool deep) const {
-        auto node     = std::make_unique<RailNode>();
-        node->m_pos_x = std::reinterpret_pointer_cast<MetaMember, IClonable>(m_pos_x->clone(deep));
-        node->m_pos_y = std::reinterpret_pointer_cast<MetaMember, IClonable>(m_pos_y->clone(deep));
-        node->m_pos_z = std::reinterpret_pointer_cast<MetaMember, IClonable>(m_pos_z->clone(deep));
-        node->m_flags = std::reinterpret_pointer_cast<MetaMember, IClonable>(m_flags->clone(deep));
-        node->m_values =
-            std::reinterpret_pointer_cast<MetaMember, IClonable>(m_values->clone(deep));
-        node->m_connection_count =
-            std::reinterpret_pointer_cast<MetaMember, IClonable>(m_connection_count->clone(deep));
-        node->m_connections =
-            std::reinterpret_pointer_cast<MetaMember, IClonable>(m_connections->clone(deep));
-        node->m_distances =
-            std::reinterpret_pointer_cast<MetaMember, IClonable>(m_distances->clone(deep));
+        auto node = std::make_unique<RailNode>();
+        if (deep) {
+            node->m_pos_x            = make_deep_clone<MetaMember>(m_pos_x);
+            node->m_pos_y            = make_deep_clone<MetaMember>(m_pos_y);
+            node->m_pos_z            = make_deep_clone<MetaMember>(m_pos_z);
+            node->m_flags            = make_deep_clone<MetaMember>(m_flags);
+            node->m_values           = make_deep_clone<MetaMember>(m_values);
+            node->m_connection_count = make_deep_clone<MetaMember>(m_connection_count);
+            node->m_connections      = make_deep_clone<MetaMember>(m_connections);
+            node->m_distances        = make_deep_clone<MetaMember>(m_distances);
+        } else {
+            node->m_pos_x            = make_clone<MetaMember>(m_pos_x);
+            node->m_pos_y            = make_clone<MetaMember>(m_pos_y);
+            node->m_pos_z            = make_clone<MetaMember>(m_pos_z);
+            node->m_flags            = make_clone<MetaMember>(m_flags);
+            node->m_values           = make_clone<MetaMember>(m_values);
+            node->m_connection_count = make_clone<MetaMember>(m_connection_count);
+            node->m_connections      = make_clone<MetaMember>(m_connections);
+            node->m_distances        = make_clone<MetaMember>(m_distances);
+        }
         return node;
     }
 

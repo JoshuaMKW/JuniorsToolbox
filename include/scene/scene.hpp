@@ -12,6 +12,35 @@
 
 namespace Toolbox::Scene {
 
+    class ObjectHierarchy : public ISerializable, public IClonable {
+    public:
+        ObjectHierarchy() = default;
+        ObjectHierarchy(std::shared_ptr<Object::GroupSceneObject> root) : m_root(root) {}
+
+        ObjectHierarchy(const ObjectHierarchy &) = default;
+        ObjectHierarchy(ObjectHierarchy &&)      = default;
+        ~ObjectHierarchy()                       = default;
+
+        std::shared_ptr<Object::GroupSceneObject> getRoot() const { return m_root; }
+        void setRoot(std::shared_ptr<Object::GroupSceneObject> root) { m_root = root; }
+
+        std::shared_ptr<Object::ISceneObject> findObject(std::string_view name) const;
+
+        std::expected<void, SerialError> serialize(Serializer &out) const override;
+        std::expected<void, SerialError> deserialize(Deserializer &in) override;
+
+        std::unique_ptr<IClonable> clone(bool deep) const override {
+            if (deep) {
+                auto root = make_deep_clone<Object::GroupSceneObject>(m_root);
+                ObjectHierarchy obj_hierarchy;
+            }
+            return std::make_unique<ObjectHierarchy>(*this);
+        }
+
+    private:
+        std::shared_ptr<Object::GroupSceneObject> m_root;
+    };
+
     class SceneInstance : public IClonable {
     public:
         SceneInstance(const std::filesystem::path &root);
@@ -30,8 +59,12 @@ namespace Toolbox::Scene {
 
         [[nodiscard]] static std::unique_ptr<SceneInstance> BasicScene();
 
-        [[nodiscard]] std::shared_ptr<Object::GroupSceneObject> getObjRoot() const { return m_obj_root; }
-        void setObjRoot(std::shared_ptr<Object::GroupSceneObject> obj_root) { m_obj_root = obj_root; }
+        [[nodiscard]] std::shared_ptr<Object::GroupSceneObject> getObjRoot() const {
+            return m_obj_root;
+        }
+        void setObjRoot(std::shared_ptr<Object::GroupSceneObject> obj_root) {
+            m_obj_root = obj_root;
+        }
 
         [[nodiscard]] std::shared_ptr<Object::GroupSceneObject> getTableRoot() const {
             return m_table_root;

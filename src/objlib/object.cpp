@@ -124,13 +124,23 @@ namespace Toolbox::Object {
         out << self_indent << "}\n";
     }
 
+    void VirtualSceneObject::applyWizard(const TemplateWizard &wizard) {
+        m_nameref.setName(wizard.m_name);
+        for (auto &member : wizard.m_init_members) {
+            std::shared_ptr<MetaMember> new_member =
+                std::static_pointer_cast<MetaMember, IClonable>(member.clone(true));
+            new_member->updateReferenceToList(m_members);
+            m_members.emplace_back(new_member);
+        }
+    }
+
     std::expected<void, SerialError> VirtualSceneObject::serialize(Serializer &out) const {
         return {};
     }
 
     std::expected<void, SerialError> VirtualSceneObject::deserialize(Deserializer &in) {
         // Metadata
-        auto length = in.read<u32>();
+        auto length           = in.read<u32>();
         std::streampos endpos = static_cast<std::size_t>(in.tell()) + length + 4;
 
         // Type
@@ -180,8 +190,8 @@ namespace Toolbox::Object {
                             m_type, m_nameref.name(), wizard->m_init_members.size(), i + 1));
                 return std::unexpected(err);
             }
-            auto &m = wizard->m_init_members[i];
-            auto this_member = std::reinterpret_pointer_cast<MetaMember, IClonable>(m.clone(true));
+            auto &m          = wizard->m_init_members[i];
+            auto this_member = std::static_pointer_cast<MetaMember, IClonable>(m.clone(true));
             auto result      = this_member->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
@@ -353,10 +363,9 @@ namespace Toolbox::Object {
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
             if (in.tell() >= endpos) {
                 auto err = make_serial_error(
-                    in,
-                    std::format(
-                        "Unexpected end of file. {} ({}) expected {} members but only found {}",
-                        m_type, m_nameref.name(), wizard->m_init_members.size(), i + 1));
+                    in, std::format(
+                            "Unexpected end of file. {} ({}) expected {} members but only found {}",
+                            m_type, m_nameref.name(), wizard->m_init_members.size(), i + 1));
                 return std::unexpected(err);
             }
             if (late_group_size && i == 1) {
@@ -367,7 +376,7 @@ namespace Toolbox::Object {
                 continue;
             }
             auto &m          = wizard->m_init_members[i];
-            auto this_member = std::reinterpret_pointer_cast<MetaMember, IClonable>(m.clone(true));
+            auto this_member = std::static_pointer_cast<MetaMember, IClonable>(m.clone(true));
             auto result      = this_member->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
@@ -385,11 +394,11 @@ namespace Toolbox::Object {
                         m_type, m_nameref.name(), getGroupSize(), i + 1));
                 return std::unexpected(err);
             }
-            auto result = ObjectFactory::create(in);
+            ObjectFactory::create_t result = ObjectFactory::create(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
-            addChild(result.value());
+            addChild(std::move(result.value()));
         }
 
         in.seek(endpos);
@@ -490,6 +499,16 @@ namespace Toolbox::Object {
         out << self_indent << "}\n";
     }
 
+    void PhysicalSceneObject::applyWizard(const TemplateWizard &wizard) {
+        m_nameref.setName(wizard.m_name);
+        for (auto &member : wizard.m_init_members) {
+            std::shared_ptr<MetaMember> new_member =
+                std::static_pointer_cast<MetaMember, IClonable>(member.clone(true));
+            new_member->updateReferenceToList(m_members);
+            m_members.emplace_back(new_member);
+        }
+    }
+
     std::expected<void, SerialError> PhysicalSceneObject::serialize(Serializer &out) const {
         return std::expected<void, SerialError>();
     }
@@ -547,7 +566,7 @@ namespace Toolbox::Object {
                 return std::unexpected(err);
             }
             auto &m          = wizard->m_init_members[i];
-            auto this_member = std::reinterpret_pointer_cast<MetaMember, IClonable>(m.clone(true));
+            auto this_member = std::static_pointer_cast<MetaMember, IClonable>(m.clone(true));
             auto result      = this_member->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
@@ -560,20 +579,21 @@ namespace Toolbox::Object {
     }
 
     ObjectFactory::create_t ObjectFactory::create(Deserializer &in) {
-        struct protected_ctor_handler_group : public GroupSceneObject {};
-        struct protected_ctor_handler_physical : public PhysicalSceneObject {};
-
-        std::shared_ptr<ISceneObject> object = {};
         if (isGroupObject(in)) {
-            object = std::make_shared<protected_ctor_handler_group>();
+            GroupSceneObject obj;
+            auto result = obj.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            return std::make_unique<GroupSceneObject>(obj);
         } else {
-            object = std::make_shared<protected_ctor_handler_physical>();
+            PhysicalSceneObject obj;
+            auto result = obj.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            return std::make_unique<PhysicalSceneObject>(obj);
         }
-        auto result = object->deserialize(in);
-        if (!result) {
-            return std::unexpected(result.error());
-        }
-        return object;
     }
 
     static std::vector<u16> s_group_hashes = {16824, 15406, 28318, 18246, 43971, 9858, 25289, 33769,
@@ -584,6 +604,7 @@ namespace Toolbox::Object {
         return std::find(s_group_hashes.begin(), s_group_hashes.end(), hash) !=
                s_group_hashes.end();
     }
+
     bool ObjectFactory::isGroupObject(Deserializer &in) {
         in.pushBreakpoint();
         in.seek(4);
