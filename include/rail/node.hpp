@@ -9,7 +9,7 @@
 
 using namespace Toolbox::Object;
 
-namespace Toolbox::Scene {
+namespace Toolbox::Rail {
 
     class Rail;
 
@@ -29,14 +29,10 @@ namespace Toolbox::Scene {
 
         [[nodiscard]] glm::vec3 getPosition() const;
         [[nodiscard]] void getPosition(s16 &x, s16 &y, s16 &z) const;
-        void setPosition(const glm::vec3 &position);
-        void setPosition(s16 x, s16 y, s16 z) { setPosition({x, y, z}); }
 
         [[nodiscard]] u32 getFlags() const;
-        void setFlags(u32 flags);
 
         [[nodiscard]] std::expected<s16, MetaError> getValue(int index) const;
-        std::expected<void, MetaError> setValue(int index, s16 value);
 
         [[nodiscard]] size_t getDataSize() const { return 68; }
 
@@ -52,11 +48,18 @@ namespace Toolbox::Scene {
     protected:
         RailNode &operator=(const RailNode &other) = default;
 
+        void setFlags(u32 flags);
+
+        std::expected<void, MetaError> setValue(int index, s16 value);
+
+        void setPosition(const glm::vec3 &position);
+        void setPosition(s16 x, s16 y, s16 z) { setPosition({x, y, z}); }
+
         void setConnectionCount(s16 count);
         std::expected<void, MetaError> setConnectionValue(int index, s16 value);
 
-
-        std::expected<void, MetaError> setConnectionDistance(int connection, const glm::vec3 &to_pos);
+        std::expected<void, MetaError> setConnectionDistance(int connection,
+                                                             const glm::vec3 &to_pos);
         std::expected<void, MetaError> setConnectionDistance(int connection, f32 distance);
 
     private:
@@ -74,18 +77,4 @@ namespace Toolbox::Scene {
         std::shared_ptr<MetaMember> m_distances;
     };
 
-    class Rail {
-    public:
-        Rail()                  = default;
-        Rail(const Rail &other) = default;
-        Rail(Rail &&other)      = default;
-        ~Rail()                 = default;
-
-        Rail &operator=(const Rail &other) = default;
-        Rail &operator=(Rail &&other)      = default;
-
-    private:
-        std::vector<RailNode> m_nodes;
-    };
-
-}  // namespace Toolbox::Scene
+}  // namespace Toolbox::Rail

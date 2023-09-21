@@ -23,6 +23,8 @@ file(GLOB TOOLBOX_SRC
     "include/*.h"
     "src/objlib/*.cpp"
     "include/objlib/*.hpp"
+    "src/rail/*.cpp"
+    "include/rail/*.hpp"
     "src/scene/*.cpp"
     "include/scene/*.hpp"
     "src/objlib/meta/*.cpp"

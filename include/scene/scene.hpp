@@ -2,7 +2,7 @@
 
 #include "clone.hpp"
 #include "objlib/object.hpp"
-#include "rail.hpp"
+#include "rail/rail.hpp"
 #include <memory>
 #include <ostream>
 #include <string>
@@ -72,10 +72,10 @@ namespace Toolbox::Scene {
         SceneInstance(const std::filesystem::path &root);
         SceneInstance(std::shared_ptr<Object::GroupSceneObject> root_obj);
         SceneInstance(std::shared_ptr<Object::GroupSceneObject> root_obj,
-                      const std::vector<std::shared_ptr<Rail>> &rails);
+                      const std::vector<std::shared_ptr<Rail::Rail>> &rails);
         SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root,
                       std::shared_ptr<Object::GroupSceneObject> table_root,
-                      const std::vector<std::shared_ptr<Rail>> &rails);
+                      const std::vector<std::shared_ptr<Rail::Rail>> &rails);
 
     protected:
         SceneInstance() = default;
@@ -94,8 +94,8 @@ namespace Toolbox::Scene {
 
         [[nodiscard]] ObjectHierarchy getTableHierarchy() const { return m_table_objects; }
         void setTableHierarchy(const ObjectHierarchy &table_root) { m_table_objects = table_root; }
-        [[nodiscard]] std::vector<std::shared_ptr<Rail>> getRails() const { return m_rails; }
-        void setRails(const std::vector<std::shared_ptr<Rail>> &rails) { m_rails = rails; }
+        [[nodiscard]] std::vector<std::shared_ptr<Rail::Rail>> getRails() const { return m_rails; }
+        void setRails(const std::vector<std::shared_ptr<Rail::Rail>> &rails) { m_rails = rails; }
 
         void dump(std::ostream &os, size_t indent, size_t indent_size) const;
         void dump(std::ostream &os, size_t indent) const { dump(os, indent, 4); }
@@ -107,7 +107,7 @@ namespace Toolbox::Scene {
         std::optional<std::filesystem::path> m_root_path = {};
         ObjectHierarchy m_map_objects;
         ObjectHierarchy m_table_objects;
-        std::vector<std::shared_ptr<Rail>> m_rails;
+        std::vector<std::shared_ptr<Rail::Rail>> m_rails;
     };
 
 }  // namespace Toolbox::Scene

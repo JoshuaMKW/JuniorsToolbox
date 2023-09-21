@@ -53,11 +53,11 @@ namespace Toolbox::Scene {
     SceneInstance::SceneInstance(std::shared_ptr<Object::GroupSceneObject> root_obj) {}
 
     SceneInstance::SceneInstance(std::shared_ptr<Object::GroupSceneObject> root_obj,
-                                 const std::vector<std::shared_ptr<Rail>> &rails) {}
+                                 const std::vector<std::shared_ptr<Rail::Rail>> &rails) {}
 
     SceneInstance::SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root,
                                  std::shared_ptr<Object::GroupSceneObject> table_root,
-                                 const std::vector<std::shared_ptr<Rail>> &rails) {}
+                                 const std::vector<std::shared_ptr<Rail::Rail>> &rails) {}
 
     std::unique_ptr<SceneInstance> SceneInstance::BasicScene() { return nullptr; }
 

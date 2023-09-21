@@ -1,11 +1,11 @@
-#include "scene/rail.hpp"
+#include "rail/rail.hpp"
 
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/value.hpp"
 
 using namespace Toolbox::Object;
 
-namespace Toolbox::Scene {
+namespace Toolbox::Rail {
 
     RailNode::RailNode() : RailNode(0, 0, 0, 0) {}
     RailNode::RailNode(u32 flags) : RailNode(0, 0, 0, flags) {}
@@ -26,7 +26,8 @@ namespace Toolbox::Scene {
         values.push_back(values_default);
         values.push_back(values_default);
 
-        m_values = std::make_shared<MetaMember>("Values", values, std::make_shared<MetaValue>(values_default));
+        m_values = std::make_shared<MetaMember>("Values", values,
+                                                std::make_shared<MetaValue>(values_default));
 
         m_connection_count =
             std::make_shared<MetaMember>("ConnectionCount", MetaValue(static_cast<s16>(0)));
