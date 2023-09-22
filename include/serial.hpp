@@ -57,6 +57,25 @@ namespace Toolbox {
             return *this;
         }
 
+        template <std::endian E = std::endian::native>
+        Serializer &writeString(std::string_view str) {
+            write<u16, E>(str.size() & 0xFFFF);
+            writeBytes(std::span(str.data(), str.size()));
+            return *this;
+        }
+
+        Serializer &writeCString(const std::string &str) {
+            writeBytes(std::span(str.data(), str.size()));
+            write('\0');
+            return *this;
+        }
+
+        Serializer &writeCString(std::string_view str) {
+            writeBytes(std::span(str.data(), str.size()));
+            write('\0');
+            return *this;
+        }
+
         Serializer &writeBytes(std::span<const char> bytes) {
             m_out.write(bytes.data(), bytes.size());
             return *this;
@@ -136,10 +155,46 @@ namespace Toolbox {
             return str;
         }
 
+        template <std::endian E = std::endian::native> 
         Deserializer &readString(std::string &str) {
-            auto len = read<u16>();
+            auto len = read<u16, E>();
             str.resize(len);
             readBytes(std::span(str.data(), len));
+            return *this;
+        }
+
+        std::string readCString(size_t limit = std::string::npos) {
+            std::string str;
+            if (limit != std::string::npos) {
+                str.reserve(limit);
+            }
+            while (true) {
+                char c = read<char>();
+                if (c == '\0') {
+                    break;
+                }
+                str.push_back(c);
+                if (limit != std::string::npos && str.size() >= limit) {
+                    break;
+                }
+            }
+            return str;
+        }
+
+        Deserializer &readCString(std::string &str, size_t limit = std::string::npos) {
+            if (limit != std::string::npos) {
+                str.reserve(limit);
+            }
+            while (true) {
+                char c = read<char>();
+                if (c == '\0') {
+                    break;
+                }
+                str.push_back(c);
+                if (limit != std::string::npos && str.size() >= limit) {
+                    break;
+                }
+            }
             return *this;
         }
 
@@ -173,8 +228,6 @@ namespace Toolbox {
 
         virtual std::expected<void, SerialError> serialize(Serializer &out) const = 0;
         virtual std::expected<void, SerialError> deserialize(Deserializer &in)    = 0;
-
-        [[nodiscard]] bool operator==(const ISerializable &other) { return true; }
 
         void operator<<(Serializer &out) { serialize(out); }
         void operator>>(Deserializer &in) { deserialize(in); }

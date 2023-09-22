@@ -45,9 +45,12 @@ namespace Toolbox::Rail {
 
         std::unique_ptr<IClonable> clone(bool deep) const override;
 
-    protected:
         RailNode &operator=(const RailNode &other) = default;
+        RailNode &operator=(RailNode &&other)      = default;
 
+        bool operator==(const RailNode &other) const;
+
+    protected:
         void setFlags(u32 flags);
 
         std::expected<void, MetaError> setValue(int index, s16 value);

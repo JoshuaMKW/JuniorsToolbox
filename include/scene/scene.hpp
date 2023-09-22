@@ -3,6 +3,7 @@
 #include "clone.hpp"
 #include "objlib/object.hpp"
 #include "rail/rail.hpp"
+#include "raildata.hpp"
 #include <memory>
 #include <ostream>
 #include <string>
@@ -15,9 +16,10 @@ namespace Toolbox::Scene {
     class ObjectHierarchy : public ISerializable, public IClonable {
     public:
         ObjectHierarchy() = default;
-        ObjectHierarchy(std::string_view name) : m_name(name), m_root() {} 
+        ObjectHierarchy(std::string_view name) : m_name(name), m_root() {}
         ObjectHierarchy(std::shared_ptr<Object::GroupSceneObject> root) : m_root(root) {}
-        ObjectHierarchy(std::string_view name, std::shared_ptr<Object::GroupSceneObject> root) : m_name(name), m_root(root) {}
+        ObjectHierarchy(std::string_view name, std::shared_ptr<Object::GroupSceneObject> root)
+            : m_name(name), m_root(root) {}
 
         ObjectHierarchy(const ObjectHierarchy &) = default;
         ObjectHierarchy(ObjectHierarchy &&)      = default;
@@ -70,12 +72,10 @@ namespace Toolbox::Scene {
     class SceneInstance : public IClonable {
     public:
         SceneInstance(const std::filesystem::path &root);
-        SceneInstance(std::shared_ptr<Object::GroupSceneObject> root_obj);
-        SceneInstance(std::shared_ptr<Object::GroupSceneObject> root_obj,
-                      const std::vector<std::shared_ptr<Rail::Rail>> &rails);
+        SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root);
+        SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root, const RailData &rails);
         SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root,
-                      std::shared_ptr<Object::GroupSceneObject> table_root,
-                      const std::vector<std::shared_ptr<Rail::Rail>> &rails);
+                      std::shared_ptr<Object::GroupSceneObject> table_root, const RailData &rails);
 
     protected:
         SceneInstance() = default;
@@ -94,8 +94,10 @@ namespace Toolbox::Scene {
 
         [[nodiscard]] ObjectHierarchy getTableHierarchy() const { return m_table_objects; }
         void setTableHierarchy(const ObjectHierarchy &table_root) { m_table_objects = table_root; }
-        [[nodiscard]] std::vector<std::shared_ptr<Rail::Rail>> getRails() const { return m_rails; }
-        void setRails(const std::vector<std::shared_ptr<Rail::Rail>> &rails) { m_rails = rails; }
+        [[nodiscard]] RailData getRailData() const {
+            return m_rail_info;
+        }
+        void setRailData(RailData &rails) { m_rail_info = rails; }
 
         void dump(std::ostream &os, size_t indent, size_t indent_size) const;
         void dump(std::ostream &os, size_t indent) const { dump(os, indent, 4); }
@@ -107,7 +109,7 @@ namespace Toolbox::Scene {
         std::optional<std::filesystem::path> m_root_path = {};
         ObjectHierarchy m_map_objects;
         ObjectHierarchy m_table_objects;
-        std::vector<std::shared_ptr<Rail::Rail>> m_rails;
+        RailData m_rail_info;
     };
 
 }  // namespace Toolbox::Scene

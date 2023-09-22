@@ -9,8 +9,6 @@ namespace Toolbox {
         virtual ~IClonable() = default;
 
         virtual std::unique_ptr<IClonable> clone(bool deep) const = 0;
-
-        bool operator==(const IClonable &other) const { return true; }
     };
 
     template <typename T> static inline std::shared_ptr<T> make_clone(const IClonable &ptr) {

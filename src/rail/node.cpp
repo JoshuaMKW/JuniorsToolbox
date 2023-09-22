@@ -71,6 +71,10 @@ namespace Toolbox::Rail {
         return *value->get<u32>();
     }
 
+    bool RailNode::operator==(const RailNode &other) const {
+        return getPosition() == other.getPosition() && getFlags() == other.getFlags();
+    }
+
     void RailNode::setFlags(u32 flags) {
         std::shared_ptr<MetaValue> value = m_flags->value<MetaValue>(0).value();
         value->set<u32>(flags);
