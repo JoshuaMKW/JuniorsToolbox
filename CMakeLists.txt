@@ -18,6 +18,16 @@ project(JuniorsToolbox)
 
 file(GLOB TOOLBOX_SRC
     "lib/*.hpp"
+    "lib/*.cpp"
+    "lib/imgui/*.h"
+    "lib/imgui/*.cpp"
+    "lib/imgui/backends/imgui_impl_opengl3.h"
+    "lib/imgui/backends/imgui_impl_opengl3.cpp"
+    ##"lib/imgui/backends/imgui_impl_glfw.h"
+    ##"lib/imgui/backends/imgui_impl_glfw.cpp"
+    "lib/imgui/misc/debuggers/imgui.natstepfilter"
+    "lib/imgui/misc/debuggers/imgui.natvis"
+    "lib/imgui/*.cpp"
     "src/*.cpp"
     "include/*.hpp"
     "include/*.h"
@@ -40,7 +50,7 @@ file(GLOB TOOLBOX_SRC
 add_executable(JuniorsToolbox ${TOOLBOX_SRC})
 add_subdirectory(lib/j3dultra)
 target_link_libraries(JuniorsToolbox PRIVATE j3dultra)
-target_include_directories(JuniorsToolbox PRIVATE "include" "lib/nlohmann" "lib/glm::glm", "lib/j3dultra")
+target_include_directories(JuniorsToolbox PRIVATE "include" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm", "lib/j3dultra")
 
 
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
