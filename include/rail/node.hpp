@@ -36,7 +36,7 @@ namespace Toolbox::Rail {
 
         [[nodiscard]] size_t getDataSize() const { return 68; }
 
-        [[nodiscard]] s16 getConnectionCount() const;
+        [[nodiscard]] u16 getConnectionCount() const;
         [[nodiscard]] std::expected<s16, MetaError> getConnectionValue(int index) const;
         [[nodiscard]] std::expected<f32, MetaError> getConnectionDistance(int index) const;
 
@@ -50,6 +50,10 @@ namespace Toolbox::Rail {
 
         bool operator==(const RailNode &other) const;
 
+        void dump(std::ostream &out, size_t indention, size_t indention_width) const;
+        void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
+        void dump(std::ostream &out) const { dump(out, 0, 2); }
+
     protected:
         void setFlags(u32 flags);
 
@@ -58,7 +62,7 @@ namespace Toolbox::Rail {
         void setPosition(const glm::vec3 &position);
         void setPosition(s16 x, s16 y, s16 z) { setPosition({x, y, z}); }
 
-        void setConnectionCount(s16 count);
+        void setConnectionCount(u16 count);
         std::expected<void, MetaError> setConnectionValue(int index, s16 value);
 
         std::expected<void, MetaError> setConnectionDistance(int connection,

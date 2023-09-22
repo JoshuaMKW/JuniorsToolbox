@@ -82,6 +82,7 @@ namespace Toolbox::Scene {
         }
         m_map_objects.dump(os, indent + 1, indent_size);
         m_table_objects.dump(os, indent + 1, indent_size);
+        m_rail_info.dump(os, indent + 1, indent_size);
         os << indent_str << "}" << std::endl;
     }
 

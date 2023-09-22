@@ -191,13 +191,13 @@ namespace Toolbox::Object {
         [[nodiscard]] bool isEmpty() const { return m_values.empty(); }
         [[nodiscard]] bool isArray() const { return m_values.size() > 1; }
         [[nodiscard]] bool isTypeBitMasked() const {
-            return !isEmpty() && isTypeEnum() && value<MetaEnum>(0).value()->isBitMasked();
+            return isTypeEnum() && value<MetaEnum>(0).value()->isBitMasked();
         }
         [[nodiscard]] bool isTypeStruct() const {
-            return !isEmpty() && std::holds_alternative<std::shared_ptr<MetaStruct>>(m_values[0]);
+            return std::holds_alternative<std::shared_ptr<MetaStruct>>(m_default);
         }
         [[nodiscard]] bool isTypeEnum() const {
-            return !isEmpty() && std::holds_alternative<std::shared_ptr<MetaEnum>>(m_values[0]);
+            return std::holds_alternative<std::shared_ptr<MetaEnum>>(m_default);
         }
         [[nodiscard]] bool isTypeBool() const {
             return !isEmpty() && isTypeValue() &&
@@ -283,7 +283,16 @@ namespace Toolbox::Object {
             }
 
             for (size_t i = m_values.size(); i < asize; ++i) {
-                m_values.emplace_back(m_default);
+                if (std::holds_alternative<std::shared_ptr<MetaValue>>(m_default)) {
+                    m_values.emplace_back(std::make_shared<MetaValue>(
+                        *std::get<std::shared_ptr<MetaValue>>(m_default)));
+                } else if (std::holds_alternative<std::shared_ptr<MetaEnum>>(m_default)) {
+                    m_values.emplace_back(std::make_shared<MetaEnum>(
+                        *std::get<std::shared_ptr<MetaEnum>>(m_default)));
+                } else {
+                    m_values.emplace_back(make_deep_clone<MetaStruct>(
+                        std::get<std::shared_ptr<MetaStruct>>(m_default)));
+                }
             }
         }
 

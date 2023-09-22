@@ -7,6 +7,12 @@
 using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
+    void Rail::dump(std::ostream &out, size_t indention, size_t indention_width) const {
+        out << std::string(indention * indention_width, ' ') << "Rail: " << m_name << std::endl;
+        for (const auto &node : m_nodes) {
+            node->dump(out, indention + 1, indention_width);
+        }
+    }
 
     std::unique_ptr<IClonable> Rail::clone(bool deep) const {
         auto clone = std::make_unique<Rail>(m_name);

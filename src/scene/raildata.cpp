@@ -61,6 +61,15 @@ namespace Toolbox::Scene {
         m_rails.erase(m_rails.begin() + index.value());
     }
 
+    void RailData::dump(std::ostream &out, size_t indention, size_t indention_width) const {
+        auto indention_str = std::string(indention * indention_width, ' ');
+        out << indention_str << "RailData: {" << std::endl;
+        for (const auto &rail : m_rails) {
+            rail->dump(out, indention + 1, indention_width);
+        }
+        out << indention_str << "}" << std::endl;
+    }
+
     std::expected<void, SerialError> RailData::serialize(Serializer &out) const {
         size_t header_start = 0;
 

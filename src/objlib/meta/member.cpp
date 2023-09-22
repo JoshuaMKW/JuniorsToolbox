@@ -83,6 +83,9 @@ namespace Toolbox::Object {
         auto self_indent  = std::string(indention * indention_width, ' ');
         auto value_indent = std::string((indention + 1) * indention_width, ' ');
         if (!isArray()) {
+            if (isEmpty())
+                return;
+
             if (isTypeStruct()) {
                 auto _struct = std::get<std::shared_ptr<MetaStruct>>(m_values[0]);
                 out << self_indent << _struct->name() << " " << m_name << " ";

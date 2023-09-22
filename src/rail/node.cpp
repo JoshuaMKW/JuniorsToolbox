@@ -30,7 +30,7 @@ namespace Toolbox::Rail {
                                                 std::make_shared<MetaValue>(values_default));
 
         m_connection_count =
-            std::make_shared<MetaMember>("ConnectionCount", MetaValue(static_cast<s16>(0)));
+            std::make_shared<MetaMember>("ConnectionCount", MetaValue(static_cast<u32>(0)));
 
         auto connection_value          = m_connection_count->value<MetaValue>(0).value();
         MetaMember::ReferenceInfo info = {connection_value, "ConnectionCount"};
@@ -75,6 +75,42 @@ namespace Toolbox::Rail {
         return getPosition() == other.getPosition() && getFlags() == other.getFlags();
     }
 
+    void RailNode::dump(std::ostream &out, size_t indention, size_t indention_width) const {
+        std::string indention_str(indention * indention_width, ' ');
+        std::string value_indention_str((indention + 1) * indention_width, ' ');
+        out << indention_str << "RailNode {" << std::endl;
+        out << value_indention_str << std::format("Position: {}", getPosition()) << std::endl;
+        out << value_indention_str << "Flags: " << getFlags() << std::endl;
+        out << value_indention_str << "Values: [";
+        for (int i = 0; i < 4; i++) {
+            auto value = getValue(i);
+            out << *value;
+            if (i < 3) {
+                out << ", ";
+            }
+        }
+        out << "]" << std::endl;
+        out << value_indention_str << "Connections: [";
+        for (int i = 0; i < getConnectionCount(); i++) {
+            auto value = getConnectionValue(i);
+            out << *value;
+            if (i < getConnectionCount() - 1) {
+                out << ", ";
+            }
+        }
+        out << "]" << std::endl;
+        out << value_indention_str << "Distances: [";
+        for (int i = 0; i < getConnectionCount(); i++) {
+            auto value = getConnectionDistance(i);
+            out << *value;
+            if (i < getConnectionCount() - 1) {
+                out << ", ";
+            }
+        }
+        out << "]" << std::endl;
+        out << indention_str << "}" << std::endl;
+    }
+
     void RailNode::setFlags(u32 flags) {
         std::shared_ptr<MetaValue> value = m_flags->value<MetaValue>(0).value();
         value->set<u32>(flags);
@@ -97,9 +133,9 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    s16 RailNode::getConnectionCount() const {
+    u16 RailNode::getConnectionCount() const {
         auto value_count = m_connection_count->value<MetaValue>(0).value();
-        return *value_count->get<s16>();
+        return static_cast<u16>(*value_count->get<u32>());
     }
 
     std::expected<s16, MetaError> RailNode::getConnectionValue(int index) const {
@@ -222,9 +258,11 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    void RailNode::setConnectionCount(s16 count) {
+    void RailNode::setConnectionCount(u16 count) {
         auto value_count = m_connection_count->value<MetaValue>(0).value();
-        value_count->set<s16>(count);
+        value_count->set<u32>(count);
+        m_connections->syncArray();
+        m_distances->syncArray();
     }
 
     std::expected<void, MetaError> RailNode::setConnectionValue(int index, s16 value) {

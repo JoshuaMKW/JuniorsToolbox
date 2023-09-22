@@ -132,6 +132,10 @@ namespace Toolbox::Rail {
 
         [[nodiscard]] node_ptr_t operator[](size_t index) const { return m_nodes[index]; }
 
+        void dump(std::ostream &out, size_t indention, size_t indention_width) const;
+        void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
+        void dump(std::ostream &out) const { dump(out, 0, 2); }
+
         std::unique_ptr<IClonable> clone(bool deep) const override;
 
     private:

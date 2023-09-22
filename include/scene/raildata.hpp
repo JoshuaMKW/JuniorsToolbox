@@ -50,12 +50,16 @@ namespace Toolbox::Scene {
         [[nodiscard]] const rail_ptr_t operator[](size_t index) const { return m_rails[index]; }
         [[nodiscard]] rail_ptr_t operator[](size_t index) { return m_rails[index]; }
 
+        RailData &operator=(const RailData &other) = default;
+
+        void dump(std::ostream &out, size_t indention, size_t indention_width) const;
+        void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
+        void dump(std::ostream &out) const { dump(out, 0, 2); }
+
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
         std::unique_ptr<IClonable> clone(bool deep) const override;
-
-        RailData &operator=(const RailData &other) = default;
 
     private:
         std::vector<rail_ptr_t> m_rails = {};

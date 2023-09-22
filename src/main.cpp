@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
     auto ms_int = duration_cast<milliseconds>(t2 - t1);
     std::cout << "Scene loaded in " << ms_int.count() << "ms\n";
 
-    //scene.dump(std::cout);
+    scene.dump(std::cout);
 
     return 0;
 }
