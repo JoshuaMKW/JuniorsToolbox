@@ -7,29 +7,6 @@
 using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
-    void Rail::dump(std::ostream &out, size_t indention, size_t indention_width) const {
-        out << std::string(indention * indention_width, ' ') << "Rail: " << m_name << std::endl;
-        for (const auto &node : m_nodes) {
-            node->dump(out, indention + 1, indention_width);
-        }
-    }
-
-    std::unique_ptr<IClonable> Rail::clone(bool deep) const {
-        auto clone = std::make_unique<Rail>(m_name);
-
-        if (deep) {
-            for (const auto &node : m_nodes) {
-                clone->m_nodes.push_back(make_deep_clone<RailNode>(node));
-            }
-        } else {
-            clone->m_nodes.clear();
-            for (auto &node : m_nodes) {
-                clone->m_nodes.push_back(node);
-            }
-        }
-
-        return clone;
-    }
 
     glm::vec3 Rail::getCenteroid() const {
         size_t node_count = m_nodes.size();
@@ -453,6 +430,30 @@ namespace Toolbox::Rail {
             }
         }
         return {};
+    }
+
+    void Rail::dump(std::ostream &out, size_t indention, size_t indention_width) const {
+        out << std::string(indention * indention_width, ' ') << "Rail: " << m_name << std::endl;
+        for (const auto &node : m_nodes) {
+            node->dump(out, indention + 1, indention_width);
+        }
+    }
+
+    std::unique_ptr<IClonable> Rail::clone(bool deep) const {
+        auto clone = std::make_unique<Rail>(m_name);
+
+        if (deep) {
+            for (const auto &node : m_nodes) {
+                clone->m_nodes.push_back(make_deep_clone<RailNode>(node));
+            }
+        } else {
+            clone->m_nodes.clear();
+            for (auto &node : m_nodes) {
+                clone->m_nodes.push_back(node);
+            }
+        }
+
+        return clone;
     }
 
 }  // namespace Toolbox::Rail
