@@ -316,4 +316,143 @@ namespace Toolbox::Rail {
         return node->setConnectionValue(index, getNodeIndex(to).value());
     }
 
+    std::expected<void, MetaError> Rail::connectNodeToNearest(size_t node, size_t count) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error connecting node to nearest", node, m_nodes.size());
+        }
+        return connectNodeToNearest(m_nodes[node], count);
+    }
+
+    std::expected<void, MetaError> Rail::connectNodeToNearest(node_ptr_t node, size_t count) {
+        std::vector<std::pair<f32, node_ptr_t>> nearest_nodes;
+        for (auto &n : m_nodes) {
+            if (n == node) {
+                continue;
+            }
+            f32 distance = glm::distance(node->getPosition(), n->getPosition());
+            nearest_nodes.emplace_back(distance, n);
+        }
+        std::sort(nearest_nodes.begin(), nearest_nodes.end(),
+                  [](const auto &a, const auto &b) { return a.first < b.first; });
+
+        node->setConnectionCount(count);
+        for (size_t i = 0; i < count && i < nearest_nodes.size(); ++i) {
+            auto result =
+                node->setConnectionValue(i, getNodeIndex(nearest_nodes[i].second).value());
+            if (!result) {
+                return result;
+            }
+        }
+        return {};
+    }
+
+    std::expected<void, MetaError> Rail::connectNodeToPrev(size_t node) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error connecting node to prev", node, m_nodes.size());
+        }
+        return connectNodeToPrev(m_nodes[node]);
+    }
+
+    std::expected<void, MetaError> Rail::connectNodeToPrev(node_ptr_t node) {
+        auto result = getNodeIndex(node);
+        if (!result) {
+            return make_meta_error<void>("Error connecting node to prev (not from rail)",
+                                         std::numeric_limits<size_t>::max(), 0);
+        }
+        auto node_index = result.value();
+        if (node_index == 0) {
+            return make_meta_error<void>("Error connecting node to prev (first node)",
+                                         std::numeric_limits<size_t>::max(), 0);
+        }
+        node->setConnectionCount(1);
+        return node->setConnectionValue(0, node_index - 1);
+    }
+
+    std::expected<void, MetaError> Rail::connectNodeToNext(size_t node) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error connecting node to next", node, m_nodes.size());
+        }
+        return connectNodeToNext(m_nodes[node]);
+    }
+
+    std::expected<void, MetaError> Rail::connectNodeToNext(node_ptr_t node) {
+        auto result = getNodeIndex(node);
+        if (!result) {
+            return make_meta_error<void>("Error connecting node to next (not from rail)",
+                                         std::numeric_limits<size_t>::max(), 0);
+        }
+        auto node_index = result.value();
+        if (node_index == m_nodes.size() - 1) {
+            return make_meta_error<void>("Error connecting node to next (last node)",
+                                         node_index + 1, m_nodes.size());
+        }
+        node->setConnectionCount(1);
+        return node->setConnectionValue(0, node_index + 1);
+    }
+
+    std::expected<void, MetaError> Rail::connectNodeToNeighbors(size_t node) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error connecting node to neighbors", node,
+                                         m_nodes.size());
+        }
+        return connectNodeToNeighbors(m_nodes[node]);
+    }
+
+    std::expected<void, MetaError> Rail::connectNodeToNeighbors(node_ptr_t node) {
+        auto result = getNodeIndex(node);
+        if (!result) {
+            return make_meta_error<void>("Error connecting node to neighbors (not from rail)",
+                                         std::numeric_limits<size_t>::max(), 0);
+        }
+        auto node_index = result.value();
+        if (node_index == 0) {
+            return make_meta_error<void>("Error connecting node to neighbors (first node)",
+                                         std::numeric_limits<size_t>::max(), 0);
+        }
+        if (node_index == m_nodes.size() - 1) {
+            return make_meta_error<void>("Error connecting node to neighbors (last node)",
+                                         node_index + 1, m_nodes.size());
+        }
+        node->setConnectionCount(2);
+        auto vresult = node->setConnectionValue(0, node_index - 1);
+        if (!vresult) {
+            return vresult;
+        }
+        return node->setConnectionValue(1, node_index + 1);
+    }
+
+    std::expected<void, MetaError> Rail::connectNodeToReferrers(size_t node) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error connecting node to referrers", node,
+                                         m_nodes.size());
+        }
+        return connectNodeToReferrers(m_nodes[node]);
+    }
+
+    std::expected<void, MetaError> Rail::connectNodeToReferrers(node_ptr_t node) {
+        auto result       = getNodeIndex(node);
+        if (!result) {
+            return make_meta_error<void>("Error connecting node to referrers (not from rail)",
+                                         std::numeric_limits<size_t>::max(), 0);
+        }
+        size_t node_index = result.value();
+        std::vector<node_ptr_t> referrers;
+        for (auto &n : m_nodes) {
+            for (size_t i = 0; i < n->getConnectionCount(); ++i) {
+                if (n->getConnectionValue(i) == getNodeIndex(node).value()) {
+                    referrers.push_back(n);
+                    break;
+                }
+            }
+        }
+        node->setConnectionCount(referrers.size());
+        for (size_t i = 0; i < referrers.size(); ++i) {
+            auto result = node->setConnectionValue(i, getNodeIndex(referrers[i]).value());
+            if (!result) {
+                return result;
+            }
+        }
+        return {};
+    }
+
 }  // namespace Toolbox::Rail

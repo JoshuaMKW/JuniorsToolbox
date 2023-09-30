@@ -103,8 +103,8 @@ namespace Toolbox::Rail {
 
         std::expected<void, MetaError> connectNodeToNearest(size_t node, size_t count);
         std::expected<void, MetaError> connectNodeToNearest(node_ptr_t node, size_t count);
-        std::expected<void, MetaError> connectNodeToNearest(size_t node);
-        std::expected<void, MetaError> connectNodeToNearest(node_ptr_t node);
+        std::expected<void, MetaError> connectNodeToNearest(size_t node) { return connectNodeToNearest(node, 1);}
+        std::expected<void, MetaError> connectNodeToNearest(node_ptr_t node) { return connectNodeToNearest(node, 1);}
 
         std::expected<void, MetaError> connectNodeToPrev(size_t node);
         std::expected<void, MetaError> connectNodeToPrev(node_ptr_t node);
