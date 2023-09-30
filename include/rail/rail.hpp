@@ -68,11 +68,11 @@ namespace Toolbox::Rail {
         bool swapNodes(node_ptr_t node1, node_ptr_t node2);
 
         [[nodiscard]] bool isNodeConnectedToOther(size_t node_a, size_t node_b) const;
-        [[nodiscard]] bool isNodeConnectedToOther(node_ptr_t node_a,
-                                                  node_ptr_t node_b) const;
+        [[nodiscard]] bool isNodeConnectedToOther(node_ptr_t node_a, node_ptr_t node_b) const;
 
         std::optional<size_t> getNodeIndex(node_ptr_t node) const;
-        std::vector<const RailNode> getNodeConnections(node_ptr_t node) const;
+        std::vector<node_ptr_t> getNodeConnections(size_t node) const;
+        std::vector<node_ptr_t> getNodeConnections(node_ptr_t node) const;
 
         std::expected<void, MetaError> setNodePosition(size_t node, s16 x, s16 y, s16 z);
         std::expected<void, MetaError> setNodePosition(size_t node, const glm::vec3 &pos);
@@ -103,12 +103,8 @@ namespace Toolbox::Rail {
 
         std::expected<void, MetaError> connectNodeToNearest(size_t node, size_t count);
         std::expected<void, MetaError> connectNodeToNearest(node_ptr_t node, size_t count);
-        std::expected<void, MetaError> connectNodeToNearest(size_t node) {
-            return connectNodeToNearest(node, 1);
-        }
-        std::expected<void, MetaError> connectNodeToNearest(node_ptr_t node) {
-            return connectNodeToNearest(node, 1);
-        }
+        std::expected<void, MetaError> connectNodeToNearest(size_t node);
+        std::expected<void, MetaError> connectNodeToNearest(node_ptr_t node);
 
         std::expected<void, MetaError> connectNodeToPrev(size_t node);
         std::expected<void, MetaError> connectNodeToPrev(node_ptr_t node);

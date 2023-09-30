@@ -35,10 +35,49 @@ namespace Toolbox::Rail {
         size_t node_count = m_nodes.size();
         if (node_count == 0)
             return glm::vec3();
-        glm::vec3 accum = std::accumulate(
-            m_nodes.begin(), m_nodes.end(), glm::vec3(),
-            [](glm::vec3 a, node_ptr_t node) { return a + node->getPosition(); });
+        glm::vec3 accum =
+            std::accumulate(m_nodes.begin(), m_nodes.end(), glm::vec3(),
+                            [](glm::vec3 a, node_ptr_t node) { return a + node->getPosition(); });
         return accum / static_cast<float>(node_count);
+    }
+
+    Rail &Rail::translate(const glm::vec3 &t) {
+        for (auto &node : m_nodes) {
+            node->setPosition(t);
+        }
+        return *this;
+    }
+
+    Rail &Rail::rotate(const glm::quat &r) {
+        glm::vec3 center = getCenteroid();
+        for (auto &node : m_nodes) {
+            glm::vec3 rotatedPos = r * (node->getPosition() - center) + center;
+            node->setPosition(rotatedPos);
+        }
+    }
+
+    Rail &Rail::scale(const glm::vec3 &s) {
+        glm::vec3 center = getCenteroid();
+        for (auto &node : m_nodes) {
+            glm::vec3 scaledPos = s * (node->getPosition() - center) + center;
+            node->setPosition(scaledPos);
+        }
+    }
+
+    Rail &Rail::invert(bool x, bool y, bool z) {
+        if (!x && !y && !z)
+            return *this;
+        glm::vec3 center = getCenteroid();
+        for (auto &node : m_nodes) {
+            glm::vec3 normalPos = node->getPosition() - center;
+            if (x)
+                normalPos.x = -normalPos.x;
+            if (y)
+                normalPos.y = -normalPos.y;
+            if (z)
+                normalPos.z = -normalPos.z;
+            node->setPosition(normalPos + center);
+        }
     }
 
     void Rail::addNode(node_ptr_t node) {
@@ -48,7 +87,7 @@ namespace Toolbox::Rail {
 
     std::expected<void, MetaError> Rail::insertNode(size_t index, node_ptr_t node) {
         if (index > m_nodes.size()) {
-            return make_meta_error<void>("Insert index out of range", index, m_nodes.size());
+            return make_meta_error<void>("Error inserting node", index, m_nodes.size());
         }
         node->m_rail = this;
         m_nodes.insert(m_nodes.begin() + index, node);
@@ -57,7 +96,7 @@ namespace Toolbox::Rail {
 
     std::expected<void, MetaError> Rail::removeNode(size_t index) {
         if (index >= m_nodes.size()) {
-            return make_meta_error<void>("Remove index out of range", index, m_nodes.size());
+            return make_meta_error<void>("Error removing node", index, m_nodes.size());
         }
         m_nodes.erase(m_nodes.begin() + index);
         return {};
@@ -75,11 +114,11 @@ namespace Toolbox::Rail {
 
     std::expected<void, MetaError> Rail::swapNodes(size_t index1, size_t index2) {
         if (index1 >= m_nodes.size()) {
-            return make_meta_error<void>("Swap index (1) out of range", index1, m_nodes.size());
+            return make_meta_error<void>("Error swapping node (1)", index1, m_nodes.size());
         }
 
         if (index2 >= m_nodes.size()) {
-            return make_meta_error<void>("Swap index (2) out of range", index2, m_nodes.size());
+            return make_meta_error<void>("Error swapping node (2)", index2, m_nodes.size());
         }
 
         std::iter_swap(m_nodes.begin() + index1, m_nodes.begin() + index2);
@@ -99,6 +138,182 @@ namespace Toolbox::Rail {
 
         std::iter_swap(it1, it2);
         return true;
+    }
+
+    bool Rail::isNodeConnectedToOther(size_t node_a, size_t node_b) const {
+        if (node_a >= m_nodes.size() || node_b >= m_nodes.size()) {
+            return false;
+        }
+
+        return isNodeConnectedToOther(m_nodes[node_a], m_nodes[node_b]);
+    }
+
+    bool Rail::isNodeConnectedToOther(node_ptr_t node_a, node_ptr_t node_b) const {
+        if (node_a == node_b) {
+            return false;
+        }
+
+        for (size_t i = 0; i < node_a->getConnectionCount(); ++i) {
+            if (node_a->getConnectionValue(i).value() == getNodeIndex(node_b)) {
+                return true;
+            }
+        }
+    }
+
+    std::optional<size_t> Rail::getNodeIndex(node_ptr_t node) const {
+        for (size_t i = 0; i < m_nodes.size(); ++i) {
+            if (m_nodes[i] == node) {
+                return i;
+            }
+        }
+        return {};
+    }
+
+    std::vector<Rail::node_ptr_t> Rail::getNodeConnections(size_t node) const {
+        if (node >= m_nodes.size()) {
+            return {};
+        }
+        return getNodeConnections(m_nodes[node]);
+    }
+
+    std::vector<Rail::node_ptr_t> Rail::getNodeConnections(node_ptr_t node) const {
+        std::vector<Rail::node_ptr_t> connections;
+        for (size_t i = 0; i < node->getConnectionCount(); ++i) {
+            connections.push_back(m_nodes[node->getConnectionValue(i).value()]);
+        }
+        return connections;
+    }
+
+    std::expected<void, MetaError> Rail::setNodePosition(size_t node, s16 x, s16 y, s16 z) {
+        return setNodePosition(node, glm::vec3(x, y, z));
+    }
+
+    std::expected<void, MetaError> Rail::setNodePosition(size_t node, const glm::vec3 &pos) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error setting node position", node, m_nodes.size());
+        }
+
+        return setNodePosition(m_nodes[node], pos);
+    }
+
+    std::expected<void, MetaError> Rail::setNodePosition(node_ptr_t node, s16 x, s16 y, s16 z) {
+        node->setPosition(glm::vec3(x, y, z));
+        return {};
+    }
+
+    std::expected<void, MetaError> Rail::setNodePosition(node_ptr_t node, const glm::vec3 &pos) {
+        node->setPosition(pos);
+        return {};
+    }
+
+    std::expected<void, MetaError> Rail::setNodeFlag(size_t node, u32 flag) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error setting node flag", node, m_nodes.size());
+        }
+        return setNodeFlag(m_nodes[node], flag);
+    }
+
+    std::expected<void, MetaError> Rail::setNodeFlag(node_ptr_t node, u32 flag) {
+        node->setFlags(flag);
+        return {};
+    }
+
+    std::expected<void, MetaError> Rail::setNodeValue(size_t node, size_t index, s16 value) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error setting node value", node, m_nodes.size());
+        }
+        return setNodeValue(m_nodes[node], index, value);
+    }
+
+    std::expected<void, MetaError> Rail::setNodeValue(node_ptr_t node, size_t index, s16 value) {
+        return node->setValue(static_cast<int>(index), value);
+    }
+
+    std::expected<void, MetaError> Rail::addConnection(size_t node, size_t to) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error adding connection (from)", node, m_nodes.size());
+        }
+        if (to >= m_nodes.size()) {
+            return make_meta_error<void>("Error adding connection (to)", to, m_nodes.size());
+        }
+        return addConnection(m_nodes[node], m_nodes[to]);
+    }
+
+    std::expected<void, MetaError> Rail::addConnection(node_ptr_t node, node_ptr_t to) {
+        auto connectionCount = node->getConnectionCount();
+        if (connectionCount >= 8) {
+            return make_meta_error<void>("Error adding connection (max)", connectionCount, 8);
+        }
+        node->setConnectionCount(connectionCount + 1);
+        node->setConnectionValue(connectionCount, getNodeIndex(to).value());
+    }
+
+    std::expected<void, MetaError> Rail::insertConnection(size_t node, size_t index, size_t to) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error inserting connection (from)", node, m_nodes.size());
+        }
+        if (to >= m_nodes.size()) {
+            return make_meta_error<void>("Error inserting connection (to)", to, m_nodes.size());
+        }
+        return insertConnection(m_nodes[node], index, m_nodes[to]);
+    }
+
+    std::expected<void, MetaError> Rail::insertConnection(node_ptr_t node, size_t index,
+                                                          node_ptr_t to) {
+        auto connectionCount = node->getConnectionCount();
+        if (connectionCount >= 8) {
+            return make_meta_error<void>("Error adding connection (max)", connectionCount, 8);
+        }
+        node->setConnectionCount(connectionCount + 1);
+        for (size_t i = connectionCount; i > index; --i) {
+            auto result = node->setConnectionValue(i, node->getConnectionValue(i - 1).value());
+            if (!result) {
+                return result;
+            }
+        }
+        return node->setConnectionValue(index, getNodeIndex(to).value());
+    }
+
+    std::expected<void, MetaError> Rail::removeConnection(size_t node, size_t index) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error removing connection (from)", node, m_nodes.size());
+        }
+        return removeConnection(m_nodes[node], index);
+    }
+
+    std::expected<void, MetaError> Rail::removeConnection(node_ptr_t node, size_t index) {
+        auto connectionCount = node->getConnectionCount();
+        if (index >= connectionCount) {
+            return make_meta_error<void>("Error removing connection (index)", index,
+                                         connectionCount);
+        }
+        for (size_t i = index; i < connectionCount - 1; ++i) {
+            auto result = node->setConnectionValue(i, node->getConnectionValue(i + 1).value());
+            if (!result) {
+                return result;
+            }
+        }
+        node->setConnectionCount(connectionCount - 1);
+        return {};
+    }
+
+    std::expected<void, MetaError> Rail::replaceConnection(size_t node, size_t index, size_t to) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error replacing connection (from)", node, m_nodes.size());
+        }
+        if (to >= m_nodes.size()) {
+            return make_meta_error<void>("Error replacing connection (to)", to, m_nodes.size());
+        }
+        return replaceConnection(m_nodes[node], index, m_nodes[to]);
+    }
+
+    std::expected<void, MetaError> Rail::replaceConnection(node_ptr_t node, size_t index,
+                                                           node_ptr_t to) {
+        if (index >= node->getConnectionCount()) {
+            return make_meta_error<void>("Error replacing connection (index)", index,
+                                         node->getConnectionCount());
+        }
+        return node->setConnectionValue(index, getNodeIndex(to).value());
     }
 
 }  // namespace Toolbox::Rail
