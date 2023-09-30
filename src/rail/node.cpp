@@ -41,6 +41,9 @@ namespace Toolbox::Rail {
             "Distances", info, std::make_shared<MetaValue>(MetaValue(static_cast<f32>(0))));
     }
 
+    RailNode::RailNode(glm::vec3 pos) : RailNode(pos.x, pos.y, pos.z) {}
+    RailNode::RailNode(glm::vec3 pos, u32 flags) : RailNode(pos.x, pos.y, pos.z, flags) {}
+
     glm::vec3 RailNode::getPosition() const {
         std::shared_ptr<MetaValue> value_x = m_pos_x->value<MetaValue>(0).value();
         std::shared_ptr<MetaValue> value_y = m_pos_y->value<MetaValue>(0).value();
@@ -116,7 +119,7 @@ namespace Toolbox::Rail {
         value->set<u32>(flags);
     }
 
-    std::expected<s16, MetaError> RailNode::getValue(int index) const {
+    std::expected<s16, MetaError> RailNode::getValue(size_t index) const {
         auto value = m_values->value<MetaValue>(index);
         if (!value) {
             return std::unexpected(value.error());
@@ -124,7 +127,7 @@ namespace Toolbox::Rail {
         return *value.value()->get<s16>();
     }
 
-    std::expected<void, MetaError> RailNode::setValue(int index, s16 value) {
+    std::expected<void, MetaError> RailNode::setValue(size_t index, s16 value) {
         auto meta_value = m_values->value<MetaValue>(index);
         if (!meta_value) {
             return std::unexpected(meta_value.error());
@@ -138,7 +141,7 @@ namespace Toolbox::Rail {
         return static_cast<u16>(*value_count->get<u32>());
     }
 
-    std::expected<s16, MetaError> RailNode::getConnectionValue(int index) const {
+    std::expected<s16, MetaError> RailNode::getConnectionValue(size_t index) const {
         auto value = m_connections->value<MetaValue>(index);
         if (!value) {
             return std::unexpected(value.error());
@@ -146,7 +149,7 @@ namespace Toolbox::Rail {
         return *value.value()->get<s16>();
     }
 
-    std::expected<f32, MetaError> RailNode::getConnectionDistance(int index) const {
+    std::expected<f32, MetaError> RailNode::getConnectionDistance(size_t index) const {
         auto value = m_distances->value<MetaValue>(index);
         if (!value) {
             return std::unexpected(value.error());
@@ -265,7 +268,7 @@ namespace Toolbox::Rail {
         m_distances->syncArray();
     }
 
-    std::expected<void, MetaError> RailNode::setConnectionValue(int index, s16 value) {
+    std::expected<void, MetaError> RailNode::setConnectionValue(size_t index, s16 value) {
         auto connection = m_connections->value<MetaValue>(index);
         if (!connection) {
             return std::unexpected(connection.error());
@@ -274,14 +277,14 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::expected<void, MetaError> RailNode::setConnectionDistance(int connection,
+    std::expected<void, MetaError> RailNode::setConnectionDistance(size_t connection,
                                                                    const glm::vec3 &to_pos) {
         glm::vec3 position = getPosition();
         glm::vec3 delta    = to_pos - position;
         return setConnectionDistance(connection, glm::length(delta));
     }
 
-    std::expected<void, MetaError> RailNode::setConnectionDistance(int connection, f32 distance) {
+    std::expected<void, MetaError> RailNode::setConnectionDistance(size_t connection, f32 distance) {
         auto meta_distance = m_distances->value<MetaValue>(connection);
         if (!meta_distance) {
             return std::unexpected(meta_distance.error());

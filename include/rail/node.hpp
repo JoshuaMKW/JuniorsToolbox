@@ -21,6 +21,8 @@ namespace Toolbox::Rail {
         RailNode(u32 flags);
         RailNode(s16 x, s16 y, s16 z);
         RailNode(s16 x, s16 y, s16 z, u32 flags);
+        RailNode(glm::vec3 pos);
+        RailNode(glm::vec3 pos, u32 flags);
         RailNode(const RailNode &other) = default;
         RailNode(RailNode &&other)      = default;
         ~RailNode()                     = default;
@@ -32,13 +34,13 @@ namespace Toolbox::Rail {
 
         [[nodiscard]] u32 getFlags() const;
 
-        [[nodiscard]] std::expected<s16, MetaError> getValue(int index) const;
+        [[nodiscard]] std::expected<s16, MetaError> getValue(size_t index) const;
 
         [[nodiscard]] size_t getDataSize() const { return 68; }
 
         [[nodiscard]] u16 getConnectionCount() const;
-        [[nodiscard]] std::expected<s16, MetaError> getConnectionValue(int index) const;
-        [[nodiscard]] std::expected<f32, MetaError> getConnectionDistance(int index) const;
+        [[nodiscard]] std::expected<s16, MetaError> getConnectionValue(size_t index) const;
+        [[nodiscard]] std::expected<f32, MetaError> getConnectionDistance(size_t index) const;
 
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
@@ -57,17 +59,17 @@ namespace Toolbox::Rail {
     protected:
         void setFlags(u32 flags);
 
-        std::expected<void, MetaError> setValue(int index, s16 value);
+        std::expected<void, MetaError> setValue(size_t index, s16 value);
 
         void setPosition(const glm::vec3 &position);
         void setPosition(s16 x, s16 y, s16 z) { setPosition({x, y, z}); }
 
         void setConnectionCount(u16 count);
-        std::expected<void, MetaError> setConnectionValue(int index, s16 value);
+        std::expected<void, MetaError> setConnectionValue(size_t index, s16 value);
 
-        std::expected<void, MetaError> setConnectionDistance(int connection,
+        std::expected<void, MetaError> setConnectionDistance(size_t connection,
                                                              const glm::vec3 &to_pos);
-        std::expected<void, MetaError> setConnectionDistance(int connection, f32 distance);
+        std::expected<void, MetaError> setConnectionDistance(size_t connection, f32 distance);
 
     private:
         Rail *m_rail;

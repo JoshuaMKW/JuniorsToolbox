@@ -134,6 +134,9 @@ namespace Toolbox::Rail {
 
         std::unique_ptr<IClonable> clone(bool deep) const override;
 
+    protected:
+        void chaikinSubdivide();
+
     private:
         std::string m_name;
         std::vector<node_ptr_t> m_nodes = {};

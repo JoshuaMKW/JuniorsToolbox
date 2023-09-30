@@ -1,5 +1,7 @@
-#include "rail/rail.hpp"
+#include <unordered_set>
+
 #include "rail/node.hpp"
+#include "rail/rail.hpp"
 
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/value.hpp"
@@ -54,6 +56,12 @@ namespace Toolbox::Rail {
             if (z)
                 normalPos.z = -normalPos.z;
             node->setPosition(normalPos + center);
+        }
+    }
+
+    void Rail::subdivide(size_t iterations) {
+        for (size_t i = 0; i < iterations; ++i) {
+            chaikinSubdivide();
         }
     }
 
@@ -319,6 +327,9 @@ namespace Toolbox::Rail {
             if (!result) {
                 return result;
             }
+            auto distance =
+                glm::distance(node->getPosition(), nearest_nodes[i].second->getPosition());
+            node->setConnectionDistance(i, distance);
         }
         return {};
     }
@@ -342,7 +353,15 @@ namespace Toolbox::Rail {
                                          std::numeric_limits<size_t>::max(), 0);
         }
         node->setConnectionCount(1);
-        return node->setConnectionValue(0, node_index - 1);
+        {
+            auto vresult = node->setConnectionValue(0, node_index - 1);
+            if (!vresult) {
+                return vresult;
+            }
+            auto distance =
+                glm::distance(node->getPosition(), m_nodes[node_index - 1]->getPosition());
+            node->setConnectionDistance(0, distance);
+        }
     }
 
     std::expected<void, MetaError> Rail::connectNodeToNext(size_t node) {
@@ -364,7 +383,15 @@ namespace Toolbox::Rail {
                                          node_index + 1, m_nodes.size());
         }
         node->setConnectionCount(1);
-        return node->setConnectionValue(0, node_index + 1);
+        {
+            auto vresult = node->setConnectionValue(0, node_index + 1);
+            if (!vresult) {
+                return vresult;
+            }
+            auto distance =
+                glm::distance(node->getPosition(), m_nodes[node_index + 1]->getPosition());
+            node->setConnectionDistance(0, distance);
+        }
     }
 
     std::expected<void, MetaError> Rail::connectNodeToNeighbors(size_t node) {
@@ -391,11 +418,27 @@ namespace Toolbox::Rail {
                                          node_index + 1, m_nodes.size());
         }
         node->setConnectionCount(2);
-        auto vresult = node->setConnectionValue(0, node_index - 1);
-        if (!vresult) {
-            return vresult;
+        {
+            auto vresult = node->setConnectionValue(0, node_index - 1);
+            if (!vresult) {
+                return vresult;
+            }
+            auto distance =
+                glm::distance(node->getPosition(), m_nodes[node_index - 1]->getPosition());
+            node->setConnectionDistance(0, distance);
         }
-        return node->setConnectionValue(1, node_index + 1);
+
+        {
+            auto vresult = node->setConnectionValue(1, node_index + 1);
+            if (!vresult) {
+                return vresult;
+            }
+            auto distance =
+                glm::distance(node->getPosition(), m_nodes[node_index + 1]->getPosition());
+            node->setConnectionDistance(1, distance);
+        }
+
+        return {};
     }
 
     std::expected<void, MetaError> Rail::connectNodeToReferrers(size_t node) {
@@ -407,7 +450,7 @@ namespace Toolbox::Rail {
     }
 
     std::expected<void, MetaError> Rail::connectNodeToReferrers(node_ptr_t node) {
-        auto result       = getNodeIndex(node);
+        auto result = getNodeIndex(node);
         if (!result) {
             return make_meta_error<void>("Error connecting node to referrers (not from rail)",
                                          std::numeric_limits<size_t>::max(), 0);
@@ -428,6 +471,8 @@ namespace Toolbox::Rail {
             if (!result) {
                 return result;
             }
+            auto distance = glm::distance(node->getPosition(), referrers[i]->getPosition());
+            node->setConnectionDistance(i, distance);
         }
         return {};
     }
@@ -455,5 +500,7 @@ namespace Toolbox::Rail {
 
         return clone;
     }
+
+    void Rail::chaikinSubdivide() {}
 
 }  // namespace Toolbox::Rail
