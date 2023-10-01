@@ -192,8 +192,8 @@ namespace Toolbox::BMG {
 
         const std::vector<Entry> &entries() const { return m_entries; }
 
-        const std::optional<RichMessage> getMessage(std::string_view name);
-        const std::optional<RichMessage> getMessage(size_t index);
+        const std::optional<Entry> getEntry(std::string_view name);
+        const std::optional<Entry> getEntry(size_t index);
         
         size_t getDataSize() const;
         size_t getINF1Size() const;
