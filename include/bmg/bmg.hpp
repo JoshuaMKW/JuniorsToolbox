@@ -14,8 +14,8 @@ namespace Toolbox::BMG {
     class RichMessage : public ISerializable {
     public:
         RichMessage() = default;
-        RichMessage(const std::string &message);
-        RichMessage(const std::vector<std::string> &parts);
+        RichMessage(const std::string &message) : m_message_parts({message}) {}
+        RichMessage(const std::vector<std::string> &parts) : m_message_parts(parts) {}
         RichMessage(const RichMessage &) = default;
         RichMessage(RichMessage &&)      = default;
         ~RichMessage()                   = default;
