@@ -22,7 +22,7 @@ namespace Toolbox::BMG {
 
         static RichMessage fromRawString(std::string_view message);
         static std::vector<char> rawFromCommand(std::string_view command);
-        static std::vector<char> commandFromRaw(std::span<const char> command);
+        static std::string commandFromRaw(std::span<const char> command);
 
         [[nodiscard]] std::string getRawSize() const;
         [[nodiscard]] std::string getRawString() const;
