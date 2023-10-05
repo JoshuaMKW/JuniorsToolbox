@@ -11,28 +11,28 @@
 
 namespace Toolbox::BMG {
 
-    class RichMessage : public ISerializable {
+    class CmdMessage : public ISerializable {
     public:
-        RichMessage() = default;
-        RichMessage(const std::string &message) : m_message_parts({message}) {}
-        RichMessage(const std::vector<std::string> &parts) : m_message_parts(parts) {}
-        RichMessage(const RichMessage &) = default;
-        RichMessage(RichMessage &&)      = default;
-        ~RichMessage()                   = default;
+        CmdMessage() = default;
+        CmdMessage(const std::string &message) : m_message_data(message) {}
+        CmdMessage(const CmdMessage &) = default;
+        CmdMessage(CmdMessage &&)      = default;
+        ~CmdMessage()                  = default;
 
-        static RichMessage fromRawString(std::string_view message);
-        static std::vector<char> rawFromCommand(std::string_view command);
-        static std::string commandFromRaw(std::span<const char> command);
-
-        [[nodiscard]] std::string getRawSize() const;
-        [[nodiscard]] std::string getRawString() const;
+        [[nodiscard]] std::size_t getDataSize() const;
+        [[nodiscard]] std::string getString() const;
         [[nodiscard]] std::string getSimpleString() const;
 
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-    public:
-        std::vector<std::string> m_message_parts;
+    protected:
+        std::vector<std::string> getParts() const;
+        static std::optional<std::vector<char>> rawFromCommand(std::string_view command);
+        static std::optional<std::string> commandFromRaw(std::span<const char> command);
+
+    private:
+        std::string m_message_data;
     };
 
     enum class MessageSound {
@@ -177,7 +177,7 @@ namespace Toolbox::BMG {
     public:
         struct Entry {
             std::string m_name;
-            RichMessage m_message;
+            CmdMessage m_message;
             MessageSound m_sound;
             u16 m_start_frame;
             u16 m_end_frame;
@@ -186,15 +186,21 @@ namespace Toolbox::BMG {
 
         MessageData() = default;
         MessageData(std::vector<Entry> entries) : m_entries(std::move(entries)) {}
+        MessageData(std::vector<Entry> entries, u8 flag_size)
+            : m_entries(std::move(entries)), m_flag_size(flag_size) {}
+        MessageData(std::vector<Entry> entries, bool has_str1)
+            : m_entries(std::move(entries)), m_has_str1(has_str1) {}
+        MessageData(std::vector<Entry> entries, u8 flag_size, bool has_str1)
+            : m_entries(std::move(entries)), m_flag_size(m_flag_size), m_has_str1(has_str1) {}
         MessageData(const MessageData &) = default;
         MessageData(MessageData &&)      = default;
-        ~MessageData() = default;
+        ~MessageData()                   = default;
 
         const std::vector<Entry> &entries() const { return m_entries; }
 
         const std::optional<Entry> getEntry(std::string_view name);
         const std::optional<Entry> getEntry(size_t index);
-        
+
         size_t getDataSize() const;
         size_t getINF1Size() const;
         size_t getDAT1Size() const;
@@ -209,8 +215,17 @@ namespace Toolbox::BMG {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
+    protected:
+        static bool isMagicValid(Deserializer &in);
+        static bool isSTR1InData(Deserializer &in);
+
     private:
-        std::vector<Entry> m_entries;
+        std::vector<Entry> m_entries = {};
+
+        u8 m_flag_size = 12;
+
+        // Message names, PAL only
+        bool m_has_str1 = false;
     };
 
 }  // namespace Toolbox::BMG
