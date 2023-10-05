@@ -285,12 +285,27 @@ namespace Toolbox::BMG {
         in.pushBreakpoint();
 
         in.seek(12, std::ios::beg);
-        auto section_count = in.read<u32, std::endian::big>();
+        auto section_count   = in.read<u32, std::endian::big>();
         bool is_str1_present = section_count >= 3;
 
         in.popBreakpoint();
 
         return is_str1_present;
+    }
+
+    void MessageData::addEntry(const Entry &entry) { m_entries.push_back(entry); }
+
+    bool MessageData::insertEntry(size_t index, const Entry &entry) {
+        if (index > m_entries.size())
+            return false;
+        m_entries.insert(m_entries.begin() + index, entry);
+    }
+
+    void MessageData::removeEntry(const Entry &entry) {
+        auto it = std::find(m_entries.begin(), m_entries.end(), entry);
+        if (it == m_entries.end())
+            return;
+        m_entries.erase(it);
     }
 
 }  // namespace Toolbox::BMG
