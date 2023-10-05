@@ -233,7 +233,9 @@ namespace Toolbox {
         void operator>>(Deserializer &in) { deserialize(in); }
     };
 
-    inline SerialError make_serial_error(std::string_view context, std::string_view reason,
+    template <typename _Ret>
+    inline std::expected<_Ret, SerialError> make_serial_error(std::string_view context,
+                                                                        std::string_view reason,
                                          size_t error_pos, std::string_view filepath) {
         return SerialError{
             {std::format("SerialError: {}", context), std::format("Reason: {}", reason)},
@@ -243,24 +245,31 @@ namespace Toolbox {
         };
     }
 
-    inline SerialError make_serial_error(Serializer &s, std::string_view reason, int error_adjust) {
-        auto pos = std::max(static_cast<size_t>(s.tell()) + error_adjust, static_cast<size_t>(0));
-        return make_serial_error(std::format("Unexpected byte at position {} ({:X}).", pos, pos), reason,
-                                 pos + error_adjust, s.filepath());
-    }
-
-    inline SerialError make_serial_error(Serializer &s, std::string_view reason) {
-        return make_serial_error(s, reason, 0);
-    }
-
-    inline SerialError make_serial_error(Deserializer &s, std::string_view reason,
-                                         int error_adjust) {
+    template <typename _Ret>
+    inline std::expected<_Ret, SerialError>
+    make_serial_error(Serializer &s, std::string_view reason, int error_adjust) {
         auto pos = std::max(static_cast<size_t>(s.tell()) + error_adjust, static_cast<size_t>(0));
         return make_serial_error(std::format("Unexpected byte at position {} ({:X}).", pos, pos),
                                  reason, pos + error_adjust, s.filepath());
     }
 
-    inline SerialError make_serial_error(Deserializer &s, std::string_view reason) {
+    template <typename _Ret>
+    inline std::expected<_Ret, SerialError> make_serial_error(Serializer &s,
+                                                              std::string_view reason) {
+        return make_serial_error(s, reason, 0);
+    }
+
+    template <typename _Ret>
+    inline std::expected<_Ret, SerialError>
+    make_serial_error(Deserializer &s, std::string_view reason, int error_adjust) {
+        auto pos = std::max(static_cast<size_t>(s.tell()) + error_adjust, static_cast<size_t>(0));
+        return make_serial_error(std::format("Unexpected byte at position {} ({:X}).", pos, pos),
+                                 reason, pos + error_adjust, s.filepath());
+    }
+
+    template <typename _Ret>
+    inline std::expected<_Ret, SerialError> make_serial_error(Deserializer &s,
+                                                              std::string_view reason) {
         return make_serial_error(s, reason, 0);
     }
 

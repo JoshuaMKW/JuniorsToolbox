@@ -56,8 +56,7 @@ namespace Toolbox::Object {
 
         if (!result) {
             JSONError &err = result.error();
-            return std::unexpected(
-                make_serial_error(err.m_message, err.m_reason, err.m_byte, in.filepath()));
+            return make_serial_error<void>(err.m_message, err.m_reason, err.m_byte, in.filepath()));
         }
 
         return {};
@@ -182,16 +181,16 @@ namespace Toolbox::Object {
 
     void Template::loadMembers(json_t &members, std::vector<MetaMember> &out) {
         static const std::unordered_map<std::string, std::string> s_alias_map = {
-            {"BYTE",   "S8" },
-            {"SHORT",  "S16"},
-            {"INT",    "S32"},
-            {"LONG",   "S64"},
-            {"UBYTE",  "U8" },
-            {"USHORT", "U16"},
-            {"UINT",   "U32"},
-            {"ULONG",  "U64"},
-            {"FLOAT",  "F32"},
-            {"DOUBLE", "F64"},
+            {"BYTE",   "S8"  },
+            {"SHORT",  "S16" },
+            {"INT",    "S32" },
+            {"LONG",   "S64" },
+            {"UBYTE",  "U8"  },
+            {"USHORT", "U16" },
+            {"UINT",   "U32" },
+            {"ULONG",  "U64" },
+            {"FLOAT",  "F32" },
+            {"DOUBLE", "F64" },
             {"VEC3F",  "VEC3"},
         };
 

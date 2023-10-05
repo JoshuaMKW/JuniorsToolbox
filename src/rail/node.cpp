@@ -175,11 +175,10 @@ namespace Toolbox::Rail {
         for (int i = 0; i < 4; ++i) {
             auto value = getValue(i);
             if (!value) {
-                auto err = make_serial_error(
+                return make_serial_error<void>(
                     out, std::format(
                              "Unexpected end of values in RailNode (expected 4 but only {} exist).",
                              i + 1));
-                return std::unexpected(err);
             }
             out.write<s16, std::endian::big>(*value);
         }
@@ -190,12 +189,11 @@ namespace Toolbox::Rail {
         for (int i = 0; i < connection_count; ++i) {
             auto connection = getConnectionValue(i);
             if (!connection) {
-                auto err = make_serial_error(
+                return make_serial_error<void>(
                     out, std::format(
                              "Unexpected end of connections in RailNode (expected {} but only {} "
                              "exist).",
                              connection_count, i + 1));
-                return std::unexpected(err);
             }
             out.write<s16, std::endian::big>(*connection);
         }
@@ -207,12 +205,11 @@ namespace Toolbox::Rail {
         for (int i = 0; i < connection_count; ++i) {
             auto distance = getConnectionDistance(i);
             if (!distance) {
-                auto err = make_serial_error(
+                return make_serial_error<void>(
                     out,
                     std::format("Unexpected end of distances in RailNode (expected {} but only {} "
                                 "exist).",
                                 connection_count, i + 1));
-                return std::unexpected(err);
             }
             out.write<f32, std::endian::big>(*distance);
         }
@@ -284,7 +281,8 @@ namespace Toolbox::Rail {
         return setConnectionDistance(connection, glm::length(delta));
     }
 
-    std::expected<void, MetaError> RailNode::setConnectionDistance(size_t connection, f32 distance) {
+    std::expected<void, MetaError> RailNode::setConnectionDistance(size_t connection,
+                                                                   f32 distance) {
         auto meta_distance = m_distances->value<MetaValue>(connection);
         if (!meta_distance) {
             return std::unexpected(meta_distance.error());
@@ -317,4 +315,4 @@ namespace Toolbox::Rail {
         return node;
     }
 
-}  // namespace Toolbox::Scene
+}  // namespace Toolbox::Rail

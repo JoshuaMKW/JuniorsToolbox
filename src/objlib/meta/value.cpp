@@ -187,8 +187,7 @@ namespace Toolbox::Object {
             }
             return {};
         } catch (std::exception &e) {
-            auto err = make_serial_error(out, e.what());
-            return std::unexpected(err);
+            return make_serial_error<void>(out, e.what());
         }
     }
 
@@ -264,8 +263,7 @@ namespace Toolbox::Object {
             }
             return {};
         } catch (std::exception &e) {
-            auto err = make_serial_error(in, e.what());
-            return std::unexpected(err);
+            return make_serial_error<void>(in, e.what());
         }
     }
 

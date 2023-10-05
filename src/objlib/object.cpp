@@ -127,8 +127,7 @@ namespace Toolbox::Object {
     void VirtualSceneObject::applyWizard(const TemplateWizard &wizard) {
         m_nameref.setName(wizard.m_name);
         for (auto &member : wizard.m_init_members) {
-            std::shared_ptr<MetaMember> new_member =
-                make_deep_clone<MetaMember>(member);
+            std::shared_ptr<MetaMember> new_member = make_deep_clone<MetaMember>(member);
             new_member->updateReferenceToList(m_members);
             m_members.emplace_back(new_member);
         }
@@ -168,13 +167,11 @@ namespace Toolbox::Object {
         if (!template_result) {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
-                auto error        = std::get<FSError>(error_v);
-                auto serial_error = make_serial_error(in, error.m_message);
-                return std::unexpected(serial_error);
+                auto error = std::get<FSError>(error_v);
+                return make_serial_error<void>(in, error.m_message);
             } else {
-                auto error        = std::get<JSONError>(error_v);
-                auto serial_error = make_serial_error(in, error.m_message);
-                return std::unexpected(serial_error);
+                auto error = std::get<JSONError>(error_v);
+                return make_serial_error<void>(in, error.m_message);
             }
         }
 
@@ -194,7 +191,7 @@ namespace Toolbox::Object {
             auto &m          = wizard->m_init_members[i];
             auto this_member = make_deep_clone<MetaMember>(m);
             this_member->updateReferenceToList(m_members);
-            auto result      = this_member->deserialize(in);
+            auto result = this_member->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -363,13 +360,11 @@ namespace Toolbox::Object {
         if (!template_result) {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
-                auto error        = std::get<FSError>(error_v);
-                auto serial_error = make_serial_error(in, error.m_message);
-                return std::unexpected(serial_error);
+                auto error = std::get<FSError>(error_v);
+                return make_serial_error<void>(in, error.m_message);
             } else {
-                auto error        = std::get<JSONError>(error_v);
-                auto serial_error = make_serial_error(in, error.m_message);
-                return std::unexpected(serial_error);
+                auto error = std::get<JSONError>(error_v);
+                return make_serial_error<void>(in, error.m_message);
             }
         }
 
@@ -394,7 +389,7 @@ namespace Toolbox::Object {
             auto &m          = wizard->m_init_members[i];
             auto this_member = make_deep_clone<MetaMember>(m);
             this_member->updateReferenceToList(m_members);
-            auto result      = this_member->deserialize(in);
+            auto result = this_member->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -410,12 +405,11 @@ namespace Toolbox::Object {
         // Children
         for (size_t i = 0; i < num_children; ++i) {
             if (in.tell() >= endpos) {
-                auto err = make_serial_error(
+                return make_serial_error<void>(
                     in,
                     std::format(
                         "Unexpected end of file. {} ({}) expected {} children but only found {}",
                         m_type, m_nameref.name(), num_children, i + 1));
-                return std::unexpected(err);
             }
             ObjectFactory::create_t result = ObjectFactory::create(in);
             if (!result) {
@@ -525,8 +519,7 @@ namespace Toolbox::Object {
     void PhysicalSceneObject::applyWizard(const TemplateWizard &wizard) {
         m_nameref.setName(wizard.m_name);
         for (auto &member : wizard.m_init_members) {
-            auto new_member =
-                make_deep_clone<MetaMember>(member);
+            auto new_member = make_deep_clone<MetaMember>(member);
             new_member->updateReferenceToList(m_members);
             m_members.emplace_back(new_member);
         }
@@ -568,13 +561,11 @@ namespace Toolbox::Object {
         if (!template_result) {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
-                auto error        = std::get<FSError>(error_v);
-                auto serial_error = make_serial_error(in, error.m_message);
-                return std::unexpected(serial_error);
+                auto error = std::get<FSError>(error_v);
+                return make_serial_error<void>(in, error.m_message);
             } else {
-                auto error        = std::get<JSONError>(error_v);
-                auto serial_error = make_serial_error(in, error.m_message);
-                return std::unexpected(serial_error);
+                auto error = std::get<JSONError>(error_v);
+                return make_serial_error<void>(in, error.m_message);
             }
         }
 
@@ -594,7 +585,7 @@ namespace Toolbox::Object {
             auto &m          = wizard->m_init_members[i];
             auto this_member = make_deep_clone<MetaMember>(m);
             this_member->updateReferenceToList(m_members);
-            auto result      = this_member->deserialize(in);
+            auto result = this_member->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
