@@ -81,6 +81,27 @@ namespace Toolbox {
             return *this;
         }
 
+        Serializer &padTo(std::size_t alignment, std::span<const char> fill) {
+            std::size_t pos = tell();
+            std::size_t pad = (alignment - (pos % alignment));
+            std::size_t fill_size = fill.size();
+            for (std::size_t i = 0; i < pad; ++i) {
+                write<u8>(fill[i % fill_size]);
+            }
+            return *this;
+        }
+
+        Serializer &padTo(std::size_t alignment, char fill) {
+            std::size_t pos = tell();
+            std::size_t pad = (alignment - (pos % alignment));
+            for (std::size_t i = 0; i < pad; ++i) {
+                write<u8>(0);
+            }
+            return *this;
+        }
+
+        Serializer &padTo(std::size_t alignment) { padTo(alignment, '\x00'); }
+
         Serializer &seek(std::streamoff off, std::ios_base::seekdir way) {
             m_out.seekp(off, way);
             return *this;
@@ -155,8 +176,7 @@ namespace Toolbox {
             return str;
         }
 
-        template <std::endian E = std::endian::native> 
-        Deserializer &readString(std::string &str) {
+        template <std::endian E = std::endian::native> Deserializer &readString(std::string &str) {
             auto len = read<u16, E>();
             str.resize(len);
             readBytes(std::span(str.data(), len));
@@ -234,9 +254,9 @@ namespace Toolbox {
     };
 
     template <typename _Ret>
-    inline std::expected<_Ret, SerialError> make_serial_error(std::string_view context,
-                                                                        std::string_view reason,
-                                         size_t error_pos, std::string_view filepath) {
+    inline std::expected<_Ret, SerialError>
+    make_serial_error(std::string_view context, std::string_view reason, size_t error_pos,
+                      std::string_view filepath) {
         return SerialError{
             {std::format("SerialError: {}", context), std::format("Reason: {}", reason)},
             error_pos,

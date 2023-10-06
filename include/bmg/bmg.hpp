@@ -35,7 +35,7 @@ namespace Toolbox::BMG {
         std::string m_message_data;
     };
 
-    enum class MessageSound {
+    enum class MessageSound : u8 {
         NOTHING                        = 69,
         PEACH_NORMAL                   = 0,
         PEACH_SURPRISE                 = 1,
@@ -176,12 +176,12 @@ namespace Toolbox::BMG {
     class MessageData : public ISerializable {
     public:
         struct Entry {
-            std::string m_name;
-            CmdMessage m_message;
-            MessageSound m_sound;
-            u16 m_start_frame;
-            u16 m_end_frame;
-            std::vector<char> m_unk_flags;
+            std::string m_name = "";
+            CmdMessage m_message = CmdMessage();
+            MessageSound m_sound = MessageSound::NOTHING;
+            u16 m_start_frame = 0;
+            u16 m_end_frame = 0;
+            std::vector<char> m_unk_flags = {};
         };
 
         MessageData() = default;
@@ -211,6 +211,10 @@ namespace Toolbox::BMG {
         void removeEntry(const Entry &entry);
 
         MessageData &operator=(const MessageData &) = default;
+
+        void dump(std::ostream &out, size_t indention, size_t indention_width) const;
+        void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
+        void dump(std::ostream &out) const { dump(out, 0, 2); }
 
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;

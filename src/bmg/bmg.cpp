@@ -1,9 +1,11 @@
 #include "bmg/bmg.hpp"
+#include "magic_enum.hpp"
 
 #include <algorithm>
 #include <format>
 #include <iostream>
 #include <numeric>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -59,7 +61,7 @@ namespace Toolbox::BMG {
                 size += result.value().size();
             }
         }
-        return size;
+        return size + 1;
     }
 
     std::string CmdMessage::getString() const { return m_message_data; }
@@ -81,7 +83,7 @@ namespace Toolbox::BMG {
         for (auto &part : parts) {
             auto result = rawFromCommand(part);
             if (!result) {
-                out.writeString(part);
+                out.writeCString(part);
             } else {
                 out.writeBytes(result.value());
             }
@@ -267,6 +269,31 @@ namespace Toolbox::BMG {
         return m_entries[index];
     }
 
+    size_t MessageData::getDataSize() const {
+        return getINF1Size() + getSTR1Size() + getDAT1Size();
+    }
+
+    size_t MessageData::getINF1Size() const {
+        return (0x10 + (m_entries.size() * m_flag_size) + 0x1F) & ~0x1F;
+    }
+
+    size_t MessageData::getDAT1Size() const {
+        size_t size = std::accumulate(
+            m_entries.begin(), m_entries.end(), 9,
+            [](size_t sum, const Entry &entry) { return sum + entry.m_message.getDataSize(); });
+        return (size + 0x1F) & ~0x1F;
+    }
+
+    size_t MessageData::getSTR1Size() const {
+        if (!m_has_str1)
+            return 0;
+
+        size_t size = std::accumulate(
+            m_entries.begin(), m_entries.end(), 9,
+            [](size_t sum, const Entry &entry) { return sum + entry.m_name.size() + 1; });
+        return (size + 0x1F) & ~0x1F;
+    }
+
     bool MessageData::isMagicValid(Deserializer &in) {
         in.pushBreakpoint();
 
@@ -306,6 +333,215 @@ namespace Toolbox::BMG {
         if (it == m_entries.end())
             return;
         m_entries.erase(it);
+    }
+
+    void MessageData::dump(std::ostream &out, size_t indention, size_t indention_width) const {
+        auto indention_str = std::string(indention * indention_width, ' ');
+        auto value_indention_str = std::string((indention + 1) * indention_width, ' ');
+
+        out << indention_str << "BMG Data (" << m_flag_size << ") {" << std::endl;
+        for (auto &entry : m_entries) {
+            std::string_view name = entry.m_name.empty() ? "(Unknown)" : entry.m_name;
+            out << value_indention_str << name << " (" << entry.m_start_frame << ", "
+                << entry.m_end_frame << ", " << magic_enum::enum_name(entry.m_sound) << "): \""
+                << entry.m_message.getString() << "\"" << std::endl;
+        }
+        out << indention_str << "}" << std::endl;
+    }
+
+    std::expected<void, SerialError> MessageData::serialize(Serializer &out) const {
+        // Header
+        out.write<u32, std::endian::big>('MESG');
+        out.write<u32, std::endian::big>('bmg1');
+        out.write<u32, std::endian::big>(getDataSize() / 32);
+        out.write<u32, std::endian::big>(m_has_str1 ? 3 : 2);
+        {
+            std::vector<char> padding(0x10, 0);
+            out.write(padding);
+        }
+
+        // INF1
+        out.write<u32, std::endian::big>('INF1');
+        out.write<u32, std::endian::big>(getINF1Size());
+        out.write<u16, std::endian::big>(m_entries.size());
+        out.write<u16, std::endian::big>(m_flag_size);
+        out.write<u32, std::endian::big>(0x100);  // Unknown
+
+        size_t data_offset = 1;  // Padding
+        size_t name_offset = 1;  // Padding
+
+        for (auto &entry : m_entries) {
+            out.write<u32, std::endian::big>(data_offset);
+            if (m_flag_size == 12) {
+                out.write<u16, std::endian::big>(entry.m_start_frame);
+                out.write<u16, std::endian::big>(entry.m_end_frame);
+                if (m_has_str1) {
+                    out.write<u16, std::endian::big>(name_offset);
+                    out.write<u8>(static_cast<u8>(entry.m_sound));
+                    out.seek(1);
+                } else {
+                    out.write<u8>(static_cast<u8>(entry.m_sound));
+                    out.seek(3);
+                }
+            } else if (m_flag_size == 8) {
+                out.writeBytes(entry.m_unk_flags);
+                out.seek(std::max(size_t(0), 4 - entry.m_unk_flags.size()));
+            } else if (m_flag_size == 4) {
+                // Nothing to do
+            } else {
+                return make_serial_error<void>(out, "Invalid flag size");
+            }
+            data_offset += entry.m_message.getDataSize();
+            name_offset += entry.m_name.size() + 1;
+        }
+
+        // Align stream
+        out.padTo(32);
+
+        // DAT1
+        out.write<u32, std::endian::big>('DAT1');
+        out.write<u32, std::endian::big>(getDAT1Size());
+        out.write<char>(0);  // Padding
+
+        for (auto &entry : m_entries) {
+            auto result = entry.m_message.serialize(out);
+            if (!result)
+                return std::unexpected(result.error());
+        }
+
+        // Align stream
+        out.padTo(32);
+
+        // STR1
+        if (m_has_str1) {
+            out.write<u32, std::endian::big>('STR1');
+            out.write<u32, std::endian::big>(getSTR1Size());
+            out.write<char>(0);  // Padding
+
+            for (auto &entry : m_entries) {
+                out.writeCString(entry.m_name);
+            }
+        }
+
+        // Align stream
+        out.padTo(32);
+
+        return {};
+    }
+
+    std::expected<void, SerialError> MessageData::deserialize(Deserializer &in) {
+        if (!isMagicValid(in)) {
+            return make_serial_error<void>(in, "Magic of BMG is invalid! (Expected MESGbmg1)");
+        }
+
+        in.seek(8);  // Skip magic
+
+        auto bmg_size = in.read<u32, std::endian::big>();
+        {
+            in.pushBreakpoint();
+            in.seek(0, std::ios::end);
+            if (bmg_size != static_cast<size_t>(in.tell())) {
+                return make_serial_error<void>(in, "BMG size marker doesn't match stream size");
+            }
+            in.popBreakpoint();
+        }
+
+        m_entries.clear();
+
+        auto section_count = in.read<u32, std::endian::big>();
+        m_has_str1 = section_count >= 3;
+
+        in.seek(0x10);  // Padding
+
+        size_t message_count = 0;
+        size_t flag_size     = 0;
+
+        std::vector<size_t> data_offsets;
+        std::vector<size_t> name_offsets;
+
+        for (size_t i = 0; i < section_count; ++i) {
+            auto section_start = static_cast<size_t>(in.tell());
+            auto section_magic = in.read<u32, std::endian::big>();
+            auto section_size  = in.read<u32, std::endian::big>();
+            if (section_magic == 'INF1') {
+                if (i != 0) {
+                    return make_serial_error<void>(
+                        in,
+                        std::format(
+                            "INF1 section marker found at incorrect index (Expected 0, got {})", 1),
+                        -8);
+                }
+                message_count = in.read<u16, std::endian::big>();
+                flag_size     = in.read<u16, std::endian::big>();
+                in.seek(4);  // Unknown values
+
+                Entry entry;
+                for (size_t j = 0; j < message_count; ++j) {
+                    data_offsets.push_back(in.read<u32, std::endian::big>());
+                    if (flag_size == 12) {
+                        entry.m_start_frame = in.read<u16, std::endian::big>();
+                        entry.m_end_frame = in.read<u16, std::endian::big>();
+                        if (m_has_str1) {
+                            name_offsets.push_back(in.read<u16, std::endian::big>());
+                        }
+                        entry.m_sound = magic_enum::enum_cast<MessageSound>(in.read<u8>())
+                                            .value_or(MessageSound::NOTHING);
+                        in.seek(m_has_str1 ? 1 : 3);
+                    } else if (flag_size == 8) {
+                        entry.m_unk_flags.resize(4);
+                        in.readBytes(entry.m_unk_flags);
+                    } else if (flag_size == 4) {
+                        // Nothing to do
+                    } else {
+                        return make_serial_error<void>(in, "Invalid flag size");
+                    }
+                }
+                m_entries.push_back(entry);
+            } else if (section_magic == 'DAT1') {
+                if (i == 0) {
+                    return make_serial_error<void>(
+                        in, "DAT1 section marker found at incorrect index (Expected > 0, got 0)",
+                        -8);
+                }
+                in.seek(1);  // Skip padding
+                for (size_t i = 0; i < m_entries.size(); ++i) {
+                    in.seek(section_start + data_offsets[i], std::ios::beg);
+                    auto result = m_entries[i].m_message.deserialize(in);
+                    if (!result)
+                        return std::unexpected(result.error());
+
+                    /*size_t data_size;
+                    if (i == m_entries.size() - 1) {
+                        data_size = section_size - (static_cast<size_t>(in.tell()) - section_start);
+                    } else {
+                        data_size = data_offsets[i + 1] - data_offsets[i];
+                    }
+
+                    std::vector<char> message_data(data_size);
+                    in.readBytes(message_data);*/
+                }
+            } else if (section_magic == 'STR1') {
+                if (i == 0) {
+                    return make_serial_error<void>(
+                        in, "INF1 section marker found at incorrect index (Expected > 0, got 0)",
+                        -8);
+                }
+
+                if (!m_has_str1) {
+                    return make_serial_error<void>(
+                        in, "INF1 found when not expected! Likely missing DAT1.", -8);
+                }
+
+                in.seek(1);  // Skip padding
+                for (size_t i = 0; i < m_entries.size(); ++i) {
+                    in.seek(section_start + name_offsets[i], std::ios::beg);
+                    m_entries[i].m_name = in.readCString(
+                        section_size - (static_cast<size_t>(in.tell()) - section_start));
+                }
+            }
+        }
+
+        return {};
     }
 
 }  // namespace Toolbox::BMG
