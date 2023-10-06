@@ -21,35 +21,35 @@ int main(int argc, char **argv) {
     auto t1 = high_resolution_clock::now();
 
     Toolbox::Scene::SceneInstance scene("C:/Users/Kyler-Josh/Dropbox/Master_Builds/Eclipse_"
-                                        "Master/files/data/scene/dolpic10.szs_ext/scene");
+                                        "Master/files/data/scene/dolpic9.szs_ext/scene");
 
     auto t2 = high_resolution_clock::now();
 
     auto ms_int = duration_cast<milliseconds>(t2 - t1);
     std::cout << "Scene loaded in " << ms_int.count() << "ms\n";
 
-    // scene.dump(std::cout);
+    scene.dump(std::cout);
 
-    IMGUI_CHECKVERSION();
+    //IMGUI_CHECKVERSION();
 
-    ImGui::CreateContext();
-    ImGuiIO &io    = ImGui::GetIO();
-    io.DisplaySize = {500, 300};
+    //ImGui::CreateContext();
+    //ImGuiIO &io    = ImGui::GetIO();
+    //io.DisplaySize = {500, 300};
 
-    // ImGui_ImplGlfw_InitForOpenGL();
-    // ImGui_ImplOpenGL3_Init("#version 330");
+    //// ImGui_ImplGlfw_InitForOpenGL();
+    //// ImGui_ImplOpenGL3_Init("#version 330");
 
-    while (true) {
-        static bool show_demo_window = true;
-        // ImGui_ImplOpenGL3_NewFrame();
-        ImGui::NewFrame();
-        ImGui::Begin("Junior's Toolbox", &show_demo_window);
-        ImGui::Text("Hello, world!");
-        ImGui::End();
-        ImGui::Render();
-    }
+    //while (true) {
+    //    static bool show_demo_window = true;
+    //    // ImGui_ImplOpenGL3_NewFrame();
+    //    ImGui::NewFrame();
+    //    ImGui::Begin("Junior's Toolbox", &show_demo_window);
+    //    ImGui::Text("Hello, world!");
+    //    ImGui::End();
+    //    ImGui::Render();
+    //}
 
-    ImGui::DestroyContext();
+    //ImGui::DestroyContext();
 
     return 0;
 }

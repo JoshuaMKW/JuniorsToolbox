@@ -82,8 +82,8 @@ namespace Toolbox {
         }
 
         Serializer &padTo(std::size_t alignment, std::span<const char> fill) {
-            std::size_t pos = tell();
-            std::size_t pad = (alignment - (pos % alignment));
+            std::size_t pos       = tell();
+            std::size_t pad       = (alignment - (pos % alignment));
             std::size_t fill_size = fill.size();
             for (std::size_t i = 0; i < pad; ++i) {
                 write<u8>(fill[i % fill_size]);
@@ -100,7 +100,7 @@ namespace Toolbox {
             return *this;
         }
 
-        Serializer &padTo(std::size_t alignment) { padTo(alignment, '\x00'); }
+        Serializer &padTo(std::size_t alignment) { return padTo(alignment, '\x00'); }
 
         Serializer &seek(std::streamoff off, std::ios_base::seekdir way) {
             m_out.seekp(off, way);
@@ -223,6 +223,10 @@ namespace Toolbox {
             return *this;
         }
 
+        Deserializer &alignTo(size_t alignment) {
+            return seek((static_cast<size_t>(tell()) + alignment - 1) & ~(alignment - 1), std::ios::beg);
+        }
+
         Deserializer &seek(std::streamoff off, std::ios_base::seekdir way) {
             m_in.seekg(off, way);
             return *this;
@@ -257,40 +261,42 @@ namespace Toolbox {
     inline std::expected<_Ret, SerialError>
     make_serial_error(std::string_view context, std::string_view reason, size_t error_pos,
                       std::string_view filepath) {
-        return SerialError{
+        return std::unexpected(SerialError{
             {std::format("SerialError: {}", context), std::format("Reason: {}", reason)},
             error_pos,
             std::string(filepath),
             std::stacktrace::current()
-        };
+        });
     }
 
     template <typename _Ret>
     inline std::expected<_Ret, SerialError>
     make_serial_error(Serializer &s, std::string_view reason, int error_adjust) {
         auto pos = std::max(static_cast<size_t>(s.tell()) + error_adjust, static_cast<size_t>(0));
-        return make_serial_error(std::format("Unexpected byte at position {} ({:X}).", pos, pos),
-                                 reason, pos + error_adjust, s.filepath());
+        return make_serial_error<_Ret>(
+            std::format("Unexpected byte at position {} ({:X}).", pos, pos), reason,
+            pos + error_adjust, s.filepath());
     }
 
     template <typename _Ret>
     inline std::expected<_Ret, SerialError> make_serial_error(Serializer &s,
                                                               std::string_view reason) {
-        return make_serial_error(s, reason, 0);
+        return make_serial_error<_Ret>(s, reason, 0);
     }
 
     template <typename _Ret>
     inline std::expected<_Ret, SerialError>
     make_serial_error(Deserializer &s, std::string_view reason, int error_adjust) {
         auto pos = std::max(static_cast<size_t>(s.tell()) + error_adjust, static_cast<size_t>(0));
-        return make_serial_error(std::format("Unexpected byte at position {} ({:X}).", pos, pos),
-                                 reason, pos + error_adjust, s.filepath());
+        return make_serial_error<_Ret>(
+            std::format("Unexpected byte at position {} ({:X}).", pos, pos), reason,
+            pos + error_adjust, s.filepath());
     }
 
     template <typename _Ret>
     inline std::expected<_Ret, SerialError> make_serial_error(Deserializer &s,
                                                               std::string_view reason) {
-        return make_serial_error(s, reason, 0);
+        return make_serial_error<_Ret>(s, reason, 0);
     }
 
 }  // namespace Toolbox

@@ -26,6 +26,17 @@ namespace Toolbox::BMG {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
+        CmdMessage &operator=(const CmdMessage &) = default;
+        CmdMessage &operator=(CmdMessage &&)      = default;
+
+        bool operator==(const CmdMessage &other) const {
+            return m_message_data == other.m_message_data;
+        }
+
+        void dump(std::ostream &out, size_t indention, size_t indention_width) const;
+        void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
+        void dump(std::ostream &out) const { dump(out, 0, 2); }
+
     protected:
         std::vector<std::string> getParts() const;
         static std::optional<std::vector<char>> rawFromCommand(std::string_view command);
@@ -176,12 +187,18 @@ namespace Toolbox::BMG {
     class MessageData : public ISerializable {
     public:
         struct Entry {
-            std::string m_name = "";
-            CmdMessage m_message = CmdMessage();
-            MessageSound m_sound = MessageSound::NOTHING;
-            u16 m_start_frame = 0;
-            u16 m_end_frame = 0;
+            std::string m_name            = "";
+            CmdMessage m_message          = CmdMessage();
+            MessageSound m_sound          = MessageSound::NOTHING;
+            u16 m_start_frame             = 0;
+            u16 m_end_frame               = 0;
             std::vector<char> m_unk_flags = {};
+
+            bool operator==(const Entry &other) const {
+                return m_name == other.m_name && m_message == other.m_message &&
+                       m_sound == other.m_sound && m_start_frame == other.m_start_frame &&
+                       m_end_frame == other.m_end_frame && m_unk_flags == other.m_unk_flags;
+            }
         };
 
         MessageData() = default;

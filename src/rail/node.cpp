@@ -41,8 +41,11 @@ namespace Toolbox::Rail {
             "Distances", info, std::make_shared<MetaValue>(MetaValue(static_cast<f32>(0))));
     }
 
-    RailNode::RailNode(glm::vec3 pos) : RailNode(pos.x, pos.y, pos.z) {}
-    RailNode::RailNode(glm::vec3 pos, u32 flags) : RailNode(pos.x, pos.y, pos.z, flags) {}
+    RailNode::RailNode(glm::vec3 pos)
+        : RailNode(static_cast<s16>(pos.x), static_cast<s16>(pos.y), static_cast<s16>(pos.z)) {}
+    RailNode::RailNode(glm::vec3 pos, u32 flags)
+        : RailNode(static_cast<s16>(pos.x), static_cast<s16>(pos.y), static_cast<s16>(pos.z),
+                   flags) {}
 
     glm::vec3 RailNode::getPosition() const {
         std::shared_ptr<MetaValue> value_x = m_pos_x->value<MetaValue>(0).value();

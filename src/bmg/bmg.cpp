@@ -132,6 +132,30 @@ namespace Toolbox::BMG {
         return {};
     }
 
+    void CmdMessage::dump(std::ostream &out, size_t indention, size_t indention_width) const {
+        std::vector<std::string> lines;
+        size_t line_start = 0, line_end = 0;
+        while (line_end != std::string::npos) {
+            line_end = m_message_data.find('\n', line_start);
+            lines.push_back(m_message_data.substr(line_start, line_end - line_start));
+            line_start = line_end + 1;
+        }
+
+        auto indention_str = std::string(std::max(size_t(1), indention * indention_width), ' ');
+        auto start_indention_str = indention_str.substr(0, indention_str.size() - 1);
+
+        out << start_indention_str << "\"";
+        for (size_t i = 0; i < lines.size(); ++i) {
+            if (i == 0) {
+                out << lines[i] << std::endl;
+            } else if (i == lines.size() - 1) {
+                out << indention_str << lines[i] << "\"" << std::endl;
+            } else {
+                out << indention_str << lines[i] << std::endl;
+            }
+        }
+    }
+
     std::vector<std::string> CmdMessage::getParts() const {
         std::vector<std::string> parts;
 
@@ -142,7 +166,7 @@ namespace Toolbox::BMG {
         while (bracket_r != std::string::npos) {
             bracket_l = m_message_data.find('{', bracket_r);
 
-            std::string_view text = m_message_data.substr(bracket_r, bracket_l);
+            std::string text = m_message_data.substr(bracket_r, bracket_l);
 
             bracket_r      = m_message_data.find('}', bracket_l);
             next_bracket_l = m_message_data.find('{', bracket_l);
@@ -156,22 +180,22 @@ namespace Toolbox::BMG {
 
             if (!isCommandEnclosed) {
                 if (bracket_r == std::string::npos) {
-                    std::string_view trailing_text =
+                    std::string trailing_text =
                         m_message_data.substr(bracket_l);  // to the end
                     if (!trailing_text.empty())
                         parts.push_back(std::string(trailing_text));
                     break;
                 }
-                std::string_view trailing_text = m_message_data.substr(bracket_l, next_bracket_l);
+                std::string trailing_text = m_message_data.substr(bracket_l, next_bracket_l);
                 if (!trailing_text.empty())
-                    parts.push_back(std::string(trailing_text));
+                    parts.push_back(trailing_text);
                 bracket_r = next_bracket_l;  // skip the bracket
                 continue;
             }
 
-            std::string_view command = m_message_data.substr(bracket_l, bracket_r);
+            std::string command = m_message_data.substr(bracket_l, bracket_r);
             if (!command.empty())
-                parts.push_back(std::string(command));
+                parts.push_back(command);
         }
 
         return parts;
@@ -203,7 +227,7 @@ namespace Toolbox::BMG {
             std::vector<char> raw(command_size);
             {
                 raw[0] = 0x1A;
-                raw[1] = command_size;
+                raw[1] = static_cast<char>(command_size);
                 raw[2] = 0x01;
                 raw[3] = 0x00;
                 raw[4] = option;
@@ -241,7 +265,7 @@ namespace Toolbox::BMG {
         if (command[2] == 0x01 && command[3] == 0x00) {
             char buf[32];
             std::snprintf(buf, 32, "{option:%d:%s}", command[4],
-                          std::string(command.begin() + 5, command.end()));
+                          std::string(command.begin() + 5, command.end()).c_str());
             return buf;
         }
 
@@ -279,7 +303,7 @@ namespace Toolbox::BMG {
 
     size_t MessageData::getDAT1Size() const {
         size_t size = std::accumulate(
-            m_entries.begin(), m_entries.end(), 9,
+            m_entries.begin(), m_entries.end(), size_t(9),
             [](size_t sum, const Entry &entry) { return sum + entry.m_message.getDataSize(); });
         return (size + 0x1F) & ~0x1F;
     }
@@ -289,7 +313,7 @@ namespace Toolbox::BMG {
             return 0;
 
         size_t size = std::accumulate(
-            m_entries.begin(), m_entries.end(), 9,
+            m_entries.begin(), m_entries.end(), size_t(9),
             [](size_t sum, const Entry &entry) { return sum + entry.m_name.size() + 1; });
         return (size + 0x1F) & ~0x1F;
     }
@@ -326,6 +350,7 @@ namespace Toolbox::BMG {
         if (index > m_entries.size())
             return false;
         m_entries.insert(m_entries.begin() + index, entry);
+        return true;
     }
 
     void MessageData::removeEntry(const Entry &entry) {
@@ -339,12 +364,14 @@ namespace Toolbox::BMG {
         auto indention_str = std::string(indention * indention_width, ' ');
         auto value_indention_str = std::string((indention + 1) * indention_width, ' ');
 
-        out << indention_str << "BMG Data (" << m_flag_size << ") {" << std::endl;
+        out << indention_str << "BMG Data (Flag Size: " << static_cast<size_t>(m_flag_size) << ") {" << std::endl;
         for (auto &entry : m_entries) {
-            std::string_view name = entry.m_name.empty() ? "(Unknown)" : entry.m_name;
+            std::string name = entry.m_name.empty() ? "(Unknown)" : entry.m_name;
             out << value_indention_str << name << " (" << entry.m_start_frame << ", "
-                << entry.m_end_frame << ", " << magic_enum::enum_name(entry.m_sound) << "): \""
-                << entry.m_message.getString() << "\"" << std::endl;
+                << entry.m_end_frame << ", " << magic_enum::enum_name(entry.m_sound) << ") {"
+                << std::endl;
+            entry.m_message.dump(out, indention + 2, indention_width);
+            out << value_indention_str << "}" << std::endl;
         }
         out << indention_str << "}" << std::endl;
     }
@@ -353,7 +380,7 @@ namespace Toolbox::BMG {
         // Header
         out.write<u32, std::endian::big>('MESG');
         out.write<u32, std::endian::big>('bmg1');
-        out.write<u32, std::endian::big>(getDataSize() / 32);
+        out.write<u32, std::endian::big>(static_cast<u32>(getDataSize()) / 32);
         out.write<u32, std::endian::big>(m_has_str1 ? 3 : 2);
         {
             std::vector<char> padding(0x10, 0);
@@ -362,8 +389,8 @@ namespace Toolbox::BMG {
 
         // INF1
         out.write<u32, std::endian::big>('INF1');
-        out.write<u32, std::endian::big>(getINF1Size());
-        out.write<u16, std::endian::big>(m_entries.size());
+        out.write<u32, std::endian::big>(static_cast<u32>(getINF1Size()));
+        out.write<u16, std::endian::big>(static_cast<u16>(m_entries.size()));
         out.write<u16, std::endian::big>(m_flag_size);
         out.write<u32, std::endian::big>(0x100);  // Unknown
 
@@ -371,12 +398,12 @@ namespace Toolbox::BMG {
         size_t name_offset = 1;  // Padding
 
         for (auto &entry : m_entries) {
-            out.write<u32, std::endian::big>(data_offset);
+            out.write<u32, std::endian::big>(static_cast<u32>(data_offset));
             if (m_flag_size == 12) {
                 out.write<u16, std::endian::big>(entry.m_start_frame);
                 out.write<u16, std::endian::big>(entry.m_end_frame);
                 if (m_has_str1) {
-                    out.write<u16, std::endian::big>(name_offset);
+                    out.write<u16, std::endian::big>(static_cast<u32>(name_offset));
                     out.write<u8>(static_cast<u8>(entry.m_sound));
                     out.seek(1);
                 } else {
@@ -400,7 +427,7 @@ namespace Toolbox::BMG {
 
         // DAT1
         out.write<u32, std::endian::big>('DAT1');
-        out.write<u32, std::endian::big>(getDAT1Size());
+        out.write<u32, std::endian::big>(static_cast<u32>(getDAT1Size()));
         out.write<char>(0);  // Padding
 
         for (auto &entry : m_entries) {
@@ -415,7 +442,7 @@ namespace Toolbox::BMG {
         // STR1
         if (m_has_str1) {
             out.write<u32, std::endian::big>('STR1');
-            out.write<u32, std::endian::big>(getSTR1Size());
+            out.write<u32, std::endian::big>(static_cast<u32>(getSTR1Size()));
             out.write<char>(0);  // Padding
 
             for (auto &entry : m_entries) {
@@ -436,7 +463,7 @@ namespace Toolbox::BMG {
 
         in.seek(8);  // Skip magic
 
-        auto bmg_size = in.read<u32, std::endian::big>();
+        auto bmg_size = in.read<u32, std::endian::big>() * 32;
         {
             in.pushBreakpoint();
             in.seek(0, std::ios::end);
@@ -475,8 +502,8 @@ namespace Toolbox::BMG {
                 flag_size     = in.read<u16, std::endian::big>();
                 in.seek(4);  // Unknown values
 
-                Entry entry;
                 for (size_t j = 0; j < message_count; ++j) {
+                    Entry entry;
                     data_offsets.push_back(in.read<u32, std::endian::big>());
                     if (flag_size == 12) {
                         entry.m_start_frame = in.read<u16, std::endian::big>();
@@ -495,8 +522,8 @@ namespace Toolbox::BMG {
                     } else {
                         return make_serial_error<void>(in, "Invalid flag size");
                     }
+                    m_entries.push_back(entry);
                 }
-                m_entries.push_back(entry);
             } else if (section_magic == 'DAT1') {
                 if (i == 0) {
                     return make_serial_error<void>(
@@ -505,7 +532,7 @@ namespace Toolbox::BMG {
                 }
                 in.seek(1);  // Skip padding
                 for (size_t i = 0; i < m_entries.size(); ++i) {
-                    in.seek(section_start + data_offsets[i], std::ios::beg);
+                    in.seek(section_start + data_offsets[i] + 8, std::ios::beg);
                     auto result = m_entries[i].m_message.deserialize(in);
                     if (!result)
                         return std::unexpected(result.error());
@@ -534,11 +561,12 @@ namespace Toolbox::BMG {
 
                 in.seek(1);  // Skip padding
                 for (size_t i = 0; i < m_entries.size(); ++i) {
-                    in.seek(section_start + name_offsets[i], std::ios::beg);
+                    in.seek(section_start + name_offsets[i] + 8, std::ios::beg);
                     m_entries[i].m_name = in.readCString(
                         section_size - (static_cast<size_t>(in.tell()) - section_start));
                 }
             }
+            in.alignTo(32);
         }
 
         return {};

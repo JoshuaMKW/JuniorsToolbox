@@ -33,6 +33,7 @@ namespace Toolbox::Rail {
             glm::vec3 rotatedPos = r * (node->getPosition() - center) + center;
             node->setPosition(rotatedPos);
         }
+        return *this;
     }
 
     Rail &Rail::scale(const glm::vec3 &s) {
@@ -41,6 +42,7 @@ namespace Toolbox::Rail {
             glm::vec3 scaledPos = s * (node->getPosition() - center) + center;
             node->setPosition(scaledPos);
         }
+        return *this;
     }
 
     Rail &Rail::invert(bool x, bool y, bool z) {
@@ -57,6 +59,7 @@ namespace Toolbox::Rail {
                 normalPos.z = -normalPos.z;
             node->setPosition(normalPos + center);
         }
+        return *this;
     }
 
     void Rail::subdivide(size_t iterations) {
@@ -143,6 +146,8 @@ namespace Toolbox::Rail {
                 return true;
             }
         }
+
+        return false;
     }
 
     std::optional<size_t> Rail::getNodeIndex(node_ptr_t node) const {
@@ -230,7 +235,8 @@ namespace Toolbox::Rail {
             return make_meta_error<void>("Error adding connection (max)", connectionCount, 8);
         }
         node->setConnectionCount(connectionCount + 1);
-        node->setConnectionValue(connectionCount, getNodeIndex(to).value());
+        node->setConnectionValue(connectionCount, static_cast<s16>(getNodeIndex(to).value()));
+        return {};
     }
 
     std::expected<void, MetaError> Rail::insertConnection(size_t node, size_t index, size_t to) {
@@ -256,7 +262,7 @@ namespace Toolbox::Rail {
                 return result;
             }
         }
-        return node->setConnectionValue(index, getNodeIndex(to).value());
+        return node->setConnectionValue(index, static_cast<s16>(getNodeIndex(to).value()));
     }
 
     std::expected<void, MetaError> Rail::removeConnection(size_t node, size_t index) {
@@ -298,7 +304,7 @@ namespace Toolbox::Rail {
             return make_meta_error<void>("Error replacing connection (index)", index,
                                          node->getConnectionCount());
         }
-        return node->setConnectionValue(index, getNodeIndex(to).value());
+        return node->setConnectionValue(index, static_cast<s16>(getNodeIndex(to).value()));
     }
 
     std::expected<void, MetaError> Rail::connectNodeToNearest(size_t node, size_t count) {
@@ -320,10 +326,10 @@ namespace Toolbox::Rail {
         std::sort(nearest_nodes.begin(), nearest_nodes.end(),
                   [](const auto &a, const auto &b) { return a.first < b.first; });
 
-        node->setConnectionCount(count);
+        node->setConnectionCount(static_cast<u16>(count));
         for (size_t i = 0; i < count && i < nearest_nodes.size(); ++i) {
-            auto result =
-                node->setConnectionValue(i, getNodeIndex(nearest_nodes[i].second).value());
+            auto result = node->setConnectionValue(
+                i, static_cast<u16>(getNodeIndex(nearest_nodes[i].second).value()));
             if (!result) {
                 return result;
             }
@@ -354,7 +360,7 @@ namespace Toolbox::Rail {
         }
         node->setConnectionCount(1);
         {
-            auto vresult = node->setConnectionValue(0, node_index - 1);
+            auto vresult = node->setConnectionValue(0, static_cast<s16>(node_index) - 1);
             if (!vresult) {
                 return vresult;
             }
@@ -362,6 +368,7 @@ namespace Toolbox::Rail {
                 glm::distance(node->getPosition(), m_nodes[node_index - 1]->getPosition());
             node->setConnectionDistance(0, distance);
         }
+        return {};
     }
 
     std::expected<void, MetaError> Rail::connectNodeToNext(size_t node) {
@@ -384,7 +391,7 @@ namespace Toolbox::Rail {
         }
         node->setConnectionCount(1);
         {
-            auto vresult = node->setConnectionValue(0, node_index + 1);
+            auto vresult = node->setConnectionValue(0, static_cast<s16>(node_index) + 1);
             if (!vresult) {
                 return vresult;
             }
@@ -392,6 +399,7 @@ namespace Toolbox::Rail {
                 glm::distance(node->getPosition(), m_nodes[node_index + 1]->getPosition());
             node->setConnectionDistance(0, distance);
         }
+        return {};
     }
 
     std::expected<void, MetaError> Rail::connectNodeToNeighbors(size_t node) {
@@ -419,7 +427,7 @@ namespace Toolbox::Rail {
         }
         node->setConnectionCount(2);
         {
-            auto vresult = node->setConnectionValue(0, node_index - 1);
+            auto vresult = node->setConnectionValue(0, static_cast<s16>(node_index) - 1);
             if (!vresult) {
                 return vresult;
             }
@@ -429,7 +437,7 @@ namespace Toolbox::Rail {
         }
 
         {
-            auto vresult = node->setConnectionValue(1, node_index + 1);
+            auto vresult = node->setConnectionValue(1, static_cast<s16>(node_index) + 1);
             if (!vresult) {
                 return vresult;
             }
@@ -465,9 +473,10 @@ namespace Toolbox::Rail {
                 }
             }
         }
-        node->setConnectionCount(referrers.size());
+        node->setConnectionCount(static_cast<u16>(referrers.size()));
         for (size_t i = 0; i < referrers.size(); ++i) {
-            auto result = node->setConnectionValue(i, getNodeIndex(referrers[i]).value());
+            auto result =
+                node->setConnectionValue(i, static_cast<s16>(getNodeIndex(referrers[i]).value()));
             if (!result) {
                 return result;
             }

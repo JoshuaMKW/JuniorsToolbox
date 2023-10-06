@@ -1,5 +1,6 @@
 #pragma once
 
+#include "bmg/bmg.hpp"
 #include "clone.hpp"
 #include "objlib/object.hpp"
 #include "rail/rail.hpp"
@@ -94,10 +95,11 @@ namespace Toolbox::Scene {
 
         [[nodiscard]] ObjectHierarchy getTableHierarchy() const { return m_table_objects; }
         void setTableHierarchy(const ObjectHierarchy &table_root) { m_table_objects = table_root; }
-        [[nodiscard]] RailData getRailData() const {
-            return m_rail_info;
-        }
+        [[nodiscard]] RailData getRailData() const { return m_rail_info; }
         void setRailData(RailData &rails) { m_rail_info = rails; }
+
+        [[nodiscard]] BMG::MessageData getMessageData() const { return m_message_data; }
+        void setMessageData(BMG::MessageData &message_data) { m_message_data = message_data; }
 
         void dump(std::ostream &os, size_t indent, size_t indent_size) const;
         void dump(std::ostream &os, size_t indent) const { dump(os, indent, 4); }
@@ -110,6 +112,7 @@ namespace Toolbox::Scene {
         ObjectHierarchy m_map_objects;
         ObjectHierarchy m_table_objects;
         RailData m_rail_info;
+        BMG::MessageData m_message_data;
     };
 
 }  // namespace Toolbox::Scene

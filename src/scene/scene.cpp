@@ -11,10 +11,11 @@ namespace Toolbox::Scene {
     }
 
     SceneInstance::SceneInstance(const std::filesystem::path &root)
-        : m_root_path(root), m_rail_info() {
+        : m_root_path(root), m_rail_info(), m_message_data() {
         auto scene_bin  = root / "map/scene.bin";
         auto tables_bin = root / "map/tables.bin";
         auto rail_bin   = root / "map/scene.ral";
+        auto message_bin   = root / "map/message.bmg";
 
         ObjectFactory::create_t map_root_obj;
         ObjectFactory::create_t table_root_obj;
@@ -55,19 +56,28 @@ namespace Toolbox::Scene {
 
             m_rail_info.deserialize(in);
         }
+
+        {
+            std::ifstream file(message_bin, std::ios::in | std::ios::binary);
+            Deserializer in(file.rdbuf());
+
+            m_message_data.deserialize(in);
+        }
     }
 
     SceneInstance::SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root)
-        : m_map_objects("Map", obj_root), m_table_objects("Table"), m_rail_info() {}
+        : m_map_objects("Map", obj_root), m_table_objects("Table"), m_rail_info(), m_message_data() {}
 
     SceneInstance::SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root,
                                  const RailData &rails)
-        : m_map_objects("Map", obj_root), m_table_objects("Table"), m_rail_info(rails) {}
+        : m_map_objects("Map", obj_root), m_table_objects("Table"), m_rail_info(rails),
+          m_message_data() {}
 
     SceneInstance::SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root,
                                  std::shared_ptr<Object::GroupSceneObject> table_root,
                                  const RailData &rails)
-        : m_map_objects("Map", obj_root), m_table_objects("Table", table_root), m_rail_info(rails) {
+        : m_map_objects("Map", obj_root), m_table_objects("Table", table_root), m_rail_info(rails),
+          m_message_data() {
     }
 
     std::unique_ptr<SceneInstance> SceneInstance::BasicScene() { return nullptr; }
@@ -83,6 +93,7 @@ namespace Toolbox::Scene {
         m_map_objects.dump(os, indent + 1, indent_size);
         m_table_objects.dump(os, indent + 1, indent_size);
         m_rail_info.dump(os, indent + 1, indent_size);
+        m_message_data.dump(os, indent + 1, indent_size);
         os << indent_str << "}" << std::endl;
     }
 
