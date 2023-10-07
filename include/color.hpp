@@ -250,7 +250,7 @@ namespace Toolbox::Color {
 
 template <> struct std::formatter<Toolbox::Color::RGBA32> : std::formatter<std::string_view> {
     template <typename FormatContext>
-    auto format(const Toolbox::Color::RGBA32 &obj, FormatContext &ctx) {
+    auto format(const Toolbox::Color::RGBA32 &obj, FormatContext &ctx) const {
         std::string outstr;
         std::format_to(std::back_inserter(outstr), "(r: {}, g: {}, b: {}, a: {})", obj.m_r, obj.m_g,
                        obj.m_b, obj.m_a);
@@ -260,7 +260,7 @@ template <> struct std::formatter<Toolbox::Color::RGBA32> : std::formatter<std::
 
 template <> struct std::formatter<Toolbox::Color::RGB5A3> : std::formatter<std::string_view> {
     template <typename FormatContext>
-    auto format(const Toolbox::Color::RGB5A3 &obj, FormatContext &ctx) {
+    auto format(const Toolbox::Color::RGB5A3 &obj, FormatContext &ctx) const {
         std::string outstr;
         std::format_to(std::back_inserter(outstr), "{r: {}, g: {}, b: {}, a: {}}", obj.m_color.m_r,
                        obj.m_color.m_g, obj.m_color.m_b, obj.m_color.m_a);
@@ -270,7 +270,7 @@ template <> struct std::formatter<Toolbox::Color::RGB5A3> : std::formatter<std::
 
 template <> struct std::formatter<Toolbox::Color::RGB24> : std::formatter<std::string_view> {
     template <typename FormatContext>
-    auto format(const Toolbox::Color::RGB24 &obj, FormatContext &ctx) {
+    auto format(const Toolbox::Color::RGB24 &obj, FormatContext &ctx) const {
         std::string outstr;
         std::format_to(std::back_inserter(outstr), "(r: {}, g: {}, b: {})", obj.m_r,
                        obj.m_g, obj.m_b);
@@ -280,7 +280,7 @@ template <> struct std::formatter<Toolbox::Color::RGB24> : std::formatter<std::s
 
 template <> struct std::formatter<Toolbox::Color::RGB565> : std::formatter<string_view> {
     template <typename FormatContext>
-    auto format(const Toolbox::Color::RGB565 &obj, FormatContext &ctx) {
+    auto format(const Toolbox::Color::RGB565 &obj, FormatContext &ctx) const {
         std::string outstr;
         std::format_to(std::back_inserter(outstr), "(r: {}, g: {}, b: {})", obj.m_color.m_r,
                        obj.m_color.m_g, obj.m_color.m_b);

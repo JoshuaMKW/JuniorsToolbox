@@ -20,8 +20,7 @@ int main(int argc, char **argv) {
 
     auto t1 = high_resolution_clock::now();
 
-    Toolbox::Scene::SceneInstance scene("C:/Users/Kyler-Josh/Dropbox/Master_Builds/Eclipse_"
-                                        "Master/files/data/scene/dolpic9.szs_ext/scene");
+    Toolbox::Scene::SceneInstance scene("../plaza");
 
     auto t2 = high_resolution_clock::now();
 

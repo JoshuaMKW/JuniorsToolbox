@@ -8,6 +8,8 @@
 #include <span>
 #include <stacktrace>
 #include <vector>
+#include <optional>
+#include <format>
 
 namespace Toolbox {
 
