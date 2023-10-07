@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <stacktrace>
 #include <system_error>
+#include <format>
 
 namespace Toolbox {
 
