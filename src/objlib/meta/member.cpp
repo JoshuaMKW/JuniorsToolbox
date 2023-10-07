@@ -19,45 +19,6 @@ namespace Toolbox::Object {
         return QualifiedName(scopes);
     }
 
-    template <>
-    std::expected<std::shared_ptr<MetaStruct>, MetaError>
-    MetaMember::value<MetaStruct>(size_t index) const {
-        if (!validateIndex(index)) {
-            return make_meta_error<std::shared_ptr<MetaStruct>>(m_name, index, m_values.size());
-        }
-        if (!isTypeStruct()) {
-            return make_meta_error<std::shared_ptr<MetaStruct>>(
-                m_name, "MetaStruct", isTypeValue() ? "MetaValue" : "MetaEnum");
-        }
-        return std::get<std::shared_ptr<MetaStruct>>(m_values[index]);
-    }
-
-    template <>
-    std::expected<std::shared_ptr<MetaEnum>, MetaError>
-    MetaMember::value<MetaEnum>(size_t index) const {
-        if (!validateIndex(index)) {
-            return make_meta_error<std::shared_ptr<MetaEnum>>(m_name, index, m_values.size());
-        }
-        if (!isTypeEnum()) {
-            return make_meta_error<std::shared_ptr<MetaEnum>>(
-                m_name, "MetaEnum", isTypeValue() ? "MetaValue" : "MetaStruct");
-        }
-        return std::get<std::shared_ptr<MetaEnum>>(m_values[index]);
-    }
-
-    template <>
-    std::expected<std::shared_ptr<MetaValue>, MetaError>
-    MetaMember::value<MetaValue>(size_t index) const {
-        if (!validateIndex(index)) {
-            return make_meta_error<std::shared_ptr<MetaValue>>(m_name, index, m_values.size());
-        }
-        if (!isTypeValue()) {
-            return make_meta_error<std::shared_ptr<MetaValue>>(
-                m_name, "MetaValue", isTypeStruct() ? "MetaStruct" : "MetaEnum");
-        }
-        return std::get<std::shared_ptr<MetaValue>>(m_values[index]);
-    }
-
     bool MetaMember::operator==(const MetaMember &other) const {
         return m_name == other.m_name && m_values == other.m_values &&
                m_arraysize == other.m_arraysize && m_parent == other.m_parent;

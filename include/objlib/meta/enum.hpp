@@ -1,8 +1,8 @@
 #pragma once
 
+#include "serial.hpp"
 #include "types.hpp"
 #include "value.hpp"
-#include "serial.hpp"
 #include <expected>
 #include <optional>
 #include <string>
@@ -221,60 +221,6 @@ namespace Toolbox::Object {
             return {};
         }
 
-        template <> [[nodiscard]] constexpr std::optional<enum_type> vfind<s8>(s8 value) const {
-            for (const auto &v : m_values) {
-                auto _v = v.second.get<s8>();
-                if (_v.has_value() && *_v == value)
-                    return v;
-            }
-            return {};
-        }
-
-        template <> [[nodiscard]] constexpr std::optional<enum_type> vfind<u8>(u8 value) const {
-            for (const auto &v : m_values) {
-                auto _v = v.second.get<u8>();
-                if (_v.has_value() && *_v == value)
-                    return v;
-            }
-            return {};
-        }
-
-        template <> [[nodiscard]] constexpr std::optional<enum_type> vfind<s16>(s16 value) const {
-            for (const auto &v : m_values) {
-                auto _v = v.second.get<s16>();
-                if (_v.has_value() && *_v == value)
-                    return v;
-            }
-            return {};
-        }
-
-        template <> [[nodiscard]] constexpr std::optional<enum_type> vfind<u16>(u16 value) const {
-            for (const auto &v : m_values) {
-                auto _v = v.second.get<u16>();
-                if (_v.has_value() && *_v == value)
-                    return v;
-            }
-            return {};
-        }
-
-        template <> [[nodiscard]] constexpr std::optional<enum_type> vfind<s32>(s32 value) const {
-            for (const auto &v : m_values) {
-                auto _v = v.second.get<s32>();
-                if (_v.has_value() && *_v == value)
-                    return v;
-            }
-            return {};
-        }
-
-        template <> [[nodiscard]] constexpr std::optional<enum_type> vfind<u32>(u32 value) const {
-            for (const auto &v : m_values) {
-                auto _v = v.second.get<u32>();
-                if (_v.has_value() && *_v == value)
-                    return v;
-            }
-            return {};
-        }
-
         std::expected<void, JSONError> loadJSON(const nlohmann::json &json);
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const;
@@ -293,5 +239,69 @@ namespace Toolbox::Object {
         MetaValue m_cur_value           = MetaValue(static_cast<s32>(0));
         bool m_bit_mask                 = false;
     };
+
+    template <>
+    [[nodiscard]] constexpr std::optional<MetaEnum::enum_type> MetaEnum::vfind<s8>(s8 value) const {
+        for (const auto &v : m_values) {
+            auto _v = v.second.get<s8>();
+            if (_v.has_value() && *_v == value)
+                return v;
+        }
+        return {};
+    }
+
+    template <>
+    [[nodiscard]] constexpr std::optional<MetaEnum::enum_type> MetaEnum::vfind<u8>(u8 value) const {
+        for (const auto &v : m_values) {
+            auto _v = v.second.get<u8>();
+            if (_v.has_value() && *_v == value)
+                return v;
+        }
+        return {};
+    }
+
+    template <>
+    [[nodiscard]] constexpr std::optional<MetaEnum::enum_type>
+    MetaEnum::vfind<s16>(s16 value) const {
+        for (const auto &v : m_values) {
+            auto _v = v.second.get<s16>();
+            if (_v.has_value() && *_v == value)
+                return v;
+        }
+        return {};
+    }
+
+    template <>
+    [[nodiscard]] constexpr std::optional<MetaEnum::enum_type>
+    MetaEnum::vfind<u16>(u16 value) const {
+        for (const auto &v : m_values) {
+            auto _v = v.second.get<u16>();
+            if (_v.has_value() && *_v == value)
+                return v;
+        }
+        return {};
+    }
+
+    template <>
+    [[nodiscard]] constexpr std::optional<MetaEnum::enum_type>
+    MetaEnum::vfind<s32>(s32 value) const {
+        for (const auto &v : m_values) {
+            auto _v = v.second.get<s32>();
+            if (_v.has_value() && *_v == value)
+                return v;
+        }
+        return {};
+    }
+
+    template <>
+    [[nodiscard]] constexpr std::optional<MetaEnum::enum_type>
+    MetaEnum::vfind<u32>(u32 value) const {
+        for (const auto &v : m_values) {
+            auto _v = v.second.get<u32>();
+            if (_v.has_value() && *_v == value)
+                return v;
+        }
+        return {};
+    }
 
 }  // namespace Toolbox::Object

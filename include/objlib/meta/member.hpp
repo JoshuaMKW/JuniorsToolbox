@@ -167,15 +167,7 @@ namespace Toolbox::Object {
         [[nodiscard]] std::expected<std::shared_ptr<T>, MetaError> value(size_t index) const {
             return std::unexpected("Invalid type");
         }
-        template <>
-        [[nodiscard]] std::expected<std::shared_ptr<MetaStruct>, MetaError>
-        value<MetaStruct>(size_t index) const;
-        template <>
-        [[nodiscard]] std::expected<std::shared_ptr<MetaEnum>, MetaError>
-        value<MetaEnum>(size_t index) const;
-        template <>
-        [[nodiscard]] std::expected<std::shared_ptr<MetaValue>, MetaError>
-        value<MetaValue>(size_t index) const;
+
         [[nodiscard]] value_type defaultValue() const { return m_default; }
 
         [[nodiscard]] u32 arraysize() const {
@@ -191,7 +183,8 @@ namespace Toolbox::Object {
         [[nodiscard]] bool isEmpty() const { return m_values.empty(); }
         [[nodiscard]] bool isArray() const { return m_values.size() > 1; }
         [[nodiscard]] bool isTypeBitMasked() const {
-            return isTypeEnum() && value<MetaEnum>(0).value()->isBitMasked();
+            return isTypeEnum() &&
+                   std::get<std::shared_ptr<MetaEnum>>(m_default)->isBitMasked();
         }
         [[nodiscard]] bool isTypeStruct() const {
             return std::holds_alternative<std::shared_ptr<MetaStruct>>(m_default);
@@ -200,68 +193,68 @@ namespace Toolbox::Object {
             return std::holds_alternative<std::shared_ptr<MetaEnum>>(m_default);
         }
         [[nodiscard]] bool isTypeBool() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::BOOL;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::BOOL;
         }
         [[nodiscard]] bool isTypeS8() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::S8;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::S8;
         }
         [[nodiscard]] bool isTypeU8() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::U8;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::U8;
         }
         [[nodiscard]] bool isTypeS16() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::S16;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::S16;
         }
         [[nodiscard]] bool isTypeU16() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::U16;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::U16;
         }
         [[nodiscard]] bool isTypeS32() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::S32;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::S32;
         }
         [[nodiscard]] bool isTypeU32() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::U32;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::U32;
         }
         [[nodiscard]] bool isTypeF32() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::F32;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::F32;
         }
         [[nodiscard]] bool isTypeF64() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::F64;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::F64;
         }
         [[nodiscard]] bool isTypeString() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::STRING;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::STRING;
         }
         [[nodiscard]] bool isTypeVec3() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::VEC3;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::VEC3;
         }
         [[nodiscard]] bool isTypeTransform() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::TRANSFORM;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::TRANSFORM;
         }
         [[nodiscard]] bool isTypeRGB() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::RGB;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::RGB;
         }
         [[nodiscard]] bool isTypeRGBA() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::RGBA;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::RGBA;
         }
         [[nodiscard]] bool isTypeComment() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::COMMENT;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::COMMENT;
         }
         [[nodiscard]] bool isTypeUnknown() const {
-            return !isEmpty() && isTypeValue() &&
-                   value<MetaValue>(0).value()->type() == MetaType::UNKNOWN;
+            return isTypeValue() &&
+                   std::get<std::shared_ptr<MetaValue>>(m_default)->type() == MetaType::UNKNOWN;
         }
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const;
@@ -315,5 +308,45 @@ namespace Toolbox::Object {
         MetaMember::value_type m_default;
         MetaStruct *m_parent = nullptr;
     };
+
+    template <>
+    [[nodiscard]] inline std::expected<std::shared_ptr<MetaStruct>,
+                                MetaError>
+    MetaMember::value<MetaStruct>(size_t index) const {
+        if (!validateIndex(index)) {
+            return make_meta_error<std::shared_ptr<MetaStruct>>(m_name, index, m_values.size());
+        }
+        if (!isTypeStruct()) {
+            return make_meta_error<std::shared_ptr<MetaStruct>>(
+                m_name, "MetaStruct", isTypeValue() ? "MetaValue" : "MetaEnum");
+        }
+        return std::get<std::shared_ptr<MetaStruct>>(m_values[index]);
+    }
+    template <>
+    [[nodiscard]] inline std::expected<std::shared_ptr<MetaEnum>,
+                                MetaError>
+    MetaMember::value<MetaEnum>(size_t index) const {
+        if (!validateIndex(index)) {
+            return make_meta_error<std::shared_ptr<MetaEnum>>(m_name, index, m_values.size());
+        }
+        if (!isTypeEnum()) {
+            return make_meta_error<std::shared_ptr<MetaEnum>>(
+                m_name, "MetaEnum", isTypeValue() ? "MetaValue" : "MetaStruct");
+        }
+        return std::get<std::shared_ptr<MetaEnum>>(m_values[index]);
+    }
+    template <>
+    [[nodiscard]] inline std::expected<std::shared_ptr<MetaValue>,
+                                MetaError>
+    MetaMember::value<MetaValue>(size_t index) const {
+        if (!validateIndex(index)) {
+            return make_meta_error<std::shared_ptr<MetaValue>>(m_name, index, m_values.size());
+        }
+        if (!isTypeValue()) {
+            return make_meta_error<std::shared_ptr<MetaValue>>(
+                m_name, "MetaValue", isTypeStruct() ? "MetaStruct" : "MetaEnum");
+        }
+        return std::get<std::shared_ptr<MetaValue>>(m_values[index]);
+    }
 
 }  // namespace Toolbox::Object
