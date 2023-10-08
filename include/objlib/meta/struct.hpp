@@ -1,7 +1,7 @@
 #pragma once
 
 #include "clone.hpp"
-#include "error.hpp"
+#include "errors.hpp"
 #include "objlib/qualname.hpp"
 #include "serial.hpp"
 #include <expected>
@@ -9,6 +9,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include <variant>
 
 namespace Toolbox::Object {
 

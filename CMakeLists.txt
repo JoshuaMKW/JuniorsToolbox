@@ -37,6 +37,8 @@ file(GLOB TOOLBOX_SRC
     "include/objlib/*.hpp"
     "src/rail/*.cpp"
     "include/rail/*.hpp"
+    "src/rarc/*.cpp"
+    "include/rarc/*.hpp"
     "src/scene/*.cpp"
     "include/scene/*.hpp"
     "src/window/*.cpp"

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "objlib/qualname.hpp"
+#include "error.hpp"
+
 #include <expected>
 #include <stacktrace>
 #include <string>
@@ -8,25 +10,19 @@
 
 namespace Toolbox::Object {
 
-    struct MetaTypeError {
+    struct MetaTypeError : public BaseError {
         std::string m_error_type;
         std::string m_expected_type;
-        std::vector<std::string> m_message;
-        std::stacktrace m_stacktrace;
     };
 
-    struct MetaArrayError {
+    struct MetaArrayError : public BaseError {
         size_t m_error_index;
         size_t m_array_size;
-        std::vector<std::string> m_message;
-        std::stacktrace m_stacktrace;
     };
 
-    struct MetaScopeError {
+    struct MetaScopeError : public BaseError {
         QualifiedName m_scope;
         size_t m_error_index;
-        std::vector<std::string> m_message;
-        std::stacktrace m_stacktrace;
     };
 
     using MetaError = std::variant<MetaTypeError, MetaArrayError, MetaScopeError>;

@@ -2,7 +2,7 @@
 
 #include "clone.hpp"
 #include "enum.hpp"
-#include "error.hpp"
+#include "errors.hpp"
 #include "objlib/qualname.hpp"
 #include "serial.hpp"
 #include "struct.hpp"

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "error.hpp"
 #include "types.hpp"
 #include <bit>
 #include <expected>
@@ -11,11 +12,9 @@
 
 namespace Toolbox {
 
-    struct SerialError {
-        std::vector<std::string> m_message;
+    struct SerialError : public BaseError {
         std::size_t m_error_pos;
         std::string m_file_path;
-        std::stacktrace m_stack_trace;
     };
 
     class Serializer {
