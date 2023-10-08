@@ -110,6 +110,14 @@ namespace Toolbox {
 
         std::streampos tell() { return m_out.tellp(); }
 
+        size_t size() {
+            auto pos = tell();
+            seek(0, std::ios::end);
+            auto size = static_cast<size_t>(tell());
+            seek(pos);
+            return size;
+        }
+
         void pushBreakpoint();
         std::expected<void, SerialError> popBreakpoint();
 
@@ -234,6 +242,14 @@ namespace Toolbox {
         Deserializer &seek(std::streampos pos) { return seek(pos, std::ios::cur); }
 
         std::streampos tell() { return m_in.tellg(); }
+
+        size_t size() {
+            auto pos = tell();
+            seek(0, std::ios::end);
+            auto size = static_cast<size_t>(tell());
+            seek(pos);
+            return size;
+        }
 
         void pushBreakpoint();
         std::expected<void, SerialError> popBreakpoint();
