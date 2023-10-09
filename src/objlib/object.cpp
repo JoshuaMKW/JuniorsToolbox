@@ -223,7 +223,8 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::expected<void, ObjectGroupError> GroupSceneObject::removeChild(ISceneObject *child) {
+    std::expected<void, ObjectGroupError>
+    GroupSceneObject::removeChild(std::shared_ptr<ISceneObject> child) {
         auto it = std::find_if(m_children.begin(), m_children.end(),
                                [child](const auto &ptr) { return ptr.get() == child; });
         if (it == m_children.end()) {
@@ -262,13 +263,9 @@ namespace Toolbox::Object {
         return it->get()->removeChild(QualifiedName(name.begin() + 1, name.end()));
     }
 
-    std::expected<std::vector<ISceneObject *>, ObjectGroupError> GroupSceneObject::getChildren() {
-        std::vector<ISceneObject *> ret;
-        ret.reserve(m_children.size());
-        for (auto &child : m_children) {
-            ret.push_back(child.get());
-        }
-        return ret;
+    std::expected<std::vector<std::shared_ptr<ISceneObject>>, ObjectGroupError>
+    GroupSceneObject::getChildren() {
+        return m_children;
     }
 
     std::optional<std::shared_ptr<ISceneObject>>
