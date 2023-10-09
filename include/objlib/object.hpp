@@ -86,10 +86,12 @@ namespace Toolbox::Object {
         [[nodiscard]] virtual size_t getMemberSize(const QualifiedName &name, int index) const  = 0;
 
         virtual std::expected<void, ObjectGroupError>
-        addChild(std::shared_ptr<ISceneObject> child)                                        = 0;
-        virtual std::expected<void, ObjectGroupError> removeChild(ISceneObject *name)        = 0;
+        addChild(std::shared_ptr<ISceneObject> child) = 0;
+        virtual std::expected<void, ObjectGroupError>
+        removeChild(std::shared_ptr<ISceneObject> name)                                      = 0;
         virtual std::expected<void, ObjectGroupError> removeChild(const QualifiedName &name) = 0;
-        [[nodiscard]] virtual std::expected<std::vector<ISceneObject *>, ObjectGroupError>
+        [[nodiscard]] virtual std::expected<std::vector<std::shared_ptr<ISceneObject>>,
+                                            ObjectGroupError>
         getChildren() = 0;
         [[nodiscard]] virtual std::optional<std::shared_ptr<ISceneObject>>
         getChild(const QualifiedName &name) = 0;
@@ -222,7 +224,8 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        std::expected<void, ObjectGroupError> removeChild(ISceneObject *object) override {
+        std::expected<void, ObjectGroupError>
+        removeChild(std::shared_ptr<ISceneObject> object) override {
             ObjectGroupError err = {"Cannot remove a child from a non-group object.",
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
@@ -234,7 +237,7 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        [[nodiscard]] std::expected<std::vector<ISceneObject *>, ObjectGroupError>
+        [[nodiscard]] std::expected<std::vector<std::shared_ptr<ISceneObject>>, ObjectGroupError>
         getChildren() override {
             ObjectGroupError err = {"Cannot get the children of a non-group object.",
                                     std::stacktrace::current(), this};
@@ -351,9 +354,10 @@ namespace Toolbox::Object {
 
         std::expected<void, ObjectGroupError>
         addChild(std::shared_ptr<ISceneObject> child) override;
-        std::expected<void, ObjectGroupError> removeChild(ISceneObject *child) override;
+        std::expected<void, ObjectGroupError>
+        removeChild(std::shared_ptr<ISceneObject> child) override;
         std::expected<void, ObjectGroupError> removeChild(const QualifiedName &name) override;
-        [[nodiscard]] std::expected<std::vector<ISceneObject *>, ObjectGroupError>
+        [[nodiscard]] std::expected<std::vector<std::shared_ptr<ISceneObject>>, ObjectGroupError>
         getChildren() override;
         [[nodiscard]] std::optional<std::shared_ptr<ISceneObject>>
         getChild(const QualifiedName &name) override;
@@ -464,7 +468,8 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        std::expected<void, ObjectGroupError> removeChild(ISceneObject *object) override {
+        std::expected<void, ObjectGroupError>
+        removeChild(std::shared_ptr<ISceneObject> object) override {
             ObjectGroupError err = {"Cannot remove a child from a non-group object.",
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
@@ -476,7 +481,8 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        std::expected<std::vector<ISceneObject *>, ObjectGroupError> getChildren() override {
+        std::expected<std::vector<std::shared_ptr<ISceneObject>>, ObjectGroupError>
+        getChildren() override {
             ObjectGroupError err = {"Cannot get the children of a non-group object.",
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
