@@ -30,6 +30,8 @@ namespace Toolbox::Object {
         }
         constexpr QualifiedName(const std::vector<std::string> &scopes) : m_scopes(scopes) {}
         constexpr QualifiedName(const_iterator begin, const_iterator end) : m_scopes(begin, end) {}
+        constexpr QualifiedName(const_reverse_iterator begin, const_reverse_iterator end)
+            : m_scopes(begin, end) {}
         constexpr QualifiedName(std::initializer_list<std::string> scopes) : m_scopes(scopes) {}
         constexpr QualifiedName(const QualifiedName &other) = default;
         constexpr QualifiedName(QualifiedName &&other)      = default;
@@ -58,9 +60,7 @@ namespace Toolbox::Object {
             return m_scopes[index];
         }
 
-        [[nodiscard]] constexpr std::string &operator[](size_t index) {
-            return m_scopes[index];
-        }
+        [[nodiscard]] constexpr std::string &operator[](size_t index) { return m_scopes[index]; }
 
         [[nodiscard]] constexpr bool empty() const { return m_scopes.empty(); }
 
@@ -102,7 +102,8 @@ namespace Toolbox::Object {
             return result.substr(0, result.size() - separator.size());
         }
 
-        [[nodiscard]] constexpr size_t getAbsIndexOf(size_t scopeidx, int index, size_t sep_size) const {
+        [[nodiscard]] constexpr size_t getAbsIndexOf(size_t scopeidx, int index,
+                                                     size_t sep_size) const {
             if (scopeidx >= m_scopes.size()) {
                 return 0;
             }

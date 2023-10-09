@@ -335,16 +335,14 @@ namespace Toolbox::Object {
         try {
             template_ = Template(type);
         } catch (std::runtime_error &e) {
-            auto err = make_fs_error(std::error_code(), e.what());
-            return std::unexpected(err);
+            return make_fs_error<std::unique_ptr<Template>>(std::error_code(), e.what());
         }
 
         TemplateFactory::create_ret_t template_ptr;
         try {
             template_ptr = std::make_unique<Template>(template_);
         } catch (std::runtime_error &e) {
-            auto err = make_fs_error(std::error_code(), e.what());
-            return std::unexpected(err);
+            return make_fs_error<std::unique_ptr<Template>>(std::error_code(), e.what());
         }
 
         s_template_cache[type_str] = template_;

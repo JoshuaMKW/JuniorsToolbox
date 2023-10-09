@@ -409,11 +409,14 @@ namespace Toolbox {
         std::stacktrace m_stacktrace;
     };
 
-    [[nodiscard]] static inline FSError make_fs_error(std::error_code code, std::string_view reason) {
-        return FSError{code, std::format("FSError: {}", std::string(reason)), std::stacktrace::current()};
+    template <typename _Ret>
+    [[nodiscard]] static inline std::expected<_Ret, FSError> make_fs_error(std::error_code code, std::string_view reason) {
+        return std::unexpected(FSError{code, std::format("FSError: {}", std::string(reason)), std::stacktrace::current()});
     }
 
-    [[nodiscard]] static inline FSError make_fs_error(std::error_code code) {
-        return FSError{code, std::format("FSError: {}", code.message()), std::stacktrace::current()};
+    template <typename _Ret>
+    [[nodiscard]] static inline std::expected<_Ret, FSError> make_fs_error(std::error_code code) {
+        return std::unexpected(
+            FSError{code, std::format("FSError: {}", code.message()), std::stacktrace::current()});
     }
 }

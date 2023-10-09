@@ -62,7 +62,7 @@ namespace Toolbox::RARC {
             std::string name;
 
             FolderInfo folder;
-            std::vector<u8> data;
+            std::vector<char> data;
 
             bool is_folder() const { return (flags & DIRECTORY) != 0; }
 
@@ -135,6 +135,7 @@ namespace Toolbox::RARC {
         std::string m_name;
         std::vector<Node> m_nodes = {};
 
+        bool m_ids_synced = true;
         bool m_keep_matching = true;
     };
 
