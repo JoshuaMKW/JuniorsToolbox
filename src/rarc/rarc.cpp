@@ -97,6 +97,9 @@ namespace Toolbox::RARC {
     static std::expected<std::unique_ptr<LowResourceArchive>, SerialError>
     loadLowResourceArchive(Deserializer &in);
 
+    static std::expected<void, SerialError>
+    saveLowResourceArchive(const LowResourceArchive &low_archive, Serializer &out);
+
     // --------- //
 
     // MIDDLEWARE //
@@ -136,7 +139,151 @@ namespace Toolbox::RARC {
                                      std::optional<ResourceArchive::Node> dir_parent,
                                      std::vector<ResourceArchive::Node> &out, std::size_t depth);
 
+    static void getSortedDirectoryListR(const std::filesystem::path &path,
+                                        std::vector<std::filesystem::path> &out);
+
     // ---------- //
+
+    bool ResourceArchive::isMagicValid(u32 magic) { return magic == 'RARC'; }
+
+    std::expected<ResourceArchive, FSError>
+    ResourceArchive::createFromPath(const std::filesystem::path root) {
+        struct Entry {
+            std::string str;
+            bool is_folder = false;
+
+            std::vector<char> data;
+            std::string name;
+
+            s32 depth       = -1;
+            s32 parent      = 0;  // Default files put parent as 0 for root
+            s32 siblingNext = -1;
+        };
+        std::vector<Entry> paths;
+
+        std::error_code err;
+
+        paths.push_back(Entry{.str       = (std::filesystem::path(".") / root.filename()).string(),
+                              .is_folder = true,
+                              .name      = root.filename().string(),
+                              .parent    = -1});
+
+        std::vector<std::filesystem::path> sorted_fs_tree;
+        getSortedDirectoryListR(root, sorted_fs_tree);
+
+        for (auto &path : sorted_fs_tree) {
+            auto dir_result = Toolbox::is_directory(path);
+            if (!dir_result) {
+                return make_fs_error<ResourceArchive>(
+                    dir_result.error(), "CREATE: Failed to check if {} is a directory");
+            }
+            bool folder = dir_result.value();
+            if (err) {
+                std::cout << std::format("CREATE: {}\n", err.message().c_str());
+                continue;
+            }
+            if (path.filename() == ".DS_Store") {
+                continue;
+            }
+            std::vector<char> data;
+            if (!folder) {
+                auto fstrm = std::ifstream(path, std::ios::binary | std::ios::in);
+                fstrm.read(data.data(), data.size());
+            }
+
+            auto path_result = Toolbox::relative(path, root);
+            if (!path_result) {
+                return make_fs_error<ResourceArchive>(path_result.error(),
+                                                      "CREATE: Failed to get relative path of {}");
+            }
+            path = std::filesystem::path(".") / path_result.value();
+
+            // We normalize it to lowercase because otherwise games can't find it.
+            {
+                std::string path_string = path.string();
+                std::transform(path_string.begin(), path_string.end(), path_string.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+                path = std::filesystem::path(path_string);
+            }
+
+            paths.push_back(Entry{
+                .str       = path.string(),
+                .is_folder = folder,
+                .data      = data,
+                .name      = path.filename().string(),
+            });
+        }
+        // They are almost certainly already in sorted order
+        for (auto &p : paths) {
+            for (auto c : p.str) {
+                // relative paths are weakly_canonical
+                if (c == '/' || c == '\\') {
+                    ++p.depth;
+                }
+            }
+        }
+        paths[0].siblingNext = static_cast<s32>(paths.size());
+        for (size_t i = 1; i < paths.size(); ++i) {
+            auto &p = paths[i];
+            if (p.is_folder) {
+                for (size_t j = i + 1; j < paths.size(); ++j) {
+                    if (paths[j].depth <= p.depth) {
+                        p.siblingNext = static_cast<s32>(j);
+                        break;
+                    }
+                    if (paths[j].depth == p.depth + 1)
+                        paths[j].parent = static_cast<s32>(i);
+                }
+                if (p.siblingNext == -1)
+                    p.siblingNext = static_cast<s32>(paths.size());
+            }
+        }
+        for (auto &p : paths) {
+            std::cout << std::format("CREATE: PATH={} (folder:{}, depth:{})\n", p.str, p.is_folder,
+                                     p.depth);
+        }
+        ResourceArchive result;
+
+        s16 file_id = 0, folder_id = 0;
+        std::vector<ResourceArchive::Node> parent_stack;
+        for (auto &p : paths) {
+            ResourceArchive::Node node{.flags = 0};
+            while (p.depth < parent_stack.size() && parent_stack.size() > 0) {
+                parent_stack.pop_back();
+            }
+            if (p.is_folder) {
+                node.id            = folder_id++;
+                node.folder.parent = parent_stack.size() > 0 ? parent_stack[p.depth - 1].id : -1;
+                node.folder.sibling_next = p.siblingNext;
+                if (p.depth >= parent_stack.size()) {
+                    parent_stack.push_back(node);
+                }
+                node.flags |= ResourceAttribute::DIRECTORY;
+                file_id += 2;  // Account for hidden special dirs
+            } else {
+                node.id = file_id++;
+                node.flags |= ResourceAttribute::FILE;
+                node.flags |= ResourceAttribute::PRELOAD_TO_MRAM;
+
+                // TODO: Take YAY0 into account when it becomes supported
+                /*if (librii::szs::isDataYaz0Compressed(
+                        rsl::byte_view(p.data.data(), p.data.size()))) {
+                    node.flags |= ResourceAttribute::COMPRESSED;
+                    node.flags |= ResourceAttribute::YAZ0_COMPRESSED;
+                }*/
+
+                node.data = p.data;
+            }
+            node.name = p.name;
+            result.m_nodes.push_back(node);
+        }
+
+        if (!result.recalculateIDs()) {
+            return make_fs_error<ResourceArchive>(std::error_code(), "Failed to calculate the IDs");
+        }
+
+        return result;
+    }
 
     ResourceArchive::node_it ResourceArchive::findNode(std::string_view name) {
         return std::find_if(m_nodes.begin(), m_nodes.end(),
@@ -252,7 +399,8 @@ namespace Toolbox::RARC {
         std::vector<ResourceArchive::Node> new_nodes;
         for (auto &file : files) {
             std::string file_name = file.filename().string();
-            std::transform(file_name.begin(), file_name.end(), file_name.begin(), std::tolower);
+            std::transform(file_name.begin(), file_name.end(), file_name.begin(),
+                           [](char c) { return std::tolower(c); });
 
             auto result = Toolbox::file_size(file);
             if (!result) {
@@ -272,8 +420,7 @@ namespace Toolbox::RARC {
             new_nodes.push_back(node);
         }
 
-        int parent_index =
-            std::distance(m_nodes.begin(), std::find(m_nodes.begin(), m_nodes.end(), parent));
+        auto parent_index = std::distance(m_nodes.begin(), parent);
 
         // Manual sort is probably better because we can dodge DFS nonsense
         // effectively Even with O(n^2) because there typically aren't many nodes
@@ -305,7 +452,7 @@ namespace Toolbox::RARC {
                 continue;
             if (node.folder.sibling_next <= parent_index)
                 continue;
-            node.folder.sibling_next += files.size();
+            node.folder.sibling_next += static_cast<s32>(files.size());
         }
 
         return {};
@@ -321,16 +468,15 @@ namespace Toolbox::RARC {
 
         auto tmp_rarc = rarc_result.value();
 
-        int parent_index =
-            std::distance(m_nodes.begin(), std::find(m_nodes.begin(), m_nodes.end(), parent));
+        auto parent_index = std::distance(m_nodes.begin(), parent);
 
-        auto insert_index    = m_nodes.size();
+        s32 insert_index     = static_cast<s32>(m_nodes.size());
         auto dir_files_start = m_nodes.begin() + parent_index + 1;
         auto dir_files_end   = m_nodes.begin() + parent->folder.sibling_next;
         for (auto child = dir_files_start; /*nothing*/;) {
             if (child == dir_files_end) {
                 // Always insert at the very end (alphabetically last)
-                insert_index = std::distance(m_nodes.begin(), child);
+                insert_index = static_cast<s32>(std::distance(m_nodes.begin(), child));
                 for (auto &new_node : tmp_rarc.getNodes()) {
                     if (new_node.is_folder())
                         new_node.folder.sibling_next += insert_index;
@@ -348,7 +494,7 @@ namespace Toolbox::RARC {
             // We are attempting to insert the entire
             // RARC fs as a new folder here
             if (tmp_rarc.m_nodes[0].name < child->name) {
-                insert_index = std::distance(m_nodes.begin(), child);
+                insert_index = static_cast<s32>(std::distance(m_nodes.begin(), child));
                 for (auto &new_node : tmp_rarc.m_nodes) {
                     if (new_node.is_folder())
                         new_node.folder.sibling_next += insert_index;
@@ -362,7 +508,7 @@ namespace Toolbox::RARC {
         }
 
         for (auto node = m_nodes.begin(); node != m_nodes.end();) {
-            auto index = std::distance(m_nodes.begin(), node);
+            s32 index = static_cast<s32>(std::distance(m_nodes.begin(), node));
             // Skip files and the special dirs (they get recalculated later)
             if (!node->is_folder()) {
                 node++;
@@ -382,7 +528,7 @@ namespace Toolbox::RARC {
                 node = m_nodes.begin() + node->folder.sibling_next;
                 continue;
             }
-            node->folder.sibling_next += tmp_rarc.m_nodes.size();
+            node->folder.sibling_next += static_cast<s32>(tmp_rarc.m_nodes.size());
             node++;
         }
 
@@ -391,11 +537,11 @@ namespace Toolbox::RARC {
 
     std::expected<ResourceArchive::node_it, BaseError>
     ResourceArchive::createFolder(node_it parent, std::string_view name) {
-        int parent_index =
-            std::distance(m_nodes.begin(), std::find(m_nodes.begin(), m_nodes.end(), parent));
+        auto parent_index = std::distance(m_nodes.begin(), parent);
 
         std::string lower_name;
-        std::transform(name.begin(), name.end(), lower_name.begin(), std::tolower);
+        std::transform(name.begin(), name.end(), lower_name.begin(),
+                       [](char c) { return std::tolower(c); });
 
         ResourceArchive::Node folder_node = {
             .id     = 0,
@@ -404,13 +550,13 @@ namespace Toolbox::RARC {
             .folder = {.parent = parent->id, .sibling_next = 0}
         };
 
-        auto insert_index    = m_nodes.size();
+        s32 insert_index     = static_cast<s32>(m_nodes.size());
         auto dir_files_start = m_nodes.begin() + parent_index + 1;
         auto dir_files_end   = m_nodes.begin() + parent->folder.sibling_next;
         for (auto child = dir_files_start; /*nothing*/;) {
             if (child == dir_files_end) {
                 // Always insert at the very end (alphabetically last)
-                insert_index                    = std::distance(m_nodes.begin(), child);
+                insert_index = static_cast<s32>(std::distance(m_nodes.begin(), child));
                 folder_node.folder.sibling_next = insert_index + 1;
                 m_nodes.insert(child, folder_node);
                 break;
@@ -425,7 +571,7 @@ namespace Toolbox::RARC {
             // We are attempting to insert the entire
             // RARC fs as a new folder here
             if (name < child->name) {
-                insert_index                    = std::distance(m_nodes.begin(), child);
+                insert_index = static_cast<s32>(std::distance(m_nodes.begin(), child));
                 folder_node.folder.sibling_next = insert_index + 1;
                 m_nodes.insert(child, folder_node);
                 break;
@@ -510,7 +656,7 @@ namespace Toolbox::RARC {
                                 continue;
                             if (node.folder.parent > to_delete.id)
                                 node.folder.parent -= 1;
-                            node.folder.sibling_next -= size;
+                            node.folder.sibling_next -= static_cast<s32>(size);
                         }
                     }
                 }
@@ -563,16 +709,17 @@ namespace Toolbox::RARC {
 
             for (auto &new_node : tmp_rarc.m_nodes) {
                 if (new_node.is_folder())
-                    new_node.folder.sibling_next += deleted_at;
+                    new_node.folder.sibling_next += static_cast<s32>(deleted_at);
             }
-            m_nodes.insert(rarc.m_nodes.begin() + deleted_at, tmp_rarc.m_nodes.begin(),
+            m_nodes.insert(m_nodes.begin() + deleted_at, tmp_rarc.m_nodes.begin(),
                            tmp_rarc.m_nodes.end());
 
-            auto parent = std::find_if(
-                rarc.m_nodes.begin(), rarc.m_nodes.end(),
-                [&](ResourceArchive::Node node) { return node.id == old_node->folder.parent; });
+            auto parent =
+                std::find_if(m_nodes.begin(), m_nodes.end(), [&](ResourceArchive::Node node) {
+                    return node.id == old_node->folder.parent;
+                });
 
-            auto sibling_adjust = tmp_rarc.m_nodes.size() - old_size;
+            s32 sibling_adjust = static_cast<s32>(tmp_rarc.m_nodes.size() - old_size);
             if (sibling_adjust != 0) {
                 for (auto node = m_nodes.begin(); node != m_nodes.end();) {
                     auto index = std::distance(m_nodes.begin(), node);
@@ -626,7 +773,11 @@ namespace Toolbox::RARC {
     }
 
     std::expected<void, FSError>
-    ResourceArchive::extractNodeToFolder(const_node_it node, const std::filesystem::path &folder) {
+    ResourceArchive::extractNodeToFolder(const_node_it node_it,
+                                         const std::filesystem::path &folder) {
+        if (node_it == m_nodes.end())
+            return make_fs_error<void>(std::error_code(), "EXTRACT: Target node not found!");
+
         {
             auto result = Toolbox::is_directory(folder);
             if (!result)
@@ -635,21 +786,17 @@ namespace Toolbox::RARC {
                 return make_fs_error<void>(std::error_code(), "EXTRACT: Not a directory!");
         }
 
-        if (node->is_folder()) {
+        if (node_it->is_folder()) {
             auto tmp_rarc = ResourceArchive(m_name);
 
-            auto node_it = std::find(m_nodes.begin(), m_nodes.end(), node);
-            if (node_it == m_nodes.end())
-                return make_fs_error<void>(std::error_code(), "EXTRACT: Target node not found!");
-
-            auto before_size = std::distance(m_nodes.begin(), node_it);
+            s32 before_size  = static_cast<s32>(std::distance(m_nodes.cbegin(), node_it));
             auto parent_diff = node_it->id;
 
             tmp_rarc.m_nodes.insert(tmp_rarc.m_nodes.end(), node_it,
-                                    m_nodes.begin() + node->folder.sibling_next);
+                                    m_nodes.cbegin() + node_it->folder.sibling_next);
 
-            tmp_rarc.m_nodes[0].folder = {-1, tmp_rarc.m_nodes[0].folder.sibling_next -
-                                                  (s32)before_size};
+            tmp_rarc.m_nodes[0].folder = {-1,
+                                          tmp_rarc.m_nodes[0].folder.sibling_next - before_size};
 
             tmp_rarc.m_nodes[1].folder = {-1, tmp_rarc.m_nodes[0].folder.sibling_next};
 
@@ -680,10 +827,10 @@ namespace Toolbox::RARC {
             return {};
         }
 
-        auto dst_path = folder / node->name;
+        auto dst_path = folder / node_it->name;
         auto out      = std::ofstream(dst_path.string(), std::ios::binary | std::ios::ate);
 
-        out.write((const char *)node->data.data(), node->data.size());
+        out.write((const char *)node_it->data.data(), node_it->data.size());
         return {};
     }
 
@@ -747,12 +894,12 @@ namespace Toolbox::RARC {
             if (s_magic.size() < 4)
                 s_magic.append(4 - s_magic.size(), ' ');
 
-            low_dir.name = offsets.string_offset;
+            low_dir.name = static_cast<u32>(offsets.string_offset);
             low_dir.hash = Object::NameRef::calcKeyCode(node.name);
 
             const auto &info        = children_infos[node.name + std::to_string(node.id)];
-            low_dir.children_count  = info.first;
-            low_dir.children_offset = current_child_offset;
+            low_dir.children_count  = static_cast<u16>(info.first);
+            low_dir.children_offset = static_cast<u32>(current_child_offset);
 
             current_child_offset += low_dir.children_count;
 
@@ -779,8 +926,8 @@ namespace Toolbox::RARC {
                                                                : node.name];
 
             FSNode low_node = {.hash = Object::NameRef::calcKeyCode(node.name),
-                               .type = node.flags << 8,
-                               .name = offsets.string_offset};
+                               .type = static_cast<u16>(node.flags << 8),
+                               .name = static_cast<u16>(offsets.string_offset)};
 
             if (node.is_folder()) {
                 // Skip the root.
@@ -797,8 +944,8 @@ namespace Toolbox::RARC {
                 // IDs are calculated by incrementing for each file and special dir
                 // The difference of FS nodes and pure Dir nodes is this total
                 low_node.id          = node.id;
-                low_node.file.offset = low_data.size();
-                low_node.file.size   = node.data.size();
+                low_node.file.offset = static_cast<u32>(low_data.size());
+                low_node.file.size   = static_cast<u32>(node.data.size());
 
                 const bool is_shared_data =
                     std::any_of(processed_nodes.begin(), processed_nodes.end(), [&](auto &n) {
@@ -843,22 +990,22 @@ namespace Toolbox::RARC {
 
         low_archive.meta_header.nodes.offset = sizeof(MetaHeader);
 
-        low_archive.meta_header.files.size      = total_file_size;
-        low_archive.meta_header.files.mram_size = mram_size;
-        low_archive.meta_header.files.aram_size = aram_size;
-        low_archive.meta_header.files.dvd_size  = dvd_size;
+        low_archive.meta_header.files.size      = static_cast<u32>(total_file_size);
+        low_archive.meta_header.files.mram_size = static_cast<u32>(mram_size);
+        low_archive.meta_header.files.aram_size = static_cast<u32>(aram_size);
+        low_archive.meta_header.files.dvd_size  = static_cast<u32>(dvd_size);
 
-        low_archive.node_header.dir_nodes.count  = dir_nodes.size();
+        low_archive.node_header.dir_nodes.count  = static_cast<u32>(dir_nodes.size());
         low_archive.node_header.dir_nodes.offset = sizeof(NodeHeader);
 
-        low_archive.node_header.fs_nodes.count = fs_nodes.size();
+        low_archive.node_header.fs_nodes.count = static_cast<u32>(fs_nodes.size());
         low_archive.node_header.fs_nodes.offset =
             low_archive.node_header.dir_nodes.offset +
                 (low_archive.node_header.dir_nodes.count * sizeof(DirectoryNode) + 0x1F) &
             ~0x1F;
 
         // TODO: Verify custom IDs when not synced
-        low_archive.node_header.ids_max    = fs_nodes.size();
+        low_archive.node_header.ids_max    = static_cast<u16>(fs_nodes.size());
         low_archive.node_header.ids_synced = m_ids_synced;
 
         low_archive.node_header.string_table.size = (strings_blob.size() + 0x1F) & ~0x1F;
@@ -961,7 +1108,7 @@ namespace Toolbox::RARC {
         // Metaheader
         {
             low_archive->meta_header.magic = in.read<u32, std::endian::big>();
-            if (low_archive->meta_header.magic != 'RARC') {
+            if (!ResourceArchive::isMagicValid(low_archive->meta_header.magic)) {
                 return make_serial_error<std::unique_ptr<LowResourceArchive>>(
                     in, "Invalid magic (Expected RARC)", -4);
             }
@@ -1061,7 +1208,7 @@ namespace Toolbox::RARC {
     saveLowResourceArchive(const LowResourceArchive &low_archive, Serializer &out) {
         // Metaheader
         {
-            if (low_archive.meta_header.magic != 'RARC') {
+            if (!ResourceArchive::isMagicValid(low_archive.meta_header.magic)) {
                 return make_serial_error<void>(out, "Invalid magic (Expected RARC)");
             }
 
@@ -1222,7 +1369,7 @@ namespace Toolbox::RARC {
 
         for (auto info = folder_infos.rbegin(); info != folder_infos.rend(); info++) {
             auto &node = nodes[info->index];
-            node.folder.sibling_next += info->adjustment;
+            node.folder.sibling_next += static_cast<s32>(info->adjustment);
 
             SpecialDirs dirs;
             if (node.folder.parent != -1) {
@@ -1274,7 +1421,7 @@ namespace Toolbox::RARC {
 
         for (auto info = folder_infos.rbegin(); info != folder_infos.rend();) {
             auto &node = nodes[info->index];
-            node.folder.sibling_next -= info->adjustment;
+            node.folder.sibling_next -= static_cast<s32>(info->adjustment);
 
             // Erase the special dirs
             nodes.erase(nodes.begin() + info->index + 1, nodes.begin() + info->index + 3);
@@ -1286,7 +1433,7 @@ namespace Toolbox::RARC {
                               std::vector<ResourceArchive::Node> &out,
                               children_info_type &children_info, std::size_t node_index) {
         if (node_index > src.size() - 2)  // Account for the children after
-            return;
+            return make_error<void>("RARC Middleware", "Node index beyond nodes capacity");
 
         const auto &node = src.at(node_index);
 
@@ -1330,6 +1477,8 @@ namespace Toolbox::RARC {
         out.insert(out.end(), dirs.begin(), dirs.end());
         out.insert(out.end(), special_dirs.begin(), special_dirs.end());
         out.insert(out.end(), sub_nodes.begin(), sub_nodes.end());
+
+        return {};
     }
 
     static std::expected<std::vector<ResourceArchive::Node>, BaseError>
@@ -1408,8 +1557,23 @@ namespace Toolbox::RARC {
             }
         }
 
-        dir_node.folder.sibling_next = out.size() + depth + 1;
+        dir_node.folder.sibling_next = static_cast<s32>(out.size() + depth) + 1;
         out.insert(out.begin() + start_nodes, dir_node);
+    }
+
+    static void getSortedDirectoryListR(const std::filesystem::path &path,
+                                        std::vector<std::filesystem::path> &out) {
+        std::vector<std::filesystem::path> dirs;
+        for (auto &&it : std::filesystem::directory_iterator{path}) {
+            if (it.is_directory())
+                dirs.push_back(it.path());
+            else
+                out.push_back(it.path());
+        }
+        for (auto &dir : dirs) {
+            out.push_back(dir);
+            getSortedDirectoryListR(dir, out);
+        }
     }
 
 }  // namespace Toolbox::RARC

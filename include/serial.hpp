@@ -276,12 +276,13 @@ namespace Toolbox {
     inline std::expected<_Ret, SerialError>
     make_serial_error(std::string_view context, std::string_view reason, size_t error_pos,
                       std::string_view filepath) {
-        return std::unexpected(SerialError{
-            {std::format("SerialError: {}", context), std::format("Reason: {}", reason)},
+        SerialError err = {
+            std::vector<std::string>({std::format("SerialError: {}", context), std::format("Reason: {}", reason)}),
+            std::stacktrace::current(),
             error_pos,
             std::string(filepath),
-            std::stacktrace::current()
-        });
+        };
+        return std::unexpected(err);
     }
 
     template <typename _Ret>

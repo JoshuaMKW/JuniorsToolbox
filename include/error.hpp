@@ -1,6 +1,7 @@
 #pragma once
 
 #include <expected>
+#include <format>
 #include <stacktrace>
 #include <string>
 #include <vector>

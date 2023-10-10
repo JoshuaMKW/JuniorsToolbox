@@ -1,7 +1,7 @@
 #pragma once
 
-#include "objlib/qualname.hpp"
 #include "error.hpp"
+#include "objlib/qualname.hpp"
 
 #include <expected>
 #include <stacktrace>
@@ -32,23 +32,26 @@ namespace Toolbox::Object {
                                                           std::string_view error_type,
                                                           std::string_view expected_type) {
         MetaTypeError err = {
+            std::vector<std::string>(
+                {std::format("{}: TypeError: Illegal type cast to MetaValue from type {}.", context,
+                         expected_type)}),
+            std::stacktrace::current(),
             std::string(error_type),
             std::string(expected_type),
-            {std::format("{}: TypeError: Illegal type cast to MetaValue from type {}.", context,
-                         expected_type)},
-            std::stacktrace::current()};
+        };
         return std::unexpected<MetaError>(err);
     }
 
     template <typename _Ret>
-    inline std::expected<_Ret, MetaArrayError> make_meta_error(std::string_view context,
-                                                               size_t error_index, size_t array_size) {
-        MetaArrayError err;
-        err = {error_index,
-                array_size,
-                {std::format("{}: IndexError: Index {} exceeds array size {}.", context,
-                            error_index, array_size)},
-                std::stacktrace::current()};
+    inline std::expected<_Ret, MetaArrayError>
+    make_meta_error(std::string_view context, size_t error_index, size_t array_size) {
+        MetaArrayError err = {
+            std::vector<std::string>({std::format("{}: IndexError: Index {} exceeds array size {}.", context, error_index,
+                         array_size)}),
+            std::stacktrace::current(),
+            error_index,
+            array_size,
+        };
         return std::unexpected<MetaArrayError>(err);
     }
 
@@ -56,11 +59,11 @@ namespace Toolbox::Object {
     inline std::expected<_Ret, MetaScopeError>
     make_meta_error(const QualifiedName &scope, size_t error_index, std::string_view reason) {
         MetaScopeError err = {
+            std::vector<std::string>({std::format("ScopeError: {}", reason), scope.toString("."),
+             std::string(error_index, ' ') + "^"}),
+            std::stacktrace::current(),
             scope,
             error_index,
-            {std::format("ScopeError: {}", reason), scope.toString("."),
-              std::string(error_index, ' ') + "^"},
-            std::stacktrace::current()
         };
         return std::unexpected<MetaScopeError>(err);
     }

@@ -1,7 +1,7 @@
 #include "objlib/meta/struct.hpp"
 #include "clone.hpp"
 #include "objlib/meta/enum.hpp"
-#include "objlib/meta/error.hpp"
+#include "objlib/meta/errors.hpp"
 #include "objlib/template.hpp"
 #include "objlib/transform.hpp"
 #include <expected>

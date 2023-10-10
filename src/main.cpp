@@ -30,6 +30,12 @@ int main(int argc, char **argv) {
 
     scene.dump(std::cout);
 
+    auto root_obj = scene.getObjHierarchy().getRoot();
+    auto children = root_obj->getChildren().value();
+    for (auto child : children) {
+        std::cout << child->getQualifiedName().name() << "\n";
+    }
+
     //IMGUI_CHECKVERSION();
 
     //ImGui::CreateContext();

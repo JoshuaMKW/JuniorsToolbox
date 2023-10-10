@@ -73,15 +73,18 @@ namespace Toolbox::RARC {
         using const_node_it = std::vector<Node>::const_iterator;
 
     public:
-        ResourceArchive() = delete;
         explicit ResourceArchive(std::string_view name) : m_name(name) {}
         ResourceArchive(std::string_view name, std::vector<Node> nodes)
             : m_name(name), m_nodes(nodes) {}
         ~ResourceArchive() = default;
 
-        static bool isDataResourceArchive(Deserializer &in);
+    protected:
+        ResourceArchive() = default;
+
+    public:
+        static bool isMagicValid(u32 magic);
         static std::expected<ResourceArchive, FSError>
-        createFromPath(const std::filesystem::path path);
+        createFromPath(const std::filesystem::path root);
 
         [[nodiscard]] bool isMatchingOutput() const { return m_keep_matching; }
         void setMatchingOutput(bool matching) { m_keep_matching = matching; }
@@ -132,7 +135,7 @@ namespace Toolbox::RARC {
         std::expected<void, BaseError> recalculateIDs();
 
     private:
-        std::string m_name;
+        std::string m_name        = "(null)";
         std::vector<Node> m_nodes = {};
 
         bool m_ids_synced = true;
