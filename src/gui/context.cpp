@@ -2,12 +2,7 @@
 
 #include "gui/util.hpp"
 
-#include <J3D/J3DModelLoader.hpp>
-#include <J3D/J3DModelData.hpp>
-#include <J3D/J3DUniformBufferObject.hpp>
-#include <J3D/J3DLight.hpp>
-#include <J3D/J3DModelInstance.hpp>
-#include <J3D/J3DRendering.hpp>
+#include <lib/bStream/bstream.h>
 
 #include <glad/glad.h>
 #include <imgui.h>
@@ -15,7 +10,8 @@
 
 #include <ImGuiFileDialog.h>
 
-#include "gui/IconsForkAwesome.h"
+#include <gui/IconsForkAwesome.h>
+#include <gui/modelcache.hpp>
 
 #include <unicode/unistr.h>
 #include <unicode/ustring.h>
@@ -37,13 +33,6 @@ void PacketSort(J3DRendering::SortFunctionArgs packets) {
     );
 }
 
-EditorContext::~EditorContext(){
-	//J3DRendering::Cleanup();
-	mRenderables.erase(mRenderables.begin(), mRenderables.end());
-	//ModelCache.clear();
-}
-
-
 std::string Utf8ToSjis(const std::string& value)
 {
     icu::UnicodeString src(value.c_str(), "utf8");
@@ -64,6 +53,29 @@ std::string SjisToUtf8(const std::string& value)
     src.extract(0, src.length(), &result[0], "utf8");
 
     return std::string(result.begin(), result.end() - 1);
+}
+
+void DrawTree(std::shared_ptr<Toolbox::Object::ISceneObject> root){
+	if(root->isGroupObject()){
+		bool open = ImGui::TreeNode(SjisToUtf8(root->getQualifiedName().toString()).c_str());
+		if(open){
+			auto objects = std::dynamic_pointer_cast<Toolbox::Object::GroupSceneObject>(root)->getChildren();
+			if(objects.has_value()){
+				for (auto object : objects.value()){
+					DrawTree(object);
+				}
+			}
+			ImGui::TreePop();
+		}
+	} else {
+		ImGui::Text(SjisToUtf8(root->getQualifiedName().toString()).c_str());
+	}
+}
+
+EditorContext::~EditorContext(){
+	//J3DRendering::Cleanup();
+	mRenderables.erase(mRenderables.begin(), mRenderables.end());
+	ModelCache.clear();
 }
 
 EditorContext::EditorContext(){
@@ -141,15 +153,8 @@ void EditorContext::Render(float deltaTime) {
         // Render Objects
 
 		if(mCurrentScene != nullptr){
-			ImGui::Text(SjisToUtf8(mCurrentScene->getObjHierarchy().getRoot()->getQualifiedName().name()).c_str());
-			ImGui::Indent();
-			auto objects = mCurrentScene->getObjHierarchy().getRoot()->getChildren();
-			if(objects.has_value()){
-				for (auto object : objects.value()){
-					ImGui::Text(SjisToUtf8(object->getQualifiedName().name()).c_str());
-				}
-			}
-			
+			auto root = mCurrentScene->getObjHierarchy().getRoot();
+			DrawTree(root);
 		}
 
 	ImGui::End();
@@ -172,10 +177,25 @@ void EditorContext::Render(float deltaTime) {
 	view = mCamera.GetViewMatrix();
 
 	J3DUniformBufferObject::SetProjAndViewMatrices(&projection, &view);
+
+	mRenderables.clear();
 	
 	//Render Models here
+	if(ModelCache.count("map") != 0){
+		mRenderables.push_back(ModelCache["map"]->GetInstance());
+	}
 	
-	mRenderables.clear();
+	if(ModelCache.count("sky") != 0){
+		mRenderables.push_back(ModelCache["sky"]->GetInstance());
+	}
+
+	if(ModelCache.count("sea") != 0){
+		mRenderables.push_back(ModelCache["sea"]->GetInstance());
+	}
+
+	if(mCurrentScene != nullptr){
+		mCurrentScene->getObjHierarchy().getRoot()->performScene(mRenderables);
+	}
 
 	J3DRendering::Render(deltaTime, mCamera.GetPosition(), view, projection, mRenderables);
 
@@ -227,8 +247,29 @@ void EditorContext::RenderMenuBar() {
 		if (ImGuiFileDialog::Instance()->IsOk()) {
 			std::string FilePath = ImGuiFileDialog::Instance()->GetFilePathName();
 
+			ModelCache.erase(ModelCache.begin(), ModelCache.end());
+
+			J3DModelLoader loader;
+			for (const auto & entry : std::filesystem::directory_iterator(std::filesystem::path(FilePath) / "mapobj")){
+				if(entry.path().extension() == ".bmd"){
+					bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big, bStream::OpenMode::In);
+
+					ModelCache.insert({entry.path().stem().string(), loader.Load(&modelStream, 0)});
+				}
+			}
+
+			for (const auto & entry : std::filesystem::directory_iterator(std::filesystem::path(FilePath) / "map" / "map")){
+				if(entry.path().extension() == ".bmd"){
+					std::cout << "[gui]: loading model " << entry.path().filename().string() << std::endl;
+					bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big, bStream::OpenMode::In);
+
+					ModelCache.insert({entry.path().stem().string(), loader.Load(&modelStream, 0)});
+				}
+			}
+
             mCurrentScene = std::make_unique<Toolbox::Scene::SceneInstance>(FilePath);
 			mCurrentScene->dump(std::cout);
+
 	
 			bIsFileDialogOpen = false;
 		} else {
