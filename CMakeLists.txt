@@ -51,12 +51,12 @@ include(lib/imgui.cmake)
 add_subdirectory(lib/J3DUltra)
 add_subdirectory(lib/glfw)
 
-find_package(Iconv REQUIRED)
+find_package(ICU 61.0 COMPONENTS uc i18n REQUIRED)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ${ICONV_LIBRARIES} stdc++_libbacktrace)
+  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ICU::uc ICU::i18n stdc++_libbacktrace)
 else()
-  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ${ICONV_LIBRARIES})
+  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ICU::uc ICU::i18n)
 endif()
 
 target_include_directories(JuniorsToolbox PRIVATE "include" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/ImGuiFileDialog" "lib/glfw")

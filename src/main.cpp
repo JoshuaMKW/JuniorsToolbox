@@ -11,6 +11,8 @@
 #include <string>
 #include <string_view>
 
+#include <gui/modelcache.hpp>
+
 using namespace Toolbox::Object;
 
 int main(int argc, char **argv) {

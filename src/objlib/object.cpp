@@ -1,5 +1,7 @@
 #include "objlib/object.hpp"
 #include <expected>
+#include <string>
+#include <gui/modelcache.hpp>
 
 namespace Toolbox::Object {
 
@@ -226,7 +228,7 @@ namespace Toolbox::Object {
     std::expected<void, ObjectGroupError>
     GroupSceneObject::removeChild(std::shared_ptr<ISceneObject> child) {
         auto it = std::find_if(m_children.begin(), m_children.end(),
-                               [child](const auto &ptr) { return ptr.get() == child.get(); });
+                               [child](const auto &ptr) { return ptr == child; });
         if (it == m_children.end()) {
             ObjectGroupError err = {"Child not found in the group object.",
                                     std::stacktrace::current(), this};
@@ -496,7 +498,9 @@ namespace Toolbox::Object {
 
     std::expected<void, ObjectError>
     PhysicalSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) {
-        renderables.push_back(m_model_instance);
+        if(m_model_instance){
+            renderables.push_back(m_model_instance);
+        }
         return {};
     }
 
