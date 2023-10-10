@@ -226,7 +226,7 @@ namespace Toolbox::Object {
     std::expected<void, ObjectGroupError>
     GroupSceneObject::removeChild(std::shared_ptr<ISceneObject> child) {
         auto it = std::find_if(m_children.begin(), m_children.end(),
-                               [child](const auto &ptr) { return ptr.get() == child; });
+                               [child](const auto &ptr) { return ptr == child; });
         if (it == m_children.end()) {
             ObjectGroupError err = {"Child not found in the group object.",
                                     std::stacktrace::current(), this};
@@ -595,19 +595,19 @@ namespace Toolbox::Object {
 
     ObjectFactory::create_t ObjectFactory::create(Deserializer &in) {
         if (isGroupObject(in)) {
-            GroupSceneObject obj;
-            auto result = obj.deserialize(in);
+            auto obj = std::make_unique<GroupSceneObject>();
+            auto result = obj->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
-            return std::make_unique<GroupSceneObject>(obj);
+            return obj;
         } else {
-            PhysicalSceneObject obj;
-            auto result = obj.deserialize(in);
+            auto obj    = std::make_unique<PhysicalSceneObject>();
+            auto result = obj->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
-            return std::make_unique<PhysicalSceneObject>(obj);
+            return obj;
         }
     }
 

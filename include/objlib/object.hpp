@@ -147,6 +147,8 @@ namespace Toolbox::Object {
     public:
         friend class ObjectFactory;
 
+        VirtualSceneObject() = default;
+
         VirtualSceneObject(const Template &template_) : ISceneObject(), m_nameref() {
             m_type = template_.type();
 
@@ -189,9 +191,6 @@ namespace Toolbox::Object {
         }
         VirtualSceneObject(const VirtualSceneObject &) = default;
         VirtualSceneObject(VirtualSceneObject &&)      = default;
-
-    protected:
-        VirtualSceneObject() = default;
 
     public:
         ~VirtualSceneObject() override = default;
@@ -309,6 +308,10 @@ namespace Toolbox::Object {
     public:
         friend class ObjectFactory;
 
+        GroupSceneObject() : VirtualSceneObject() {
+            m_group_size =
+                std::make_shared<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
+        }
         GroupSceneObject(const Template &template_) : VirtualSceneObject(template_) {
             m_group_size =
                 std::make_shared<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
@@ -337,12 +340,6 @@ namespace Toolbox::Object {
         }
         GroupSceneObject(const GroupSceneObject &) = default;
         GroupSceneObject(GroupSceneObject &&)      = default;
-
-    protected:
-        GroupSceneObject() : VirtualSceneObject() {
-            m_group_size =
-                std::make_shared<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
-        }
 
     public:
         ~GroupSceneObject() override = default;
@@ -386,6 +383,8 @@ namespace Toolbox::Object {
     class PhysicalSceneObject : public ISceneObject {
     public:
         friend class ObjectFactory;
+
+        PhysicalSceneObject() = default;
 
         PhysicalSceneObject(const Template &template_)
             : ISceneObject(), m_nameref(), m_transform() {
@@ -433,9 +432,6 @@ namespace Toolbox::Object {
         }
         PhysicalSceneObject(const PhysicalSceneObject &) = default;
         PhysicalSceneObject(PhysicalSceneObject &&)      = default;
-
-    protected:
-        PhysicalSceneObject() = default;
 
     public:
         ~PhysicalSceneObject() override = default;
