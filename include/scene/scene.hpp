@@ -90,6 +90,8 @@ namespace Toolbox::Scene {
         }
         [[nodiscard]] static std::unique_ptr<SceneInstance> BasicScene();
 
+        [[nodiscard]] std::optional<std::filesystem::path> rootPath() const { return m_root_path; }
+
         [[nodiscard]] ObjectHierarchy getObjHierarchy() const { return m_map_objects; }
         void setObjHierarchy(const ObjectHierarchy &obj_root) { m_map_objects = obj_root; }
 

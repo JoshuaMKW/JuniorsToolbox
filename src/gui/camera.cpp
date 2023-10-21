@@ -1,4 +1,4 @@
-#include "gui/camera.hpp"
+#include "gui/scene/camera.hpp"
 #include "gui/input.hpp"
 
 #include <algorithm>
