@@ -1,0 +1,10 @@
+{
+  "name": "juniorstoolbox",
+  "version-string": "juniorstoolbox-win",
+  "dependencies": [
+    "libiconv",
+    "zlib",
+    "libpng"
+  ],
+  "builtin-baseline": "5016afa7ed49f8bac5dc801555b7d6af9fe79f58"
+}

@@ -52,7 +52,7 @@ add_subdirectory(lib/J3DUltra)
 add_subdirectory(lib/glfw)
 
 # find_package(ICU 61.0 COMPONENTS uc i18n REQUIRED)
-find_package(Iconv)
+find_package(Iconv REQUIRED)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
 #  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ICU::uc ICU::i18n stdc++_libbacktrace)
