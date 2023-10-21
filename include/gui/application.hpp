@@ -7,23 +7,24 @@
 #include <imgui_impl_glfw.h>
 #include <GLFW/glfw3.h>
 
-#include "gui/context.hpp"
+#include "gui/window.hpp"
+#include "gui/scene/window.hpp"
 
 namespace Toolbox::UI {
 
-class EditorApplication {
-	GLFWwindow* mWindow;
-	EditorContext* mContext;
+class MainApplication {
+	GLFWwindow* m_render_window;
+  std::vector<std::shared_ptr<IWindow>> m_windows;
 
-	bool Execute(float deltaTime);
+	bool execute(float delta_time);
 
 public:
-	EditorApplication();
-	virtual ~EditorApplication() {}
+	MainApplication();
+	virtual ~MainApplication() {}
 
-	bool Setup();
-	void Run();
-	bool Teardown();
+	bool setup();
+	void run();
+	bool teardown();
 };
 
 }
