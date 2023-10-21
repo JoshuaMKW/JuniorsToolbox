@@ -27,7 +27,7 @@ void Camera::Update(float deltaTime) {
 
 	if (Input::GetKey(GLFW_KEY_Q))
 		moveDir -= UNIT_Y;
-	if (Input::GetKey(GLFW_KEY_E))
+	if (Input::GetKey(GLFW_KEY_E) || Input::GetKey(GLFW_KEY_SPACE))
 		moveDir += UNIT_Y;
 
 	mMoveSpeed += Input::GetMouseScrollDelta() * 100 * deltaTime;
