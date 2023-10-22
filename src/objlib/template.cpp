@@ -106,7 +106,8 @@ namespace Toolbox::Object {
 
         size_t asize = 1;
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
-            asize = std::get<MetaMember::ReferenceInfo>(array_size).m_ref->get<u32>().value();
+            auto value = std::get<MetaMember::ReferenceInfo>(array_size).m_ref->get<u32>();
+            asize      = value ? value.value() : 0;
         } else {
             asize = std::get<u32>(array_size);
         }
@@ -134,7 +135,8 @@ namespace Toolbox::Object {
 
         size_t asize = 1;
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
-            asize = std::get<MetaMember::ReferenceInfo>(array_size).m_ref->get<u32>().value();
+            auto value = std::get<MetaMember::ReferenceInfo>(array_size).m_ref->get<u32>();
+            asize      = value ? value.value() : 0;
         } else {
             asize = std::get<u32>(array_size);
         }
@@ -162,7 +164,8 @@ namespace Toolbox::Object {
 
         size_t asize = 1;
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
-            asize = std::get<MetaMember::ReferenceInfo>(array_size).m_ref->get<u32>().value();
+            auto value = std::get<MetaMember::ReferenceInfo>(array_size).m_ref->get<u32>();
+            asize      = value ? value.value() : 0;
         } else {
             asize = std::get<u32>(array_size);
         }
@@ -242,7 +245,8 @@ namespace Toolbox::Object {
                         std::find_if(m_struct_cache.begin(), m_struct_cache.end(),
                                      [&](const auto &e) { return e.name() == member_type; });
                     if (struct_it != m_struct_cache.end()) {
-                        auto member = loadMemberStruct(member_name, member_type, member_size);
+                        const char *mname = member_name.c_str();
+                        auto member       = loadMemberStruct(member_name, member_type, member_size);
                         if (member) {
                             out.push_back(member.value());
                         }

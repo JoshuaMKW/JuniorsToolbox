@@ -238,9 +238,10 @@ namespace Toolbox::BMG {
             return raw;
         }
 
-        std::vector<char> raw(command.size() + 1);
+        std::vector<char> raw(command.size() + 2);
         {
             raw[0] = 0x1A;
+            raw[1] = command.size();
             std::copy(command.begin(), command.end(), raw.end());
         }
 
@@ -248,7 +249,7 @@ namespace Toolbox::BMG {
     }
 
     std::optional<std::string> CmdMessage::commandFromRaw(std::span<const char> command) {
-        if (command.empty() || command[0] != 0x1A) {
+        if (command.size() < 2 || command[0] != 0x1A) {
             return {};
         }
 
@@ -256,24 +257,26 @@ namespace Toolbox::BMG {
             return s_raw_to_command[std::string(command.begin(), command.end())];
         }
 
-        if (command[0] == 0x1A && command[1] == 0x06 && command[2] == 0x00 && command[3] == 0x00 &&
-            command[4] == 0x00) {
-            char buf[32];
-            std::snprintf(buf, 32, "{speed:%d}", command[5]);
-            return buf;
-        }
+        if (command.size() > 2) {
+            if (command[0] == 0x1A && command[1] == 0x06 && command[2] == 0x00 &&
+                command[3] == 0x00 && command[4] == 0x00) {
+                char buf[32];
+                std::snprintf(buf, 32, "{speed:%d}", command[5]);
+                return buf;
+            }
 
-        if (command[2] == 0x01 && command[3] == 0x00) {
-            char buf[32];
-            std::snprintf(buf, 32, "{option:%d:%s}", command[4],
-                          std::string(command.begin() + 5, command.end()).c_str());
-            return buf;
+            if (command[2] == 0x01 && command[3] == 0x00) {
+                char buf[32];
+                std::snprintf(buf, 32, "{option:%d:%s}", command[4],
+                              std::string(command.begin() + 5, command.end()).c_str());
+                return buf;
+            }
         }
 
         std::string txt = "{raw:";
-        for (size_t i = 1; i < txt.size(); i++) {
+        for (size_t i = 2; i < command.size(); i++) {
             char buf[6];
-            std::snprintf(buf, 6, "\\x%02X", txt[i]);
+            std::snprintf(buf, 6, "\\x%02X", command[i]);
             txt += buf;
         }
         txt += "}";
