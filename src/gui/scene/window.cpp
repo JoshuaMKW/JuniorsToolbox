@@ -190,7 +190,8 @@ namespace Toolbox::UI {
         mainWindowOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
         ImGui::SetNextWindowClass(&mainWindowOverride);*/
 
-        ImGui::Begin("Hierarchy Editor", nullptr,
+
+        ImGui::Begin(getWindowChildUID(*this, "Hierarchy Editor").c_str(), nullptr,
                      ImGuiWindowFlags_NoTitleBar);
         ImGui::Text("Map Objects");
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left) /* Check if scene is loaded here*/) {
@@ -224,7 +225,7 @@ namespace Toolbox::UI {
         ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
         */
 
-        ImGui::Begin("Properties Editor", nullptr,
+        ImGui::Begin(getWindowChildUID(*this, "Properties Editor").c_str(), nullptr,
                      ImGuiWindowFlags_NoTitleBar);
         // TODO: Render properties
         ImGui::End();
@@ -268,9 +269,9 @@ namespace Toolbox::UI {
         m_dock_node_down_left_id = ImGui::DockBuilderSplitNode(
             m_dock_node_up_left_id, ImGuiDir_Down, 0.5f, nullptr, &m_dock_node_up_left_id);
 
-        ImGui::DockBuilderDockWindow("Hierarchy Editor",
+        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Hierarchy Editor").c_str(),
                                      m_dock_node_up_left_id);
-        ImGui::DockBuilderDockWindow("Properties Editor",
+        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Properties Editor").c_str(),
                                      m_dock_node_down_left_id);
     }
 

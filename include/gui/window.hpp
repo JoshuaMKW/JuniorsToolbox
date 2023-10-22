@@ -161,7 +161,7 @@ namespace Toolbox::UI {
         return window.title(); }
 
     inline std::string getWindowChildUID(const IWindow &window, const std::string &child_name) {
-        return getWindowUID(window) + "###" + child_name;
+        return child_name + "##" + getWindowUID(window);
     }
 
 }  // namespace Toolbox::UI
