@@ -2,29 +2,33 @@
 
 #include <deps/glad/gl.h>
 
-#include <imgui.h>
-#include <imgui_impl_opengl3.h>
-#include <imgui_impl_glfw.h>
 #include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
-#include "gui/window.hpp"
 #include "gui/scene/window.hpp"
+#include "gui/window.hpp"
 
 namespace Toolbox::UI {
 
-class MainApplication {
-	GLFWwindow* m_render_window;
-  std::vector<std::shared_ptr<IWindow>> m_windows;
+    class MainApplication {
+    public:
+        MainApplication();
+        virtual ~MainApplication() {}
 
-	bool execute(float delta_time);
+        bool setup();
+        void run();
+        bool teardown();
 
-public:
-	MainApplication();
-	virtual ~MainApplication() {}
+    protected:
+        bool execute(float delta_time);
 
-	bool setup();
-	void run();
-	bool teardown();
-};
+    private:
+        GLFWwindow *m_render_window;
+        std::vector<std::shared_ptr<IWindow>> m_windows;
+        std::unordered_map<std::string, bool> m_docked_map;
+        ImGuiID m_dockspace_id;
+    };
 
-}
+}  // namespace Toolbox::UI

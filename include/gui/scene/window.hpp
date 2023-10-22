@@ -20,7 +20,7 @@
 
 namespace Toolbox::UI {
 
-    class SceneWindow : public IWindow {
+    class SceneWindow final : public DockWindow {
     public:
         SceneWindow();
         ~SceneWindow();
@@ -28,6 +28,7 @@ namespace Toolbox::UI {
     protected:
         void setLights();
 
+        void buildDockspace(ImGuiID dockspace_id) override;
         void renderMenuBar() override;
         void renderBody(f32 delta_time) override;
 
