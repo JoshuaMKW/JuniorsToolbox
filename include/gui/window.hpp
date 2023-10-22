@@ -45,14 +45,16 @@ namespace Toolbox::UI {
         virtual void render(f32 delta_time) = 0;
     };
 
-    class BaseWindow : public IWindow {
+    class SimpleWindow : public IWindow {
     protected:
         void renderMenuBar() override {}
         void renderBody(f32 delta_time) override {}
 
     public:
-        BaseWindow() = default;
-        ~BaseWindow() override = default;
+        SimpleWindow() = default;
+        ~SimpleWindow() override = default;
+
+        void open() { m_is_open = true; }
 
         [[nodiscard]] std::string context() const override { return "(OVERRIDE THIS)"; }
         [[nodiscard]] std::string name() const override { return "Base Window"; }
@@ -82,25 +84,6 @@ namespace Toolbox::UI {
 
             ImGui::Begin(title().c_str(), &m_is_open, m_flags);
             {
-                m_window_id = ImGui::GetID(title().c_str());
-
-                if (!m_is_docking_set_up) {
-                    ImGui::DockBuilderRemoveNode(m_window_id);  // clear any previous layout
-                    ImGui::DockBuilderAddNode(m_window_id,
-                                              dockFlags | ImGuiDockNodeFlags_DockSpace);
-                    ImGui::DockBuilderSetNodeSize(m_window_id, mainViewport->Size);
-
-                    /*ImGuiID node_right_id    = ImGui::DockBuilderSplitNode(m_window_id,
-                    ImGuiDir_Right, 0.25f, nullptr, &m_window_id); m_dock_node_down_left_id =
-                    ImGui::DockBuilderSplitNode( m_dock_node_left_id, ImGuiDir_Down, 0.5f, nullptr,
-                    &m_dock_node_up_left_id);*/
-
-                    ImGui::DockBuilderDockWindow(title().c_str(), m_window_id);
-
-                    ImGui::DockBuilderFinish(m_window_id);
-                    m_is_docking_set_up = true;
-                }
-
                 renderMenuBar();
                 renderBody(delta_time);
             }
@@ -127,6 +110,8 @@ namespace Toolbox::UI {
     public:
         DockWindow()           = default;
         ~DockWindow() override = default;
+
+        void open() { m_is_open = true; }
 
         [[nodiscard]] std::string context() const override { return "(OVERRIDE THIS)"; }
         [[nodiscard]] std::string name() const override { return "Base Window"; }

@@ -47,22 +47,7 @@ namespace Toolbox::UI {
             return {"", "arc", "szs"};
         }
 
-        [[nodiscard]] bool loadData(const std::filesystem::path &path) override {
-            if (!Toolbox::exists(path)) {
-                return false;
-            }
-
-            if (Toolbox::is_directory(path)) {
-                if (path.filename() != "scene") {
-                    return false;
-                }
-                m_current_scene = std::make_unique<Toolbox::Scene::SceneInstance>(path);
-                return true;
-            }
-
-            // TODO: Implement opening from archives.
-            return false;
-        }
+        [[nodiscard]] bool loadData(const std::filesystem::path &path) override;
 
         [[nodiscard]] bool saveData(const std::filesystem::path &path) override {
             // TODO: Implement saving to archive or folder.

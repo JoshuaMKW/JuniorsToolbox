@@ -10,44 +10,46 @@
 #include <string_view>
 #include <vector>
 
+using namespace std::string_literals;
+
 namespace Toolbox::BMG {
 
     static std::unordered_map<std::string, std::string> s_command_to_raw = {
-        {"{text:slow}",           "\x1A\x05\x00\x00\x00"    },
-        {"{text:end_close}",      "\x1A\x05\x00\x00\x01"    },
-        {"{ctx:bananas}",         "\x1A\x06\xFF\x00\x04\x00"},
-        {"{ctx:coconuts}",        "\x1A\x06\xFF\x00\x04\x01"},
-        {"{ctx:pineapples}",      "\x1A\x06\xFF\x00\x04\x02"},
-        {"{ctx:durians}",         "\x1A\x06\xFF\x00\x04\x03"},
-        {"{color:white}",         "\x1A\x06\xFF\x00\x00\x00"},
-        {"{color:red}",           "\x1A\x06\xFF\x00\x00\x02"},
-        {"{color:blue}",          "\x1A\x06\xFF\x00\x00\x03"},
-        {"{color:yellow}",        "\x1A\x06\xFF\x00\x00\x04"},
-        {"{color:green}",         "\x1A\x06\xFF\x00\x00\x05"},
-        {"{record:race_pianta}",  "\x1A\x05\x02\x00\x00"    },
-        {"{record:race_gelato}",  "\x1A\x05\x02\x00\x01"    },
-        {"{record:crate_time}",   "\x1A\x05\x02\x00\x02"    },
-        {"{record:bcoin_shines}", "\x1A\x05\x02\x00\x03"    },
-        {"{record:race_noki}",    "\x1A\x05\x02\x00\x06"    },
+        {"{text:slow}",           "\x1A\x05\x00\x00\x00"s    },
+        {"{text:end_close}",      "\x1A\x05\x00\x00\x01"s    },
+        {"{ctx:bananas}",         "\x1A\x06\xFF\x00\x04\x00"s},
+        {"{ctx:coconuts}",        "\x1A\x06\xFF\x00\x04\x01"s},
+        {"{ctx:pineapples}",      "\x1A\x06\xFF\x00\x04\x02"s},
+        {"{ctx:durians}",         "\x1A\x06\xFF\x00\x04\x03"s},
+        {"{color:white}",         "\x1A\x06\xFF\x00\x00\x00"s},
+        {"{color:red}",           "\x1A\x06\xFF\x00\x00\x02"s},
+        {"{color:blue}",          "\x1A\x06\xFF\x00\x00\x03"s},
+        {"{color:yellow}",        "\x1A\x06\xFF\x00\x00\x04"s},
+        {"{color:green}",         "\x1A\x06\xFF\x00\x00\x05"s},
+        {"{record:race_pianta}",  "\x1A\x05\x02\x00\x00"s    },
+        {"{record:race_gelato}",  "\x1A\x05\x02\x00\x01"s    },
+        {"{record:crate_time}",   "\x1A\x05\x02\x00\x02"s    },
+        {"{record:bcoin_shines}", "\x1A\x05\x02\x00\x03"s    },
+        {"{record:race_noki}",    "\x1A\x05\x02\x00\x06"s    },
     };
 
     static std::unordered_map<std::string, std::string> s_raw_to_command = {
-        {"\x1A\x05\x00\x00\x00",     "{text:slow}"          },
-        {"\x1A\x05\x00\x00\x01",     "{text:end_close}"     },
-        {"\x1A\x06\xFF\x00\x04\x00", "{ctx:bananas}"        },
-        {"\x1A\x06\xFF\x00\x04\x01", "{ctx:coconuts}"       },
-        {"\x1A\x06\xFF\x00\x04\x02", "{ctx:pineapples}"     },
-        {"\x1A\x06\xFF\x00\x04\x03", "{ctx:durians}"        },
-        {"\x1A\x06\xFF\x00\x00\x00", "{color:white}"        },
-        {"\x1A\x06\xFF\x00\x00\x02", "{color:red}"          },
-        {"\x1A\x06\xFF\x00\x00\x03", "{color:blue}"         },
-        {"\x1A\x06\xFF\x00\x00\x04", "{color:yellow}"       },
-        {"\x1A\x06\xFF\x00\x00\x05", "{color:green}"        },
-        {"\x1A\x05\x02\x00\x00",     "{record:race_pianta}" },
-        {"\x1A\x05\x02\x00\x01",     "{record:race_gelato}" },
-        {"\x1A\x05\x02\x00\x02",     "{record:crate_time}"  },
-        {"\x1A\x05\x02\x00\x03",     "{record:bcoin_shines}"},
-        {"\x1A\x05\x02\x00\x06",     "{record:race_noki}"   },
+        {"\x1A\x05\x00\x00\x00"s,     "{text:slow}"          },
+        {"\x1A\x05\x00\x00\x01"s,     "{text:end_close}"     },
+        {"\x1A\x06\xFF\x00\x04\x00"s, "{ctx:bananas}"        },
+        {"\x1A\x06\xFF\x00\x04\x01"s, "{ctx:coconuts}"       },
+        {"\x1A\x06\xFF\x00\x04\x02"s, "{ctx:pineapples}"     },
+        {"\x1A\x06\xFF\x00\x04\x03"s, "{ctx:durians}"        },
+        {"\x1A\x06\xFF\x00\x00\x00"s, "{color:white}"        },
+        {"\x1A\x06\xFF\x00\x00\x02"s, "{color:red}"          },
+        {"\x1A\x06\xFF\x00\x00\x03"s, "{color:blue}"         },
+        {"\x1A\x06\xFF\x00\x00\x04"s, "{color:yellow}"       },
+        {"\x1A\x06\xFF\x00\x00\x05"s, "{color:green}"        },
+        {"\x1A\x05\x02\x00\x00"s,     "{record:race_pianta}" },
+        {"\x1A\x05\x02\x00\x01"s,     "{record:race_gelato}" },
+        {"\x1A\x05\x02\x00\x02"s,     "{record:crate_time}"  },
+        {"\x1A\x05\x02\x00\x03"s,     "{record:bcoin_shines}"},
+        {"\x1A\x05\x02\x00\x06"s,     "{record:race_noki}"   },
     };
 
     std::size_t CmdMessage::getDataSize() const {
@@ -114,9 +116,9 @@ namespace Toolbox::BMG {
 
             std::vector<char> cmddata;
             {
-                cmddata.reserve(cmdsize);
                 cmddata.push_back(c);
                 cmddata.push_back(cmdsize);
+                cmddata.resize(cmdsize);
 
                 // Append the rest of the command
                 in.readBytes(std::span<char>(cmddata.begin() + 2, cmddata.end()));
@@ -180,8 +182,7 @@ namespace Toolbox::BMG {
 
             if (!isCommandEnclosed) {
                 if (bracket_r == std::string::npos) {
-                    std::string trailing_text =
-                        m_message_data.substr(bracket_l);  // to the end
+                    std::string trailing_text = m_message_data.substr(bracket_l);  // to the end
                     if (!trailing_text.empty())
                         parts.push_back(std::string(trailing_text));
                     break;
@@ -361,10 +362,11 @@ namespace Toolbox::BMG {
     }
 
     void MessageData::dump(std::ostream &out, size_t indention, size_t indention_width) const {
-        auto indention_str = std::string(indention * indention_width, ' ');
+        auto indention_str       = std::string(indention * indention_width, ' ');
         auto value_indention_str = std::string((indention + 1) * indention_width, ' ');
 
-        out << indention_str << "BMG Data (Flag Size: " << static_cast<size_t>(m_flag_size) << ") {" << std::endl;
+        out << indention_str << "BMG Data (Flag Size: " << static_cast<size_t>(m_flag_size) << ") {"
+            << std::endl;
         for (auto &entry : m_entries) {
             std::string name = entry.m_name.empty() ? "(Unknown)" : entry.m_name;
             out << value_indention_str << name << " (" << entry.m_start_frame << ", "
@@ -476,7 +478,7 @@ namespace Toolbox::BMG {
         m_entries.clear();
 
         auto section_count = in.read<u32, std::endian::big>();
-        m_has_str1 = section_count >= 3;
+        m_has_str1         = section_count >= 3;
 
         in.seek(0x10);  // Padding
 
@@ -507,7 +509,7 @@ namespace Toolbox::BMG {
                     data_offsets.push_back(in.read<u32, std::endian::big>());
                     if (flag_size == 12) {
                         entry.m_start_frame = in.read<u16, std::endian::big>();
-                        entry.m_end_frame = in.read<u16, std::endian::big>();
+                        entry.m_end_frame   = in.read<u16, std::endian::big>();
                         if (m_has_str1) {
                             name_offsets.push_back(in.read<u16, std::endian::big>());
                         }

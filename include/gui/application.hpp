@@ -18,17 +18,26 @@ namespace Toolbox::UI {
         virtual ~MainApplication() {}
 
         bool setup();
-        void run();
+        int run();
         bool teardown();
 
     protected:
-        bool execute(float delta_time);
+        bool execute(f32 delta_time);
+        void render(f32 delta_time);
+        void renderMenuBar();
+        void renderWindows(f32 delta_time);
 
     private:
         GLFWwindow *m_render_window;
         std::vector<std::shared_ptr<IWindow>> m_windows;
+
         std::unordered_map<std::string, bool> m_docked_map;
         ImGuiID m_dockspace_id;
+        bool m_dockspace_built;
+
+        bool m_options_open = false;
+        bool m_is_file_dialog_open = false;
+        bool m_is_dir_dialog_open = false;
     };
 
 }  // namespace Toolbox::UI
