@@ -27,6 +27,7 @@ namespace Toolbox::UI {
     }
 
     MainApplication::MainApplication() {
+        m_dockspace_id  = ImGuiID();
         m_render_window = nullptr;
         m_windows       = {};
     }
@@ -66,7 +67,7 @@ namespace Toolbox::UI {
         ImGui::CreateContext();
         ImGuiIO &io = ImGui::GetIO();
         (void)io;
-        io.ConfigFlags |= ImGuiConfigFlags_None;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(m_render_window, true);
@@ -76,9 +77,9 @@ namespace Toolbox::UI {
 
         // Create viewer context
         m_windows.push_back(std::make_shared<SceneWindow>());
+        /*m_windows.push_back(std::make_shared<SceneWindow>());
         m_windows.push_back(std::make_shared<SceneWindow>());
-        m_windows.push_back(std::make_shared<SceneWindow>());
-        m_windows.push_back(std::make_shared<SceneWindow>());
+        m_windows.push_back(std::make_shared<SceneWindow>());*/
 
         return true;
     }
@@ -129,10 +130,42 @@ namespace Toolbox::UI {
         glClearColor(0.100f, 0.261f, 0.402f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Render viewer context
-        for (auto &window : m_windows) {
-            window->render(delta_time);
+        ImGuiViewport *viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->Pos);
+        ImGui::SetNextWindowSize(viewport->Size);
+        ImGui::SetNextWindowViewport(viewport->ID);
+
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
+
+        ImGui::Begin("MainDockSpace", nullptr, window_flags);
+        {
+            m_dockspace_id = ImGui::GetID("MainDockSpace");
+
+            bool dockspace_built = ImGui::DockBuilderGetNode(m_dockspace_id);
+            if (!dockspace_built) {
+                ImGui::DockBuilderRemoveNode(m_dockspace_id);
+                ImGui::DockBuilderAddNode(m_dockspace_id, ImGuiDockNodeFlags_None);
+            }
+
+            // Render viewer context
+            for (auto &window : m_windows) {
+                if (!dockspace_built && !m_docked_map[window->title()]) {
+                    ImGui::DockBuilderDockWindow(window->title().c_str(), m_dockspace_id);
+                    m_docked_map[window->title()] = true;
+                }
+            }
+
+            for (auto &window : m_windows) {
+                window->render(delta_time);
+            }
+
+            if (!dockspace_built)
+                ImGui::DockBuilderFinish(m_dockspace_id);
+
+            ImGui::DockSpace(m_dockspace_id, {}, ImGuiDockNodeFlags_PassthruCentralNode);
+
         }
+        ImGui::End();
 
         // Render imgui
         ImGui::Render();

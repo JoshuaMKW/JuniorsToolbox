@@ -163,42 +163,17 @@ namespace Toolbox::UI {
         return true;
     }
 
-    void SceneWindow::renderBody(float deltaTime) {
-        const ImGuiViewport *mainViewport = ImGui::GetMainViewport();
+    void SceneWindow::renderBody(f32 deltaTime) {
+        // const ImGuiViewport *mainViewport = ImGui::GetMainViewport();
 
         ImGuiDockNodeFlags dockFlags = ImGuiDockNodeFlags_PassthruCentralNode |
                                        ImGuiDockNodeFlags_AutoHideTabBar |
                                        ImGuiDockNodeFlags_NoDockingInCentralNode;
 
-        ImGuiID window_id = ImGui::GetID(title().c_str());
-
-        if (!m_is_docking_set_up) {
-            ImGui::DockBuilderRemoveNode(window_id);  // clear any previous layout
-            ImGui::DockBuilderAddNode(window_id, dockFlags | ImGuiDockNodeFlags_DockSpace);
-            ImGui::DockBuilderSetNodeSize(window_id, mainViewport->Size);
-
-            m_dock_node_left_id = ImGui::DockBuilderSplitNode(window_id, ImGuiDir_Left, 0.25f,
-                                                              nullptr, &window_id);
-            m_dock_node_down_left_id = ImGui::DockBuilderSplitNode(
-                m_dock_node_left_id, ImGuiDir_Down, 0.5f, nullptr, &m_dock_node_up_left_id);
-
-            ImGui::DockBuilderDockWindow("mainWindow", m_dock_node_up_left_id);
-            ImGui::DockBuilderDockWindow(
-                "sceneWindow", ImGui::DockBuilderSplitNode(m_dock_node_up_left_id, ImGuiDir_Down,
-                                                           0.5f, nullptr, nullptr));
-            ImGui::DockBuilderDockWindow("detailWindow", m_dock_node_down_left_id);
-
-            ImGui::DockBuilderFinish(window_id);
-            m_is_docking_set_up = true;
-        }
-
         ImGuiWindowClass mainWindowOverride;
         mainWindowOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
         ImGui::SetNextWindowClass(&mainWindowOverride);
 
-        ImGui::Begin("mainWindow", nullptr,
-                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
-                         ImGuiWindowFlags_NoResize);
         ImGui::Text("Scene");
         ImGui::SameLine();
         ImGui::Text(ICON_FK_PLUS_CIRCLE);
@@ -215,8 +190,6 @@ namespace Toolbox::UI {
             DrawTree(root);
         }
 
-        ImGui::End();
-
         ImGui::SetNextWindowClass(&mainWindowOverride);
 
         /*
@@ -225,12 +198,8 @@ namespace Toolbox::UI {
         ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
         */
 
-        ImGui::Begin("detailWindow", nullptr,
-                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
-                         ImGuiWindowFlags_NoResize);
         ImGui::Text("Properties");
         ImGui::Separator();
-        ImGui::End();
 
         glm::mat4 projection, view;
         projection = m_camera.GetProjectionMatrix();
@@ -261,6 +230,22 @@ namespace Toolbox::UI {
 
         // mGrid.Render(m_camera.GetPosition(), m_camera.GetProjectionMatrix(),
         // m_camera.GetViewMatrix());
+    }
+
+    void SceneWindow::buildDockspace(ImGuiID dockspace_id) {
+        m_dock_node_left_id =
+            ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.25f, nullptr, &dockspace_id);
+        m_dock_node_up_left_id   = ImGui::DockBuilderSplitNode(m_dock_node_left_id, ImGuiDir_Down,
+                                                               0.5f, nullptr, &m_dock_node_left_id);
+        m_dock_node_down_left_id = ImGui::DockBuilderSplitNode(
+            m_dock_node_up_left_id, ImGuiDir_Down, 0.5f, nullptr, &m_dock_node_up_left_id);
+
+        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "UIPane").c_str(),
+                                     m_dock_node_left_id);
+        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "HierarchyView").c_str(),
+                                     m_dock_node_up_left_id);
+        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "PropertiesView").c_str(),
+                                     m_dock_node_down_left_id);
     }
 
     void SceneWindow::renderMenuBar() {
@@ -382,4 +367,5 @@ namespace Toolbox::UI {
 
         J3DUniformBufferObject::SetLights(lights);
     }
+
 };  // namespace Toolbox::UI
