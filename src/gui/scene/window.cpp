@@ -104,8 +104,9 @@ namespace Toolbox::UI {
     }
 
     void DrawTree(std::shared_ptr<Toolbox::Object::ISceneObject> root) {
+        std::string node_name = std::format("{} ({})", root->type(), root->getNameRef().name());
         if (root->isGroupObject()) {
-            bool open = ImGui::TreeNode(SjisToUtf8(root->getQualifiedName().toString()).c_str());
+            bool open = ImGui::TreeNode(SjisToUtf8(node_name).c_str());
             if (open) {
                 auto objects = std::dynamic_pointer_cast<Toolbox::Object::GroupSceneObject>(root)
                                    ->getChildren();
@@ -117,7 +118,7 @@ namespace Toolbox::UI {
                 ImGui::TreePop();
             }
         } else {
-            ImGui::Text(SjisToUtf8(root->getQualifiedName().toString()).c_str());
+            ImGui::Text(SjisToUtf8(node_name).c_str());
         }
     }
 
@@ -128,33 +129,48 @@ namespace Toolbox::UI {
     }
 
     SceneWindow::SceneWindow() {
-
-        ImGuiIO &io = ImGui::GetIO();
-
-        if (std::filesystem::exists(
-                (std::filesystem::current_path() / "res" / "NotoSansJP-Regular.otf"))) {
-            io.Fonts->AddFontFromFileTTF(
-                (std::filesystem::current_path() / "res" / "NotoSansJP-Regular.otf")
-                    .string()
-                    .c_str(),
-                16.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
-        }
-
-        if (std::filesystem::exists(
-                (std::filesystem::current_path() / "res" / "forkawesome.ttf"))) {
-            static const ImWchar icons_ranges[] = {ICON_MIN_FK, ICON_MAX_16_FK, 0};
-            ImFontConfig icons_config;
-            icons_config.MergeMode        = true;
-            icons_config.PixelSnapH       = true;
-            icons_config.GlyphMinAdvanceX = 16.0f;
-            io.Fonts->AddFontFromFileTTF(
-                (std::filesystem::current_path() / "res" / "forkawesome.ttf").string().c_str(),
-                icons_config.GlyphMinAdvanceX, &icons_config, icons_ranges);
-        }
-
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
         J3DRendering::SetSortFunction(PacketSort);
+    }
+
+    bool SceneWindow::loadData(const std::filesystem::path &path) {
+        if (!Toolbox::exists(path)) {
+            return false;
+        }
+
+        if (Toolbox::is_directory(path)) {
+            if (path.filename() != "scene") {
+                return false;
+            }
+
+            ModelCache.erase(ModelCache.begin(), ModelCache.end());
+
+            m_current_scene = std::make_unique<Toolbox::Scene::SceneInstance>(path);
+
+            J3DModelLoader loader;
+            for (const auto &entry : std::filesystem::directory_iterator(path / "mapobj")) {
+                if (entry.path().extension() == ".bmd") {
+                    bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big,
+                                                     bStream::OpenMode::In);
+
+                    ModelCache.insert({entry.path().stem().string(), loader.Load(&modelStream, 0)});
+                }
+            }
+
+            for (const auto &entry : std::filesystem::directory_iterator(path / "map" / "map")) {
+                if (entry.path().extension() == ".bmd") {
+                    std::cout << "[gui]: loading model " << entry.path().filename().string()
+                              << std::endl;
+                    bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big,
+                                                     bStream::OpenMode::In);
+
+                    ModelCache.insert({entry.path().stem().string(), loader.Load(&modelStream, 0)});
+                }
+            }
+            return true;
+        }
+
+        // TODO: Implement opening from archives.
+        return false;
     }
 
     bool SceneWindow::update(f32 deltaTime) {
@@ -170,13 +186,13 @@ namespace Toolbox::UI {
                                        ImGuiDockNodeFlags_AutoHideTabBar |
                                        ImGuiDockNodeFlags_NoDockingInCentralNode;
 
-        ImGuiWindowClass mainWindowOverride;
+        /*ImGuiWindowClass mainWindowOverride;
         mainWindowOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
-        ImGui::SetNextWindowClass(&mainWindowOverride);
+        ImGui::SetNextWindowClass(&mainWindowOverride);*/
 
-        ImGui::Text("Scene");
-        ImGui::SameLine();
-        ImGui::Text(ICON_FK_PLUS_CIRCLE);
+        ImGui::Begin("Hierarchy Editor", nullptr,
+                     ImGuiWindowFlags_NoTitleBar);
+        ImGui::Text("Map Objects");
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left) /* Check if scene is loaded here*/) {
             // Add Object
         }
@@ -190,7 +206,17 @@ namespace Toolbox::UI {
             DrawTree(root);
         }
 
-        ImGui::SetNextWindowClass(&mainWindowOverride);
+        ImGui::Spacing();
+        ImGui::Text("Scene Info");
+        ImGui::Separator();
+
+        if (m_current_scene != nullptr) {
+            auto root = m_current_scene->getTableHierarchy().getRoot();
+            DrawTree(root);
+        }
+
+        ImGui::End();
+        //ImGui::SetNextWindowClass(&mainWindowOverride);
 
         /*
         ImGuizmo::BeginFrame();
@@ -198,8 +224,10 @@ namespace Toolbox::UI {
         ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
         */
 
-        ImGui::Text("Properties");
-        ImGui::Separator();
+        ImGui::Begin("Properties Editor", nullptr,
+                     ImGuiWindowFlags_NoTitleBar);
+        // TODO: Render properties
+        ImGui::End();
 
         glm::mat4 projection, view;
         projection = m_camera.GetProjectionMatrix();
@@ -240,108 +268,13 @@ namespace Toolbox::UI {
         m_dock_node_down_left_id = ImGui::DockBuilderSplitNode(
             m_dock_node_up_left_id, ImGuiDir_Down, 0.5f, nullptr, &m_dock_node_up_left_id);
 
-        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "UIPane").c_str(),
-                                     m_dock_node_left_id);
-        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "HierarchyView").c_str(),
+        ImGui::DockBuilderDockWindow("Hierarchy Editor",
                                      m_dock_node_up_left_id);
-        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "PropertiesView").c_str(),
+        ImGui::DockBuilderDockWindow("Properties Editor",
                                      m_dock_node_down_left_id);
     }
 
     void SceneWindow::renderMenuBar() {
-        m_options_open = false;
-        ImGui::BeginMainMenuBar();
-
-        if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem(ICON_FK_FOLDER_OPEN " Open...")) {
-                m_is_file_dialog_open = true;
-            }
-            if (ImGui::MenuItem(ICON_FK_FLOPPY_O " Save...")) {
-                // Save Scene
-            }
-
-            ImGui::Separator();
-            ImGui::MenuItem(ICON_FK_WINDOW_CLOSE " Close");
-
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem(ICON_FK_COG " Settings")) {
-                m_options_open = true;
-            }
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu(ICON_FK_QUESTION_CIRCLE)) {
-            if (ImGui::MenuItem("About")) {
-                m_options_open = true;
-            }
-            ImGui::EndMenu();
-        }
-
-        ImGui::EndMainMenuBar();
-
-        if (m_is_file_dialog_open) {
-            ImGuiFileDialog::Instance()->OpenDialog("OpenSceneDialog", "Choose Scene Directory",
-                                                    nullptr, "", "");
-        }
-
-        if (ImGuiFileDialog::Instance()->Display("OpenSceneDialog")) {
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::string FilePath = ImGuiFileDialog::Instance()->GetFilePathName();
-
-                ModelCache.erase(ModelCache.begin(), ModelCache.end());
-
-                J3DModelLoader loader;
-                for (const auto &entry : std::filesystem::directory_iterator(
-                         std::filesystem::path(FilePath) / "mapobj")) {
-                    if (entry.path().extension() == ".bmd") {
-                        bStream::CFileStream modelStream(
-                            entry.path().string(), bStream::Endianess::Big, bStream::OpenMode::In);
-
-                        ModelCache.insert(
-                            {entry.path().stem().string(), loader.Load(&modelStream, 0)});
-                    }
-                }
-
-                for (const auto &entry : std::filesystem::directory_iterator(
-                         std::filesystem::path(FilePath) / "map" / "map")) {
-                    if (entry.path().extension() == ".bmd") {
-                        std::cout << "[gui]: loading model " << entry.path().filename().string()
-                                  << std::endl;
-                        bStream::CFileStream modelStream(
-                            entry.path().string(), bStream::Endianess::Big, bStream::OpenMode::In);
-
-                        ModelCache.insert(
-                            {entry.path().stem().string(), loader.Load(&modelStream, 0)});
-                    }
-                }
-
-                m_current_scene = std::make_unique<Toolbox::Scene::SceneInstance>(FilePath);
-                m_current_scene->dump(std::cout);
-
-                m_is_file_dialog_open = false;
-            } else {
-                m_is_file_dialog_open = false;
-            }
-
-            ImGuiFileDialog::Instance()->Close();
-        }
-
-        if (ImGui::BeginPopupModal("Scene Load Error", NULL,
-                                   ImGuiWindowFlags_AlwaysAutoResize |
-                                       ImGuiWindowFlags_NoCollapse)) {
-            ImGui::Text("Error Loading Scene\n\n");
-            ImGui::Separator();
-
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
-
-        if (m_options_open) {
-            ImGui::OpenPopup("Options");
-        }
     }
 
     void SceneWindow::setLights() {
