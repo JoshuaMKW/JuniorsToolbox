@@ -23,7 +23,7 @@
                 "ArraySize": 1
             },
             "LightCount": {
-                "Type": "S32",
+                "Type": "U32",
                 "ArraySize": 1
             },
             "LightArray": {

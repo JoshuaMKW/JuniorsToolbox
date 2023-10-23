@@ -35,8 +35,10 @@ file(GLOB TOOLBOX_SRC
     "src/objlib/meta/*.cpp"
     "include/objlib/meta/*.hpp"
     "src/io/*.cpp"
-    "src/gui/*.hpp"
     "src/gui/*.cpp"
+    "include/gui/*.hpp"
+    "src/gui/scene/*.cpp"
+    "include/gui/scene/*.hpp"
     "include/io/*.hpp"
     "lib/ImGuiFileDialog/*.h"
     "lib/ImGuiFileDialog/*.cpp"
@@ -66,3 +68,6 @@ target_include_directories(JuniorsToolbox PRIVATE "include" "lib/imgui" "lib/img
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
                        ${CMAKE_SOURCE_DIR}/Templates/ $<TARGET_FILE_DIR:JuniorsToolbox>/Templates/)
+add_custom_command(TARGET JuniorsToolbox PRE_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory
+                       ${CMAKE_SOURCE_DIR}/res/ $<TARGET_FILE_DIR:JuniorsToolbox>/res/)

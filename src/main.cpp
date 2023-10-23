@@ -17,13 +17,13 @@ using namespace Toolbox::Object;
 
 int main(int argc, char **argv) {
 
-    Toolbox::UI::EditorApplication app;
+    auto &app = Toolbox::UI::MainApplication::instance();
     
-    app.Setup();
+    app.setup();
 
-    app.Run();
+    app.run();
 
-    app.Teardown();
+    app.teardown();
 
     return 0;
 }
