@@ -1,51 +1,60 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
-
-struct GLFWwindow;
-
-namespace Toolbox::UI {
-
-constexpr glm::vec3 ZERO = glm::vec3(0.0f, 0.0f, 0.0f);
-constexpr glm::vec3 UNIT_X = glm::vec3(1.0f, 0.0f, 0.0f);
-constexpr glm::vec3 UNIT_Y = glm::vec3(0.0f, 1.0f, 0.0f);
-constexpr glm::vec3 UNIT_Z = glm::vec3(0.0f, 0.0f, 1.0f);
-
-constexpr float LOOK_UP_MIN = -glm::half_pi<float>() + glm::epsilon<float>();
-constexpr float LOOK_UP_MAX = glm::half_pi<float>() - glm::epsilon<float>();
 
 class Camera {
-	glm::vec3 mEye;
-	glm::vec3 mCenter;
-
-	float mPitch;
-	float mYaw;
-	glm::vec3 mForward;
-	glm::vec3 mRight;
-	glm::vec3 mUp;
-
-	float mNearPlane;
-	float mFarPlane;
-	float mFovy;
-	float mAspectRatio;
-
-	float mMoveSpeed;
-	float mMouseSensitivity;
-
-	void Rotate(float deltaTime, glm::vec2 mouseDelta);
 
 public:
-	Camera();
-	~Camera() {}
+    // Default constructor
+    Camera();
+    ~Camera() = default;
 
-	void Update(float deltaTime);
+    // Setup on single camera
+    void setPerspective(const float FieldOfView_Degs, const float AspectRatio, const float NearDist,
+                        const float FarDist);
+    void setOrientAndPosition(const glm::vec3 &Up_vect, const glm::vec3 &inLookAt_pt, const glm::vec3 &pos_pt);
 
-	glm::vec3 GetPosition() { return mEye; }
-	glm::vec3 GetForward() { return mForward; }
-	glm::mat4 GetViewMatrix() { return glm::lookAt(mEye, mCenter, mUp); }
-	glm::mat4 GetProjectionMatrix() { return glm::perspective(mFovy, mAspectRatio, mNearPlane, mFarPlane); }
-};
+    // update camera system
+    void updateCamera(void);
 
+    // Get the matrices for rendering
+    glm::mat4x4 &getViewMatrix();
+    glm::mat4x4 &getProjMatrix();
+
+    // accessors
+    void getPos(glm::vec3 &outPos) const;
+    void getDir(glm::vec3 &outDir) const;
+    void getUp(glm::vec3 &outUp) const;
+    void getLookAt(glm::vec3 &outLookAt) const;
+    void getRight(glm::vec3 &outRight) const;
+
+    void TranslateLeftRight(float delta);
+    void TranslateFwdBack(float delta);
+    void TiltUpDown(float ang);
+    void TurnLeftRight(float ang);
+
+    // Why no SETS for Pos, Dir, Up, LookAt and Right?
+    //   They have to be adjusted _together_ in setOrientAndPosition()
+
+private:  // methods should never be public
+    void privUpdateProjectionMatrix(void);
+    void privUpdateViewMatrix(void);
+
+private:  // data  (Keep it private)
+    // Projection Matrix
+    glm::mat4x4 projMatrix;
+    glm::mat4x4 viewMatrix;
+
+    // camera unit vectors (up, dir, right)
+    glm::vec3 vUp;
+    glm::vec3 vDir;
+    glm::vec3 vRight;  // derived by up and dir
+    glm::vec3 vPos;
+    glm::vec3 vLookAt;
+
+    // Define the frustum inputs
+    float nearDist;
+    float farDist;
+    float fovy;  // aka view angle along y axis
+    float aspectRatio;
 };

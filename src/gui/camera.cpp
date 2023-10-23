@@ -1,66 +1,92 @@
 #include "gui/scene/camera.hpp"
-#include "gui/input.hpp"
+#include <assert.h>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <math.h>
 
-#include <algorithm>
-#include <GLFW/glfw3.h>
+Camera::Camera() : aspectRatio(0), farDist(0), fovy(0), nearDist(0) {
+    projMatrix = glm::identity<glm::mat4x4>();
+    viewMatrix = glm::identity<glm::mat4x4>();
 
-namespace Toolbox::UI {
-
-Camera::Camera() : mNearPlane(100.0f), mFarPlane(1000000.f), mFovy(glm::radians(60.f)),
-    mCenter(ZERO), mEye(ZERO), mPitch(0.f), mYaw(glm::half_pi<float>()), mUp(UNIT_Y), mRight(UNIT_X), mForward(UNIT_Z),
-    mAspectRatio(16.f / 9.f), mMoveSpeed(1000.f), mMouseSensitivity(0.25f)
-{
-	mCenter = mEye - mForward;
+    vUp     = {0, 1, 0};
+    vDir    = {0, 0, 1};
+    vRight  = {1, 0, 0};
+    vPos    = {0, 0, 0};
+    vLookAt = {0, 0, 1};
 }
 
-void Camera::Update(float deltaTime) {
-	glm::vec3 moveDir = glm::zero<glm::vec3>();
-
-	if (Input::GetKey(GLFW_KEY_W))
-		moveDir -= mForward;
-	if (Input::GetKey(GLFW_KEY_S))
-		moveDir += mForward;
-	if (Input::GetKey(GLFW_KEY_D))
-		moveDir -= mRight;
-	if (Input::GetKey(GLFW_KEY_A))
-		moveDir += mRight;
-
-	if (Input::GetKey(GLFW_KEY_Q))
-		moveDir -= UNIT_Y;
-	if (Input::GetKey(GLFW_KEY_E) || Input::GetKey(GLFW_KEY_SPACE))
-		moveDir += UNIT_Y;
-
-	mMoveSpeed += Input::GetMouseScrollDelta() * 100 * deltaTime;
-	mMoveSpeed = std::clamp(mMoveSpeed, 100.f, 50000.f);
-	float actualMoveSpeed = Input::GetKey(GLFW_KEY_LEFT_SHIFT) ? mMoveSpeed * 10.f : mMoveSpeed;
-
-	if (Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT))
-		Rotate(deltaTime, Input::GetMouseDelta());
-
-	if (glm::length(moveDir) != 0.f)
-		moveDir = glm::normalize(moveDir);
-
-	mEye += moveDir * (actualMoveSpeed * deltaTime);
-	mCenter = mEye - mForward;
-}
-
-void Camera::Rotate(float deltaTime, glm::vec2 mouseDelta) {
-	if (mouseDelta.x == 0.f && mouseDelta.y == 0.f)
-		return;
-
-	mPitch += mouseDelta.y * deltaTime * mMouseSensitivity;
-	mYaw += mouseDelta.x * deltaTime * mMouseSensitivity;
-
-	mPitch = std::clamp(mPitch, LOOK_UP_MIN, LOOK_UP_MAX);
-
-	mForward.x = cos(mYaw) * cos(mPitch);
-	mForward.y = sin(mPitch);
-	mForward.z = sin(mYaw) * cos(mPitch);
-
-	mForward = glm::normalize(mForward);
-
-	mRight = glm::normalize(glm::cross(mForward, UNIT_Y));
-	mUp = glm::normalize(glm::cross(mRight, mForward));
-}
-
+void Camera::setPerspective(const float Fovy, const float Aspect, const float NearDist,
+                            const float FarDist) {
+    this->aspectRatio = Aspect;
+    this->fovy        = Fovy;
+    this->nearDist    = NearDist;
+    this->farDist     = FarDist;
 };
+
+void Camera::setOrientAndPosition(const glm::vec3 &inUp, const glm::vec3 &inLookAt,
+                                  const glm::vec3 &inPos) {
+    // Remember the up, dir and right are unit length, and are perpendicular.
+    // Treat lookAt as king, find Right vect, then correct Up to insure perpendiculare.
+    // Make sure that all vectors are unit vectors.
+
+    this->vLookAt = inLookAt;
+    this->vDir    = -(inLookAt - inPos);  // Right-Hand camera: vDir is flipped
+    this->vDir    = glm::normalize(this->vDir);
+
+    // Clean up the vectors (Right hand rule)
+    this->vRight = glm::cross(inUp, this->vDir);
+    this->vRight = glm::normalize(this->vRight);
+
+    this->vUp = -glm::cross(this->vDir, this->vRight);
+    this->vUp = glm::normalize(this->vUp);
+
+    this->vPos = inPos;
+};
+
+// The projection matrix
+void Camera::privUpdateProjectionMatrix(void) {
+    this->projMatrix = glm::perspective(fovy, aspectRatio, nearDist, farDist);
+};
+
+void Camera::privUpdateViewMatrix(void) { this->viewMatrix = glm::lookAt(vPos, vPos + vDir, vUp); };
+
+// Update everything (make sure it's consistent)
+void Camera::updateCamera(void) {
+    // update the projection matrix
+    this->privUpdateProjectionMatrix();
+
+    // update the view matrix
+    this->privUpdateViewMatrix();
+}
+
+glm::mat4x4 &Camera::getViewMatrix(void) { return this->viewMatrix; }
+
+glm::mat4x4 &Camera::getProjMatrix(void) { return this->projMatrix; }
+
+void Camera::getPos(glm::vec3 &outPos) const { outPos = this->vPos; }
+
+void Camera::getDir(glm::vec3 &outDir) const { outDir = this->vDir; }
+
+void Camera::getUp(glm::vec3 &outUp) const { outUp = this->vUp; }
+
+void Camera::getLookAt(glm::vec3 &outLookAt) const { outLookAt = this->vLookAt; }
+
+void Camera::getRight(glm::vec3 &outRight) const { outRight = this->vRight; }
+
+void Camera::TranslateLeftRight(float delta) { vPos += vRight * delta; }
+
+void Camera::TranslateFwdBack(float delta) { vPos += vDir * delta; }
+
+void Camera::TiltUpDown(float ang) {
+    glm::mat4x4 Rot = glm::rotate(glm::mat4(1.0f), ang, vRight);
+    vDir            = glm::vec3(Rot * glm::vec4(vDir, 1.0f));
+    vUp             = glm::vec3(Rot * glm::vec4(vUp, 1.0f));
+    setOrientAndPosition(vUp, vPos - vDir, vPos);
+}
+
+void Camera::TurnLeftRight(float ang) {
+    glm::mat4x4 Rot = glm::rotate(glm::mat4(1.0f), ang, glm::vec3(0.0f, 1.0f, 0.0f));
+    vDir            = glm::vec3(Rot * glm::vec4(vDir, 1.0f));
+    vUp             = glm::vec3(Rot * glm::vec4(vUp, 1.0f));
+    setOrientAndPosition(vUp, vPos - vDir, vPos);
+}

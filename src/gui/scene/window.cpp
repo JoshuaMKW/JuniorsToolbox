@@ -1,10 +1,12 @@
+#include <glad/glad.h>
+
 #include "gui/scene/window.hpp"
 
+#include "gui/input.hpp"
 #include "gui/util.hpp"
 
 #include <lib/bStream/bstream.h>
 
-#include <glad/glad.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
@@ -12,8 +14,13 @@
 
 #include <gui/IconsForkAwesome.h>
 #include <gui/modelcache.hpp>
+#include "gui/application.hpp"
+
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
 
 #include <iconv.h>
+#include <windows.h>
 
 namespace Toolbox::UI {
 
@@ -125,10 +132,13 @@ namespace Toolbox::UI {
     SceneWindow::~SceneWindow() {
         // J3DRendering::Cleanup();
         m_renderables.erase(m_renderables.begin(), m_renderables.end());
-        ModelCache.clear();
+        m_model_cache.clear();
     }
 
-    SceneWindow::SceneWindow() {
+    SceneWindow::SceneWindow() : DockWindow() {
+        m_camera.setPerspective(150, 16 / 9, 100, 300000);
+        m_camera.setOrientAndPosition({0, 1, 0}, {0, 0, 1}, {0, 0, 0});
+        m_camera.updateCamera();
         J3DRendering::SetSortFunction(PacketSort);
     }
 
@@ -142,7 +152,7 @@ namespace Toolbox::UI {
                 return false;
             }
 
-            ModelCache.erase(ModelCache.begin(), ModelCache.end());
+            m_model_cache.erase(m_model_cache.begin(), m_model_cache.end());
 
             m_current_scene = std::make_unique<Toolbox::Scene::SceneInstance>(path);
 
@@ -152,7 +162,8 @@ namespace Toolbox::UI {
                     bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big,
                                                      bStream::OpenMode::In);
 
-                    ModelCache.insert({entry.path().stem().string(), loader.Load(&modelStream, 0)});
+                    m_model_cache.insert(
+                        {entry.path().stem().string(), loader.Load(&modelStream, 0)});
                 }
             }
 
@@ -163,7 +174,8 @@ namespace Toolbox::UI {
                     bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big,
                                                      bStream::OpenMode::In);
 
-                    ModelCache.insert({entry.path().stem().string(), loader.Load(&modelStream, 0)});
+                    m_model_cache.insert(
+                        {entry.path().stem().string(), loader.Load(&modelStream, 0)});
                 }
             }
             return true;
@@ -174,91 +186,233 @@ namespace Toolbox::UI {
     }
 
     bool SceneWindow::update(f32 deltaTime) {
-        m_camera.Update(deltaTime);
+        if (m_is_render_window_hovered && m_is_render_window_focused) {
+            if (Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
+                float lr_delta = 0, ud_delta = 0;
+                if (Input::GetKey(GLFW_KEY_A)) {
+                    lr_delta -= 1;
+                }
+                if (Input::GetKey(GLFW_KEY_D)) {
+                    lr_delta += 1;
+                }
+                if (Input::GetKey(GLFW_KEY_W)) {
+                    ud_delta += 1;
+                }
+                if (Input::GetKey(GLFW_KEY_S)) {
+                    ud_delta -= 1;
+                }
+                if (Input::GetKey(GLFW_KEY_LEFT_SHIFT)) {
+                    lr_delta *= 10;
+                    ud_delta *= 10;
+                }
 
+                lr_delta *= 10;
+                ud_delta *= 10;
+
+                m_camera.TranslateLeftRight(-lr_delta);
+                m_camera.TranslateFwdBack(ud_delta);
+
+                glm::vec2 mouse_delta = Input::GetMouseDelta();
+                m_camera.TurnLeftRight(-mouse_delta.x * 0.005);
+                m_camera.TiltUpDown(-mouse_delta.y * 0.005);
+
+                m_camera.updateCamera();
+            }
+        }
         return true;
     }
 
+    void SceneWindow::glBegin() {
+        ImVec2 window_size = ImGui::GetWindowSize();
+
+        glDeleteFramebuffers(1, &m_fbo_id);
+        glDeleteTextures(1, &m_tex_id);
+        glDeleteRenderbuffers(1, &m_rbo_id);
+
+        // Create a windowed mode window and its OpenGL contextGLuint framebuffer;
+        glGenFramebuffers(1, &m_fbo_id);
+        glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
+
+        glGenTextures(1, &m_tex_id);
+        glBindTexture(GL_TEXTURE_2D, m_tex_id);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, window_size.x, window_size.y, 0, GL_RGBA,
+                     GL_UNSIGNED_BYTE, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_tex_id, 0);
+
+        glGenRenderbuffers(1, &m_rbo_id);
+        glBindRenderbuffer(GL_RENDERBUFFER, m_rbo_id);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, window_size.x, window_size.y);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
+                                  m_rbo_id);
+
+        assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+
+        glViewport(0, 0, window_size.x, window_size.y);
+
+        glClearColor(0, 0, 0, 0xFF);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    }
+
+    void SceneWindow::glEnd() {
+        ImVec2 window_size = ImGui::GetWindowSize();
+        ImVec2 image_size  = ImVec2(window_size.x - ImGui::GetStyle().WindowPadding.x * 2,
+                                    window_size.y - ImGui::GetStyle().WindowPadding.y * 2);
+        glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_tex_id)), image_size,
+                     {0.0f, 1.0f}, {1.0f, 0.0f});
+    }
+
     void SceneWindow::renderBody(f32 deltaTime) {
-        // const ImGuiViewport *mainViewport = ImGui::GetMainViewport();
+        ImGuiWindowClass hierarchyOverride;
+        hierarchyOverride.ClassId =
+            ImGui::GetID(getWindowChildUID(*this, "Hierarchy Editor").c_str());
+        hierarchyOverride.ParentViewportId = m_window_id;
+        hierarchyOverride.DockNodeFlagsOverrideSet =
+            ImGuiDockNodeFlags_NoDockingOverMe | ImGuiDockNodeFlags_NoDockingOverOther;
+        ImGui::SetNextWindowClass(&hierarchyOverride);
 
-        ImGuiDockNodeFlags dockFlags = ImGuiDockNodeFlags_PassthruCentralNode |
-                                       ImGuiDockNodeFlags_AutoHideTabBar |
-                                       ImGuiDockNodeFlags_NoDockingInCentralNode;
+        ImGui::SetNextWindowSizeConstraints({300, 500}, {FLT_MAX, FLT_MAX});
 
-        /*ImGuiWindowClass mainWindowOverride;
-        mainWindowOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
-        ImGui::SetNextWindowClass(&mainWindowOverride);*/
+        if (ImGui::Begin(getWindowChildUID(*this, "Hierarchy Editor").c_str())) {
+            ImGui::Text("Map Objects");
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left) /* Check if scene is loaded here*/) {
+                // Add Object
+            }
 
+            ImGui::Separator();
 
-        ImGui::Begin(getWindowChildUID(*this, "Hierarchy Editor").c_str(), nullptr,
-                     ImGuiWindowFlags_NoTitleBar);
-        ImGui::Text("Map Objects");
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Left) /* Check if scene is loaded here*/) {
-            // Add Object
+            // Render Objects
+
+            if (m_current_scene != nullptr) {
+                auto root = m_current_scene->getObjHierarchy().getRoot();
+                DrawTree(root);
+            }
+
+            ImGui::Spacing();
+            ImGui::Text("Scene Info");
+            ImGui::Separator();
+
+            if (m_current_scene != nullptr) {
+                auto root = m_current_scene->getTableHierarchy().getRoot();
+                DrawTree(root);
+            }
         }
-
-        ImGui::Separator();
-
-        // Render Objects
-
-        if (m_current_scene != nullptr) {
-            auto root = m_current_scene->getObjHierarchy().getRoot();
-            DrawTree(root);
-        }
-
-        ImGui::Spacing();
-        ImGui::Text("Scene Info");
-        ImGui::Separator();
-
-        if (m_current_scene != nullptr) {
-            auto root = m_current_scene->getTableHierarchy().getRoot();
-            DrawTree(root);
-        }
-
-        ImGui::End();
-        //ImGui::SetNextWindowClass(&mainWindowOverride);
-
-        /*
-        ImGuizmo::BeginFrame();
-        ImGuiIO& io = ImGui::GetIO();
-        ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
-        */
-
-        ImGui::Begin(getWindowChildUID(*this, "Properties Editor").c_str(), nullptr,
-                     ImGuiWindowFlags_NoTitleBar);
-        // TODO: Render properties
         ImGui::End();
 
-        glm::mat4 projection, view;
-        projection = m_camera.GetProjectionMatrix();
-        view       = m_camera.GetViewMatrix();
+        ImGuiWindowClass propertiesOverride;
+        propertiesOverride.DockNodeFlagsOverrideSet =
+            ImGuiDockNodeFlags_NoDockingOverMe | ImGuiDockNodeFlags_NoDockingOverOther;
+        ImGui::SetNextWindowClass(&propertiesOverride);
 
-        J3DUniformBufferObject::SetProjAndViewMatrices(&projection, &view);
+        ImGui::SetNextWindowSizeConstraints({300, 500}, {FLT_MAX, FLT_MAX});
 
-        m_renderables.clear();
-
-        // Render Models here
-        if (ModelCache.count("map") != 0) {
-            m_renderables.push_back(ModelCache["map"]->GetInstance());
+        if (ImGui::Begin(getWindowChildUID(*this, "Properties Editor").c_str())) {
+            // TODO: Render properties
         }
+        ImGui::End();
 
-        if (ModelCache.count("sky") != 0) {
-            m_renderables.push_back(ModelCache["sky"]->GetInstance());
-        }
-
-        if (ModelCache.count("sea") != 0) {
-            m_renderables.push_back(ModelCache["sea"]->GetInstance());
-        }
-
-        if (m_current_scene != nullptr) {
-            m_current_scene->getObjHierarchy().getRoot()->performScene(m_renderables);
-        }
-
-        J3DRendering::Render(deltaTime, m_camera.GetPosition(), view, projection, m_renderables);
+        renderScene(deltaTime);
 
         // mGrid.Render(m_camera.GetPosition(), m_camera.GetProjectionMatrix(),
         // m_camera.GetViewMatrix());
+    }
+
+    void SceneWindow::renderScene(f32 delta_time) {
+        m_renderables.clear();
+
+        // Render Models here
+        if (m_model_cache.count("map") != 0) {
+            m_renderables.push_back(m_model_cache["map"]->GetInstance());
+        }
+
+        if (m_model_cache.count("sky") != 0) {
+            m_renderables.push_back(m_model_cache["sky"]->GetInstance());
+        }
+
+        if (m_model_cache.count("sea") != 0) {
+            m_renderables.push_back(m_model_cache["sea"]->GetInstance());
+        }
+
+        if (m_current_scene != nullptr) {
+            m_current_scene->getObjHierarchy().getRoot()->performScene(m_renderables,
+                                                                       m_model_cache);
+        }
+
+        m_is_render_window_open = ImGui::Begin(getWindowChildUID(*this, "Scene View").c_str());
+        if (m_is_render_window_open) {
+            m_is_render_window_hovered = ImGui::IsWindowHovered();
+            m_is_render_window_focused = ImGui::IsWindowFocused();
+            m_render_window_rect       = {
+                ImGui::GetWindowPos(), {ImGui::GetWindowWidth(), ImGui::GetWindowHeight()}
+            };
+
+            if (m_is_render_window_hovered && Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
+                ImGui::SetWindowFocus();
+
+            if (m_is_render_window_focused &&
+                Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {  // Mouse wrap
+                ImVec2 mouse_pos   = ImGui::GetMousePos();
+                ImVec2 window_pos  = ImGui::GetWindowPos();
+                ImVec2 window_size = ImGui::GetWindowSize();
+
+                std::cout << "Mouse Pos: (" << mouse_pos.x << ", " << mouse_pos.y << ")"
+                          << std::endl;
+                std::cout << "Window Pos: (" << window_pos.x << ", " << window_pos.y << ")"
+                          << std::endl;
+                std::cout << "Window Size: (" << window_size.x << ", " << window_size.y << ")"
+                          << std::endl;
+
+                bool wrapped = false;
+
+                if (mouse_pos.x < window_pos.x) {
+                    mouse_pos.x += window_size.x;
+                    wrapped = true;
+                } else if (mouse_pos.x >= window_pos.x + window_size.x) {
+                    mouse_pos.x -= window_size.x;
+                    wrapped = true;
+                }
+
+                if (mouse_pos.y < window_pos.y) {
+                    mouse_pos.y += window_size.y;
+                    wrapped = true;
+                } else if (mouse_pos.y >= window_pos.y + window_size.y) {
+                    mouse_pos.y -= window_size.y;
+                    wrapped = true;
+                }
+
+                ImVec2 viewport_pos = MainApplication::instance().windowScreenPos();
+                mouse_pos.x += viewport_pos.x;
+                mouse_pos.y += viewport_pos.y;
+
+                if (wrapped) {
+#if WIN32
+                    SetCursorPos(mouse_pos.x, mouse_pos.y);
+                    Input::SetMouseWrapped(true);
+#elif __linux__
+#endif
+                }
+            }
+
+            glBegin();
+            {
+                glm::mat4 projection, view;
+                projection = m_camera.getProjMatrix();
+                view       = m_camera.getViewMatrix();
+
+                J3DUniformBufferObject::SetProjAndViewMatrices(&projection, &view);
+
+                glm::vec3 position;
+                m_camera.getPos(position);
+
+                J3DRendering::Render(delta_time, position, view, projection, m_renderables);
+            }
+            glEnd();
+        }
+        ImGui::End();
     }
 
     void SceneWindow::buildDockspace(ImGuiID dockspace_id) {
@@ -268,15 +422,14 @@ namespace Toolbox::UI {
                                                                0.5f, nullptr, &m_dock_node_left_id);
         m_dock_node_down_left_id = ImGui::DockBuilderSplitNode(
             m_dock_node_up_left_id, ImGuiDir_Down, 0.5f, nullptr, &m_dock_node_up_left_id);
-
+        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Scene View").c_str(), dockspace_id);
         ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Hierarchy Editor").c_str(),
                                      m_dock_node_up_left_id);
         ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Properties Editor").c_str(),
                                      m_dock_node_down_left_id);
     }
 
-    void SceneWindow::renderMenuBar() {
-    }
+    void SceneWindow::renderMenuBar() {}
 
     void SceneWindow::setLights() {
         J3DLight lights[8];

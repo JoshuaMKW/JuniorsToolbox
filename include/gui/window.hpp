@@ -28,6 +28,18 @@ namespace Toolbox::UI {
     public:
         virtual ~IWindow() = default;
 
+        [[nodiscard]] virtual ImGuiID id() const = 0;
+
+        [[nodiscard]] virtual IWindow *parent() const = 0;
+        virtual void setParent(IWindow *parent) = 0;
+
+        virtual const ImGuiWindowClass *windowClass() const = 0;
+
+        [[nodiscard]] virtual std::optional<ImVec2> defaultSize() const = 0;
+        [[nodiscard]] virtual std::optional<ImVec2> size() const        = 0;
+        [[nodiscard]] virtual std::optional<ImVec2> minSize() const     = 0;
+        [[nodiscard]] virtual std::optional<ImVec2> maxSize() const     = 0;
+
         [[nodiscard]] virtual std::string context() const = 0;
         [[nodiscard]] virtual std::string name() const    = 0;
         [[nodiscard]] virtual bool unsaved() const        = 0;
@@ -52,9 +64,33 @@ namespace Toolbox::UI {
 
     public:
         SimpleWindow() = default;
+        SimpleWindow(std::optional<ImVec2> default_size) : m_default_size(default_size) {}
+        SimpleWindow(std::optional<ImVec2> min_size, std::optional<ImVec2> max_size)
+            : m_min_size(min_size), m_max_size(max_size) {}
+        SimpleWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
+                     std::optional<ImVec2> max_size)
+            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size) {}
+        SimpleWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
+                     std::optional<ImVec2> max_size, ImGuiWindowClass window_class)
+            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
+              m_window_class(window_class) {}
         ~SimpleWindow() override = default;
 
         void open() { m_is_open = true; }
+
+        [[nodiscard]] ImGuiID id() const override { return m_window_id; }
+
+        [[nodiscard]] IWindow *parent() const override { return m_parent; }
+        void setParent(IWindow *parent) override { m_parent = parent; }
+
+        const ImGuiWindowClass *windowClass() const override {
+            return m_parent ? m_parent->windowClass() : &m_window_class;
+        }
+
+        [[nodiscard]] std::optional<ImVec2> defaultSize() const override { return m_default_size; }
+        [[nodiscard]] std::optional<ImVec2> size() const override { return m_size; }
+        [[nodiscard]] std::optional<ImVec2> minSize() const override { return m_min_size; }
+        [[nodiscard]] std::optional<ImVec2> maxSize() const override { return m_max_size; }
 
         [[nodiscard]] std::string context() const override { return "(OVERRIDE THIS)"; }
         [[nodiscard]] std::string name() const override { return "Base Window"; }
@@ -66,7 +102,10 @@ namespace Toolbox::UI {
         [[nodiscard]] bool loadData(const std::filesystem::path &path) override { return false; }
         [[nodiscard]] bool saveData(const std::filesystem::path &path) override { return false; }
 
-        [[nodiscard]] bool update(f32 delta_time) override { return true; }
+        [[nodiscard]] bool update(f32 delta_time) override {
+            m_window_id = ImGui::GetID(title().c_str());
+            return true;
+        }
 
         [[nodiscard]] std::string title() const override {
             std::string t = std::format("{} - {}", name(), context());
@@ -82,21 +121,38 @@ namespace Toolbox::UI {
                                            ImGuiDockNodeFlags_AutoHideTabBar |
                                            ImGuiDockNodeFlags_NoDockingInCentralNode;
 
+            if (defaultSize())
+                ImGui::SetNextWindowSize(defaultSize().value(), ImGuiCond_Once);
+
+            ImVec2 default_min = {0, 0};
+            ImVec2 default_max = {FLT_MAX, FLT_MAX};
+            ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
+                                                maxSize() ? maxSize().value() : default_max);
+
             ImGui::Begin(title().c_str(), &m_is_open, m_flags);
             {
+                m_size = ImGui::GetWindowSize();
                 renderMenuBar();
                 renderBody(delta_time);
             }
             ImGui::End();
         }
 
-    private:
-        ImGuiID m_window_id;
+    protected:
+        ImGuiID m_window_id = {};
 
-        bool m_is_open           = false;
-        ImGuiWindowFlags m_flags = 0;
+        IWindow *m_parent;
+
+        bool m_is_open                  = false;
+        ImGuiWindowFlags m_flags        = 0;
+        mutable ImGuiWindowClass m_window_class = ImGuiWindowClass();
 
         bool m_is_docking_set_up = false;
+
+        std::optional<ImVec2> m_default_size = {};
+        std::optional<ImVec2> m_size         = {};
+        std::optional<ImVec2> m_min_size     = {};
+        std::optional<ImVec2> m_max_size     = {};
     };
 
     class DockWindow : public IWindow {
@@ -108,10 +164,34 @@ namespace Toolbox::UI {
         void renderBody(f32 delta_time) override {}
 
     public:
-        DockWindow()           = default;
+        DockWindow() = default;
+        explicit DockWindow(std::optional<ImVec2> default_size) : m_default_size(default_size) {}
+        DockWindow(std::optional<ImVec2> min_size, std::optional<ImVec2> max_size)
+            : m_min_size(min_size), m_max_size(max_size) {}
+        DockWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
+                   std::optional<ImVec2> max_size)
+            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size) {}
+        DockWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
+                   std::optional<ImVec2> max_size, ImGuiWindowClass window_class)
+            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
+              m_window_class(window_class) {}
         ~DockWindow() override = default;
 
         void open() { m_is_open = true; }
+
+        [[nodiscard]] ImGuiID id() const override { return m_window_id; }
+
+        [[nodiscard]] IWindow *parent() const override { return m_parent; }
+        void setParent(IWindow *parent) override { m_parent = parent; }
+
+        const ImGuiWindowClass *windowClass() const override {
+            return m_parent ? m_parent->windowClass() : &m_window_class;
+        }
+
+        [[nodiscard]] std::optional<ImVec2> defaultSize() const override { return m_default_size; }
+        [[nodiscard]] std::optional<ImVec2> size() const override { return m_size; }
+        [[nodiscard]] std::optional<ImVec2> minSize() const override { return m_min_size; }
+        [[nodiscard]] std::optional<ImVec2> maxSize() const override { return m_max_size; }
 
         [[nodiscard]] std::string context() const override { return "(OVERRIDE THIS)"; }
         [[nodiscard]] std::string name() const override { return "Base Window"; }
@@ -123,7 +203,10 @@ namespace Toolbox::UI {
         [[nodiscard]] bool loadData(const std::filesystem::path &path) override { return false; }
         [[nodiscard]] bool saveData(const std::filesystem::path &path) override { return false; }
 
-        [[nodiscard]] bool update(f32 delta_time) override { return true; }
+        [[nodiscard]] bool update(f32 delta_time) override {
+            m_window_id = ImGui::GetID(title().c_str());
+            return true;
+        }
 
         [[nodiscard]] std::string title() const override {
             std::string t = std::format("{} - {}", name(), context());
@@ -139,6 +222,14 @@ namespace Toolbox::UI {
                                            ImGuiDockNodeFlags_AutoHideTabBar |
                                            ImGuiDockNodeFlags_NoDockingInCentralNode;
 
+            if (defaultSize())
+                ImGui::SetNextWindowSize(defaultSize().value(), ImGuiCond_Once);
+
+            ImVec2 default_min = {0, 0};
+            ImVec2 default_max = {FLT_MAX, FLT_MAX};
+            ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
+                                                maxSize() ? maxSize().value() : default_max);
+
             ImGui::Begin(title().c_str(), &m_is_open, m_flags);
             {
                 renderDockspace();
@@ -148,17 +239,24 @@ namespace Toolbox::UI {
             ImGui::End();
         }
 
-    private:
+    protected:
         ImGuiID m_window_id = {};
 
-        bool m_is_open           = false;
-        ImGuiWindowFlags m_flags = 0;
+        IWindow *m_parent;
+
+        bool m_is_open                  = false;
+        ImGuiWindowFlags m_flags        = 0;
+        mutable ImGuiWindowClass m_window_class = ImGuiWindowClass();
 
         bool m_is_docking_set_up = false;
+
+        std::optional<ImVec2> m_default_size = {};
+        std::optional<ImVec2> m_size         = {};
+        std::optional<ImVec2> m_min_size     = {};
+        std::optional<ImVec2> m_max_size     = {};
     };
 
-    inline std::string getWindowUID(const IWindow &window) {
-        return window.title(); }
+    inline std::string getWindowUID(const IWindow &window) { return window.title(); }
 
     inline std::string getWindowChildUID(const IWindow &window, const std::string &child_name) {
         return child_name + "##" + getWindowUID(window);
