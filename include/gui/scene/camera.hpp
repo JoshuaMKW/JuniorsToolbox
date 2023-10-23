@@ -33,6 +33,8 @@ public:
     void TiltUpDown(float ang);
     void TurnLeftRight(float ang);
 
+    void setAspect(float aspect);
+
     // Why no SETS for Pos, Dir, Up, LookAt and Right?
     //   They have to be adjusted _together_ in setOrientAndPosition()
 

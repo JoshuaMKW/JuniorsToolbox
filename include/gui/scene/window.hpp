@@ -28,8 +28,6 @@ namespace Toolbox::UI {
         ~SceneWindow();
 
     protected:
-        void setLights();
-
         void buildDockspace(ImGuiID dockspace_id) override;
         void renderMenuBar() override;
         void renderBody(f32 delta_time) override;
@@ -81,8 +79,8 @@ namespace Toolbox::UI {
         bool update(f32 delta_time) override;
 
     private:
-        void glBegin();
-        void glEnd();
+        void viewportBegin();
+        void viewportEnd();
 
         u32 m_fbo_id, m_tex_id, m_rbo_id;
 
@@ -98,7 +96,9 @@ namespace Toolbox::UI {
         bool m_is_render_window_open    = false;
         bool m_is_render_window_focused = false;
         bool m_is_render_window_hovered = false;
+        bool m_is_viewport_dirty        = false;
         ImRect m_render_window_rect     = {};
+        ImVec2 m_prev_window_size       = {};
 
         uint32_t m_dock_space_id          = 0;
         uint32_t m_dock_node_up_left_id   = 0;
@@ -112,7 +112,6 @@ namespace Toolbox::UI {
         bool m_is_docking_set_up{false};
         bool m_is_file_dialog_open{false};
         bool m_is_save_dialog_open{false};
-        bool m_set_lights{false};
         bool m_text_editor_active{false};
     };
 }  // namespace Toolbox::UI

@@ -12,15 +12,18 @@
 
 #include <ImGuiFileDialog.h>
 
+#include "gui/application.hpp"
 #include <gui/IconsForkAwesome.h>
 #include <gui/modelcache.hpp>
-#include "gui/application.hpp"
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 #include <iconv.h>
+
+#if WIN32
 #include <windows.h>
+#endif
 
 namespace Toolbox::UI {
 
@@ -133,6 +136,10 @@ namespace Toolbox::UI {
         // J3DRendering::Cleanup();
         m_renderables.erase(m_renderables.begin(), m_renderables.end());
         m_model_cache.clear();
+
+        glDeleteFramebuffers(1, &m_fbo_id);
+        glDeleteRenderbuffers(1, &m_rbo_id);
+        glDeleteTextures(1, &m_tex_id);
     }
 
     SceneWindow::SceneWindow() : DockWindow() {
@@ -140,6 +147,10 @@ namespace Toolbox::UI {
         m_camera.setOrientAndPosition({0, 1, 0}, {0, 0, 1}, {0, 0, 0});
         m_camera.updateCamera();
         J3DRendering::SetSortFunction(PacketSort);
+
+        // Create framebuffer for this window
+        glGenFramebuffers(1, &m_fbo_id);
+        glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
     }
 
     bool SceneWindow::loadData(const std::filesystem::path &path) {
@@ -217,21 +228,26 @@ namespace Toolbox::UI {
                 m_camera.TiltUpDown(-mouse_delta.y * 0.005);
 
                 m_camera.updateCamera();
+
+                m_is_viewport_dirty = true;
             }
         }
         return true;
     }
 
-    void SceneWindow::glBegin() {
+    void SceneWindow::viewportBegin() {
         ImVec2 window_size = ImGui::GetWindowSize();
 
-        glDeleteFramebuffers(1, &m_fbo_id);
-        glDeleteTextures(1, &m_tex_id);
-        glDeleteRenderbuffers(1, &m_rbo_id);
-
-        // Create a windowed mode window and its OpenGL contextGLuint framebuffer;
-        glGenFramebuffers(1, &m_fbo_id);
+        // bind the framebuffer we want to render to
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
+
+        if (window_size.x == m_prev_window_size.x && window_size.y == m_prev_window_size.y) {
+            return;
+        }
+
+        // window was resized, new texture and depth storage needed for framebuffer
+        glDeleteRenderbuffers(1, &m_rbo_id);
+        glDeleteTextures(1, &m_tex_id);
 
         glGenTextures(1, &m_tex_id);
         glBindTexture(GL_TEXTURE_2D, m_tex_id);
@@ -251,17 +267,22 @@ namespace Toolbox::UI {
 
         glViewport(0, 0, window_size.x, window_size.y);
 
-        glClearColor(0, 0, 0, 0xFF);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        m_camera.setAspect(window_size.x / window_size.y);
+
+        // window size has already been checked, store this so we don't need to get it again later
+        m_prev_window_size = window_size;
+
+        m_is_viewport_dirty = true;
     }
 
-    void SceneWindow::glEnd() {
-        ImVec2 window_size = ImGui::GetWindowSize();
-        ImVec2 image_size  = ImVec2(window_size.x - ImGui::GetStyle().WindowPadding.x * 2,
-                                    window_size.y - ImGui::GetStyle().WindowPadding.y * 2);
-        glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    void SceneWindow::viewportEnd() {
+        ImVec2 image_size = ImVec2(m_prev_window_size.x - ImGui::GetStyle().WindowPadding.x * 2,
+                                   m_prev_window_size.y - ImGui::GetStyle().WindowPadding.y * 2);
+
+        // framebuffer already bound by begin render
+        // glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
         ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_tex_id)), image_size,
                      {0.0f, 1.0f}, {1.0f, 0.0f});
     }
@@ -337,6 +358,7 @@ namespace Toolbox::UI {
             m_renderables.push_back(m_model_cache["sea"]->GetInstance());
         }
 
+        // perhaps find a way to limit this so it only happens when we need to re-render?
         if (m_current_scene != nullptr) {
             m_current_scene->getObjHierarchy().getRoot()->performScene(m_renderables,
                                                                        m_model_cache);
@@ -358,13 +380,6 @@ namespace Toolbox::UI {
                 ImVec2 mouse_pos   = ImGui::GetMousePos();
                 ImVec2 window_pos  = ImGui::GetWindowPos();
                 ImVec2 window_size = ImGui::GetWindowSize();
-
-                std::cout << "Mouse Pos: (" << mouse_pos.x << ", " << mouse_pos.y << ")"
-                          << std::endl;
-                std::cout << "Window Pos: (" << window_pos.x << ", " << window_pos.y << ")"
-                          << std::endl;
-                std::cout << "Window Size: (" << window_size.x << ", " << window_size.y << ")"
-                          << std::endl;
 
                 bool wrapped = false;
 
@@ -397,8 +412,8 @@ namespace Toolbox::UI {
                 }
             }
 
-            glBegin();
-            {
+            viewportBegin();
+            if (m_is_viewport_dirty) {
                 glm::mat4 projection, view;
                 projection = m_camera.getProjMatrix();
                 view       = m_camera.getViewMatrix();
@@ -408,9 +423,13 @@ namespace Toolbox::UI {
                 glm::vec3 position;
                 m_camera.getPos(position);
 
+                glClearColor(0, 0, 0, 0);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                 J3DRendering::Render(delta_time, position, view, projection, m_renderables);
+
+                m_is_viewport_dirty = false;
             }
-            glEnd();
+            viewportEnd();
         }
         ImGui::End();
     }
@@ -430,29 +449,5 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::renderMenuBar() {}
-
-    void SceneWindow::setLights() {
-        J3DLight lights[8];
-
-        lights[0].Position   = glm::vec4(100000.0f, 100000.0f, 100000.0f, 1);
-        lights[0].Color      = glm::vec4(0.5f, 0.5f, 0.5f, 0.0f);
-        lights[0].AngleAtten = glm::vec4(1.0, 0.0, 0.0, 1);
-        lights[0].DistAtten  = glm::vec4(1.0, 0.0, 0.0, 1);
-        lights[0].Direction  = glm::vec4(1.0, 0.0, 0.0, 1);
-
-        lights[1].Position   = glm::vec4(-100000.0f, -100000.0f, 100000.0f, 1);
-        lights[1].Color      = glm::vec4(64 / 255, 62 / 255, 64 / 255, 0.0f);
-        lights[1].AngleAtten = glm::vec4(1.0, 0.0, 0.0, 1);
-        lights[1].DistAtten  = glm::vec4(1.0, 0.0, 0.0, 1);
-        lights[1].Direction  = glm::vec4(1.0, 0.0, 0.0, 1);
-
-        lights[2].Position   = glm::vec4(0, 0, 0, 0);
-        lights[2].AngleAtten = glm::vec4(1.0, 0, 0, 1);
-        lights[2].DistAtten  = glm::vec4(1.0, 0.0, 0.0, 1);
-        lights[2].Direction  = glm::vec4(0, -1, 0, 1);
-        lights[2].Color      = glm::vec4(0.0f, 0.0f, 0.0f, 0.5f);
-
-        J3DUniformBufferObject::SetLights(lights);
-    }
 
 };  // namespace Toolbox::UI
