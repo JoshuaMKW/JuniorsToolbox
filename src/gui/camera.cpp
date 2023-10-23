@@ -90,3 +90,7 @@ void Camera::TurnLeftRight(float ang) {
     vUp             = glm::vec3(Rot * glm::vec4(vUp, 1.0f));
     setOrientAndPosition(vUp, vPos - vDir, vPos);
 }
+
+void Camera::setAspect(float aspect){
+    this->aspectRatio = aspect;
+}
