@@ -1,9 +1,10 @@
+#include <glad/glad.h>
+
 #include "gui/window.hpp"
 #include "gui/util.hpp"
 
 #include <lib/bStream/bstream.h>
 
-#include <glad/glad.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 

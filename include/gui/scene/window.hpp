@@ -1,5 +1,7 @@
 #pragma once
 
+// #include <glad/glad.h>
+
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -31,8 +33,30 @@ namespace Toolbox::UI {
         void buildDockspace(ImGuiID dockspace_id) override;
         void renderMenuBar() override;
         void renderBody(f32 delta_time) override;
+        void renderScene(f32 delta_time);
 
     public:
+        const ImGuiWindowClass *windowClass() const override {
+            if (parent() && parent()->windowClass()) {
+                return parent()->windowClass();
+            }
+
+            ImGuiWindow *currentWindow              = ImGui::GetCurrentWindow();
+            m_window_class.ClassId                  = ImGui::GetID(title().c_str());
+            m_window_class.ParentViewportId         = currentWindow->ViewportId;
+            m_window_class.DockingAllowUnclassed    = false;
+            m_window_class.DockingAlwaysTabBar      = false;
+            m_window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe;
+            return &m_window_class;
+        }
+
+        std::optional<ImVec2> minSize() const override {
+            return {
+                {800, 700}
+            };
+        }
+        std::optional<ImVec2> maxSize() const override { return std::nullopt; }
+
         [[nodiscard]] std::string context() const override {
             if (!m_current_scene)
                 return "(unknown)";
@@ -57,13 +81,24 @@ namespace Toolbox::UI {
         bool update(f32 delta_time) override;
 
     private:
+        void glBegin();
+        void glEnd();
+
+        u32 m_fbo_id, m_tex_id, m_rbo_id;
+
         std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;
 
         std::vector<std::shared_ptr<J3DModelInstance>> m_renderables;
+        model_cache_t m_model_cache;
 
         uint32_t m_gizmo_operation{0};
 
-        Camera m_camera;
+        Camera m_camera = {};
+
+        bool m_is_render_window_open    = false;
+        bool m_is_render_window_focused = false;
+        bool m_is_render_window_hovered = false;
+        ImRect m_render_window_rect     = {};
 
         uint32_t m_dock_space_id          = 0;
         uint32_t m_dock_node_up_left_id   = 0;

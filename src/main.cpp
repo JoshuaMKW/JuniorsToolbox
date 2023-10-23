@@ -17,7 +17,7 @@ using namespace Toolbox::Object;
 
 int main(int argc, char **argv) {
 
-    Toolbox::UI::MainApplication app;
+    auto &app = Toolbox::UI::MainApplication::instance();
     
     app.setup();
 

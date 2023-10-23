@@ -7,6 +7,9 @@
 #include <iostream>
 #include <string>
 
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
 #include <ImGuiFileDialog.h>
 #include <J3D/J3DModelLoader.hpp>
 #include <bstream.h>
@@ -36,7 +39,7 @@ namespace Toolbox::UI {
 
     void DealWithGLErrors(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                           const GLchar *message, const void *userParam) {
-        std::cout << "GL CALLBACK: " << message << std::endl;
+        //std::cout << "GL CALLBACK: " << message << std::endl;
     }
 
     MainApplication::MainApplication() {
@@ -70,7 +73,8 @@ namespace Toolbox::UI {
         glfwSetScrollCallback(m_render_window, Input::GLFWMouseScrollCallback);
 
         glfwMakeContextCurrent(m_render_window);
-        gladLoadGL(glfwGetProcAddress);
+        gladLoadGL();
+        // gladLoadGL(glfwGetProcAddress);
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glfwSwapInterval(1);
 
@@ -82,7 +86,7 @@ namespace Toolbox::UI {
         ImGuiIO &io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(m_render_window, true);
