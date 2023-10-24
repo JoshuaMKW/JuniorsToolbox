@@ -79,7 +79,7 @@ namespace Toolbox::UI {
         bool update(f32 delta_time) override;
 
     private:
-        void viewportBegin();
+        void viewportBegin(bool is_dirty);
         void viewportEnd();
 
         u32 m_fbo_id, m_tex_id, m_rbo_id;
@@ -97,8 +97,10 @@ namespace Toolbox::UI {
         bool m_is_render_window_focused = false;
         bool m_is_render_window_hovered = false;
         bool m_is_viewport_dirty        = false;
-        ImRect m_render_window_rect     = {};
-        ImVec2 m_prev_window_size       = {};
+
+        ImRect m_render_window_rect      = {};
+        ImVec2 m_render_window_size      = {};
+        ImVec2 m_render_window_size_prev = {};
 
         uint32_t m_dock_space_id          = 0;
         uint32_t m_dock_node_up_left_id   = 0;
