@@ -99,6 +99,7 @@ namespace Toolbox::UI {
         bool m_is_viewport_dirty        = false;
 
         ImRect m_render_window_rect      = {};
+        ImVec2 m_render_size             = {};
         ImVec2 m_render_window_size      = {};
         ImVec2 m_render_window_size_prev = {};
 
