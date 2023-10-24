@@ -19,15 +19,6 @@ project(JuniorsToolbox)
 file(GLOB TOOLBOX_SRC
     "lib/*.hpp"
     "lib/*.cpp"
-    "lib/imgui/*.h"
-    "lib/imgui/*.cpp"
-    "lib/imgui/backends/imgui_impl_opengl3.h"
-    "lib/imgui/backends/imgui_impl_opengl3.cpp"
-    ##"lib/imgui/backends/imgui_impl_glfw.h"
-    ##"lib/imgui/backends/imgui_impl_glfw.cpp"
-    "lib/imgui/misc/debuggers/imgui.natstepfilter"
-    "lib/imgui/misc/debuggers/imgui.natvis"
-    "lib/imgui/*.cpp"
     "src/*.cpp"
     "include/*.hpp"
     "include/*.h"
@@ -46,17 +37,39 @@ file(GLOB TOOLBOX_SRC
     "src/objlib/meta/*.cpp"
     "include/objlib/meta/*.hpp"
     "src/io/*.cpp"
+    "src/gui/*.cpp"
+    "include/gui/*.hpp"
+    "src/gui/scene/*.cpp"
+    "include/gui/scene/*.hpp"
     "include/io/*.hpp"
-    "include/ImGuiFileDialog/*.h"
+    "lib/ImGuiFileDialog/*.h"
+    "lib/ImGuiFileDialog/*.cpp"
 )
 
 
 add_executable(JuniorsToolbox ${TOOLBOX_SRC})
-add_subdirectory(lib/j3dultra)
-target_link_libraries(JuniorsToolbox PRIVATE j3dultra)
-target_include_directories(JuniorsToolbox PRIVATE "include" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm", "lib/j3dultra")
+
+include(lib/imgui.cmake)
+add_subdirectory(lib/J3DUltra)
+add_subdirectory(lib/glfw)
+
+# find_package(ICU 61.0 COMPONENTS uc i18n REQUIRED)
+find_package(Iconv REQUIRED)
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+#  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ICU::uc ICU::i18n stdc++_libbacktrace)
+  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ${ICONV_LIBRARIES} stdc++_libbacktrace)
+else()
+#  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ICU::uc ICU::i18n)
+  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw Iconv::Iconv)
+endif()
+
+target_include_directories(JuniorsToolbox PRIVATE "include" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/ImGuiFileDialog" "lib/glfw")
 
 
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
                        ${CMAKE_SOURCE_DIR}/Templates/ $<TARGET_FILE_DIR:JuniorsToolbox>/Templates/)
+add_custom_command(TARGET JuniorsToolbox PRE_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory
+                       ${CMAKE_SOURCE_DIR}/res/ $<TARGET_FILE_DIR:JuniorsToolbox>/res/)

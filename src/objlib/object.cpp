@@ -1,5 +1,7 @@
 #include "objlib/object.hpp"
 #include <expected>
+#include <gui/modelcache.hpp>
+#include <string>
 
 namespace Toolbox::Object {
 
@@ -107,7 +109,8 @@ namespace Toolbox::Object {
     }
 
     std::expected<void, ObjectError>
-    VirtualSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &) {
+    VirtualSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &,
+                                     model_cache_t &) {
         return {};
     }
 
@@ -281,7 +284,8 @@ namespace Toolbox::Object {
     }
 
     std::expected<void, ObjectError>
-    GroupSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) {
+    GroupSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+                                   model_cache_t &model_cache) {
         ObjectGroupError err;
         {
             err.m_message = std::format("ObjectGroupError: {} ({}): There were errors "
@@ -292,7 +296,7 @@ namespace Toolbox::Object {
         }
 
         for (auto child : m_children) {
-            auto result = child->performScene(renderables);
+            auto result = child->performScene(renderables, model_cache);
             if (!result)
                 err.m_child_errors.push_back(result.error());
         }
@@ -495,8 +499,56 @@ namespace Toolbox::Object {
     }
 
     std::expected<void, ObjectError>
-    PhysicalSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) {
-        renderables.push_back(m_model_instance);
+    PhysicalSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+                                      model_cache_t &model_cache) {
+
+        if (m_model_instance) {
+            renderables.push_back(m_model_instance);
+        } else {
+            auto modelNameExpected = getMember(QualifiedName(std::string("Model")));
+            if (modelNameExpected.has_value()) {
+                auto modelNameValuePtr =
+                    std::get<std::shared_ptr<MetaMember>>(modelNameExpected.value());
+                if (modelNameValuePtr != nullptr) {
+                    auto modelNameValueExpected = modelNameValuePtr->value<MetaValue>(0);
+                    if (modelNameValueExpected.has_value()) {
+                        auto nameStrExpected = modelNameValueExpected.value()->get<std::string>();
+                        if (nameStrExpected.has_value()) {
+                            std::string modelName = nameStrExpected.value();
+                            std::transform(modelName.begin(), modelName.end(), modelName.begin(),
+                                           ::tolower);
+
+                            if (model_cache.count(modelName) != 0) {
+                                m_model_instance = model_cache[modelName]->GetInstance();
+
+                                auto transformExpected =
+                                    getMember(QualifiedName(std::string("Transform")));
+                                if (transformExpected.has_value()) {
+                                    auto transformValuePtr = std::get<std::shared_ptr<MetaMember>>(
+                                        transformExpected.value());
+                                    if (transformValuePtr != nullptr) {
+                                        auto transformValueExpected =
+                                            transformValuePtr->value<MetaValue>(0);
+                                        if (transformValueExpected.has_value()) {
+                                            auto transformExpected =
+                                                transformValueExpected.value()
+                                                    ->get<Toolbox::Object::Transform>();
+                                            if (transformExpected.has_value()) {
+                                                auto transform = transformExpected.value();
+                                                m_model_instance->SetTranslation(
+                                                    transform.m_translation);
+                                                m_model_instance->SetRotation(transform.m_rotation);
+                                                m_model_instance->SetScale(transform.m_scale);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         return {};
     }
 
@@ -595,7 +647,7 @@ namespace Toolbox::Object {
 
     ObjectFactory::create_t ObjectFactory::create(Deserializer &in) {
         if (isGroupObject(in)) {
-            auto obj = std::make_unique<GroupSceneObject>();
+            auto obj    = std::make_unique<GroupSceneObject>();
             auto result = obj->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());

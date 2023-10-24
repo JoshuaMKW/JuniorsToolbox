@@ -57,6 +57,8 @@ namespace Toolbox::Object {
         return {};
     }
 
+    using model_cache_t = std::unordered_map<std::string, std::shared_ptr<J3DModelData>>;
+
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
     class ISceneObject : public ISerializable, public IClonable {
@@ -107,7 +109,8 @@ namespace Toolbox::Object {
         [[nodiscard]] virtual J3DLight getLightData(int index) = 0;
 
         virtual std::expected<void, ObjectError>
-        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) = 0;
+        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+                     model_cache_t &model_cache) = 0;
 
         virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
 
@@ -262,7 +265,8 @@ namespace Toolbox::Object {
         [[nodiscard]] J3DLight getLightData(int index) override { return {}; }
 
         std::expected<void, ObjectError>
-        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) override;
+        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+                     model_cache_t &model_cache) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -360,7 +364,8 @@ namespace Toolbox::Object {
         getChild(const QualifiedName &name) override;
 
         std::expected<void, ObjectError>
-        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) override;
+        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+                     model_cache_t &model_cache) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -502,7 +507,8 @@ namespace Toolbox::Object {
         J3DLight getLightData(int index) override { return m_model_instance->GetLight(index); }
 
         std::expected<void, ObjectError>
-        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables) override;
+        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+                     model_cache_t &model_cache) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 

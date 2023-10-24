@@ -14,7 +14,7 @@ namespace Toolbox::Object {
 
 template <> struct std::formatter<Toolbox::Object::Transform> : std::formatter<string_view> {
     template <typename FormatContext>
-    auto format(const Toolbox::Object::Transform &obj, FormatContext &ctx) {
+    auto format(const Toolbox::Object::Transform &obj, FormatContext &ctx) const {
         std::string outstr;
         std::format_to(std::back_inserter(outstr), "(T: {}, R: {}, S: {})", obj.m_translation,
                        obj.m_rotation, obj.m_scale);

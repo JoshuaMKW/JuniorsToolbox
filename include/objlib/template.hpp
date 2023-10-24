@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <format>
 
 namespace Toolbox::Object {
 
