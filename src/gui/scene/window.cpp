@@ -227,21 +227,30 @@ namespace Toolbox::UI {
                 m_camera.TurnLeftRight(-mouse_delta.x * 0.005);
                 m_camera.TiltUpDown(-mouse_delta.y * 0.005);
 
-                m_camera.updateCamera();
-
                 m_is_viewport_dirty = true;
             }
         }
+
+        if (m_render_window_size.x != m_render_window_size_prev.x || m_render_window_size.y != m_render_window_size_prev.y) {
+            m_camera.setAspect(m_render_window_size.y > 0 ? m_render_window_size.x / m_render_window_size.y : FLT_EPSILON);
+            m_is_viewport_dirty = true;
+        }
+
+        if (m_is_viewport_dirty)
+            m_camera.updateCamera();
+
         return true;
     }
 
-    void SceneWindow::viewportBegin() {
-        ImVec2 window_size = ImGui::GetWindowSize();
+    void SceneWindow::viewportBegin(bool is_dirty) {
+        m_render_window_size_prev = m_render_window_size;
+        m_render_window_size = ImGui::GetWindowSize();
 
         // bind the framebuffer we want to render to
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
 
-        if (window_size.x == m_prev_window_size.x && window_size.y == m_prev_window_size.y) {
+        if (!is_dirty) {
+            glBindTexture(GL_TEXTURE_2D, m_tex_id);
             return;
         }
 
@@ -251,7 +260,7 @@ namespace Toolbox::UI {
 
         glGenTextures(1, &m_tex_id);
         glBindTexture(GL_TEXTURE_2D, m_tex_id);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, window_size.x, window_size.y, 0, GL_RGBA,
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_render_window_size.x, m_render_window_size.y, 0, GL_RGBA,
                      GL_UNSIGNED_BYTE, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -259,32 +268,26 @@ namespace Toolbox::UI {
 
         glGenRenderbuffers(1, &m_rbo_id);
         glBindRenderbuffer(GL_RENDERBUFFER, m_rbo_id);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, window_size.x, window_size.y);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, m_render_window_size.x,
+                              m_render_window_size.y);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
                                   m_rbo_id);
 
         assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
-        glViewport(0, 0, window_size.x, window_size.y);
-
-        m_camera.setAspect(window_size.x / window_size.y);
-
-        // window size has already been checked, store this so we don't need to get it again later
-        m_prev_window_size = window_size;
-
-        m_is_viewport_dirty = true;
+        glViewport(0, 0, m_render_window_size.x, m_render_window_size.y);
     }
 
     void SceneWindow::viewportEnd() {
-        ImVec2 image_size = ImVec2(m_prev_window_size.x - ImGui::GetStyle().WindowPadding.x * 2,
-                                   m_prev_window_size.y - ImGui::GetStyle().WindowPadding.y * 2);
+        ImVec2 image_size = ImVec2(m_render_window_size.x - ImGui::GetStyle().WindowPadding.x * 2,
+                                   m_render_window_size.y - ImGui::GetStyle().WindowPadding.y * 2);
+
+        ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_tex_id)), image_size,
+                     {0.0f, 1.0f}, {1.0f, 0.0f});
 
         // framebuffer already bound by begin render
         // glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_tex_id)), image_size,
-                     {0.0f, 1.0f}, {1.0f, 0.0f});
     }
 
     void SceneWindow::renderBody(f32 deltaTime) {
@@ -366,11 +369,15 @@ namespace Toolbox::UI {
 
         m_is_render_window_open = ImGui::Begin(getWindowChildUID(*this, "Scene View").c_str());
         if (m_is_render_window_open) {
+            ImVec2 window_pos = ImGui::GetWindowPos();
+            m_render_window_rect       = {
+                window_pos,
+                {window_pos.x + ImGui::GetWindowWidth(), window_pos.y + ImGui::GetWindowHeight()}
+            };
+
             m_is_render_window_hovered = ImGui::IsWindowHovered();
             m_is_render_window_focused = ImGui::IsWindowFocused();
-            m_render_window_rect       = {
-                ImGui::GetWindowPos(), {ImGui::GetWindowWidth(), ImGui::GetWindowHeight()}
-            };
+
 
             if (m_is_render_window_hovered && Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
                 ImGui::SetWindowFocus();
@@ -383,18 +390,18 @@ namespace Toolbox::UI {
 
                 bool wrapped = false;
 
-                if (mouse_pos.x < window_pos.x) {
+                if (mouse_pos.x < m_render_window_rect.Min.x) {
                     mouse_pos.x += window_size.x;
                     wrapped = true;
-                } else if (mouse_pos.x >= window_pos.x + window_size.x) {
+                } else if (mouse_pos.x >= m_render_window_rect.Max.x) {
                     mouse_pos.x -= window_size.x;
                     wrapped = true;
                 }
 
-                if (mouse_pos.y < window_pos.y) {
+                if (mouse_pos.y < m_render_window_rect.Min.y) {
                     mouse_pos.y += window_size.y;
                     wrapped = true;
-                } else if (mouse_pos.y >= window_pos.y + window_size.y) {
+                } else if (mouse_pos.y >= m_render_window_rect.Max.y) {
                     mouse_pos.y -= window_size.y;
                     wrapped = true;
                 }
@@ -412,7 +419,7 @@ namespace Toolbox::UI {
                 }
             }
 
-            viewportBegin();
+            viewportBegin(m_is_viewport_dirty);
             if (m_is_viewport_dirty) {
                 glm::mat4 projection, view;
                 projection = m_camera.getProjMatrix();
