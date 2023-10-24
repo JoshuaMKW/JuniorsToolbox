@@ -1,4 +1,14 @@
 #include "gui/input.hpp"
+#include <imgui.h>
+
+#if WIN32
+#include <Windows.h>
+#elif __linux__
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#else
+#error "Unsupported OS"
+#endif
 #include <GLFW/glfw3.h>
 
 namespace Toolbox::UI::Input {
@@ -9,8 +19,8 @@ namespace Toolbox::UI::Input {
         constexpr uint32_t KEY_MAX          = 512;
         constexpr uint32_t MOUSE_BUTTON_MAX = 3;
 
-        glm::vec2 mMousePosition;
-        glm::vec2 mMouseDelta;
+        ImVec2 mMousePosition;
+        ImVec2 mMouseDelta;
         int32_t mMouseScrollDelta;
 
         bool mMouseWrapped;
@@ -20,13 +30,13 @@ namespace Toolbox::UI::Input {
 
         bool mMouseButtonsDown[MOUSE_BUTTON_MAX];
         bool mPrevMouseButtonsDown[MOUSE_BUTTON_MAX];
-        glm::vec2 mPrevMousePosition;
+        ImVec2 mPrevMousePosition;
 
         void SetKeyboardState(uint32_t key, bool pressed) { mKeysDown[key] = pressed; }
 
         void SetMouseState(uint32_t button, bool pressed) { mMouseButtonsDown[button] = pressed; }
 
-        void SetMousePosition(uint32_t x, uint32_t y) { mMousePosition = glm::vec2(x, y); }
+        void SetMousePosition(uint32_t x, uint32_t y) { mMousePosition = ImVec2(x, y); }
 
         void SetMouseScrollDelta(uint32_t delta) { mMouseScrollDelta = delta; }
     }  // namespace
@@ -48,13 +58,34 @@ bool Toolbox::UI::Input::GetMouseButtonUp(uint32_t button) {
     return mPrevMouseButtonsDown[button] && !mMouseButtonsDown[button];
 }
 
-glm::vec2 Toolbox::UI::Input::GetMousePosition() { return mMousePosition; }
+ImVec2 Toolbox::UI::Input::GetMousePosition() { return mMousePosition; }
 
-glm::vec2 Toolbox::UI::Input::GetMouseDelta() { return mMouseDelta; }
+ImVec2 Toolbox::UI::Input::GetMouseDelta() { return mMouseDelta; }
 
 int32_t Toolbox::UI::Input::GetMouseScrollDelta() { return mMouseScrollDelta; }
 
 bool Toolbox::UI::Input::GetMouseWrapped() { return mMouseWrapped; }
+
+void Toolbox::UI::Input::SetMousePosition(ImVec2 pos, bool overwrite_delta) {
+    if (!overwrite_delta) {
+        SetMouseWrapped(true);
+    }
+#if WIN32
+    SetCursorPos(pos.x, pos.y);
+#elif __linux__
+    Display *display = XOpenDisplay(0);
+    if (display == nullptr)
+        return;
+
+    ImVec2 rel_pos = {mMousePosition.x - pos.x, mMousePosition.y - pos.y};
+    XWarpPointer(display, nullptr, nullptr, 0, 0, 0, 0, rel_pos.x, rel_pos.y);
+
+    XFlush(display);
+    XCloseDisplay(display);
+#else
+#error "Unsupported OS"
+#endif
+}
 
 void Toolbox::UI::Input::SetMouseWrapped(bool wrapped) { mMouseWrapped = wrapped; }
 
@@ -65,7 +96,8 @@ void Toolbox::UI::Input::UpdateInputState() {
         mPrevMouseButtonsDown[i] = mMouseButtonsDown[i];
 
     if (!mMouseWrapped) {
-        mMouseDelta = mMousePosition - mPrevMousePosition;
+        mMouseDelta = {mMousePosition.x - mPrevMousePosition.x,
+                       mMousePosition.y - mPrevMousePosition.y};
     } else {
         mMouseWrapped = false;
     }

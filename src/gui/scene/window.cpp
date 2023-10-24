@@ -199,40 +199,47 @@ namespace Toolbox::UI {
     bool SceneWindow::update(f32 deltaTime) {
         if (m_is_render_window_hovered && m_is_render_window_focused) {
             if (Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
-                float lr_delta = 0, ud_delta = 0;
-                if (Input::GetKey(GLFW_KEY_A)) {
-                    lr_delta -= 1;
-                }
-                if (Input::GetKey(GLFW_KEY_D)) {
-                    lr_delta += 1;
-                }
-                if (Input::GetKey(GLFW_KEY_W)) {
-                    ud_delta += 1;
-                }
-                if (Input::GetKey(GLFW_KEY_S)) {
-                    ud_delta -= 1;
-                }
-                if (Input::GetKey(GLFW_KEY_LEFT_SHIFT)) {
-                    lr_delta *= 10;
-                    ud_delta *= 10;
-                }
+                ImVec2 mouse_delta = Input::GetMouseDelta();
 
-                lr_delta *= 10;
-                ud_delta *= 10;
-
-                m_camera.TranslateLeftRight(-lr_delta);
-                m_camera.TranslateFwdBack(ud_delta);
-
-                glm::vec2 mouse_delta = Input::GetMouseDelta();
                 m_camera.TurnLeftRight(-mouse_delta.x * 0.005);
                 m_camera.TiltUpDown(-mouse_delta.y * 0.005);
 
                 m_is_viewport_dirty = true;
             }
+
+            float lr_delta = 0, ud_delta = 0;
+            if (Input::GetKey(GLFW_KEY_A)) {
+                lr_delta -= 1;
+                m_is_viewport_dirty = true;
+            }
+            if (Input::GetKey(GLFW_KEY_D)) {
+                lr_delta += 1;
+                m_is_viewport_dirty = true;
+            }
+            if (Input::GetKey(GLFW_KEY_W)) {
+                ud_delta += 1;
+                m_is_viewport_dirty = true;
+            }
+            if (Input::GetKey(GLFW_KEY_S)) {
+                ud_delta -= 1;
+                m_is_viewport_dirty = true;
+            }
+            if (Input::GetKey(GLFW_KEY_LEFT_SHIFT)) {
+                lr_delta *= 10;
+                ud_delta *= 10;
+            }
+
+            lr_delta *= 10;
+            ud_delta *= 10;
+
+            m_camera.TranslateLeftRight(-lr_delta);
+            m_camera.TranslateFwdBack(ud_delta);
         }
 
-        if (m_render_window_size.x != m_render_window_size_prev.x || m_render_window_size.y != m_render_window_size_prev.y) {
-            m_camera.setAspect(m_render_window_size.y > 0 ? m_render_window_size.x / m_render_window_size.y : FLT_EPSILON);
+        if (m_render_window_size.x != m_render_window_size_prev.x ||
+            m_render_window_size.y != m_render_window_size_prev.y) {
+            m_camera.setAspect(m_render_size.y > 0 ? m_render_size.x / m_render_size.y
+                                                   : FLT_EPSILON);
             m_is_viewport_dirty = true;
         }
 
@@ -243,8 +250,13 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::viewportBegin(bool is_dirty) {
+        ImGuiStyle &style = ImGui::GetStyle();
+
         m_render_window_size_prev = m_render_window_size;
-        m_render_window_size = ImGui::GetWindowSize();
+        m_render_window_size      = ImGui::GetWindowSize();
+        m_render_size             = ImVec2(m_render_window_size.x - style.WindowPadding.x * 2,
+                                           m_render_window_size.y - style.WindowPadding.y * 2 -
+                                               (style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight()));
 
         // bind the framebuffer we want to render to
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
@@ -260,8 +272,8 @@ namespace Toolbox::UI {
 
         glGenTextures(1, &m_tex_id);
         glBindTexture(GL_TEXTURE_2D, m_tex_id);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_render_window_size.x, m_render_window_size.y, 0, GL_RGBA,
-                     GL_UNSIGNED_BYTE, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_render_window_size.x, m_render_window_size.y, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_tex_id, 0);
@@ -279,14 +291,9 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::viewportEnd() {
-        ImVec2 image_size = ImVec2(m_render_window_size.x - ImGui::GetStyle().WindowPadding.x * 2,
-                                   m_render_window_size.y - ImGui::GetStyle().WindowPadding.y * 2);
-
-        ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_tex_id)), image_size,
+        ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_tex_id)), m_render_size,
                      {0.0f, 1.0f}, {1.0f, 0.0f});
 
-        // framebuffer already bound by begin render
-        // glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
@@ -369,15 +376,14 @@ namespace Toolbox::UI {
 
         m_is_render_window_open = ImGui::Begin(getWindowChildUID(*this, "Scene View").c_str());
         if (m_is_render_window_open) {
-            ImVec2 window_pos = ImGui::GetWindowPos();
-            m_render_window_rect       = {
+            ImVec2 window_pos    = ImGui::GetWindowPos();
+            m_render_window_rect = {
                 window_pos,
                 {window_pos.x + ImGui::GetWindowWidth(), window_pos.y + ImGui::GetWindowHeight()}
             };
 
             m_is_render_window_hovered = ImGui::IsWindowHovered();
             m_is_render_window_focused = ImGui::IsWindowFocused();
-
 
             if (m_is_render_window_hovered && Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
                 ImGui::SetWindowFocus();
@@ -411,11 +417,7 @@ namespace Toolbox::UI {
                 mouse_pos.y += viewport_pos.y;
 
                 if (wrapped) {
-#if WIN32
-                    SetCursorPos(mouse_pos.x, mouse_pos.y);
-                    Input::SetMouseWrapped(true);
-#elif __linux__
-#endif
+                    Input::SetMousePosition(mouse_pos, false);
                 }
             }
 

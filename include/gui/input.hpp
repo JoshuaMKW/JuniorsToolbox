@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <glm/glm.hpp>
+#include <imgui.h>
 #include <map>
 
 struct GLFWwindow;
@@ -15,8 +15,10 @@ namespace Toolbox::UI::Input {
     bool GetMouseButtonDown(uint32_t button);
     bool GetMouseButtonUp(uint32_t button);
 
-    glm::vec2 GetMousePosition();
-    glm::vec2 GetMouseDelta();
+    ImVec2 GetMousePosition();
+    void SetMousePosition(ImVec2 pos, bool overwrite_delta = true);
+
+    ImVec2 GetMouseDelta();
     int32_t GetMouseScrollDelta();
 
     bool GetMouseWrapped();
