@@ -113,23 +113,11 @@ namespace Toolbox::UI {
         return utf8;
     }
 
-    void DrawTree(std::shared_ptr<Toolbox::Object::ISceneObject> root) {
-        std::string node_name = std::format("{} ({})", root->type(), root->getNameRef().name());
-        if (root->isGroupObject()) {
-            bool open = ImGui::TreeNode(SjisToUtf8(node_name).c_str());
-            if (open) {
-                auto objects = std::dynamic_pointer_cast<Toolbox::Object::GroupSceneObject>(root)
-                                   ->getChildren();
-                if (objects.has_value()) {
-                    for (auto object : objects.value()) {
-                        DrawTree(object);
-                    }
-                }
-                ImGui::TreePop();
-            }
-        } else {
-            ImGui::Text(SjisToUtf8(node_name).c_str());
-        }
+    static std::string getNodeUID(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
+        std::string node_name =
+            SjisToUtf8(std::format("{} ({})", node->type(), node->getNameRef().name()));
+        node_name += std::format("##{}", node->getQualifiedName().toString());
+        return node_name;
     }
 
     SceneWindow::~SceneWindow() {
@@ -298,6 +286,12 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::renderBody(f32 deltaTime) {
+        renderHierarchy();
+        renderProperties();
+        renderScene(deltaTime);
+    }
+
+    void SceneWindow::renderHierarchy() {
         ImGuiWindowClass hierarchyOverride;
         hierarchyOverride.ClassId =
             ImGui::GetID(getWindowChildUID(*this, "Hierarchy Editor").c_str());
@@ -320,7 +314,7 @@ namespace Toolbox::UI {
 
             if (m_current_scene != nullptr) {
                 auto root = m_current_scene->getObjHierarchy().getRoot();
-                DrawTree(root);
+                renderTree(root);
             }
 
             ImGui::Spacing();
@@ -329,11 +323,69 @@ namespace Toolbox::UI {
 
             if (m_current_scene != nullptr) {
                 auto root = m_current_scene->getTableHierarchy().getRoot();
-                DrawTree(root);
+                renderTree(root);
             }
         }
         ImGui::End();
+    }
 
+    void SceneWindow::renderTree(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
+        constexpr auto dir_flags = ImGuiTreeNodeFlags_OpenOnArrow |
+                                   ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                                   ImGuiTreeNodeFlags_SpanFullWidth;
+
+        constexpr auto file_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth;
+
+        constexpr auto node_flags = dir_flags | ImGuiTreeNodeFlags_DefaultOpen;
+
+        std::string node_uid = getNodeUID(node);
+        if (node->isGroupObject()) {
+            bool open =
+                ImGui::TreeNodeEx(node_uid.c_str(), node->getParent() ? dir_flags : node_flags);
+            if (ImGui::IsItemClicked()) {
+                m_selected_hierarchy_node = {
+                    .m_selected         = node,
+                    .m_row              = 0,
+                    .m_hierarchy_synced = true,
+                    .m_scene_synced     = node->getTransform()
+                                              ? false
+                                              : true};  // Only spacial objects get scene selection
+                m_selected_properties.clear();
+                for (auto &member : node->getMembers()) {
+                    m_selected_properties.push_back(createProperty(member));
+                }
+            }
+            if (open) {
+                auto objects = std::dynamic_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
+                                   ->getChildren();
+                if (objects.has_value()) {
+                    for (auto object : objects.value()) {
+                        renderTree(object);
+                    }
+                }
+                ImGui::TreePop();
+            }
+        } else {
+            if (ImGui::TreeNodeEx(node_uid.c_str(), file_flags)) {
+                if (ImGui::IsItemClicked()) {
+                    m_selected_hierarchy_node = {
+                        .m_selected         = node,
+                        .m_row              = 0,
+                        .m_hierarchy_synced = true,
+                        .m_scene_synced     = node->getTransform()
+                                                  ? false
+                                                  : true};  // Only spacial objects get scene selection
+                    m_selected_properties.clear();
+                    for (auto& member : node->getMembers()) {
+                        m_selected_properties.push_back(createProperty(member));
+                    }
+                }
+                ImGui::TreePop();
+            }
+        }
+    }
+
+    void SceneWindow::renderProperties() {
         ImGuiWindowClass propertiesOverride;
         propertiesOverride.DockNodeFlagsOverrideSet =
             ImGuiDockNodeFlags_NoDockingOverMe | ImGuiDockNodeFlags_NoDockingOverOther;
@@ -342,14 +394,11 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowSizeConstraints({300, 500}, {FLT_MAX, FLT_MAX});
 
         if (ImGui::Begin(getWindowChildUID(*this, "Properties Editor").c_str())) {
-            // TODO: Render properties
+            for (auto &prop : m_selected_properties) {
+                prop->render();
+            }
         }
         ImGui::End();
-
-        renderScene(deltaTime);
-
-        // mGrid.Render(m_camera.GetPosition(), m_camera.GetProjectionMatrix(),
-        // m_camera.GetViewMatrix());
     }
 
     void SceneWindow::renderScene(f32 delta_time) {

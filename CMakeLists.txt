@@ -41,6 +41,8 @@ file(GLOB TOOLBOX_SRC
     "include/gui/*.hpp"
     "src/gui/scene/*.cpp"
     "include/gui/scene/*.hpp"
+    "src/gui/property/*.cpp"
+    "include/gui/property/*.hpp"
     "include/io/*.hpp"
     "lib/ImGuiFileDialog/*.h"
     "lib/ImGuiFileDialog/*.cpp"

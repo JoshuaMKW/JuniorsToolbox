@@ -183,8 +183,7 @@ namespace Toolbox::Object {
         [[nodiscard]] bool isEmpty() const { return m_values.empty(); }
         [[nodiscard]] bool isArray() const { return m_values.size() > 1; }
         [[nodiscard]] bool isTypeBitMasked() const {
-            return isTypeEnum() &&
-                   std::get<std::shared_ptr<MetaEnum>>(m_default)->isBitMasked();
+            return isTypeEnum() && std::get<std::shared_ptr<MetaEnum>>(m_default)->isBitMasked();
         }
         [[nodiscard]] bool isTypeStruct() const {
             return std::holds_alternative<std::shared_ptr<MetaStruct>>(m_default);
@@ -310,8 +309,7 @@ namespace Toolbox::Object {
     };
 
     template <>
-    [[nodiscard]] inline std::expected<std::shared_ptr<MetaStruct>,
-                                MetaError>
+    [[nodiscard]] inline std::expected<std::shared_ptr<MetaStruct>, MetaError>
     MetaMember::value<MetaStruct>(size_t index) const {
         if (!validateIndex(index)) {
             return make_meta_error<std::shared_ptr<MetaStruct>>(m_name, index, m_values.size());
@@ -323,8 +321,7 @@ namespace Toolbox::Object {
         return std::get<std::shared_ptr<MetaStruct>>(m_values[index]);
     }
     template <>
-    [[nodiscard]] inline std::expected<std::shared_ptr<MetaEnum>,
-                                MetaError>
+    [[nodiscard]] inline std::expected<std::shared_ptr<MetaEnum>, MetaError>
     MetaMember::value<MetaEnum>(size_t index) const {
         if (!validateIndex(index)) {
             return make_meta_error<std::shared_ptr<MetaEnum>>(m_name, index, m_values.size());
@@ -336,8 +333,7 @@ namespace Toolbox::Object {
         return std::get<std::shared_ptr<MetaEnum>>(m_values[index]);
     }
     template <>
-    [[nodiscard]] inline std::expected<std::shared_ptr<MetaValue>,
-                                MetaError>
+    [[nodiscard]] inline std::expected<std::shared_ptr<MetaValue>, MetaError>
     MetaMember::value<MetaValue>(size_t index) const {
         if (!validateIndex(index)) {
             return make_meta_error<std::shared_ptr<MetaValue>>(m_name, index, m_values.size());
@@ -347,6 +343,67 @@ namespace Toolbox::Object {
                 m_name, "MetaValue", isTypeStruct() ? "MetaStruct" : "MetaEnum");
         }
         return std::get<std::shared_ptr<MetaValue>>(m_values[index]);
+    }
+
+    [[nodiscard]] inline std::optional<MetaType> getMetaType(std::shared_ptr<MetaMember> member) {
+        if (member->isTypeStruct())
+            return {};
+        if (member->isTypeEnum()) {
+            return std::get<std::shared_ptr<MetaEnum>>(member->defaultValue())->type();
+        }
+        return std::get<std::shared_ptr<MetaValue>>(member->defaultValue())->type();
+    }
+
+    template <typename T>
+    [[nodiscard]] inline std::expected<T, MetaError>
+    getMetaValue(std::shared_ptr<MetaMember> member, size_t array_index = 0) {
+        if (member->isTypeEnum()) {
+            auto enum_result = member->value<MetaEnum>(array_index);
+            if (!enum_result) {
+                return std::unexpected(enum_result.error());
+            }
+            auto value_result = enum_result.value()->value().get<T>();
+            if (!value_result) {
+                return make_meta_error<T>(value_result.error(), "T", "!T");
+            }
+            return value_result.value();
+        }
+        auto value_result = member->value<MetaValue>(array_index);
+        if (!value_result) {
+            return std::unexpected(value_result.error());
+        }
+        auto v_result = value_result.value()->get<T>();
+        if (!v_result) {
+            return make_meta_error<T>(v_result.error(), "T", "!T");
+        }
+        return v_result.value();
+    }
+
+    template <typename T>
+    [[nodiscard]] inline std::expected<bool, MetaError>
+    setMetaValue(std::shared_ptr<MetaMember> member, size_t array_index, const T &value) {
+        if (member->isTypeEnum()) {
+            auto enum_result = member->value<MetaEnum>(array_index);
+            if (!enum_result) {
+                return std::unexpected(enum_result.error());
+            }
+            return enum_result.value()->value().set<T>(value);
+        }
+        auto value_result = member->value<MetaValue>(array_index);
+        if (!value_result) {
+            return std::unexpected(value_result.error());
+        }
+        return value_result.value()->set<T>(value);
+    }
+
+    [[nodiscard]] inline std::expected<std::vector<MetaEnum::enum_type>, MetaError>
+    getMetaEnumValues(std::shared_ptr<MetaMember> member) {
+        if (!member->isTypeEnum()) {
+            return make_meta_error<std::vector<MetaEnum::enum_type>>(
+                "Can't get enumerations of non-enum", "!enum", "MetaEnum");
+        }
+        auto enum_result = std::get<std::shared_ptr<MetaEnum>>(member->defaultValue());
+        return enum_result->enums();
     }
 
 }  // namespace Toolbox::Object

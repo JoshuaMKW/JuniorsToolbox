@@ -31,7 +31,7 @@ namespace Toolbox::UI {
         [[nodiscard]] virtual ImGuiID id() const = 0;
 
         [[nodiscard]] virtual IWindow *parent() const = 0;
-        virtual void setParent(IWindow *parent) = 0;
+        virtual void setParent(IWindow *parent)       = 0;
 
         virtual const ImGuiWindowClass *windowClass() const = 0;
 
@@ -129,8 +129,7 @@ namespace Toolbox::UI {
             ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
                                                 maxSize() ? maxSize().value() : default_max);
 
-            ImGui::Begin(title().c_str(), &m_is_open, m_flags);
-            {
+            if (ImGui::Begin(title().c_str(), &m_is_open, m_flags)) {
                 m_size = ImGui::GetWindowSize();
                 renderMenuBar();
                 renderBody(delta_time);
@@ -143,8 +142,8 @@ namespace Toolbox::UI {
 
         IWindow *m_parent;
 
-        bool m_is_open                  = false;
-        ImGuiWindowFlags m_flags        = 0;
+        bool m_is_open                          = false;
+        ImGuiWindowFlags m_flags                = 0;
         mutable ImGuiWindowClass m_window_class = ImGuiWindowClass();
 
         bool m_is_docking_set_up = false;
@@ -230,8 +229,8 @@ namespace Toolbox::UI {
             ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
                                                 maxSize() ? maxSize().value() : default_max);
 
-            ImGui::Begin(title().c_str(), &m_is_open, m_flags);
-            {
+            if (ImGui::Begin(title().c_str(), &m_is_open, m_flags)) {
+                m_size = ImGui::GetWindowSize();
                 renderDockspace();
                 renderMenuBar();
                 renderBody(delta_time);
@@ -244,8 +243,8 @@ namespace Toolbox::UI {
 
         IWindow *m_parent;
 
-        bool m_is_open                  = false;
-        ImGuiWindowFlags m_flags        = 0;
+        bool m_is_open                          = false;
+        ImGuiWindowFlags m_flags                = 0;
         mutable ImGuiWindowClass m_window_class = ImGuiWindowClass();
 
         bool m_is_docking_set_up = false;
