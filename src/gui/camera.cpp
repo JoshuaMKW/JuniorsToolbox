@@ -45,6 +45,8 @@ void Camera::setOrientAndPosition(const glm::vec3 &inUp, const glm::vec3 &inLook
 
 // The projection matrix
 void Camera::privUpdateProjectionMatrix(void) {
+    if (aspectRatio < 1)
+        return;
     this->projMatrix = glm::perspective(fovy, aspectRatio, nearDist, farDist);
 };
 
@@ -91,6 +93,4 @@ void Camera::TurnLeftRight(float ang) {
     setOrientAndPosition(vUp, vPos - vDir, vPos);
 }
 
-void Camera::setAspect(float aspect){
-    this->aspectRatio = aspect;
-}
+void Camera::setAspect(float aspect) { this->aspectRatio = aspect; }

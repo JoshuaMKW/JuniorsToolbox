@@ -16,6 +16,7 @@
 #include "scene/scene.hpp"
 
 #include "gui/scene/camera.hpp"
+#include "gui/scene/path.hpp"
 #include "gui/window.hpp"
 
 #include <imgui.h>
@@ -87,6 +88,7 @@ namespace Toolbox::UI {
         std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;
 
         std::vector<std::shared_ptr<J3DModelInstance>> m_renderables;
+        PathRenderer m_path_renderer;
         model_cache_t m_model_cache;
 
         uint32_t m_gizmo_operation{0};
