@@ -148,6 +148,33 @@ namespace Toolbox::UI {
                         {entry.path().stem().string(), loader.Load(&modelStream, 0)});
                 }
             }
+
+            if (m_current_scene != nullptr) {
+                auto rail_data = m_current_scene->getRailData();
+
+                for (auto rail : rail_data) {
+                    for (auto node : rail->nodes()) {
+                        std::vector<PathPoint> connections;
+
+                        PathPoint nodePoint = (PathPoint){
+                            node->getPosition(), {1.0, 0.0, 1.0, 1.0},
+                             90000
+                        };
+
+                        for (auto connection : rail->getNodeConnections(node)) {
+                            PathPoint connectionPoint = (PathPoint){
+                                connection->getPosition(), {1.0, 0.0, 1.0, 1.0},
+                                 90000
+                            };
+                            connections.push_back(nodePoint);
+                            connections.push_back(connectionPoint);
+                        };
+                        m_path_renderer.m_paths.push_back(connections);
+                    }
+                }
+            }
+            m_path_renderer.updateGeometry();
+
             return true;
         }
 
@@ -524,6 +551,8 @@ namespace Toolbox::UI {
                 glClearColor(0, 0, 0, 0);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                 J3DRendering::Render(delta_time, position, view, projection, m_renderables);
+
+                m_path_renderer.drawPaths(&m_camera);
 
                 m_is_viewport_dirty = false;
             }
