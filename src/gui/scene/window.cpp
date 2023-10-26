@@ -155,6 +155,13 @@ namespace Toolbox::UI {
         if (!m_path_renderer.initPathRenderer()) {
             // show some error
         }
+
+        // 128x128 billboards, 10 unique images
+        if (!m_billboard_renderer.initBillboardRenderer(128, 10)) {
+            // show some error
+        }
+
+        m_billboard_renderer.loadBillboardTexture("res/question.png", 0);
     }
 
     bool SceneWindow::loadData(const std::filesystem::path &path) {
@@ -203,13 +210,13 @@ namespace Toolbox::UI {
 
                         PathPoint nodePoint = (PathPoint){
                             node->getPosition(), {1.0, 0.0, 1.0, 1.0},
-                             90000
+                             90
                         };
 
                         for (auto connection : rail->getNodeConnections(node)) {
                             PathPoint connectionPoint = (PathPoint){
                                 connection->getPosition(), {1.0, 0.0, 1.0, 1.0},
-                                 90000
+                                 90
                             };
                             connections.push_back(nodePoint);
                             connections.push_back(connectionPoint);
@@ -217,6 +224,11 @@ namespace Toolbox::UI {
                         m_path_renderer.m_paths.push_back(connections);
                     }
                 }
+
+                m_billboard_renderer.m_billboards.push_back((Billboard){
+                    {0, 1000, 0},
+                    128, 0
+                });
             }
             m_path_renderer.updateGeometry();
 
@@ -468,6 +480,7 @@ namespace Toolbox::UI {
                 J3DRendering::Render(delta_time, position, view, projection, m_renderables);
 
                 m_path_renderer.drawPaths(&m_camera);
+                m_billboard_renderer.drawBillboards(&m_camera);
 
                 m_is_viewport_dirty = false;
             }
