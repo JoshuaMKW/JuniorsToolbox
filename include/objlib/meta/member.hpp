@@ -362,7 +362,7 @@ namespace Toolbox::Object {
             if (!enum_result) {
                 return std::unexpected(enum_result.error());
             }
-            auto value_result = enum_result.value()->value().get<T>();
+            auto value_result = enum_result.value()->value()->get<T>();
             if (!value_result) {
                 return make_meta_error<T>(value_result.error(), "T", "!T");
             }
@@ -382,18 +382,28 @@ namespace Toolbox::Object {
     template <typename T>
     [[nodiscard]] inline std::expected<bool, MetaError>
     setMetaValue(std::shared_ptr<MetaMember> member, size_t array_index, const T &value) {
+        auto type_result = getMetaType(member);
+        if (!type_result) {
+            return false;
+        }
+        setMetaValue<T>(member, array_index, value, type_result.value());
+    }
+
+    template <typename T>
+    [[nodiscard]] inline std::expected<bool, MetaError>
+    setMetaValue(std::shared_ptr<MetaMember> member, size_t array_index, const T &value, MetaType type) {
         if (member->isTypeEnum()) {
             auto enum_result = member->value<MetaEnum>(array_index);
             if (!enum_result) {
                 return std::unexpected(enum_result.error());
             }
-            return enum_result.value()->value().set<T>(value);
+            return setMetaValue(enum_result.value()->value(), value, type);
         }
         auto value_result = member->value<MetaValue>(array_index);
         if (!value_result) {
             return std::unexpected(value_result.error());
         }
-        return value_result.value()->set<T>(value);
+        return setMetaValue(value_result.value(), value, type);
     }
 
     [[nodiscard]] inline std::expected<std::vector<MetaEnum::enum_type>, MetaError>

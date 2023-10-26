@@ -55,7 +55,7 @@ namespace Toolbox::Object {
             } else if (isTypeEnum()) {
                 auto _enum = std::get<std::shared_ptr<MetaEnum>>(m_values[0]);
                 out << self_indent << _enum->name() << " " << m_name << " = "
-                    << _enum->value().toString() << ";\n";
+                    << _enum->value()->toString() << ";\n";
             } else if (isTypeValue()) {
                 auto _value = std::get<std::shared_ptr<MetaValue>>(m_values[0]);
                 out << self_indent << meta_type_name(_value->type()) << " " << m_name << " = "
@@ -80,7 +80,7 @@ namespace Toolbox::Object {
                 << m_name << " = [\n";
             for (const auto &v : m_values) {
                 auto _enum = std::get<std::shared_ptr<MetaEnum>>(v);
-                out << _enum->value().toString() << ",\n";
+                out << _enum->value()->toString() << ",\n";
             }
             out << self_indent << "];\n";
         } else if (isTypeValue()) {

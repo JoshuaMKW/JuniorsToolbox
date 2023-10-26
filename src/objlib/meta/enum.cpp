@@ -9,22 +9,22 @@ namespace Toolbox::Object {
         return tryJSON(json_value, [this](const json &j) {
             switch (m_type) {
             case MetaType::S8:
-                m_cur_value = j.get<s8>();
+                m_cur_value = std::make_shared<MetaValue>(j.get<s8>());
                 break;
             case MetaType::U8:
-                m_cur_value = j.get<u8>();
+                m_cur_value = std::make_shared<MetaValue>(j.get<u8>());
                 break;
             case MetaType::S16:
-                m_cur_value = j.get<s16>();
+                m_cur_value = std::make_shared<MetaValue>(j.get<s16>());
                 break;
             case MetaType::U16:
-                m_cur_value = j.get<u16>();
+                m_cur_value = std::make_shared<MetaValue>(j.get<u16>());
                 break;
             case MetaType::S32:
-                m_cur_value = j.get<s32>();
+                m_cur_value = std::make_shared<MetaValue>(j.get<s32>());
                 break;
             case MetaType::U32:
-                m_cur_value = j.get<u32>();
+                m_cur_value = std::make_shared<MetaValue>(j.get<u32>());
                 break;
             default:
                 break;
@@ -52,22 +52,22 @@ namespace Toolbox::Object {
         try {
             switch (m_type) {
             case MetaType::S8:
-                out.write(m_cur_value.get<s8>());
+                out.write(m_cur_value->get<s8>());
                 break;
             case MetaType::U8:
-                out.write(m_cur_value.get<u8>());
+                out.write(m_cur_value->get<u8>());
                 break;
             case MetaType::S16:
-                out.write(m_cur_value.get<s16>());
+                out.write(m_cur_value->get<s16>());
                 break;
             case MetaType::U16:
-                out.write(m_cur_value.get<u16>());
+                out.write(m_cur_value->get<u16>());
                 break;
             case MetaType::S32:
-                out.write(m_cur_value.get<s32>());
+                out.write(m_cur_value->get<s32>());
                 break;
             case MetaType::U32:
-                out.write(m_cur_value.get<u32>());
+                out.write(m_cur_value->get<u32>());
                 break;
             }
             return {};
@@ -80,22 +80,22 @@ namespace Toolbox::Object {
         try {
             switch (m_type) {
             case MetaType::S8:
-                m_cur_value.set(in.read<s8>());
+                m_cur_value->set(in.read<s8>());
                 break;
             case MetaType::U8:
-                m_cur_value.set(in.read<u8>());
+                m_cur_value->set(in.read<u8>());
                 break;
             case MetaType::S16:
-                m_cur_value.set(in.read<s16>());
+                m_cur_value->set(in.read<s16>());
                 break;
             case MetaType::U16:
-                m_cur_value.set(in.read<u16>());
+                m_cur_value->set(in.read<u16>());
                 break;
             case MetaType::S32:
-                m_cur_value.set(in.read<s32>());
+                m_cur_value->set(in.read<s32>());
                 break;
             case MetaType::U32:
-                m_cur_value.set(in.read<u32>());
+                m_cur_value->set(in.read<u32>());
                 break;
             }
             return {};

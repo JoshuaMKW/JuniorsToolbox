@@ -5,6 +5,7 @@
 
 #include <array>
 #include <vector>
+#include <imgui.h>
 
 namespace Toolbox::UI {
 
@@ -15,7 +16,9 @@ namespace Toolbox::UI {
 
         virtual std::shared_ptr<Object::MetaMember> member() { return m_member; }
         virtual void init() = 0;
-        virtual void render() = 0;
+        virtual void render(float label_width) = 0;
+
+        ImVec2 labelSize();
 
     protected:
         std::shared_ptr<Object::MetaMember> m_member;
@@ -27,7 +30,7 @@ namespace Toolbox::UI {
         ~BoolProperty() override = default;
 
         void init() override;
-        void render() override;
+        void render(float label_width) override;
     
     private:
         std::vector<char> m_bools;
@@ -39,7 +42,7 @@ namespace Toolbox::UI {
         ~NumberProperty() override = default;
 
         void init() override;
-        void render() override;
+        void render(float label_width) override;
 
         std::vector<s64> m_numbers;
 
@@ -54,7 +57,7 @@ namespace Toolbox::UI {
         ~FloatProperty() override = default;
 
         void init() override;
-        void render() override;
+        void render(float label_width) override;
 
     private:
         std::vector<f64> m_numbers;
@@ -68,7 +71,7 @@ namespace Toolbox::UI {
         ~StringProperty() override = default;
 
         void init() override;
-        void render() override;
+        void render(float label_width) override;
 
     private:
         std::vector<std::array<char, 128>> m_strings;
@@ -80,7 +83,7 @@ namespace Toolbox::UI {
         ~ColorProperty() override = default;
 
         void init() override;
-        void render() override;
+        void render(float label_width) override;
 
     private:
         std::vector<Color::RGBA32> m_colors;
@@ -92,7 +95,7 @@ namespace Toolbox::UI {
         ~VectorProperty() override = default;
 
         void init() override;
-        void render() override;
+        void render(float label_width) override;
 
     private:
         std::vector<glm::vec3> m_vectors;
@@ -104,7 +107,7 @@ namespace Toolbox::UI {
         ~TransformProperty() override = default;
 
         void init() override;
-        void render() override;
+        void render(float label_width) override;
 
     private:
         std::vector<Object::Transform> m_transforms;
@@ -115,7 +118,7 @@ namespace Toolbox::UI {
         EnumProperty(std::shared_ptr<Object::MetaMember> prop) : NumberProperty(prop) {}
         ~EnumProperty() override = default;
 
-        void render() override;
+        void render(float label_width) override;
 
     private:
         std::vector<std::vector<char>> m_checked_state;
@@ -123,14 +126,15 @@ namespace Toolbox::UI {
 
     class StructProperty : public IProperty {
     public:
-        StructProperty(std::shared_ptr<Object::MetaMember> prop) : IProperty(prop) {}
+        StructProperty(std::shared_ptr<Object::MetaMember> prop);
         ~StructProperty() override = default;
 
         void init() override;
-        void render() override;
+        void render(float label_width) override;
 
     private:
-        std::vector<IProperty> m_children;
+        std::vector<std::vector<std::unique_ptr<IProperty>>> m_children_ary;
+        bool m_open = false;
     };
 
     std::unique_ptr<IProperty> createProperty(std::shared_ptr<Object::MetaMember> prop);

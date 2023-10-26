@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include <glad/glad.h>
 
 #include "gui/scene/window.hpp"
@@ -13,6 +15,7 @@
 #include <ImGuiFileDialog.h>
 
 #include "gui/application.hpp"
+#include "gui/util.hpp"
 #include <gui/IconsForkAwesome.h>
 #include <gui/modelcache.hpp>
 
@@ -22,6 +25,7 @@
 #include <iconv.h>
 
 #if WIN32
+#define NOMINMAX
 #include <windows.h>
 #endif
 
@@ -69,53 +73,9 @@ namespace Toolbox::UI {
     }
     */
 
-    std::string Utf8ToSjis(const std::string &value) {
-        iconv_t conv = iconv_open("SHIFT_JISX0213", "UTF-8");
-        if (conv == (iconv_t)(-1)) {
-            throw std::runtime_error("Error opening iconv for UTF-8 to Shift-JIS conversion");
-        }
-
-        size_t inbytesleft = value.size();
-        char *inbuf        = const_cast<char *>(value.data());
-
-        size_t outbytesleft = value.size() * 2;
-        std::string sjis(outbytesleft, '\0');
-        char *outbuf = &sjis[0];
-
-        if (iconv(conv, &inbuf, &inbytesleft, &outbuf, &outbytesleft) == (size_t)(-1)) {
-            throw std::runtime_error("Error converting from UTF-8 to Shift-JIS");
-        }
-
-        sjis.resize(sjis.size() - outbytesleft);
-        iconv_close(conv);
-        return sjis;
-    }
-
-    std::string SjisToUtf8(const std::string &value) {
-        iconv_t conv = iconv_open("UTF-8", "SHIFT_JISX0213");
-        if (conv == (iconv_t)(-1)) {
-            throw std::runtime_error("Error opening iconv for Shift-JIS to UTF-8 conversion");
-        }
-
-        size_t inbytesleft = value.size();
-        char *inbuf        = const_cast<char *>(value.data());
-
-        size_t outbytesleft = value.size() * 3;
-        std::string utf8(outbytesleft, '\0');
-        char *outbuf = &utf8[0];
-
-        if (iconv(conv, &inbuf, &inbytesleft, &outbuf, &outbytesleft) == (size_t)(-1)) {
-            throw std::runtime_error("Error converting from Shift-JIS to UTF-8");
-        }
-
-        utf8.resize(utf8.size() - outbytesleft);
-        iconv_close(conv);
-        return utf8;
-    }
-
     static std::string getNodeUID(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
         std::string node_name =
-            SjisToUtf8(std::format("{} ({})", node->type(), node->getNameRef().name()));
+            Util::SjisToUtf8(std::format("{} ({})", node->type(), node->getNameRef().name()));
         node_name += std::format("##{}", node->getQualifiedName().toString());
         return node_name;
     }
@@ -154,6 +114,8 @@ namespace Toolbox::UI {
             m_model_cache.erase(m_model_cache.begin(), m_model_cache.end());
 
             m_current_scene = std::make_unique<Toolbox::Scene::SceneInstance>(path);
+
+            m_current_scene->dump(std::cout);
 
             J3DModelLoader loader;
             for (const auto &entry : std::filesystem::directory_iterator(path / "mapobj")) {
@@ -376,8 +338,12 @@ namespace Toolbox::UI {
                                                   ? false
                                                   : true};  // Only spacial objects get scene selection
                     m_selected_properties.clear();
-                    for (auto& member : node->getMembers()) {
-                        m_selected_properties.push_back(createProperty(member));
+                    for (auto &member : node->getMembers()) {
+                        member->syncArray();
+                        auto prop = createProperty(member);
+                        if (prop) {
+                            m_selected_properties.push_back(std::move(prop));
+                        }
                     }
                 }
                 ImGui::TreePop();
@@ -394,8 +360,12 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowSizeConstraints({300, 500}, {FLT_MAX, FLT_MAX});
 
         if (ImGui::Begin(getWindowChildUID(*this, "Properties Editor").c_str())) {
+            float label_width = 0;
             for (auto &prop : m_selected_properties) {
-                prop->render();
+                label_width = std::max(label_width, prop->labelSize().x);
+            }
+            for (auto &prop : m_selected_properties) {
+                prop->render(label_width);
             }
         }
         ImGui::End();

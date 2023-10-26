@@ -27,22 +27,22 @@ namespace Toolbox::Object {
               m_bit_mask(bit_mask) {
             switch (m_type) {
             case MetaType::S8:
-                m_cur_value = MetaValue(static_cast<s8>(0));
+                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
                 break;
             case MetaType::U8:
-                m_cur_value = MetaValue(static_cast<s8>(0));
+                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
                 break;
             case MetaType::S16:
-                m_cur_value = MetaValue(static_cast<s8>(0));
+                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
                 break;
             case MetaType::U16:
-                m_cur_value = MetaValue(static_cast<s8>(0));
+                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
                 break;
             case MetaType::S32:
-                m_cur_value = MetaValue(static_cast<s8>(0));
+                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
                 break;
             case MetaType::U32:
-                m_cur_value = MetaValue(static_cast<s8>(0));
+                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
                 break;
             default:
                 break;
@@ -54,22 +54,22 @@ namespace Toolbox::Object {
             m_type = type;
             switch (type) {
             case MetaType::S8:
-                m_cur_value = MetaValue(static_cast<s8>(0));
+                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
                 break;
             case MetaType::U8:
-                m_cur_value = MetaValue(static_cast<u8>(0));
+                m_cur_value = std::make_shared<MetaValue>(static_cast<u8>(0));
                 break;
             case MetaType::S16:
-                m_cur_value = MetaValue(static_cast<s16>(0));
+                m_cur_value = std::make_shared<MetaValue>(static_cast<s16>(0));
                 break;
             case MetaType::U16:
-                m_cur_value = MetaValue(static_cast<u16>(0));
+                m_cur_value = std::make_shared<MetaValue>(static_cast<u16>(0));
                 break;
             case MetaType::S32:
-                m_cur_value = MetaValue(static_cast<s32>(0));
+                m_cur_value = std::make_shared<MetaValue>(static_cast<s32>(0));
                 break;
             case MetaType::U32:
-                m_cur_value = MetaValue(static_cast<u32>(0));
+                m_cur_value = std::make_shared<MetaValue>(static_cast<u32>(0));
                 break;
             default:
                 break;
@@ -81,7 +81,7 @@ namespace Toolbox::Object {
 
         [[nodiscard]] constexpr MetaType type() const { return m_type; }
         [[nodiscard]] constexpr std::string_view name() const { return m_name; }
-        [[nodiscard]] constexpr MetaValue value() const { return m_cur_value; }
+        [[nodiscard]] std::shared_ptr<MetaValue> value() const { return m_cur_value; }
         [[nodiscard]] constexpr std::vector<enum_type> enums() const { return m_values; }
 
         [[nodiscard]] constexpr bool isBitMasked() const { return m_bit_mask; }
@@ -105,17 +105,17 @@ namespace Toolbox::Object {
         [[nodiscard]] constexpr bool getFlag(enum_type value) const {
             switch (m_type) {
             case MetaType::S8:
-                return *m_cur_value.get<s8>() & *value.second.get<s8>();
+                return *m_cur_value->get<s8>() & *value.second.get<s8>();
             case MetaType::U8:
-                return *m_cur_value.get<u8>() & *value.second.get<u8>();
+                return *m_cur_value->get<u8>() & *value.second.get<u8>();
             case MetaType::S16:
-                return *m_cur_value.get<s16>() & *value.second.get<s16>();
+                return *m_cur_value->get<s16>() & *value.second.get<s16>();
             case MetaType::U16:
-                return *m_cur_value.get<u16>() & *value.second.get<u16>();
+                return *m_cur_value->get<u16>() & *value.second.get<u16>();
             case MetaType::S32:
-                return *m_cur_value.get<s32>() & *value.second.get<s32>();
+                return *m_cur_value->get<s32>() & *value.second.get<s32>();
             case MetaType::U32:
-                return *m_cur_value.get<u32>() & *value.second.get<u32>();
+                return *m_cur_value->get<u32>() & *value.second.get<u32>();
             default:
                 return false;
             }
@@ -141,49 +141,49 @@ namespace Toolbox::Object {
             switch (m_type) {
             case MetaType::S8: {
                 if (value) {
-                    m_cur_value.set<s8>(*m_cur_value.get<s8>() | *flag.second.get<s8>());
+                    m_cur_value->set<s8>(*m_cur_value->get<s8>() | *flag.second.get<s8>());
                 } else {
-                    m_cur_value.set<s8>(*m_cur_value.get<s8>() & ~(*flag.second.get<s8>()));
+                    m_cur_value->set<s8>(*m_cur_value->get<s8>() & ~(*flag.second.get<s8>()));
                 }
                 break;
             }
             case MetaType::U8: {
                 if (value) {
-                    m_cur_value.set<s8>(*m_cur_value.get<s8>() | *flag.second.get<s8>());
+                    m_cur_value->set<s8>(*m_cur_value->get<s8>() | *flag.second.get<s8>());
                 } else {
-                    m_cur_value.set<s8>(*m_cur_value.get<s8>() & ~(*flag.second.get<s8>()));
+                    m_cur_value->set<s8>(*m_cur_value->get<s8>() & ~(*flag.second.get<s8>()));
                 }
                 break;
             }
             case MetaType::S16: {
                 if (value) {
-                    m_cur_value.set<s8>(*m_cur_value.get<s8>() | *flag.second.get<s8>());
+                    m_cur_value->set<s8>(*m_cur_value->get<s8>() | *flag.second.get<s8>());
                 } else {
-                    m_cur_value.set<s8>(*m_cur_value.get<s8>() & ~(*flag.second.get<s8>()));
+                    m_cur_value->set<s8>(*m_cur_value->get<s8>() & ~(*flag.second.get<s8>()));
                 }
                 break;
             }
             case MetaType::U16: {
                 if (value) {
-                    m_cur_value.set<s8>(*m_cur_value.get<s8>() | *flag.second.get<s8>());
+                    m_cur_value->set<s8>(*m_cur_value->get<s8>() | *flag.second.get<s8>());
                 } else {
-                    m_cur_value.set<s8>(*m_cur_value.get<s8>() & ~(*flag.second.get<s8>()));
+                    m_cur_value->set<s8>(*m_cur_value->get<s8>() & ~(*flag.second.get<s8>()));
                 }
                 break;
             }
             case MetaType::S32: {
                 if (value) {
-                    m_cur_value.set<s8>(*m_cur_value.get<s8>() | *flag.second.get<s8>());
+                    m_cur_value->set<s8>(*m_cur_value->get<s8>() | *flag.second.get<s8>());
                 } else {
-                    m_cur_value.set<s8>(*m_cur_value.get<s8>() & ~(*flag.second.get<s8>()));
+                    m_cur_value->set<s8>(*m_cur_value->get<s8>() & ~(*flag.second.get<s8>()));
                 }
                 break;
             }
             case MetaType::U32: {
                 if (value) {
-                    m_cur_value.set<s8>(*m_cur_value.get<s8>() | *flag.second.get<s8>());
+                    m_cur_value->set<s8>(*m_cur_value->get<s8>() | *flag.second.get<s8>());
                 } else {
-                    m_cur_value.set<s8>(*m_cur_value.get<s8>() & ~(*flag.second.get<s8>()));
+                    m_cur_value->set<s8>(*m_cur_value->get<s8>() & ~(*flag.second.get<s8>()));
                 }
                 break;
             }
@@ -235,9 +235,9 @@ namespace Toolbox::Object {
     private:
         MetaType m_type;
         std::string m_name;
-        std::vector<enum_type> m_values = {};
-        MetaValue m_cur_value           = MetaValue(static_cast<s32>(0));
-        bool m_bit_mask                 = false;
+        std::vector<enum_type> m_values        = {};
+        std::shared_ptr<MetaValue> m_cur_value = {};
+        bool m_bit_mask                        = false;
     };
 
     template <>
