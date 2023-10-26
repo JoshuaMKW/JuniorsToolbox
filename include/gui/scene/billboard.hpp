@@ -1,37 +1,37 @@
-/*
 #pragma once
 
-#include <UCamera.hpp>
 #include <cstdint>
 #include <filesystem>
 #include <glm/glm.hpp>
+#include <gui/scene/camera.hpp>
 #include <vector>
 
-typedef struct {
-    glm::vec3 Position;
-    int32_t SpriteSize;
-    int32_t Texture;
-    int32_t SizeFixed;
-    int32_t Flip;
-} UPointSprite;
+namespace Toolbox::UI {
 
-class UPointSpriteManager {
-    uint32_t mShaderID;
-    uint32_t mMVPUniform;
-    int mBillboardResolution, mTextureCount;
-    uint32_t mTextureID;
+    typedef struct {
+        glm::vec3 m_position;
+        int32_t m_sprite_size;
+        int32_t m_texture_idx;
+    } Billboard;
 
-    uint32_t mVao;
-    uint32_t mVbo;
+    class BillboardRenderer {
+        uint32_t m_program;
+        uint32_t m_texture;
+        uint32_t m_mvp_uniform;
+        int m_billboard_resolution, m_texture_count;
 
-public:
-    std::vector<UPointSprite> mBillboards;
+        uint32_t m_vao;
+        uint32_t m_vbo;
 
-    void SetBillboardTexture(std::filesystem::path ImagePath, int TextureIndex);
-    void Draw(USceneCamera *Camera);
+    public:
+        std::vector<Billboard> m_billboards;
 
-    void Init(int BillboardResolution, int BillboardImageCount);
-    UPointSpriteManager();
-    ~UPointSpriteManager();
-};
-*/
+        void loadBillboardTexture(std::filesystem::path imagePath, int textureIndex);
+        void drawBillboards(Camera *camera);
+
+        [[nodiscard]] bool initBillboardRenderer(int billboardResolution, int billboardImageCount);
+
+        BillboardRenderer();
+        ~BillboardRenderer();
+    };
+}  // namespace Toolbox::UI

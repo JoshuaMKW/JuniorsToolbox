@@ -14,7 +14,7 @@ namespace Toolbox::UI {
         void main()\n\
         {\n\
             gl_Position = gpu_ModelViewProjectionMatrix * vec4(position, 1.0);\n\
-            gl_PointSize = min(size, size / gl_Position.w);\n\
+            gl_PointSize = min(size * 1000, size * 1000 / gl_Position.w);\n\
             line_color = color;\n\
         }";
 
