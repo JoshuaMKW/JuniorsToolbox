@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <string_view>
 
 using Clock = std::chrono::high_resolution_clock;
 
@@ -11,6 +12,6 @@ namespace Toolbox::UI::Util {
 
 	
 
-    std::string Utf8ToSjis(const std::string &value);
-    std::string SjisToUtf8(const std::string &value);
+    std::string Utf8ToSjis(std::string_view value);
+    std::string SjisToUtf8(std::string_view value);
 }

@@ -2,6 +2,7 @@
 
 #include "qualname.hpp"
 #include "serial.hpp"
+#include "strutil.hpp"
 #include <optional>
 #include <string>
 #include <string_view>
@@ -22,15 +23,19 @@ namespace Toolbox::Object {
             m_name      = name;
         }
 
-        std::expected<void, SerialError> serialize(Serializer &serializer) const override {
-            serializer.write<u16, std::endian::big>(m_name_hash);
-            serializer.writeString<std::endian::big>(m_name);
+        std::expected<void, SerialError> serialize(Serializer &out) const override {
+            out.write<u16, std::endian::big>(m_name_hash);
+            out.writeString<std::endian::big>(m_name);
             return {};
         }
 
-        std::expected<void, SerialError> deserialize(Deserializer &deserializer) override {
-            m_name_hash = deserializer.read<u16, std::endian::big>();
-            m_name      = deserializer.readString<std::endian::big>();
+        std::expected<void, SerialError> deserialize(Deserializer &in) override {
+            m_name_hash     = in.read<u16, std::endian::big>();
+            auto str_result = String::toShiftJIS(in.readString<std::endian::big>());
+            if (!str_result) {
+                return make_serial_error<void>(in, "Failed to deserialize string as UTF-8");
+            }
+            m_name      = str_result.value();
             return {};
         }
 

@@ -74,7 +74,7 @@ namespace Toolbox::UI {
         void render(float label_width) override;
 
     private:
-        std::vector<std::array<char, 128>> m_strings;
+        std::vector<std::array<char, 512>> m_strings;
     };
 
     class ColorProperty : public IProperty {

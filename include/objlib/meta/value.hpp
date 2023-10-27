@@ -491,6 +491,21 @@ namespace Toolbox::Object {
         }
     }
 
+    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value,
+                                                       std::string_view value, MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::STRING:
+                return meta_value->set(std::string(value));
+            case MetaType::COMMENT:
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
     inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, glm::vec3 value, MetaType type) {
         try {
             switch (type) {

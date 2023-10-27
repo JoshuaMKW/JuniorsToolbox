@@ -74,8 +74,7 @@ namespace Toolbox::UI {
     */
 
     static std::string getNodeUID(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
-        std::string node_name =
-            Util::SjisToUtf8(std::format("{} ({})", node->type(), node->getNameRef().name()));
+        std::string node_name = std::format("{} ({})", node->type(), node->getNameRef().name());
         node_name += std::format("##{}", node->getQualifiedName().toString());
         return node_name;
     }

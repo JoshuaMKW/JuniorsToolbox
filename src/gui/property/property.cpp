@@ -5,6 +5,23 @@
 
 #include <imgui.h>
 
+template <size_t _Size>
+static std::array<char, _Size> convertStringToArray(const std::string& str_data) {
+    std::array<char, _Size> ret;
+    std::copy(str_data.begin(), str_data.begin() + std::min(_Size, str_data.size()), ret.begin());
+    return ret;
+}
+
+template <size_t _Size>
+static std::string_view convertArrayToStringView(const std::array<char, _Size> &str_data) {
+    return std::string_view(str_data.data(), str_data.size());
+}
+
+template <size_t _Size>
+static std::string_view convertArrayToStringView(const std::array<const char, _Size> &str_data) {
+    return std::string_view(str_data.data(), str_data.size());
+}
+
 namespace Toolbox::UI {
     void BoolProperty::init() {
         m_bools.resize(m_member->arraysize());
@@ -304,12 +321,8 @@ namespace Toolbox::UI {
                 for (size_t i = 0; i < m_strings.size(); ++i) {
                     auto &str_data    = m_strings.at(i);
                     std::string label = std::format("##{}-{}", m_member->name().c_str(), i);
-                    std::string translated =
-                        Util::SjisToUtf8(std::string(str_data.begin(), str_data.end()));
-                    std::array<char, 128> value = {};
-                    std::copy(translated.begin(), translated.end(), value.begin());
-                    if (ImGui::InputText(label.c_str(), value.data(), value.size())) {
-                        Object::setMetaValue(m_member, i, std::string(value.begin(), value.end()));
+                    if (ImGui::InputText(label.c_str(), str_data.data(), str_data.size())) {
+                        Object::setMetaValue(m_member, i, convertArrayToStringView(str_data));
                     }
                 }
             }
@@ -326,11 +339,8 @@ namespace Toolbox::UI {
 
         std::string label = std::format("##{}", m_member->name().c_str());
         auto &str_data         = m_strings.at(0);
-        std::string translated = Util::SjisToUtf8(std::string(str_data.begin(), str_data.end()));
-        std::array<char, 512> value = {};
-        std::copy(translated.begin(), translated.end(), value.begin());
-        if (ImGui::InputText(label.c_str(), value.data(), value.size())) {
-            Object::setMetaValue(m_member, 0, Util::Utf8ToSjis(std::string(value.begin(), value.end())));
+        if (ImGui::InputText(label.c_str(), str_data.data(), str_data.size())) {
+            Object::setMetaValue(m_member, 0, convertArrayToStringView(str_data));
         }
     }
 
