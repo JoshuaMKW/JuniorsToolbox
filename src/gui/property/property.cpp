@@ -540,10 +540,9 @@ namespace Toolbox::UI {
     }
 
     void StructProperty::init() {
+        m_children_ary.resize(m_member->arraysize());
         for (size_t i = 0; i < m_children_ary.size(); ++i) {
-            auto struct_ = m_member->value<Object::MetaStruct>(i).value();
-            auto members = struct_->members();
-            for (size_t j = 0; j < members.size(); ++j) {
+            for (size_t j = 0; j < m_children_ary.at(i).size(); ++j) {
                 m_children_ary.at(i).at(j)->init();
             }
         }
@@ -565,11 +564,13 @@ namespace Toolbox::UI {
 
                     std::string array_name = std::format("Element {}", i);
                     ImGui::Text(array_name.c_str());
+                    ImGui::PushID(array_name.c_str());
                     for (size_t j = 0; j < members.size(); ++j) {
                         ImGui::Dummy({4, 0});
                         ImGui::SameLine();
                         m_children_ary.at(i).at(j)->render(label_width);
                     }
+                    ImGui::PopID();
 
                     if (i != m_children_ary.size() - 1)
                         ImGui::Spacing();
