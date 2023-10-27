@@ -1,12 +1,12 @@
 #include "gui/property/property.hpp"
+#include "gui/util.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/object.hpp"
-#include "gui/util.hpp"
 
 #include <imgui.h>
 
 template <size_t _Size>
-static std::array<char, _Size> convertStringToArray(const std::string& str_data) {
+static std::array<char, _Size> convertStringToArray(const std::string &str_data) {
     std::array<char, _Size> ret;
     std::copy(str_data.begin(), str_data.begin() + std::min(_Size, str_data.size()), ret.begin());
     return ret;
@@ -24,6 +24,7 @@ static std::string_view convertArrayToStringView(const std::array<const char, _S
 
 namespace Toolbox::UI {
     void BoolProperty::init() {
+        m_member->syncArray();
         m_bools.resize(m_member->arraysize());
         for (size_t i = 0; i < m_bools.size(); ++i) {
             m_bools.at(i) = Object::getMetaValue<bool>(m_member, i).value();
@@ -76,6 +77,7 @@ namespace Toolbox::UI {
     }
 
     void NumberProperty::init() {
+        m_member->syncArray();
         m_numbers.resize(m_member->arraysize());
 
         switch (Object::getMetaType(m_member).value()) {
@@ -194,6 +196,7 @@ namespace Toolbox::UI {
     }
 
     void FloatProperty::init() {
+        m_member->syncArray();
         m_numbers.resize(m_member->arraysize());
 
         switch (Object::getMetaType(m_member).value()) {
@@ -284,6 +287,7 @@ namespace Toolbox::UI {
     }
 
     void StringProperty::init() {
+        m_member->syncArray();
         m_strings.resize(m_member->arraysize());
 
         for (size_t i = 0; i < m_strings.size(); ++i) {
@@ -338,13 +342,16 @@ namespace Toolbox::UI {
         }
 
         std::string label = std::format("##{}", m_member->name().c_str());
-        auto &str_data         = m_strings.at(0);
+        auto &str_data    = m_strings.at(0);
         if (ImGui::InputText(label.c_str(), str_data.data(), str_data.size())) {
             Object::setMetaValue(m_member, 0, convertArrayToStringView(str_data));
         }
     }
 
-    void ColorProperty::init() { m_colors.resize(m_member->arraysize()); }
+    void ColorProperty::init() {
+        m_member->syncArray();
+        m_colors.resize(m_member->arraysize());
+    }
 
     void ColorProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
@@ -428,11 +435,11 @@ namespace Toolbox::UI {
     }
 
     // TODO: Implement these!
-    void VectorProperty::init() {}
+    void VectorProperty::init() { m_member->syncArray(); }
 
     void VectorProperty::render(float label_width) {}
 
-    void TransformProperty::init() {}
+    void TransformProperty::init() { m_member->syncArray(); }
 
     void TransformProperty::render(float label_width) {}
 
@@ -528,9 +535,9 @@ namespace Toolbox::UI {
     }
 
     StructProperty::StructProperty(std::shared_ptr<Object::MetaMember> prop) : IProperty(prop) {
+        prop->syncArray();
         m_children_ary.resize(prop->arraysize());
-        for (size_t i = 0; i < prop->arraysize(); ++i) {
-            prop->syncArray();
+        for (size_t i = 0; i < m_children_ary.size(); ++i) {
             auto struct_ = prop->value<Object::MetaStruct>(i).value();
             auto members = struct_->members();
             for (size_t j = 0; j < members.size(); ++j) {
@@ -540,16 +547,40 @@ namespace Toolbox::UI {
     }
 
     void StructProperty::init() {
+        m_member->syncArray();
+
+        size_t min_end = std::min(m_children_ary.size(), size_t(m_member->arraysize()));
         m_children_ary.resize(m_member->arraysize());
-        for (size_t i = 0; i < m_children_ary.size(); ++i) {
+
+        for (size_t i = 0; i < min_end; ++i) {
+            auto struct_ = m_member->value<Object::MetaStruct>(i).value();
+            auto members = struct_->members();
             for (size_t j = 0; j < m_children_ary.at(i).size(); ++j) {
                 m_children_ary.at(i).at(j)->init();
+            }
+        }
+
+        if (min_end >= m_member->arraysize()) {
+            return;
+        }
+
+        for (size_t i = min_end; i < m_children_ary.size(); ++i) {
+            auto struct_ = m_member->value<Object::MetaStruct>(i).value();
+            auto members = struct_->members();
+            for (size_t j = 0; j < members.size(); ++j) {
+                auto new_prop = createProperty(members.at(j));
+                new_prop->init();
+                m_children_ary.at(i).push_back(std::move(new_prop));
             }
         }
     }
 
     void StructProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
+
+        if (m_children_ary.size() != m_member->arraysize()) {
+            init();
+        }
 
         ImGuiID struct_id = ImGui::GetID(m_member->name().c_str());
         if (ImGui::BeginChild(struct_id, {0, 200}, true)) {
