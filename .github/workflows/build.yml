@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, experimental_rendering ]
   pull_request:
     branches: [ master ]
   workflow_dispatch:
