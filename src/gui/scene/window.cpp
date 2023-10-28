@@ -364,7 +364,7 @@ namespace Toolbox::UI {
                 label_width = std::max(label_width, prop->labelSize().x);
             }
             for (auto &prop : m_selected_properties) {
-                prop->render(label_width);
+                m_is_viewport_dirty |= prop->render(label_width);
                 ImGui::ItemSize({0, 2});
             }
         }

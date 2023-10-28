@@ -503,6 +503,15 @@ namespace Toolbox::Object {
                                       model_cache_t &model_cache) {
 
         if (m_model_instance) {
+            auto transform_member = getMember(std::string("Transform"));
+            auto transform_value_ptr =
+                std::get<std::shared_ptr<MetaMember>>(transform_member.value());
+            if (transform_value_ptr) {
+                Transform transform = getMetaValue<Transform>(transform_value_ptr).value();
+                m_model_instance->SetTranslation(transform.m_translation);
+                m_model_instance->SetRotation(transform.m_rotation);
+                m_model_instance->SetScale(transform.m_scale);
+            }
             renderables.push_back(m_model_instance);
         } else {
             auto modelNameExpected = getMember(QualifiedName(std::string("Model")));

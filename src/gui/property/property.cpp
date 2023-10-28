@@ -32,7 +32,7 @@ namespace Toolbox::UI {
         }
     }
 
-    void BoolProperty::render(float label_width) {
+    bool BoolProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
@@ -47,34 +47,40 @@ namespace Toolbox::UI {
             init();
         }
 
+        bool any_changed = false;
+
         const bool is_array = m_member->isArray();
 
         ImVec2 window_size        = ImGui::GetWindowSize();
-        const bool collapse_lines = window_size.x < 400;
+        const bool collapse_lines = window_size.x < 200;
 
-        ImGui::Text(m_member->name().c_str());
         if (is_array || m_member->isEmpty()) {
-
-            ImGuiID array_id = ImGui::GetID(m_member->name().c_str());
-            if (ImGui::BeginChild(array_id, {0, 100}, true)) {
+            if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
                 for (size_t i = 0; i < m_bools.size(); ++i) {
-                    std::string label = std::format("##{}-{}", m_member->name().c_str(), i);
-                    ImGui::Checkbox(label.c_str(), reinterpret_cast<bool *>(m_bools.data() + i));
+                    std::string id_str = std::format("##{}-{}", m_member->name().c_str(), i);
+                    std::string name   = std::format("[{}]", i);
+                    ImGui::Text(name.c_str());
+                    ImGui::SameLine();
+                    any_changed |= ImGui::Checkbox(id_str.c_str(),
+                                                   reinterpret_cast<bool *>(m_bools.data() + i));
                 }
             }
-            ImGui::EndChild();
+            ImGui::EndGroupPanel();
 
-            return;
+            return any_changed;
         }
 
+        ImGui::Text(m_member->name().c_str());
         if (!collapse_lines) {
             ImGui::SameLine();
             ImGui::Dummy({label_width - ImGui::CalcTextSize(m_member->name().c_str()).x, 0});
             ImGui::SameLine();
         }
 
-        std::string label = std::format("##{}", m_member->name().c_str());
-        ImGui::Checkbox(label.c_str(), reinterpret_cast<bool *>(m_bools.data()));
+        std::string id_str = std::format("##{}", m_member->name().c_str());
+        any_changed |= ImGui::Checkbox(id_str.c_str(), reinterpret_cast<bool *>(m_bools.data()));
+
+        return any_changed;
     }
 
     void NumberProperty::init() {
@@ -134,7 +140,7 @@ namespace Toolbox::UI {
         }
     }
 
-    void NumberProperty::render(float label_width) {
+    bool NumberProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
@@ -149,22 +155,24 @@ namespace Toolbox::UI {
             init();
         }
 
+        bool any_changed = false;
+
         const bool is_array = m_member->isArray();
 
         ImVec2 window_size        = ImGui::GetWindowSize();
-        const bool collapse_lines = window_size.x < 400;
+        const bool collapse_lines = window_size.x < 200;
 
-        ImGui::Text(m_member->name().c_str());
         if (is_array || m_member->isEmpty()) {
-
-            ImGuiID array_id = ImGui::GetID(m_member->name().c_str());
-            if (ImGui::BeginChild(array_id, {0, 100}, true)) {
+            if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
                 for (size_t i = 0; i < m_numbers.size(); ++i) {
-                    std::string label = std::format("##{}-{}", m_member->name().c_str(), i);
-                    if (ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, m_numbers.data() + i,
-                                           nullptr, nullptr, nullptr,
-                                           ImGuiInputTextFlags_CharsDecimal |
-                                               ImGuiInputTextFlags_CharsNoBlank)) {
+                    std::string id_str = std::format("##{}-{}", m_member->name().c_str(), i);
+                    std::string name   = std::format("[{}]", i);
+                    ImGui::Text(name.c_str());
+                    ImGui::SameLine();
+                    if (ImGui::InputScalarCompact(
+                            id_str.c_str(), ImGuiDataType_S64, m_numbers.data() + i, &m_step,
+                            &m_step_fast, nullptr,
+                            ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
                         s64 &number = m_numbers.at(i);
                         if (number > m_max) {
                             number = m_min + (number - m_max);
@@ -172,13 +180,16 @@ namespace Toolbox::UI {
                             number = m_max + (number - m_min);
                         }
                         Object::setMetaValue(m_member, i, number);
+                        any_changed = true;
                     }
                 }
             }
-            ImGui::EndChild();
+            ImGui::EndGroupPanel();
 
-            return;
+            return any_changed;
         }
+
+        ImGui::Text(m_member->name().c_str());
 
         if (!collapse_lines) {
             ImGui::SameLine();
@@ -187,13 +198,16 @@ namespace Toolbox::UI {
         }
 
         std::string label = std::format("##{}", m_member->name().c_str());
-        if (ImGui::InputScalar(
-                label.c_str(), ImGuiDataType_S64, m_numbers.data(), nullptr, nullptr, nullptr,
+        if (ImGui::InputScalarCompact(
+                label.c_str(), ImGuiDataType_S64, m_numbers.data(), &m_step, &m_step_fast, nullptr,
                 ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
             s64 &number = m_numbers.at(0);
             number      = std::clamp(number, m_min, m_max);
             Object::setMetaValue(m_member, 0, number);
+            any_changed = true;
         }
+
+        return any_changed;
     }
 
     void FloatProperty::init() {
@@ -225,7 +239,7 @@ namespace Toolbox::UI {
         }
     }
 
-    void FloatProperty::render(float label_width) {
+    bool FloatProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
@@ -240,22 +254,24 @@ namespace Toolbox::UI {
             init();
         }
 
+        bool any_changed = false;
+
         const bool is_array = m_member->isArray();
 
         ImVec2 window_size        = ImGui::GetWindowSize();
-        const bool collapse_lines = window_size.x < 400;
+        const bool collapse_lines = window_size.x < 200;
 
-        ImGui::Text(m_member->name().c_str());
         if (is_array || m_member->isEmpty()) {
-
-            ImGuiID array_id = ImGui::GetID(m_member->name().c_str());
-            if (ImGui::BeginChild(array_id, {0, 100}, true)) {
+            if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
                 for (size_t i = 0; i < m_numbers.size(); ++i) {
-                    std::string label = std::format("##{}-{}", m_member->name().c_str(), i);
-                    if (ImGui::InputScalar(label.c_str(), ImGuiDataType_Double,
-                                           m_numbers.data() + i, nullptr, nullptr, nullptr,
-                                           ImGuiInputTextFlags_CharsDecimal |
-                                               ImGuiInputTextFlags_CharsNoBlank)) {
+                    std::string id_str = std::format("##{}-{}", m_member->name().c_str(), i);
+                    std::string name   = std::format("[{}]", i);
+                    ImGui::Text(name.c_str());
+                    ImGui::SameLine();
+                    if (ImGui::InputScalarCompact(
+                            id_str.c_str(), ImGuiDataType_Double, m_numbers.data() + i, &m_step,
+                            &m_step_fast, nullptr,
+                            ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
                         f64 &number = m_numbers.at(i);
                         if (number > m_max) {
                             number = m_min + (number - m_max);
@@ -263,13 +279,16 @@ namespace Toolbox::UI {
                             number = m_max + (number - m_min);
                         }
                         Object::setMetaValue(m_member, i, number);
+                        any_changed = true;
                     }
                 }
             }
-            ImGui::EndChild();
+            ImGui::EndGroupPanel();
 
-            return;
+            return any_changed;
         }
+
+        ImGui::Text(m_member->name().c_str());
 
         if (!collapse_lines) {
             ImGui::SameLine();
@@ -278,13 +297,16 @@ namespace Toolbox::UI {
         }
 
         std::string label = std::format("##{}", m_member->name().c_str());
-        if (ImGui::InputScalar(
-                label.c_str(), ImGuiDataType_Double, m_numbers.data(), nullptr, nullptr, nullptr,
-                ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
+        if (ImGui::InputScalarCompact(
+                label.c_str(), ImGuiDataType_Double, m_numbers.data(), &m_step, &m_step_fast,
+                nullptr, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
             f64 &number = m_numbers.at(0);
             number      = std::clamp(number, m_min, m_max);
             Object::setMetaValue(m_member, 0, number);
+            any_changed = true;
         }
+
+        return any_changed;
     }
 
     void StringProperty::init() {
@@ -298,7 +320,7 @@ namespace Toolbox::UI {
         }
     }
 
-    void StringProperty::render(float label_width) {
+    bool StringProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
@@ -309,32 +331,37 @@ namespace Toolbox::UI {
             std::cout << "Trying to render enum as number" << std::endl;
         }
 
+        bool any_changed = false;
+
         const bool is_array = m_member->isArray();
 
         ImVec2 window_size        = ImGui::GetWindowSize();
-        const bool collapse_lines = window_size.x < 400;
+        const bool collapse_lines = window_size.x < 200;
 
         if (m_strings.size() != m_member->arraysize()) {
             init();
         }
 
-        ImGui::Text(m_member->name().c_str());
         if (is_array || m_member->isEmpty()) {
-
-            ImGuiID array_id = ImGui::GetID(m_member->name().c_str());
-            if (ImGui::BeginChild(array_id, {0, 100}, true)) {
+            if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
                 for (size_t i = 0; i < m_strings.size(); ++i) {
-                    auto &str_data    = m_strings.at(i);
-                    std::string label = std::format("##{}-{}", m_member->name().c_str(), i);
-                    if (ImGui::InputText(label.c_str(), str_data.data(), str_data.size())) {
+                    auto &str_data     = m_strings.at(i);
+                    std::string id_str = std::format("##{}-{}", m_member->name().c_str(), i);
+                    std::string name   = std::format("[{}]", i);
+                    ImGui::Text(name.c_str());
+                    ImGui::SameLine();
+                    if (ImGui::InputText(id_str.c_str(), str_data.data(), str_data.size())) {
                         Object::setMetaValue(m_member, i, convertArrayToStringView(str_data));
+                        any_changed = true;
                     }
                 }
             }
-            ImGui::EndChild();
+            ImGui::EndGroupPanel();
 
-            return;
+            return any_changed;
         }
+
+        ImGui::Text(m_member->name().c_str());
 
         if (!collapse_lines) {
             ImGui::SameLine();
@@ -346,7 +373,10 @@ namespace Toolbox::UI {
         auto &str_data    = m_strings.at(0);
         if (ImGui::InputText(label.c_str(), str_data.data(), str_data.size())) {
             Object::setMetaValue(m_member, 0, convertArrayToStringView(str_data));
+            any_changed = true;
         }
+
+        return any_changed;
     }
 
     void ColorProperty::init() {
@@ -354,7 +384,7 @@ namespace Toolbox::UI {
         m_colors.resize(m_member->arraysize());
     }
 
-    void ColorProperty::render(float label_width) {
+    bool ColorProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
@@ -365,34 +395,33 @@ namespace Toolbox::UI {
             std::cout << "Trying to render enum as number" << std::endl;
         }
 
+        bool any_changed = false;
+
         const bool use_alpha = Object::getMetaType(m_member).value() == Object::MetaType::RGBA;
 
         const bool is_array = m_member->isArray();
 
         ImVec2 window_size        = ImGui::GetWindowSize();
-        const bool collapse_lines = window_size.x < 400;
+        const bool collapse_lines = window_size.x < 200;
 
         if (m_colors.size() != m_member->arraysize()) {
             init();
         }
 
-        ImGui::Text(m_member->name().c_str());
         if (is_array || m_member->isEmpty()) {
-
-            ImGuiID array_id = ImGui::GetID(m_member->name().c_str());
-            if (ImGui::BeginChild(array_id, {0, 100}, true)) {
+            if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
                 for (size_t i = 0; i < m_colors.size(); ++i) {
                     Color::RGBA32 &color = m_colors.at(i);
 
-                    ImGui::InputScalar("r", ImGuiDataType_U8, &color.m_r, nullptr, nullptr, nullptr,
-                                       ImGuiInputTextFlags_CharsDecimal |
-                                           ImGuiInputTextFlags_CharsNoBlank);
-                    ImGui::InputScalar("g", ImGuiDataType_U8, &color.m_g, nullptr, nullptr, nullptr,
-                                       ImGuiInputTextFlags_CharsDecimal |
-                                           ImGuiInputTextFlags_CharsNoBlank);
-                    ImGui::InputScalar("b", ImGuiDataType_U8, &color.m_b, nullptr, nullptr, nullptr,
-                                       ImGuiInputTextFlags_CharsDecimal |
-                                           ImGuiInputTextFlags_CharsNoBlank);
+                    any_changed |= ImGui::InputScalar(
+                        "r", ImGuiDataType_U8, &color.m_r, nullptr, nullptr, nullptr,
+                        ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
+                    any_changed |= ImGui::InputScalar(
+                        "g", ImGuiDataType_U8, &color.m_g, nullptr, nullptr, nullptr,
+                        ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
+                    any_changed |= ImGui::InputScalar(
+                        "b", ImGuiDataType_U8, &color.m_b, nullptr, nullptr, nullptr,
+                        ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
 
                     if (use_alpha) {
                         ImGui::InputScalar(
@@ -405,10 +434,12 @@ namespace Toolbox::UI {
                     }
                 }
             }
-            ImGui::EndChild();
+            ImGui::EndGroupPanel();
 
-            return;
+            return any_changed;
         }
+
+        ImGui::Text(m_member->name().c_str());
 
         if (!collapse_lines) {
             ImGui::SameLine();
@@ -418,33 +449,65 @@ namespace Toolbox::UI {
 
         Color::RGBA32 &color = m_colors.at(0);
 
-        ImGui::InputScalar("r", ImGuiDataType_U8, &color.m_r, nullptr, nullptr, nullptr,
-                           ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
-        ImGui::InputScalar("g", ImGuiDataType_U8, &color.m_g, nullptr, nullptr, nullptr,
-                           ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
-        ImGui::InputScalar("b", ImGuiDataType_U8, &color.m_b, nullptr, nullptr, nullptr,
-                           ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
+        any_changed |=
+            ImGui::InputScalar("r", ImGuiDataType_U8, &color.m_r, nullptr, nullptr, nullptr,
+                               ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
+        any_changed |=
+            ImGui::InputScalar("g", ImGuiDataType_U8, &color.m_g, nullptr, nullptr, nullptr,
+                               ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
+        any_changed |=
+            ImGui::InputScalar("b", ImGuiDataType_U8, &color.m_b, nullptr, nullptr, nullptr,
+                               ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
 
         if (use_alpha) {
-            ImGui::InputScalar("a", ImGuiDataType_U8, &color.m_a, nullptr, nullptr, nullptr,
-                               ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
+            any_changed |= ImGui::InputScalar(
+                "a", ImGuiDataType_U8, &color.m_a, nullptr, nullptr, nullptr,
+                ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
             Object::setMetaValue<Color::RGBA32>(m_member, 0, color);
         } else {
             Object::setMetaValue<Color::RGB24>(m_member, 0,
                                                Color::RGB24(color.m_r, color.m_g, color.m_b));
         }
+
+        return any_changed;
     }
 
     // TODO: Implement these!
-    void VectorProperty::init() { m_member->syncArray(); }
+    void VectorProperty::init() {
+        m_member->syncArray();
+        m_vectors.resize(m_member->arraysize());
 
-    void VectorProperty::render(float label_width) {}
+        switch (Object::getMetaType(m_member).value()) {
+        default:
+        case Object::MetaType::VEC3:
+            for (size_t i = 0; i < m_vectors.size(); ++i) {
+                m_vectors.at(i) = Object::getMetaValue<glm::vec3>(m_member, i).value();
+            }
+            m_min = -FLT_MAX;
+            m_max = FLT_MAX;
+            break;
+        }
+    }
 
-    void TransformProperty::init() { m_member->syncArray(); }
+    bool VectorProperty::render(float label_width) { return false; }
 
-    void TransformProperty::render(float label_width) {}
+    void TransformProperty::init() {
+        m_member->syncArray();
+        m_transforms.resize(m_member->arraysize());
 
-    void EnumProperty::render(float label_width) {
+        switch (Object::getMetaType(m_member).value()) {
+        default:
+        case Object::MetaType::TRANSFORM:
+            for (size_t i = 0; i < m_transforms.size(); ++i) {
+                m_transforms.at(i) = Object::getMetaValue<Object::Transform>(m_member, i).value();
+            }
+            m_min = -FLT_MAX;
+            m_max = FLT_MAX;
+            break;
+        }
+    }
+
+    bool TransformProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
@@ -454,6 +517,122 @@ namespace Toolbox::UI {
         if (!m_member->isTypeEnum()) {
             std::cout << "Trying to render number as enum" << std::endl;
         }
+
+        if (m_transforms.size() != m_member->arraysize()) {
+            init();
+        }
+
+        bool any_changed = false;
+
+        if (ImGui::CollapsingHeader(m_member->name().c_str())) {
+            if (m_transforms.size() > 1) {
+                float label_width = 0;
+                for (size_t i = 0; i < m_transforms.size(); ++i) {
+                    auto struct_ = m_member->value<Object::MetaStruct>(i).value();
+                    auto members = struct_->members();
+
+                    std::string array_name = std::format("[{}]##{}", i, m_member->name().c_str());
+                    if (ImGui::BeginGroupPanel(array_name.c_str(),
+                                               reinterpret_cast<bool *>(m_array_open.data() + i),
+                                               {})) {
+                        ImGui::PushID("Translation");
+                        ImGui::Text("Translation");
+                        if (ImGui::InputScalarCompactN(
+                                "##Translation", ImGuiDataType_Float,
+                                reinterpret_cast<f32 *>(&m_transforms.at(i).m_translation), 3,
+                                &m_step, &m_step_fast, "%.3f")) {
+                            Object::setMetaValue(m_member, 0, m_transforms.at(i),
+                                                 Object::MetaType::TRANSFORM);
+                            any_changed = true;
+                        }
+                        ImGui::Spacing();
+                        ImGui::PopID();
+
+                        ImGui::PushID("Rotation");
+                        ImGui::Text("Rotation");
+                        if (ImGui::InputScalarCompactN(
+                                "##Rotation", ImGuiDataType_Float,
+                                reinterpret_cast<f32 *>(&m_transforms.at(i).m_rotation), 3, &m_step,
+                                &m_step_fast, "%.3f")) {
+                            Object::setMetaValue(m_member, 0, m_transforms.at(i),
+                                                 Object::MetaType::TRANSFORM);
+                            any_changed = true;
+                        }
+                        ImGui::Spacing();
+                        ImGui::PopID();
+
+                        ImGui::PushID("Scale");
+                        ImGui::Text("Scale");
+                        if (ImGui::InputScalarCompactN(
+                                "##Scale", ImGuiDataType_Float,
+                                reinterpret_cast<f32 *>(&m_transforms.at(i).m_scale), 3, &m_step,
+                                &m_step_fast, "%.3f")) {
+                            Object::setMetaValue(m_member, 0, m_transforms.at(i),
+                                                 Object::MetaType::TRANSFORM);
+                            any_changed = true;
+                        }
+                        ImGui::Spacing();
+                        ImGui::PopID();
+                    }
+                    ImGui::EndGroupPanel();
+                }
+            } else if (m_transforms.size() == 1) {
+                ImGui::PushID("Translation");
+                ImGui::Text("Translation");
+                if (ImGui::InputScalarCompactN(
+                        "##Translation", ImGuiDataType_Float,
+                        reinterpret_cast<f32 *>(&m_transforms.at(0).m_translation), 3, &m_step,
+                        &m_step_fast, "%.3f")) {
+                    Object::setMetaValue(m_member, 0, m_transforms.at(0),
+                                         Object::MetaType::TRANSFORM);
+                    any_changed = true;
+                }
+                ImGui::Spacing();
+                ImGui::PopID();
+
+                ImGui::PushID("Rotation");
+                ImGui::Text("Rotation");
+                if (ImGui::InputScalarCompactN(
+                        "##Rotation", ImGuiDataType_Float,
+                        reinterpret_cast<f32 *>(&m_transforms.at(0).m_rotation), 3, &m_step,
+                        &m_step_fast, "%.3f")) {
+                    Object::setMetaValue(m_member, 0, m_transforms.at(0),
+                                         Object::MetaType::TRANSFORM);
+                    any_changed = true;
+                }
+                ImGui::Spacing();
+                ImGui::PopID();
+
+                ImGui::PushID("Scale");
+                ImGui::Text("Scale");
+                if (ImGui::InputScalarCompactN("##Scale", ImGuiDataType_Float,
+                                               reinterpret_cast<f32 *>(&m_transforms.at(0).m_scale),
+                                               3, &m_step, &m_step_fast, "%.3f")) {
+                    Object::setMetaValue(m_member, 0, m_transforms.at(0),
+                                         Object::MetaType::TRANSFORM);
+                    any_changed = true;
+                }
+                ImGui::Spacing();
+                ImGui::PopID();
+            }
+        }
+        ImGui::ItemSize({0, 4});
+
+        return any_changed;
+    }
+
+    bool EnumProperty::render(float label_width) {
+        ImGuiStyle &style = ImGui::GetStyle();
+
+        if (m_member->isTypeStruct()) {
+            std::cout << "Trying to render struct as enum" << std::endl;
+        }
+
+        if (!m_member->isTypeEnum()) {
+            std::cout << "Trying to render number as enum" << std::endl;
+        }
+
+        bool any_changed = false;
 
         auto enum_values = Object::getMetaEnumValues(m_member).value();
 
@@ -475,16 +654,12 @@ namespace Toolbox::UI {
         const bool is_array = m_member->isArray();
 
         ImVec2 window_size        = ImGui::GetWindowSize();
-        const bool collapse_lines = window_size.x < 400;
-
-        ImGui::Text(m_member->name().c_str());
+        const bool collapse_lines = window_size.x < 200;
         if (is_array || m_member->isEmpty()) {
-
-            ImGuiID array_id = ImGui::GetID(m_member->name().c_str());
-            if (ImGui::BeginChild(array_id, {0, 100}, true)) {
+            if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
                 for (size_t i = 0; i < m_checked_state.size(); ++i) {
                     ImGuiID array_enum_id =
-                        ImGui::GetID(std::format("##{}-{}", m_member->name(), i).c_str());
+                        ImGui::GetID(std::format("##{}-{}", m_member->name().c_str(), i).c_str());
                     if (ImGui::BeginChild(array_enum_id, {0, 100}, true)) {
                         s64 &number = m_numbers.at(i);
                         for (size_t j = 0; j < m_checked_state.at(0).size(); ++j) {
@@ -497,6 +672,7 @@ namespace Toolbox::UI {
                                 } else {
                                     number &= ~(1 << j);
                                 }
+                                any_changed = true;
                             }
                         }
                         Object::setMetaValue(m_member, i, number);
@@ -504,10 +680,13 @@ namespace Toolbox::UI {
                     ImGui::EndChild();
                 }
             }
-            ImGui::EndChild();
+            ImGui::EndGroupPanel();
 
-            return;
+            return any_changed;
         }
+
+        ImGui::Text(m_member->name().c_str());
+
         ImVec2 rect_pos_min = ImGui::GetCursorPos();
         float rect_width    = ImGui::GetWindowSize().x - (style.WindowPadding.x * 2);
 
@@ -522,6 +701,7 @@ namespace Toolbox::UI {
                 } else {
                     number &= ~(1 << j);
                 }
+                any_changed = true;
             }
         }
         Object::setMetaValue(m_member, 0, number);
@@ -533,6 +713,8 @@ namespace Toolbox::UI {
         draw_list->AddRect(rect_pos_min, rect_pos_max,
                            ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_Border]),
                            ImDrawListFlags_AntiAliasedLines);
+
+        return any_changed;
     }
 
     StructProperty::StructProperty(std::shared_ptr<Object::MetaMember> prop)
@@ -579,12 +761,14 @@ namespace Toolbox::UI {
         }
     }
 
-    void StructProperty::render(float label_width) {
+    bool StructProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_children_ary.size() != m_member->arraysize()) {
             init();
         }
+
+        bool any_changed = false;
 
         ImGuiID struct_id = ImGui::GetID(m_member->name().c_str());
         // ImGui::PushID(struct_id);
@@ -592,20 +776,18 @@ namespace Toolbox::UI {
             if (m_children_ary.size() > 1) {
                 float label_width = 0;
                 for (size_t i = 0; i < m_children_ary.at(0).size(); ++i) {
-                    label_width =
-                        std::max(label_width, m_children_ary.at(0).at(i)->labelSize().x);
+                    label_width = std::max(label_width, m_children_ary.at(0).at(i)->labelSize().x);
                 }
                 for (size_t i = 0; i < m_children_ary.size(); ++i) {
                     auto struct_ = m_member->value<Object::MetaStruct>(i).value();
                     auto members = struct_->members();
 
-                    std::string array_name =
-                        std::format("[{}]##{}", i, m_member->name().c_str());
-                    if (ImGui::BeginGroupPanel(
-                            array_name.c_str(),
-                            reinterpret_cast<bool *>(m_array_open.data() + i), {})) {
+                    std::string array_name = std::format("[{}]##{}", i, m_member->name().c_str());
+                    if (ImGui::BeginGroupPanel(array_name.c_str(),
+                                               reinterpret_cast<bool *>(m_array_open.data() + i),
+                                               {})) {
                         for (size_t j = 0; j < members.size(); ++j) {
-                            m_children_ary.at(i).at(j)->render(label_width);
+                            any_changed |= m_children_ary.at(i).at(j)->render(label_width);
                             ImGui::ItemSize({0, 2});
                         }
                     }
@@ -614,28 +796,19 @@ namespace Toolbox::UI {
             } else if (m_children_ary.size() == 1) {
                 float label_width = 0;
                 for (size_t i = 0; i < m_children_ary.at(0).size(); ++i) {
-                    label_width =
-                        std::max(label_width, m_children_ary.at(0).at(i)->labelSize().x);
+                    label_width = std::max(label_width, m_children_ary.at(0).at(i)->labelSize().x);
                 }
                 auto struct_ = m_member->value<Object::MetaStruct>(0).value();
                 auto members = struct_->members();
                 for (size_t j = 0; j < members.size(); ++j) {
-                    m_children_ary.at(0).at(j)->render(label_width);
+                    any_changed |= m_children_ary.at(0).at(j)->render(label_width);
                     ImGui::ItemSize({0, 2});
                 }
             }
         }
         ImGui::ItemSize({0, 4});
 
-        // ImGui::PopID();
-
-        // ImVec2 item_rect_min = ImGui::GetItemRectMin();
-        // ImVec2 item_rect_max = ImGui::GetItemRectMax();
-
-        // ImDrawList *draw_list = ImGui::GetWindowDrawList();
-        // draw_list->AddRect(item_rect_min, item_rect_max,
-        //                    ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_Border])); //
-        //                    Red color for the border
+        return any_changed;
     }
 
     std::unique_ptr<IProperty> createProperty(std::shared_ptr<Object::MetaMember> m_member) {

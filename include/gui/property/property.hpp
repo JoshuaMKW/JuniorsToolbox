@@ -16,7 +16,7 @@ namespace Toolbox::UI {
 
         virtual std::shared_ptr<Object::MetaMember> member() { return m_member; }
         virtual void init() = 0;
-        virtual void render(float label_width) = 0;
+        virtual bool render(float label_width) = 0;
 
         ImVec2 labelSize();
 
@@ -30,10 +30,11 @@ namespace Toolbox::UI {
         ~BoolProperty() override = default;
 
         void init() override;
-        void render(float label_width) override;
+        bool render(float label_width) override;
     
     private:
         std::vector<char> m_bools;
+        bool m_open     = false;
     };
 
     class NumberProperty : public IProperty {
@@ -42,13 +43,16 @@ namespace Toolbox::UI {
         ~NumberProperty() override = default;
 
         void init() override;
-        void render(float label_width) override;
+        bool render(float label_width) override;
 
         std::vector<s64> m_numbers;
 
     private:
         s64 m_min;
         s64 m_max;
+        s64 m_step      = 1;
+        s64 m_step_fast = 10;
+        bool m_open = false;
     };
 
     class FloatProperty : public IProperty {
@@ -57,12 +61,15 @@ namespace Toolbox::UI {
         ~FloatProperty() override = default;
 
         void init() override;
-        void render(float label_width) override;
+        bool render(float label_width) override;
 
     private:
         std::vector<f64> m_numbers;
         f64 m_min;
         f64 m_max;
+        f32 m_step      = 1.0f;
+        f32 m_step_fast = 10.0f;
+        bool m_open = false;
     };
 
     class StringProperty : public IProperty {
@@ -71,10 +78,11 @@ namespace Toolbox::UI {
         ~StringProperty() override = default;
 
         void init() override;
-        void render(float label_width) override;
+        bool render(float label_width) override;
 
     private:
         std::vector<std::array<char, 512>> m_strings;
+        bool m_open = false;
     };
 
     class ColorProperty : public IProperty {
@@ -83,10 +91,13 @@ namespace Toolbox::UI {
         ~ColorProperty() override = default;
 
         void init() override;
-        void render(float label_width) override;
+        bool render(float label_width) override;
 
     private:
         std::vector<Color::RGBA32> m_colors;
+        bool m_open     = false;
+        s64 m_step      = 1;
+        s64 m_step_fast = 10;
     };
 
     class VectorProperty : public IProperty {
@@ -95,10 +106,15 @@ namespace Toolbox::UI {
         ~VectorProperty() override = default;
 
         void init() override;
-        void render(float label_width) override;
+        bool render(float label_width) override;
 
     private:
         std::vector<glm::vec3> m_vectors;
+        f32 m_min   = -FLT_MAX;
+        f32 m_max   = FLT_MAX;
+        f32 m_step      = 1.0f;
+        f32 m_step_fast = 10.0f;
+        bool m_open = false;
     };
 
     class TransformProperty : public IProperty {
@@ -107,10 +123,16 @@ namespace Toolbox::UI {
         ~TransformProperty() override = default;
 
         void init() override;
-        void render(float label_width) override;
+        bool render(float label_width) override;
 
     private:
         std::vector<Object::Transform> m_transforms;
+        f32 m_min                      = -FLT_MAX;
+        f32 m_max                      = FLT_MAX;
+        f32 m_step                     = 1.0f;
+        f32 m_step_fast                = 10.0f;
+        bool m_open = false;
+        std::vector<char> m_array_open = {};
     };
 
     class EnumProperty : public NumberProperty {
@@ -118,10 +140,11 @@ namespace Toolbox::UI {
         EnumProperty(std::shared_ptr<Object::MetaMember> prop) : NumberProperty(prop) {}
         ~EnumProperty() override = default;
 
-        void render(float label_width) override;
+        bool render(float label_width) override;
 
     private:
         std::vector<std::vector<char>> m_checked_state;
+        bool m_open = false;
     };
 
     class StructProperty : public IProperty {
@@ -130,7 +153,7 @@ namespace Toolbox::UI {
         ~StructProperty() override = default;
 
         void init() override;
-        void render(float label_width) override;
+        bool render(float label_width) override;
 
     private:
         std::vector<std::vector<std::unique_ptr<IProperty>>> m_children_ary;

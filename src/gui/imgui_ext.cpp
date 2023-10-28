@@ -4,6 +4,28 @@
 #include <vector>
 // #include <imgui.h>
 
+static const ImGuiDataTypeInfo GDataTypeInfo[] = {
+    {sizeof(char),           "S8",     "%d",    "%d"   }, // ImGuiDataType_S8
+    {sizeof(unsigned char),  "U8",     "%u",    "%u"   },
+    {sizeof(short),          "S16",    "%d",    "%d"   }, // ImGuiDataType_S16
+    {sizeof(unsigned short), "U16",    "%u",    "%u"   },
+    {sizeof(int),            "S32",    "%d",    "%d"   }, // ImGuiDataType_S32
+    {sizeof(unsigned int),   "U32",    "%u",    "%u"   },
+#ifdef _MSC_VER
+    {sizeof(ImS64),          "S64",    "%I64d", "%I64d"}, // ImGuiDataType_S64
+    {sizeof(ImU64),          "U64",    "%I64u", "%I64u"},
+#else
+    {sizeof(ImS64), "S64", "%lld", "%lld"},  // ImGuiDataType_S64
+    {sizeof(ImU64), "U64", "%llu", "%llu"},
+#endif
+    {sizeof(float),          "float",  "%.3f",
+     "%f"                                              }, // ImGuiDataType_Float (float are promoted to double in va_arg)
+    {sizeof(double),         "double", "%f",    "%lf"  }, // ImGuiDataType_Double
+};
+IM_STATIC_ASSERT(IM_ARRAYSIZE(GDataTypeInfo) == ImGuiDataType_COUNT);
+
+// ----------------------------------------------- //
+
 static std::vector<bool *> s_open_stack;
 
 bool ImGui::BeginGroupPanel(const char *name, bool *open, const ImVec2 &size) {
@@ -200,4 +222,178 @@ bool ImGui::BeginChildPanel(ImGuiID id, const ImVec2 &size, ImGuiWindowFlags ext
 void ImGui::EndChildPanel() {
     EndChild();
     s_panel_stack.pop_back();
+}
+
+static inline ImGuiInputTextFlags InputScalar_DefaultCharsFilter(ImGuiDataType data_type,
+                                                                 const char *format) {
+    if (data_type == ImGuiDataType_Float || data_type == ImGuiDataType_Double)
+        return ImGuiInputTextFlags_CharsScientific;
+    const char format_last_char = format[0] ? format[strlen(format) - 1] : 0;
+    return (format_last_char == 'x' || format_last_char == 'X')
+               ? ImGuiInputTextFlags_CharsHexadecimal
+               : ImGuiInputTextFlags_CharsDecimal;
+}
+
+bool ImGui::ArrowButtonEx(const char *str_id, ImGuiDir dir, ImVec2 size, ImGuiButtonFlags flags, float arrow_scale) {
+    ImGuiContext &g     = *GImGui;
+    ImGuiWindow *window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    const ImGuiID id = window->GetID(str_id);
+    const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + size);
+    const float default_size = GetFrameHeight();
+    ItemSize(size, (size.y >= default_size) ? g.Style.FramePadding.y : -1.0f);
+    if (!ItemAdd(bb, id))
+        return false;
+
+    bool hovered, held;
+    bool pressed = ButtonBehavior(bb, id, &hovered, &held, flags);
+
+    // Render
+    const ImU32 bg_col   = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive
+                                       : hovered         ? ImGuiCol_ButtonHovered
+                                                         : ImGuiCol_Button);
+    const ImU32 text_col = GetColorU32(ImGuiCol_Text);
+    RenderNavHighlight(bb, id);
+    RenderFrame(bb.Min, bb.Max, bg_col, true, g.Style.FrameRounding);
+    RenderArrow(window->DrawList,
+                bb.Min - ImVec2((size.x - g.FontSize) * -0.5f,
+                                (size.y - g.FontSize) * 0.5f),
+                text_col, dir, arrow_scale);
+
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, str_id, g.LastItemData.StatusFlags);
+    return pressed;
+}
+
+// Note: p_data, p_step, p_step_fast are _pointers_ to a memory address holding the data. For an
+// Input widget, p_step and p_step_fast are optional. Read code of e.g. InputFloat(), InputInt()
+// etc. or examples in 'Demo->Widgets->Data Types' to understand how to use this function directly.
+bool ImGui::InputScalarCompact(const char *label, ImGuiDataType data_type, void *p_data,
+                        const void *p_step, const void *p_step_fast, const char *format,
+                        ImGuiInputTextFlags flags) {
+    ImGuiWindow *window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext &g   = *GImGui;
+    ImGuiStyle &style = g.Style;
+
+    if (format == NULL)
+        format = DataTypeGetInfo(data_type)->PrintFmt;
+
+    char buf[64];
+    DataTypeFormatString(buf, IM_ARRAYSIZE(buf), data_type, p_data, format);
+
+    // Testing ActiveId as a minor optimization as filtering is not needed until active
+    if (g.ActiveId == 0 &&
+        (flags & (ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsHexadecimal |
+                  ImGuiInputTextFlags_CharsScientific)) == 0)
+        flags |= InputScalar_DefaultCharsFilter(data_type, format);
+    flags |= ImGuiInputTextFlags_AutoSelectAll |
+             ImGuiInputTextFlags_NoMarkEdited;  // We call MarkItemEdited() ourselves by comparing
+                                                // the actual data rather than the string.
+
+    bool value_changed = false;
+    if (p_step == NULL) {
+        if (InputText(label, buf, IM_ARRAYSIZE(buf), flags))
+            value_changed = DataTypeApplyFromText(buf, data_type, p_data, format);
+    } else {
+        const float button_size = GetFrameHeight() / 2;
+
+        BeginGroup();  // The only purpose of the group here is to allow the caller to query item
+                       // data e.g. IsItemActive()
+        PushID(label);
+        SetNextItemWidth(
+            ImMax(1.0f, CalcItemWidth() - button_size));
+
+        float base_ypos = ImGui::GetCursorPosY();
+
+        if (InputText(
+                "", buf, IM_ARRAYSIZE(buf),
+                flags))  // PushId(label) + "" gives us the expected ID from outside point of view
+            value_changed = DataTypeApplyFromText(buf, data_type, p_data, format);
+        IMGUI_TEST_ENGINE_ITEM_INFO(g.LastItemData.ID, label,
+                                    g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Inputable);
+
+        // Step buttons
+
+        const ImVec2 backup_frame_padding = style.FramePadding;
+        style.FramePadding.x              = style.FramePadding.y;
+        ImGuiButtonFlags button_flags = ImGuiButtonFlags_Repeat | ImGuiButtonFlags_DontClosePopups;
+        if (flags & ImGuiInputTextFlags_ReadOnly)
+            BeginDisabled();
+
+        ImVec2 window_pos   = ImGui::GetWindowPos();
+        ImVec2 top_left     = ImGui::GetItemRectMin();
+        ImVec2 bottom_right = ImGui::GetItemRectMax();
+
+        ImGui::SetCursorPos({bottom_right.x - window_pos.x, top_left.y - window_pos.y});
+        if (ArrowButtonEx("__internal_increase_value", ImGuiDir_Up,
+                          ImVec2(button_size, button_size), button_flags, 0.5f)) {
+            DataTypeApplyOp(data_type, '+', p_data, p_data,
+                            g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
+            value_changed = true;
+        }
+        ImGui::SetCursorPos(
+            {bottom_right.x - window_pos.x, ((top_left.y + bottom_right.y) / 2) - window_pos.y});
+        if (ArrowButtonEx("__internal_decrease_value", ImGuiDir_Down,
+                          ImVec2(button_size, button_size), button_flags, 0.5f)) {
+            DataTypeApplyOp(data_type, '-', p_data, p_data,
+                            g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
+            value_changed = true;
+        }
+
+        if (flags & ImGuiInputTextFlags_ReadOnly)
+            EndDisabled();
+
+        const char *label_end = FindRenderedTextEnd(label);
+        if (label != label_end) {
+            SameLine(0, style.ItemInnerSpacing.x);
+            TextEx(label, label_end);
+        }
+        style.FramePadding = backup_frame_padding;
+
+        PopID();
+        EndGroup();
+    }
+    if (value_changed)
+        MarkItemEdited(g.LastItemData.ID);
+
+    return value_changed;
+}
+
+bool ImGui::InputScalarCompactN(const char *label, ImGuiDataType data_type, void *p_data,
+                                int components,
+                         const void *p_step, const void *p_step_fast, const char *format,
+                         ImGuiInputTextFlags flags) {
+    ImGuiWindow *window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext &g    = *GImGui;
+    bool value_changed = false;
+    BeginGroup();
+    PushID(label);
+    PushMultiItemsWidths(components, CalcItemWidth());
+    size_t type_size = GDataTypeInfo[data_type].Size;
+    for (int i = 0; i < components; i++) {
+        PushID(i);
+        if (i > 0)
+            SameLine(0, g.Style.ItemInnerSpacing.x);
+        value_changed |= InputScalarCompact("", data_type, p_data, p_step, p_step_fast, format, flags);
+        PopID();
+        PopItemWidth();
+        p_data = (void *)((char *)p_data + type_size);
+    }
+    PopID();
+
+    const char *label_end = FindRenderedTextEnd(label);
+    if (label != label_end) {
+        SameLine(0.0f, g.Style.ItemInnerSpacing.x);
+        TextEx(label, label_end);
+    }
+
+    EndGroup();
+    return value_changed;
 }
