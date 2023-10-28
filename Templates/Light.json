@@ -1,7 +1,6 @@
 {
     "Light": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -20,7 +19,7 @@
                 "ArraySize": 1
             },
             "Color": {
-                "Type": "RGBA8",
+                "Type": "RGBA",
                 "ArraySize": 1
             },
             "Intensity": {
