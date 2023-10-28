@@ -159,6 +159,9 @@ namespace Toolbox::Object {
                 if (isTypeStruct()) {
                     member.m_values.push_back(
                         make_deep_clone<MetaStruct>(std::get<std::shared_ptr<MetaStruct>>(value)));
+                } else if (isTypeEnum()) {
+                    member.m_values.push_back(
+                        make_deep_clone<MetaEnum>(std::get<std::shared_ptr<MetaEnum>>(value)));
                 } else {
                     auto _copy =
                         std::make_shared<MetaValue>(*std::get<std::shared_ptr<MetaValue>>(value));
@@ -170,6 +173,9 @@ namespace Toolbox::Object {
                 if (isTypeStruct()) {
                     member.m_values.push_back(
                         make_clone<MetaStruct>(std::get<std::shared_ptr<MetaStruct>>(value)));
+                } else if (isTypeEnum()) {
+                    member.m_values.push_back(
+                        make_clone<MetaEnum>(std::get<std::shared_ptr<MetaEnum>>(value)));
                 } else {
                     auto _copy =
                         std::make_shared<MetaValue>(*std::get<std::shared_ptr<MetaValue>>(value));
