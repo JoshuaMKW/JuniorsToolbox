@@ -81,7 +81,7 @@ jobs:
         run: |
           mkdir juniors-toolbox-build
           cp -r res juniors-toolbox-build/res
-          cp build/juniors-toolbox.exe juniors-toolbox-build/JuniorsToolbox.exe
+          cp build/JuniorsToolbox.exe juniors-toolbox-build/JuniorsToolbox.exe
           cp build/*.dll juniors-toolbox-build
       - name: Upload App Windows
         if: runner.os == 'Windows'
