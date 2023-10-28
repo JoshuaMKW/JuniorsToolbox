@@ -1,4 +1,5 @@
 #include "gui/property/property.hpp"
+#include "gui/imgui_ext.hpp"
 #include "gui/util.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/object.hpp"
@@ -534,9 +535,11 @@ namespace Toolbox::UI {
                            ImDrawListFlags_AntiAliasedLines);
     }
 
-    StructProperty::StructProperty(std::shared_ptr<Object::MetaMember> prop) : IProperty(prop) {
+    StructProperty::StructProperty(std::shared_ptr<Object::MetaMember> prop)
+        : IProperty(prop), m_open(true), m_array_open() {
         prop->syncArray();
         m_children_ary.resize(prop->arraysize());
+        m_array_open.resize(m_children_ary.size());
         for (size_t i = 0; i < m_children_ary.size(); ++i) {
             auto struct_ = prop->value<Object::MetaStruct>(i).value();
             auto members = struct_->members();
@@ -551,6 +554,7 @@ namespace Toolbox::UI {
 
         size_t min_end = std::min(m_children_ary.size(), size_t(m_member->arraysize()));
         m_children_ary.resize(m_member->arraysize());
+        m_array_open.resize(m_children_ary.size());
 
         for (size_t i = 0; i < min_end; ++i) {
             auto struct_ = m_member->value<Object::MetaStruct>(i).value();
@@ -583,32 +587,55 @@ namespace Toolbox::UI {
         }
 
         ImGuiID struct_id = ImGui::GetID(m_member->name().c_str());
-        if (ImGui::BeginChild(struct_id, {0, 200}, true)) {
-            if (m_children_ary.size() != 0) {
+        // ImGui::PushID(struct_id);
+        if (ImGui::CollapsingHeader(m_member->name().c_str())) {
+            if (m_children_ary.size() > 1) {
                 float label_width = 0;
                 for (size_t i = 0; i < m_children_ary.at(0).size(); ++i) {
-                    label_width = std::max(label_width, m_children_ary.at(0).at(i)->labelSize().x);
+                    label_width =
+                        std::max(label_width, m_children_ary.at(0).at(i)->labelSize().x);
                 }
                 for (size_t i = 0; i < m_children_ary.size(); ++i) {
                     auto struct_ = m_member->value<Object::MetaStruct>(i).value();
                     auto members = struct_->members();
 
-                    std::string array_name = std::format("Element {}", i);
-                    ImGui::Text(array_name.c_str());
-                    ImGui::PushID(array_name.c_str());
-                    for (size_t j = 0; j < members.size(); ++j) {
-                        ImGui::Dummy({4, 0});
-                        ImGui::SameLine();
-                        m_children_ary.at(i).at(j)->render(label_width);
+                    std::string array_name =
+                        std::format("[{}]##{}", i, m_member->name().c_str());
+                    if (ImGui::BeginGroupPanel(
+                            array_name.c_str(),
+                            reinterpret_cast<bool *>(m_array_open.data() + i), {})) {
+                        for (size_t j = 0; j < members.size(); ++j) {
+                            m_children_ary.at(i).at(j)->render(label_width);
+                            ImGui::ItemSize({0, 2});
+                        }
                     }
-                    ImGui::PopID();
-
-                    if (i != m_children_ary.size() - 1)
-                        ImGui::Spacing();
+                    ImGui::EndGroupPanel();
+                }
+            } else if (m_children_ary.size() == 1) {
+                float label_width = 0;
+                for (size_t i = 0; i < m_children_ary.at(0).size(); ++i) {
+                    label_width =
+                        std::max(label_width, m_children_ary.at(0).at(i)->labelSize().x);
+                }
+                auto struct_ = m_member->value<Object::MetaStruct>(0).value();
+                auto members = struct_->members();
+                for (size_t j = 0; j < members.size(); ++j) {
+                    m_children_ary.at(0).at(j)->render(label_width);
+                    ImGui::ItemSize({0, 2});
                 }
             }
         }
-        ImGui::EndChild();
+        ImGui::ItemSize({0, 4});
+
+        // ImGui::PopID();
+
+        // ImVec2 item_rect_min = ImGui::GetItemRectMin();
+        // ImVec2 item_rect_max = ImGui::GetItemRectMax();
+
+        // ImDrawList *draw_list = ImGui::GetWindowDrawList();
+        // draw_list->AddRect(item_rect_min, item_rect_max,
+        //                    ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_Border])); //
+        //                    Red color for the border
     }
 
     std::unique_ptr<IProperty> createProperty(std::shared_ptr<Object::MetaMember> m_member) {

@@ -135,6 +135,7 @@ namespace Toolbox::UI {
     private:
         std::vector<std::vector<std::unique_ptr<IProperty>>> m_children_ary;
         bool m_open = false;
+        std::vector<char> m_array_open = {};
     };
 
     std::unique_ptr<IProperty> createProperty(std::shared_ptr<Object::MetaMember> prop);

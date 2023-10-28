@@ -188,7 +188,7 @@ namespace Toolbox::UI {
         if (m_render_window_size.x != m_render_window_size_prev.x ||
             m_render_window_size.y != m_render_window_size_prev.y) {
             m_camera.setAspect(m_render_size.y > 0 ? m_render_size.x / m_render_size.y
-                                                   : FLT_EPSILON);
+                                                   : FLT_EPSILON * 2);
             m_is_viewport_dirty = true;
         }
 
@@ -365,6 +365,7 @@ namespace Toolbox::UI {
             }
             for (auto &prop : m_selected_properties) {
                 prop->render(label_width);
+                ImGui::ItemSize({0, 2});
             }
         }
         ImGui::End();

@@ -497,7 +497,10 @@ namespace Toolbox::Object {
         }
 
         [[nodiscard]] std::optional<J3DTransformInfo> getTransform() const override { return m_transform; }
-        void setTransform(J3DTransformInfo transform) override { m_transform = transform; }
+        void setTransform(J3DTransformInfo transform) override {
+          // TODO: Set the properties transform too
+          m_transform = transform;
+        }
 
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
             return "./scene/mapobj/";
