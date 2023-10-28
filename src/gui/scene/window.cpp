@@ -208,12 +208,11 @@ namespace Toolbox::UI {
                     for (auto node : rail->nodes()) {
                         std::vector<PathPoint> connections;
 
-                        PathPoint nodePoint =
-                            (PathPoint){node->getPosition(), glm::vec4(1.0, 0.0, 1.0, 1.0), 64};
+                        PathPoint nodePoint(node->getPosition(), glm::vec4(1.0, 0.0, 1.0, 1.0), 64);
 
                         for (auto connection : rail->getNodeConnections(node)) {
-                            PathPoint connectionPoint = (PathPoint){
-                                connection->getPosition(), glm::vec4(1.0, 0.0, 1.0, 1.0), 64};
+                            PathPoint connectionPoint(connection->getPosition(),
+                                                      glm::vec4(1.0, 0.0, 1.0, 1.0), 64);
                             connections.push_back(nodePoint);
                             connections.push_back(connectionPoint);
                         };
@@ -222,7 +221,7 @@ namespace Toolbox::UI {
                 }
 
                 m_billboard_renderer.m_billboards.push_back(
-                    (Billboard){glm::vec3(0, 1000, 0), 128, 0});
+                    Billboard(glm::vec3(0, 1000, 0), 128, 0));
             }
             m_path_renderer.updateGeometry();
 
