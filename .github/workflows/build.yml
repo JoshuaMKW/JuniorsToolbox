@@ -20,11 +20,11 @@ jobs:
             architecture: x64
             artifact: windows
             upload_path_suffix: '/*'
-          - name: Linux Build
-            os: ubuntu-latest
-            architecture: x64
-            artifact: linux
-            upload_path_suffix: '/*'
+#          - name: Linux Build
+#            os: ubuntu-latest
+#            architecture: x64
+#            artifact: linux
+#            upload_path_suffix: '/*'
     
     runs-on: ${{ matrix.os }}
     
@@ -43,7 +43,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt update
-          sudo apt install libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev mesa-common-dev gcc-13 g++-13
+          sudo apt install libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev mesa-common-dev gcc-13 g++-13 libgcc-13-dev libstdc++-13-dev
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 --slave /usr/bin/g++ g++ /usr/bin/g++-13 --slave /usr/bin/gcov gcov /usr/bin/gcov-13
           sudo update-alternatives --set gcc /usr/bin/gcc-13
       - name: Set up MSVC for Windows
