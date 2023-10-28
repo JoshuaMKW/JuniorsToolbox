@@ -210,13 +210,13 @@ namespace Toolbox::UI {
 
                         PathPoint nodePoint = (PathPoint){
                             node->getPosition(), {1.0, 0.0, 1.0, 1.0},
-                             90
+                             64
                         };
 
                         for (auto connection : rail->getNodeConnections(node)) {
                             PathPoint connectionPoint = (PathPoint){
                                 connection->getPosition(), {1.0, 0.0, 1.0, 1.0},
-                                 90
+                                 64
                             };
                             connections.push_back(nodePoint);
                             connections.push_back(connectionPoint);
