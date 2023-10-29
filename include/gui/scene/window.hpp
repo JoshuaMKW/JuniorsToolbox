@@ -15,10 +15,12 @@
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"
 
+#include "gui/clipboard.hpp"
 #include "gui/property/property.hpp"
 #include "gui/scene/camera.hpp"
 #include "gui/window.hpp"
 
+#include <gui/context_menu.hpp>
 #include <imgui.h>
 
 namespace Toolbox::UI {
@@ -28,6 +30,8 @@ namespace Toolbox::UI {
         size_t m_node_id;
         bool m_hierarchy_synced;
         bool m_scene_synced;
+
+        bool operator==(const NodeInfo &other) { return m_node_id == other.m_node_id; }
     };
 
     class SceneWindow;
@@ -42,9 +46,14 @@ namespace Toolbox::UI {
         void renderMenuBar() override;
         void renderBody(f32 delta_time) override;
         void renderHierarchy();
-        void renderTree(std::shared_ptr<Toolbox::Object::ISceneObject> node);
+        void buildContextMenuVirtualObj();
+        void buildContextMenuGroupObj();
+        void buildContextMenuPhysicalObj();
+        void buildContextMenuMultiObj();
+        void renderTree(std::shared_ptr<Object::ISceneObject> node);
         void renderProperties();
         void renderScene(f32 delta_time);
+        void renderContextMenu(std::string str_id, NodeInfo &info);
 
     public:
         const ImGuiWindowClass *windowClass() const override {
@@ -97,7 +106,12 @@ namespace Toolbox::UI {
 
         u32 m_fbo_id, m_tex_id, m_rbo_id;
 
-        std::vector<NodeInfo> m_selected_nodes = {};
+        ContextMenu<NodeInfo> m_virtual_node_menu;
+        ContextMenu<NodeInfo> m_physical_node_menu;
+        ContextMenu<NodeInfo> m_group_node_menu;
+        ContextMenu<std::vector<NodeInfo>> m_multi_node_menu;
+
+        std::vector<NodeInfo> m_selected_nodes                        = {};
         std::vector<std::unique_ptr<IProperty>> m_selected_properties = {};
 
         std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;

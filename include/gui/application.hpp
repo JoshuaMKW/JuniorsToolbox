@@ -9,6 +9,8 @@
 #include "gui/scene/window.hpp"
 #include "gui/window.hpp"
 
+#include "clipboard.hpp"
+
 #include <GLFW/glfw3.h>
 
 namespace Toolbox::UI {
@@ -28,6 +30,8 @@ namespace Toolbox::UI {
         bool setup();
         int run();
         bool teardown();
+
+        TypedDataClipboard<NodeInfo> &getSceneClipboard() { return m_hierarchy_clipboard; }
 
         ImVec2 windowScreenPos() {
             int x = 0, y = 0;
@@ -52,6 +56,8 @@ namespace Toolbox::UI {
         void renderWindows(f32 delta_time);
 
     private:
+        TypedDataClipboard<NodeInfo> m_hierarchy_clipboard;
+
         GLFWwindow *m_render_window;
         std::vector<std::shared_ptr<IWindow>> m_windows;
 

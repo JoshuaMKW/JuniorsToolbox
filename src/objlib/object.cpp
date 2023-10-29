@@ -1,4 +1,5 @@
 #include "objlib/object.hpp"
+#include "objlib/meta/errors.hpp"
 #include <expected>
 #include <gui/modelcache.hpp>
 #include <string>
@@ -213,7 +214,22 @@ namespace Toolbox::Object {
 
     std::expected<void, ObjectGroupError>
     GroupSceneObject::addChild(std::shared_ptr<ISceneObject> child) {
-        auto result = child->setParent(this);
+        auto child_it = std::find_if(
+            m_children.begin(), m_children.end(), [&](std::shared_ptr<ISceneObject> other) {
+                return other->getNameRef().name() == child->getNameRef().name();
+            });
+
+        if (child_it != m_children.end()) {
+            ObjectGroupError err = {
+                "Child already in the group object:", std::stacktrace::current(), this, {}};
+            return std::unexpected(err);
+        }
+
+        ISceneObject *parent = child->getParent();
+        if (parent) {
+            parent->removeChild(child->getNameRef().name());
+        }
+        auto result = child->_setParent(this);
         if (!result) {
             ObjectGroupError err = {"Cannot add a child to the group object:",
                                     std::stacktrace::current(),
@@ -453,7 +469,7 @@ namespace Toolbox::Object {
 
     MetaStruct::GetMemberT PhysicalSceneObject::getMember(const QualifiedName &name) const {
         if (name.empty())
-            return {};
+            return make_meta_error<MetaStruct::MemberT>(name, 0, "Empty name for getMember");
 
         const auto name_str = name.toString();
 
@@ -485,7 +501,7 @@ namespace Toolbox::Object {
             }
         }
 
-        return {};
+        return make_meta_error<MetaStruct::MemberT>(name, 0, "Couldn't find the member");
     }
 
     size_t PhysicalSceneObject::getMemberOffset(const QualifiedName &name, int index) const {
