@@ -878,9 +878,9 @@ namespace Toolbox::UI {
                                     reinterpret_cast<bool *>(m_checked_state.at(0).data() + j))) {
                     bool checked = m_checked_state.at(0).at(j);
                     if (checked) {
-                        number |= (1 << j);
+                        number |= getEnumFlagValue(enum_values.at(j), enum_type);
                     } else {
-                        number &= ~(1 << j);
+                        number &= ~getEnumFlagValue(enum_values.at(j), enum_type);
                     }
                     any_changed = true;
                 }
