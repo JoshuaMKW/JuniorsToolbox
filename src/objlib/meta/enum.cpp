@@ -43,7 +43,7 @@ namespace Toolbox::Object {
         out << self_indent << "}\n";
     }
 
-    constexpr bool MetaEnum::operator==(const MetaEnum &other) const {
+    bool MetaEnum::operator==(const MetaEnum &other) const {
         return m_type == other.m_type && m_name == other.m_name && m_values == other.m_values &&
                m_cur_value == other.m_cur_value && m_bit_mask == other.m_bit_mask;
     }

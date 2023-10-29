@@ -386,7 +386,7 @@ namespace Toolbox::Object {
         if (!type_result) {
             return false;
         }
-        setMetaValue<T>(member, array_index, value, type_result.value());
+        return setMetaValue<T>(member, array_index, value, type_result.value());
     }
 
     template <typename T>

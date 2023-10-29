@@ -21,8 +21,8 @@ namespace Toolbox::Object {
         using reverse_iterator       = std::vector<enum_type>::reverse_iterator;
         using const_reverse_iterator = std::vector<enum_type>::const_reverse_iterator;
 
-        constexpr MetaEnum() = delete;
-        constexpr MetaEnum(std::string_view name, std::vector<enum_type> values,
+        MetaEnum() = delete;
+        MetaEnum(std::string_view name, std::vector<enum_type> values,
                            bool bit_mask = false)
             : m_type(MetaType::S32), m_name(name), m_values(std::move(values)),
               m_bit_mask(bit_mask) {
@@ -49,7 +49,7 @@ namespace Toolbox::Object {
                 break;
             }
         }
-        constexpr MetaEnum(std::string_view name, MetaType type, std::vector<enum_type> values,
+        MetaEnum(std::string_view name, MetaType type, std::vector<enum_type> values,
                            bool bit_mask = false)
             : MetaEnum(name, values, bit_mask) {
             m_type = type;
@@ -76,18 +76,18 @@ namespace Toolbox::Object {
                 break;
             }
         }
-        constexpr MetaEnum(const MetaEnum &other) = default;
-        constexpr MetaEnum(MetaEnum &&other)      = default;
-        constexpr ~MetaEnum()                     = default;
+        MetaEnum(const MetaEnum &other) = default;
+        MetaEnum(MetaEnum &&other)      = default;
+        ~MetaEnum()                     = default;
 
-        [[nodiscard]] constexpr MetaType type() const { return m_type; }
-        [[nodiscard]] constexpr std::string_view name() const { return m_name; }
+        [[nodiscard]] MetaType type() const { return m_type; }
+        [[nodiscard]] std::string_view name() const { return m_name; }
         [[nodiscard]] std::shared_ptr<MetaValue> value() const { return m_cur_value; }
-        [[nodiscard]] constexpr std::vector<enum_type> enums() const { return m_values; }
+        [[nodiscard]] std::vector<enum_type> enums() const { return m_values; }
 
-        [[nodiscard]] constexpr bool isBitMasked() const { return m_bit_mask; }
+        [[nodiscard]] bool isBitMasked() const { return m_bit_mask; }
 
-        [[nodiscard]] constexpr bool getFlag(std::string_view name) const {
+        [[nodiscard]] bool getFlag(std::string_view name) const {
             auto flag = find(name);
             if (!flag)
                 return false;
@@ -95,7 +95,7 @@ namespace Toolbox::Object {
             return getFlag(*flag);
         }
 
-        [[nodiscard]] constexpr bool getFlag(int index) const {
+        [[nodiscard]] bool getFlag(int index) const {
             if (index < 0 || index >= m_values.size())
                 return false;
 
@@ -103,7 +103,7 @@ namespace Toolbox::Object {
             return getFlag(flag);
         }
 
-        [[nodiscard]] constexpr bool getFlag(enum_type value) const {
+        [[nodiscard]] bool getFlag(enum_type value) const {
             switch (m_type) {
             case MetaType::S8:
                 return *m_cur_value->get<s8>() & *value.second.get<s8>();
@@ -122,7 +122,7 @@ namespace Toolbox::Object {
             }
         }
 
-        constexpr void setFlag(std::string_view name, bool value) {
+        void setFlag(std::string_view name, bool value) {
             auto flag = find(name);
             if (!flag)
                 return;
@@ -130,7 +130,7 @@ namespace Toolbox::Object {
             setFlag(*flag, value);
         }
 
-        constexpr void setFlag(int index, bool value) {
+        void setFlag(int index, bool value) {
             if (index < 0 || index >= m_values.size())
                 return;
 
@@ -138,7 +138,7 @@ namespace Toolbox::Object {
             setFlag(flag, value);
         }
 
-        constexpr void setFlag(enum_type flag, bool value) {
+        void setFlag(enum_type flag, bool value) {
             switch (m_type) {
             case MetaType::S8: {
                 if (value) {
@@ -191,25 +191,25 @@ namespace Toolbox::Object {
             }
         }
 
-        [[nodiscard]] constexpr iterator begin() { return m_values.begin(); }
-        [[nodiscard]] constexpr const_iterator begin() const { return m_values.begin(); }
-        [[nodiscard]] constexpr const_iterator cbegin() const { return m_values.cbegin(); }
+        [[nodiscard]] iterator begin() { return m_values.begin(); }
+        [[nodiscard]] const_iterator begin() const { return m_values.begin(); }
+        [[nodiscard]] const_iterator cbegin() const { return m_values.cbegin(); }
 
-        [[nodiscard]] constexpr iterator end() { return m_values.end(); }
-        [[nodiscard]] constexpr const_iterator end() const { return m_values.end(); }
-        [[nodiscard]] constexpr const_iterator cend() const { return m_values.cend(); }
+        [[nodiscard]] iterator end() { return m_values.end(); }
+        [[nodiscard]] const_iterator end() const { return m_values.end(); }
+        [[nodiscard]] const_iterator cend() const { return m_values.cend(); }
 
-        [[nodiscard]] constexpr reverse_iterator rbegin() { return m_values.rbegin(); }
-        [[nodiscard]] constexpr const_reverse_iterator rbegin() const { return m_values.rbegin(); }
-        [[nodiscard]] constexpr const_reverse_iterator crbegin() const {
+        [[nodiscard]] reverse_iterator rbegin() { return m_values.rbegin(); }
+        [[nodiscard]] const_reverse_iterator rbegin() const { return m_values.rbegin(); }
+        [[nodiscard]] const_reverse_iterator crbegin() const {
             return m_values.crbegin();
         }
 
-        [[nodiscard]] constexpr reverse_iterator rend() { return m_values.rend(); }
-        [[nodiscard]] constexpr const_reverse_iterator rend() const { return m_values.rend(); }
-        [[nodiscard]] constexpr const_reverse_iterator crend() const { return m_values.crend(); }
+        [[nodiscard]] reverse_iterator rend() { return m_values.rend(); }
+        [[nodiscard]] const_reverse_iterator rend() const { return m_values.rend(); }
+        [[nodiscard]] const_reverse_iterator crend() const { return m_values.crend(); }
 
-        [[nodiscard]] constexpr std::optional<enum_type> find(std::string_view name) const {
+        [[nodiscard]] std::optional<enum_type> find(std::string_view name) const {
             for (const auto &v : m_values) {
                 if (v.first == name)
                     return v;
@@ -218,7 +218,7 @@ namespace Toolbox::Object {
         }
 
         template <typename T>
-        [[nodiscard]] constexpr std::optional<enum_type> vfind(T value) const {
+        [[nodiscard]] inline std::optional<enum_type> vfind(T value) const {
             return {};
         }
 
@@ -228,7 +228,7 @@ namespace Toolbox::Object {
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
 
-        constexpr bool operator==(const MetaEnum &other) const;
+        bool operator==(const MetaEnum &other) const;
 
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
@@ -244,7 +244,7 @@ namespace Toolbox::Object {
     };
 
     template <>
-    [[nodiscard]] constexpr std::optional<MetaEnum::enum_type> MetaEnum::vfind<s8>(s8 value) const {
+    [[nodiscard]] inline std::optional<MetaEnum::enum_type> MetaEnum::vfind<s8>(s8 value) const {
         for (const auto &v : m_values) {
             auto _v = v.second.get<s8>();
             if (_v.has_value() && *_v == value)
@@ -254,7 +254,7 @@ namespace Toolbox::Object {
     }
 
     template <>
-    [[nodiscard]] constexpr std::optional<MetaEnum::enum_type> MetaEnum::vfind<u8>(u8 value) const {
+    [[nodiscard]] inline std::optional<MetaEnum::enum_type> MetaEnum::vfind<u8>(u8 value) const {
         for (const auto &v : m_values) {
             auto _v = v.second.get<u8>();
             if (_v.has_value() && *_v == value)
@@ -264,7 +264,7 @@ namespace Toolbox::Object {
     }
 
     template <>
-    [[nodiscard]] constexpr std::optional<MetaEnum::enum_type>
+    [[nodiscard]] inline std::optional<MetaEnum::enum_type>
     MetaEnum::vfind<s16>(s16 value) const {
         for (const auto &v : m_values) {
             auto _v = v.second.get<s16>();
@@ -275,7 +275,7 @@ namespace Toolbox::Object {
     }
 
     template <>
-    [[nodiscard]] constexpr std::optional<MetaEnum::enum_type>
+    [[nodiscard]] inline std::optional<MetaEnum::enum_type>
     MetaEnum::vfind<u16>(u16 value) const {
         for (const auto &v : m_values) {
             auto _v = v.second.get<u16>();
@@ -286,7 +286,7 @@ namespace Toolbox::Object {
     }
 
     template <>
-    [[nodiscard]] constexpr std::optional<MetaEnum::enum_type>
+    [[nodiscard]] inline std::optional<MetaEnum::enum_type>
     MetaEnum::vfind<s32>(s32 value) const {
         for (const auto &v : m_values) {
             auto _v = v.second.get<s32>();
@@ -297,7 +297,7 @@ namespace Toolbox::Object {
     }
 
     template <>
-    [[nodiscard]] constexpr std::optional<MetaEnum::enum_type>
+    [[nodiscard]] inline std::optional<MetaEnum::enum_type>
     MetaEnum::vfind<u32>(u32 value) const {
         for (const auto &v : m_values) {
             auto _v = v.second.get<u32>();

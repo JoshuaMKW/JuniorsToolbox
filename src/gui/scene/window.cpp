@@ -9,9 +9,9 @@
 
 #include <lib/bStream/bstream.h>
 
+#include "gui/imgui_ext.hpp"
 #include <imgui.h>
 #include <imgui_internal.h>
-#include "gui/imgui_ext.hpp"
 
 #include <ImGuiFileDialog.h>
 
@@ -151,8 +151,8 @@ namespace Toolbox::UI {
             if (Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
                 ImVec2 mouse_delta = Input::GetMouseDelta();
 
-                m_camera.TurnLeftRight(-mouse_delta.x * 0.005);
-                m_camera.TiltUpDown(-mouse_delta.y * 0.005);
+                m_camera.TurnLeftRight(-mouse_delta.x * 0.005f);
+                m_camera.TiltUpDown(-mouse_delta.y * 0.005f);
 
                 m_is_viewport_dirty = true;
             }
@@ -216,28 +216,30 @@ namespace Toolbox::UI {
             return;
         }
 
+        auto size_x = static_cast<GLsizei>(m_render_window_size.x);
+        auto size_y = static_cast<GLsizei>(m_render_window_size.y);
+
         // window was resized, new texture and depth storage needed for framebuffer
         glDeleteRenderbuffers(1, &m_rbo_id);
         glDeleteTextures(1, &m_tex_id);
 
         glGenTextures(1, &m_tex_id);
         glBindTexture(GL_TEXTURE_2D, m_tex_id);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_render_window_size.x, m_render_window_size.y, 0,
-                     GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size_x, size_y, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                     nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_tex_id, 0);
 
         glGenRenderbuffers(1, &m_rbo_id);
         glBindRenderbuffer(GL_RENDERBUFFER, m_rbo_id);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, m_render_window_size.x,
-                              m_render_window_size.y);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, size_x, size_y);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
                                   m_rbo_id);
 
         assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
-        glViewport(0, 0, m_render_window_size.x, m_render_window_size.y);
+        glViewport(0, 0, size_x, size_y);
     }
 
     void SceneWindow::viewportEnd() {
@@ -296,8 +298,7 @@ namespace Toolbox::UI {
                                    ImGuiTreeNodeFlags_OpenOnDoubleClick |
                                    ImGuiTreeNodeFlags_SpanFullWidth;
 
-        constexpr auto file_flags =
-            ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth;
+        constexpr auto file_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth;
 
         constexpr auto node_flags = dir_flags | ImGuiTreeNodeFlags_DefaultOpen;
 
@@ -305,7 +306,7 @@ namespace Toolbox::UI {
         bool needs_scene_sync = node->getTransform() ? false : true;
 
         std::string node_uid_str = getNodeUID(node);
-        ImGuiID tree_node_id = ImGui::GetCurrentWindow()->GetID(node_uid_str.c_str());
+        ImGuiID tree_node_id     = ImGui::GetCurrentWindow()->GetID(node_uid_str.c_str());
 
         auto node_it =
             std::find_if(m_selected_nodes.begin(), m_selected_nodes.end(),
@@ -353,7 +354,8 @@ namespace Toolbox::UI {
                 ImGui::TreePop();
             }
         } else {
-            bool node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_already_clicked);
+            bool node_open =
+                ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_already_clicked);
 
             if (node_open) {
                 if (ImGui::IsItemClicked()) {
