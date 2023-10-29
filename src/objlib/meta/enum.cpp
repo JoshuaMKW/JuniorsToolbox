@@ -52,22 +52,22 @@ namespace Toolbox::Object {
         try {
             switch (m_type) {
             case MetaType::S8:
-                out.write(m_cur_value->get<s8>());
+                out.write(m_cur_value->get<s8>().value());
                 break;
             case MetaType::U8:
-                out.write(m_cur_value->get<u8>());
+                out.write(m_cur_value->get<u8>().value());
                 break;
             case MetaType::S16:
-                out.write(m_cur_value->get<s16>());
+                out.write<s16, std::endian::big>(m_cur_value->get<s16>().value());
                 break;
             case MetaType::U16:
-                out.write(m_cur_value->get<u16>());
+                out.write<u16, std::endian::big>(m_cur_value->get<u16>().value());
                 break;
             case MetaType::S32:
-                out.write(m_cur_value->get<s32>());
+                out.write<s32, std::endian::big>(m_cur_value->get<s32>().value());
                 break;
             case MetaType::U32:
-                out.write(m_cur_value->get<u32>());
+                out.write<u32, std::endian::big>(m_cur_value->get<u32>().value());
                 break;
             }
             return {};
@@ -86,16 +86,16 @@ namespace Toolbox::Object {
                 m_cur_value->set(in.read<u8>());
                 break;
             case MetaType::S16:
-                m_cur_value->set(in.read<s16>());
+                m_cur_value->set(in.read<s16, std::endian::big>());
                 break;
             case MetaType::U16:
-                m_cur_value->set(in.read<u16>());
+                m_cur_value->set(in.read<u16, std::endian::big>());
                 break;
             case MetaType::S32:
-                m_cur_value->set(in.read<s32>());
+                m_cur_value->set(in.read<s32, std::endian::big>());
                 break;
             case MetaType::U32:
-                m_cur_value->set(in.read<u32>());
+                m_cur_value->set(in.read<u32, std::endian::big>());
                 break;
             }
             return {};

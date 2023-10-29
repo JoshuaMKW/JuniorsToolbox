@@ -1,10 +1,13 @@
 #include "gui/property/property.hpp"
 #include "gui/imgui_ext.hpp"
 #include "gui/util.hpp"
+#include "objlib/meta/enum.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/object.hpp"
 
 #include <imgui.h>
+
+using namespace Toolbox::Object;
 
 template <size_t _Size>
 static std::array<char, _Size> convertStringToArray(const std::string &str_data) {
@@ -21,6 +24,25 @@ static std::string_view convertArrayToStringView(const std::array<char, _Size> &
 template <size_t _Size>
 static std::string_view convertArrayToStringView(const std::array<const char, _Size> &str_data) {
     return std::string_view(str_data.data(), str_data.size());
+}
+
+static u64 getEnumFlagValue(const MetaEnum::enum_type &enum_flag, MetaType type) {
+    switch (type) {
+    case MetaType::S8:
+        return enum_flag.second.get<s8>().value();
+    case MetaType::U8:
+        return enum_flag.second.get<u8>().value();
+    case MetaType::S16:
+        return enum_flag.second.get<s16>().value();
+    case MetaType::U16:
+        return enum_flag.second.get<u16>().value();
+    case MetaType::S32:
+        return enum_flag.second.get<s32>().value();
+    case MetaType::U32:
+        return enum_flag.second.get<u32>().value();
+    default:
+        return 0;
+    }
 }
 
 namespace Toolbox::UI {
@@ -798,6 +820,7 @@ namespace Toolbox::UI {
         bool any_changed = false;
 
         auto enum_values = Object::getMetaEnumValues(m_member).value();
+        auto enum_type = Object::getMetaType(m_member).value();
 
         if (m_numbers.size() != m_member->arraysize()) {
             init();
@@ -806,9 +829,9 @@ namespace Toolbox::UI {
                 s64 value   = m_numbers.at(i);
                 auto &state = m_checked_state.at(i);
                 m_checked_state.at(i).resize(enum_values.size());
-                for (size_t j = 0; j < m_checked_state.size(); ++j) {
-                    if ((value & (1 << j)) != 0) {
-                        state.at(i) = true;
+                for (size_t j = 0; j < enum_values.size(); ++j) {
+                    if ((value & getEnumFlagValue(enum_values.at(j), enum_type)) != 0) {
+                        state.at(j) = true;
                     }
                 }
             }
@@ -821,9 +844,9 @@ namespace Toolbox::UI {
         if (is_array || m_member->isEmpty()) {
             if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
                 for (size_t i = 0; i < m_checked_state.size(); ++i) {
-                    ImGuiID array_enum_id =
-                        ImGui::GetID(std::format("##{}-{}", m_member->name().c_str(), i).c_str());
-                    if (ImGui::BeginChild(array_enum_id, {0, 100}, true)) {
+                    std::string array_str = std::format("[{}]", i).c_str();
+                    if (ImGui::BeginGroupPanel(array_str.c_str(),
+                                               reinterpret_cast<bool *>(&m_array_open.at(i)), {})) {
                         s64 &number = m_numbers.at(i);
                         for (size_t j = 0; j < m_checked_state.at(0).size(); ++j) {
                             if (ImGui::Checkbox(
@@ -831,16 +854,16 @@ namespace Toolbox::UI {
                                     reinterpret_cast<bool *>(m_checked_state.at(i).data() + j))) {
                                 bool checked = m_checked_state.at(i).at(j);
                                 if (checked) {
-                                    number |= (1 << j);
+                                    number |= getEnumFlagValue(enum_values.at(j), enum_type);
                                 } else {
-                                    number &= ~(1 << j);
+                                    number &= ~getEnumFlagValue(enum_values.at(j), enum_type);
                                 }
                                 any_changed = true;
                             }
                         }
                         Object::setMetaValue(m_member, i, number);
                     }
-                    ImGui::EndChild();
+                    ImGui::EndGroupPanel();
                 }
             }
             ImGui::EndGroupPanel();
@@ -848,34 +871,24 @@ namespace Toolbox::UI {
             return any_changed;
         }
 
-        ImGui::Text(m_member->name().c_str());
-
-        ImVec2 rect_pos_min = ImGui::GetCursorPos();
-        float rect_width    = ImGui::GetWindowSize().x - (style.WindowPadding.x * 2);
-
-        std::string label = std::format("##{}", m_member->name().c_str());
-        s64 &number       = m_numbers.at(0);
-        for (size_t j = 0; j < m_checked_state.at(0).size(); ++j) {
-            if (ImGui::Checkbox(enum_values.at(j).first.c_str(),
-                                reinterpret_cast<bool *>(m_checked_state.at(0).data() + j))) {
-                bool checked = m_checked_state.at(0).at(j);
-                if (checked) {
-                    number |= (1 << j);
-                } else {
-                    number &= ~(1 << j);
+        if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
+            s64 &number = m_numbers.at(0);
+            for (size_t j = 0; j < m_checked_state.at(0).size(); ++j) {
+                if (ImGui::Checkbox(enum_values.at(j).first.c_str(),
+                                    reinterpret_cast<bool *>(m_checked_state.at(0).data() + j))) {
+                    bool checked = m_checked_state.at(0).at(j);
+                    if (checked) {
+                        number |= (1 << j);
+                    } else {
+                        number &= ~(1 << j);
+                    }
+                    any_changed = true;
                 }
-                any_changed = true;
             }
+            if (any_changed)
+                Object::setMetaValue(m_member, 0, number);
         }
-        Object::setMetaValue(m_member, 0, number);
-
-        ImVec2 rect_pos_max = ImGui::GetCursorPos();
-        rect_pos_max.x += rect_width;
-
-        ImDrawList *draw_list = ImGui::GetForegroundDrawList();
-        draw_list->AddRect(rect_pos_min, rect_pos_max,
-                           ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_Border]),
-                           ImDrawListFlags_AntiAliasedLines);
+        ImGui::EndGroupPanel();
 
         return any_changed;
     }

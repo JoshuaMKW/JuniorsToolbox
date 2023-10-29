@@ -304,17 +304,9 @@ bool ImGui::InputScalarCompact(const char *label, ImGuiDataType data_type, void 
         BeginGroup();  // The only purpose of the group here is to allow the caller to query item
                        // data e.g. IsItemActive()
         PushID(label);
-        SetNextItemWidth(
-            ImMax(1.0f, CalcItemWidth() - button_size));
 
-        float base_ypos = ImGui::GetCursorPosY();
-
-        if (InputText(
-                "", buf, IM_ARRAYSIZE(buf),
-                flags))  // PushId(label) + "" gives us the expected ID from outside point of view
-            value_changed = DataTypeApplyFromText(buf, data_type, p_data, format);
-        IMGUI_TEST_ENGINE_ITEM_INFO(g.LastItemData.ID, label,
-                                    g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Inputable);
+        float base_xpos = GetCursorPosX();
+        float base_ypos = GetCursorPosY();
 
         // Step buttons
 
@@ -324,25 +316,33 @@ bool ImGui::InputScalarCompact(const char *label, ImGuiDataType data_type, void 
         if (flags & ImGuiInputTextFlags_ReadOnly)
             BeginDisabled();
 
-        ImVec2 window_pos   = ImGui::GetWindowPos();
-        ImVec2 top_left     = ImGui::GetItemRectMin();
-        ImVec2 bottom_right = ImGui::GetItemRectMax();
+        ImVec2 window_pos   = GetWindowPos();
 
-        ImGui::SetCursorPos({bottom_right.x - window_pos.x, top_left.y - window_pos.y});
         if (ArrowButtonEx("__internal_increase_value", ImGuiDir_Up,
                           ImVec2(button_size, button_size), button_flags, 0.5f)) {
             DataTypeApplyOp(data_type, '+', p_data, p_data,
                             g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
             value_changed = true;
         }
-        ImGui::SetCursorPos(
-            {bottom_right.x - window_pos.x, ((top_left.y + bottom_right.y) / 2) - window_pos.y});
+        SetCursorPos({base_xpos, base_ypos + button_size});
         if (ArrowButtonEx("__internal_decrease_value", ImGuiDir_Down,
                           ImVec2(button_size, button_size), button_flags, 0.5f)) {
             DataTypeApplyOp(data_type, '-', p_data, p_data,
                             g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
             value_changed = true;
         }
+
+        SetCursorPos({base_xpos + button_size, base_ypos});
+        PushStyleVar(ImGuiStyleVar_FramePadding,
+                            {6, GetStyle().FramePadding.y});
+        SetNextItemWidth(ImMax(1.0f, CalcItemWidth() - button_size));
+        if (InputText(
+                "", buf, IM_ARRAYSIZE(buf),
+                flags))  // PushId(label) + "" gives us the expected ID from outside point of view
+            value_changed = DataTypeApplyFromText(buf, data_type, p_data, format);
+        IMGUI_TEST_ENGINE_ITEM_INFO(g.LastItemData.ID, label,
+                                    g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Inputable);
+        PopStyleVar();
 
         if (flags & ImGuiInputTextFlags_ReadOnly)
             EndDisabled();
