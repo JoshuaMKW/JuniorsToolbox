@@ -1,6 +1,7 @@
 #include "objlib/meta/value.hpp"
 #include "color.hpp"
 #include "objlib/transform.hpp"
+#include "strutil.hpp"
 #include <format>
 #include <glm/glm.hpp>
 #include <string>
@@ -108,7 +109,7 @@ namespace Toolbox::Object {
         case MetaType::RGBA:
             return std::format("{}", std::get<Color::RGBA32>(m_value));
         case MetaType::COMMENT:
-            //return std::get<std::string>(m_value);
+            // return std::get<std::string>(m_value);
         default:
             return "null";
         }
@@ -148,9 +149,14 @@ namespace Toolbox::Object {
             case MetaType::F64:
                 out.write<f64, std::endian::big>(std::get<f64>(m_value));
                 break;
-            case MetaType::STRING:
-                out.writeString<std::endian::big>(std::get<std::string>(m_value));
+            case MetaType::STRING: {
+                auto str_result = String::toShiftJIS(std::get<std::string>(m_value));
+                if (!str_result) {
+                    return make_serial_error<void>(out, "Failed to serialize string as SHIFT_JIS");
+                }
+                out.writeString<std::endian::big>(str_result.value());
                 break;
+            }
             case MetaType::VEC3: {
                 auto vec = std::get<glm::vec3>(m_value);
                 out.write<f32, std::endian::big>(vec.x);
@@ -221,9 +227,14 @@ namespace Toolbox::Object {
             case MetaType::F64:
                 m_value = in.read<f64, std::endian::big>();
                 break;
-            case MetaType::STRING:
-                m_value = in.readString<std::endian::big>();
+            case MetaType::STRING: {
+                auto str_result = String::toShiftJIS(in.readString<std::endian::big>());
+                if (!str_result) {
+                    return make_serial_error<void>(in, "Failed to deserialize string as UTF-8");
+                }
+                m_value = str_result.value();
                 break;
+            }
             case MetaType::VEC3:
                 glm::vec3 vec;
                 vec.x   = in.read<f32, std::endian::big>();

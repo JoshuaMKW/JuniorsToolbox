@@ -41,6 +41,8 @@ file(GLOB TOOLBOX_SRC
     "include/gui/*.hpp"
     "src/gui/scene/*.cpp"
     "include/gui/scene/*.hpp"
+    "src/gui/property/*.cpp"
+    "include/gui/property/*.hpp"
     "include/io/*.hpp"
     "lib/ImGuiFileDialog/*.h"
     "lib/ImGuiFileDialog/*.cpp"
@@ -63,6 +65,8 @@ else()
 #  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ICU::uc ICU::i18n)
   target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw Iconv::Iconv)
 endif()
+
+target_compile_definitions(JuniorsToolbox PRIVATE IMGUI_DEFINE_MATH_OPERATORS)
 
 target_include_directories(JuniorsToolbox PRIVATE "include" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/ImGuiFileDialog" "lib/glfw")
 

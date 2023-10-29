@@ -15,12 +15,22 @@
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"
 
+#include "gui/property/property.hpp"
 #include "gui/scene/camera.hpp"
 #include "gui/window.hpp"
 
 #include <imgui.h>
 
 namespace Toolbox::UI {
+
+    struct NodeInfo {
+        std::shared_ptr<Object::ISceneObject> m_selected;
+        size_t m_node_id;
+        bool m_hierarchy_synced;
+        bool m_scene_synced;
+    };
+
+    class SceneWindow;
 
     class SceneWindow final : public DockWindow {
     public:
@@ -31,6 +41,9 @@ namespace Toolbox::UI {
         void buildDockspace(ImGuiID dockspace_id) override;
         void renderMenuBar() override;
         void renderBody(f32 delta_time) override;
+        void renderHierarchy();
+        void renderTree(std::shared_ptr<Toolbox::Object::ISceneObject> node);
+        void renderProperties();
         void renderScene(f32 delta_time);
 
     public:
@@ -83,6 +96,9 @@ namespace Toolbox::UI {
         void viewportEnd();
 
         u32 m_fbo_id, m_tex_id, m_rbo_id;
+
+        std::vector<NodeInfo> m_selected_nodes = {};
+        std::vector<std::unique_ptr<IProperty>> m_selected_properties = {};
 
         std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "color.hpp"
+#include "errors.hpp"
 #include "jsonlib.hpp"
 #include "objlib/transform.hpp"
 #include "serial.hpp"
@@ -11,6 +12,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <magic_enum.hpp>
 
 template <> struct std::formatter<glm::vec3> : std::formatter<string_view> {
     template <typename FormatContext> auto format(const glm::vec3 &obj, FormatContext &ctx) const {
@@ -399,7 +401,7 @@ namespace Toolbox::Object {
             }
         }
 
-      template <typename T, bool comment = false> constexpr bool set(const T &value) {
+        template <typename T, bool comment = false> constexpr bool set(const T &value) {
             if constexpr (std::is_same_v<std::remove_reference_t<T>, std::string> && comment) {
                 m_type = MetaType::COMMENT;
             } else {
@@ -422,5 +424,140 @@ namespace Toolbox::Object {
         value_type m_value;
         MetaType m_type = MetaType::UNKNOWN;
     };
+
+    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, bool value, MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::BOOL:
+                return meta_value->set<bool>(value);
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
+    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, s64 value,
+                                                MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::S8:
+                return meta_value->set(static_cast<s8>(value));
+            case MetaType::U8:
+                return meta_value->set(static_cast<u8>(value));
+            case MetaType::S16:
+                return meta_value->set(static_cast<s16>(value));
+            case MetaType::U16:
+                return meta_value->set(static_cast<u16>(value));
+            case MetaType::S32:
+                return meta_value->set(static_cast<s32>(value));
+            case MetaType::U32:
+                return meta_value->set(static_cast<u32>(value));
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
+    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, f64 value, MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::F32:
+                return meta_value->set(static_cast<f32>(value));
+            case MetaType::F64:
+                return meta_value->set(static_cast<f64>(value));
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
+    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, const std::string &value, MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::STRING:
+                return meta_value->set<std::string>(value);
+            case MetaType::COMMENT:
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
+    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value,
+                                                       std::string_view value, MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::STRING:
+                return meta_value->set(std::string(value));
+            case MetaType::COMMENT:
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
+    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, glm::vec3 value, MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::VEC3:
+                return meta_value->set<glm::vec3>(value);
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
+    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, const Transform &value, MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::TRANSFORM:
+                return meta_value->set<Transform>(value);
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
+    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, const Color::RGB24 &value,
+                                                MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::RGB:
+                return meta_value->set<Color::RGB24>(value);
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
+    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, const Color::RGBA32 &value,
+                                                MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::RGBA:
+                return meta_value->set<Color::RGBA32>(value);
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
 
 }  // namespace Toolbox::Object

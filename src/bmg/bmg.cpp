@@ -241,7 +241,7 @@ namespace Toolbox::BMG {
         std::vector<char> raw(command.size() + 2);
         {
             raw[0] = 0x1A;
-            raw[1] = command.size();
+            raw[1] = static_cast<char>(command.size());
             std::copy(command.begin(), command.end(), raw.end());
         }
 

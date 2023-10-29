@@ -9,22 +9,22 @@ namespace Toolbox::Object {
         return tryJSON(json_value, [this](const json &j) {
             switch (m_type) {
             case MetaType::S8:
-                m_cur_value = j.get<s8>();
+                m_cur_value = std::make_shared<MetaValue>(j.get<s8>());
                 break;
             case MetaType::U8:
-                m_cur_value = j.get<u8>();
+                m_cur_value = std::make_shared<MetaValue>(j.get<u8>());
                 break;
             case MetaType::S16:
-                m_cur_value = j.get<s16>();
+                m_cur_value = std::make_shared<MetaValue>(j.get<s16>());
                 break;
             case MetaType::U16:
-                m_cur_value = j.get<u16>();
+                m_cur_value = std::make_shared<MetaValue>(j.get<u16>());
                 break;
             case MetaType::S32:
-                m_cur_value = j.get<s32>();
+                m_cur_value = std::make_shared<MetaValue>(j.get<s32>());
                 break;
             case MetaType::U32:
-                m_cur_value = j.get<u32>();
+                m_cur_value = std::make_shared<MetaValue>(j.get<u32>());
                 break;
             default:
                 break;
@@ -43,7 +43,7 @@ namespace Toolbox::Object {
         out << self_indent << "}\n";
     }
 
-    constexpr bool MetaEnum::operator==(const MetaEnum &other) const {
+    bool MetaEnum::operator==(const MetaEnum &other) const {
         return m_type == other.m_type && m_name == other.m_name && m_values == other.m_values &&
                m_cur_value == other.m_cur_value && m_bit_mask == other.m_bit_mask;
     }
@@ -52,22 +52,22 @@ namespace Toolbox::Object {
         try {
             switch (m_type) {
             case MetaType::S8:
-                out.write(m_cur_value.get<s8>());
+                out.write(m_cur_value->get<s8>().value());
                 break;
             case MetaType::U8:
-                out.write(m_cur_value.get<u8>());
+                out.write(m_cur_value->get<u8>().value());
                 break;
             case MetaType::S16:
-                out.write(m_cur_value.get<s16>());
+                out.write<s16, std::endian::big>(m_cur_value->get<s16>().value());
                 break;
             case MetaType::U16:
-                out.write(m_cur_value.get<u16>());
+                out.write<u16, std::endian::big>(m_cur_value->get<u16>().value());
                 break;
             case MetaType::S32:
-                out.write(m_cur_value.get<s32>());
+                out.write<s32, std::endian::big>(m_cur_value->get<s32>().value());
                 break;
             case MetaType::U32:
-                out.write(m_cur_value.get<u32>());
+                out.write<u32, std::endian::big>(m_cur_value->get<u32>().value());
                 break;
             }
             return {};
@@ -80,28 +80,34 @@ namespace Toolbox::Object {
         try {
             switch (m_type) {
             case MetaType::S8:
-                m_cur_value.set(in.read<s8>());
+                m_cur_value->set(in.read<s8>());
                 break;
             case MetaType::U8:
-                m_cur_value.set(in.read<u8>());
+                m_cur_value->set(in.read<u8>());
                 break;
             case MetaType::S16:
-                m_cur_value.set(in.read<s16>());
+                m_cur_value->set(in.read<s16, std::endian::big>());
                 break;
             case MetaType::U16:
-                m_cur_value.set(in.read<u16>());
+                m_cur_value->set(in.read<u16, std::endian::big>());
                 break;
             case MetaType::S32:
-                m_cur_value.set(in.read<s32>());
+                m_cur_value->set(in.read<s32, std::endian::big>());
                 break;
             case MetaType::U32:
-                m_cur_value.set(in.read<u32>());
+                m_cur_value->set(in.read<u32, std::endian::big>());
                 break;
             }
             return {};
         } catch (const std::exception &e) {
             return make_serial_error<void>(in, e.what());
         }
+    }
+
+    std::unique_ptr<IClonable> MetaEnum::clone(bool deep) const {
+        MetaEnum enum_(std::string_view(m_name), m_type, m_values, m_bit_mask);
+        enum_.m_cur_value = std::make_shared<MetaValue>(*m_cur_value);
+        return std::make_unique<MetaEnum>(enum_);
     }
 
 }  // namespace Toolbox::Object

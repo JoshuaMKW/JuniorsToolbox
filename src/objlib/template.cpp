@@ -13,6 +13,20 @@
 
 namespace Toolbox::Object {
 
+    static const std::unordered_map<std::string, std::string> s_alias_map = {
+        {"BYTE",   "S8"  },
+        {"SHORT",  "S16" },
+        {"INT",    "S32" },
+        {"LONG",   "S64" },
+        {"UBYTE",  "U8"  },
+        {"USHORT", "U16" },
+        {"UINT",   "U32" },
+        {"ULONG",  "U64" },
+        {"FLOAT",  "F32" },
+        {"DOUBLE", "F64" },
+        {"VEC3F",  "VEC3"},
+    };
+
     Template::Template(std::string_view type) : m_type(type) {
         auto p = std::filesystem::current_path();
         std::ifstream file("./Templates/" + std::string(type) + ".json", std::ios::in);
@@ -64,8 +78,14 @@ namespace Toolbox::Object {
 
     void Template::cacheEnums(json_t &enums) {
         for (const auto &item : enums.items()) {
-            const auto &e  = item.value();
-            auto enum_type = magic_enum::enum_cast<MetaType>(e["Type"].get<std::string>());
+            const auto &e = item.value();
+            auto member_type = e["Type"].get<std::string>();
+
+            if (s_alias_map.contains(member_type)) {
+                member_type = s_alias_map.at(member_type);
+            }
+
+            auto enum_type = magic_enum::enum_cast<MetaType>(member_type);
             if (!enum_type.has_value()) {
                 continue;
             }
@@ -183,19 +203,6 @@ namespace Toolbox::Object {
     }
 
     void Template::loadMembers(json_t &members, std::vector<MetaMember> &out) {
-        static const std::unordered_map<std::string, std::string> s_alias_map = {
-            {"BYTE",   "S8"  },
-            {"SHORT",  "S16" },
-            {"INT",    "S32" },
-            {"LONG",   "S64" },
-            {"UBYTE",  "U8"  },
-            {"USHORT", "U16" },
-            {"UINT",   "U32" },
-            {"ULONG",  "U64" },
-            {"FLOAT",  "F32" },
-            {"DOUBLE", "F64" },
-            {"VEC3F",  "VEC3"},
-        };
 
         for (const auto &item : members.items()) {
             auto member_name = item.key();

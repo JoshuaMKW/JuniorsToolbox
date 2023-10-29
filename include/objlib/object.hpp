@@ -83,6 +83,7 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual bool hasMember(const QualifiedName &name) const                   = 0;
         [[nodiscard]] virtual MetaStruct::GetMemberT getMember(const QualifiedName &name) const = 0;
+        [[nodiscard]] virtual std::vector<std::shared_ptr<MetaMember>> getMembers() const       = 0;
         [[nodiscard]] virtual size_t getMemberOffset(const QualifiedName &name,
                                                      int index) const                           = 0;
         [[nodiscard]] virtual size_t getMemberSize(const QualifiedName &name, int index) const  = 0;
@@ -98,8 +99,8 @@ namespace Toolbox::Object {
         [[nodiscard]] virtual std::optional<std::shared_ptr<ISceneObject>>
         getChild(const QualifiedName &name) = 0;
 
-        [[nodiscard]] virtual J3DTransformInfo getTransform() const  = 0;
-        virtual void setTransform(const J3DTransformInfo &transform) = 0;
+        [[nodiscard]] virtual std::optional<J3DTransformInfo> getTransform() const  = 0;
+        virtual void setTransform(J3DTransformInfo transform) = 0;
 
         [[nodiscard]] virtual std::optional<std::filesystem::path> getAnimationsPath() const = 0;
         [[nodiscard]] virtual std::optional<std::string_view>
@@ -216,6 +217,7 @@ namespace Toolbox::Object {
 
         bool hasMember(const QualifiedName &name) const override;
         MetaStruct::GetMemberT getMember(const QualifiedName &name) const override;
+        std::vector<std::shared_ptr<MetaMember>> getMembers() const override { return m_members; }
         size_t getMemberOffset(const QualifiedName &name, int index) const override;
         size_t getMemberSize(const QualifiedName &name, int index) const override;
 
@@ -250,8 +252,8 @@ namespace Toolbox::Object {
             return {};
         }
 
-        [[nodiscard]] J3DTransformInfo getTransform() const override { return {}; }
-        void setTransform(const J3DTransformInfo &transform) override {}
+        [[nodiscard]] std::optional<J3DTransformInfo> getTransform() const override { return {}; }
+        void setTransform(J3DTransformInfo transform) override {}
 
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
             return {};
@@ -459,6 +461,7 @@ namespace Toolbox::Object {
 
         bool hasMember(const QualifiedName &name) const override;
         MetaStruct::GetMemberT getMember(const QualifiedName &name) const override;
+        std::vector<std::shared_ptr<MetaMember>> getMembers() const override { return m_members; }
         size_t getMemberOffset(const QualifiedName &name, int index) const override;
         size_t getMemberSize(const QualifiedName &name, int index) const override;
 
@@ -493,8 +496,11 @@ namespace Toolbox::Object {
             return {};
         }
 
-        [[nodiscard]] J3DTransformInfo getTransform() const override { return m_transform; }
-        void setTransform(const J3DTransformInfo &transform) override { m_transform = transform; }
+        [[nodiscard]] std::optional<J3DTransformInfo> getTransform() const override { return m_transform; }
+        void setTransform(J3DTransformInfo transform) override {
+          // TODO: Set the properties transform too
+          m_transform = transform;
+        }
 
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
             return "./scene/mapobj/";
@@ -550,7 +556,7 @@ namespace Toolbox::Object {
 
         mutable MetaStruct::CacheMemberT m_member_cache;
 
-        J3DTransformInfo m_transform;
+        std::optional<J3DTransformInfo> m_transform;
         std::shared_ptr<J3DModelInstance> m_model_instance = {};
     };
 

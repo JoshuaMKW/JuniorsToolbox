@@ -1,7 +1,6 @@
 {
     "Ambient Color": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -16,7 +15,7 @@
         },
         "Members": {
             "Color": {
-                "Type": "RGBA8",
+                "Type": "RGBA",
                 "ArraySize": 1
             }
         },

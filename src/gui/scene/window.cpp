@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include <glad/glad.h>
 
 #include "gui/scene/window.hpp"
@@ -7,12 +9,14 @@
 
 #include <lib/bStream/bstream.h>
 
+#include "gui/imgui_ext.hpp"
 #include <imgui.h>
 #include <imgui_internal.h>
 
 #include <ImGuiFileDialog.h>
 
 #include "gui/application.hpp"
+#include "gui/util.hpp"
 #include <gui/IconsForkAwesome.h>
 #include <gui/modelcache.hpp>
 
@@ -22,6 +26,7 @@
 #include <iconv.h>
 
 #if WIN32
+#define NOMINMAX
 #include <windows.h>
 #endif
 
@@ -69,67 +74,10 @@ namespace Toolbox::UI {
     }
     */
 
-    std::string Utf8ToSjis(const std::string &value) {
-        iconv_t conv = iconv_open("SHIFT_JISX0213", "UTF-8");
-        if (conv == (iconv_t)(-1)) {
-            throw std::runtime_error("Error opening iconv for UTF-8 to Shift-JIS conversion");
-        }
-
-        size_t inbytesleft = value.size();
-        char *inbuf        = const_cast<char *>(value.data());
-
-        size_t outbytesleft = value.size() * 2;
-        std::string sjis(outbytesleft, '\0');
-        char *outbuf = &sjis[0];
-
-        if (iconv(conv, &inbuf, &inbytesleft, &outbuf, &outbytesleft) == (size_t)(-1)) {
-            throw std::runtime_error("Error converting from UTF-8 to Shift-JIS");
-        }
-
-        sjis.resize(sjis.size() - outbytesleft);
-        iconv_close(conv);
-        return sjis;
-    }
-
-    std::string SjisToUtf8(const std::string &value) {
-        iconv_t conv = iconv_open("UTF-8", "SHIFT_JISX0213");
-        if (conv == (iconv_t)(-1)) {
-            throw std::runtime_error("Error opening iconv for Shift-JIS to UTF-8 conversion");
-        }
-
-        size_t inbytesleft = value.size();
-        char *inbuf        = const_cast<char *>(value.data());
-
-        size_t outbytesleft = value.size() * 3;
-        std::string utf8(outbytesleft, '\0');
-        char *outbuf = &utf8[0];
-
-        if (iconv(conv, &inbuf, &inbytesleft, &outbuf, &outbytesleft) == (size_t)(-1)) {
-            throw std::runtime_error("Error converting from Shift-JIS to UTF-8");
-        }
-
-        utf8.resize(utf8.size() - outbytesleft);
-        iconv_close(conv);
-        return utf8;
-    }
-
-    void DrawTree(std::shared_ptr<Toolbox::Object::ISceneObject> root) {
-        std::string node_name = std::format("{} ({})", root->type(), root->getNameRef().name());
-        if (root->isGroupObject()) {
-            bool open = ImGui::TreeNode(SjisToUtf8(node_name).c_str());
-            if (open) {
-                auto objects = std::dynamic_pointer_cast<Toolbox::Object::GroupSceneObject>(root)
-                                   ->getChildren();
-                if (objects.has_value()) {
-                    for (auto object : objects.value()) {
-                        DrawTree(object);
-                    }
-                }
-                ImGui::TreePop();
-            }
-        } else {
-            ImGui::Text(SjisToUtf8(node_name).c_str());
-        }
+    static std::string getNodeUID(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
+        std::string node_name = std::format("{} ({})", node->type(), node->getNameRef().name());
+        node_name += std::format("##{}", node->getQualifiedName().toString());
+        return node_name;
     }
 
     SceneWindow::~SceneWindow() {
@@ -167,6 +115,8 @@ namespace Toolbox::UI {
 
             m_current_scene = std::make_unique<Toolbox::Scene::SceneInstance>(path);
 
+            m_current_scene->dump(std::cout);
+
             J3DModelLoader loader;
             for (const auto &entry : std::filesystem::directory_iterator(path / "mapobj")) {
                 if (entry.path().extension() == ".bmd") {
@@ -201,8 +151,8 @@ namespace Toolbox::UI {
             if (Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
                 ImVec2 mouse_delta = Input::GetMouseDelta();
 
-                m_camera.TurnLeftRight(-mouse_delta.x * 0.005);
-                m_camera.TiltUpDown(-mouse_delta.y * 0.005);
+                m_camera.TurnLeftRight(-mouse_delta.x * 0.005f);
+                m_camera.TiltUpDown(-mouse_delta.y * 0.005f);
 
                 m_is_viewport_dirty = true;
             }
@@ -239,7 +189,7 @@ namespace Toolbox::UI {
         if (m_render_window_size.x != m_render_window_size_prev.x ||
             m_render_window_size.y != m_render_window_size_prev.y) {
             m_camera.setAspect(m_render_size.y > 0 ? m_render_size.x / m_render_size.y
-                                                   : FLT_EPSILON);
+                                                   : FLT_EPSILON * 2);
             m_is_viewport_dirty = true;
         }
 
@@ -266,28 +216,30 @@ namespace Toolbox::UI {
             return;
         }
 
+        auto size_x = static_cast<GLsizei>(m_render_window_size.x);
+        auto size_y = static_cast<GLsizei>(m_render_window_size.y);
+
         // window was resized, new texture and depth storage needed for framebuffer
         glDeleteRenderbuffers(1, &m_rbo_id);
         glDeleteTextures(1, &m_tex_id);
 
         glGenTextures(1, &m_tex_id);
         glBindTexture(GL_TEXTURE_2D, m_tex_id);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_render_window_size.x, m_render_window_size.y, 0,
-                     GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size_x, size_y, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                     nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_tex_id, 0);
 
         glGenRenderbuffers(1, &m_rbo_id);
         glBindRenderbuffer(GL_RENDERBUFFER, m_rbo_id);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, m_render_window_size.x,
-                              m_render_window_size.y);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, size_x, size_y);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
                                   m_rbo_id);
 
         assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
-        glViewport(0, 0, m_render_window_size.x, m_render_window_size.y);
+        glViewport(0, 0, size_x, size_y);
     }
 
     void SceneWindow::viewportEnd() {
@@ -298,6 +250,12 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::renderBody(f32 deltaTime) {
+        renderHierarchy();
+        renderProperties();
+        renderScene(deltaTime);
+    }
+
+    void SceneWindow::renderHierarchy() {
         ImGuiWindowClass hierarchyOverride;
         hierarchyOverride.ClassId =
             ImGui::GetID(getWindowChildUID(*this, "Hierarchy Editor").c_str());
@@ -320,7 +278,7 @@ namespace Toolbox::UI {
 
             if (m_current_scene != nullptr) {
                 auto root = m_current_scene->getObjHierarchy().getRoot();
-                DrawTree(root);
+                renderTree(root);
             }
 
             ImGui::Spacing();
@@ -329,11 +287,108 @@ namespace Toolbox::UI {
 
             if (m_current_scene != nullptr) {
                 auto root = m_current_scene->getTableHierarchy().getRoot();
-                DrawTree(root);
+                renderTree(root);
             }
         }
         ImGui::End();
+    }
 
+    void SceneWindow::renderTree(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
+        constexpr auto dir_flags = ImGuiTreeNodeFlags_OpenOnArrow |
+                                   ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                                   ImGuiTreeNodeFlags_SpanFullWidth;
+
+        constexpr auto file_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth;
+
+        constexpr auto node_flags = dir_flags | ImGuiTreeNodeFlags_DefaultOpen;
+
+        bool multi_select     = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
+        bool needs_scene_sync = node->getTransform() ? false : true;
+
+        std::string node_uid_str = getNodeUID(node);
+        ImGuiID tree_node_id     = ImGui::GetCurrentWindow()->GetID(node_uid_str.c_str());
+
+        auto node_it =
+            std::find_if(m_selected_nodes.begin(), m_selected_nodes.end(),
+                         [&](const NodeInfo &other) { return other.m_node_id == tree_node_id; });
+        bool node_already_clicked = node_it != m_selected_nodes.end();
+
+        if (node->isGroupObject()) {
+            bool node_open =
+                ImGui::TreeNodeEx(node_uid_str.c_str(), node->getParent() ? dir_flags : node_flags,
+                                  node_already_clicked);
+
+            if (ImGui::IsItemClicked()) {
+                m_selected_properties.clear();
+
+                NodeInfo info = {.m_selected         = node,
+                                 .m_node_id          = tree_node_id,
+                                 .m_hierarchy_synced = true,
+                                 .m_scene_synced =
+                                     needs_scene_sync};  // Only spacial objects get scene selection
+
+                if (multi_select) {
+                    if (node_it == m_selected_nodes.end())
+                        m_selected_nodes.push_back(info);
+                } else {
+                    m_selected_nodes.clear();
+                    m_selected_nodes.push_back(info);
+                    for (auto &member : node->getMembers()) {
+                        member->syncArray();
+                        auto prop = createProperty(member);
+                        if (prop) {
+                            m_selected_properties.push_back(std::move(prop));
+                        }
+                    }
+                }
+            }
+
+            if (node_open) {
+                auto objects = std::dynamic_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
+                                   ->getChildren();
+                if (objects.has_value()) {
+                    for (auto object : objects.value()) {
+                        renderTree(object);
+                    }
+                }
+                ImGui::TreePop();
+            }
+        } else {
+            bool node_open =
+                ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_already_clicked);
+
+            if (node_open) {
+                if (ImGui::IsItemClicked()) {
+                    m_selected_properties.clear();
+
+                    NodeInfo info = {
+                        .m_selected         = node,
+                        .m_node_id          = tree_node_id,
+                        .m_hierarchy_synced = true,
+                        .m_scene_synced =
+                            needs_scene_sync};  // Only spacial objects get scene selection
+
+                    if (multi_select) {
+                        if (node_it == m_selected_nodes.end())
+                            m_selected_nodes.push_back(info);
+                    } else {
+                        m_selected_nodes.clear();
+                        m_selected_nodes.push_back(info);
+                        for (auto &member : node->getMembers()) {
+                            member->syncArray();
+                            auto prop = createProperty(member);
+                            if (prop) {
+                                m_selected_properties.push_back(std::move(prop));
+                            }
+                        }
+                    }
+                }
+                ImGui::TreePop();
+            }
+        }
+    }
+
+    void SceneWindow::renderProperties() {
         ImGuiWindowClass propertiesOverride;
         propertiesOverride.DockNodeFlagsOverrideSet =
             ImGuiDockNodeFlags_NoDockingOverMe | ImGuiDockNodeFlags_NoDockingOverOther;
@@ -342,14 +397,16 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowSizeConstraints({300, 500}, {FLT_MAX, FLT_MAX});
 
         if (ImGui::Begin(getWindowChildUID(*this, "Properties Editor").c_str())) {
-            // TODO: Render properties
+            float label_width = 0;
+            for (auto &prop : m_selected_properties) {
+                label_width = std::max(label_width, prop->labelSize().x);
+            }
+            for (auto &prop : m_selected_properties) {
+                m_is_viewport_dirty |= prop->render(label_width);
+                ImGui::ItemSize({0, 2});
+            }
         }
         ImGui::End();
-
-        renderScene(deltaTime);
-
-        // mGrid.Render(m_camera.GetPosition(), m_camera.GetProjectionMatrix(),
-        // m_camera.GetViewMatrix());
     }
 
     void SceneWindow::renderScene(f32 delta_time) {

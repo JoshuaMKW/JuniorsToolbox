@@ -503,6 +503,15 @@ namespace Toolbox::Object {
                                       model_cache_t &model_cache) {
 
         if (m_model_instance) {
+            auto transform_member = getMember(std::string("Transform"));
+            auto transform_value_ptr =
+                std::get<std::shared_ptr<MetaMember>>(transform_member.value());
+            if (transform_value_ptr) {
+                Transform transform = getMetaValue<Transform>(transform_value_ptr).value();
+                m_model_instance->SetTranslation(transform.m_translation);
+                m_model_instance->SetRotation(transform.m_rotation);
+                m_model_instance->SetScale(transform.m_scale);
+            }
             renderables.push_back(m_model_instance);
         } else {
             auto modelNameExpected = getMember(QualifiedName(std::string("Model")));
@@ -621,22 +630,18 @@ namespace Toolbox::Object {
         auto template_ = std::move(template_result.value());
         auto wizard    = template_->getWizard();
 
+        const char *debug_str = template_->type().data();
+
         // Members
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
-            if (in.tell() >= endpos) {
-                /*auto err = make_serial_error(
-                    in, std::format(
-                            "Unexpected end of file. {} ({}) expected {} members but only found {}",
-                            m_type, m_nameref.name(), wizard->m_init_members.size(), i + 1));
-                return std::unexpected(err);*/
-                break;
-            }
             auto &m          = wizard->m_init_members[i];
             auto this_member = make_deep_clone<MetaMember>(m);
             this_member->updateReferenceToList(m_members);
-            auto result = this_member->deserialize(in);
-            if (!result) {
-                return std::unexpected(result.error());
+            if (in.tell() < endpos) {
+                auto result = this_member->deserialize(in);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
             }
             m_members.push_back(this_member);
         }
