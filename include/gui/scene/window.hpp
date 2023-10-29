@@ -25,7 +25,7 @@ namespace Toolbox::UI {
 
     struct NodeInfo {
         std::shared_ptr<Object::ISceneObject> m_selected;
-        size_t m_row;
+        size_t m_node_id;
         bool m_hierarchy_synced;
         bool m_scene_synced;
     };
@@ -97,7 +97,7 @@ namespace Toolbox::UI {
 
         u32 m_fbo_id, m_tex_id, m_rbo_id;
 
-        std::optional<NodeInfo> m_selected_hierarchy_node = {};
+        std::vector<NodeInfo> m_selected_nodes = {};
         std::vector<std::unique_ptr<IProperty>> m_selected_properties = {};
 
         std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;

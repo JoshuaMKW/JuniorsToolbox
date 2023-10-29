@@ -11,6 +11,7 @@
 
 #include <imgui.h>
 #include <imgui_internal.h>
+#include "gui/imgui_ext.hpp"
 
 #include <ImGuiFileDialog.h>
 
@@ -295,28 +296,53 @@ namespace Toolbox::UI {
                                    ImGuiTreeNodeFlags_OpenOnDoubleClick |
                                    ImGuiTreeNodeFlags_SpanFullWidth;
 
-        constexpr auto file_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth;
+        constexpr auto file_flags =
+            ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth;
 
         constexpr auto node_flags = dir_flags | ImGuiTreeNodeFlags_DefaultOpen;
 
-        std::string node_uid = getNodeUID(node);
+        bool multi_select     = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
+        bool needs_scene_sync = node->getTransform() ? false : true;
+
+        std::string node_uid_str = getNodeUID(node);
+        ImGuiID tree_node_id = ImGui::GetCurrentWindow()->GetID(node_uid_str.c_str());
+
+        auto node_it =
+            std::find_if(m_selected_nodes.begin(), m_selected_nodes.end(),
+                         [&](const NodeInfo &other) { return other.m_node_id == tree_node_id; });
+        bool node_already_clicked = node_it != m_selected_nodes.end();
+
         if (node->isGroupObject()) {
-            bool open =
-                ImGui::TreeNodeEx(node_uid.c_str(), node->getParent() ? dir_flags : node_flags);
+            bool node_open =
+                ImGui::TreeNodeEx(node_uid_str.c_str(), node->getParent() ? dir_flags : node_flags,
+                                  node_already_clicked);
+
             if (ImGui::IsItemClicked()) {
-                m_selected_hierarchy_node = {
-                    .m_selected         = node,
-                    .m_row              = 0,
-                    .m_hierarchy_synced = true,
-                    .m_scene_synced     = node->getTransform()
-                                              ? false
-                                              : true};  // Only spacial objects get scene selection
                 m_selected_properties.clear();
-                for (auto &member : node->getMembers()) {
-                    m_selected_properties.push_back(createProperty(member));
+
+                NodeInfo info = {.m_selected         = node,
+                                 .m_node_id          = tree_node_id,
+                                 .m_hierarchy_synced = true,
+                                 .m_scene_synced =
+                                     needs_scene_sync};  // Only spacial objects get scene selection
+
+                if (multi_select) {
+                    if (node_it == m_selected_nodes.end())
+                        m_selected_nodes.push_back(info);
+                } else {
+                    m_selected_nodes.clear();
+                    m_selected_nodes.push_back(info);
+                    for (auto &member : node->getMembers()) {
+                        member->syncArray();
+                        auto prop = createProperty(member);
+                        if (prop) {
+                            m_selected_properties.push_back(std::move(prop));
+                        }
+                    }
                 }
             }
-            if (open) {
+
+            if (node_open) {
                 auto objects = std::dynamic_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
                                    ->getChildren();
                 if (objects.has_value()) {
@@ -327,21 +353,31 @@ namespace Toolbox::UI {
                 ImGui::TreePop();
             }
         } else {
-            if (ImGui::TreeNodeEx(node_uid.c_str(), file_flags)) {
+            bool node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_already_clicked);
+
+            if (node_open) {
                 if (ImGui::IsItemClicked()) {
-                    m_selected_hierarchy_node = {
-                        .m_selected         = node,
-                        .m_row              = 0,
-                        .m_hierarchy_synced = true,
-                        .m_scene_synced     = node->getTransform()
-                                                  ? false
-                                                  : true};  // Only spacial objects get scene selection
                     m_selected_properties.clear();
-                    for (auto &member : node->getMembers()) {
-                        member->syncArray();
-                        auto prop = createProperty(member);
-                        if (prop) {
-                            m_selected_properties.push_back(std::move(prop));
+
+                    NodeInfo info = {
+                        .m_selected         = node,
+                        .m_node_id          = tree_node_id,
+                        .m_hierarchy_synced = true,
+                        .m_scene_synced =
+                            needs_scene_sync};  // Only spacial objects get scene selection
+
+                    if (multi_select) {
+                        if (node_it == m_selected_nodes.end())
+                            m_selected_nodes.push_back(info);
+                    } else {
+                        m_selected_nodes.clear();
+                        m_selected_nodes.push_back(info);
+                        for (auto &member : node->getMembers()) {
+                            member->syncArray();
+                            auto prop = createProperty(member);
+                            if (prop) {
+                                m_selected_properties.push_back(std::move(prop));
+                            }
                         }
                     }
                 }

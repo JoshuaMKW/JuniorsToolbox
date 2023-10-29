@@ -58,11 +58,11 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as number" << std::endl;
+            std::cout << "Trying to render struct as bool" << std::endl;
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as number" << std::endl;
+            std::cout << "Trying to render enum as bool" << std::endl;
         }
 
         if (m_bools.size() != m_member->arraysize()) {
@@ -247,11 +247,11 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as number" << std::endl;
+            std::cout << "Trying to render struct as float" << std::endl;
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as number" << std::endl;
+            std::cout << "Trying to render enum as float" << std::endl;
         }
 
         if (m_numbers.size() != m_member->arraysize()) {
@@ -328,11 +328,11 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as number" << std::endl;
+            std::cout << "Trying to render struct as double" << std::endl;
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as number" << std::endl;
+            std::cout << "Trying to render enum as double" << std::endl;
         }
 
         if (m_numbers.size() != m_member->arraysize()) {
@@ -409,11 +409,11 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as number" << std::endl;
+            std::cout << "Trying to render struct as string" << std::endl;
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as number" << std::endl;
+            std::cout << "Trying to render enum as string" << std::endl;
         }
 
         bool any_changed = false;
@@ -479,11 +479,11 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as number" << std::endl;
+            std::cout << "Trying to render struct as color" << std::endl;
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as number" << std::endl;
+            std::cout << "Trying to render enum as color" << std::endl;
         }
 
         bool any_changed = false;
@@ -576,11 +576,11 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as enum" << std::endl;
+            std::cout << "Trying to render struct as vector" << std::endl;
         }
 
-        if (!m_member->isTypeEnum()) {
-            std::cout << "Trying to render number as enum" << std::endl;
+        if (m_member->isTypeEnum()) {
+            std::cout << "Trying to render enum as vector" << std::endl;
         }
 
         if (m_vectors.size() != m_member->arraysize()) {
@@ -663,11 +663,13 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as enum" << std::endl;
+            std::cout << "Trying to render struct as transform" << std::endl;
+            return false;
         }
 
-        if (!m_member->isTypeEnum()) {
-            std::cout << "Trying to render number as enum" << std::endl;
+        if (m_member->isTypeEnum()) {
+            std::cout << "Trying to render enum as transform" << std::endl;
+            return false;
         }
 
         if (m_transforms.size() != m_member->arraysize()) {
@@ -814,7 +816,7 @@ namespace Toolbox::UI {
         }
 
         if (!m_member->isTypeEnum()) {
-            std::cout << "Trying to render number as enum" << std::endl;
+            std::cout << "Trying to render raw value as enum" << std::endl;
         }
 
         bool any_changed = false;
@@ -939,6 +941,16 @@ namespace Toolbox::UI {
 
     bool StructProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
+
+        if (m_member->isTypeEnum()) {
+            std::cout << "Trying to render enum as struct" << std::endl;
+            return false;
+        }
+
+        if (!m_member->isTypeStruct()) {
+            std::cout << "Trying to render raw value as struct" << std::endl;
+            return false;
+        }
 
         if (m_children_ary.size() != m_member->arraysize()) {
             init();
