@@ -352,7 +352,7 @@ namespace Toolbox::UI {
             }
 
             if (node_open) {
-                auto objects = std::dynamic_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
+                auto objects = std::static_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
                                    ->getChildren();
                 if (objects.has_value()) {
                     for (auto object : objects.value()) {
@@ -633,7 +633,7 @@ namespace Toolbox::UI {
                 return make_error<void>("Scene Hierarchy",
                                         "Failed to find transform member of physical object");
             }
-            auto member_ptr = std::get<std::shared_ptr<MetaMember>>(member_result.value());
+            auto member_ptr = member_result.value();
             if (!member_ptr) {
                 return make_error<void>("Scene Hierarchy",
                                         "Found the transform member but it was null");

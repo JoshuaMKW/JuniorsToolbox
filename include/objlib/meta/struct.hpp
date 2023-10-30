@@ -17,7 +17,7 @@ namespace Toolbox::Object {
 
     class MetaStruct : public ISerializable, public IClonable {
     public:
-        using MemberT      = std::variant<std::shared_ptr<MetaMember>, std::shared_ptr<MetaStruct>>;
+        using MemberT      = std::shared_ptr<MetaMember>;
         using GetMemberT   = std::expected<MemberT, MetaScopeError>;
         using CacheMemberT = std::unordered_map<std::string, MemberT>;
 
