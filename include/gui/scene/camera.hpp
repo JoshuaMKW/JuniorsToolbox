@@ -1,62 +1,68 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include "objlib/transform.hpp"
 
-class Camera {
+namespace Toolbox {
 
-public:
-    // Default constructor
-    Camera();
-    ~Camera() = default;
+    class Camera {
 
-    // Setup on single camera
-    void setPerspective(const float FieldOfView_Degs, const float AspectRatio, const float NearDist,
-                        const float FarDist);
-    void setOrientAndPosition(const glm::vec3 &Up_vect, const glm::vec3 &inLookAt_pt, const glm::vec3 &pos_pt);
+    public:
+        // Default constructor
+        Camera();
+        ~Camera() = default;
 
-    // update camera system
-    void updateCamera(void);
+        // Setup on single camera
+        void setPerspective(const float FieldOfView_Degs, const float AspectRatio,
+                            const float NearDist, const float FarDist);
+        void setOrientAndPosition(const glm::vec3 &Up_vect, const glm::vec3 &inLookAt_pt,
+                                  const glm::vec3 &pos_pt);
 
-    // Get the matrices for rendering
-    glm::mat4x4 &getViewMatrix();
-    glm::mat4x4 &getProjMatrix();
+        // update camera system
+        void updateCamera(void);
 
-    // accessors
-    void getPos(glm::vec3 &outPos) const;
-    void getDir(glm::vec3 &outDir) const;
-    void getUp(glm::vec3 &outUp) const;
-    void getLookAt(glm::vec3 &outLookAt) const;
-    void getRight(glm::vec3 &outRight) const;
+        // Get the matrices for rendering
+        glm::mat4x4 &getViewMatrix();
+        glm::mat4x4 &getProjMatrix();
 
-    void TranslateLeftRight(float delta);
-    void TranslateFwdBack(float delta);
-    void TiltUpDown(float ang);
-    void TurnLeftRight(float ang);
+        // accessors
+        void getPos(glm::vec3 &outPos) const;
+        void getDir(glm::vec3 &outDir) const;
+        void getUp(glm::vec3 &outUp) const;
+        void getLookAt(glm::vec3 &outLookAt) const;
+        void getRight(glm::vec3 &outRight) const;
 
-    void setAspect(float aspect);
+        void translateLeftRight(float delta);
+        void translateFwdBack(float delta);
+        void tiltUpDown(float ang);
+        void turnLeftRight(float ang);
 
-    // Why no SETS for Pos, Dir, Up, LookAt and Right?
-    //   They have to be adjusted _together_ in setOrientAndPosition()
+        void setAspect(float aspect);
 
-private:  // methods should never be public
-    void privUpdateProjectionMatrix(void);
-    void privUpdateViewMatrix(void);
+        // Why no SETS for Pos, Dir, Up, LookAt and Right?
+        //   They have to be adjusted _together_ in setOrientAndPosition()
 
-private:  // data  (Keep it private)
-    // Projection Matrix
-    glm::mat4x4 projMatrix;
-    glm::mat4x4 viewMatrix;
+    private:  // methods should never be public
+        void privUpdateProjectionMatrix(void);
+        void privUpdateViewMatrix(void);
 
-    // camera unit vectors (up, dir, right)
-    glm::vec3 vUp;
-    glm::vec3 vDir;
-    glm::vec3 vRight;  // derived by up and dir
-    glm::vec3 vPos;
-    glm::vec3 vLookAt;
+    private:  // data  (Keep it private)
+        // Projection Matrix
+        glm::mat4x4 projMatrix;
+        glm::mat4x4 viewMatrix;
 
-    // Define the frustum inputs
-    float nearDist;
-    float farDist;
-    float fovy;  // aka view angle along y axis
-    float aspectRatio;
-};
+        // camera unit vectors (up, dir, right)
+        glm::vec3 vUp;
+        glm::vec3 vDir;
+        glm::vec3 vRight;  // derived by up and dir
+        glm::vec3 vPos;
+        glm::vec3 vLookAt;
+
+        // Define the frustum inputs
+        float nearDist;
+        float farDist;
+        float fovy;  // aka view angle along y axis
+        float aspectRatio;
+    };
+
+}  // namespace Toolbox

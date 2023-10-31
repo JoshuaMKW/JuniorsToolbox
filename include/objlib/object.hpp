@@ -75,9 +75,12 @@ namespace Toolbox::Object {
         [[nodiscard]] virtual NameRef getNameRef() const = 0;
         virtual void setNameRef(NameRef name)            = 0;
 
-        [[nodiscard]] virtual ISceneObject *getParent() const                         = 0;
-        virtual std::expected<void, ObjectGroupError> setParent(ISceneObject *parent) = 0;
+        [[nodiscard]] virtual ISceneObject *getParent() const = 0;
 
+        // Don't use this, use addChild / removeChild instead.
+        virtual std::expected<void, ObjectGroupError> _setParent(ISceneObject *parent) = 0;
+
+    public:
         [[nodiscard]] virtual std::vector<s8> getData() const = 0;
         [[nodiscard]] virtual size_t getDataSize() const      = 0;
 
@@ -99,8 +102,8 @@ namespace Toolbox::Object {
         [[nodiscard]] virtual std::optional<std::shared_ptr<ISceneObject>>
         getChild(const QualifiedName &name) = 0;
 
-        [[nodiscard]] virtual std::optional<J3DTransformInfo> getTransform() const  = 0;
-        virtual void setTransform(J3DTransformInfo transform) = 0;
+        [[nodiscard]] virtual std::optional<J3DTransformInfo> getTransform() const = 0;
+        virtual void setTransform(J3DTransformInfo transform)                      = 0;
 
         [[nodiscard]] virtual std::optional<std::filesystem::path> getAnimationsPath() const = 0;
         [[nodiscard]] virtual std::optional<std::string_view>
@@ -207,7 +210,7 @@ namespace Toolbox::Object {
         void setNameRef(NameRef nameref) override { m_nameref = nameref; }
 
         ISceneObject *getParent() const override { return m_parent; }
-        std::expected<void, ObjectGroupError> setParent(ISceneObject *parent) override {
+        std::expected<void, ObjectGroupError> _setParent(ISceneObject *parent) override {
             m_parent = parent;
             return {};
         }
@@ -290,7 +293,7 @@ namespace Toolbox::Object {
                 VirtualSceneObject obj;
                 obj.m_type    = m_type;
                 obj.m_nameref = m_nameref;
-                obj.m_parent  = m_parent;
+                obj.m_parent  = nullptr;
                 obj.m_members.reserve(m_members.size());
                 for (const auto &member : m_members) {
                     auto new_member = make_deep_clone<MetaMember>(member);
@@ -331,17 +334,12 @@ namespace Toolbox::Object {
             : GroupSceneObject(template_) {
             deserialize(in);
         }
-        GroupSceneObject(const Template &template_, std::string_view wizard_name, Deserializer &in)
-            : GroupSceneObject(template_, wizard_name) {
-            deserialize(in);
-        }
         GroupSceneObject(const Template &template_, Deserializer &in, ISceneObject *parent)
             : GroupSceneObject(template_, in) {
             parent->addChild(std::shared_ptr<GroupSceneObject>(this));
         }
-        GroupSceneObject(const Template &template_, std::string_view wizard_name, Deserializer &in,
-                         ISceneObject *parent)
-            : GroupSceneObject(template_, wizard_name, in) {
+        GroupSceneObject(const Template &template_, std::string_view wizard_name, ISceneObject *parent)
+            : GroupSceneObject(template_, wizard_name) {
             parent->addChild(std::shared_ptr<GroupSceneObject>(this));
         }
         GroupSceneObject(const GroupSceneObject &) = default;
@@ -374,6 +372,26 @@ namespace Toolbox::Object {
         // Inherited via ISerializable
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
+
+        std::unique_ptr<IClonable> clone(bool deep) const override {
+            if (deep) {
+                GroupSceneObject obj;
+                obj.m_type    = m_type;
+                obj.m_nameref = m_nameref;
+                obj.m_parent  = nullptr;
+                obj.m_members.reserve(m_members.size());
+                for (const auto &member : m_members) {
+                    auto new_member = make_deep_clone<MetaMember>(member);
+                    obj.m_members.push_back(new_member);
+                }
+                obj.m_group_size = make_deep_clone<MetaMember>(m_group_size);
+                for (const auto &child : m_children) {
+                    obj.m_children.push_back(make_deep_clone<ISceneObject>(child));
+                }
+                return std::make_unique<GroupSceneObject>(std::move(obj));
+            }
+            return std::make_unique<GroupSceneObject>(*this);
+        }
 
         [[nodiscard]] size_t getGroupSize() const;
         [[nodiscard]] std::shared_ptr<MetaMember> getGroupSizeM() const { return m_group_size; }
@@ -451,7 +469,7 @@ namespace Toolbox::Object {
         void setNameRef(NameRef nameref) override { m_nameref = nameref; }
 
         ISceneObject *getParent() const override { return m_parent; }
-        std::expected<void, ObjectGroupError> setParent(ISceneObject *parent) override {
+        std::expected<void, ObjectGroupError> _setParent(ISceneObject *parent) override {
             m_parent = parent;
             return {};
         }
@@ -496,10 +514,12 @@ namespace Toolbox::Object {
             return {};
         }
 
-        [[nodiscard]] std::optional<J3DTransformInfo> getTransform() const override { return m_transform; }
+        [[nodiscard]] std::optional<J3DTransformInfo> getTransform() const override {
+            return m_transform;
+        }
         void setTransform(J3DTransformInfo transform) override {
-          // TODO: Set the properties transform too
-          m_transform = transform;
+            // TODO: Set the properties transform too
+            m_transform = transform;
         }
 
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
@@ -535,7 +555,7 @@ namespace Toolbox::Object {
                 PhysicalSceneObject obj;
                 obj.m_type    = m_type;
                 obj.m_nameref = m_nameref;
-                obj.m_parent  = m_parent;
+                obj.m_parent  = nullptr;
                 obj.m_members.reserve(m_members.size());
                 for (const auto &member : m_members) {
                     auto new_member = make_deep_clone<MetaMember>(member);
@@ -567,6 +587,7 @@ namespace Toolbox::Object {
         using create_t     = std::expected<create_ret_t, create_err_t>;
 
         static create_t create(Deserializer &in);
+        static create_ret_t create(const Template &template_, std::string_view wizard_name);
 
     protected:
         static bool isGroupObject(std::string_view type);

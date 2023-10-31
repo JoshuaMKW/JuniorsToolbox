@@ -28,7 +28,6 @@ namespace Toolbox::Object {
     };
 
     Template::Template(std::string_view type) : m_type(type) {
-        auto p = std::filesystem::current_path();
         std::ifstream file("./Templates/" + std::string(type) + ".json", std::ios::in);
         if (!file.is_open()) {
             throw std::runtime_error("Failed to open template file: " + std::string(type));
@@ -78,7 +77,7 @@ namespace Toolbox::Object {
 
     void Template::cacheEnums(json_t &enums) {
         for (const auto &item : enums.items()) {
-            const auto &e = item.value();
+            const auto &e    = item.value();
             auto member_type = e["Type"].get<std::string>();
 
             if (s_alias_map.contains(member_type)) {
@@ -334,9 +333,30 @@ namespace Toolbox::Object {
         }
     }
 
-    TemplateFactory::create_t TemplateFactory::create(std::string_view type) {
-        static std::unordered_map<std::string, Template> s_template_cache;
+    static std::unordered_map<std::string, Template> s_template_cache;
 
+    std::expected<void, FSError> TemplateFactory::initialize() {
+        auto cwd_result = Toolbox::current_path();
+        if (!cwd_result) {
+            return make_fs_error<void>(cwd_result.error(), "Failed to get the cwd");
+        }
+
+        auto &cwd = cwd_result.value();
+        for (auto &subpath : std::filesystem::directory_iterator{cwd / "Templates"}) {
+            auto type_str = subpath.path().stem().string();
+            Template template_;
+            try {
+                template_ = Template(type_str);
+            } catch (std::runtime_error &e) {
+                return make_fs_error<void>(std::error_code(), e.what());
+            }
+            s_template_cache[type_str] = template_;
+        }
+
+        return {};
+    }
+
+    TemplateFactory::create_t TemplateFactory::create(std::string_view type) {
         auto type_str = std::string(type);
         if (s_template_cache.contains(type_str)) {
             return std::make_unique<Template>(s_template_cache[type_str]);
@@ -358,6 +378,14 @@ namespace Toolbox::Object {
 
         s_template_cache[type_str] = template_;
         return std::make_unique<Template>(template_);
+    }
+
+    std::vector<TemplateFactory::create_ret_t> TemplateFactory::createAll() {
+        std::vector<TemplateFactory::create_ret_t> ret;
+        for (auto &item : s_template_cache) {
+            ret.push_back(std::make_unique<Template>(item.second));
+        }
+        return ret;
     }
 
 }  // namespace Toolbox::Object

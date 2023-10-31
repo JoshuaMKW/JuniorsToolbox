@@ -29,6 +29,7 @@
 #define NOMINMAX
 #include <windows.h>
 #endif
+#include <gui/context_menu.hpp>
 
 namespace Toolbox::UI {
 
@@ -99,6 +100,14 @@ namespace Toolbox::UI {
         // Create framebuffer for this window
         glGenFramebuffers(1, &m_fbo_id);
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
+
+        buildContextMenuVirtualObj();
+        buildContextMenuGroupObj();
+        buildContextMenuPhysicalObj();
+        buildContextMenuMultiObj();
+
+        buildCreateObjDialog();
+        buildRenameObjDialog();
     }
 
     bool SceneWindow::loadData(const std::filesystem::path &path) {
@@ -151,8 +160,8 @@ namespace Toolbox::UI {
             if (Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
                 ImVec2 mouse_delta = Input::GetMouseDelta();
 
-                m_camera.TurnLeftRight(-mouse_delta.x * 0.005f);
-                m_camera.TiltUpDown(-mouse_delta.y * 0.005f);
+                m_camera.turnLeftRight(-mouse_delta.x * 0.005f);
+                m_camera.tiltUpDown(-mouse_delta.y * 0.005f);
 
                 m_is_viewport_dirty = true;
             }
@@ -182,8 +191,8 @@ namespace Toolbox::UI {
             lr_delta *= 10;
             ud_delta *= 10;
 
-            m_camera.TranslateLeftRight(-lr_delta);
-            m_camera.TranslateFwdBack(ud_delta);
+            m_camera.translateLeftRight(-lr_delta);
+            m_camera.translateFwdBack(ud_delta);
         }
 
         if (m_render_window_size.x != m_render_window_size_prev.x ||
@@ -267,6 +276,12 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowSizeConstraints({300, 500}, {FLT_MAX, FLT_MAX});
 
         if (ImGui::Begin(getWindowChildUID(*this, "Hierarchy Editor").c_str())) {
+            ImGui::Text("Find Objects");
+            ImGui::SameLine();
+
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            m_hierarchy_filter.Draw("##obj_filter");
+
             ImGui::Text("Map Objects");
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left) /* Check if scene is loaded here*/) {
                 // Add Object
@@ -291,6 +306,11 @@ namespace Toolbox::UI {
             }
         }
         ImGui::End();
+
+        if (m_selected_nodes.size() > 0) {
+            m_create_obj_dialog.render(m_selected_nodes.back());
+            m_rename_obj_dialog.render(m_selected_nodes.back());
+        }
     }
 
     void SceneWindow::renderTree(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
@@ -305,6 +325,9 @@ namespace Toolbox::UI {
         bool multi_select     = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
         bool needs_scene_sync = node->getTransform() ? false : true;
 
+        std::string display_name = std::format("{} ({})", node->type(), node->getNameRef().name());
+        bool is_filtered_out     = !m_hierarchy_filter.PassFilter(display_name.c_str());
+
         std::string node_uid_str = getNodeUID(node);
         ImGuiID tree_node_id     = ImGui::GetCurrentWindow()->GetID(node_uid_str.c_str());
 
@@ -313,67 +336,37 @@ namespace Toolbox::UI {
                          [&](const NodeInfo &other) { return other.m_node_id == tree_node_id; });
         bool node_already_clicked = node_it != m_selected_nodes.end();
 
+        NodeInfo node_info = {.m_selected         = node,
+                              .m_node_id          = tree_node_id,
+                              .m_hierarchy_synced = true,
+                              .m_scene_synced =
+                                  needs_scene_sync};  // Only spacial objects get scene selection
+
         if (node->isGroupObject()) {
-            bool node_open =
-                ImGui::TreeNodeEx(node_uid_str.c_str(), node->getParent() ? dir_flags : node_flags,
-                                  node_already_clicked);
-
-            if (ImGui::IsItemClicked()) {
-                m_selected_properties.clear();
-
-                NodeInfo info = {.m_selected         = node,
-                                 .m_node_id          = tree_node_id,
-                                 .m_hierarchy_synced = true,
-                                 .m_scene_synced =
-                                     needs_scene_sync};  // Only spacial objects get scene selection
-
-                if (multi_select) {
-                    if (node_it == m_selected_nodes.end())
-                        m_selected_nodes.push_back(info);
-                } else {
-                    m_selected_nodes.clear();
-                    m_selected_nodes.push_back(info);
-                    for (auto &member : node->getMembers()) {
-                        member->syncArray();
-                        auto prop = createProperty(member);
-                        if (prop) {
-                            m_selected_properties.push_back(std::move(prop));
-                        }
-                    }
-                }
-            }
-
-            if (node_open) {
-                auto objects = std::dynamic_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
+            if (is_filtered_out) {
+                auto objects = std::static_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
                                    ->getChildren();
                 if (objects.has_value()) {
                     for (auto object : objects.value()) {
                         renderTree(object);
                     }
                 }
-                ImGui::TreePop();
-            }
-        } else {
-            bool node_open =
-                ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_already_clicked);
+            } else {
+                bool node_open = ImGui::TreeNodeEx(node_uid_str.c_str(),
+                                                   node->getParent() ? dir_flags : node_flags,
+                                                   node_already_clicked);
 
-            if (node_open) {
+                renderContextMenu(node_uid_str, node_info);
+
                 if (ImGui::IsItemClicked()) {
                     m_selected_properties.clear();
 
-                    NodeInfo info = {
-                        .m_selected         = node,
-                        .m_node_id          = tree_node_id,
-                        .m_hierarchy_synced = true,
-                        .m_scene_synced =
-                            needs_scene_sync};  // Only spacial objects get scene selection
-
                     if (multi_select) {
                         if (node_it == m_selected_nodes.end())
-                            m_selected_nodes.push_back(info);
+                            m_selected_nodes.push_back(node_info);
                     } else {
                         m_selected_nodes.clear();
-                        m_selected_nodes.push_back(info);
+                        m_selected_nodes.push_back(node_info);
                         for (auto &member : node->getMembers()) {
                             member->syncArray();
                             auto prop = createProperty(member);
@@ -383,7 +376,46 @@ namespace Toolbox::UI {
                         }
                     }
                 }
-                ImGui::TreePop();
+
+                if (node_open) {
+                    auto objects = std::static_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
+                                       ->getChildren();
+                    if (objects.has_value()) {
+                        for (auto object : objects.value()) {
+                            renderTree(object);
+                        }
+                    }
+                    ImGui::TreePop();
+                }
+            }
+        } else {
+            if (!is_filtered_out) {
+                bool node_open =
+                    ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_already_clicked);
+
+                renderContextMenu(node_uid_str, node_info);
+
+                if (node_open) {
+                    if (ImGui::IsItemClicked()) {
+                        m_selected_properties.clear();
+
+                        if (multi_select) {
+                            if (node_it == m_selected_nodes.end())
+                                m_selected_nodes.push_back(node_info);
+                        } else {
+                            m_selected_nodes.clear();
+                            m_selected_nodes.push_back(node_info);
+                            for (auto &member : node->getMembers()) {
+                                member->syncArray();
+                                auto prop = createProperty(member);
+                                if (prop) {
+                                    m_selected_properties.push_back(std::move(prop));
+                                }
+                            }
+                        }
+                    }
+                    ImGui::TreePop();
+                }
             }
         }
     }
@@ -498,6 +530,317 @@ namespace Toolbox::UI {
             viewportEnd();
         }
         ImGui::End();
+    }
+
+    void SceneWindow::renderContextMenu(std::string str_id, NodeInfo &info) {
+        if (m_selected_nodes.size() > 0) {
+            NodeInfo &info = m_selected_nodes.back();
+            if (m_selected_nodes.size() > 1) {
+                m_multi_node_menu.render({}, m_selected_nodes);
+            } else if (info.m_selected->isGroupObject()) {
+                m_group_node_menu.render(str_id, info);
+            } else if (info.m_selected->hasMember("Transform")) {
+                m_physical_node_menu.render(str_id, info);
+            } else {
+                m_virtual_node_menu.render(str_id, info);
+            }
+        }
+    }
+
+    void SceneWindow::buildContextMenuVirtualObj() {
+        m_virtual_node_menu = ContextMenu<NodeInfo>();
+
+        m_virtual_node_menu.addOption("Insert Object Here...", [this](NodeInfo info) {
+            m_create_obj_dialog.open();
+            return std::expected<void, BaseError>();
+        });
+
+        m_virtual_node_menu.addDivider();
+
+        m_virtual_node_menu.addOption("Rename...", [this](NodeInfo info) {
+            m_rename_obj_dialog.open();
+            m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
+            return std::expected<void, BaseError>();
+        });
+
+        m_virtual_node_menu.addDivider();
+
+        m_virtual_node_menu.addOption("Copy", [this](NodeInfo info) {
+            info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
+            MainApplication::instance().getSceneClipboard().setData(info);
+            return std::expected<void, BaseError>();
+        });
+
+        m_virtual_node_menu.addOption("Paste", [this](NodeInfo info) {
+            auto nodes       = MainApplication::instance().getSceneClipboard().getData();
+            auto this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+            if (!this_parent) {
+                return make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting");
+            }
+            for (auto &node : nodes) {
+                this_parent->addChild(node.m_selected);
+            }
+            m_is_viewport_dirty = true;
+            return std::expected<void, BaseError>();
+        });
+
+        m_virtual_node_menu.addDivider();
+
+        m_virtual_node_menu.addOption("Delete", [this](NodeInfo info) {
+            auto this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+            if (!this_parent) {
+                return make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting");
+            }
+            this_parent->removeChild(info.m_selected->getNameRef().name());
+            auto node_it = std::find(m_selected_nodes.begin(), m_selected_nodes.end(), info);
+            m_selected_nodes.erase(node_it);
+            m_is_viewport_dirty = true;
+            return std::expected<void, BaseError>();
+        });
+    }
+
+    void SceneWindow::buildContextMenuGroupObj() {
+        m_group_node_menu = ContextMenu<NodeInfo>();
+
+        m_group_node_menu.addOption("Add Child Object...", [this](NodeInfo info) {
+            m_create_obj_dialog.open();
+            return std::expected<void, BaseError>();
+        });
+
+        m_group_node_menu.addDivider();
+
+        m_group_node_menu.addOption("Rename...", [this](NodeInfo info) {
+            m_rename_obj_dialog.open();
+            m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
+            return std::expected<void, BaseError>();
+        });
+
+        m_group_node_menu.addDivider();
+
+        m_group_node_menu.addOption("Copy", [this](NodeInfo info) {
+            info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
+            MainApplication::instance().getSceneClipboard().setData(info);
+            return std::expected<void, BaseError>();
+        });
+
+        m_group_node_menu.addOption("Paste", [this](NodeInfo info) {
+            auto nodes       = MainApplication::instance().getSceneClipboard().getData();
+            auto this_parent = std::reinterpret_pointer_cast<GroupSceneObject>(info.m_selected);
+            if (!this_parent) {
+                return make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting");
+            }
+            for (auto &node : nodes) {
+                this_parent->addChild(node.m_selected);
+            }
+            m_is_viewport_dirty = true;
+            return std::expected<void, BaseError>();
+        });
+
+        m_group_node_menu.addDivider();
+
+        m_group_node_menu.addOption("Delete", [this](NodeInfo info) {
+            auto this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+            if (!this_parent) {
+                return make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting");
+            }
+            this_parent->removeChild(info.m_selected->getNameRef().name());
+            auto node_it = std::find(m_selected_nodes.begin(), m_selected_nodes.end(), info);
+            m_selected_nodes.erase(node_it);
+            m_is_viewport_dirty = true;
+            return std::expected<void, BaseError>();
+        });
+    }
+
+    void SceneWindow::buildContextMenuPhysicalObj() {
+        m_physical_node_menu = ContextMenu<NodeInfo>();
+
+        m_physical_node_menu.addOption("Insert Object Here...", [this](NodeInfo info) {
+            m_create_obj_dialog.open();
+            return std::expected<void, BaseError>();
+        });
+
+        m_physical_node_menu.addDivider();
+
+        m_physical_node_menu.addOption("Rename...", [this](NodeInfo info) {
+            m_rename_obj_dialog.open();
+            m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
+            return std::expected<void, BaseError>();
+        });
+
+        m_physical_node_menu.addDivider();
+
+        m_physical_node_menu.addOption("View in Scene", [this](NodeInfo info) {
+            auto member_result = info.m_selected->getMember("Transform");
+            if (!member_result) {
+                return make_error<void>("Scene Hierarchy",
+                                        "Failed to find transform member of physical object");
+            }
+            auto member_ptr = member_result.value();
+            if (!member_ptr) {
+                return make_error<void>("Scene Hierarchy",
+                                        "Found the transform member but it was null");
+            }
+            Transform transform = getMetaValue<Transform>(member_ptr).value();
+            f32 max_scale       = std::max(transform.m_scale.x, transform.m_scale.y);
+            max_scale           = std::max(max_scale, transform.m_scale.z);
+
+            m_camera.setOrientAndPosition({0, 1, 0}, transform.m_translation,
+                                          {transform.m_translation.x, transform.m_translation.y,
+                                           transform.m_translation.z + 1000 * max_scale});
+            m_camera.updateCamera();
+            m_is_viewport_dirty = true;
+            return std::expected<void, BaseError>();
+        });
+
+        m_physical_node_menu.addOption("Move to Camera", [this](NodeInfo info) {
+            auto member_result = info.m_selected->getMember("Transform");
+            if (!member_result) {
+                return make_error<void>("Scene Hierarchy",
+                                        "Failed to find transform member of physical object");
+            }
+            auto member_ptr = member_result.value();
+            if (!member_ptr) {
+                return make_error<void>("Scene Hierarchy",
+                                        "Found the transform member but it was null");
+            }
+
+            Transform transform = getMetaValue<Transform>(member_ptr).value();
+            m_camera.getPos(transform.m_translation);
+            setMetaValue<Transform>(member_ptr, 0, transform);
+
+            m_is_viewport_dirty = true;
+            return std::expected<void, BaseError>();
+        });
+
+        m_physical_node_menu.addDivider();
+
+        m_physical_node_menu.addOption("Copy", [this](NodeInfo info) {
+            info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
+            MainApplication::instance().getSceneClipboard().setData(info);
+            return std::expected<void, BaseError>();
+        });
+
+        m_physical_node_menu.addOption("Paste", [this](NodeInfo info) {
+            auto nodes       = MainApplication::instance().getSceneClipboard().getData();
+            auto this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+            if (!this_parent) {
+                return make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting");
+            }
+            for (auto &node : nodes) {
+                this_parent->addChild(node.m_selected);
+            }
+            m_is_viewport_dirty = true;
+            return std::expected<void, BaseError>();
+        });
+
+        m_physical_node_menu.addDivider();
+
+        m_physical_node_menu.addOption("Delete", [this](NodeInfo info) {
+            auto this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+            if (!this_parent) {
+                return make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting");
+            }
+            this_parent->removeChild(info.m_selected->getNameRef().name());
+            auto node_it = std::find(m_selected_nodes.begin(), m_selected_nodes.end(), info);
+            m_selected_nodes.erase(node_it);
+            m_is_viewport_dirty = true;
+            return std::expected<void, BaseError>();
+        });
+    }
+
+    void SceneWindow::buildContextMenuMultiObj() {
+        m_multi_node_menu = ContextMenu<std::vector<NodeInfo>>();
+
+        m_multi_node_menu.addOption("Copy", [this](std::vector<NodeInfo> infos) {
+            for (auto &info : infos) {
+                info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
+            }
+            MainApplication::instance().getSceneClipboard().setData(infos);
+            return std::expected<void, BaseError>();
+        });
+
+        m_multi_node_menu.addOption("Paste", [this](std::vector<NodeInfo> infos) {
+            auto nodes = MainApplication::instance().getSceneClipboard().getData();
+            for (auto &info : infos) {
+                auto this_parent =
+                    reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+                if (!this_parent) {
+                    return make_error<void>("Scene Hierarchy",
+                                            "Failed to get parent node for pasting");
+                }
+                for (auto &node : nodes) {
+                    this_parent->addChild(node.m_selected);
+                }
+            }
+            m_is_viewport_dirty = true;
+            return std::expected<void, BaseError>();
+        });
+
+        m_multi_node_menu.addDivider();
+
+        m_multi_node_menu.addOption("Delete", [this](std::vector<NodeInfo> infos) {
+            for (auto &info : infos) {
+                auto this_parent =
+                    reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+                if (!this_parent) {
+                    return make_error<void>("Scene Hierarchy",
+                                            "Failed to get parent node for pasting");
+                }
+                this_parent->removeChild(info.m_selected->getNameRef().name());
+                auto node_it = std::find(m_selected_nodes.begin(), m_selected_nodes.end(), info);
+                m_selected_nodes.erase(node_it);
+            }
+            m_is_viewport_dirty = true;
+            return std::expected<void, BaseError>();
+        });
+    }
+
+    void SceneWindow::buildCreateObjDialog() {
+        m_create_obj_dialog.setup();
+        m_create_obj_dialog.setActionOnAccept(
+            [this](std::string_view name, const Object::Template &template_, std::string_view wizard_name, NodeInfo info) {
+                auto new_object_result = Object::ObjectFactory::create(template_, wizard_name);
+                if (!name.empty()) {
+                    new_object_result->setNameRef(name);
+                }
+
+                ISceneObject *this_parent;
+                if (info.m_selected->isGroupObject()) {
+                    this_parent = info.m_selected.get();
+                } else {
+                    this_parent = info.m_selected->getParent();
+                }
+
+                if (!this_parent) {
+                    return make_error<void>("Scene Hierarchy",
+                                            "Failed to get parent node for obj creation");
+                }
+
+                auto result = this_parent->addChild(std::move(new_object_result));
+                if (!result) {
+                    return make_error<void>("Scene Hierarchy",
+                                            std::format("Parent already has a child named {}", name));
+                }
+
+                m_is_viewport_dirty = true;
+                return std::expected<void, BaseError>();
+            });
+        m_create_obj_dialog.setActionOnReject([](NodeInfo) {});
+    }
+
+    void SceneWindow::buildRenameObjDialog() {
+        m_rename_obj_dialog.setup();
+        m_rename_obj_dialog.setActionOnAccept([this](std::string_view new_name, NodeInfo info) {
+            if (new_name.empty()) {
+                return make_error<void>("Scene Hierarchy",
+                                        "Can not rename object to empty string");
+            }
+
+            info.m_selected->setNameRef(new_name);
+
+            return std::expected<void, BaseError>();
+        });
+        m_rename_obj_dialog.setActionOnReject([](NodeInfo) {});
     }
 
     void SceneWindow::buildDockspace(ImGuiID dockspace_id) {

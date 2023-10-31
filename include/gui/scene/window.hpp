@@ -15,22 +15,17 @@
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"
 
+#include "gui/clipboard.hpp"
 #include "gui/property/property.hpp"
 #include "gui/scene/camera.hpp"
+#include "gui/scene/nodeinfo.hpp"
+#include "gui/scene/objdialog.hpp"
 #include "gui/window.hpp"
 
+#include <gui/context_menu.hpp>
 #include <imgui.h>
 
 namespace Toolbox::UI {
-
-    struct NodeInfo {
-        std::shared_ptr<Object::ISceneObject> m_selected;
-        size_t m_node_id;
-        bool m_hierarchy_synced;
-        bool m_scene_synced;
-    };
-
-    class SceneWindow;
 
     class SceneWindow final : public DockWindow {
     public:
@@ -42,9 +37,17 @@ namespace Toolbox::UI {
         void renderMenuBar() override;
         void renderBody(f32 delta_time) override;
         void renderHierarchy();
-        void renderTree(std::shared_ptr<Toolbox::Object::ISceneObject> node);
+        void renderTree(std::shared_ptr<Object::ISceneObject> node);
         void renderProperties();
         void renderScene(f32 delta_time);
+        void renderContextMenu(std::string str_id, NodeInfo &info);
+
+        void buildContextMenuVirtualObj();
+        void buildContextMenuGroupObj();
+        void buildContextMenuPhysicalObj();
+        void buildContextMenuMultiObj();
+        void buildCreateObjDialog();
+        void buildRenameObjDialog();
 
     public:
         const ImGuiWindowClass *windowClass() const override {
@@ -97,8 +100,18 @@ namespace Toolbox::UI {
 
         u32 m_fbo_id, m_tex_id, m_rbo_id;
 
-        std::vector<NodeInfo> m_selected_nodes = {};
+        ContextMenu<NodeInfo> m_virtual_node_menu;
+        ContextMenu<NodeInfo> m_physical_node_menu;
+        ContextMenu<NodeInfo> m_group_node_menu;
+        ContextMenu<std::vector<NodeInfo>> m_multi_node_menu;
+
+        ImGuiTextFilter m_hierarchy_filter;
+
+        std::vector<NodeInfo> m_selected_nodes                        = {};
         std::vector<std::unique_ptr<IProperty>> m_selected_properties = {};
+
+        CreateObjDialog m_create_obj_dialog;
+        RenameObjDialog m_rename_obj_dialog;
 
         std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;
 

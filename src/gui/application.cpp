@@ -115,6 +115,13 @@ namespace Toolbox::UI {
 
         // glEnable(GL_MULTISAMPLE);
 
+        auto result = Object::TemplateFactory::initialize();
+        if (!result) {
+            std::cout << result.error().m_message;
+            std::cout << result.error().m_stacktrace;
+            return false;
+        }
+
         return true;
     }
 
@@ -271,6 +278,7 @@ namespace Toolbox::UI {
                     for (auto window : m_windows) {
                         if (window->name() == scene_window->name() &&
                             window->context() == path.string()) {
+                            window->open();
                             ImGui::SetWindowFocus(window->title().c_str());
                             return;
                         }
