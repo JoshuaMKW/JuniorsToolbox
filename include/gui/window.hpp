@@ -30,6 +30,8 @@ namespace Toolbox::UI {
 
         [[nodiscard]] virtual ImGuiID id() const = 0;
 
+        virtual void open() = 0;
+
         [[nodiscard]] virtual IWindow *parent() const = 0;
         virtual void setParent(IWindow *parent)       = 0;
 
@@ -76,7 +78,7 @@ namespace Toolbox::UI {
               m_window_class(window_class) {}
         ~SimpleWindow() override = default;
 
-        void open() { m_is_open = true; }
+        void open() override { m_is_open = true; }
 
         [[nodiscard]] ImGuiID id() const override { return m_window_id; }
 
@@ -115,6 +117,9 @@ namespace Toolbox::UI {
         }
 
         void render(f32 delta_time) override final {
+            if (!m_is_open)
+                return;
+
             const ImGuiViewport *mainViewport = ImGui::GetMainViewport();
 
             ImGuiDockNodeFlags dockFlags = ImGuiDockNodeFlags_PassthruCentralNode |
@@ -140,7 +145,7 @@ namespace Toolbox::UI {
     protected:
         ImGuiID m_window_id = {};
 
-        IWindow *m_parent;
+        IWindow *m_parent = nullptr;
 
         bool m_is_open                          = false;
         ImGuiWindowFlags m_flags                = 0;
@@ -176,7 +181,7 @@ namespace Toolbox::UI {
               m_window_class(window_class) {}
         ~DockWindow() override = default;
 
-        void open() { m_is_open = true; }
+        void open() override { m_is_open = true; }
 
         [[nodiscard]] ImGuiID id() const override { return m_window_id; }
 
@@ -215,6 +220,9 @@ namespace Toolbox::UI {
         }
 
         void render(f32 delta_time) override final {
+            if (!m_is_open)
+                return;
+
             const ImGuiViewport *mainViewport = ImGui::GetMainViewport();
 
             ImGuiDockNodeFlags dockFlags = ImGuiDockNodeFlags_PassthruCentralNode |
@@ -241,7 +249,7 @@ namespace Toolbox::UI {
     protected:
         ImGuiID m_window_id = {};
 
-        IWindow *m_parent;
+        IWindow *m_parent = nullptr;
 
         bool m_is_open                          = false;
         ImGuiWindowFlags m_flags                = 0;

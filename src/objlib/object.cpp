@@ -669,6 +669,17 @@ namespace Toolbox::Object {
         }
     }
 
+    ObjectFactory::create_ret_t ObjectFactory::create(const Template &template_,
+                                                      std::string_view wizard_name) {
+        if (isGroupObject(template_.type())) {
+            return std::make_unique<GroupSceneObject>(template_, wizard_name);
+        } else if (isPhysicalObject(template_.type())) {
+            return std::make_unique<PhysicalSceneObject>(template_, wizard_name);
+        } else {
+            return std::make_unique<VirtualSceneObject>(template_, wizard_name);
+        }
+    }
+
     static std::vector<u16> s_group_hashes = {16824, 15406, 28318, 18246, 43971, 9858, 25289, 33769,
                                               49941, 13756, 65459, 38017, 47488, 8719, 22637};
 
@@ -687,8 +698,8 @@ namespace Toolbox::Object {
                s_group_hashes.end();
     }
 
-    bool ObjectFactory::isPhysicalObject(std::string_view type) { return false; }
+    bool ObjectFactory::isPhysicalObject(std::string_view type) { return !isGroupObject(type); }
 
-    bool ObjectFactory::isPhysicalObject(Deserializer &in) { return false; }
+    bool ObjectFactory::isPhysicalObject(Deserializer &in) { return !isGroupObject(in); }
 
 }  // namespace Toolbox::Object

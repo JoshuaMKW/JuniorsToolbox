@@ -334,17 +334,12 @@ namespace Toolbox::Object {
             : GroupSceneObject(template_) {
             deserialize(in);
         }
-        GroupSceneObject(const Template &template_, std::string_view wizard_name, Deserializer &in)
-            : GroupSceneObject(template_, wizard_name) {
-            deserialize(in);
-        }
         GroupSceneObject(const Template &template_, Deserializer &in, ISceneObject *parent)
             : GroupSceneObject(template_, in) {
             parent->addChild(std::shared_ptr<GroupSceneObject>(this));
         }
-        GroupSceneObject(const Template &template_, std::string_view wizard_name, Deserializer &in,
-                         ISceneObject *parent)
-            : GroupSceneObject(template_, wizard_name, in) {
+        GroupSceneObject(const Template &template_, std::string_view wizard_name, ISceneObject *parent)
+            : GroupSceneObject(template_, wizard_name) {
             parent->addChild(std::shared_ptr<GroupSceneObject>(this));
         }
         GroupSceneObject(const GroupSceneObject &) = default;
@@ -592,6 +587,7 @@ namespace Toolbox::Object {
         using create_t     = std::expected<create_ret_t, create_err_t>;
 
         static create_t create(Deserializer &in);
+        static create_ret_t create(const Template &template_, std::string_view wizard_name);
 
     protected:
         static bool isGroupObject(std::string_view type);

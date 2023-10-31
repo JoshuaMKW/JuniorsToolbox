@@ -10,11 +10,11 @@
 #include "transform.hpp"
 #include "types.hpp"
 #include <expected>
+#include <format>
 #include <string>
 #include <unordered_map>
 #include <variant>
 #include <vector>
-#include <format>
 
 namespace Toolbox::Object {
 
@@ -22,7 +22,8 @@ namespace Toolbox::Object {
         std::string m_name = "default_init";
         std::vector<MetaMember> m_init_members;
 
-        TemplateWizard& operator=(const TemplateWizard& other) { m_name = other.m_name;
+        TemplateWizard &operator=(const TemplateWizard &other) {
+            m_name = other.m_name;
             m_init_members.clear();
             for (auto &m : other.m_init_members) {
                 m_init_members.push_back(m);
@@ -37,7 +38,7 @@ namespace Toolbox::Object {
 
         using json_t = nlohmann::ordered_json;
 
-        Template() = default;
+        Template()                 = default;
         Template(const Template &) = default;
         Template(Template &&)      = default;
         ~Template()                = default;
@@ -62,9 +63,9 @@ namespace Toolbox::Object {
         }
 
         Template &operator=(const Template &other) {
-            m_type         = other.m_type;
-            m_wizards      = other.m_wizards;
-            
+            m_type    = other.m_type;
+            m_wizards = other.m_wizards;
+
             m_struct_cache.clear();
             for (auto &s : other.m_struct_cache) {
                 m_struct_cache.push_back(s);
@@ -113,7 +114,9 @@ namespace Toolbox::Object {
         using create_t     = std::expected<create_ret_t, create_err_t>;
 
         // Cached create method
+        static std::expected<void, FSError> initialize();
         static create_t create(std::string_view type);
+        static std::vector<create_ret_t> createAll();
     };
 
 }  // namespace Toolbox::Object
