@@ -2,6 +2,7 @@
 #include "gui/IconsForkAwesome.h"
 #include "gui/input.hpp"
 #include "gui/settings/window.hpp"
+#include "gui/font.hpp"
 #include "gui/themes.hpp"
 #include "gui/util.hpp"
 
@@ -96,26 +97,18 @@ namespace Toolbox::UI {
         ImGui_ImplGlfw_InitForOpenGL(m_render_window, true);
         ImGui_ImplOpenGL3_Init("#version 150");
 
-        if (std::filesystem::exists(
-                (std::filesystem::current_path() / "res" / "NotoSansJP-Regular.otf"))) {
-            io.Fonts->AddFontFromFileTTF(
-                (std::filesystem::current_path() / "res" / "NotoSansJP-Regular.otf")
-                    .string()
-                    .c_str(),
-                16.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
-        }
+        auto &font_manager = FontManager::instance();
 
-        if (std::filesystem::exists(
-                (std::filesystem::current_path() / "res" / "forkawesome.ttf"))) {
-            static const ImWchar icons_ranges[] = {ICON_MIN_FK, ICON_MAX_16_FK, 0};
-            ImFontConfig icons_config;
-            icons_config.MergeMode        = true;
-            icons_config.PixelSnapH       = true;
-            icons_config.GlyphMinAdvanceX = 16.0f;
-            io.Fonts->AddFontFromFileTTF(
-                (std::filesystem::current_path() / "res" / "forkawesome.ttf").string().c_str(),
-                icons_config.GlyphMinAdvanceX, &icons_config, icons_ranges);
-        }
+        font_manager.addFontOTF("NotoSansJP-Regular", nullptr, io.Fonts->GetGlyphRangesJapanese());
+
+        ImFontConfig icons_config;
+        icons_config.MergeMode  = true;
+        icons_config.PixelSnapH = true;
+
+        static const ImWchar icons_ranges[] = {ICON_MIN_FK, ICON_MAX_16_FK, 0};
+        font_manager.addFontTTF("forkawesome", &icons_config, icons_ranges);
+
+        font_manager.setCurrentFont("NotoSansJP-Regular", 16.0f);
 
         // glEnable(GL_MULTISAMPLE);
 
@@ -191,6 +184,8 @@ namespace Toolbox::UI {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        ImGui::PushFont(FontManager::instance().getCurrentFont());
+
         ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
@@ -218,11 +213,15 @@ namespace Toolbox::UI {
         renderMenuBar();
         renderWindows(delta_time);
 
+
         if (!m_dockspace_built)
             ImGui::DockBuilderFinish(m_dockspace_id);
 
+        ImGui::PopFont();
+
         // Render imgui
         ImGui::Render();
+
 
         ImGuiIO &io = ImGui::GetIO();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {

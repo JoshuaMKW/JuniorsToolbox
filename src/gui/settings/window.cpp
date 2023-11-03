@@ -1,4 +1,5 @@
 #include "gui/settings/window.hpp"
+#include "gui/font.hpp"
 #include "gui/themes.hpp"
 
 namespace Toolbox::UI {
@@ -31,6 +32,19 @@ namespace Toolbox::UI {
                                           ImGuiSelectableFlags_AllowDoubleClick)) {
                         selected_index = i;
                         manager.applyTheme(theme->name());
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            auto &font_manager = FontManager::instance();
+
+            ImFont *current_font = font_manager.getCurrentFont();
+            if (ImGui::BeginCombo("Font Size", std::format("{}", current_font->FontSize).c_str())) {
+                for (auto &size : font_manager.fontSizes()) {
+                    bool selected = size == current_font->FontSize;
+                    if (ImGui::Selectable(std::format("{}", size).c_str(),
+                                          selected)) {
+                        font_manager.setCurrentFontSize(size);
                     }
                 }
                 ImGui::EndCombo();
