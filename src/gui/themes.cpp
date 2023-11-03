@@ -9,7 +9,7 @@ namespace Toolbox::UI {
         if (!cwd_result) {
             return;
         }
-        loadFromFile(cwd_result.value() / "Themes" / name / ".theme");
+        loadFromFile(cwd_result.value() / "Themes" / std::format("{}.theme", name));
     }
 
     ConfigTheme::ConfigTheme(std::string_view name, const ImGuiStyle &theme)
@@ -18,7 +18,10 @@ namespace Toolbox::UI {
     bool ConfigTheme::apply() {
         if (!m_load_ok)
             return false;
-        ImGui::GetStyle() = m_style;
+        auto &style  = ImGui::GetStyle();
+        for (size_t i = 0; i < ImGuiCol_COUNT; ++i) {
+            style.Colors[i] = m_style.Colors[i];
+        }
         return true;
     }
 
@@ -46,6 +49,10 @@ namespace Toolbox::UI {
         for (auto &subpath : std::filesystem::directory_iterator{cwd / "Themes"}) {
             try {
                 auto theme = std::make_shared<ConfigTheme>(subpath.path().stem().string());
+                if (theme->name() == "Default") {
+                    theme->apply();
+                    m_active_theme = m_themes.size();
+                }
                 m_themes.emplace_back(theme);
             } catch (std::runtime_error &e) {
                 return make_fs_error<void>(std::error_code(), e.what());

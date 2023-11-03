@@ -1,5 +1,8 @@
 #include "gui/application.hpp"
+#include "gui/IconsForkAwesome.h"
 #include "gui/input.hpp"
+#include "gui/settings/window.hpp"
+#include "gui/themes.hpp"
 #include "gui/util.hpp"
 
 #include <J3D/J3DUniformBufferObject.hpp>
@@ -13,12 +16,10 @@
 #include <ImGuiFileDialog.h>
 #include <J3D/J3DModelLoader.hpp>
 #include <bstream.h>
-#include <gui/IconsForkAwesome.h>
-#include <gui/themes.hpp>
 #include <imgui.h>
 #include <imgui_internal.h>
 
-//void ImGuiSetupTheme(bool, float);
+// void ImGuiSetupTheme(bool, float);
 
 namespace Toolbox::UI {
 
@@ -135,13 +136,16 @@ namespace Toolbox::UI {
                 return false;
             }
 
-            //ImGuiSetupTheme(false, 1.0);
+            // ImGuiSetupTheme(false, 1.0);
 
             /*auto default_ =
                 std::make_shared<ConfigTheme>(std::string_view("Dark"), ImGui::GetStyle());
             default_->saveToFile("Dark.theme");
             ThemeManager::instance().addTheme(default_);*/
         }
+
+        auto settings_window = std::make_shared<SettingsWindow>();
+        m_windows.push_back(settings_window);
 
         return true;
     }
@@ -359,7 +363,12 @@ namespace Toolbox::UI {
         }
 
         if (m_options_open) {
-            ImGui::OpenPopup("Options");
+            auto settings_window_it =
+                std::find_if(m_windows.begin(), m_windows.end(),
+                             [](auto window) { return window->name() == "Application Settings"; });
+            if (settings_window_it != m_windows.end()) {
+                (*settings_window_it)->open();
+            }
         }
     }
 
@@ -378,99 +387,99 @@ namespace Toolbox::UI {
     }
 }  // namespace Toolbox::UI
 
-//void ImGuiSetupTheme(bool bStyleDark_, float alpha_) {
-//    ImGuiStyle &style = ImGui::GetStyle();
+// void ImGuiSetupTheme(bool bStyleDark_, float alpha_) {
+//     ImGuiStyle &style = ImGui::GetStyle();
 //
-//#define HEADER_COLOR         0.96f, 0.18f, 0.12f
-//#define HEADER_ACTIVE_COLOR  0.96f, 0.18f, 0.12f
-//#define HEADER_HOVERED_COLOR 0.96f, 0.18f, 0.12f
-//#define ACCENT_COLOR         0.88f, 0.82f, 0.34f
-//#define ACCENT_HOVERED_COLOR  0.96f, 0.90f, 0.38f
-//#define ACCENT_ACTIVE_COLOR         0.92f, 0.86f, 0.35f
+// #define HEADER_COLOR         0.96f, 0.18f, 0.12f
+// #define HEADER_ACTIVE_COLOR  0.96f, 0.18f, 0.12f
+// #define HEADER_HOVERED_COLOR 0.96f, 0.18f, 0.12f
+// #define ACCENT_COLOR         0.88f, 0.82f, 0.34f
+// #define ACCENT_HOVERED_COLOR  0.96f, 0.90f, 0.38f
+// #define ACCENT_ACTIVE_COLOR         0.92f, 0.86f, 0.35f
 //
-//    // light style from Pacôme Danhiez (user itamago)
-//    // https://github.com/ocornut/imgui/pull/511#issuecomment-175719267
-//    style.Alpha                                  = 1.0f;
-//    style.FrameRounding                          = 3.0f;
-//    style.Colors[ImGuiCol_Text]                  = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
-//    style.Colors[ImGuiCol_TextDisabled]          = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
-//    style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.24f, 0.58f, 0.90f, 0.94f);
-//    style.Colors[ImGuiCol_ChildBg]               = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-//    style.Colors[ImGuiCol_PopupBg]               = ImVec4(0.26f, 0.60f, 0.92f, 0.94f);
-//    style.Colors[ImGuiCol_Border]                = ImVec4(0.00f, 0.00f, 0.00f, 0.39f);
-//    style.Colors[ImGuiCol_BorderShadow]          = ImVec4(1.00f, 1.00f, 1.00f, 0.10f);
-//    style.Colors[ImGuiCol_FrameBg]               = ImVec4(1.00f, 1.00f, 1.00f, 0.94f);
-//    style.Colors[ImGuiCol_FrameBgHovered]        = ImVec4(ACCENT_COLOR, 0.78f);
-//    style.Colors[ImGuiCol_FrameBgActive]         = ImVec4(ACCENT_COLOR, 0.88f);
-//    style.Colors[ImGuiCol_TitleBg]               = ImVec4(HEADER_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_TitleBgActive]         = ImVec4(HEADER_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(HEADER_COLOR, 0.70f);
-//    style.Colors[ImGuiCol_MenuBarBg]             = ImVec4(HEADER_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_ScrollbarBg]           = ImVec4(ACCENT_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.56f, 0.56f, 0.56f, 1.00f);
-//    style.Colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.64f, 0.64f, 0.64f, 1.00f);
-//    style.Colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
-//    style.Colors[ImGuiCol_CheckMark]             = ImVec4(ACCENT_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_SliderGrab]            = ImVec4(ACCENT_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_SliderGrabActive]      = ImVec4(ACCENT_ACTIVE_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_Button]                = ImVec4(ACCENT_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_ButtonHovered]         = ImVec4(ACCENT_HOVERED_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_ButtonActive]          = ImVec4(ACCENT_ACTIVE_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_Header]                = ImVec4(ACCENT_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_HeaderHovered]         = ImVec4(ACCENT_HOVERED_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_HeaderActive]          = ImVec4(ACCENT_ACTIVE_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_Separator]             = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
-//    style.Colors[ImGuiCol_SeparatorHovered]      = ImVec4(ACCENT_HOVERED_COLOR, 0.78f);
-//    style.Colors[ImGuiCol_SeparatorActive]       = ImVec4(ACCENT_ACTIVE_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_ResizeGrip]            = ImVec4(ACCENT_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_ResizeGripHovered]     = ImVec4(ACCENT_HOVERED_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_ResizeGripActive]      = ImVec4(ACCENT_ACTIVE_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_Tab]                   = ImVec4(ACCENT_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_TabHovered]            = ImVec4(ACCENT_HOVERED_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_TabActive]             = ImVec4(ACCENT_ACTIVE_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_TabUnfocused]          = ImVec4(ACCENT_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(ACCENT_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_DockingPreview]        = ImVec4(ACCENT_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_DockingEmptyBg]        = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
-//    style.Colors[ImGuiCol_PlotLines]             = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
-//    style.Colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
-//    style.Colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
-//    style.Colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-//    style.Colors[ImGuiCol_TableHeaderBg]         = ImVec4(ACCENT_COLOR, 0.78f);
-//    style.Colors[ImGuiCol_TableBorderStrong]     = ImVec4(ACCENT_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_TableBorderLight]      = ImVec4(ACCENT_COLOR, 0.78f);
-//    style.Colors[ImGuiCol_TableRowBg]            = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
-//    style.Colors[ImGuiCol_TableRowBgAlt]         = ImVec4(ACCENT_COLOR, 1.00f);
-//    style.Colors[ImGuiCol_TextSelectedBg]        = ImVec4(ACCENT_COLOR, 0.50f);
-//    style.Colors[ImGuiCol_DragDropTarget]        = ImVec4(ACCENT_COLOR, 0.50f);
-//    style.Colors[ImGuiCol_NavHighlight]          = ImVec4(ACCENT_COLOR, 0.50f);
-//    style.Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(ACCENT_COLOR, 0.50f);
-//    style.Colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
-//    style.Colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
+//     // light style from Pacôme Danhiez (user itamago)
+//     // https://github.com/ocornut/imgui/pull/511#issuecomment-175719267
+//     style.Alpha                                  = 1.0f;
+//     style.FrameRounding                          = 3.0f;
+//     style.Colors[ImGuiCol_Text]                  = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+//     style.Colors[ImGuiCol_TextDisabled]          = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
+//     style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.24f, 0.58f, 0.90f, 0.94f);
+//     style.Colors[ImGuiCol_ChildBg]               = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+//     style.Colors[ImGuiCol_PopupBg]               = ImVec4(0.26f, 0.60f, 0.92f, 0.94f);
+//     style.Colors[ImGuiCol_Border]                = ImVec4(0.00f, 0.00f, 0.00f, 0.39f);
+//     style.Colors[ImGuiCol_BorderShadow]          = ImVec4(1.00f, 1.00f, 1.00f, 0.10f);
+//     style.Colors[ImGuiCol_FrameBg]               = ImVec4(1.00f, 1.00f, 1.00f, 0.94f);
+//     style.Colors[ImGuiCol_FrameBgHovered]        = ImVec4(ACCENT_COLOR, 0.78f);
+//     style.Colors[ImGuiCol_FrameBgActive]         = ImVec4(ACCENT_COLOR, 0.88f);
+//     style.Colors[ImGuiCol_TitleBg]               = ImVec4(HEADER_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_TitleBgActive]         = ImVec4(HEADER_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(HEADER_COLOR, 0.70f);
+//     style.Colors[ImGuiCol_MenuBarBg]             = ImVec4(HEADER_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_ScrollbarBg]           = ImVec4(ACCENT_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.56f, 0.56f, 0.56f, 1.00f);
+//     style.Colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.64f, 0.64f, 0.64f, 1.00f);
+//     style.Colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+//     style.Colors[ImGuiCol_CheckMark]             = ImVec4(ACCENT_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_SliderGrab]            = ImVec4(ACCENT_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_SliderGrabActive]      = ImVec4(ACCENT_ACTIVE_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_Button]                = ImVec4(ACCENT_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_ButtonHovered]         = ImVec4(ACCENT_HOVERED_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_ButtonActive]          = ImVec4(ACCENT_ACTIVE_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_Header]                = ImVec4(ACCENT_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_HeaderHovered]         = ImVec4(ACCENT_HOVERED_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_HeaderActive]          = ImVec4(ACCENT_ACTIVE_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_Separator]             = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
+//     style.Colors[ImGuiCol_SeparatorHovered]      = ImVec4(ACCENT_HOVERED_COLOR, 0.78f);
+//     style.Colors[ImGuiCol_SeparatorActive]       = ImVec4(ACCENT_ACTIVE_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_ResizeGrip]            = ImVec4(ACCENT_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_ResizeGripHovered]     = ImVec4(ACCENT_HOVERED_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_ResizeGripActive]      = ImVec4(ACCENT_ACTIVE_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_Tab]                   = ImVec4(ACCENT_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_TabHovered]            = ImVec4(ACCENT_HOVERED_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_TabActive]             = ImVec4(ACCENT_ACTIVE_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_TabUnfocused]          = ImVec4(ACCENT_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(ACCENT_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_DockingPreview]        = ImVec4(ACCENT_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_DockingEmptyBg]        = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
+//     style.Colors[ImGuiCol_PlotLines]             = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
+//     style.Colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+//     style.Colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+//     style.Colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+//     style.Colors[ImGuiCol_TableHeaderBg]         = ImVec4(ACCENT_COLOR, 0.78f);
+//     style.Colors[ImGuiCol_TableBorderStrong]     = ImVec4(ACCENT_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_TableBorderLight]      = ImVec4(ACCENT_COLOR, 0.78f);
+//     style.Colors[ImGuiCol_TableRowBg]            = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
+//     style.Colors[ImGuiCol_TableRowBgAlt]         = ImVec4(ACCENT_COLOR, 1.00f);
+//     style.Colors[ImGuiCol_TextSelectedBg]        = ImVec4(ACCENT_COLOR, 0.50f);
+//     style.Colors[ImGuiCol_DragDropTarget]        = ImVec4(ACCENT_COLOR, 0.50f);
+//     style.Colors[ImGuiCol_NavHighlight]          = ImVec4(ACCENT_COLOR, 0.50f);
+//     style.Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(ACCENT_COLOR, 0.50f);
+//     style.Colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
+//     style.Colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
 //
-//    if (bStyleDark_) {
-//        for (int i = 0; i <= ImGuiCol_COUNT; i++) {
-//            ImVec4 &col = style.Colors[i];
-//            float H, S, V;
-//            ImGui::ColorConvertRGBtoHSV(col.x, col.y, col.z, H, S, V);
+//     if (bStyleDark_) {
+//         for (int i = 0; i <= ImGuiCol_COUNT; i++) {
+//             ImVec4 &col = style.Colors[i];
+//             float H, S, V;
+//             ImGui::ColorConvertRGBtoHSV(col.x, col.y, col.z, H, S, V);
 //
-//            if (S < 0.1f) {
-//                V = 1.0f - V;
-//            }
-//            ImGui::ColorConvertHSVtoRGB(H, S, V, col.x, col.y, col.z);
-//            if (col.w < 1.00f) {
-//                col.w *= alpha_;
-//            }
-//        }
-//    } else {
-//        for (int i = 0; i <= ImGuiCol_COUNT; i++) {
-//            ImVec4 &col = style.Colors[i];
-//            if (col.w < 1.00f) {
-//                col.x *= alpha_;
-//                col.y *= alpha_;
-//                col.z *= alpha_;
-//                col.w *= alpha_;
-//            }
-//        }
-//    }
-//}
+//             if (S < 0.1f) {
+//                 V = 1.0f - V;
+//             }
+//             ImGui::ColorConvertHSVtoRGB(H, S, V, col.x, col.y, col.z);
+//             if (col.w < 1.00f) {
+//                 col.w *= alpha_;
+//             }
+//         }
+//     } else {
+//         for (int i = 0; i <= ImGuiCol_COUNT; i++) {
+//             ImVec4 &col = style.Colors[i];
+//             if (col.w < 1.00f) {
+//                 col.x *= alpha_;
+//                 col.y *= alpha_;
+//                 col.z *= alpha_;
+//                 col.w *= alpha_;
+//             }
+//         }
+//     }
+// }

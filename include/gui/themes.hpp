@@ -52,9 +52,23 @@ namespace Toolbox::UI {
         void addTheme(std::shared_ptr<ITheme> theme) { m_themes.push_back(theme); }
         std::vector<std::shared_ptr<ITheme>> themes() const { return m_themes; }
 
+        void applyTheme(std::string_view name) {
+            for (size_t i = 0; i < m_themes.size(); ++i) {
+                auto theme = m_themes.at(i);
+                if (theme->name() == name) {
+                    theme->apply();
+                    m_active_theme = i;
+                    break;
+                }
+            }
+        }
+
+        size_t getActiveThemeIndex() const { return m_active_theme; }
+
         std::expected<void, FSError> initialize();
 
     private:
+        size_t m_active_theme = 0;
         std::vector<std::shared_ptr<ITheme>> m_themes;
     };
 
