@@ -99,15 +99,7 @@ namespace Toolbox::UI {
 
         auto &font_manager = FontManager::instance();
 
-        font_manager.addFontOTF("NotoSansJP-Regular", nullptr, io.Fonts->GetGlyphRangesJapanese());
-
-        ImFontConfig icons_config;
-        icons_config.MergeMode  = true;
-        icons_config.PixelSnapH = true;
-
-        static const ImWchar icons_ranges[] = {ICON_MIN_FK, ICON_MAX_16_FK, 0};
-        font_manager.addFontTTF("forkawesome", &icons_config, icons_ranges);
-
+        font_manager.initialize();
         font_manager.setCurrentFont("NotoSansJP-Regular", 16.0f);
 
         // glEnable(GL_MULTISAMPLE);
@@ -184,7 +176,10 @@ namespace Toolbox::UI {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::PushFont(FontManager::instance().getCurrentFont());
+        auto &font_manager = FontManager::instance();
+        ImFont *main_font    = font_manager.getCurrentFont();
+
+        ImGui::PushFont(main_font);
 
         ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);

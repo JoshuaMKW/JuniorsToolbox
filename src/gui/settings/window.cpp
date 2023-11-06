@@ -38,10 +38,22 @@ namespace Toolbox::UI {
             }
             auto &font_manager = FontManager::instance();
 
-            ImFont *current_font = font_manager.getCurrentFont();
-            if (ImGui::BeginCombo("Font Size", std::format("{}", current_font->FontSize).c_str())) {
+            float current_font_size = font_manager.getCurrentFontSize();
+            std::string current_font_family = font_manager.getCurrentFontFamily();
+
+            if (ImGui::BeginCombo("Font Type", std::format("{}", current_font_family).c_str())) {
+                for (auto &family : font_manager.fontFamilies()) {
+                    bool selected = family == current_font_family;
+                    if (ImGui::Selectable(std::format("{}", family).c_str(), selected)) {
+                        font_manager.setCurrentFontFamily(family);
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            if (ImGui::BeginCombo("Font Size", std::format("{}", current_font_size).c_str())) {
                 for (auto &size : font_manager.fontSizes()) {
-                    bool selected = size == current_font->FontSize;
+                    bool selected = size == current_font_size;
                     if (ImGui::Selectable(std::format("{}", size).c_str(),
                                           selected)) {
                         font_manager.setCurrentFontSize(size);
