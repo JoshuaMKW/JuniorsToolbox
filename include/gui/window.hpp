@@ -37,6 +37,8 @@ namespace Toolbox::UI {
 
         virtual const ImGuiWindowClass *windowClass() const = 0;
 
+        virtual ImGuiWindowFlags flags() const = 0;
+
         [[nodiscard]] virtual std::optional<ImVec2> defaultSize() const = 0;
         [[nodiscard]] virtual std::optional<ImVec2> size() const        = 0;
         [[nodiscard]] virtual std::optional<ImVec2> minSize() const     = 0;
@@ -76,6 +78,10 @@ namespace Toolbox::UI {
                      std::optional<ImVec2> max_size, ImGuiWindowClass window_class)
             : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
               m_window_class(window_class) {}
+        SimpleWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
+                     std::optional<ImVec2> max_size, ImGuiWindowClass window_class, ImGuiWindowFlags flags)
+            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
+              m_window_class(window_class), m_flags(flags) {}
         ~SimpleWindow() override = default;
 
         void open() override { m_is_open = true; }
@@ -88,6 +94,8 @@ namespace Toolbox::UI {
         const ImGuiWindowClass *windowClass() const override {
             return m_parent ? m_parent->windowClass() : &m_window_class;
         }
+
+        ImGuiWindowFlags flags() const override { return m_flags; }
 
         [[nodiscard]] std::optional<ImVec2> defaultSize() const override { return m_default_size; }
         [[nodiscard]] std::optional<ImVec2> size() const override { return m_size; }
@@ -105,14 +113,17 @@ namespace Toolbox::UI {
         [[nodiscard]] bool saveData(const std::filesystem::path &path) override { return false; }
 
         [[nodiscard]] bool update(f32 delta_time) override {
-            m_window_id = ImGui::GetID(title().c_str());
             return true;
         }
 
         [[nodiscard]] std::string title() const override {
-            std::string t = std::format("{} - {}", name(), context());
-            if (unsaved())
-                t += " (*)";
+            std::string ctx = context();
+            std::string t;
+            if (ctx != "") {
+                t = std::format("{} - {}", name(), ctx);
+            } else {
+                t = name();
+            }
             return t;
         }
 
@@ -134,7 +145,14 @@ namespace Toolbox::UI {
             ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
                                                 maxSize() ? maxSize().value() : default_max);
 
-            if (ImGui::Begin(title().c_str(), &m_is_open, m_flags)) {
+            m_window_id = ImGui::GetID(title().c_str());
+
+            ImGuiWindowFlags flags = m_flags;
+            if (unsaved()) {
+                flags |= ImGuiWindowFlags_UnsavedDocument;
+            }
+
+            if (ImGui::Begin(title().c_str(), &m_is_open, flags)) {
                 m_size = ImGui::GetWindowSize();
                 renderMenuBar();
                 renderBody(delta_time);
@@ -179,6 +197,11 @@ namespace Toolbox::UI {
                    std::optional<ImVec2> max_size, ImGuiWindowClass window_class)
             : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
               m_window_class(window_class) {}
+        DockWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
+                     std::optional<ImVec2> max_size, ImGuiWindowClass window_class,
+                     ImGuiWindowFlags flags)
+            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
+              m_window_class(window_class), m_flags(flags) {}
         ~DockWindow() override = default;
 
         void open() override { m_is_open = true; }
@@ -191,6 +214,8 @@ namespace Toolbox::UI {
         const ImGuiWindowClass *windowClass() const override {
             return m_parent ? m_parent->windowClass() : &m_window_class;
         }
+
+        ImGuiWindowFlags flags() const override { return m_flags; }
 
         [[nodiscard]] std::optional<ImVec2> defaultSize() const override { return m_default_size; }
         [[nodiscard]] std::optional<ImVec2> size() const override { return m_size; }
@@ -208,14 +233,17 @@ namespace Toolbox::UI {
         [[nodiscard]] bool saveData(const std::filesystem::path &path) override { return false; }
 
         [[nodiscard]] bool update(f32 delta_time) override {
-            m_window_id = ImGui::GetID(title().c_str());
             return true;
         }
 
         [[nodiscard]] std::string title() const override {
-            std::string t = std::format("{} - {}", name(), context());
-            if (unsaved())
-                t += " (*)";
+            std::string ctx = context();
+            std::string t;
+            if (ctx != "") {
+                t = std::format("{} - {}", name(), ctx);
+            } else {
+                t = name();
+            }
             return t;
         }
 
@@ -237,7 +265,14 @@ namespace Toolbox::UI {
             ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
                                                 maxSize() ? maxSize().value() : default_max);
 
-            if (ImGui::Begin(title().c_str(), &m_is_open, m_flags)) {
+            m_window_id = ImGui::GetID(title().c_str());
+
+            ImGuiWindowFlags flags = m_flags;
+            if (unsaved()) {
+                flags |= ImGuiWindowFlags_UnsavedDocument;
+            }
+
+            if (ImGui::Begin(title().c_str(), &m_is_open, flags)) {
                 m_size = ImGui::GetWindowSize();
                 renderDockspace();
                 renderMenuBar();

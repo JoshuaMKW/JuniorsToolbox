@@ -39,6 +39,8 @@ file(GLOB TOOLBOX_SRC
     "src/io/*.cpp"
     "src/gui/*.cpp"
     "include/gui/*.hpp"
+    "src/gui/settings/*.cpp"
+    "include/gui/settings/*.hpp"
     "src/gui/scene/*.cpp"
     "include/gui/scene/*.hpp"
     "src/gui/property/*.cpp"
@@ -76,4 +78,7 @@ add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                        ${CMAKE_SOURCE_DIR}/Templates/ $<TARGET_FILE_DIR:JuniorsToolbox>/Templates/)
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
-                       ${CMAKE_SOURCE_DIR}/res/ $<TARGET_FILE_DIR:JuniorsToolbox>/res/)
+                       ${CMAKE_SOURCE_DIR}/Themes/ $<TARGET_FILE_DIR:JuniorsToolbox>/Themes/)
+add_custom_command(TARGET JuniorsToolbox PRE_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory
+                       ${CMAKE_SOURCE_DIR}/Fonts/ $<TARGET_FILE_DIR:JuniorsToolbox>/Fonts/)
