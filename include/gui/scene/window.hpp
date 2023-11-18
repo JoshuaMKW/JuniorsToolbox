@@ -120,7 +120,7 @@ namespace Toolbox::UI {
         std::vector<std::shared_ptr<J3DModelInstance>> m_renderables;
         BillboardRenderer m_billboard_renderer;
         PathRenderer m_path_renderer;
-        model_cache_t m_model_cache;
+        ResourceCache m_resource_cache;
 
         uint32_t m_gizmo_operation{0};
 

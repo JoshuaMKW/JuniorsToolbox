@@ -32,6 +32,7 @@
 #include <gui/context_menu.hpp>
 
 #include <J3D/Material/J3DUniformBufferObject.hpp>
+#include <J3D/Material/J3DMaterialTableLoader.hpp>
 
 namespace Toolbox::UI {
 
@@ -86,7 +87,8 @@ namespace Toolbox::UI {
     SceneWindow::~SceneWindow() {
         // J3DRendering::Cleanup();
         m_renderables.erase(m_renderables.begin(), m_renderables.end());
-        m_model_cache.clear();
+        m_resource_cache.m_model.clear();
+        m_resource_cache.m_material.clear();
 
         glDeleteFramebuffers(1, &m_fbo_id);
         glDeleteRenderbuffers(1, &m_rbo_id);
@@ -133,7 +135,10 @@ namespace Toolbox::UI {
                 return false;
             }
 
-            m_model_cache.erase(m_model_cache.begin(), m_model_cache.end());
+            m_resource_cache.m_model.erase(m_resource_cache.m_model.begin(),
+                                           m_resource_cache.m_model.end());
+            m_resource_cache.m_material.erase(m_resource_cache.m_material.begin(),
+                                              m_resource_cache.m_material.end());
 
             m_current_scene = std::make_unique<Toolbox::Scene::SceneInstance>(path);
 
@@ -145,8 +150,30 @@ namespace Toolbox::UI {
                     bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big,
                                                      bStream::OpenMode::In);
 
-                    m_model_cache.insert(
-                        {entry.path().stem().string(), loader.Load(&modelStream, 0)});
+                    auto model_data = loader.Load(&modelStream, 0);
+                    m_resource_cache.m_model.insert({entry.path().stem().string(), model_data});
+
+                    std::filesystem::path mat_path;
+                    if (entry.path().stem() == "sandbomb") {
+                        mat_path = entry.path().parent_path() / "sandbombbase.bmt";
+                    } else {
+                        mat_path = entry.path().parent_path() / std::format("{}.bmt", entry.path().stem().string());
+                    }
+
+                    // TODO: Use json information to load model and material data
+
+                    if (std::filesystem::is_regular_file(mat_path)) {
+                        bStream::CFileStream matStream(mat_path.string(), bStream::Endianess::Big,
+                                                         bStream::OpenMode::In);
+
+                        J3DMaterialTableLoader bmtLoader;
+
+                        std::shared_ptr<J3DMaterialTable> matTable =
+                            bmtLoader.Load(&matStream, model_data);
+
+                        m_resource_cache.m_material.insert(
+                            {entry.path().stem().string(), matTable});
+                    }
                 }
             }
 
@@ -157,7 +184,7 @@ namespace Toolbox::UI {
                     bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big,
                                                      bStream::OpenMode::In);
 
-                    m_model_cache.insert(
+                    m_resource_cache.m_model.insert(
                         {entry.path().stem().string(), loader.Load(&modelStream, 0)});
                 }
             }
@@ -483,22 +510,22 @@ namespace Toolbox::UI {
         m_renderables.clear();
 
         // Render Models here
-        if (m_model_cache.count("map") != 0) {
-            m_renderables.push_back(m_model_cache["map"]->GetInstance());
+        if (m_resource_cache.m_model.count("map") != 0) {
+            m_renderables.push_back(m_resource_cache.m_model["map"]->GetInstance());
         }
 
-        if (m_model_cache.count("sky") != 0) {
-            m_renderables.push_back(m_model_cache["sky"]->GetInstance());
+        if (m_resource_cache.m_model.count("sky") != 0) {
+            m_renderables.push_back(m_resource_cache.m_model["sky"]->GetInstance());
         }
 
-        if (m_model_cache.count("sea") != 0) {
-            m_renderables.push_back(m_model_cache["sea"]->GetInstance());
+        if (m_resource_cache.m_model.count("sea") != 0) {
+            m_renderables.push_back(m_resource_cache.m_model["sea"]->GetInstance());
         }
 
         // perhaps find a way to limit this so it only happens when we need to re-render?
         if (m_current_scene != nullptr) {
             m_current_scene->getObjHierarchy().getRoot()->performScene(m_renderables,
-                                                                       m_model_cache);
+                                                                       m_resource_cache);
         }
 
         m_is_render_window_open = ImGui::Begin(getWindowChildUID(*this, "Scene View").c_str());

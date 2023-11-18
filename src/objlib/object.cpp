@@ -111,7 +111,7 @@ namespace Toolbox::Object {
 
     std::expected<void, ObjectError>
     VirtualSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &,
-                                     model_cache_t &) {
+                                     ResourceCache &) {
         return {};
     }
 
@@ -301,12 +301,12 @@ namespace Toolbox::Object {
 
     std::expected<void, ObjectError>
     GroupSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                                   model_cache_t &model_cache) {
+                                   ResourceCache &resource_cache) {
 
         std::vector<ObjectError> child_errors;
 
         for (auto child : m_children) {
-            auto result = child->performScene(renderables, model_cache);
+            auto result = child->performScene(renderables, resource_cache);
             if (!result)
                 child_errors.push_back(result.error());
         }
@@ -520,7 +520,7 @@ namespace Toolbox::Object {
 
     std::expected<void, ObjectError>
     PhysicalSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                                      model_cache_t &model_cache) {
+                                      ResourceCache &resource_cache) {
 
         if (m_model_instance) {
             auto transform_value_ptr = getMember(std::string("Transform")).value();
@@ -545,10 +545,17 @@ namespace Toolbox::Object {
         auto model_name = getMetaValue<std::string>(model_name_value_ptr).value();
         std::transform(model_name.begin(), model_name.end(), model_name.begin(), ::tolower);
 
-        if (model_cache.count(model_name) == 0)
+        if (resource_cache.m_model.count(model_name) == 0)
             return {};
 
-        m_model_instance = model_cache[model_name]->GetInstance();
+        // TODO: Use json information to load model and material data
+
+        m_model_instance = resource_cache.m_model[model_name]->GetInstance();
+
+        if (resource_cache.m_material.count(model_name) != 0) {
+            m_model_instance->SetInstanceMaterialTable(resource_cache.m_material[model_name]);
+            m_model_instance->SetUseInstanceMaterialTable(true);
+        }
 
         auto transform_value_ptr = getMember(std::string("Transform")).value();
         if (transform_value_ptr) {

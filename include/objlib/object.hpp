@@ -58,6 +58,12 @@ namespace Toolbox::Object {
     }
 
     using model_cache_t = std::unordered_map<std::string, std::shared_ptr<J3DModelData>>;
+    using material_cache_t = std::unordered_map<std::string, std::shared_ptr<J3DMaterialTable>>;
+
+    struct ResourceCache {
+        model_cache_t m_model;
+        material_cache_t m_material;
+    };
 
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
@@ -114,7 +120,7 @@ namespace Toolbox::Object {
 
         virtual std::expected<void, ObjectError>
         performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     model_cache_t &model_cache) = 0;
+                     ResourceCache &resource_cache) = 0;
 
         virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
 
@@ -271,7 +277,7 @@ namespace Toolbox::Object {
 
         std::expected<void, ObjectError>
         performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     model_cache_t &model_cache) override;
+                     ResourceCache &resource_cache) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -338,7 +344,8 @@ namespace Toolbox::Object {
             : GroupSceneObject(template_, in) {
             parent->addChild(std::shared_ptr<GroupSceneObject>(this));
         }
-        GroupSceneObject(const Template &template_, std::string_view wizard_name, ISceneObject *parent)
+        GroupSceneObject(const Template &template_, std::string_view wizard_name,
+                         ISceneObject *parent)
             : GroupSceneObject(template_, wizard_name) {
             parent->addChild(std::shared_ptr<GroupSceneObject>(this));
         }
@@ -365,7 +372,7 @@ namespace Toolbox::Object {
 
         std::expected<void, ObjectError>
         performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     model_cache_t &model_cache) override;
+                     ResourceCache &resource_cache) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -534,7 +541,7 @@ namespace Toolbox::Object {
 
         std::expected<void, ObjectError>
         performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     model_cache_t &model_cache) override;
+                     ResourceCache &resource_cache) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
