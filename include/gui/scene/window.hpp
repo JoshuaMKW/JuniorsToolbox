@@ -17,9 +17,11 @@
 
 #include "gui/clipboard.hpp"
 #include "gui/property/property.hpp"
+#include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
 #include "gui/scene/nodeinfo.hpp"
 #include "gui/scene/objdialog.hpp"
+#include "gui/scene/path.hpp"
 #include "gui/window.hpp"
 
 #include <gui/context_menu.hpp>

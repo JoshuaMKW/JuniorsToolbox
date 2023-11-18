@@ -45,10 +45,12 @@ namespace Toolbox {
         this->vPos = inPos;
     };
 
-    // The projection matrix
-    void Camera::privUpdateProjectionMatrix(void) {
-        this->projMatrix = glm::perspective(fovy, aspectRatio, nearDist, farDist);
-    };
+// The projection matrix
+void Camera::privUpdateProjectionMatrix(void) {
+    if (aspectRatio < 1)
+        return;
+    this->projMatrix = glm::perspective(fovy, aspectRatio, nearDist, farDist);
+};
 
     void Camera::privUpdateViewMatrix(void) {
         this->viewMatrix = glm::lookAt(vPos, vPos + vDir, vUp);

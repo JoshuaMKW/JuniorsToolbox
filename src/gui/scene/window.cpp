@@ -108,7 +108,15 @@ namespace Toolbox::UI {
 
         buildCreateObjDialog();
         buildRenameObjDialog();
-    }
+
+        if (!m_path_renderer.initPathRenderer()) {
+            // show some error
+        }
+
+        // 128x128 billboards, 10 unique images
+        if (!m_billboard_renderer.initBillboardRenderer(128, 10)) {
+            // show some error
+        }
 
         m_billboard_renderer.loadBillboardTexture("res/question.png", 0);
     }
