@@ -6,8 +6,8 @@
 #include "transform.hpp"
 #include "types.hpp"
 #include <J3D/Animation/J3DAnimationInstance.hpp>
-#include <J3D/J3DLight.hpp>
-#include <J3D/J3DModelInstance.hpp>
+#include <J3D/Rendering/J3DLight.hpp>
+#include <J3D/Data/J3DModelInstance.hpp>
 #include <expected>
 #include <filesystem>
 #include <stacktrace>

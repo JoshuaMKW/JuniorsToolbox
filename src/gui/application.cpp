@@ -6,7 +6,7 @@
 #include "gui/themes.hpp"
 #include "gui/util.hpp"
 
-#include <J3D/J3DUniformBufferObject.hpp>
+#include <J3D/Material/J3DUniformBufferObject.hpp>
 
 #include <iostream>
 #include <string>

@@ -102,7 +102,7 @@ namespace Toolbox::UI {
 
         glEnable(GL_PROGRAM_POINT_SIZE);
 
-        glLineWidth(2.0f);
+        glLineWidth(5.0f);
 
         glm::mat4 mvp = camera->getProjMatrix() * camera->getViewMatrix() * glm::mat4(1.0);
 

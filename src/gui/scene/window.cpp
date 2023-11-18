@@ -31,6 +31,8 @@
 #endif
 #include <gui/context_menu.hpp>
 
+#include <J3D/Material/J3DUniformBufferObject.hpp>
+
 namespace Toolbox::UI {
 
     void PacketSort(J3DRendering::SortFunctionArgs packets) {
@@ -92,7 +94,7 @@ namespace Toolbox::UI {
     }
 
     SceneWindow::SceneWindow() : DockWindow() {
-        m_camera.setPerspective(150, 16 / 9, 100, 300000);
+        m_camera.setPerspective(150, 16 / 9, 100, 250000);
         m_camera.setOrientAndPosition({0, 1, 0}, {0, 0, 1}, {0, 0, 0});
         m_camera.updateCamera();
         J3DRendering::SetSortFunction(PacketSort);
@@ -552,7 +554,7 @@ namespace Toolbox::UI {
                 projection = m_camera.getProjMatrix();
                 view       = m_camera.getViewMatrix();
 
-                J3DUniformBufferObject::SetProjAndViewMatrices(&projection, &view);
+                J3DUniformBufferObject::SetProjAndViewMatrices(projection, view);
 
                 glm::vec3 position;
                 m_camera.getPos(position);
