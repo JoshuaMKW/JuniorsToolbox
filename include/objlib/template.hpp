@@ -18,9 +18,16 @@
 
 namespace Toolbox::Object {
 
+    struct TemplateRenderInfo {
+        std::optional<std::string> m_file_model;
+        std::optional<std::string> m_file_materials;
+        std::vector<std::string> m_file_animations;
+    };
+
     struct TemplateWizard {
         std::string m_name = "default_init";
         std::vector<MetaMember> m_init_members;
+        TemplateRenderInfo m_render_info;
 
         TemplateWizard &operator=(const TemplateWizard &other) {
             m_name = other.m_name;
@@ -28,6 +35,7 @@ namespace Toolbox::Object {
             for (auto &m : other.m_init_members) {
                 m_init_members.push_back(m);
             }
+            m_render_info = other.m_render_info;
             return *this;
         }
     };
@@ -96,7 +104,7 @@ namespace Toolbox::Object {
                                                       MetaMember::size_type array_size);
 
         void loadMembers(json_t &members, std::vector<MetaMember> &out);
-        void loadWizards(json_t &wizards);
+        void loadWizards(json_t &wizards, json_t &render_infos);
 
     private:
         std::string m_type;

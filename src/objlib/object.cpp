@@ -1,5 +1,7 @@
 #include "objlib/object.hpp"
 #include "objlib/meta/errors.hpp"
+#include <J3D/Material/J3DMaterialTableLoader.hpp>
+#include <bstream.h>
 #include <expected>
 #include <gui/modelcache.hpp>
 #include <string>
@@ -522,39 +524,8 @@ namespace Toolbox::Object {
     PhysicalSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
                                       ResourceCache &resource_cache) {
 
-        if (m_model_instance) {
-            auto transform_value_ptr = getMember(std::string("Transform")).value();
-            if (transform_value_ptr) {
-                Transform transform = getMetaValue<Transform>(transform_value_ptr).value();
-                m_model_instance->SetTranslation(transform.m_translation);
-                m_model_instance->SetRotation(transform.m_rotation);
-                m_model_instance->SetScale(transform.m_scale);
-            }
-            renderables.push_back(m_model_instance);
+        if (!m_model_instance) {
             return {};
-        }
-
-        auto model_member_result = getMember(std::string("Model"));
-        if (!model_member_result.has_value())
-            return {};
-
-        auto model_name_value_ptr = model_member_result.value();
-        if (!model_name_value_ptr)
-            return {};
-
-        auto model_name = getMetaValue<std::string>(model_name_value_ptr).value();
-        std::transform(model_name.begin(), model_name.end(), model_name.begin(), ::tolower);
-
-        if (resource_cache.m_model.count(model_name) == 0)
-            return {};
-
-        // TODO: Use json information to load model and material data
-
-        m_model_instance = resource_cache.m_model[model_name]->GetInstance();
-
-        if (resource_cache.m_material.count(model_name) != 0) {
-            m_model_instance->SetInstanceMaterialTable(resource_cache.m_material[model_name]);
-            m_model_instance->SetUseInstanceMaterialTable(true);
         }
 
         auto transform_value_ptr = getMember(std::string("Transform")).value();
@@ -591,11 +562,93 @@ namespace Toolbox::Object {
         }
     }
 
+    std::expected<void, FSError>
+    PhysicalSceneObject::loadRenderData(const std::filesystem::path &asset_path,
+                                        const TemplateRenderInfo &info,
+                                        ResourceCache &resource_cache) {
+        J3DModelLoader bmdLoader;
+        J3DMaterialTableLoader bmtLoader;
+
+        std::shared_ptr<J3DModelData> model_data;
+        std::shared_ptr<J3DMaterialTable> mat_table;
+
+        std::optional<std::string> model_file;
+        std::optional<std::string> mat_file = info.m_file_materials;
+
+        // Get model variable that exists in some objects
+        auto model_member_result = getMember(std::string("Model"));
+        if (model_member_result) {
+            if (model_member_result.value()) {
+                model_file = std::format(
+                    "mapobj/{}.bmd", getMetaValue<std::string>(model_member_result.value()).value());
+            }
+        }
+
+        if (info.m_file_model) {
+            model_file = info.m_file_model;
+        }
+
+        // Early return since no model to animate etc.
+        if (!model_file) {
+            return {};
+        }
+
+        std::filesystem::path model_path = asset_path / model_file.value();
+        std::string model_name           = model_path.stem().string();
+        std::transform(model_name.begin(), model_name.end(), model_name.begin(), ::tolower);
+
+        if (resource_cache.m_model.count(model_name) == 0) {
+            auto model_path_exists_res = Toolbox::is_regular_file(model_path);
+            if (!model_path_exists_res || !model_path_exists_res.value()) {
+                return {};
+            }
+
+            bStream::CFileStream model_stream(model_path.string(), bStream::Endianess::Big,
+                                              bStream::OpenMode::In);
+
+            model_data = bmdLoader.Load(&model_stream, 0);
+            resource_cache.m_model.insert({model_name, model_data});
+        } else {
+            model_data = resource_cache.m_model[model_name];
+        }
+
+        if (!mat_file) {
+            mat_file = model_file->replace(model_file->size() - 3, 3, "bmt"); 
+        }
+
+        std::filesystem::path mat_path = asset_path / mat_file.value();
+        std::string mat_name           = mat_path.stem().string();
+        std::transform(mat_name.begin(), mat_name.end(), mat_name.begin(), ::tolower);
+
+        if (resource_cache.m_material.count(mat_name) == 0) {
+            auto mat_path_exists_res = Toolbox::is_regular_file(mat_path);
+            if (mat_path_exists_res && mat_path_exists_res.value()) {
+                bStream::CFileStream mat_stream(mat_path.string(), bStream::Endianess::Big,
+                                                bStream::OpenMode::In);
+
+                mat_table = bmtLoader.Load(&mat_stream, model_data);
+                resource_cache.m_material.insert({mat_name, mat_table});
+            }
+        } else {
+            mat_table = resource_cache.m_material[mat_name];
+        }
+
+        m_model_instance = model_data->GetInstance();
+        if (mat_table) {
+            m_model_instance->SetInstanceMaterialTable(mat_table);
+            m_model_instance->SetUseInstanceMaterialTable(true);
+        }
+
+        return {};
+    }
+
     std::expected<void, SerialError> PhysicalSceneObject::serialize(Serializer &out) const {
         return std::expected<void, SerialError>();
     }
 
     std::expected<void, SerialError> PhysicalSceneObject::deserialize(Deserializer &in) {
+        auto scene_path = std::filesystem::path(in.filepath()).parent_path();
+
         // Metadata
         auto length           = in.read<u32, std::endian::big>();
         std::streampos endpos = static_cast<std::size_t>(in.tell()) + length - 4;
@@ -636,7 +689,10 @@ namespace Toolbox::Object {
         }
 
         auto template_ = std::move(template_result.value());
-        auto wizard    = template_->getWizard();
+        auto wizard    = template_->getWizard(name.name());
+        if (!wizard) {
+            wizard = template_->getWizard();
+        }
 
         const char *debug_str = template_->type().data();
 
@@ -654,7 +710,17 @@ namespace Toolbox::Object {
             m_members.push_back(this_member);
         }
 
+        // Skip padding/unknown data
         in.seek(endpos, std::ios::beg);
+
+        std::filesystem::path asset_path = scene_path.parent_path();
+        auto load_result = loadRenderData(asset_path, wizard->m_render_info, getResourceCache());
+        if (!load_result) {
+            return make_serial_error<void>(
+                in, std::format("Failed to load render data for object {} ({})!", m_type,
+                                m_nameref.name()));
+        }
+
         return {};
     }
 

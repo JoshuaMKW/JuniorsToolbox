@@ -6,8 +6,8 @@
 #include "transform.hpp"
 #include "types.hpp"
 #include <J3D/Animation/J3DAnimationInstance.hpp>
-#include <J3D/Rendering/J3DLight.hpp>
 #include <J3D/Data/J3DModelInstance.hpp>
+#include <J3D/Rendering/J3DLight.hpp>
 #include <expected>
 #include <filesystem>
 #include <stacktrace>
@@ -57,13 +57,20 @@ namespace Toolbox::Object {
         return {};
     }
 
-    using model_cache_t = std::unordered_map<std::string, std::shared_ptr<J3DModelData>>;
+    using model_cache_t    = std::unordered_map<std::string, std::shared_ptr<J3DModelData>>;
     using material_cache_t = std::unordered_map<std::string, std::shared_ptr<J3DMaterialTable>>;
 
     struct ResourceCache {
         model_cache_t m_model;
         material_cache_t m_material;
     };
+
+    namespace {
+        static ResourceCache s_resource_cache;
+    }
+
+    inline ResourceCache &getResourceCache() { return s_resource_cache; }
+    inline void clearResourceCache() { s_resource_cache = ResourceCache(); }
 
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
@@ -551,6 +558,10 @@ namespace Toolbox::Object {
         }
 
         void applyWizard(const TemplateWizard &wizard);
+
+        std::expected<void, FSError> loadRenderData(const std::filesystem::path &asset_path,
+                                                    const TemplateRenderInfo &info,
+                                                    ResourceCache &resource_cache);
 
     public:
         // Inherited via ISerializable

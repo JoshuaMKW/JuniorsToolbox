@@ -62,7 +62,7 @@ namespace Toolbox::Object {
 
                 m_wizards.push_back(default_wizard);
 
-                loadWizards(metadata["Wizard"]);
+                loadWizards(metadata["Wizard"], metadata["Rendering"]);
                 break;
             }
         });
@@ -277,7 +277,7 @@ namespace Toolbox::Object {
                 std::vector<MetaMember> inst_struct_members;
                 auto struct_ = default_member.value<MetaStruct>(i).value();
                 for (auto &mbr : struct_->members()) {
-                    auto mbr_json = member_json[mbr->name()];
+                    auto &mbr_json = member_json[mbr->name()];
                     inst_struct_members.push_back(loadWizardMember(mbr_json, *mbr));
                 }
                 inst_structs.emplace_back(struct_->name(), inst_struct_members);
@@ -306,14 +306,13 @@ namespace Toolbox::Object {
         return MetaMember(default_member.name(), inst_values, default_member.defaultValue());
     }
 
-    void Template::loadWizards(json_t &wizards) {
+    void Template::loadWizards(json_t &wizards, json_t &render_infos) {
         if (m_wizards.size() == 0) {
             return;
         }
 
-        TemplateWizard &default_wizard = m_wizards[0];
-
         for (const auto &item : wizards.items()) {
+            TemplateWizard &default_wizard = m_wizards[0];
             TemplateWizard wizard;
             wizard.m_name    = item.key();
             auto wizard_json = item.value();
@@ -329,7 +328,19 @@ namespace Toolbox::Object {
                     wizard.m_init_members.emplace_back(member);
                 }
             }
-            m_wizards.emplace_back(wizard);
+            if (render_infos.contains(wizard.m_name)) {
+                auto &render_info = render_infos[wizard.m_name];
+                if (render_info.contains("Model")) {
+                    wizard.m_render_info.m_file_model = render_info["Model"];
+                }
+                if (render_info.contains("Materials")) {
+                    wizard.m_render_info.m_file_materials = render_info["Materials"];
+                }
+                if (render_info.contains("Animations")) {
+                    wizard.m_render_info.m_file_animations = render_info["Animations"];
+                }
+            }
+            m_wizards.push_back(wizard);
         }
     }
 
