@@ -126,7 +126,7 @@ namespace Toolbox::Object {
         [[nodiscard]] virtual J3DLight getLightData(int index) = 0;
 
         virtual std::expected<void, ObjectError>
-        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+        performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
                      ResourceCache &resource_cache) = 0;
 
         virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
@@ -283,7 +283,7 @@ namespace Toolbox::Object {
         [[nodiscard]] J3DLight getLightData(int index) override { return {}; }
 
         std::expected<void, ObjectError>
-        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+        performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
                      ResourceCache &resource_cache) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
@@ -378,7 +378,7 @@ namespace Toolbox::Object {
         getChild(const QualifiedName &name) override;
 
         std::expected<void, ObjectError>
-        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+        performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
                      ResourceCache &resource_cache) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
@@ -547,7 +547,7 @@ namespace Toolbox::Object {
         J3DLight getLightData(int index) override { return m_model_instance->GetLight(index); }
 
         std::expected<void, ObjectError>
-        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+        performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
                      ResourceCache &resource_cache) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;

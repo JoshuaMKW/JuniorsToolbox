@@ -144,50 +144,50 @@ namespace Toolbox::UI {
 
             m_current_scene->dump(std::cout);
 
-            J3DModelLoader loader;
-            for (const auto &entry : std::filesystem::directory_iterator(path / "mapobj")) {
-                if (entry.path().extension() == ".bmd") {
-                    bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big,
-                                                     bStream::OpenMode::In);
+            //J3DModelLoader loader;
+            //for (const auto &entry : std::filesystem::directory_iterator(path / "mapobj")) {
+            //    if (entry.path().extension() == ".bmd") {
+            //        bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big,
+            //                                         bStream::OpenMode::In);
 
-                    auto model_data = loader.Load(&modelStream, 0);
-                    m_resource_cache.m_model.insert({entry.path().stem().string(), model_data});
+            //        auto model_data = loader.Load(&modelStream, 0);
+            //        m_resource_cache.m_model.insert({entry.path().stem().string(), model_data});
 
-                    std::filesystem::path mat_path;
-                    if (entry.path().stem() == "sandbomb") {
-                        mat_path = entry.path().parent_path() / "sandbombbase.bmt";
-                    } else {
-                        mat_path = entry.path().parent_path() / std::format("{}.bmt", entry.path().stem().string());
-                    }
+            //        std::filesystem::path mat_path;
+            //        if (entry.path().stem() == "sandbomb") {
+            //            mat_path = entry.path().parent_path() / "sandbombbase.bmt";
+            //        } else {
+            //            mat_path = entry.path().parent_path() / std::format("{}.bmt", entry.path().stem().string());
+            //        }
 
-                    // TODO: Use json information to load model and material data
+            //        // TODO: Use json information to load model and material data
 
-                    if (std::filesystem::is_regular_file(mat_path)) {
-                        bStream::CFileStream matStream(mat_path.string(), bStream::Endianess::Big,
-                                                         bStream::OpenMode::In);
+            //        if (std::filesystem::is_regular_file(mat_path)) {
+            //            bStream::CFileStream matStream(mat_path.string(), bStream::Endianess::Big,
+            //                                             bStream::OpenMode::In);
 
-                        J3DMaterialTableLoader bmtLoader;
+            //            J3DMaterialTableLoader bmtLoader;
 
-                        std::shared_ptr<J3DMaterialTable> matTable =
-                            bmtLoader.Load(&matStream, model_data);
+            //            std::shared_ptr<J3DMaterialTable> matTable =
+            //                bmtLoader.Load(&matStream, model_data);
 
-                        m_resource_cache.m_material.insert(
-                            {entry.path().stem().string(), matTable});
-                    }
-                }
-            }
+            //            m_resource_cache.m_material.insert(
+            //                {entry.path().stem().string(), matTable});
+            //        }
+            //    }
+            //}
 
-            for (const auto &entry : std::filesystem::directory_iterator(path / "map" / "map")) {
-                if (entry.path().extension() == ".bmd") {
-                    std::cout << "[gui]: loading model " << entry.path().filename().string()
-                              << std::endl;
-                    bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big,
-                                                     bStream::OpenMode::In);
+            //for (const auto &entry : std::filesystem::directory_iterator(path / "map" / "map")) {
+            //    if (entry.path().extension() == ".bmd") {
+            //        std::cout << "[gui]: loading model " << entry.path().filename().string()
+            //                  << std::endl;
+            //        bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big,
+            //                                         bStream::OpenMode::In);
 
-                    m_resource_cache.m_model.insert(
-                        {entry.path().stem().string(), loader.Load(&modelStream, 0)});
-                }
-            }
+            //        m_resource_cache.m_model.insert(
+            //            {entry.path().stem().string(), loader.Load(&modelStream, 0)});
+            //    }
+            //}
 
             if (m_current_scene != nullptr) {
                 auto rail_data = m_current_scene->getRailData();
@@ -524,7 +524,7 @@ namespace Toolbox::UI {
 
         // perhaps find a way to limit this so it only happens when we need to re-render?
         if (m_current_scene != nullptr) {
-            m_current_scene->getObjHierarchy().getRoot()->performScene(m_renderables,
+            m_current_scene->getObjHierarchy().getRoot()->performScene(delta_time, m_renderables,
                                                                        m_resource_cache);
         }
 

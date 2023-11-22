@@ -1,5 +1,6 @@
 #include "objlib/object.hpp"
 #include "objlib/meta/errors.hpp"
+#include <J3D/Animation/J3DAnimationLoader.hpp>
 #include <J3D/Material/J3DMaterialTableLoader.hpp>
 #include <bstream.h>
 #include <expected>
@@ -111,8 +112,8 @@ namespace Toolbox::Object {
         return size;
     }
 
-    std::expected<void, ObjectError>
-    VirtualSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &,
+    std::expected<void, ObjectError> VirtualSceneObject::performScene(
+        float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &,
                                      ResourceCache &) {
         return {};
     }
@@ -182,7 +183,13 @@ namespace Toolbox::Object {
         }
 
         auto template_ = std::move(template_result.value());
-        auto wizard    = template_->getWizard();
+        auto wizard    = template_->getWizard(name.name());
+        if (!wizard) {
+            wizard = template_->getWizard("Default");
+            if (!wizard) {
+                wizard = template_->getWizard();
+            }
+        }
 
         // Members
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
@@ -302,13 +309,14 @@ namespace Toolbox::Object {
     }
 
     std::expected<void, ObjectError>
-    GroupSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+    GroupSceneObject::performScene(float delta_time,
+                                   std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
                                    ResourceCache &resource_cache) {
 
         std::vector<ObjectError> child_errors;
 
         for (auto child : m_children) {
-            auto result = child->performScene(renderables, resource_cache);
+            auto result = child->performScene(delta_time, renderables, resource_cache);
             if (!result)
                 child_errors.push_back(result.error());
         }
@@ -391,7 +399,13 @@ namespace Toolbox::Object {
         }
 
         auto template_ = std::move(template_result.value());
-        auto wizard    = template_->getWizard();
+        auto wizard    = template_->getWizard(obj_name.name());
+        if (!wizard) {
+            wizard = template_->getWizard("Default");
+            if (!wizard) {
+                wizard = template_->getWizard();
+            }
+        }
 
         // Members
         bool late_group_size = (obj_type.code() == 15406 || obj_type.code() == 9858);
@@ -521,7 +535,8 @@ namespace Toolbox::Object {
     }
 
     std::expected<void, ObjectError>
-    PhysicalSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+    PhysicalSceneObject::performScene(float delta_time,
+                                      std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
                                       ResourceCache &resource_cache) {
 
         if (!m_model_instance) {
@@ -535,6 +550,7 @@ namespace Toolbox::Object {
             m_model_instance->SetRotation(transform.m_rotation);
             m_model_instance->SetScale(transform.m_scale);
         }
+        m_model_instance->UpdateAnimations(delta_time * 60.0);
         renderables.push_back(m_model_instance);
 
         return {};
@@ -571,6 +587,7 @@ namespace Toolbox::Object {
 
         std::shared_ptr<J3DModelData> model_data;
         std::shared_ptr<J3DMaterialTable> mat_table;
+        std::shared_ptr<J3DAnimationInstance> anim_data;
 
         std::optional<std::string> model_file;
         std::optional<std::string> mat_file = info.m_file_materials;
@@ -579,8 +596,9 @@ namespace Toolbox::Object {
         auto model_member_result = getMember(std::string("Model"));
         if (model_member_result) {
             if (model_member_result.value()) {
-                model_file = std::format(
-                    "mapobj/{}.bmd", getMetaValue<std::string>(model_member_result.value()).value());
+                model_file =
+                    std::format("mapobj/{}.bmd",
+                                getMetaValue<std::string>(model_member_result.value()).value());
             }
         }
 
@@ -613,30 +631,49 @@ namespace Toolbox::Object {
         }
 
         if (!mat_file) {
-            mat_file = model_file->replace(model_file->size() - 3, 3, "bmt"); 
+            mat_file = model_file->replace(model_file->size() - 3, 3, "bmt");
         }
 
         std::filesystem::path mat_path = asset_path / mat_file.value();
         std::string mat_name           = mat_path.stem().string();
         std::transform(mat_name.begin(), mat_name.end(), mat_name.begin(), ::tolower);
 
-        if (resource_cache.m_material.count(mat_name) == 0) {
-            auto mat_path_exists_res = Toolbox::is_regular_file(mat_path);
-            if (mat_path_exists_res && mat_path_exists_res.value()) {
-                bStream::CFileStream mat_stream(mat_path.string(), bStream::Endianess::Big,
-                                                bStream::OpenMode::In);
+        auto mat_path_exists_res = Toolbox::is_regular_file(mat_path);
+        if (mat_path_exists_res && mat_path_exists_res.value()) {
+            bStream::CFileStream mat_stream(mat_path.string(), bStream::Endianess::Big,
+                                            bStream::OpenMode::In);
 
-                mat_table = bmtLoader.Load(&mat_stream, model_data);
-                resource_cache.m_material.insert({mat_name, mat_table});
-            }
-        } else {
-            mat_table = resource_cache.m_material[mat_name];
+            mat_table = bmtLoader.Load(&mat_stream, model_data);
         }
 
         m_model_instance = model_data->GetInstance();
         if (mat_table) {
             m_model_instance->SetInstanceMaterialTable(mat_table);
             m_model_instance->SetUseInstanceMaterialTable(true);
+        }
+
+        for (auto &anim_file : info.m_file_animations) {
+            std::filesystem::path anim_path = asset_path / anim_file;
+            std::string anim_name           = anim_path.stem().string();
+
+            auto anim_path_exists_res = Toolbox::is_regular_file(anim_path);
+            if (anim_path_exists_res && anim_path_exists_res.value()) {
+                J3DAnimationLoader anmLoader;
+                bStream::CFileStream anim_stream(anim_path.string(), bStream::Endianess::Big,
+                                                 bStream::OpenMode::In);
+
+                anim_data = anmLoader.LoadAnimation(anim_stream);
+            }
+
+            if (anim_data && anim_file.ends_with(".brk")) {
+                m_model_instance->SetRegisterColorAnimation(
+                    std::reinterpret_pointer_cast<J3DColorAnimationInstance>(anim_data));
+            }
+
+            if (anim_data && anim_file.ends_with(".btk")) {
+                m_model_instance->SetTexMatrixAnimation(
+                    std::reinterpret_pointer_cast<J3DTexMatrixAnimationInstance>(anim_data));
+            }
         }
 
         return {};
@@ -691,7 +728,10 @@ namespace Toolbox::Object {
         auto template_ = std::move(template_result.value());
         auto wizard    = template_->getWizard(name.name());
         if (!wizard) {
-            wizard = template_->getWizard();
+            wizard = template_->getWizard("Default");
+            if (!wizard) {
+                wizard = template_->getWizard();
+            }
         }
 
         const char *debug_str = template_->type().data();

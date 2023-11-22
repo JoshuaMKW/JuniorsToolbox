@@ -40,7 +40,7 @@
             }
         },
         "Wizard": {
-            "Default": {
+            "SandCastle": {
                 "Transform": [
                     [
                         0,
@@ -66,6 +66,17 @@
                 },
                 "Model": "SandCastle",
                 "DisplayTexture": "Generated from Bin Editor Template by Junior's Toolbox"
+            }
+        },
+        "Rendering": {
+            "SandCastle": {
+                "Animations": [
+                    "mapobj/sandcastle.bck",
+                    "mapobj/sandcastle.brk",
+                    "mapobj/sandcastle_end.bck",
+                    "mapobj/sandcastle_end.brk",
+                    "mapobj/sandcastle_up.bck"
+                ]
             }
         }
     }

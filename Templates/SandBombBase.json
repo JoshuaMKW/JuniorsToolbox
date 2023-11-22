@@ -223,49 +223,49 @@
             "SandBombBaseMushroom": {
                 "Materials": "mapobj/sandbombbase.bmt",
                 "Animations": [
-                    "mapobj/sandbombbase_down.bck",
+                    "mapobj/sandbombbase_water.bck",
                     "mapobj/sandbombbase_up.bck"
                 ]
             },
             "SandBombBasePyramid": {
                 "Materials": "mapobj/sandbombbase.bmt",
                 "Animations": [
-                    "mapobj/sandbombbase_down.bck",
+                    "mapobj/sandbombbase_water.bck",
                     "mapobj/sandbombbase_up.bck"
                 ]
             },
             "SandBombBaseShit": {
                 "Materials": "mapobj/sandbombbase.bmt",
                 "Animations": [
-                    "mapobj/sandbombbase_down.bck",
+                    "mapobj/sandbombbase_water.bck",
                     "mapobj/sandbombbase_up.bck"
                 ]
             },
             "SandBombBaseStar": {
                 "Materials": "mapobj/sandbombbase.bmt",
                 "Animations": [
-                    "mapobj/sandbombbase_down.bck",
+                    "mapobj/sandbombbase_water.bck",
                     "mapobj/sandbombbase_up.bck"
                 ]
             },
             "SandBombBaseTurtle": {
                 "Materials": "mapobj/sandbombbase.bmt",
                 "Animations": [
-                    "mapobj/sandbombbase_down.bck",
+                    "mapobj/sandbombbase_water.bck",
                     "mapobj/sandbombbase_up.bck"
                 ]
             },
             "SandBombBaseFoot": {
                 "Materials": "mapobj/sandbombbase.bmt",
                 "Animations": [
-                    "mapobj/sandbombbase_down.bck",
+                    "mapobj/sandbombbase_water.bck",
                     "mapobj/sandbombbase_up.bck"
                 ]
             },
             "SandBombBaseStairs": {
                 "Materials": "mapobj/sandbombbase.bmt",
                 "Animations": [
-                    "mapobj/sandbombbase_down.bck",
+                    "mapobj/sandbombbase_water.bck",
                     "mapobj/sandbombbase_up.bck"
                 ]
             }

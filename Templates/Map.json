@@ -102,6 +102,49 @@
                         ]
                     }
                 }
+            },
+            "マップ": {
+                "XluJointCount": 0,
+                "XBorder": 60,
+                "ZBorder": 60,
+                "BGCheckDataCount": 20000,
+                "BGCheckListCount": 29000,
+                "BGCheckListWarpCount": 3000,
+                "WarpCount": 0,
+                "InitWarpID": 0,
+                "VertexRenderArray": {
+                    "VertexArray": 0
+                },
+                "WarpArray": {
+                    "PointArray": {
+                        "Name": "(null)",
+                        "Transform": [
+                            [
+                                0,
+                                0,
+                                0
+                            ],
+                            [
+                                0,
+                                0,
+                                0
+                            ],
+                            [
+                                1,
+                                1,
+                                1
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "map/map/map.bmd"
+            },
+            "マップ": {
+                "Model": "map/map/map.bmd"
             }
         }
     }
