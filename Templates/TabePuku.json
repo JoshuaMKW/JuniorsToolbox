@@ -41,10 +41,6 @@
             "SpawnObjID": {
                 "Type": "INT",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -74,8 +70,17 @@
                 },
                 "Manager": "タベプクマネージャー",
                 "Rail": "(null)",
-                "SpawnObjID": -1,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
+                "SpawnObjID": -1
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "tabepuku/tabepuku.bmd",
+                "Animations": [
+                    "pukupuku_chase.bck",
+                    "pukupuku_search.bck",
+                    "pukupuku_swim.bck"
+                ]
             }
         }
     }

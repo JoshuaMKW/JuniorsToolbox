@@ -46,10 +46,6 @@
             "Rail": {
                 "Type": "STRING",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -78,8 +74,12 @@
                     "Name": "LightX"
                 },
                 "Manager": "看板ＮＰＣマネージャー",
-                "Rail": "(null)",
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Rail": "(null)"
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "boardnpc/boardnpc.bmd"
             }
         }
     }

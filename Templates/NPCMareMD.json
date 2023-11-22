@@ -100,18 +100,6 @@
             "RewardObjID": {
                 "Type": "INT",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "DisplayTexture": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "ForceDrawMode": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -152,10 +140,50 @@
                 "Chucking": 100,
                 "ThrowLength": -1,
                 "ThrowHeight": 0,
-                "RewardObjID": -1,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "DisplayTexture": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                "RewardObjID": -1
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "maremd/maremd.bmd",
+                "Animations": [
+                    "maremd/maremd_appear.bck",
+                    "maremd/maremd_cry.btp",
+                    "maremd/maremd_dance.bck",
+                    "maremd/maremd_fall.bck",
+                    "maremd/maremd_happy.bck",
+                    "maremd/maremd_jump.bck",
+                    "maremd/maremd_jump.btp",
+                    "maremd/maremd_recover.bck",
+                    "maremd/maremd_recover.btp",
+                    "maremd/maremd_run.bck",
+                    "maremd/maremd_sad.btp",
+                    "maremd/maremd_sit.bck",
+                    "maremd/maremd_sittalk.bck",
+                    "maremd/maremd_sleep.btp",
+                    "maremd/maremd_sleep_a.btp",
+                    "maremd/maremd_smile.btp",
+                    "maremd/maremd_stand.bck",
+                    "maremd/maremd_stand.btp",
+                    "maremd/maremd_stand_a.bck",
+                    "maremd/maremd_stand_a.btp",
+                    "maremd/maremd_step.bck",
+                    "maremd/maremd_talk.bck",
+                    "maremd/maremd_talk.btp",
+                    "maremd/maremd_wait.bck",
+                    "maremd/maremd_wait_a.bck",
+                    "maremd/maremd_wait_fall.bck",
+                    "maremd/maremd_wait_yogure.bck",
+                    "maremd/maremd_walk.bck",
+                    "maremd/maremd_wash.bck",
+                    "maremd/maremd_wash.btp",
+                    "maremd/maremd_wet.bck",
+                    "maremd/maremd_wet.btp",
+                    "maremd/maremd_wet_a.bck",
+                    "maremd/maremd_wet_a.btp",
+                    "maremd/maremd_wink.btp",
+                    "maremd/maremd_wink_a.btp"
+                ]
             }
         }
     }

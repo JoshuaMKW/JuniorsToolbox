@@ -96,7 +96,7 @@ namespace Toolbox::UI {
     }
 
     SceneWindow::SceneWindow() : DockWindow() {
-        m_camera.setPerspective(150, 16 / 9, 100, 250000);
+        m_camera.setPerspective(150, 16 / 9, 100, 600000);
         m_camera.setOrientAndPosition({0, 1, 0}, {0, 0, 1}, {0, 0, 0});
         m_camera.updateCamera();
         J3DRendering::SetSortFunction(PacketSort);

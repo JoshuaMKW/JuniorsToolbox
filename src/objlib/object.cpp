@@ -2,6 +2,7 @@
 #include "objlib/meta/errors.hpp"
 #include <J3D/Animation/J3DAnimationLoader.hpp>
 #include <J3D/Material/J3DMaterialTableLoader.hpp>
+#include <include/decode.h>
 #include <bstream.h>
 #include <expected>
 #include <gui/modelcache.hpp>
@@ -550,7 +551,12 @@ namespace Toolbox::Object {
             m_model_instance->SetRotation(transform.m_rotation);
             m_model_instance->SetScale(transform.m_scale);
         }
-        m_model_instance->UpdateAnimations(delta_time * 60.0);
+
+        if (m_type == "SunModel") {
+            m_model_instance->SetScale({1, 1, 1});
+        }
+
+        m_model_instance->UpdateAnimations(delta_time);
         renderables.push_back(m_model_instance);
 
         return {};
@@ -611,6 +617,8 @@ namespace Toolbox::Object {
             return {};
         }
 
+        // Load model data
+
         std::filesystem::path model_path = asset_path / model_file.value();
         std::string model_name           = model_path.stem().string();
         std::transform(model_name.begin(), model_name.end(), model_name.begin(), ::tolower);
@@ -634,6 +642,8 @@ namespace Toolbox::Object {
             mat_file = model_file->replace(model_file->size() - 3, 3, "bmt");
         }
 
+        // Load material data
+
         std::filesystem::path mat_path = asset_path / mat_file.value();
         std::string mat_name           = mat_path.stem().string();
         std::transform(mat_name.begin(), mat_name.end(), mat_name.begin(), ::tolower);
@@ -645,6 +655,8 @@ namespace Toolbox::Object {
 
             mat_table = bmtLoader.Load(&mat_stream, model_data);
         }
+
+        // TODO: Load texture data
 
         m_model_instance = model_data->GetInstance();
         if (mat_table) {
@@ -662,17 +674,23 @@ namespace Toolbox::Object {
                 bStream::CFileStream anim_stream(anim_path.string(), bStream::Endianess::Big,
                                                  bStream::OpenMode::In);
 
-                anim_data = anmLoader.LoadAnimation(anim_stream);
-            }
+                if (anim_file.ends_with(".brk")) {
+                    m_model_instance->SetRegisterColorAnimation(
+                        std::reinterpret_pointer_cast<J3DColorAnimationInstance>(
+                            anmLoader.LoadAnimation(anim_stream)));
+                }
 
-            if (anim_data && anim_file.ends_with(".brk")) {
-                m_model_instance->SetRegisterColorAnimation(
-                    std::reinterpret_pointer_cast<J3DColorAnimationInstance>(anim_data));
-            }
+                if (anim_file.ends_with(".btp")) {
+                    m_model_instance->SetTexIndexAnimation(
+                        std::reinterpret_pointer_cast<J3DTexIndexAnimationInstance>(
+                            anmLoader.LoadAnimation(anim_stream)));
+                }
 
-            if (anim_data && anim_file.ends_with(".btk")) {
-                m_model_instance->SetTexMatrixAnimation(
-                    std::reinterpret_pointer_cast<J3DTexMatrixAnimationInstance>(anim_data));
+                if (anim_file.ends_with(".btk")) {
+                    m_model_instance->SetTexMatrixAnimation(
+                        std::reinterpret_pointer_cast<J3DTexMatrixAnimationInstance>(
+                            anmLoader.LoadAnimation(anim_stream)));
+                }
             }
         }
 

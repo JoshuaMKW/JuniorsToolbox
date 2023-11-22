@@ -41,14 +41,6 @@
             "SpawnObjID": {
                 "Type": "INT",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "ForceDrawMode": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -78,9 +70,23 @@
                 },
                 "Manager": "鳥マネージャー",
                 "Rail": "(null)",
-                "SpawnObjID": -1,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                "SpawnObjID": -1
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "bird/bird_man.bmd",
+                "Animations": [
+                    "bird/bird_beat.bck",
+                    "bird/bird_fly.bck",
+                    "bird/bird_open.bck",
+                    "bird/bird_ride.bck",
+                    "bird/bird_stab.bck",
+                    "bird/bird_start.bck",
+                    "bird/bird_stop.bck",
+                    "bird/bird_wait.bck",
+                    "bird/bird_walk.bck"
+                ]
             }
         }
     }

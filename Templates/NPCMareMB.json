@@ -101,18 +101,6 @@
             "RewardObjID": {
                 "Type": "INT",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "DisplayTexture": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "ForceDrawMode": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -153,10 +141,50 @@
                 "Chucking": 100,
                 "ThrowLength": -1,
                 "ThrowHeight": 0,
-                "RewardObjID": -1,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "DisplayTexture": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                "RewardObjID": -1
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "maremb/maremb.bmd",
+                "Animations": [
+                    "maremb/maremb_appear.bck",
+                    "maremb/maremb_cry.btp",
+                    "maremb/maremb_dance.bck",
+                    "maremb/maremb_fall.bck",
+                    "maremb/maremb_happy.bck",
+                    "maremb/maremb_jump.bck",
+                    "maremb/maremb_jump.btp",
+                    "maremb/maremb_recover.bck",
+                    "maremb/maremb_recover.btp",
+                    "maremb/maremb_run.bck",
+                    "maremb/maremb_sad.btp",
+                    "maremb/maremb_sit.bck",
+                    "maremb/maremb_sittalk.bck",
+                    "maremb/maremb_sleep.btp",
+                    "maremb/maremb_sleep_a.btp",
+                    "maremb/maremb_smile.btp",
+                    "maremb/maremb_stand.bck",
+                    "maremb/maremb_stand.btp",
+                    "maremb/maremb_stand_a.bck",
+                    "maremb/maremb_stand_a.btp",
+                    "maremb/maremb_step.bck",
+                    "maremb/maremb_talk.bck",
+                    "maremb/maremb_talk.btp",
+                    "maremb/maremb_wait.bck",
+                    "maremb/maremb_wait_a.bck",
+                    "maremb/maremb_wait_fall.bck",
+                    "maremb/maremb_wait_yogure.bck",
+                    "maremb/maremb_walk.bck",
+                    "maremb/maremb_wash.bck",
+                    "maremb/maremb_wash.btp",
+                    "maremb/maremb_wet.bck",
+                    "maremb/maremb_wet.btp",
+                    "maremb/maremb_wet_a.bck",
+                    "maremb/maremb_wet_a.btp",
+                    "maremb/maremb_wink.btp",
+                    "maremb/maremb_wink_a.btp"
+                ]
             }
         }
     }

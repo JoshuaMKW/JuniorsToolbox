@@ -40,6 +40,33 @@
             }
         },
         "Wizard": {
+            "Default": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "SandCastle キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "SandCastle",
+                "DisplayTexture": "Generated from Bin Editor Template by Junior's Toolbox"
+            },
             "SandCastle": {
                 "Transform": [
                     [
@@ -69,7 +96,18 @@
             }
         },
         "Rendering": {
+            "Default": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandcastle.bck",
+                    "mapobj/sandcastle.brk",
+                    "mapobj/sandcastle_end.bck",
+                    "mapobj/sandcastle_end.brk",
+                    "mapobj/sandcastle_up.bck"
+                ]
+            },
             "SandCastle": {
+                "Materials": "mapobj/sandbombbase.bmt",
                 "Animations": [
                     "mapobj/sandcastle.bck",
                     "mapobj/sandcastle.brk",

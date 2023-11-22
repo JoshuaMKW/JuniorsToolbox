@@ -104,14 +104,6 @@
             "RewardObjID": {
                 "Type": "INT",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "ForceDrawMode": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -152,9 +144,13 @@
                 "Chucking": 100,
                 "ThrowLength": -1,
                 "ThrowHeight": 0,
-                "RewardObjID": -1,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                "RewardObjID": -1
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "montem/mom_model.bmd",
+                "Animations": []
             }
         }
     }
