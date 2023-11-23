@@ -72,6 +72,17 @@
                 "Rail": "(null)",
                 "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "seal/gene_orange_model1.bmd",
+                "Animations": [
+                    "gene_orange_down1.bck",
+                    "gene_orange_wait_end1.bck",
+                    "gene_orange_wait_loop1.bck",
+                    "gene_orange_wait_start1.bck"
+                ]
+            }
         }
     }
 }

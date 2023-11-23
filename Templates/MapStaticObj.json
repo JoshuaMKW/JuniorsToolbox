@@ -36,6 +36,32 @@
             }
         },
         "Wizard": {
+            "滝つぼ": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "滝つぼ キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "ReflectSky"
+            },
             "鏡内空": {
                 "Transform": [
                     [
@@ -116,6 +142,9 @@
             }
         },
         "Rendering": {
+            "滝つぼ": {
+                "Model": "mapobj/falls.bmd"
+            },
             "鏡内空": {
                 "Model": "map/map/reflectsky.bmd",
                 "Animations": [

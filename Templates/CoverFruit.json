@@ -33,10 +33,6 @@
             "Model": {
                 "Type": "STRING",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -64,8 +60,7 @@
                     "ID": 0,
                     "Name": "LightX"
                 },
-                "Model": "FruitCoverPine",
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Model": "FruitCoverPine"
             }
         }
     }

@@ -33,14 +33,6 @@
             "Model": {
                 "Type": "STRING",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "DisplayColor": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -68,9 +60,33 @@
                     "ID": 0,
                     "Name": "LightX"
                 },
-                "Model": "coin",
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "DisplayColor": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Model": "coin"
+            },
+            "Invisible": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "コイン キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "invisible_coin"
             }
         }
     }
