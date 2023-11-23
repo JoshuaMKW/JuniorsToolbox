@@ -169,7 +169,9 @@ namespace Toolbox::Rail {
     std::vector<Rail::node_ptr_t> Rail::getNodeConnections(node_ptr_t node) const {
         std::vector<Rail::node_ptr_t> connections;
         for (size_t i = 0; i < node->getConnectionCount(); ++i) {
-            connections.push_back(m_nodes[node->getConnectionValue(i).value()]);
+            size_t node_index = static_cast<size_t>(node->getConnectionValue(i).value());
+            if (node_index < m_nodes.size())
+                connections.push_back(m_nodes[node->getConnectionValue(i).value()]);
         }
         return connections;
     }

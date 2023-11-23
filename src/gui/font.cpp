@@ -55,6 +55,7 @@ namespace Toolbox::UI {
                 return font->second;
             }
         }
+        return nullptr;
     }
 
     bool FontManager::addFont(const std::filesystem::path &font_path,
@@ -80,11 +81,29 @@ namespace Toolbox::UI {
                 return false;
             }
 
+            font->FontSize = size;
+
             ImGui::GetIO().Fonts->AddFontFromFileTTF(fork_awesome_path.string().c_str(), size,
                                                      &fork_awesome_cfg, icons_ranges);
 
             m_loaded_fonts.insert({font_path.stem().string(), font});
         }
         return true;
+    }
+
+    void FontManager::setCurrentFont(std::string_view name, float size) {
+        m_current_name             = name;
+        m_current_size             = size;
+        ImGui::GetIO().FontDefault = getCurrentFont();
+    }
+
+    void FontManager::setCurrentFontFamily(std::string_view name) {
+        m_current_name             = name;
+        ImGui::GetIO().FontDefault = getCurrentFont();
+    }
+
+    void FontManager::setCurrentFontSize(float size) {
+        m_current_size = size;
+        ImGui::GetIO().FontDefault = getCurrentFont();
     }
 }  // namespace Toolbox::UI

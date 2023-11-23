@@ -31,8 +31,8 @@
 #endif
 #include <gui/context_menu.hpp>
 
-#include <J3D/Material/J3DUniformBufferObject.hpp>
 #include <J3D/Material/J3DMaterialTableLoader.hpp>
+#include <J3D/Material/J3DUniformBufferObject.hpp>
 
 namespace Toolbox::UI {
 
@@ -79,8 +79,8 @@ namespace Toolbox::UI {
     */
 
     static std::string getNodeUID(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
-        std::string node_name = std::format("{} ({})", node->type(), node->getNameRef().name());
-        node_name += std::format("##{}", node->getQualifiedName().toString());
+        std::string node_name = std::format("{} ({})##{}", node->type(), node->getNameRef().name(),
+                                            node->getQualifiedName().toString());
         return node_name;
     }
 
@@ -144,11 +144,12 @@ namespace Toolbox::UI {
 
             m_current_scene->dump(std::cout);
 
-            //J3DModelLoader loader;
-            //for (const auto &entry : std::filesystem::directory_iterator(path / "mapobj")) {
-            //    if (entry.path().extension() == ".bmd") {
-            //        bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big,
-            //                                         bStream::OpenMode::In);
+            // J3DModelLoader loader;
+            // for (const auto &entry : std::filesystem::directory_iterator(path / "mapobj")) {
+            //     if (entry.path().extension() == ".bmd") {
+            //         bStream::CFileStream modelStream(entry.path().string(),
+            //         bStream::Endianess::Big,
+            //                                          bStream::OpenMode::In);
 
             //        auto model_data = loader.Load(&modelStream, 0);
             //        m_resource_cache.m_model.insert({entry.path().stem().string(), model_data});
@@ -157,7 +158,8 @@ namespace Toolbox::UI {
             //        if (entry.path().stem() == "sandbomb") {
             //            mat_path = entry.path().parent_path() / "sandbombbase.bmt";
             //        } else {
-            //            mat_path = entry.path().parent_path() / std::format("{}.bmt", entry.path().stem().string());
+            //            mat_path = entry.path().parent_path() / std::format("{}.bmt",
+            //            entry.path().stem().string());
             //        }
 
             //        // TODO: Use json information to load model and material data
@@ -177,12 +179,13 @@ namespace Toolbox::UI {
             //    }
             //}
 
-            //for (const auto &entry : std::filesystem::directory_iterator(path / "map" / "map")) {
-            //    if (entry.path().extension() == ".bmd") {
-            //        std::cout << "[gui]: loading model " << entry.path().filename().string()
-            //                  << std::endl;
-            //        bStream::CFileStream modelStream(entry.path().string(), bStream::Endianess::Big,
-            //                                         bStream::OpenMode::In);
+            // for (const auto &entry : std::filesystem::directory_iterator(path / "map" / "map")) {
+            //     if (entry.path().extension() == ".bmd") {
+            //         std::cout << "[gui]: loading model " << entry.path().filename().string()
+            //                   << std::endl;
+            //         bStream::CFileStream modelStream(entry.path().string(),
+            //         bStream::Endianess::Big,
+            //                                          bStream::OpenMode::In);
 
             //        m_resource_cache.m_model.insert(
             //            {entry.path().stem().string(), loader.Load(&modelStream, 0)});
@@ -508,19 +511,6 @@ namespace Toolbox::UI {
 
     void SceneWindow::renderScene(f32 delta_time) {
         m_renderables.clear();
-
-        // Render Models here
-        if (m_resource_cache.m_model.count("map") != 0) {
-            m_renderables.push_back(m_resource_cache.m_model["map"]->GetInstance());
-        }
-
-        if (m_resource_cache.m_model.count("sky") != 0) {
-            m_renderables.push_back(m_resource_cache.m_model["sky"]->GetInstance());
-        }
-
-        if (m_resource_cache.m_model.count("sea") != 0) {
-            m_renderables.push_back(m_resource_cache.m_model["sea"]->GetInstance());
-        }
 
         std::vector<J3DLight> lights;
 
@@ -867,34 +857,35 @@ namespace Toolbox::UI {
 
     void SceneWindow::buildCreateObjDialog() {
         m_create_obj_dialog.setup();
-        m_create_obj_dialog.setActionOnAccept(
-            [this](std::string_view name, const Object::Template &template_, std::string_view wizard_name, NodeInfo info) {
-                auto new_object_result = Object::ObjectFactory::create(template_, wizard_name);
-                if (!name.empty()) {
-                    new_object_result->setNameRef(name);
-                }
+        m_create_obj_dialog.setActionOnAccept([this](std::string_view name,
+                                                     const Object::Template &template_,
+                                                     std::string_view wizard_name, NodeInfo info) {
+            auto new_object_result = Object::ObjectFactory::create(template_, wizard_name);
+            if (!name.empty()) {
+                new_object_result->setNameRef(name);
+            }
 
-                ISceneObject *this_parent;
-                if (info.m_selected->isGroupObject()) {
-                    this_parent = info.m_selected.get();
-                } else {
-                    this_parent = info.m_selected->getParent();
-                }
+            ISceneObject *this_parent;
+            if (info.m_selected->isGroupObject()) {
+                this_parent = info.m_selected.get();
+            } else {
+                this_parent = info.m_selected->getParent();
+            }
 
-                if (!this_parent) {
-                    return make_error<void>("Scene Hierarchy",
-                                            "Failed to get parent node for obj creation");
-                }
+            if (!this_parent) {
+                return make_error<void>("Scene Hierarchy",
+                                        "Failed to get parent node for obj creation");
+            }
 
-                auto result = this_parent->addChild(std::move(new_object_result));
-                if (!result) {
-                    return make_error<void>("Scene Hierarchy",
-                                            std::format("Parent already has a child named {}", name));
-                }
+            auto result = this_parent->addChild(std::move(new_object_result));
+            if (!result) {
+                return make_error<void>("Scene Hierarchy",
+                                        std::format("Parent already has a child named {}", name));
+            }
 
-                m_is_viewport_dirty = true;
-                return std::expected<void, BaseError>();
-            });
+            m_is_viewport_dirty = true;
+            return std::expected<void, BaseError>();
+        });
         m_create_obj_dialog.setActionOnReject([](NodeInfo) {});
     }
 
@@ -902,8 +893,7 @@ namespace Toolbox::UI {
         m_rename_obj_dialog.setup();
         m_rename_obj_dialog.setActionOnAccept([this](std::string_view new_name, NodeInfo info) {
             if (new_name.empty()) {
-                return make_error<void>("Scene Hierarchy",
-                                        "Can not rename object to empty string");
+                return make_error<void>("Scene Hierarchy", "Can not rename object to empty string");
             }
 
             info.m_selected->setNameRef(new_name);

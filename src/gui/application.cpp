@@ -179,7 +179,7 @@ namespace Toolbox::UI {
         auto &font_manager = FontManager::instance();
         ImFont *main_font    = font_manager.getCurrentFont();
 
-        ImGui::PushFont(main_font);
+        //ImGui::PushFont(main_font);
 
         ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);
@@ -203,16 +203,13 @@ namespace Toolbox::UI {
         if (!m_dockspace_built) {
             ImGui::DockBuilderRemoveNode(m_dockspace_id);
             ImGui::DockBuilderAddNode(m_dockspace_id, ImGuiDockNodeFlags_None);
+            ImGui::DockBuilderFinish(m_dockspace_id);
         }
 
         renderMenuBar();
         renderWindows(delta_time);
 
-
-        if (!m_dockspace_built)
-            ImGui::DockBuilderFinish(m_dockspace_id);
-
-        ImGui::PopFont();
+        //ImGui::PopFont();
 
         // Render imgui
         ImGui::Render();
