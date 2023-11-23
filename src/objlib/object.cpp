@@ -2,10 +2,10 @@
 #include "objlib/meta/errors.hpp"
 #include <J3D/Animation/J3DAnimationLoader.hpp>
 #include <J3D/Material/J3DMaterialTableLoader.hpp>
-#include <include/decode.h>
 #include <bstream.h>
 #include <expected>
 #include <gui/modelcache.hpp>
+#include <include/decode.h>
 #include <string>
 
 namespace Toolbox::Object {
@@ -113,9 +113,9 @@ namespace Toolbox::Object {
         return size;
     }
 
-    std::expected<void, ObjectError> VirtualSceneObject::performScene(
-        float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &,
-                                     ResourceCache &) {
+    std::expected<void, ObjectError>
+    VirtualSceneObject::performScene(float, std::vector<std::shared_ptr<J3DModelInstance>> &,
+                                     ResourceCache &, std::vector<J3DLight> &) {
         return {};
     }
 
@@ -309,15 +309,15 @@ namespace Toolbox::Object {
         return it->get()->getChild(QualifiedName(name.begin() + 1, name.end()));
     }
 
-    std::expected<void, ObjectError>
-    GroupSceneObject::performScene(float delta_time,
-                                   std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                                   ResourceCache &resource_cache) {
+    std::expected<void, ObjectError> GroupSceneObject::performScene(
+        float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+        ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
 
         std::vector<ObjectError> child_errors;
 
         for (auto child : m_children) {
-            auto result = child->performScene(delta_time, renderables, resource_cache);
+            auto result =
+                child->performScene(delta_time, renderables, resource_cache, scene_lights);
             if (!result)
                 child_errors.push_back(result.error());
         }
@@ -535,10 +535,29 @@ namespace Toolbox::Object {
         return size;
     }
 
-    std::expected<void, ObjectError>
-    PhysicalSceneObject::performScene(float delta_time,
-                                      std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                                      ResourceCache &resource_cache) {
+    std::expected<void, ObjectError> PhysicalSceneObject::performScene(
+        float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+        ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
+        if (m_type == "Light") {
+            auto position_value_ptr  = getMember(std::string("Position")).value();
+            glm::vec3 position_value = getMetaValue<glm::vec3>(position_value_ptr).value();
+
+            auto color_value_ptr      = getMember(std::string("Color")).value();
+            Color::RGBA32 color_value = getMetaValue<Color::RGBA32>(color_value_ptr).value();
+
+            f32 r, g, b, a;
+            color_value.getColor(r, g, b, a);
+
+            auto intensity_value_ptr = getMember(std::string("Intensity")).value();
+            f32 intensity_value      = getMetaValue<f32>(intensity_value_ptr).value();
+
+            J3DLight light  = DEFAULT_LIGHT;
+            light.Position  = {position_value, 1};
+            light.Color     = {r, g, b, a};
+            light.DistAtten = {1 / intensity_value, 0, 0, 1};
+            light.Direction = {-glm::normalize(position_value), 1};
+            scene_lights.push_back(light);
+        }
 
         if (!m_model_instance) {
             return {};
@@ -554,6 +573,10 @@ namespace Toolbox::Object {
 
         if (m_type == "SunModel") {
             m_model_instance->SetScale({1, 1, 1});
+        }
+
+        if (scene_lights.size() > 0) {
+            m_model_instance->SetLight(scene_lights[0], 0);
         }
 
         m_model_instance->UpdateAnimations(delta_time);

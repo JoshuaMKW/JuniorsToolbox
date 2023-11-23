@@ -522,10 +522,12 @@ namespace Toolbox::UI {
             m_renderables.push_back(m_resource_cache.m_model["sea"]->GetInstance());
         }
 
+        std::vector<J3DLight> lights;
+
         // perhaps find a way to limit this so it only happens when we need to re-render?
         if (m_current_scene != nullptr) {
             m_current_scene->getObjHierarchy().getRoot()->performScene(delta_time, m_renderables,
-                                                                       m_resource_cache);
+                                                                       m_resource_cache, lights);
         }
 
         m_is_render_window_open = ImGui::Begin(getWindowChildUID(*this, "Scene View").c_str());

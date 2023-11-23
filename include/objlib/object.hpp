@@ -127,7 +127,7 @@ namespace Toolbox::Object {
 
         virtual std::expected<void, ObjectError>
         performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     ResourceCache &resource_cache) = 0;
+                     ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) = 0;
 
         virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
 
@@ -284,7 +284,7 @@ namespace Toolbox::Object {
 
         std::expected<void, ObjectError>
         performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     ResourceCache &resource_cache) override;
+                     ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -379,7 +379,7 @@ namespace Toolbox::Object {
 
         std::expected<void, ObjectError>
         performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     ResourceCache &resource_cache) override;
+                     ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -548,7 +548,7 @@ namespace Toolbox::Object {
 
         std::expected<void, ObjectError>
         performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     ResourceCache &resource_cache) override;
+                     ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
