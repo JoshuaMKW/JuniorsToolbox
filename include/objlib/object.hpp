@@ -127,6 +127,10 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual J3DLight getLightData(int index) = 0;
 
+        [[nodiscard]] virtual bool getCanPerform() const = 0;
+        [[nodiscard]] virtual bool getIsPerforming() const = 0;
+        virtual void setIsPerforming(bool performing)   = 0;
+
         virtual std::expected<void, ObjectError>
         performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
                      ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) = 0;
@@ -284,6 +288,10 @@ namespace Toolbox::Object {
 
         [[nodiscard]] J3DLight getLightData(int index) override { return {}; }
 
+        [[nodiscard]] bool getCanPerform() const { return false; }
+        [[nodiscard]] bool getIsPerforming() const { return false; }
+        void setIsPerforming(bool performing) {}
+
         std::expected<void, ObjectError>
         performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
                      ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) override;
@@ -379,6 +387,10 @@ namespace Toolbox::Object {
         [[nodiscard]] std::optional<std::shared_ptr<ISceneObject>>
         getChild(const QualifiedName &name) override;
 
+        [[nodiscard]] bool getCanPerform() const { return true; }
+        [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
+        void setIsPerforming(bool performing) { m_is_performing = performing; }
+
         std::expected<void, ObjectError>
         performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
                      ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) override;
@@ -419,6 +431,7 @@ namespace Toolbox::Object {
     private:
         std::shared_ptr<MetaMember> m_group_size;
         std::vector<std::shared_ptr<ISceneObject>> m_children = {};
+        bool m_is_performing = true;
     };
 
     class PhysicalSceneObject : public ISceneObject {
@@ -548,6 +561,10 @@ namespace Toolbox::Object {
 
         J3DLight getLightData(int index) override { return m_model_instance->GetLight(index); }
 
+        [[nodiscard]] bool getCanPerform() const { return true; }
+        [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
+        void setIsPerforming(bool performing) { m_is_performing = performing; }
+
         std::expected<void, ObjectError>
         performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
                      ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) override;
@@ -598,6 +615,8 @@ namespace Toolbox::Object {
 
         std::optional<J3DTransformInfo> m_transform;
         std::shared_ptr<J3DModelInstance> m_model_instance = {};
+
+        bool m_is_performing = true;
     };
 
     class ObjectFactory {

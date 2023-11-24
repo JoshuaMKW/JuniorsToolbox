@@ -312,6 +312,9 @@ namespace Toolbox::Object {
     std::expected<void, ObjectError> GroupSceneObject::performScene(
         float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
         ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
+        if (!getIsPerforming()) {
+            return {};
+        }
 
         std::vector<ObjectError> child_errors;
 
@@ -538,6 +541,10 @@ namespace Toolbox::Object {
     std::expected<void, ObjectError> PhysicalSceneObject::performScene(
         float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
         ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
+        if (!getIsPerforming()) {
+            return {};
+        }
+
         if (m_type == "Light") {
             auto position_value_ptr  = getMember(std::string("Position")).value();
             glm::vec3 position_value = getMetaValue<glm::vec3>(position_value_ptr).value();
@@ -577,8 +584,15 @@ namespace Toolbox::Object {
 
         if (scene_lights.size() > 0) {
             m_model_instance->SetLight(scene_lights[0], 0);
-            m_model_instance->SetLight(scene_lights[1], 1);
+            if (scene_lights.size() > 1) {
+                m_model_instance->SetLight(scene_lights[1], 1);
+            } else {
+                m_model_instance->SetLight(DEFAULT_LIGHT, 1);
+            }
             //m_model_instance->SetLight(scene_lights[4], 2);  // Specular light
+        } else {
+            m_model_instance->SetLight(DEFAULT_LIGHT, 0);
+            m_model_instance->SetLight(DEFAULT_LIGHT, 1);
         }
 
         m_model_instance->UpdateAnimations(delta_time);
