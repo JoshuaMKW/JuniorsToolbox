@@ -577,6 +577,8 @@ namespace Toolbox::Object {
 
         if (scene_lights.size() > 0) {
             m_model_instance->SetLight(scene_lights[0], 0);
+            m_model_instance->SetLight(scene_lights[1], 1);
+            //m_model_instance->SetLight(scene_lights[4], 2);  // Specular light
         }
 
         m_model_instance->UpdateAnimations(delta_time);
@@ -656,9 +658,9 @@ namespace Toolbox::Object {
                                               bStream::OpenMode::In);
 
             model_data = bmdLoader.Load(&model_stream, 0);
-            resource_cache.m_model.insert({model_name, model_data});
+            //resource_cache.m_model.insert({model_name, *model_data});
         } else {
-            model_data = resource_cache.m_model[model_name];
+            model_data = std::make_shared<J3DModelData>(resource_cache.m_model[model_name]);
         }
 
         if (!mat_file) {
@@ -677,6 +679,18 @@ namespace Toolbox::Object {
                                             bStream::OpenMode::In);
 
             mat_table = bmtLoader.Load(&mat_stream, model_data);
+            if (mat_name == "nozzlebox") {
+                std::shared_ptr<J3DMaterial> nozzle_mat = mat_table->GetMaterial("_mat1");
+                auto nozzle_type_member                 = getMember(std::string("Spawn")).value();
+                std::string nozzle_type                 = getMetaValue<std::string>(nozzle_type_member).value();
+                if (nozzle_type == "normal_nozzle_item") {
+                    nozzle_mat->TevBlock->mTevColors[1]      = {0, 0, 255, 255};
+                } else if (nozzle_type == "rocket_nozzle_item") {
+                    nozzle_mat->TevBlock->mTevColors[1] = {255, 0, 0, 255};
+                } else if (nozzle_type == "back_nozzle_item") {
+                    nozzle_mat->TevBlock->mTevColors[1] = {90, 90, 120, 255};
+                }
+            }
         }
 
         // TODO: Load texture data

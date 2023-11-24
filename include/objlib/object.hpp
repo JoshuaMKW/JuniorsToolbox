@@ -6,7 +6,9 @@
 #include "transform.hpp"
 #include "types.hpp"
 #include <J3D/Animation/J3DAnimationInstance.hpp>
+#include <J3D/Data/J3DModelData.hpp>
 #include <J3D/Data/J3DModelInstance.hpp>
+#include <J3D/Material/J3DMaterialTable.hpp>
 #include <J3D/Rendering/J3DLight.hpp>
 #include <expected>
 #include <filesystem>
@@ -57,8 +59,8 @@ namespace Toolbox::Object {
         return {};
     }
 
-    using model_cache_t    = std::unordered_map<std::string, std::shared_ptr<J3DModelData>>;
-    using material_cache_t = std::unordered_map<std::string, std::shared_ptr<J3DMaterialTable>>;
+    using model_cache_t    = std::unordered_map<std::string, J3DModelData>;
+    using material_cache_t = std::unordered_map<std::string, J3DMaterialTable>;
 
     struct ResourceCache {
         model_cache_t m_model;

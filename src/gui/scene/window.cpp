@@ -135,10 +135,8 @@ namespace Toolbox::UI {
                 return false;
             }
 
-            m_resource_cache.m_model.erase(m_resource_cache.m_model.begin(),
-                                           m_resource_cache.m_model.end());
-            m_resource_cache.m_material.erase(m_resource_cache.m_material.begin(),
-                                              m_resource_cache.m_material.end());
+            m_resource_cache.m_model.clear();
+            m_resource_cache.m_material.clear();
 
             m_current_scene = std::make_unique<Toolbox::Scene::SceneInstance>(path);
 
