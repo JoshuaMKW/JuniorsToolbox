@@ -18,6 +18,7 @@ namespace Toolbox::Object {
         constexpr QualifiedName() = default;
 
     public:
+        constexpr QualifiedName(const char *name) : m_scopes({name}) {}
         constexpr QualifiedName(const std::string &name) : m_scopes({name}) {}
         constexpr QualifiedName(std::string_view name) : m_scopes({std::string(name)}) {}
         QualifiedName(const std::string &name, const QualifiedName &parent)

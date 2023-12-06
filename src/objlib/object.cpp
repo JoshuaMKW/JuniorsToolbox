@@ -546,16 +546,16 @@ namespace Toolbox::Object {
         }
 
         if (m_type == "Light") {
-            auto position_value_ptr  = getMember(std::string("Position")).value();
+            auto position_value_ptr  = getMember("Position").value();
             glm::vec3 position_value = getMetaValue<glm::vec3>(position_value_ptr).value();
 
-            auto color_value_ptr      = getMember(std::string("Color")).value();
+            auto color_value_ptr      = getMember("Color").value();
             Color::RGBA32 color_value = getMetaValue<Color::RGBA32>(color_value_ptr).value();
 
             f32 r, g, b, a;
             color_value.getColor(r, g, b, a);
 
-            auto intensity_value_ptr = getMember(std::string("Intensity")).value();
+            auto intensity_value_ptr = getMember("Intensity").value();
             f32 intensity_value      = getMetaValue<f32>(intensity_value_ptr).value();
 
             J3DLight light  = DEFAULT_LIGHT;
@@ -570,7 +570,7 @@ namespace Toolbox::Object {
             return {};
         }
 
-        auto transform_value_ptr = getMember(std::string("Transform")).value();
+        auto transform_value_ptr = getMember("Transform").value();
         if (transform_value_ptr) {
             Transform transform = getMetaValue<Transform>(transform_value_ptr).value();
             m_model_instance->SetTranslation(transform.m_translation);
@@ -638,7 +638,7 @@ namespace Toolbox::Object {
         std::optional<std::string> mat_file = info.m_file_materials;
 
         // Get model variable that exists in some objects
-        auto model_member_result = getMember(std::string("Model"));
+        auto model_member_result = getMember("Model");
         if (model_member_result) {
             if (model_member_result.value()) {
                 model_file =
@@ -695,7 +695,7 @@ namespace Toolbox::Object {
             mat_table = bmtLoader.Load(&mat_stream, model_data);
             if (mat_name == "nozzlebox") {
                 std::shared_ptr<J3DMaterial> nozzle_mat = mat_table->GetMaterial("_mat1");
-                auto nozzle_type_member                 = getMember(std::string("Spawn")).value();
+                auto nozzle_type_member                 = getMember("Spawn").value();
                 std::string nozzle_type                 = getMetaValue<std::string>(nozzle_type_member).value();
                 if (nozzle_type == "normal_nozzle_item") {
                     nozzle_mat->TevBlock->mTevColors[1]      = {0, 0, 255, 255};
