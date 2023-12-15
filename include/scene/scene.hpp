@@ -97,7 +97,7 @@ namespace Toolbox::Scene {
 
         [[nodiscard]] ObjectHierarchy getTableHierarchy() const { return m_table_objects; }
         void setTableHierarchy(const ObjectHierarchy &table_root) { m_table_objects = table_root; }
-        [[nodiscard]] RailData getRailData() const { return m_rail_info; }
+        [[nodiscard]] const RailData &getRailData() const { return m_rail_info; }
         void setRailData(RailData &rails) { m_rail_info = rails; }
 
         [[nodiscard]] BMG::MessageData getMessageData() const { return m_message_data; }

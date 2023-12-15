@@ -145,14 +145,6 @@ namespace Toolbox::Object {
     public:
         [[nodiscard]] QualifiedName getQualifiedName() const;
 
-        /* NON-VIRTUAL HELPERS */
-        [[nodiscard]] bool hasMember(const std::string &name) const {
-            return hasMember(QualifiedName(name));
-        }
-        [[nodiscard]] MetaStruct::GetMemberT getMember(const std::string &name) const {
-            return getMember(QualifiedName(name));
-        }
-
         [[nodiscard]] std::optional<std::shared_ptr<ISceneObject>>
         getChild(const std::string &name) {
             return getChild(QualifiedName(name));

@@ -1,7 +1,7 @@
 #include <filesystem>
 #include <glad/glad.h>
 #include <gui/scene/path.hpp>
-#include <gui/scene/rendercommon.hpp>
+#include <gui/scene/renderer.hpp>
 
 namespace Toolbox::UI {
 

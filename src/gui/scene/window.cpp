@@ -34,6 +34,8 @@
 #include <J3D/Material/J3DMaterialTableLoader.hpp>
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 
+using namespace Toolbox::Scene;
+
 namespace Toolbox::UI {
 
     void PacketSort(J3DRendering::SortFunctionArgs packets) {
@@ -95,11 +97,10 @@ namespace Toolbox::UI {
         ImGuiContext &g          = *GImGui;
         const ImGuiStyle &style  = g.Style;
         const bool display_frame = (flags & ImGuiTreeNodeFlags_Framed) != 0;
-        ImVec2 padding =
-            (display_frame || (flags & ImGuiTreeNodeFlags_FramePadding))
-                ? style.FramePadding
-                : ImVec2(style.FramePadding.x,
-                         ImMin(window->DC.CurrLineTextBaseOffset, style.FramePadding.y));
+        ImVec2 padding           = (display_frame || (flags & ImGuiTreeNodeFlags_FramePadding))
+                                       ? style.FramePadding
+                                       : ImVec2(style.FramePadding.x, ImMin(window->DC.CurrLineTextBaseOffset,
+                                                                            style.FramePadding.y));
         padding.y *= 1.2f;
 
         if (!label_end)
@@ -142,7 +143,7 @@ namespace Toolbox::UI {
         ImGui::ItemSize(ImVec2(text_width, frame_height), padding.y);
 
         ImRect eye_interact_bb = frame_bb;
-        eye_interact_bb.Max.x = frame_bb.Min.x + eye_size.x + style.ItemSpacing.x;
+        eye_interact_bb.Max.x  = frame_bb.Min.x + eye_size.x + style.ItemSpacing.x;
 
         // For regular tree nodes, we arbitrary allow to click past 2 worth of ItemSpacing
         ImRect interact_bb = frame_bb;
@@ -418,22 +419,9 @@ namespace Toolbox::UI {
         m_renderables.erase(m_renderables.begin(), m_renderables.end());
         m_resource_cache.m_model.clear();
         m_resource_cache.m_material.clear();
-
-        glDeleteFramebuffers(1, &m_fbo_id);
-        glDeleteRenderbuffers(1, &m_rbo_id);
-        glDeleteTextures(1, &m_tex_id);
     }
 
     SceneWindow::SceneWindow() : DockWindow() {
-        m_camera.setPerspective(150, 16 / 9, 100, 600000);
-        m_camera.setOrientAndPosition({0, 1, 0}, {0, 0, 1}, {0, 0, 0});
-        m_camera.updateCamera();
-        J3DRendering::SetSortFunction(PacketSort);
-
-        // Create framebuffer for this window
-        glGenFramebuffers(1, &m_fbo_id);
-        glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
-
         buildContextMenuVirtualObj();
         buildContextMenuGroupObj();
         buildContextMenuPhysicalObj();
@@ -441,17 +429,6 @@ namespace Toolbox::UI {
 
         buildCreateObjDialog();
         buildRenameObjDialog();
-
-        if (!m_path_renderer.initPathRenderer()) {
-            // show some error
-        }
-
-        // 128x128 billboards, 10 unique images
-        if (!m_billboard_renderer.initBillboardRenderer(128, 10)) {
-            // show some error
-        }
-
-        m_billboard_renderer.loadBillboardTexture("res/question.png", 0);
     }
 
     bool SceneWindow::loadData(const std::filesystem::path &path) {
@@ -469,79 +446,9 @@ namespace Toolbox::UI {
 
             m_current_scene = std::make_unique<Toolbox::Scene::SceneInstance>(path);
 
-            m_current_scene->dump(std::cout);
-
-            // J3DModelLoader loader;
-            // for (const auto &entry : std::filesystem::directory_iterator(path / "mapobj")) {
-            //     if (entry.path().extension() == ".bmd") {
-            //         bStream::CFileStream modelStream(entry.path().string(),
-            //         bStream::Endianess::Big,
-            //                                          bStream::OpenMode::In);
-
-            //        auto model_data = loader.Load(&modelStream, 0);
-            //        m_resource_cache.m_model.insert({entry.path().stem().string(), model_data});
-
-            //        std::filesystem::path mat_path;
-            //        if (entry.path().stem() == "sandbomb") {
-            //            mat_path = entry.path().parent_path() / "sandbombbase.bmt";
-            //        } else {
-            //            mat_path = entry.path().parent_path() / std::format("{}.bmt",
-            //            entry.path().stem().string());
-            //        }
-
-            //        // TODO: Use json information to load model and material data
-
-            //        if (std::filesystem::is_regular_file(mat_path)) {
-            //            bStream::CFileStream matStream(mat_path.string(), bStream::Endianess::Big,
-            //                                             bStream::OpenMode::In);
-
-            //            J3DMaterialTableLoader bmtLoader;
-
-            //            std::shared_ptr<J3DMaterialTable> matTable =
-            //                bmtLoader.Load(&matStream, model_data);
-
-            //            m_resource_cache.m_material.insert(
-            //                {entry.path().stem().string(), matTable});
-            //        }
-            //    }
-            //}
-
-            // for (const auto &entry : std::filesystem::directory_iterator(path / "map" / "map")) {
-            //     if (entry.path().extension() == ".bmd") {
-            //         std::cout << "[gui]: loading model " << entry.path().filename().string()
-            //                   << std::endl;
-            //         bStream::CFileStream modelStream(entry.path().string(),
-            //         bStream::Endianess::Big,
-            //                                          bStream::OpenMode::In);
-
-            //        m_resource_cache.m_model.insert(
-            //            {entry.path().stem().string(), loader.Load(&modelStream, 0)});
-            //    }
-            //}
-
             if (m_current_scene != nullptr) {
-                auto rail_data = m_current_scene->getRailData();
-
-                for (auto rail : rail_data) {
-                    for (auto node : rail->nodes()) {
-                        std::vector<PathPoint> connections;
-
-                        PathPoint nodePoint(node->getPosition(), glm::vec4(1.0, 0.0, 1.0, 1.0), 64);
-
-                        for (auto connection : rail->getNodeConnections(node)) {
-                            PathPoint connectionPoint(connection->getPosition(),
-                                                      glm::vec4(1.0, 0.0, 1.0, 1.0), 64);
-                            connections.push_back(nodePoint);
-                            connections.push_back(connectionPoint);
-                        };
-                        m_path_renderer.m_paths.push_back(connections);
-                    }
-                }
-
-                m_billboard_renderer.m_billboards.push_back(
-                    Billboard(glm::vec3(0, 1000, 0), 128, 0));
+                m_renderer.initializeData(*m_current_scene);
             }
-            m_path_renderer.updateGeometry();
 
             return true;
         }
@@ -550,108 +457,7 @@ namespace Toolbox::UI {
         return false;
     }
 
-    bool SceneWindow::update(f32 deltaTime) {
-        if (m_is_render_window_hovered && m_is_render_window_focused) {
-            if (Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
-                ImVec2 mouse_delta = Input::GetMouseDelta();
-
-                m_camera.turnLeftRight(-mouse_delta.x * 0.005f);
-                m_camera.tiltUpDown(-mouse_delta.y * 0.005f);
-
-                m_is_viewport_dirty = true;
-            }
-
-            float lr_delta = 0, ud_delta = 0;
-            if (Input::GetKey(GLFW_KEY_A)) {
-                lr_delta -= 1;
-                m_is_viewport_dirty = true;
-            }
-            if (Input::GetKey(GLFW_KEY_D)) {
-                lr_delta += 1;
-                m_is_viewport_dirty = true;
-            }
-            if (Input::GetKey(GLFW_KEY_W)) {
-                ud_delta += 1;
-                m_is_viewport_dirty = true;
-            }
-            if (Input::GetKey(GLFW_KEY_S)) {
-                ud_delta -= 1;
-                m_is_viewport_dirty = true;
-            }
-            if (Input::GetKey(GLFW_KEY_LEFT_SHIFT)) {
-                lr_delta *= 10;
-                ud_delta *= 10;
-            }
-
-            lr_delta *= 10;
-            ud_delta *= 10;
-
-            m_camera.translateLeftRight(-lr_delta);
-            m_camera.translateFwdBack(ud_delta);
-        }
-
-        if (m_render_window_size.x != m_render_window_size_prev.x ||
-            m_render_window_size.y != m_render_window_size_prev.y) {
-            m_camera.setAspect(m_render_size.y > 0 ? m_render_size.x / m_render_size.y
-                                                   : FLT_EPSILON * 2);
-            m_is_viewport_dirty = true;
-        }
-
-        if (m_is_viewport_dirty)
-            m_camera.updateCamera();
-
-        return true;
-    }
-
-    void SceneWindow::viewportBegin(bool is_dirty) {
-        ImGuiStyle &style = ImGui::GetStyle();
-
-        m_render_window_size_prev = m_render_window_size;
-        m_render_window_size      = ImGui::GetWindowSize();
-        m_render_size             = ImVec2(m_render_window_size.x - style.WindowPadding.x * 2,
-                                           m_render_window_size.y - style.WindowPadding.y * 2 -
-                                               (style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight()));
-
-        // bind the framebuffer we want to render to
-        glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
-
-        if (!is_dirty) {
-            glBindTexture(GL_TEXTURE_2D, m_tex_id);
-            return;
-        }
-
-        auto size_x = static_cast<GLsizei>(m_render_window_size.x);
-        auto size_y = static_cast<GLsizei>(m_render_window_size.y);
-
-        // window was resized, new texture and depth storage needed for framebuffer
-        glDeleteRenderbuffers(1, &m_rbo_id);
-        glDeleteTextures(1, &m_tex_id);
-
-        glGenTextures(1, &m_tex_id);
-        glBindTexture(GL_TEXTURE_2D, m_tex_id);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size_x, size_y, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                     nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_tex_id, 0);
-
-        glGenRenderbuffers(1, &m_rbo_id);
-        glBindRenderbuffer(GL_RENDERBUFFER, m_rbo_id);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, size_x, size_y);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
-                                  m_rbo_id);
-
-        assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
-
-        glViewport(0, 0, size_x, size_y);
-    }
-
-    void SceneWindow::viewportEnd() {
-        ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_tex_id)), m_render_size,
-                     {0.0f, 1.0f}, {1.0f, 0.0f});
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
+    bool SceneWindow::update(f32 deltaTime) { return m_renderer.inputUpdate(); }
 
     void SceneWindow::renderBody(f32 deltaTime) {
         renderHierarchy();
@@ -758,7 +564,7 @@ namespace Toolbox::UI {
                                                 node_already_clicked, &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
-                        m_is_viewport_dirty = true;
+                        m_renderer.markDirty();
                     }
                 } else {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(),
@@ -805,7 +611,7 @@ namespace Toolbox::UI {
                                                 node_already_clicked, &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
-                        m_is_viewport_dirty = true;
+                        m_renderer.markDirty();
                     }
                 } else {
                     node_open =
@@ -853,7 +659,9 @@ namespace Toolbox::UI {
                 label_width = std::max(label_width, prop->labelSize().x);
             }
             for (auto &prop : m_selected_properties) {
-                m_is_viewport_dirty |= prop->render(label_width);
+                if (prop->render(label_width)) {
+                    m_renderer.markDirty();
+                }
                 ImGui::ItemSize({0, 2});
             }
         }
@@ -873,72 +681,7 @@ namespace Toolbox::UI {
 
         m_is_render_window_open = ImGui::Begin(getWindowChildUID(*this, "Scene View").c_str());
         if (m_is_render_window_open) {
-            ImVec2 window_pos    = ImGui::GetWindowPos();
-            m_render_window_rect = {
-                window_pos,
-                {window_pos.x + ImGui::GetWindowWidth(), window_pos.y + ImGui::GetWindowHeight()}
-            };
-
-            m_is_render_window_hovered = ImGui::IsWindowHovered();
-            m_is_render_window_focused = ImGui::IsWindowFocused();
-
-            if (m_is_render_window_hovered && Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
-                ImGui::SetWindowFocus();
-
-            if (m_is_render_window_focused &&
-                Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {  // Mouse wrap
-                ImVec2 mouse_pos   = ImGui::GetMousePos();
-                ImVec2 window_pos  = ImGui::GetWindowPos();
-                ImVec2 window_size = ImGui::GetWindowSize();
-
-                bool wrapped = false;
-
-                if (mouse_pos.x < m_render_window_rect.Min.x) {
-                    mouse_pos.x += window_size.x;
-                    wrapped = true;
-                } else if (mouse_pos.x >= m_render_window_rect.Max.x) {
-                    mouse_pos.x -= window_size.x;
-                    wrapped = true;
-                }
-
-                if (mouse_pos.y < m_render_window_rect.Min.y) {
-                    mouse_pos.y += window_size.y;
-                    wrapped = true;
-                } else if (mouse_pos.y >= m_render_window_rect.Max.y) {
-                    mouse_pos.y -= window_size.y;
-                    wrapped = true;
-                }
-
-                ImVec2 viewport_pos = MainApplication::instance().windowScreenPos();
-                mouse_pos.x += viewport_pos.x;
-                mouse_pos.y += viewport_pos.y;
-
-                if (wrapped) {
-                    Input::SetMousePosition(mouse_pos, false);
-                }
-            }
-
-            viewportBegin(m_is_viewport_dirty);
-            if (m_is_viewport_dirty) {
-                glm::mat4 projection, view;
-                projection = m_camera.getProjMatrix();
-                view       = m_camera.getViewMatrix();
-
-                J3DUniformBufferObject::SetProjAndViewMatrices(projection, view);
-
-                glm::vec3 position;
-                m_camera.getPos(position);
-
-                glClearColor(0, 0, 0, 0);
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-                J3DRendering::Render(delta_time, position, view, projection, m_renderables);
-
-                m_path_renderer.drawPaths(&m_camera);
-                m_billboard_renderer.drawBillboards(&m_camera);
-
-                m_is_viewport_dirty = false;
-            }
-            viewportEnd();
+            m_renderer.render(m_renderables, delta_time);
         }
         ImGui::End();
     }
@@ -991,7 +734,7 @@ namespace Toolbox::UI {
             for (auto &node : nodes) {
                 this_parent->addChild(node.m_selected);
             }
-            m_is_viewport_dirty = true;
+            m_renderer.markDirty();
             return std::expected<void, BaseError>();
         });
 
@@ -1005,7 +748,7 @@ namespace Toolbox::UI {
             this_parent->removeChild(info.m_selected->getNameRef().name());
             auto node_it = std::find(m_selected_nodes.begin(), m_selected_nodes.end(), info);
             m_selected_nodes.erase(node_it);
-            m_is_viewport_dirty = true;
+            m_renderer.markDirty();
             return std::expected<void, BaseError>();
         });
     }
@@ -1043,7 +786,7 @@ namespace Toolbox::UI {
             for (auto &node : nodes) {
                 this_parent->addChild(node.m_selected);
             }
-            m_is_viewport_dirty = true;
+            m_renderer.markDirty();
             return std::expected<void, BaseError>();
         });
 
@@ -1057,7 +800,7 @@ namespace Toolbox::UI {
             this_parent->removeChild(info.m_selected->getNameRef().name());
             auto node_it = std::find(m_selected_nodes.begin(), m_selected_nodes.end(), info);
             m_selected_nodes.erase(node_it);
-            m_is_viewport_dirty = true;
+            m_renderer.markDirty();
             return std::expected<void, BaseError>();
         });
     }
@@ -1095,11 +838,10 @@ namespace Toolbox::UI {
             f32 max_scale       = std::max(transform.m_scale.x, transform.m_scale.y);
             max_scale           = std::max(max_scale, transform.m_scale.z);
 
-            m_camera.setOrientAndPosition({0, 1, 0}, transform.m_translation,
-                                          {transform.m_translation.x, transform.m_translation.y,
-                                           transform.m_translation.z + 1000 * max_scale});
-            m_camera.updateCamera();
-            m_is_viewport_dirty = true;
+            m_renderer.setCameraOrientation({0, 1, 0}, transform.m_translation,
+                                            {transform.m_translation.x, transform.m_translation.y,
+                                             transform.m_translation.z + 1000 * max_scale});
+            m_renderer.markDirty();
             return std::expected<void, BaseError>();
         });
 
@@ -1116,10 +858,10 @@ namespace Toolbox::UI {
             }
 
             Transform transform = getMetaValue<Transform>(member_ptr).value();
-            m_camera.getPos(transform.m_translation);
+            m_renderer.getCameraTranslation(transform.m_translation);
             setMetaValue<Transform>(member_ptr, 0, transform);
 
-            m_is_viewport_dirty = true;
+            m_renderer.markDirty();
             return std::expected<void, BaseError>();
         });
 
@@ -1140,7 +882,7 @@ namespace Toolbox::UI {
             for (auto &node : nodes) {
                 this_parent->addChild(node.m_selected);
             }
-            m_is_viewport_dirty = true;
+            m_renderer.markDirty();
             return std::expected<void, BaseError>();
         });
 
@@ -1154,7 +896,7 @@ namespace Toolbox::UI {
             this_parent->removeChild(info.m_selected->getNameRef().name());
             auto node_it = std::find(m_selected_nodes.begin(), m_selected_nodes.end(), info);
             m_selected_nodes.erase(node_it);
-            m_is_viewport_dirty = true;
+            m_renderer.markDirty();
             return std::expected<void, BaseError>();
         });
     }
@@ -1183,7 +925,7 @@ namespace Toolbox::UI {
                     this_parent->addChild(node.m_selected);
                 }
             }
-            m_is_viewport_dirty = true;
+            m_renderer.markDirty();
             return std::expected<void, BaseError>();
         });
 
@@ -1201,7 +943,7 @@ namespace Toolbox::UI {
                 auto node_it = std::find(m_selected_nodes.begin(), m_selected_nodes.end(), info);
                 m_selected_nodes.erase(node_it);
             }
-            m_is_viewport_dirty = true;
+            m_renderer.markDirty();
             return std::expected<void, BaseError>();
         });
     }
@@ -1234,7 +976,7 @@ namespace Toolbox::UI {
                                         std::format("Parent already has a child named {}", name));
             }
 
-            m_is_viewport_dirty = true;
+            m_renderer.markDirty();
             return std::expected<void, BaseError>();
         });
         m_create_obj_dialog.setActionOnReject([](NodeInfo) {});
