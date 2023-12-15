@@ -17,9 +17,12 @@
 
 #include "gui/clipboard.hpp"
 #include "gui/property/property.hpp"
+#include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
 #include "gui/scene/nodeinfo.hpp"
 #include "gui/scene/objdialog.hpp"
+#include "gui/scene/path.hpp"
+#include "gui/scene/renderer.hpp"
 #include "gui/window.hpp"
 
 #include <gui/context_menu.hpp>
@@ -98,8 +101,6 @@ namespace Toolbox::UI {
         void viewportBegin(bool is_dirty);
         void viewportEnd();
 
-        u32 m_fbo_id, m_tex_id, m_rbo_id;
-
         ContextMenu<NodeInfo> m_virtual_node_menu;
         ContextMenu<NodeInfo> m_physical_node_menu;
         ContextMenu<NodeInfo> m_group_node_menu;
@@ -116,21 +117,10 @@ namespace Toolbox::UI {
         std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;
 
         std::vector<std::shared_ptr<J3DModelInstance>> m_renderables;
-        model_cache_t m_model_cache;
+        ResourceCache m_resource_cache;
 
-        uint32_t m_gizmo_operation{0};
-
-        Camera m_camera = {};
-
-        bool m_is_render_window_open    = false;
-        bool m_is_render_window_focused = false;
-        bool m_is_render_window_hovered = false;
-        bool m_is_viewport_dirty        = false;
-
-        ImRect m_render_window_rect      = {};
-        ImVec2 m_render_size             = {};
-        ImVec2 m_render_window_size      = {};
-        ImVec2 m_render_window_size_prev = {};
+        bool m_is_render_window_open;
+        Renderer m_renderer;
 
         uint32_t m_dock_space_id          = 0;
         uint32_t m_dock_node_up_left_id   = 0;

@@ -77,6 +77,15 @@
                 "ObjCount": 1,
                 "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "mew/kamome_high.bmd",
+                "Animations": [
+                    "mew/kamome_kakku.bck",
+                    "mew/kamome_swing.bck"
+                ]
+            }
         }
     }
 }

@@ -1,7 +1,11 @@
 #include "objlib/object.hpp"
 #include "objlib/meta/errors.hpp"
+#include <J3D/Animation/J3DAnimationLoader.hpp>
+#include <J3D/Material/J3DMaterialTableLoader.hpp>
+#include <bstream.h>
 #include <expected>
 #include <gui/modelcache.hpp>
+#include <include/decode.h>
 #include <string>
 
 namespace Toolbox::Object {
@@ -110,8 +114,8 @@ namespace Toolbox::Object {
     }
 
     std::expected<void, ObjectError>
-    VirtualSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &,
-                                     model_cache_t &) {
+    VirtualSceneObject::performScene(float, std::vector<std::shared_ptr<J3DModelInstance>> &,
+                                     ResourceCache &, std::vector<J3DLight> &) {
         return {};
     }
 
@@ -180,7 +184,13 @@ namespace Toolbox::Object {
         }
 
         auto template_ = std::move(template_result.value());
-        auto wizard    = template_->getWizard();
+        auto wizard    = template_->getWizard(name.name());
+        if (!wizard) {
+            wizard = template_->getWizard("Default");
+            if (!wizard) {
+                wizard = template_->getWizard();
+            }
+        }
 
         // Members
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
@@ -299,14 +309,18 @@ namespace Toolbox::Object {
         return it->get()->getChild(QualifiedName(name.begin() + 1, name.end()));
     }
 
-    std::expected<void, ObjectError>
-    GroupSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                                   model_cache_t &model_cache) {
+    std::expected<void, ObjectError> GroupSceneObject::performScene(
+        float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+        ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
+        if (!getIsPerforming()) {
+            return {};
+        }
 
         std::vector<ObjectError> child_errors;
 
         for (auto child : m_children) {
-            auto result = child->performScene(renderables, model_cache);
+            auto result =
+                child->performScene(delta_time, renderables, resource_cache, scene_lights);
             if (!result)
                 child_errors.push_back(result.error());
         }
@@ -389,7 +403,13 @@ namespace Toolbox::Object {
         }
 
         auto template_ = std::move(template_result.value());
-        auto wizard    = template_->getWizard();
+        auto wizard    = template_->getWizard(obj_name.name());
+        if (!wizard) {
+            wizard = template_->getWizard("Default");
+            if (!wizard) {
+                wizard = template_->getWizard();
+            }
+        }
 
         // Members
         bool late_group_size = (obj_type.code() == 15406 || obj_type.code() == 9858);
@@ -518,45 +538,64 @@ namespace Toolbox::Object {
         return size;
     }
 
-    std::expected<void, ObjectError>
-    PhysicalSceneObject::performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                                      model_cache_t &model_cache) {
-
-        if (m_model_instance) {
-            auto transform_value_ptr = getMember(std::string("Transform")).value();
-            if (transform_value_ptr) {
-                Transform transform = getMetaValue<Transform>(transform_value_ptr).value();
-                m_model_instance->SetTranslation(transform.m_translation);
-                m_model_instance->SetRotation(transform.m_rotation);
-                m_model_instance->SetScale(transform.m_scale);
-            }
-            renderables.push_back(m_model_instance);
+    std::expected<void, ObjectError> PhysicalSceneObject::performScene(
+        float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+        ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
+        if (!getIsPerforming()) {
             return {};
         }
 
-        auto model_member_result = getMember(std::string("Model"));
-        if (!model_member_result.has_value())
+        if (m_type == "Light") {
+            auto position_value_ptr  = getMember("Position").value();
+            glm::vec3 position_value = getMetaValue<glm::vec3>(position_value_ptr).value();
+
+            auto color_value_ptr      = getMember("Color").value();
+            Color::RGBA32 color_value = getMetaValue<Color::RGBA32>(color_value_ptr).value();
+
+            f32 r, g, b, a;
+            color_value.getColor(r, g, b, a);
+
+            auto intensity_value_ptr = getMember("Intensity").value();
+            f32 intensity_value      = getMetaValue<f32>(intensity_value_ptr).value();
+
+            J3DLight light  = DEFAULT_LIGHT;
+            light.Position  = {position_value, 1};
+            light.Color     = {r, g, b, a};
+            light.DistAtten = {1 / intensity_value, 0, 0, 1};
+            light.Direction = {-glm::normalize(position_value), 1};
+            scene_lights.push_back(light);
+        }
+
+        if (!m_model_instance) {
             return {};
+        }
 
-        auto model_name_value_ptr = model_member_result.value();
-        if (!model_name_value_ptr)
-            return {};
-
-        auto model_name = getMetaValue<std::string>(model_name_value_ptr).value();
-        std::transform(model_name.begin(), model_name.end(), model_name.begin(), ::tolower);
-
-        if (model_cache.count(model_name) == 0)
-            return {};
-
-        m_model_instance = model_cache[model_name]->GetInstance();
-
-        auto transform_value_ptr = getMember(std::string("Transform")).value();
+        auto transform_value_ptr = getMember("Transform").value();
         if (transform_value_ptr) {
             Transform transform = getMetaValue<Transform>(transform_value_ptr).value();
             m_model_instance->SetTranslation(transform.m_translation);
             m_model_instance->SetRotation(transform.m_rotation);
             m_model_instance->SetScale(transform.m_scale);
         }
+
+        if (m_type == "SunModel") {
+            m_model_instance->SetScale({1, 1, 1});
+        }
+
+        if (scene_lights.size() > 0) {
+            m_model_instance->SetLight(scene_lights[0], 0);
+            if (scene_lights.size() > 1) {
+                m_model_instance->SetLight(scene_lights[1], 1);
+            } else {
+                m_model_instance->SetLight(DEFAULT_LIGHT, 1);
+            }
+            //m_model_instance->SetLight(scene_lights[4], 2);  // Specular light
+        } else {
+            m_model_instance->SetLight(DEFAULT_LIGHT, 0);
+            m_model_instance->SetLight(DEFAULT_LIGHT, 1);
+        }
+
+        m_model_instance->UpdateAnimations(delta_time);
         renderables.push_back(m_model_instance);
 
         return {};
@@ -584,11 +623,138 @@ namespace Toolbox::Object {
         }
     }
 
+    std::expected<void, FSError>
+    PhysicalSceneObject::loadRenderData(const std::filesystem::path &asset_path,
+                                        const TemplateRenderInfo &info,
+                                        ResourceCache &resource_cache) {
+        J3DModelLoader bmdLoader;
+        J3DMaterialTableLoader bmtLoader;
+
+        std::shared_ptr<J3DModelData> model_data;
+        std::shared_ptr<J3DMaterialTable> mat_table;
+        std::shared_ptr<J3DAnimationInstance> anim_data;
+
+        std::optional<std::string> model_file;
+        std::optional<std::string> mat_file = info.m_file_materials;
+
+        // Get model variable that exists in some objects
+        auto model_member_result = getMember("Model");
+        if (model_member_result) {
+            if (model_member_result.value()) {
+                model_file =
+                    std::format("mapobj/{}.bmd",
+                                getMetaValue<std::string>(model_member_result.value()).value());
+            }
+        }
+
+        if (info.m_file_model) {
+            model_file = info.m_file_model;
+        }
+
+        // Early return since no model to animate etc.
+        if (!model_file) {
+            return {};
+        }
+
+        // Load model data
+
+        std::filesystem::path model_path = asset_path / model_file.value();
+        std::string model_name           = model_path.stem().string();
+        std::transform(model_name.begin(), model_name.end(), model_name.begin(), ::tolower);
+
+        if (resource_cache.m_model.count(model_name) == 0) {
+            auto model_path_exists_res = Toolbox::is_regular_file(model_path);
+            if (!model_path_exists_res || !model_path_exists_res.value()) {
+                return {};
+            }
+
+            bStream::CFileStream model_stream(model_path.string(), bStream::Endianess::Big,
+                                              bStream::OpenMode::In);
+
+            model_data = bmdLoader.Load(&model_stream, 0);
+            //resource_cache.m_model.insert({model_name, *model_data});
+        } else {
+            model_data = std::make_shared<J3DModelData>(resource_cache.m_model[model_name]);
+        }
+
+        if (!mat_file) {
+            mat_file = model_file->replace(model_file->size() - 3, 3, "bmt");
+        }
+
+        // Load material data
+
+        std::filesystem::path mat_path = asset_path / mat_file.value();
+        std::string mat_name           = mat_path.stem().string();
+        std::transform(mat_name.begin(), mat_name.end(), mat_name.begin(), ::tolower);
+
+        auto mat_path_exists_res = Toolbox::is_regular_file(mat_path);
+        if (mat_path_exists_res && mat_path_exists_res.value()) {
+            bStream::CFileStream mat_stream(mat_path.string(), bStream::Endianess::Big,
+                                            bStream::OpenMode::In);
+
+            mat_table = bmtLoader.Load(&mat_stream, model_data);
+            if (mat_name == "nozzlebox") {
+                std::shared_ptr<J3DMaterial> nozzle_mat = mat_table->GetMaterial("_mat1");
+                auto nozzle_type_member                 = getMember("Spawn").value();
+                std::string nozzle_type                 = getMetaValue<std::string>(nozzle_type_member).value();
+                if (nozzle_type == "normal_nozzle_item") {
+                    nozzle_mat->TevBlock->mTevColors[1]      = {0, 0, 255, 255};
+                } else if (nozzle_type == "rocket_nozzle_item") {
+                    nozzle_mat->TevBlock->mTevColors[1] = {255, 0, 0, 255};
+                } else if (nozzle_type == "back_nozzle_item") {
+                    nozzle_mat->TevBlock->mTevColors[1] = {90, 90, 120, 255};
+                }
+            }
+        }
+
+        // TODO: Load texture data
+
+        m_model_instance = model_data->GetInstance();
+        if (mat_table) {
+            m_model_instance->SetInstanceMaterialTable(mat_table);
+            m_model_instance->SetUseInstanceMaterialTable(true);
+        }
+
+        for (auto &anim_file : info.m_file_animations) {
+            std::filesystem::path anim_path = asset_path / anim_file;
+            std::string anim_name           = anim_path.stem().string();
+
+            auto anim_path_exists_res = Toolbox::is_regular_file(anim_path);
+            if (anim_path_exists_res && anim_path_exists_res.value()) {
+                J3DAnimationLoader anmLoader;
+                bStream::CFileStream anim_stream(anim_path.string(), bStream::Endianess::Big,
+                                                 bStream::OpenMode::In);
+
+                if (anim_file.ends_with(".brk")) {
+                    m_model_instance->SetRegisterColorAnimation(
+                        std::reinterpret_pointer_cast<J3DColorAnimationInstance>(
+                            anmLoader.LoadAnimation(anim_stream)));
+                }
+
+                if (anim_file.ends_with(".btp")) {
+                    m_model_instance->SetTexIndexAnimation(
+                        std::reinterpret_pointer_cast<J3DTexIndexAnimationInstance>(
+                            anmLoader.LoadAnimation(anim_stream)));
+                }
+
+                if (anim_file.ends_with(".btk")) {
+                    m_model_instance->SetTexMatrixAnimation(
+                        std::reinterpret_pointer_cast<J3DTexMatrixAnimationInstance>(
+                            anmLoader.LoadAnimation(anim_stream)));
+                }
+            }
+        }
+
+        return {};
+    }
+
     std::expected<void, SerialError> PhysicalSceneObject::serialize(Serializer &out) const {
         return std::expected<void, SerialError>();
     }
 
     std::expected<void, SerialError> PhysicalSceneObject::deserialize(Deserializer &in) {
+        auto scene_path = std::filesystem::path(in.filepath()).parent_path();
+
         // Metadata
         auto length           = in.read<u32, std::endian::big>();
         std::streampos endpos = static_cast<std::size_t>(in.tell()) + length - 4;
@@ -629,7 +795,13 @@ namespace Toolbox::Object {
         }
 
         auto template_ = std::move(template_result.value());
-        auto wizard    = template_->getWizard();
+        auto wizard    = template_->getWizard(name.name());
+        if (!wizard) {
+            wizard = template_->getWizard("Default");
+            if (!wizard) {
+                wizard = template_->getWizard();
+            }
+        }
 
         const char *debug_str = template_->type().data();
 
@@ -647,7 +819,17 @@ namespace Toolbox::Object {
             m_members.push_back(this_member);
         }
 
+        // Skip padding/unknown data
         in.seek(endpos, std::ios::beg);
+
+        std::filesystem::path asset_path = scene_path.parent_path();
+        auto load_result = loadRenderData(asset_path, wizard->m_render_info, getResourceCache());
+        if (!load_result) {
+            return make_serial_error<void>(
+                in, std::format("Failed to load render data for object {} ({})!", m_type,
+                                m_nameref.name()));
+        }
+
         return {};
     }
 

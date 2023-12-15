@@ -33,14 +33,10 @@
             "Model": {
                 "Type": "STRING",
                 "ArraySize": 1
-            },
-            "DisplayTexture": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
-            "Default": {
+            "SandBombBaseMushroom": {
                 "Transform": [
                     [
                         0,
@@ -64,8 +60,214 @@
                     "ID": 0,
                     "Name": "LightX"
                 },
-                "Model": "SandBombBaseMushroom",
-                "DisplayTexture": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Model": "SandBombBaseMushroom"
+            },
+            "SandBombBasePyramid": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "SandBombBasePyramid キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "SandBombBasePyramid"
+            },
+            "SandBombBaseShit": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "SandBombBaseShit キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "SandBombBaseShit"
+            },
+            "SandBombBaseStar": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "SandBombBaseStar キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "SandBombBaseStar"
+            },
+            "SandBombBaseTurtle": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "SandBombBaseTurtle キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "SandBombBaseTurtle"
+            },
+            "SandBombBaseFoot": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "SandBombBaseFoot キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "SandBombBaseFoot"
+            },
+            "SandBombBaseStairs": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "SandBombBaseStairs キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "SandBombBaseStairs"
+            }
+        },
+        "Rendering": {
+            "SandBombBaseMushroom": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            },
+            "SandBombBasePyramid": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            },
+            "SandBombBaseShit": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            },
+            "SandBombBaseStar": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            },
+            "SandBombBaseTurtle": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            },
+            "SandBombBaseFoot": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            },
+            "SandBombBaseStairs": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
             }
         }
     }

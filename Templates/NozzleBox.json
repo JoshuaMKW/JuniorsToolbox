@@ -84,8 +84,97 @@
                 "Spawn": "normal_nozzle_item",
                 "Type": "valid",
                 "SpawnLength": 100,
-                "SpawnHeight": -1,
-                "DisplayTexture": "Generated from Bin Editor Template by Junior's Toolbox"
+                "SpawnHeight": -1
+            },
+            "Hover Nozzle": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "ノズルボックス（通常） キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "NozzleBox",
+                "Spawn": "normal_nozzle_item",
+                "Type": "valid",
+                "SpawnLength": 100,
+                "SpawnHeight": -1
+            },
+            "Turbo Nozzle": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "ノズルボックス（通常） キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "NozzleBox",
+                "Spawn": "back_nozzle_item",
+                "Type": "valid",
+                "SpawnLength": 100,
+                "SpawnHeight": -1
+            },
+            "Rocket Nozzle": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "ノズルボックス（通常） キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "NozzleBox",
+                "Spawn": "rocket_nozzle_item",
+                "Type": "valid",
+                "SpawnLength": 100,
+                "SpawnHeight": -1
             }
         }
     }

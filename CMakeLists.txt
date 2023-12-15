@@ -24,6 +24,8 @@ file(GLOB TOOLBOX_SRC
     "include/*.h"
     "src/bmg/*.cpp"
     "include/bmg/*.hpp"
+    "src/bti/*.cpp"
+    "include/bti/*.hpp"
     "src/objlib/*.cpp"
     "include/objlib/*.hpp"
     "src/rail/*.cpp"
@@ -55,6 +57,7 @@ add_executable(JuniorsToolbox ${TOOLBOX_SRC})
 
 include(lib/imgui.cmake)
 add_subdirectory(lib/J3DUltra)
+add_subdirectory(lib/libbti)
 add_subdirectory(lib/glfw)
 
 # find_package(ICU 61.0 COMPONENTS uc i18n REQUIRED)
@@ -70,7 +73,7 @@ endif()
 
 target_compile_definitions(JuniorsToolbox PRIVATE IMGUI_DEFINE_MATH_OPERATORS)
 
-target_include_directories(JuniorsToolbox PRIVATE "include" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/ImGuiFileDialog" "lib/glfw")
+target_include_directories(JuniorsToolbox PRIVATE "include" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/libbti" "lib/ImGuiFileDialog" "lib/glfw")
 
 
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD

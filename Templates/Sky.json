@@ -56,6 +56,47 @@
                     "ID": 0,
                     "Name": "LightX"
                 }
+            },
+            "空": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "空 キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                }
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "map/map/sky.bmd",
+                "Materials": "map/map/sky.bmt",
+                "Animations": [
+                    "map/map/sky.btk"
+                ]
+            },
+            "空": {
+                "Model": "map/map/sky.bmd",
+                "Materials": "map/map/sky.bmt",
+                "Animations": [
+                    "map/map/sky.btk"
+                ]
             }
         }
     }

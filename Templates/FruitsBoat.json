@@ -37,10 +37,6 @@
             "Rail": {
                 "Type": "STRING",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -69,8 +65,15 @@
                     "Name": "LightX"
                 },
                 "Manager": "フルーツ運搬船マネージャー",
-                "Rail": "(null)",
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Rail": "(null)"
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "fruitsboat/shipdolpic.bmd",
+                "Animations": [
+                    "fruitsboat/shipdolpic.bck"
+                ]
             }
         }
     }

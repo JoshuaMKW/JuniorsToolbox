@@ -78,7 +78,7 @@ void Toolbox::UI::Input::SetMousePosition(ImVec2 pos, bool overwrite_delta) {
         return;
 
     ImVec2 rel_pos = {mMousePosition.x - pos.x, mMousePosition.y - pos.y};
-    XWarpPointer(display, nullptr, nullptr, 0, 0, 0, 0, rel_pos.x, rel_pos.y);
+    XWarpPointer(display, 0, 0, 0, 0, 0, 0, rel_pos.x, rel_pos.y);
 
     XFlush(display);
     XCloseDisplay(display);

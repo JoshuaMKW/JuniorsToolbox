@@ -37,10 +37,6 @@
             "Unknown": {
                 "Type": "INT",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -69,8 +65,21 @@
                     "Name": "LightX"
                 },
                 "Model": "eggYoshi",
-                "Unknown": -1,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Unknown": -1
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "mapobj/eggyoshi_normal.bmd",
+                "Animations": [
+                    "mapobj/eggyoshi_fukidashi.btp",
+                    "mapobj/eggyoshi_fukidashi_false.bck",
+                    "mapobj/eggyoshi_fukidashi_true.bck",
+                    "mapobj/eggyoshi_fukidashi_wait.bck",
+                    "mapobj/eggyoshi_false.bck",
+                    "mapobj/eggyoshi_true.bck",
+                    "mapobj/eggyoshi_wait.bck"
+                ]
             }
         }
     }

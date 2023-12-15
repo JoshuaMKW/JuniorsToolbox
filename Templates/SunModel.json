@@ -29,14 +29,6 @@
             "LightArray": {
                 "Type": "LightInfo",
                 "ArraySize": "LightCount"
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "ForceDrawMode": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -63,9 +55,15 @@
                 "LightArray": {
                     "ID": 0,
                     "Name": "LightX"
-                },
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "sun/model.bmd",
+                "Animations": [
+                    "sun/model.btk"
+                ]
             }
         }
     }

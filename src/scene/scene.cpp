@@ -22,7 +22,7 @@ namespace Toolbox::Scene {
 
         {
             std::ifstream file(scene_bin, std::ios::in | std::ios::binary);
-            Deserializer in(file.rdbuf());
+            Deserializer in(file.rdbuf(), scene_bin.string());
 
             map_root_obj = ObjectFactory::create(in);
             if (!map_root_obj) {

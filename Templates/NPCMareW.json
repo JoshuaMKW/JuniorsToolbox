@@ -98,18 +98,6 @@
             "RewardObjID": {
                 "Type": "INT",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "DisplayTexture": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "ForceDrawMode": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -150,10 +138,50 @@
                 "Chucking": 100,
                 "ThrowLength": -1,
                 "ThrowHeight": 0,
-                "RewardObjID": -1,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "DisplayTexture": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                "RewardObjID": -1
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "marew/marew.bmd",
+                "Animations": [
+                    "marew/marew_appear.bck",
+                    "marew/marew_cry.btp",
+                    "marew/marew_dance.bck",
+                    "marew/marew_fall.bck",
+                    "marew/marew_happy.bck",
+                    "marew/marew_jump.bck",
+                    "marew/marew_jump.btp",
+                    "marew/marew_recover.bck",
+                    "marew/marew_recover.btp",
+                    "marew/marew_run.bck",
+                    "marew/marew_sad.btp",
+                    "marew/marew_sit.bck",
+                    "marew/marew_sittalk_a.bck",
+                    "marew/marew_sleep.btp",
+                    "marew/marew_sleep_a.btp",
+                    "marew/marew_smile.btp",
+                    "marew/marew_stand.bck",
+                    "marew/marew_stand.btp",
+                    "marew/marew_stand_a.bck",
+                    "marew/marew_stand_a.btp",
+                    "marew/marew_step.bck",
+                    "marew/marew_talk.bck",
+                    "marew/marew_talk.btp",
+                    "marew/marew_wait.bck",
+                    "marew/marew_wait_a.bck",
+                    "marew/marew_wait_fall.bck",
+                    "marew/marew_wait_yogure.bck",
+                    "marew/marew_walk.bck",
+                    "marew/marew_wash.bck",
+                    "marew/marew_wash.btp",
+                    "marew/marew_wet.bck",
+                    "marew/marew_wet.btp",
+                    "marew/marew_wet_a.bck",
+                    "marew/marew_wet_a.btp",
+                    "marew/marew_wink.btp",
+                    "marew/marew_wink_a.btp"
+                ]
             }
         }
     }

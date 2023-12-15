@@ -1,0 +1,97 @@
+name: Build
+
+on:
+  push:
+    branches: [ master, experimental_rendering ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - name: Windows Build
+            os: windows-latest
+            architecture: x64
+            artifact: windows
+            upload_path_suffix: '/*'
+#          - name: Linux Build
+#            os: ubuntu-latest
+#            architecture: x64
+#            artifact: linux
+#            upload_path_suffix: '/*'
+    
+    runs-on: ${{ matrix.os }}
+    
+    defaults:
+      run:
+        shell: bash
+    
+    env:
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev mesa-common-dev gcc-13 g++-13 libgcc-13-dev libstdc++-13-dev
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 --slave /usr/bin/g++ g++ /usr/bin/g++-13 --slave /usr/bin/gcov gcov /usr/bin/gcov-13
+          sudo update-alternatives --set gcc /usr/bin/gcc-13
+      - name: Set up MSVC for Windows
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: Setup cmake
+        uses: lukka/get-cmake@latest
+      - name: Setup vcpkg
+        if: runner.os == 'Windows'
+        uses: lukka/run-vcpkg@v11.1
+        with:
+          vcpkgGitCommitId: 'ad46340bfce415333d6a2139592c22a499fb0df0'
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+          vcpkgJsonGlob: '**/vcpkg.json'
+      - name: Integrate vcpkg
+        if: runner.os == 'Windows'
+        run: |
+          vcpkg integrate install
+      - name: Run CMake
+        uses: lukka/run-cmake@v3
+        with:
+          cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
+          cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+          buildDirectory: '${{ github.workspace }}/build'
+          useVcpkgToolchainFile: true
+          cmakeAppendedArgs: '-G Ninja -DCMAKE_BUILD_TYPE=Release'
+      - name: Create App Package Linux
+        if: runner.os == 'Linux'
+        run: |
+          mkdir juniors-toolbox-build
+          cp -r res juniors-toolbox-build/res
+          cp build/juniors-toolbox juniors-toolbox-build/juniors-toolbox
+      - name: Create App Package Windows
+        if: runner.os == 'Windows'
+        run: |
+          mkdir juniors-toolbox-build
+          cp -r res juniors-toolbox-build/res
+          cp build/JuniorsToolbox.exe juniors-toolbox-build/JuniorsToolbox.exe
+          cp build/*.dll juniors-toolbox-build
+      - name: Upload App Windows
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v3
+        with:
+          name: juniors-toolbox-windows
+          path: juniors-toolbox-build
+      - name: Upload App Linux
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v3
+        with:
+          name: juniors-toolbox-linux
+          path: juniors-toolbox-build

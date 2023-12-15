@@ -45,14 +45,6 @@
             "FollowObjID": {
                 "Type": "INT",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "ForceDrawMode": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -83,9 +75,15 @@
                 "Manager": "回遊魚マネージャー",
                 "Rail": "(null)",
                 "ObjCount": 1,
-                "FollowObjID": -1,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                "FollowObjID": -1
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "fish/fisha.bmd",
+                "Animations": [
+                    "fish_swim.bck"
+                ]
             }
         }
     }

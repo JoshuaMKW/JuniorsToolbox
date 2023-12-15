@@ -37,14 +37,6 @@
             "Rail": {
                 "Type": "STRING",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "ForceDrawMode": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -73,9 +65,39 @@
                     "Name": "LightX"
                 },
                 "Manager": "ゲートキーパーマネージャー",
-                "Rail": "(null)",
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Rail": "(null)"
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "gatekeeper/gene_pakkun_model1.bmd",
+                "Animations": [
+                    "gatekeeper/gene_pakkun_appear1.bck",
+                    "gatekeeper/gene_pakkun_appear1_end.bck",
+                    "gatekeeper/gene_pakkun_appear1_start.bck",
+                    "gatekeeper/gene_pakkun_damage1.bck",
+                    "gatekeeper/gene_pakkun_damage2.bck",
+                    "gatekeeper/gene_pakkun_dead1.bck",
+                    "gatekeeper/gene_pakkun_dead1.bpk",
+                    "gatekeeper/gene_pakkun_dive1.bck",
+                    "gatekeeper/gene_pakkun_iyaiya1.bck",
+                    "gatekeeper/gene_pakkun_shoot1.bck",
+                    "gatekeeper/gene_pakkun_tex0.btk",
+                    "gatekeeper/gene_pakkun_tex1.btk",
+                    "gatekeeper/gene_pakkun_towait2.bck",
+                    "gatekeeper/gene_pakkun_wait1.bck",
+                    "gatekeeper/gene_pakkun_wait2.bck",
+                    "gatekeeper/gene_pakkun_wait2_close.bck",
+                    "gatekeeper/gene_pakkun_wait2_end.bck",
+                    "gatekeeper/gene_pakkun_wait2_loop.bck",
+                    "gatekeeper/gene_pakkun_wait2_open.bck",
+                    "gatekeeper/gene_pakkun_wait2_openloop.bck",
+                    "gatekeeper/gene_pakkun_wait2_start.bck",
+                    "gatekeeper/gene_pakkun_wait3.bck",
+                    "gatekeeper/gene_pakkun_wait2_openloop.bck",
+                    "gatekeeper/gene_pakkun_wait2_loop.bck",
+                    "gatekeeper/gene_pakkun_wait2_open.bck"
+                ]
             }
         }
     }

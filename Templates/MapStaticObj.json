@@ -33,58 +33,88 @@
             "Model": {
                 "Type": "STRING",
                 "ArraySize": 1
-            },
-            "BiancoRiver": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "BiaWaterPollution": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "riccoSeaPollutionS0": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "riccoSeaPollutionS1": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "riccoSeaPollutionS2": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "riccoSeaPollutionS3": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "riccoSeaPollutionS4": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "Mare5ExGate": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "mareSeaPollutionS0": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "mareSeaPollutionS12": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "MonteRiver": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "ForceDrawMode": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
-            "Corona Mountain Smoke": {
+            "滝つぼ": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "滝つぼ キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "ReflectSky"
+            },
+            "鏡内空": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "鏡内空 キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "ReflectSky"
+            },
+            "鏡内地形": {
+                "Transform": [
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        1,
+                        1,
+                        1
+                    ]
+                ],
+                "Character": "鏡内地形 キャラ",
+                "LightCount": 0,
+                "LightArray": {
+                    "ID": 0,
+                    "Name": "LightX"
+                },
+                "Model": "ReflectParts"
+            },
+            "TopOfCorona": {
                 "Transform": [
                     [
                         0,
@@ -108,19 +138,24 @@
                     "ID": 0,
                     "Name": "LightX"
                 },
-                "Model": "TopOfCorona",
-                "BiancoRiver": "Generated from Bin Editor Template by Junior's Toolbox",
-                "BiaWaterPollution": "Generated from Bin Editor Template by Junior's Toolbox",
-                "riccoSeaPollutionS0": "Generated from Bin Editor Template by Junior's Toolbox",
-                "riccoSeaPollutionS1": "Generated from Bin Editor Template by Junior's Toolbox",
-                "riccoSeaPollutionS2": "Generated from Bin Editor Template by Junior's Toolbox",
-                "riccoSeaPollutionS3": "Generated from Bin Editor Template by Junior's Toolbox",
-                "riccoSeaPollutionS4": "Generated from Bin Editor Template by Junior's Toolbox",
-                "Mare5ExGate": "Generated from Bin Editor Template by Junior's Toolbox",
-                "mareSeaPollutionS0": "Generated from Bin Editor Template by Junior's Toolbox",
-                "mareSeaPollutionS12": "Generated from Bin Editor Template by Junior's Toolbox",
-                "MonteRiver": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Model": "TopOfCorona"
+            }
+        },
+        "Rendering": {
+            "滝つぼ": {
+                "Model": "mapobj/falls.bmd"
+            },
+            "鏡内空": {
+                "Model": "map/map/reflectsky.bmd",
+                "Animations": [
+                    "map/map/reflectsky.btk"
+                ]
+            },
+            "鏡内地形": {
+                "Model": "map/map/reflectparts.bmd"
+            },
+            "TopOfCorona": {
+                "Model": "mapobj/TopOfCorona.bmd"
             }
         }
     }

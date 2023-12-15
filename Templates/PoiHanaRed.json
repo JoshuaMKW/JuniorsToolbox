@@ -41,18 +41,6 @@
             "SpawnObjID": {
                 "Type": "INT",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "DisplayColor": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "ForceDrawMode": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -82,10 +70,28 @@
                 },
                 "Manager": "ポイハナマネージャー",
                 "Rail": "(null)",
-                "SpawnObjID": -1,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "DisplayColor": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                "SpawnObjID": -1
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "poihana/default.bmd",
+                "Animations": [
+                    "poihana/poihana_dash.bck",
+                    "poihana/poihana_death.bck",
+                    "poihana/poihana_getup.bck",
+                    "poihana/poihana_humi.bck",
+                    "poihana/poihana_pikupiku.bck",
+                    "poihana/poihana_sleep.bck",
+                    "poihana/poihana_sleep_start.bck",
+                    "poihana/poihana_spin.bck",
+                    "poihana/poihana_throw.bck",
+                    "poihana/poihana_wait.bck",
+                    "poihana/poihana_waken.bck",
+                    "poihana/poihana_walk.bck",
+                    "poihana/poihana_waterhit.bck",
+                    "poihana/poihana_waterhit2.bck"
+                ]
             }
         }
     }

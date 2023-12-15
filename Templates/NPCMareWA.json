@@ -98,18 +98,6 @@
             "RewardObjID": {
                 "Type": "INT",
                 "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "DisplayTexture": {
-                "Type": "COMMENT",
-                "ArraySize": 1
-            },
-            "ForceDrawMode": {
-                "Type": "COMMENT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -150,10 +138,50 @@
                 "Chucking": 100,
                 "ThrowLength": -1,
                 "ThrowHeight": 0,
-                "RewardObjID": -1,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "DisplayTexture": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                "RewardObjID": -1
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "marewa/marewa.bmd",
+                "Animations": [
+                    "marewa/marewa_appear.bck",
+                    "marewa/marewa_cry.btp",
+                    "marewa/marewa_dance.bck",
+                    "marewa/marewa_fall.bck",
+                    "marewa/marewa_happy.bck",
+                    "marewa/marewa_jump.bck",
+                    "marewa/marewa_jump.btp",
+                    "marewa/marewa_recover.bck",
+                    "marewa/marewa_recover.btp",
+                    "marewa/marewa_run.bck",
+                    "marewa/marewa_sad.btp",
+                    "marewa/marewa_sit.bck",
+                    "marewa/marewa_sittalk_a.bck",
+                    "marewa/marewa_sleep.btp",
+                    "marewa/marewa_sleep_a.btp",
+                    "marewa/marewa_smile.btp",
+                    "marewa/marewa_stand.bck",
+                    "marewa/marewa_stand.btp",
+                    "marewa/marewa_stand_a.bck",
+                    "marewa/marewa_stand_a.btp",
+                    "marewa/marewa_step.bck",
+                    "marewa/marewa_talk.bck",
+                    "marewa/marewa_talk.btp",
+                    "marewa/marewa_wait.bck",
+                    "marewa/marewa_wait_a.bck",
+                    "marewa/marewa_wait_fall.bck",
+                    "marewa/marewa_wait_yogure.bck",
+                    "marewa/marewa_walk.bck",
+                    "marewa/marewa_wash.bck",
+                    "marewa/marewa_wash.btp",
+                    "marewa/marewa_wet.bck",
+                    "marewa/marewa_wet.btp",
+                    "marewa/marewa_wet_a.bck",
+                    "marewa/marewa_wet_a.btp",
+                    "marewa/marewa_wink.btp",
+                    "marewa/marewa_wink_a.btp"
+                ]
             }
         }
     }

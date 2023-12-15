@@ -6,8 +6,10 @@
 #include "transform.hpp"
 #include "types.hpp"
 #include <J3D/Animation/J3DAnimationInstance.hpp>
-#include <J3D/J3DLight.hpp>
-#include <J3D/J3DModelInstance.hpp>
+#include <J3D/Data/J3DModelData.hpp>
+#include <J3D/Data/J3DModelInstance.hpp>
+#include <J3D/Material/J3DMaterialTable.hpp>
+#include <J3D/Rendering/J3DLight.hpp>
 #include <expected>
 #include <filesystem>
 #include <stacktrace>
@@ -57,7 +59,20 @@ namespace Toolbox::Object {
         return {};
     }
 
-    using model_cache_t = std::unordered_map<std::string, std::shared_ptr<J3DModelData>>;
+    using model_cache_t    = std::unordered_map<std::string, J3DModelData>;
+    using material_cache_t = std::unordered_map<std::string, J3DMaterialTable>;
+
+    struct ResourceCache {
+        model_cache_t m_model;
+        material_cache_t m_material;
+    };
+
+    namespace {
+        static ResourceCache s_resource_cache;
+    }
+
+    inline ResourceCache &getResourceCache() { return s_resource_cache; }
+    inline void clearResourceCache() { s_resource_cache = ResourceCache(); }
 
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
@@ -112,9 +127,13 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual J3DLight getLightData(int index) = 0;
 
+        [[nodiscard]] virtual bool getCanPerform() const = 0;
+        [[nodiscard]] virtual bool getIsPerforming() const = 0;
+        virtual void setIsPerforming(bool performing)   = 0;
+
         virtual std::expected<void, ObjectError>
-        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     model_cache_t &model_cache) = 0;
+        performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+                     ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) = 0;
 
         virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
 
@@ -125,14 +144,6 @@ namespace Toolbox::Object {
 
     public:
         [[nodiscard]] QualifiedName getQualifiedName() const;
-
-        /* NON-VIRTUAL HELPERS */
-        [[nodiscard]] bool hasMember(const std::string &name) const {
-            return hasMember(QualifiedName(name));
-        }
-        [[nodiscard]] MetaStruct::GetMemberT getMember(const std::string &name) const {
-            return getMember(QualifiedName(name));
-        }
 
         [[nodiscard]] std::optional<std::shared_ptr<ISceneObject>>
         getChild(const std::string &name) {
@@ -269,9 +280,13 @@ namespace Toolbox::Object {
 
         [[nodiscard]] J3DLight getLightData(int index) override { return {}; }
 
+        [[nodiscard]] bool getCanPerform() const { return false; }
+        [[nodiscard]] bool getIsPerforming() const { return false; }
+        void setIsPerforming(bool performing) {}
+
         std::expected<void, ObjectError>
-        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     model_cache_t &model_cache) override;
+        performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+                     ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -338,7 +353,8 @@ namespace Toolbox::Object {
             : GroupSceneObject(template_, in) {
             parent->addChild(std::shared_ptr<GroupSceneObject>(this));
         }
-        GroupSceneObject(const Template &template_, std::string_view wizard_name, ISceneObject *parent)
+        GroupSceneObject(const Template &template_, std::string_view wizard_name,
+                         ISceneObject *parent)
             : GroupSceneObject(template_, wizard_name) {
             parent->addChild(std::shared_ptr<GroupSceneObject>(this));
         }
@@ -363,9 +379,13 @@ namespace Toolbox::Object {
         [[nodiscard]] std::optional<std::shared_ptr<ISceneObject>>
         getChild(const QualifiedName &name) override;
 
+        [[nodiscard]] bool getCanPerform() const { return true; }
+        [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
+        void setIsPerforming(bool performing) { m_is_performing = performing; }
+
         std::expected<void, ObjectError>
-        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     model_cache_t &model_cache) override;
+        performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+                     ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -403,6 +423,7 @@ namespace Toolbox::Object {
     private:
         std::shared_ptr<MetaMember> m_group_size;
         std::vector<std::shared_ptr<ISceneObject>> m_children = {};
+        bool m_is_performing = true;
     };
 
     class PhysicalSceneObject : public ISceneObject {
@@ -532,9 +553,13 @@ namespace Toolbox::Object {
 
         J3DLight getLightData(int index) override { return m_model_instance->GetLight(index); }
 
+        [[nodiscard]] bool getCanPerform() const { return true; }
+        [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
+        void setIsPerforming(bool performing) { m_is_performing = performing; }
+
         std::expected<void, ObjectError>
-        performScene(std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     model_cache_t &model_cache) override;
+        performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+                     ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -544,6 +569,10 @@ namespace Toolbox::Object {
         }
 
         void applyWizard(const TemplateWizard &wizard);
+
+        std::expected<void, FSError> loadRenderData(const std::filesystem::path &asset_path,
+                                                    const TemplateRenderInfo &info,
+                                                    ResourceCache &resource_cache);
 
     public:
         // Inherited via ISerializable
@@ -578,6 +607,8 @@ namespace Toolbox::Object {
 
         std::optional<J3DTransformInfo> m_transform;
         std::shared_ptr<J3DModelInstance> m_model_instance = {};
+
+        bool m_is_performing = true;
     };
 
     class ObjectFactory {

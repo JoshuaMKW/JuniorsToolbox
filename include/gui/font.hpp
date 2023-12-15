@@ -51,12 +51,9 @@ namespace Toolbox::UI {
         std::string getCurrentFontFamily() { return m_current_name; }
         float getCurrentFontSize() { return m_current_size; }
 
-        void setCurrentFont(std::string_view name, float size) {
-            m_current_name = name;
-            m_current_size = size;
-        }
-        void setCurrentFontFamily(std::string_view name) { m_current_name = name; }
-        void setCurrentFontSize(float size) { m_current_size = size; }
+        void setCurrentFont(std::string_view name, float size);
+        void setCurrentFontFamily(std::string_view name);
+        void setCurrentFontSize(float size);
 
     private:
         bool addFont(const std::filesystem::path &font_path, const ImFontConfig *font_cfg_template,
