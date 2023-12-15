@@ -1,7 +1,5 @@
 #pragma once
 
-// #include <glad/glad.h>
-
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -98,9 +96,6 @@ namespace Toolbox::UI {
         bool update(f32 delta_time) override;
 
     private:
-        void viewportBegin(bool is_dirty);
-        void viewportEnd();
-
         ContextMenu<NodeInfo> m_virtual_node_menu;
         ContextMenu<NodeInfo> m_physical_node_menu;
         ContextMenu<NodeInfo> m_group_node_menu;

@@ -332,7 +332,7 @@ namespace Toolbox::Object {
                                             "performing the children:",
                                             m_type, m_nameref.name());
                 err.m_object  = this;
-                err.m_stack   = std::stacktrace::current();
+                err.m_stacktrace   = std::stacktrace::current();
             }
             return std::unexpected(err);
         }

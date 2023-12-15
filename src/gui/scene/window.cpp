@@ -2,6 +2,7 @@
 
 #include <glad/glad.h>
 
+#include "gui/logging/logger.hpp"
 #include "gui/scene/window.hpp"
 
 #include "gui/input.hpp"
@@ -79,6 +80,33 @@ namespace Toolbox::UI {
         return std::string(result.begin(), result.end() - 1);
     }
     */
+
+    static void logObjectError(const ObjectError &error);
+
+    static void logObjectCorruptError(const ObjectCorruptedError &error) {
+        auto &logger = Log::AppLogger::instance();
+        logger.error(error.m_message);
+        logger.trace(error.m_stacktrace);
+    }
+
+    static void logObjectGroupError(const ObjectGroupError &error) {
+        auto &logger = Log::AppLogger::instance();
+        logger.error(error.m_message);
+        logger.trace(error.m_stacktrace);
+        logger.pushStack();
+        for (auto &child_error : error.m_child_errors) {
+            logObjectError(child_error);
+        }
+        logger.popStack();
+    }
+
+    static void logObjectError(const ObjectError &error) {
+        if (std::holds_alternative<ObjectGroupError>(error)) {
+            logObjectGroupError(std::get<ObjectGroupError>(error));
+        } else {
+            logObjectCorruptError(std::get<ObjectCorruptedError>(error));
+        }
+    }
 
     static std::string getNodeUID(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
         std::string node_name = std::format("{} ({})##{}", node->type(), node->getNameRef().name(),
@@ -444,8 +472,21 @@ namespace Toolbox::UI {
             m_resource_cache.m_model.clear();
             m_resource_cache.m_material.clear();
 
-            m_current_scene = std::make_unique<Toolbox::Scene::SceneInstance>(path);
+            auto scene_result = SceneInstance::FromPath(path);
+            if (!scene_result) {
+                const SerialError &error = scene_result.error();
+                for (auto &line : error.m_message) {
+                    Log::AppLogger::instance().error(line);
+                }
+#ifndef NDEBUG
+                for (auto &entry : error.m_stacktrace) {
+                    Log::AppLogger::instance().debugLog(
+                        std::format("{} at line {}", entry.source_file(), entry.source_line()));
+                }
+#endif
+            }
 
+            m_current_scene = std::move(scene_result.value());
             if (m_current_scene != nullptr) {
                 m_renderer.initializeData(*m_current_scene);
             }
@@ -675,8 +716,12 @@ namespace Toolbox::UI {
 
         // perhaps find a way to limit this so it only happens when we need to re-render?
         if (m_current_scene != nullptr) {
-            m_current_scene->getObjHierarchy().getRoot()->performScene(delta_time, m_renderables,
+            auto perform_result = m_current_scene->getObjHierarchy().getRoot()->performScene(delta_time, m_renderables,
                                                                        m_resource_cache, lights);
+            if (!perform_result) {
+                const ObjectError &error = perform_result.error();
+                logObjectError(error);
+            }
         }
 
         m_is_render_window_open = ImGui::Begin(getWindowChildUID(*this, "Scene View").c_str());

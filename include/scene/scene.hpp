@@ -72,7 +72,6 @@ namespace Toolbox::Scene {
 
     class SceneInstance : public IClonable {
     public:
-        SceneInstance(const std::filesystem::path &root);
         SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root);
         SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root, const RailData &rails);
         SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root,
@@ -83,6 +82,10 @@ namespace Toolbox::Scene {
 
     public:
         ~SceneInstance() = default;
+
+        
+        static std::expected<std::unique_ptr<SceneInstance>, SerialError>
+        FromPath(const std::filesystem::path &root);
 
         [[nodiscard]] static std::unique_ptr<SceneInstance> EmptyScene() {
             SceneInstance scene;

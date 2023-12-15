@@ -19,6 +19,7 @@
 #include <bstream.h>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <gui/logging/window.hpp>
 
 // void ImGuiSetupTheme(bool, float);
 
@@ -131,6 +132,10 @@ namespace Toolbox::UI {
 
         auto settings_window = std::make_shared<SettingsWindow>();
         m_windows.push_back(settings_window);
+
+        auto logging_window = std::make_shared<LoggingWindow>();
+        logging_window->open();
+        m_windows.push_back(logging_window);
 
         return true;
     }

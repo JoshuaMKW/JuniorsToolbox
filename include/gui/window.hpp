@@ -147,12 +147,12 @@ namespace Toolbox::UI {
 
             m_window_id = ImGui::GetID(title().c_str());
 
-            ImGuiWindowFlags flags = m_flags;
+            ImGuiWindowFlags flags_ = flags();
             if (unsaved()) {
-                flags |= ImGuiWindowFlags_UnsavedDocument;
+                flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
-            if (ImGui::Begin(title().c_str(), &m_is_open, flags)) {
+            if (ImGui::Begin(title().c_str(), &m_is_open, flags_)) {
                 m_size = ImGui::GetWindowSize();
                 renderMenuBar();
                 renderBody(delta_time);
@@ -267,12 +267,12 @@ namespace Toolbox::UI {
 
             m_window_id = ImGui::GetID(title().c_str());
 
-            ImGuiWindowFlags flags = m_flags;
+            ImGuiWindowFlags flags_ = flags();
             if (unsaved()) {
-                flags |= ImGuiWindowFlags_UnsavedDocument;
+                flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
-            if (ImGui::Begin(title().c_str(), &m_is_open, flags)) {
+            if (ImGui::Begin(title().c_str(), &m_is_open, flags_)) {
                 m_size = ImGui::GetWindowSize();
                 renderDockspace();
                 renderMenuBar();
