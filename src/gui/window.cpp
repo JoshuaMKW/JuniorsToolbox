@@ -14,6 +14,7 @@
 #include <gui/modelcache.hpp>
 
 #include <iconv.h>
+#include "gui/window.hpp"
 
 namespace Toolbox::UI {
 

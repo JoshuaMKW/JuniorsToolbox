@@ -10,12 +10,15 @@ namespace Toolbox::Scene {
         os << indent_str << "}\n";
     }
 
-    SceneInstance::SceneInstance(const std::filesystem::path &root)
-        : m_root_path(root), m_rail_info(), m_message_data() {
-        auto scene_bin  = root / "map/scene.bin";
-        auto tables_bin = root / "map/tables.bin";
-        auto rail_bin   = root / "map/scene.ral";
-        auto message_bin   = root / "map/message.bmg";
+    std::expected<std::unique_ptr<SceneInstance>, SerialError>
+    SceneInstance::FromPath(const std::filesystem::path &root) {
+        SceneInstance scene;
+        scene.m_root_path = root;
+
+        auto scene_bin   = root / "map/scene.bin";
+        auto tables_bin  = root / "map/tables.bin";
+        auto rail_bin    = root / "map/scene.ral";
+        auto message_bin = root / "map/message.bmg";
 
         ObjectFactory::create_t map_root_obj;
         ObjectFactory::create_t table_root_obj;
@@ -26,7 +29,7 @@ namespace Toolbox::Scene {
 
             map_root_obj = ObjectFactory::create(in);
             if (!map_root_obj) {
-                throw std::runtime_error("Failed to create root object");
+                return std::unexpected(map_root_obj.error());
             }
         }
 
@@ -36,7 +39,7 @@ namespace Toolbox::Scene {
 
             table_root_obj = ObjectFactory::create(in);
             if (!table_root_obj) {
-                throw std::runtime_error("Failed to create table root object");
+                return std::unexpected(table_root_obj.error());
             }
         }
 
@@ -47,26 +50,29 @@ namespace Toolbox::Scene {
             std::static_pointer_cast<GroupSceneObject, ISceneObject>(
                 std::move(table_root_obj.value()));
 
-        m_map_objects   = ObjectHierarchy("Map", map_root_obj_ptr);
-        m_table_objects = ObjectHierarchy("Table", table_root_obj_ptr);
+        scene.m_map_objects   = ObjectHierarchy("Map", map_root_obj_ptr);
+        scene.m_table_objects = ObjectHierarchy("Table", table_root_obj_ptr);
 
         {
             std::ifstream file(rail_bin, std::ios::in | std::ios::binary);
             Deserializer in(file.rdbuf());
 
-            m_rail_info.deserialize(in);
+            scene.m_rail_info.deserialize(in);
         }
 
         {
             std::ifstream file(message_bin, std::ios::in | std::ios::binary);
             Deserializer in(file.rdbuf());
 
-            m_message_data.deserialize(in);
+            scene.m_message_data.deserialize(in);
         }
+
+        return std::make_unique<SceneInstance>(std::move(scene));
     }
 
     SceneInstance::SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root)
-        : m_map_objects("Map", obj_root), m_table_objects("Table"), m_rail_info(), m_message_data() {}
+        : m_map_objects("Map", obj_root), m_table_objects("Table"), m_rail_info(),
+          m_message_data() {}
 
     SceneInstance::SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root,
                                  const RailData &rails)
@@ -77,8 +83,7 @@ namespace Toolbox::Scene {
                                  std::shared_ptr<Object::GroupSceneObject> table_root,
                                  const RailData &rails)
         : m_map_objects("Map", obj_root), m_table_objects("Table", table_root), m_rail_info(rails),
-          m_message_data() {
-    }
+          m_message_data() {}
 
     std::unique_ptr<SceneInstance> SceneInstance::BasicScene() { return nullptr; }
 
@@ -101,7 +106,8 @@ namespace Toolbox::Scene {
         if (deep) {
             SceneInstance scene_instance(
                 make_deep_clone<Object::GroupSceneObject>(m_map_objects.getRoot()),
-                make_deep_clone<Object::GroupSceneObject>(m_table_objects.getRoot()), *make_deep_clone<RailData>(m_rail_info));
+                make_deep_clone<Object::GroupSceneObject>(m_table_objects.getRoot()),
+                *make_deep_clone<RailData>(m_rail_info));
             return std::make_unique<SceneInstance>(std::move(scene_instance));
         }
 

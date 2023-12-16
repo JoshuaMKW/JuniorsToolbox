@@ -12,9 +12,14 @@ namespace Toolbox::UI {
         ~SettingsWindow() override = default;
 
         ImGuiWindowFlags flags() const override {
-            return ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize |
-                   ImGuiWindowFlags_NoDocking;
+            return ImGuiWindowFlags_NoDocking; }
+
+        std::optional<ImVec2> minSize() const override {
+            return {
+                {600, 500}
+            };
         }
+        std::optional<ImVec2> maxSize() const override { return minSize(); }
 
         [[nodiscard]] std::string context() const override { return ""; }
         [[nodiscard]] std::string name() const override { return "Application Settings"; }

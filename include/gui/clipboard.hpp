@@ -1,10 +1,43 @@
 #pragma once
 
-#include "tristate.hpp"
+#include <expected>
 #include <string>
 #include <vector>
 
+#include "error.hpp"
+#include "tristate.hpp"
+
 namespace Toolbox::UI {
+
+    struct ClipboardError : public BaseError {};
+
+    template <typename _Ret>
+    inline std::expected<_Ret, ClipboardError> make_clipboard_error(std::string_view reason) {
+        if (reason.empty()) {
+            reason = "Unknown error occured";
+        }
+        ClipboardError err = {std::vector<std::string>({std::format("ClipboardError: {}", reason)}),
+                              std::stacktrace::current()};
+        return std::unexpected<ClipboardError>(err);
+    }
+
+    class SystemClipboard {
+    protected:
+        SystemClipboard();
+        ~SystemClipboard();
+
+        SystemClipboard(const SystemClipboard &) = delete;
+        SystemClipboard(SystemClipboard &&) = delete;
+
+    public:
+        static SystemClipboard &instance() {
+            static SystemClipboard s_clipboard;
+            return s_clipboard;
+        }
+
+        std::expected<std::string, ClipboardError> getText();
+        std::expected<void, ClipboardError> setText(const std::string &text);
+    };
 
     class DataClipboard {
     public:
@@ -50,8 +83,8 @@ namespace Toolbox::UI {
         }
 
     private:
-        std::pair<std::string, TriState> m_target_state;
-        void *m_data;
+        std::pair<std::string, TriState> m_target_state = {};
+        void *m_data                                    = nullptr;
     };
 
     template <typename _DataT> class TypedDataClipboard {
@@ -97,8 +130,8 @@ namespace Toolbox::UI {
         }
 
     private:
-        std::pair<std::string, TriState> m_target_state;
-        std::vector<_DataT> m_data;
+        std::pair<std::string, TriState> m_target_state = {};
+        std::vector<_DataT> m_data                      = {};
     };
 
 }  // namespace Toolbox::UI

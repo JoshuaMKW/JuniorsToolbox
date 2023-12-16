@@ -30,13 +30,13 @@ namespace Toolbox::Object {
 
     struct ObjectCorruptedError {
         std::string m_message;
-        std::stacktrace m_stack;
+        std::stacktrace m_stacktrace;
         ISceneObject *m_object;
     };
 
     struct ObjectGroupError {
         std::string m_message;
-        std::stacktrace m_stack;
+        std::stacktrace m_stacktrace;
         ISceneObject *m_object;
         std::vector<ObjectError> m_child_errors = {};
     };

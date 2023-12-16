@@ -79,6 +79,9 @@ namespace Toolbox::UI {
     }
 
     void PathRenderer::updateGeometry() {
+        if (m_paths.size() == 0)
+            return;
+
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 
         std::vector<PathPoint> buffer;
@@ -94,6 +97,9 @@ namespace Toolbox::UI {
     }
 
     void PathRenderer::drawPaths(Camera *camera) {
+        if (m_paths.size() == 0)
+            return;
+
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
 

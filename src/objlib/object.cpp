@@ -318,7 +318,7 @@ namespace Toolbox::Object {
 
         std::vector<ObjectError> child_errors;
 
-        for (auto child : m_children) {
+        for (auto &child : m_children) {
             auto result =
                 child->performScene(delta_time, renderables, resource_cache, scene_lights);
             if (!result)
@@ -332,7 +332,7 @@ namespace Toolbox::Object {
                                             "performing the children:",
                                             m_type, m_nameref.name());
                 err.m_object  = this;
-                err.m_stack   = std::stacktrace::current();
+                err.m_stacktrace   = std::stacktrace::current();
             }
             return std::unexpected(err);
         }
@@ -766,6 +766,10 @@ namespace Toolbox::Object {
             if (!result) {
                 return std::unexpected(result.error());
             }
+        }
+
+        if (type.name() == "Map") {
+            std::cout << scene_path << std::endl;
         }
 
         // Name
