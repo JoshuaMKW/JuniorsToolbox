@@ -484,11 +484,12 @@ namespace Toolbox::UI {
                         std::format("{} at line {}", entry.source_file(), entry.source_line()));
                 }
 #endif
-            }
-
-            m_current_scene = std::move(scene_result.value());
-            if (m_current_scene != nullptr) {
-                m_renderer.initializeData(*m_current_scene);
+                return false;
+            } else {
+                m_current_scene = std::move(scene_result.value());
+                if (m_current_scene != nullptr) {
+                    m_renderer.initializeData(*m_current_scene);
+                }
             }
 
             return true;

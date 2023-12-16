@@ -1,0 +1,80 @@
+﻿{
+  "ParticleBox": {
+    "Enums": {},
+    "Structs": {},
+    "Members": {
+      "Transform": {
+        "Type": "TRANSFORM",
+        "ArraySize": 1
+      },
+      "Character": {
+        "Type": "STRING",
+        "ArraySize": 1
+      },
+      "LightCount": {
+        "Type": "U32",
+        "ArraySize": 1
+      },
+      "LightArray": {
+        "Type": "LightInfo",
+        "ArraySize": "LightCount"
+      },
+      "ParticleName": {
+        "Type": "STRING",
+        "ArraySize": 1
+      },
+      "ParticleID": {
+        "Type": "S32",
+        "ArraySize": 1
+      },
+      "SpawnRate": {
+        "Type": "U32",
+        "ArraySize": 1
+      },
+      "SpawnScale": {
+        "Type": "F32",
+        "ArraySize": 1
+      },
+      "Shape": {
+        "Type": "U8",
+        "ArraySize": 1
+      },
+      "Strict": {
+        "Type": "BOOL",
+        "ArraySize": 1
+      }
+    },
+    "Wizard": {
+      "Transform": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "Character": "",
+      "LightCount": 0,
+      "LightArray": {
+        "ID": 0,
+        "Name": "LightX"
+      },
+      "ParticleName": "((null))",
+      "ParticleID": -1,
+      "SpawnRate": 15,
+      "SpawnScale": 1.0,
+      "Shape": 0,
+      "Strict": false
+    }
+  },
+  "Rendering": {}
+}

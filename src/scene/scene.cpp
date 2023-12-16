@@ -13,6 +13,7 @@ namespace Toolbox::Scene {
     std::expected<std::unique_ptr<SceneInstance>, SerialError>
     SceneInstance::FromPath(const std::filesystem::path &root) {
         SceneInstance scene;
+        scene.m_root_path = root;
 
         auto scene_bin   = root / "map/scene.bin";
         auto tables_bin  = root / "map/tables.bin";

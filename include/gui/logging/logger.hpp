@@ -34,6 +34,8 @@ namespace Toolbox::Log {
         void pushStack() { m_indentation++; }
         void popStack() { if (m_indentation > 0) m_indentation--; }
 
+        void clear() { m_messages.clear(); }
+
         void log(const std::string &message) { log(ReportLevel::LOG, message); }
 
         void debugLog(const std::string &message) {
@@ -56,6 +58,7 @@ namespace Toolbox::Log {
 
         void log(ReportLevel level, const std::string &message) {
             m_messages.emplace_back(level, message, m_indentation);
+            m_log_callback(m_messages.back());
         }
 
         void setLogCallback(log_callback_t cb) { m_log_callback = cb; }
