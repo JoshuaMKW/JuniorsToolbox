@@ -31,7 +31,7 @@ namespace Toolbox::UI {
         int run();
         bool teardown();
 
-        TypedDataClipboard<NodeInfo> &getSceneClipboard() { return m_hierarchy_clipboard; }
+        TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> &getSceneClipboard() { return m_hierarchy_clipboard; }
 
         ImVec2 windowScreenPos() {
             int x = 0, y = 0;
@@ -56,7 +56,7 @@ namespace Toolbox::UI {
         void renderWindows(f32 delta_time);
 
     private:
-        TypedDataClipboard<NodeInfo> m_hierarchy_clipboard;
+        TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_clipboard;
 
         GLFWwindow *m_render_window;
         std::vector<std::shared_ptr<IWindow>> m_windows;

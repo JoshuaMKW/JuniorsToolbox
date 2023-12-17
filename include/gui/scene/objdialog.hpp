@@ -14,8 +14,8 @@ namespace Toolbox::UI {
     class CreateObjDialog {
     public:
         using action_t = std::function<std::expected<void, BaseError>(
-            std::string_view, const Object::Template &, std::string_view, NodeInfo)>;
-        using cancel_t = std::function<void(NodeInfo)>;
+            std::string_view, const Object::Template &, std::string_view, SelectionNodeInfo<Object::ISceneObject>)>;
+        using cancel_t = std::function<void(SelectionNodeInfo<Object::ISceneObject>)>;
 
         CreateObjDialog()  = default;
         ~CreateObjDialog() = default;
@@ -29,7 +29,7 @@ namespace Toolbox::UI {
             m_open    = true;
             m_opening = true;
         }
-        void render(NodeInfo node_info);
+        void render(SelectionNodeInfo<Object::ISceneObject> node_info);
 
     private:
         bool m_open = false;
@@ -51,8 +51,8 @@ namespace Toolbox::UI {
 
     class RenameObjDialog {
     public:
-        using action_t = std::function<std::expected<void, BaseError>(std::string_view, NodeInfo)>;
-        using cancel_t = std::function<void(NodeInfo)>;
+        using action_t = std::function<std::expected<void, BaseError>(std::string_view, SelectionNodeInfo<Object::ISceneObject>)>;
+        using cancel_t = std::function<void(SelectionNodeInfo<Object::ISceneObject>)>;
 
         RenameObjDialog()  = default;
         ~RenameObjDialog() = default;
@@ -75,7 +75,7 @@ namespace Toolbox::UI {
             m_open    = true;
             m_opening = true;
         }
-        void render(NodeInfo node_info);
+        void render(SelectionNodeInfo<Object::ISceneObject> node_info);
 
     private:
         bool m_open    = false;
