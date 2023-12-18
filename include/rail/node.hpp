@@ -74,6 +74,7 @@ namespace Toolbox::Rail {
     private:
         Rail *m_rail;
 
+    public:
         std::shared_ptr<MetaMember> m_pos_x;
         std::shared_ptr<MetaMember> m_pos_y;
         std::shared_ptr<MetaMember> m_pos_z;

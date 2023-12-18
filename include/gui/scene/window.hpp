@@ -39,16 +39,21 @@ namespace Toolbox::UI {
         void renderBody(f32 delta_time) override;
         void renderHierarchy();
         void renderTree(std::shared_ptr<Object::ISceneObject> node);
-        void renderProperties();
         void renderRailEditor();
         void renderScene(f32 delta_time);
         void renderContextMenu(std::string str_id, SelectionNodeInfo<Object::ISceneObject> &info);
+
+        void renderProperties();
+        static bool renderEmptyProperties(SceneWindow &window) { return false; }
+        static bool renderObjectProperties(SceneWindow &window);
+        static bool renderRailProperties(SceneWindow &window);
+        static bool renderRailNodeProperties(SceneWindow &window);
 
         void buildContextMenuVirtualObj();
         void buildContextMenuGroupObj();
         void buildContextMenuPhysicalObj();
         void buildContextMenuMultiObj();
-        
+
         void buildContextMenuRail();
         void buildContextMenuMultiRail();
         void buildContextMenuRailNode();
@@ -111,10 +116,12 @@ namespace Toolbox::UI {
         ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_virtual_node_menu;
         ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_physical_node_menu;
         ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_group_node_menu;
-        ContextMenu<std::vector<SelectionNodeInfo<Object::ISceneObject>>> m_hierarchy_multi_node_menu;
+        ContextMenu<std::vector<SelectionNodeInfo<Object::ISceneObject>>>
+            m_hierarchy_multi_node_menu;
 
         // Property editor
-        std::vector<std::unique_ptr<IProperty>> m_selected_properties = {};
+        std::function<bool(SceneWindow &)> m_properties_render_handler;
+        std::vector<std::unique_ptr<IProperty>> m_selected_properties  = {};
 
         // Object modals
         CreateObjDialog m_create_obj_dialog;
@@ -138,7 +145,8 @@ namespace Toolbox::UI {
         ContextMenu<std::vector<SelectionNodeInfo<Rail::Rail>>> m_rail_list_multi_node_menu;
         std::vector<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_selected_nodes = {};
         ContextMenu<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_single_node_menu;
-        ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>> m_rail_node_list_multi_node_menu;
+        ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>>
+            m_rail_node_list_multi_node_menu;
 
         std::string m_selected_add_zone{""};
 

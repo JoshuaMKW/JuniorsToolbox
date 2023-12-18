@@ -2,6 +2,7 @@
 
 #include <glad/glad.h>
 
+#include "gui/logging/errors.hpp"
 #include "gui/logging/logger.hpp"
 #include "gui/scene/window.hpp"
 
@@ -80,33 +81,6 @@ namespace Toolbox::UI {
         return std::string(result.begin(), result.end() - 1);
     }
     */
-
-    static void logObjectError(const ObjectError &error);
-
-    static void logObjectCorruptError(const ObjectCorruptedError &error) {
-        auto &logger = Log::AppLogger::instance();
-        logger.error(error.m_message);
-        logger.trace(error.m_stacktrace);
-    }
-
-    static void logObjectGroupError(const ObjectGroupError &error) {
-        auto &logger = Log::AppLogger::instance();
-        logger.error(error.m_message);
-        logger.trace(error.m_stacktrace);
-        logger.pushStack();
-        for (auto &child_error : error.m_child_errors) {
-            logObjectError(child_error);
-        }
-        logger.popStack();
-    }
-
-    static void logObjectError(const ObjectError &error) {
-        if (std::holds_alternative<ObjectGroupError>(error)) {
-            logObjectGroupError(std::get<ObjectGroupError>(error));
-        } else {
-            logObjectCorruptError(std::get<ObjectCorruptedError>(error));
-        }
-    }
 
     static std::string getNodeUID(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
         std::string node_name = std::format("{} ({})##{}", node->type(), node->getNameRef().name(),
@@ -450,6 +424,8 @@ namespace Toolbox::UI {
     }
 
     SceneWindow::SceneWindow() : DockWindow() {
+        m_properties_render_handler = renderEmptyProperties;
+
         buildContextMenuVirtualObj();
         buildContextMenuGroupObj();
         buildContextMenuPhysicalObj();
@@ -636,6 +612,8 @@ namespace Toolbox::UI {
                             }
                         }
                     }
+
+                    m_properties_render_handler = renderObjectProperties;
                 }
 
                 if (node_open) {
@@ -683,6 +661,8 @@ namespace Toolbox::UI {
                                 }
                             }
                         }
+
+                        m_properties_render_handler = renderObjectProperties;
                     }
                     ImGui::TreePop();
                 }
@@ -699,18 +679,115 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowSizeConstraints({300, 500}, {FLT_MAX, FLT_MAX});
 
         if (ImGui::Begin(getWindowChildUID(*this, "Properties Editor").c_str())) {
-            float label_width = 0;
-            for (auto &prop : m_selected_properties) {
-                label_width = std::max(label_width, prop->labelSize().x);
-            }
-            for (auto &prop : m_selected_properties) {
-                if (prop->render(label_width)) {
-                    m_renderer.markDirty();
-                }
-                ImGui::ItemSize({0, 2});
+            if (m_properties_render_handler(*this)) {
+                m_renderer.markDirty();
             }
         }
         ImGui::End();
+    }
+
+    bool SceneWindow::renderObjectProperties(SceneWindow &window) {
+        float label_width = 0;
+        for (auto &prop : window.m_selected_properties) {
+            label_width = std::max(label_width, prop->labelSize().x);
+        }
+
+        bool is_updated = false;
+        for (auto &prop : window.m_selected_properties) {
+            if (prop->render(label_width)) {
+                is_updated = true;
+            }
+            ImGui::ItemSize({0, 2});
+        }
+
+        return is_updated;
+    }
+
+    bool SceneWindow::renderRailProperties(SceneWindow &window) {
+        ImVec2 window_size        = ImGui::GetWindowSize();
+        const bool collapse_lines = window_size.x < 350;
+
+        auto &rail            = window.m_rail_list_selected_nodes[0].m_selected;
+        std::string rail_name = rail->name();
+
+        ImGui::Text("Name");
+
+        if (!collapse_lines) {
+            ImGui::SameLine();
+        }
+
+        std::string label = "##Name";
+        rail_name.resize(128);
+        if (ImGui::InputText(label.c_str(), rail_name.data(), rail_name.size())) {
+            rail->setName(rail_name);
+            return true;
+        }
+        return false;
+    }
+
+    bool SceneWindow::renderRailNodeProperties(SceneWindow &window) {
+        auto &logger = Log::AppLogger::instance();
+
+        ImVec2 window_size        = ImGui::GetWindowSize();
+        const bool collapse_lines = window_size.x < 350;
+
+        const float label_width = ImGui::CalcTextSize("ConnectionCount").x;
+
+        auto &node = window.m_rail_node_list_selected_nodes[0].m_selected;
+        auto *rail = node->rail();
+
+        bool is_updated = false;
+
+        /* Position */
+        {
+            ImGui::Text("Position");
+
+            if (!collapse_lines) {
+                ImGui::SameLine();
+                ImGui::Dummy({label_width - ImGui::CalcTextSize("Position").x, 0});
+                ImGui::SameLine();
+            }
+
+            std::string label = "##Position";
+
+            s16 pos[3];
+            node->getPosition(pos[0], pos[1], pos[2]);
+
+            s16 step = 1, step_fast = 10;
+
+            if (ImGui::InputScalarCompactN(
+                    label.c_str(), ImGuiDataType_S16, pos, 3, &step, &step_fast, nullptr,
+                    ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
+                auto result = rail->setNodePosition(node, pos[0], pos[1], pos[2]);
+                if (!result) {
+                    logMetaError(result.error());
+                }
+            }
+        }
+
+        /* Flags */
+        {
+            ImGui::Text("Flags");
+
+            if (!collapse_lines) {
+                ImGui::SameLine();
+                ImGui::Dummy({label_width - ImGui::CalcTextSize("Flags").x, 0});
+                ImGui::SameLine();
+            }
+
+            std::string label = "##Flags";
+
+            u32 step = 1, step_fast = 10;
+
+            u32 flags = node->getFlags();
+            if (ImGui::InputScalarCompact(
+                    label.c_str(), ImGuiDataType_U32, &flags, &step, &step_fast, nullptr,
+                    ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
+                rail->setNodeFlag(node, flags);
+            }
+        }
+
+        return false;
     }
 
     void SceneWindow::renderRailEditor() {
@@ -719,8 +796,7 @@ namespace Toolbox::UI {
                                               ImGuiTreeNodeFlags_SpanAvailWidth;
         const ImGuiTreeNodeFlags node_flags = rail_flags | ImGuiTreeNodeFlags_Leaf;
         ImGuiWindowClass hierarchyOverride;
-        hierarchyOverride.ClassId =
-            ImGui::GetID(getWindowChildUID(*this, "Rail Editor").c_str());
+        hierarchyOverride.ClassId = ImGui::GetID(getWindowChildUID(*this, "Rail Editor").c_str());
         hierarchyOverride.ParentViewportId = m_window_id;
         hierarchyOverride.DockNodeFlagsOverrideSet =
             ImGuiDockNodeFlags_NoDockingOverMe | ImGuiDockNodeFlags_NoDockingOverOther;
@@ -730,60 +806,62 @@ namespace Toolbox::UI {
 
         if (ImGui::Begin(getWindowChildUID(*this, "Rail Editor").c_str())) {
             bool multi_select = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
-            if (ImGui::BeginChild("Rail List", {}, true)) {
-                for (auto &rail : m_current_scene->getRailData()) {
-                    SelectionNodeInfo<Rail::Rail> rail_info = {
-                        .m_selected      = rail,
-                        .m_node_id       = ImGui::GetID(rail->name().data()),
-                        .m_parent_synced = true,
-                        .m_scene_synced  = false};
+            // if (ImGui::BeginChild("Rail List", {}, true)) {
+            for (auto &rail : m_current_scene->getRailData()) {
+                SelectionNodeInfo<Rail::Rail> rail_info = {.m_selected = rail,
+                                                           .m_node_id =
+                                                               ImGui::GetID(rail->name().data()),
+                                                           .m_parent_synced = true,
+                                                           .m_scene_synced  = false};
 
-                    bool is_rail_selected = std::any_of(
-                        m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
-                        [&](auto &info) { return info.m_node_id == rail_info.m_node_id; });
+                bool is_rail_selected = std::any_of(
+                    m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
+                    [&](auto &info) { return info.m_node_id == rail_info.m_node_id; });
 
-                    if (ImGui::TreeNodeEx(rail->name().data(), rail_flags, is_rail_selected)) {
-                        if (ImGui::IsItemClicked()) {
-                            if (!multi_select) {
-                                m_rail_list_selected_nodes.clear();
-                            }
-                            m_rail_list_selected_nodes.push_back(rail_info);
+                if (ImGui::TreeNodeEx(rail->name().data(), rail_flags, is_rail_selected)) {
+                    if (ImGui::IsItemClicked()) {
+                        if (!multi_select) {
+                            m_rail_list_selected_nodes.clear();
                         }
+                        m_rail_list_selected_nodes.push_back(rail_info);
 
-                        for (size_t i = 0; i < rail->nodes().size(); ++i) {
-                            auto &node = rail->nodes()[i];
-                            std::string node_name = std::format("Node {}", i);
-                            std::string qual_name = std::string(rail->name()) + "##" + node_name;
-
-                            SelectionNodeInfo<Rail::RailNode> node_info = {
-                                .m_selected      = node,
-                                .m_node_id       = ImGui::GetID(qual_name.c_str()),
-                                .m_parent_synced = true,
-                                .m_scene_synced  = false};
-
-                            bool is_node_selected =
-                                std::any_of(m_rail_node_list_selected_nodes.begin(),
-                                            m_rail_node_list_selected_nodes.end(), [&](auto &info) {
-                                                return info.m_node_id == node_info.m_node_id;
-                                            });
-
-                            if (ImGui::TreeNodeEx(node_name.c_str(), node_flags,
-                                                  is_node_selected)) {
-                                if (ImGui::IsItemClicked()) {
-                                    if (!multi_select) {
-                                        m_rail_node_list_selected_nodes.clear();
-                                    }
-                                    m_rail_node_list_selected_nodes.push_back(node_info);
-                                }
-                                ImGui::TreePop();
-                            }
-                        }
-                        ImGui::TreePop();
+                        m_properties_render_handler = renderRailProperties;
                     }
+
+                    for (size_t i = 0; i < rail->nodes().size(); ++i) {
+                        auto &node            = rail->nodes()[i];
+                        std::string node_name = std::format("Node {}", i);
+                        std::string qual_name = std::string(rail->name()) + "##" + node_name;
+
+                        SelectionNodeInfo<Rail::RailNode> node_info = {
+                            .m_selected      = node,
+                            .m_node_id       = ImGui::GetID(qual_name.c_str()),
+                            .m_parent_synced = true,
+                            .m_scene_synced  = false};
+
+                        bool is_node_selected =
+                            std::any_of(m_rail_node_list_selected_nodes.begin(),
+                                        m_rail_node_list_selected_nodes.end(), [&](auto &info) {
+                                            return info.m_node_id == node_info.m_node_id;
+                                        });
+
+                        if (ImGui::TreeNodeEx(node_name.c_str(), node_flags, is_node_selected)) {
+                            if (ImGui::IsItemClicked()) {
+                                if (!multi_select) {
+                                    m_rail_node_list_selected_nodes.clear();
+                                }
+                                m_rail_node_list_selected_nodes.push_back(node_info);
+
+                                m_properties_render_handler = renderRailNodeProperties;
+                            }
+                            ImGui::TreePop();
+                        }
+                    }
+                    ImGui::TreePop();
                 }
             }
-            ImGui::EndChild();
-            //ImGui::SameLine();
+            /*}
+            ImGui::EndChild();*/
         }
         ImGui::End();
     }

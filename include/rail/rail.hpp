@@ -30,7 +30,9 @@ namespace Toolbox::Rail {
 
         [[nodiscard]] bool isSpline() const { return m_name.starts_with("S_"); }
 
-        [[nodiscard]] std::string_view name() const { return m_name; }
+        [[nodiscard]] std::string name() const { return m_name; }
+        void setName(std::string_view name) { m_name = name; }
+
         [[nodiscard]] const std::vector<node_ptr_t> &nodes() const { return m_nodes; }
         [[nodiscard]] std::vector<node_ptr_t> &nodes() { return m_nodes; }
 

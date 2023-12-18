@@ -17,29 +17,11 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include "objlib/errors.hpp"
 
 using namespace J3DAnimation;
 
 namespace Toolbox::Object {
-    class ISceneObject;
-
-    struct ObjectCorruptedError;
-    struct ObjectGroupError;
-
-    using ObjectError = std::variant<ObjectGroupError, ObjectCorruptedError>;
-
-    struct ObjectCorruptedError {
-        std::string m_message;
-        std::stacktrace m_stacktrace;
-        ISceneObject *m_object;
-    };
-
-    struct ObjectGroupError {
-        std::string m_message;
-        std::stacktrace m_stacktrace;
-        ISceneObject *m_object;
-        std::vector<ObjectError> m_child_errors = {};
-    };
 
     enum class AnimationType { BCK, BLK, BPK, BTP, BTK, BRK };
     constexpr std::optional<AnimationType> animationTypeFromPath(std::string_view path) {

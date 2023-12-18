@@ -496,7 +496,7 @@ namespace Toolbox::Rail {
     }
 
     std::unique_ptr<IClonable> Rail::clone(bool deep) const {
-        auto clone = std::make_unique<Rail>(m_name);
+        auto clone = std::make_unique<Rail>(name());
 
         if (deep) {
             for (const auto &node : m_nodes) {
