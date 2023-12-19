@@ -433,6 +433,14 @@ namespace Toolbox::UI {
 
         buildCreateObjDialog();
         buildRenameObjDialog();
+
+        buildContextMenuRail();
+        buildContextMenuMultiRail();
+        buildContextMenuRailNode();
+        buildContextMenuMultiRailNode();
+
+        buildCreateRailDialog();
+        buildRenameRailDialog();
     }
 
     bool SceneWindow::loadData(const std::filesystem::path &path) {
@@ -593,7 +601,7 @@ namespace Toolbox::UI {
                                                   node_already_clicked);
                 }
 
-                renderContextMenu(node_uid_str, node_info);
+                renderHierarchyContextMenu(node_uid_str, node_info);
 
                 if (ImGui::IsItemClicked()) {
                     m_selected_properties.clear();
@@ -641,7 +649,7 @@ namespace Toolbox::UI {
                         ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_already_clicked);
                 }
 
-                renderContextMenu(node_uid_str, node_info);
+                renderHierarchyContextMenu(node_uid_str, node_info);
 
                 if (node_open) {
                     if (ImGui::IsItemClicked()) {
@@ -703,27 +711,7 @@ namespace Toolbox::UI {
         return is_updated;
     }
 
-    bool SceneWindow::renderRailProperties(SceneWindow &window) {
-        ImVec2 window_size        = ImGui::GetWindowSize();
-        const bool collapse_lines = window_size.x < 350;
-
-        auto &rail            = window.m_rail_list_selected_nodes[0].m_selected;
-        std::string rail_name = rail->name();
-
-        ImGui::Text("Name");
-
-        if (!collapse_lines) {
-            ImGui::SameLine();
-        }
-
-        std::string label = "##Name";
-        rail_name.resize(128);
-        if (ImGui::InputText(label.c_str(), rail_name.data(), rail_name.size())) {
-            rail->setName(rail_name);
-            return true;
-        }
-        return false;
-    }
+    bool SceneWindow::renderRailProperties(SceneWindow &window) { return false; }
 
     bool SceneWindow::renderRailNodeProperties(SceneWindow &window) {
         auto &logger = Log::AppLogger::instance();
@@ -787,6 +775,84 @@ namespace Toolbox::UI {
             }
         }
 
+        u16 connection_count = node->getConnectionCount();
+        {
+            ImGui::Text("ConnectionCount");
+
+            if (!collapse_lines) {
+                ImGui::SameLine();
+                ImGui::Dummy({label_width - ImGui::CalcTextSize("ConnectionCount").x, 0});
+                ImGui::SameLine();
+            }
+
+            std::string label = "##ConnectionCount";
+
+            u16 step = 1, step_fast = 10;
+
+            u16 connection_count_old = connection_count;
+            if (ImGui::InputScalarCompact(
+                    label.c_str(), ImGuiDataType_U16, &connection_count, &step, &step_fast, nullptr,
+                    ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
+                connection_count = std::clamp<u16>(connection_count, 1, 8);
+                if (connection_count < connection_count_old) {
+                    for (size_t j = connection_count; j < connection_count_old; ++j) {
+                        auto result = rail->removeConnection(node, j);
+                        if (!result) {
+                            logMetaError(result.error());
+                            connection_count = j;
+                            break;
+                        }
+                    }
+                } else if (connection_count > connection_count_old) {
+                    for (size_t j = connection_count_old; j < connection_count; ++j) {
+                        auto result = rail->addConnection(node, rail->nodes()[0]);
+                        if (!result) {
+                            logMetaError(result.error());
+                            connection_count = j;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        bool connections_open = true;
+        if (ImGui::BeginGroupPanel("Connections", &connections_open, {})) {
+            for (u16 i = 0; i < connection_count; ++i) {
+                ImGui::Text("%i", i);
+
+                if (!collapse_lines) {
+                    ImGui::SameLine();
+                    ImGui::Dummy({label_width - ImGui::CalcTextSize("Flags").x, 0});
+                    ImGui::SameLine();
+                }
+
+                std::string label = std::format("##Connection-{}", i);
+
+                s16 step = 1, step_fast = 10;
+
+                s16 connection_value   = 0;
+                auto connection_result = node->getConnectionValue(i);
+                if (!connection_result) {
+                    logMetaError(connection_result.error());
+                } else {
+                    connection_value = connection_result.value();
+                }
+
+                s16 connection_value_old = connection_value;
+                if (ImGui::InputScalarCompact(label.c_str(), ImGuiDataType_S16, &connection_value,
+                                              &step, &step_fast, nullptr,
+                                              ImGuiInputTextFlags_CharsDecimal |
+                                                  ImGuiInputTextFlags_CharsNoBlank)) {
+                    connection_value =
+                        std::clamp<s16>(connection_value, 0, rail->nodes().size() - 1);
+                    if (connection_value != connection_value_old)
+                        rail->replaceConnection(node, i, rail->nodes()[connection_value]);
+                }
+            }
+        }
+        ImGui::EndGroupPanel();
+
         return false;
     }
 
@@ -818,10 +884,16 @@ namespace Toolbox::UI {
                     m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
                     [&](auto &info) { return info.m_node_id == rail_info.m_node_id; });
 
-                if (ImGui::TreeNodeEx(rail->name().data(), rail_flags, is_rail_selected)) {
+                bool is_rail_open =
+                    ImGui::TreeNodeEx(rail->name().data(), rail_flags, is_rail_selected);
+
+                renderRailContextMenu(rail->name(), rail_info);
+
+                if (is_rail_open) {
                     if (ImGui::IsItemClicked()) {
                         if (!multi_select) {
                             m_rail_list_selected_nodes.clear();
+                            m_rail_node_list_selected_nodes.clear();
                         }
                         m_rail_list_selected_nodes.push_back(rail_info);
 
@@ -845,9 +917,15 @@ namespace Toolbox::UI {
                                             return info.m_node_id == node_info.m_node_id;
                                         });
 
-                        if (ImGui::TreeNodeEx(node_name.c_str(), node_flags, is_node_selected)) {
+                        bool is_node_open =
+                            ImGui::TreeNodeEx(node_name.c_str(), node_flags, is_node_selected);
+
+                        renderRailNodeContextMenu(node_name, node_info);
+
+                        if (is_node_open) {
                             if (ImGui::IsItemClicked()) {
                                 if (!multi_select) {
+                                    m_rail_list_selected_nodes.clear();
                                     m_rail_node_list_selected_nodes.clear();
                                 }
                                 m_rail_node_list_selected_nodes.push_back(node_info);
@@ -888,7 +966,7 @@ namespace Toolbox::UI {
         ImGui::End();
     }
 
-    void SceneWindow::renderContextMenu(std::string str_id,
+    void SceneWindow::renderHierarchyContextMenu(std::string str_id,
                                         SelectionNodeInfo<Object::ISceneObject> &info) {
         if (m_hierarchy_selected_nodes.size() > 0) {
             SelectionNodeInfo<Object::ISceneObject> &info = m_hierarchy_selected_nodes.back();
@@ -900,6 +978,30 @@ namespace Toolbox::UI {
                 m_hierarchy_physical_node_menu.render(str_id, info);
             } else {
                 m_hierarchy_virtual_node_menu.render(str_id, info);
+            }
+        }
+    }
+
+    void SceneWindow::renderRailContextMenu(std::string str_id,
+                                            SelectionNodeInfo<Rail::Rail> &info) {
+        if (m_rail_list_selected_nodes.size() > 0) {
+            SelectionNodeInfo<Rail::Rail> &info = m_rail_list_selected_nodes.back();
+            if (m_rail_list_selected_nodes.size() > 1) {
+                m_rail_list_multi_node_menu.render({}, m_rail_list_selected_nodes);
+            } else {
+                m_rail_list_single_node_menu.render(str_id, info);
+            }
+        }
+    }
+
+    void SceneWindow::renderRailNodeContextMenu(std::string str_id,
+                                                SelectionNodeInfo<Rail::RailNode> &info) {
+        if (m_rail_node_list_selected_nodes.size() > 0) {
+            SelectionNodeInfo<Rail::RailNode> &info = m_rail_node_list_selected_nodes.back();
+            if (m_rail_node_list_selected_nodes.size() > 1) {
+                m_rail_node_list_multi_node_menu.render({}, m_rail_node_list_selected_nodes);
+            } else {
+                m_rail_node_list_single_node_menu.render(str_id, info);
             }
         }
     }
@@ -927,13 +1029,13 @@ namespace Toolbox::UI {
         m_hierarchy_virtual_node_menu.addOption(
             "Copy", [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-                MainApplication::instance().getSceneClipboard().setData(info);
+                MainApplication::instance().getSceneObjectClipboard().setData(info);
                 return std::expected<void, BaseError>();
             });
 
         m_hierarchy_virtual_node_menu.addOption(
             "Paste", [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                auto nodes = MainApplication::instance().getSceneClipboard().getData();
+                auto nodes = MainApplication::instance().getSceneObjectClipboard().getData();
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
@@ -989,13 +1091,13 @@ namespace Toolbox::UI {
         m_hierarchy_group_node_menu.addOption(
             "Copy", [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-                MainApplication::instance().getSceneClipboard().setData(info);
+                MainApplication::instance().getSceneObjectClipboard().setData(info);
                 return std::expected<void, BaseError>();
             });
 
         m_hierarchy_group_node_menu.addOption(
             "Paste", [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                auto nodes       = MainApplication::instance().getSceneClipboard().getData();
+                auto nodes       = MainApplication::instance().getSceneObjectClipboard().getData();
                 auto this_parent = std::reinterpret_pointer_cast<GroupSceneObject>(info.m_selected);
                 if (!this_parent) {
                     return make_error<void>("Scene Hierarchy",
@@ -1097,13 +1199,13 @@ namespace Toolbox::UI {
         m_hierarchy_physical_node_menu.addOption(
             "Copy", [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-                MainApplication::instance().getSceneClipboard().setData(info);
+                MainApplication::instance().getSceneObjectClipboard().setData(info);
                 return std::expected<void, BaseError>();
             });
 
         m_hierarchy_physical_node_menu.addOption(
             "Paste", [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                auto nodes = MainApplication::instance().getSceneClipboard().getData();
+                auto nodes = MainApplication::instance().getSceneObjectClipboard().getData();
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
@@ -1145,13 +1247,13 @@ namespace Toolbox::UI {
                 for (auto &info : infos) {
                     info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
                 }
-                MainApplication::instance().getSceneClipboard().setData(infos);
+                MainApplication::instance().getSceneObjectClipboard().setData(infos);
                 return std::expected<void, BaseError>();
             });
 
         m_hierarchy_multi_node_menu.addOption(
             "Paste", [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
-                auto nodes = MainApplication::instance().getSceneClipboard().getData();
+                auto nodes = MainApplication::instance().getSceneObjectClipboard().getData();
                 for (auto &info : infos) {
                     auto this_parent =
                         reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
@@ -1188,38 +1290,83 @@ namespace Toolbox::UI {
             });
     }
 
+    void SceneWindow::buildContextMenuRail() {
+        m_rail_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::Rail>>();
+
+        m_rail_list_single_node_menu.addOption(
+            "Insert Rail Here...", [this](SelectionNodeInfo<Rail::Rail> info) {
+                m_create_obj_dialog.open();
+                return std::expected<void, BaseError>();
+            });
+
+        m_rail_list_single_node_menu.addDivider();
+
+        m_rail_list_single_node_menu.addOption(
+            "Rename...", [this](SelectionNodeInfo<Rail::Rail> info) {
+                m_rename_obj_dialog.open();
+                m_rename_obj_dialog.setOriginalName(info.m_selected->name());
+                return std::expected<void, BaseError>();
+            });
+
+        // TODO: Add rail manipulators here.
+
+        m_rail_list_single_node_menu.addDivider();
+
+        m_rail_list_single_node_menu.addOption(
+            "Copy", [this](SelectionNodeInfo<Rail::Rail> info) {
+                info.m_selected = make_deep_clone<Rail::Rail>(info.m_selected);
+                MainApplication::instance().getSceneRailClipboard().setData(info);
+                return std::expected<void, BaseError>();
+            });
+
+        m_rail_list_single_node_menu.addOption(
+            "Paste", [this](SelectionNodeInfo<Rail::Rail> info) {
+                auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
+                // TODO: Add rails to data.
+                m_renderer.markDirty();
+                return std::expected<void, BaseError>();
+            });
+    }
+
+    void SceneWindow::buildContextMenuMultiRail() {}
+
+    void SceneWindow::buildContextMenuRailNode() {}
+
+    void SceneWindow::buildContextMenuMultiRailNode() {}
+
     void SceneWindow::buildCreateObjDialog() {
         m_create_obj_dialog.setup();
-        m_create_obj_dialog.setActionOnAccept([this](std::string_view name,
-                                                     const Object::Template &template_,
-                                                     std::string_view wizard_name,
-                                                     SelectionNodeInfo<Object::ISceneObject> info) {
-            auto new_object_result = Object::ObjectFactory::create(template_, wizard_name);
-            if (!name.empty()) {
-                new_object_result->setNameRef(name);
-            }
+        m_create_obj_dialog.setActionOnAccept(
+            [this](std::string_view name, const Object::Template &template_,
+                   std::string_view wizard_name, SelectionNodeInfo<Object::ISceneObject> info) {
+                auto new_object_result = Object::ObjectFactory::create(template_, wizard_name);
+                if (!name.empty()) {
+                    new_object_result->setNameRef(name);
+                }
 
-            ISceneObject *this_parent;
-            if (info.m_selected->isGroupObject()) {
-                this_parent = info.m_selected.get();
-            } else {
-                this_parent = info.m_selected->getParent();
-            }
+                ISceneObject *this_parent;
+                if (info.m_selected->isGroupObject()) {
+                    this_parent = info.m_selected.get();
+                } else {
+                    this_parent = info.m_selected->getParent();
+                }
 
-            if (!this_parent) {
-                return make_error<void>("Scene Hierarchy",
-                                        "Failed to get parent node for obj creation");
-            }
+                if (!this_parent) {
+                    auto result = make_error<void>("Scene Hierarchy",
+                                                   "Failed to get parent node for obj creation");
+                    logError(result.error());
+                    return;
+                }
 
-            auto result = this_parent->addChild(std::move(new_object_result));
-            if (!result) {
-                return make_error<void>("Scene Hierarchy",
-                                        std::format("Parent already has a child named {}", name));
-            }
+                auto result = this_parent->addChild(std::move(new_object_result));
+                if (!result) {
+                    logObjectGroupError(result.error());
+                    return;
+                }
 
-            m_renderer.markDirty();
-            return std::expected<void, BaseError>();
-        });
+                m_renderer.markDirty();
+                return;
+            });
         m_create_obj_dialog.setActionOnReject([](SelectionNodeInfo<Object::ISceneObject>) {});
     }
 
@@ -1228,14 +1375,42 @@ namespace Toolbox::UI {
         m_rename_obj_dialog.setActionOnAccept([this](std::string_view new_name,
                                                      SelectionNodeInfo<Object::ISceneObject> info) {
             if (new_name.empty()) {
-                return make_error<void>("Scene Hierarchy", "Can not rename object to empty string");
+                auto result = make_error<void>("Rail Data", "Can not rename rail to empty string");
+                logError(result.error());
+                return;
             }
-
             info.m_selected->setNameRef(new_name);
-
-            return std::expected<void, BaseError>();
         });
         m_rename_obj_dialog.setActionOnReject([](SelectionNodeInfo<Object::ISceneObject>) {});
+    }
+
+    void SceneWindow::buildCreateRailDialog() {
+        m_create_rail_dialog.setup();
+        m_create_rail_dialog.setActionOnAccept([this](std::string_view name, u16 node_count) {
+            if (name.empty()) {
+                auto result = make_error<void>("Rail Data", "Can not name rail as empty string");
+                logError(result.error());
+                return;
+            }
+
+            auto &rail_data = m_current_scene->getRailData();
+            // TODO: Add rail to data and initialize the rail.
+        });
+    }
+
+    void SceneWindow::buildRenameRailDialog() {
+        m_rename_rail_dialog.setup();
+        m_rename_rail_dialog.setActionOnAccept(
+            [this](std::string_view new_name, SelectionNodeInfo<Rail::Rail> info) {
+                if (new_name.empty()) {
+                    auto result =
+                        make_error<void>("Scene Hierarchy", "Can not rename rail to empty string");
+                    logError(result.error());
+                    return;
+                }
+                info.m_selected->setName(new_name);
+            });
+        m_rename_rail_dialog.setActionOnReject([](SelectionNodeInfo<Rail::Rail>) {});
     }
 
     void SceneWindow::buildDockspace(ImGuiID dockspace_id) {

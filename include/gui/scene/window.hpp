@@ -23,6 +23,7 @@
 #include "gui/scene/renderer.hpp"
 #include "gui/window.hpp"
 
+#include "raildialog.hpp"
 #include <gui/context_menu.hpp>
 #include <imgui.h>
 
@@ -41,7 +42,12 @@ namespace Toolbox::UI {
         void renderTree(std::shared_ptr<Object::ISceneObject> node);
         void renderRailEditor();
         void renderScene(f32 delta_time);
-        void renderContextMenu(std::string str_id, SelectionNodeInfo<Object::ISceneObject> &info);
+        void renderHierarchyContextMenu(std::string str_id,
+                                        SelectionNodeInfo<Object::ISceneObject> &info);
+        void renderRailContextMenu(std::string str_id,
+                                   SelectionNodeInfo<Rail::Rail> &info);
+        void renderRailNodeContextMenu(std::string str_id,
+                                       SelectionNodeInfo<Rail::RailNode> &info);
 
         void renderProperties();
         static bool renderEmptyProperties(SceneWindow &window) { return false; }
@@ -61,6 +67,8 @@ namespace Toolbox::UI {
 
         void buildCreateObjDialog();
         void buildRenameObjDialog();
+        void buildCreateRailDialog();
+        void buildRenameRailDialog();
 
     public:
         const ImGuiWindowClass *windowClass() const override {
@@ -121,7 +129,7 @@ namespace Toolbox::UI {
 
         // Property editor
         std::function<bool(SceneWindow &)> m_properties_render_handler;
-        std::vector<std::unique_ptr<IProperty>> m_selected_properties  = {};
+        std::vector<std::unique_ptr<IProperty>> m_selected_properties = {};
 
         // Object modals
         CreateObjDialog m_create_obj_dialog;
@@ -147,6 +155,10 @@ namespace Toolbox::UI {
         ContextMenu<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_single_node_menu;
         ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>>
             m_rail_node_list_multi_node_menu;
+
+        // Rail modals
+        CreateRailDialog m_create_rail_dialog;
+        RenameRailDialog m_rename_rail_dialog;
 
         std::string m_selected_add_zone{""};
 

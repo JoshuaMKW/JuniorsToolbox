@@ -137,6 +137,8 @@ namespace Toolbox::Rail {
         std::unique_ptr<IClonable> clone(bool deep) const override;
 
     protected:
+        std::expected<void, MetaError> calcDistancesWithNode(node_ptr_t node);
+
         void chaikinSubdivide();
 
     private:

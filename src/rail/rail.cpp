@@ -190,12 +190,12 @@ namespace Toolbox::Rail {
 
     std::expected<void, MetaError> Rail::setNodePosition(node_ptr_t node, s16 x, s16 y, s16 z) {
         node->setPosition(glm::vec3(x, y, z));
-        return {};
+        return calcDistancesWithNode(node);
     }
 
     std::expected<void, MetaError> Rail::setNodePosition(node_ptr_t node, const glm::vec3 &pos) {
         node->setPosition(pos);
-        return {};
+        return calcDistancesWithNode(node);
     }
 
     std::expected<void, MetaError> Rail::setNodeFlag(size_t node, u32 flag) {
@@ -237,7 +237,13 @@ namespace Toolbox::Rail {
             return make_meta_error<void>("Error adding connection (max)", connectionCount, 8);
         }
         node->setConnectionCount(connectionCount + 1);
-        node->setConnectionValue(connectionCount, static_cast<s16>(getNodeIndex(to).value()));
+        auto result =
+            node->setConnectionValue(connectionCount, static_cast<s16>(getNodeIndex(to).value()));
+        if (!result) {
+            return result;
+        }
+        f32 distance = glm::distance(node->getPosition(), to->getPosition());
+        node->setConnectionDistance(connectionCount, distance);
         return {};
     }
 
@@ -264,7 +270,12 @@ namespace Toolbox::Rail {
                 return result;
             }
         }
-        return node->setConnectionValue(index, static_cast<s16>(getNodeIndex(to).value()));
+        auto result = node->setConnectionValue(index, static_cast<s16>(getNodeIndex(to).value()));
+        if (!result) {
+            return result;
+        }
+        f32 distance = glm::distance(node->getPosition(), to->getPosition());
+        node->setConnectionDistance(index, distance);
     }
 
     std::expected<void, MetaError> Rail::removeConnection(size_t node, size_t index) {
@@ -306,7 +317,12 @@ namespace Toolbox::Rail {
             return make_meta_error<void>("Error replacing connection (index)", index,
                                          node->getConnectionCount());
         }
-        return node->setConnectionValue(index, static_cast<s16>(getNodeIndex(to).value()));
+        auto result = node->setConnectionValue(index, static_cast<s16>(getNodeIndex(to).value()));
+        if (!result) {
+            return result;
+        }
+        f32 distance = glm::distance(node->getPosition(), to->getPosition());
+        node->setConnectionDistance(index, distance);
     }
 
     std::expected<void, MetaError> Rail::connectNodeToNearest(size_t node, size_t count) {
@@ -335,7 +351,7 @@ namespace Toolbox::Rail {
             if (!result) {
                 return result;
             }
-            auto distance =
+            f32 distance =
                 glm::distance(node->getPosition(), nearest_nodes[i].second->getPosition());
             node->setConnectionDistance(i, distance);
         }
@@ -510,6 +526,35 @@ namespace Toolbox::Rail {
         }
 
         return clone;
+    }
+
+    std::expected<void, MetaError> Rail::calcDistancesWithNode(node_ptr_t node) {
+        const s16 node_index = static_cast<s16>(
+            std::distance(m_nodes.begin(), std::find(m_nodes.begin(), m_nodes.end(), node)));
+
+        for (u16 i = 0; i < node->getConnectionCount(); ++i) {
+            auto result = node->getConnectionValue(i);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            node_ptr_t other = m_nodes[result.value()];
+            f32 distance = glm::distance(other->getPosition(), node->getPosition());
+            other->setConnectionDistance(i, distance);
+        }
+
+        for (auto &other : m_nodes) {
+            for (u16 i = 0; i < other->getConnectionCount(); ++i) {
+                auto result = other->getConnectionValue(i);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+                if (result.value() == node_index) {
+                    f32 distance = glm::distance(other->getPosition(), node->getPosition());
+                    other->setConnectionDistance(i, distance);
+                }
+            }
+        }
+        return {};
     }
 
     void Rail::chaikinSubdivide() {}

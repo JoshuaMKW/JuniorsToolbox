@@ -1,5 +1,10 @@
 #pragma once
 
+#include "error.hpp"
+#include <stacktrace>
+#include <string>
+#include <variant>
+
 namespace Toolbox::Object {
 
     class ISceneObject;

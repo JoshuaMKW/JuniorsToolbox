@@ -1,16 +1,24 @@
 #pragma once
 
 #include "error.hpp"
-#include "objlib/meta/errors.hpp"
-#include "objlib/errors.hpp"
-#include "serial.hpp"
 #include "gui/logging/logger.hpp"
+#include "objlib/errors.hpp"
+#include "objlib/meta/errors.hpp"
+#include "serial.hpp"
 
 #include <variant>
 
 using namespace Toolbox::Object;
 
 namespace Toolbox::UI {
+
+    inline void logError(const BaseError &error) {
+        auto &logger = Log::AppLogger::instance();
+        for (auto &line : error.m_message) {
+            logger.error(line);
+        }
+        logger.trace(error.m_stacktrace);
+    }
 
     inline void logObjectError(const ObjectError &error);
 
@@ -39,29 +47,11 @@ namespace Toolbox::UI {
         }
     }
 
-    inline void logMetaTypeError(const MetaTypeError &error) {
-        auto &logger = Log::AppLogger::instance();
-        for (auto &line : error.m_message) {
-            logger.error(line);
-        }
-        logger.trace(error.m_stacktrace);
-    }
+    inline void logMetaTypeError(const MetaTypeError &error) { logError(error); }
 
-    inline void logMetaArrayError(const MetaArrayError &error) {
-        auto &logger = Log::AppLogger::instance();
-        for (auto &line : error.m_message) {
-            logger.error(line);
-        }
-        logger.trace(error.m_stacktrace);
-    }
+    inline void logMetaArrayError(const MetaArrayError &error) { logError(error); }
 
-    inline void logMetaScopeError(const MetaScopeError &error) {
-        auto &logger = Log::AppLogger::instance();
-        for (auto &line : error.m_message) {
-            logger.error(line);
-        }
-        logger.trace(error.m_stacktrace);
-    }
+    inline void logMetaScopeError(const MetaScopeError &error) { logError(error); }
 
     inline void logMetaError(const MetaError &error) {
         if (std::holds_alternative<MetaTypeError>(error)) {
@@ -73,11 +63,5 @@ namespace Toolbox::UI {
         }
     }
 
-    inline void logSerialError(const SerialError &error) {
-        auto &logger = Log::AppLogger::instance();
-        for (auto &line : error.m_message) {
-            logger.error(line);
-        }
-        logger.trace(error.m_stacktrace);
-    }
-}
+    inline void logSerialError(const SerialError &error) { logError(error); }
+}  // namespace Toolbox::UI
