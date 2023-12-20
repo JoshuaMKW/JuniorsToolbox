@@ -1,3 +1,7 @@
+#if defined(_MSC_VER)
+#define _USE_MATH_DEFINES
+#endif
+
 #include <cmath>
 
 #include <glad/glad.h>
@@ -750,6 +754,7 @@ namespace Toolbox::UI {
                 if (!result) {
                     logMetaError(result.error());
                 }
+                is_updated = true;
             }
         }
 
@@ -795,7 +800,7 @@ namespace Toolbox::UI {
                     ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
                 connection_count = std::clamp<u16>(connection_count, 1, 8);
                 if (connection_count < connection_count_old) {
-                    for (size_t j = connection_count; j < connection_count_old; ++j) {
+                    for (u16 j = connection_count; j < connection_count_old; ++j) {
                         auto result = rail->removeConnection(node, j);
                         if (!result) {
                             logMetaError(result.error());
@@ -804,7 +809,7 @@ namespace Toolbox::UI {
                         }
                     }
                 } else if (connection_count > connection_count_old) {
-                    for (size_t j = connection_count_old; j < connection_count; ++j) {
+                    for (u16 j = connection_count_old; j < connection_count; ++j) {
                         auto result = rail->addConnection(node, rail->nodes()[0]);
                         if (!result) {
                             logMetaError(result.error());
@@ -813,11 +818,11 @@ namespace Toolbox::UI {
                         }
                     }
                 }
+                is_updated = true;
             }
         }
 
-        bool connections_open = true;
-        if (ImGui::BeginGroupPanel("Connections", &connections_open, {})) {
+        if (ImGui::BeginGroupPanel("Connections", &window.m_connections_open, {})) {
             for (u16 i = 0; i < connection_count; ++i) {
                 ImGui::Text("%i", i);
 
@@ -845,15 +850,26 @@ namespace Toolbox::UI {
                                               ImGuiInputTextFlags_CharsDecimal |
                                                   ImGuiInputTextFlags_CharsNoBlank)) {
                     connection_value =
-                        std::clamp<s16>(connection_value, 0, rail->nodes().size() - 1);
-                    if (connection_value != connection_value_old)
-                        rail->replaceConnection(node, i, rail->nodes()[connection_value]);
+                        std::clamp<s16>(connection_value, 0, static_cast<s16>(rail->nodes().size()) - 1);
+                    if (connection_value != connection_value_old) {
+                        auto result =
+                            rail->replaceConnection(node, i, rail->nodes()[connection_value]);
+                        if (!result) {
+                            logMetaError(result.error());
+                        }
+                        is_updated = true;
+                    }
                 }
             }
         }
         ImGui::EndGroupPanel();
 
-        return false;
+        if (is_updated) {
+            // TODO: Find out why new rails crash here.
+            window.m_renderer.updatePaths(window.m_current_scene->getRailData());
+        }
+
+        return is_updated;
     }
 
     void SceneWindow::renderRailEditor() {
@@ -942,6 +958,11 @@ namespace Toolbox::UI {
             ImGui::EndChild();*/
         }
         ImGui::End();
+
+        if (m_rail_list_selected_nodes.size() > 0) {
+            m_create_rail_dialog.render(m_rail_list_selected_nodes.back());
+            m_rename_rail_dialog.render(m_rail_list_selected_nodes.back());
+        }
     }
 
     void SceneWindow::renderScene(f32 delta_time) {
@@ -967,7 +988,7 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::renderHierarchyContextMenu(std::string str_id,
-                                        SelectionNodeInfo<Object::ISceneObject> &info) {
+                                                 SelectionNodeInfo<Object::ISceneObject> &info) {
         if (m_hierarchy_selected_nodes.size() > 0) {
             SelectionNodeInfo<Object::ISceneObject> &info = m_hierarchy_selected_nodes.back();
             if (m_hierarchy_selected_nodes.size() > 1) {
@@ -1293,18 +1314,18 @@ namespace Toolbox::UI {
     void SceneWindow::buildContextMenuRail() {
         m_rail_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::Rail>>();
 
-        m_rail_list_single_node_menu.addOption(
-            "Insert Rail Here...", [this](SelectionNodeInfo<Rail::Rail> info) {
-                m_create_obj_dialog.open();
-                return std::expected<void, BaseError>();
-            });
+        m_rail_list_single_node_menu.addOption("Insert Rail Here...",
+                                               [this](SelectionNodeInfo<Rail::Rail> info) {
+                                                   m_create_rail_dialog.open();
+                                                   return std::expected<void, BaseError>();
+                                               });
 
         m_rail_list_single_node_menu.addDivider();
 
         m_rail_list_single_node_menu.addOption(
             "Rename...", [this](SelectionNodeInfo<Rail::Rail> info) {
-                m_rename_obj_dialog.open();
-                m_rename_obj_dialog.setOriginalName(info.m_selected->name());
+                m_rename_rail_dialog.open();
+                m_rename_rail_dialog.setOriginalName(info.m_selected->name());
                 return std::expected<void, BaseError>();
             });
 
@@ -1312,20 +1333,18 @@ namespace Toolbox::UI {
 
         m_rail_list_single_node_menu.addDivider();
 
-        m_rail_list_single_node_menu.addOption(
-            "Copy", [this](SelectionNodeInfo<Rail::Rail> info) {
-                info.m_selected = make_deep_clone<Rail::Rail>(info.m_selected);
-                MainApplication::instance().getSceneRailClipboard().setData(info);
-                return std::expected<void, BaseError>();
-            });
+        m_rail_list_single_node_menu.addOption("Copy", [this](SelectionNodeInfo<Rail::Rail> info) {
+            info.m_selected = make_deep_clone<Rail::Rail>(info.m_selected);
+            MainApplication::instance().getSceneRailClipboard().setData(info);
+            return std::expected<void, BaseError>();
+        });
 
-        m_rail_list_single_node_menu.addOption(
-            "Paste", [this](SelectionNodeInfo<Rail::Rail> info) {
-                auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
-                // TODO: Add rails to data.
-                m_renderer.markDirty();
-                return std::expected<void, BaseError>();
-            });
+        m_rail_list_single_node_menu.addOption("Paste", [this](SelectionNodeInfo<Rail::Rail> info) {
+            auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
+            // TODO: Add rails to data.
+            m_renderer.markDirty();
+            return std::expected<void, BaseError>();
+        });
     }
 
     void SceneWindow::buildContextMenuMultiRail() {}
@@ -1386,15 +1405,71 @@ namespace Toolbox::UI {
 
     void SceneWindow::buildCreateRailDialog() {
         m_create_rail_dialog.setup();
-        m_create_rail_dialog.setActionOnAccept([this](std::string_view name, u16 node_count) {
+        m_create_rail_dialog.setActionOnAccept([this](std::string_view name, u16 node_count,
+                                                      s16 node_distance, bool loop) {
             if (name.empty()) {
                 auto result = make_error<void>("Rail Data", "Can not name rail as empty string");
                 logError(result.error());
                 return;
             }
 
-            auto &rail_data = m_current_scene->getRailData();
-            // TODO: Add rail to data and initialize the rail.
+            RailData rail_data = m_current_scene->getRailData();
+
+            f64 angle      = 0;
+            f64 angle_step = node_count == 0 ? 0 : (M_PI * 2) / node_count;
+
+            std::vector<Rail::Rail::node_ptr_t> new_nodes;
+            for (u16 i = 0; i < node_count; ++i) {
+                s16 x = 0;
+                s16 y = 0;
+                s16 z = 0;
+                if (loop) {
+                    x = static_cast<s16>(std::cos(angle) * node_distance);
+                    y = 0;
+                    z = static_cast<s16>(std::sin(angle) * node_distance);
+                } else {
+                    x = 0;
+                    y = 0;
+                    z = i * node_distance;
+                }
+
+                auto node = std::make_shared<Rail::RailNode>(x, y, z, 0);
+                new_nodes.push_back(node);
+
+                angle += angle_step;
+            }
+
+            Rail::Rail new_rail = Rail::Rail(name, new_nodes);
+            
+            for (u16 i = 0; i < node_count; ++i) {
+                auto result = new_rail.connectNodeToNeighbors(i, true);
+                if (!result) {
+                    logMetaError(result.error());
+                }
+            }
+            
+            if (!loop) {
+                // First
+                {
+                    auto result = new_rail.removeConnection(0, 1);
+                    if (!result) {
+                        logMetaError(result.error());
+                    }
+                }
+
+                // Last
+                {
+                    auto result = new_rail.removeConnection(node_count - 1, 1);
+                    if (!result) {
+                        logMetaError(result.error());
+                    }
+                }
+            }
+
+            rail_data.addRail(new_rail);
+
+            m_current_scene->setRailData(rail_data);
+            m_renderer.updatePaths(rail_data);
         });
     }
 

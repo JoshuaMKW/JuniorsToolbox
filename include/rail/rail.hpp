@@ -19,7 +19,11 @@ namespace Toolbox::Rail {
 
         Rail() = delete;
         explicit Rail(std::string_view name) : m_name(name) {}
-        Rail(std::string_view name, std::vector<node_ptr_t> nodes) : m_name(name), m_nodes(nodes) {}
+        Rail(std::string_view name, std::vector<node_ptr_t> nodes) : m_name(name), m_nodes(nodes) {
+            for (auto &node : m_nodes) {
+                node->m_rail = this;
+            }
+        }
         Rail(const Rail &other) = default;
         Rail(Rail &&other)      = default;
 
@@ -114,8 +118,8 @@ namespace Toolbox::Rail {
         std::expected<void, MetaError> connectNodeToNext(size_t node);
         std::expected<void, MetaError> connectNodeToNext(node_ptr_t node);
 
-        std::expected<void, MetaError> connectNodeToNeighbors(size_t node);
-        std::expected<void, MetaError> connectNodeToNeighbors(node_ptr_t node);
+        std::expected<void, MetaError> connectNodeToNeighbors(size_t node, bool loop_ok);
+        std::expected<void, MetaError> connectNodeToNeighbors(node_ptr_t node, bool loop_ok);
 
         std::expected<void, MetaError> connectNodeToReferrers(size_t node);
         std::expected<void, MetaError> connectNodeToReferrers(node_ptr_t node);

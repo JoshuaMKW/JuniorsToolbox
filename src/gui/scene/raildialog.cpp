@@ -54,16 +54,44 @@ namespace Toolbox::UI {
 
             bool state_invalid = m_rail_name.empty();
 
-            ImGui::Text("Nodes");
+            {
+                ImGui::Text("Nodes");
 
-            ImGui::SameLine();
-            ImGui::Dummy({label_width - ImGui::CalcTextSize("Nodes").x, 0});
-            ImGui::SameLine();
+                ImGui::SameLine();
+                ImGui::Dummy({label_width - ImGui::CalcTextSize("Nodes").x, 0});
+                ImGui::SameLine();
 
-            u16 node_step = 1, node_step_fast = 10;
-            ImGui::InputScalarCompact(
-                "##NodeCount", ImGuiDataType_U16, &m_node_count, &node_step, &node_step_fast,
-                nullptr, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
+                u16 node_step = 1, node_step_fast = 10;
+                ImGui::InputScalarCompact(
+                    "##NodeCount", ImGuiDataType_U16, &m_node_count, &node_step, &node_step_fast,
+                    nullptr, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank);
+            }
+
+            {
+                ImGui::Text("Distance");
+
+                ImGui::SameLine();
+                ImGui::Dummy({label_width - ImGui::CalcTextSize("Distance").x, 0});
+                ImGui::SameLine();
+
+                s16 node_step = 1, node_step_fast = 10;
+                if (ImGui::InputScalarCompact("##Distance", ImGuiDataType_S16, &m_node_distance,
+                                              &node_step, &node_step_fast, nullptr,
+                                              ImGuiInputTextFlags_CharsDecimal |
+                                                  ImGuiInputTextFlags_CharsNoBlank)) {
+                    m_node_distance = std::clamp<s16>(m_node_distance, 0, 16000);
+                }
+            }
+
+            {
+                ImGui::Text("Loop");
+
+                ImGui::SameLine();
+                ImGui::Dummy({label_width - ImGui::CalcTextSize("Loop").x, 0});
+                ImGui::SameLine();
+
+                ImGui::Checkbox("##loop", &m_loop);
+            }
 
             if (state_invalid) {
                 ImVec4 disabled_color = ImGui::GetStyle().Colors[ImGuiCol_Button];
@@ -81,7 +109,7 @@ namespace Toolbox::UI {
             }
 
             if (ImGui::Button("Create")) {
-                m_on_accept(proposed_name, m_node_count);
+                m_on_accept(proposed_name, m_node_count, m_node_distance, m_loop);
                 m_open = false;
             }
 

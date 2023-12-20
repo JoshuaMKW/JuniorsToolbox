@@ -15,7 +15,7 @@ namespace Toolbox::UI {
     public:
         enum class InitialShape { NONE, CIRCLE };
 
-        using action_t = std::function<void(std::string_view, u16)>;
+        using action_t = std::function<void(std::string_view, u16, s16, bool)>;
         using cancel_t = std::function<void(SelectionNodeInfo<Rail::Rail>)>;
 
         CreateRailDialog()  = default;
@@ -37,6 +37,8 @@ namespace Toolbox::UI {
         bool m_opening = false;
 
         u16 m_node_count = 0;
+        s16 m_node_distance   = 0;
+        bool m_loop      = false;
 
         std::array<char, 128> m_rail_name = {};
 
@@ -46,8 +48,7 @@ namespace Toolbox::UI {
 
     class RenameRailDialog {
     public:
-        using action_t = std::function<void(
-            std::string_view, SelectionNodeInfo<Rail::Rail>)>;
+        using action_t = std::function<void(std::string_view, SelectionNodeInfo<Rail::Rail>)>;
         using cancel_t = std::function<void(SelectionNodeInfo<Rail::Rail>)>;
 
         RenameRailDialog()  = default;

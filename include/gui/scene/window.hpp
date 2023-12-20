@@ -148,6 +148,7 @@ namespace Toolbox::UI {
         u32 m_dock_node_down_left_id = 0;
 
         // Rail editor
+        bool m_connections_open                                               = true;
         std::vector<SelectionNodeInfo<Rail::Rail>> m_rail_list_selected_nodes = {};
         ContextMenu<SelectionNodeInfo<Rail::Rail>> m_rail_list_single_node_menu;
         ContextMenu<std::vector<SelectionNodeInfo<Rail::Rail>>> m_rail_list_multi_node_menu;

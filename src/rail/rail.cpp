@@ -420,48 +420,55 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::expected<void, MetaError> Rail::connectNodeToNeighbors(size_t node) {
+    std::expected<void, MetaError> Rail::connectNodeToNeighbors(size_t node, bool loop_ok) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error connecting node to neighbors", node,
                                          m_nodes.size());
         }
-        return connectNodeToNeighbors(m_nodes[node]);
+        return connectNodeToNeighbors(m_nodes[node], loop_ok);
     }
 
-    std::expected<void, MetaError> Rail::connectNodeToNeighbors(node_ptr_t node) {
+    std::expected<void, MetaError> Rail::connectNodeToNeighbors(node_ptr_t node, bool loop_ok) {
         auto result = getNodeIndex(node);
         if (!result) {
             return make_meta_error<void>("Error connecting node to neighbors (not from rail)",
                                          std::numeric_limits<size_t>::max(), 0);
         }
         auto node_index = result.value();
-        if (node_index == 0) {
+        if (node_index == 0 && !loop_ok) {
             return make_meta_error<void>("Error connecting node to neighbors (first node)",
                                          std::numeric_limits<size_t>::max(), 0);
         }
-        if (node_index == m_nodes.size() - 1) {
+        if (node_index == m_nodes.size() - 1 && !loop_ok) {
             return make_meta_error<void>("Error connecting node to neighbors (last node)",
                                          node_index + 1, m_nodes.size());
         }
+
+        s16 last_node_index = static_cast<s16>(m_nodes.size()) - 1;
+        s16 prev_node_index = node_index == 0 ? last_node_index : static_cast<s16>(node_index) - 1;
+        s16 prev_connection_index = node_index == 0 ? 1 : 0;
+        s16 next_node_index = node_index == last_node_index ? 0 : static_cast<s16>(node_index) + 1;
+        s16 next_connection_index = node_index == 0 ? 0 : 1;
+
         node->setConnectionCount(2);
         {
-            auto vresult = node->setConnectionValue(0, static_cast<s16>(node_index) - 1);
+            auto vresult = node->setConnectionValue(prev_connection_index, prev_node_index);
             if (!vresult) {
                 return vresult;
             }
             auto distance =
-                glm::distance(node->getPosition(), m_nodes[node_index - 1]->getPosition());
-            node->setConnectionDistance(0, distance);
+                glm::distance(node->getPosition(), m_nodes[prev_node_index]->getPosition());
+            node->setConnectionDistance(prev_connection_index, distance);
         }
 
         {
-            auto vresult = node->setConnectionValue(1, static_cast<s16>(node_index) + 1);
+            auto vresult = node->setConnectionValue(next_connection_index, next_node_index);
             if (!vresult) {
                 return vresult;
             }
             auto distance =
-                glm::distance(node->getPosition(), m_nodes[node_index + 1]->getPosition());
-            node->setConnectionDistance(1, distance);
+                glm::distance(node->getPosition(), m_nodes[next_node_index]->getPosition());
+            node->setConnectionDistance(next_connection_index, distance);
         }
 
         return {};
@@ -538,7 +545,7 @@ namespace Toolbox::Rail {
                 return std::unexpected(result.error());
             }
             node_ptr_t other = m_nodes[result.value()];
-            f32 distance = glm::distance(other->getPosition(), node->getPosition());
+            f32 distance     = glm::distance(other->getPosition(), node->getPosition());
             other->setConnectionDistance(i, distance);
         }
 

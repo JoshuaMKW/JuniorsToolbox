@@ -31,6 +31,10 @@ namespace Toolbox::UI {
 
         void initializeData(const SceneInstance &scene);
 
+        void updatePaths(const RailData &rail_data) {
+            initializePaths(rail_data);
+        }
+
         void markDirty() { m_is_dirty = true; }
         void getCameraTranslation(glm::vec3 &translation) { m_camera.getPos(translation); }
         void setCameraOrientation(const glm::vec3 &up, const glm::vec3 &translation,

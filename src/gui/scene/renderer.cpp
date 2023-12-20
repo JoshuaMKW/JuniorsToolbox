@@ -189,6 +189,7 @@ namespace Toolbox::UI {
     }
 
     void Renderer::initializePaths(const RailData &rail_data) {
+        m_path_renderer.m_paths.clear();
         for (auto &rail : rail_data) {
             for (auto &node : rail->nodes()) {
                 std::vector<PathPoint> connections;
