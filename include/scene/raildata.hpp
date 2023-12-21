@@ -34,8 +34,8 @@ namespace Toolbox::Scene {
         [[nodiscard]] std::optional<rail_ptr_t> getRail(size_t index) const;
         [[nodiscard]] std::optional<rail_ptr_t> getRail(std::string_view name) const;
 
-        void addRail(const Rail::Rail &rail);
-        void insertRail(size_t index, const Rail::Rail &rail);
+        void addRail(std::shared_ptr<Rail::Rail> rail);
+        void insertRail(size_t index, std::shared_ptr<Rail::Rail> rail);
         void removeRail(size_t index);
         void removeRail(std::string_view name);
 

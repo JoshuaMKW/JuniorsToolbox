@@ -865,7 +865,6 @@ namespace Toolbox::UI {
         ImGui::EndGroupPanel();
 
         if (is_updated) {
-            // TODO: Find out why new rails crash here.
             window.m_renderer.updatePaths(window.m_current_scene->getRailData());
         }
 
@@ -1439,10 +1438,10 @@ namespace Toolbox::UI {
                 angle += angle_step;
             }
 
-            Rail::Rail new_rail = Rail::Rail(name, new_nodes);
+            auto new_rail = std::make_shared<Rail::Rail>(name, new_nodes);
             
             for (u16 i = 0; i < node_count; ++i) {
-                auto result = new_rail.connectNodeToNeighbors(i, true);
+                auto result = new_rail->connectNodeToNeighbors(i, true);
                 if (!result) {
                     logMetaError(result.error());
                 }
@@ -1451,7 +1450,7 @@ namespace Toolbox::UI {
             if (!loop) {
                 // First
                 {
-                    auto result = new_rail.removeConnection(0, 1);
+                    auto result = new_rail->removeConnection(0, 1);
                     if (!result) {
                         logMetaError(result.error());
                     }
@@ -1459,7 +1458,7 @@ namespace Toolbox::UI {
 
                 // Last
                 {
-                    auto result = new_rail.removeConnection(node_count - 1, 1);
+                    auto result = new_rail->removeConnection(node_count - 1, 1);
                     if (!result) {
                         logMetaError(result.error());
                     }
@@ -1470,6 +1469,7 @@ namespace Toolbox::UI {
 
             m_current_scene->setRailData(rail_data);
             m_renderer.updatePaths(rail_data);
+            m_renderer.markDirty();
         });
     }
 

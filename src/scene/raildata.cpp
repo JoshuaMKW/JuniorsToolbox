@@ -47,10 +47,10 @@ namespace Toolbox::Scene {
         return m_rails[index.value()];
     }
 
-    void RailData::addRail(const Rail::Rail &rail) { m_rails.push_back(std::make_shared<Rail::Rail>(rail)); }
+    void RailData::addRail(std::shared_ptr<Rail::Rail> rail) { m_rails.push_back(rail); }
 
-    void RailData::insertRail(size_t index, const Rail::Rail &rail) {
-        m_rails.insert(m_rails.begin() + index, std::make_shared<Rail::Rail>(rail));
+    void RailData::insertRail(size_t index, std::shared_ptr<Rail::Rail> rail) {
+        m_rails.insert(m_rails.begin() + index, rail);
     }
 
     void RailData::removeRail(size_t index) { m_rails.erase(m_rails.begin() + index); }
