@@ -849,8 +849,8 @@ namespace Toolbox::UI {
                                               &step, &step_fast, nullptr,
                                               ImGuiInputTextFlags_CharsDecimal |
                                                   ImGuiInputTextFlags_CharsNoBlank)) {
-                    connection_value =
-                        std::clamp<s16>(connection_value, 0, static_cast<s16>(rail->nodes().size()) - 1);
+                    connection_value = std::clamp<s16>(connection_value, 0,
+                                                       static_cast<s16>(rail->nodes().size()) - 1);
                     if (connection_value != connection_value_old) {
                         auto result =
                             rail->replaceConnection(node, i, rail->nodes()[connection_value]);
@@ -1340,17 +1340,161 @@ namespace Toolbox::UI {
 
         m_rail_list_single_node_menu.addOption("Paste", [this](SelectionNodeInfo<Rail::Rail> info) {
             auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
-            // TODO: Add rails to data.
+            if (nodes.size() > 0) {
+                RailData data         = m_current_scene->getRailData();
+                size_t selected_index = data.getRailCount();
+                auto result           = data.getRailIndex(info.m_selected->name());
+                if (result) {
+                    selected_index = result.value();
+                }
+                for (auto &node : nodes) {
+                    data.insertRail(selected_index + 1, node.m_selected);
+                    selected_index += 1;
+                }
+                m_current_scene->setRailData(data);
+            }
             m_renderer.markDirty();
             return std::expected<void, BaseError>();
         });
+
+        m_rail_list_single_node_menu.addOption("Delete",
+                                               [this](SelectionNodeInfo<Rail::Rail> info) {
+                                                   RailData data = m_current_scene->getRailData();
+                                                   data.removeRail(info.m_selected->name());
+                                                   m_current_scene->setRailData(data);
+                                                   m_renderer.markDirty();
+                                                   return std::expected<void, BaseError>();
+                                               });
     }
 
-    void SceneWindow::buildContextMenuMultiRail() {}
+    void SceneWindow::buildContextMenuMultiRail() {
+        m_rail_list_multi_node_menu = ContextMenu<std::vector<SelectionNodeInfo<Rail::Rail>>>();
 
-    void SceneWindow::buildContextMenuRailNode() {}
+        m_rail_list_multi_node_menu.addOption(
+            "Copy", [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
+                for (auto &select : info) {
+                    select.m_selected = make_deep_clone<Rail::Rail>(select.m_selected);
+                }
+                MainApplication::instance().getSceneRailClipboard().setData(info);
+                return std::expected<void, BaseError>();
+            });
 
-    void SceneWindow::buildContextMenuMultiRailNode() {}
+        m_rail_list_multi_node_menu.addOption(
+            "Paste", [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
+                auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
+                if (nodes.size() > 0) {
+                    RailData data         = m_current_scene->getRailData();
+                    size_t selected_index = data.getRailCount();
+                    auto result           = data.getRailIndex(info[0].m_selected->name());
+                    if (result) {
+                        selected_index = result.value();
+                    }
+                    for (auto &node : nodes) {
+                        data.insertRail(selected_index + 1, node.m_selected);
+                        selected_index += 1;
+                    }
+                    m_current_scene->setRailData(data);
+                }
+                m_renderer.markDirty();
+                return std::expected<void, BaseError>();
+            });
+
+        m_rail_list_multi_node_menu.addOption(
+            "Delete", [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
+                RailData data = m_current_scene->getRailData();
+                for (auto &select : info) {
+                    data.removeRail(select.m_selected->name());
+                }
+                m_current_scene->setRailData(data);
+                m_renderer.markDirty();
+                return std::expected<void, BaseError>();
+            });
+    }
+
+    void SceneWindow::buildContextMenuRailNode() {
+        m_rail_node_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::RailNode>>();
+
+        m_rail_node_list_single_node_menu.addOption("Insert Node Here...",
+                                                    [this](SelectionNodeInfo<Rail::RailNode> info) {
+                                                        m_create_rail_dialog.open();
+                                                        return std::expected<void, BaseError>();
+                                                    });
+
+        m_rail_node_list_single_node_menu.addDivider();
+
+        m_rail_node_list_single_node_menu.addOption(
+            "Copy", [this](SelectionNodeInfo<Rail::RailNode> info) {
+                info.m_selected = make_deep_clone<Rail::RailNode>(info.m_selected);
+                MainApplication::instance().getSceneRailNodeClipboard().setData(info);
+                return std::expected<void, BaseError>();
+            });
+
+        m_rail_node_list_single_node_menu.addOption(
+            "Paste", [this](SelectionNodeInfo<Rail::RailNode> info) {
+                Rail::Rail *rail      = info.m_selected->rail();
+                size_t selected_index = rail->getNodeCount();
+                auto result           = rail->getNodeIndex(info.m_selected);
+                if (result) {
+                    selected_index = result.value();
+                }
+                auto nodes = MainApplication::instance().getSceneRailNodeClipboard().getData();
+                for (auto &node : nodes) {
+                    rail->insertNode(selected_index + 1, node.m_selected);
+                    selected_index += 1;
+                }
+                m_renderer.markDirty();
+                return std::expected<void, BaseError>();
+            });
+
+        m_rail_list_single_node_menu.addOption("Delete",
+                                               [this](SelectionNodeInfo<Rail::RailNode> info) {
+                                                   Rail::Rail *rail = info.m_selected->rail();
+                                                   rail->removeNode(info.m_selected);
+                                                   m_renderer.markDirty();
+                                                   return std::expected<void, BaseError>();
+                                               });
+    }
+
+    void SceneWindow::buildContextMenuMultiRailNode() {
+        m_rail_node_list_multi_node_menu =
+            ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>>();
+
+        m_rail_node_list_multi_node_menu.addOption(
+            "Copy", [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
+                for (auto &select : info) {
+                    select.m_selected = make_deep_clone<Rail::RailNode>(select.m_selected);
+                }
+                MainApplication::instance().getSceneRailNodeClipboard().setData(info);
+                return std::expected<void, BaseError>();
+            });
+
+        m_rail_node_list_multi_node_menu.addOption(
+            "Paste", [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
+                Rail::Rail *rail      = info[0].m_selected->rail();
+                size_t selected_index = rail->getNodeCount();
+                auto result           = rail->getNodeIndex(info[0].m_selected);
+                if (result) {
+                    selected_index = result.value();
+                }
+                auto nodes = MainApplication::instance().getSceneRailNodeClipboard().getData();
+                for (auto &node : nodes) {
+                    rail->insertNode(selected_index + 1, node.m_selected);
+                    selected_index += 1;
+                }
+                m_renderer.markDirty();
+                return std::expected<void, BaseError>();
+            });
+
+        m_rail_list_single_node_menu.addOption(
+            "Delete", [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
+                for (auto &select : info) {
+                    Rail::Rail *rail = select.m_selected->rail();
+                    rail->removeNode(select.m_selected);
+                }
+                m_renderer.markDirty();
+                return std::expected<void, BaseError>();
+            });
+    }
 
     void SceneWindow::buildCreateObjDialog() {
         m_create_obj_dialog.setup();
@@ -1439,14 +1583,14 @@ namespace Toolbox::UI {
             }
 
             auto new_rail = std::make_shared<Rail::Rail>(name, new_nodes);
-            
+
             for (u16 i = 0; i < node_count; ++i) {
                 auto result = new_rail->connectNodeToNeighbors(i, true);
                 if (!result) {
                     logMetaError(result.error());
                 }
             }
-            
+
             if (!loop) {
                 // First
                 {
