@@ -605,8 +605,6 @@ namespace Toolbox::UI {
                                                   node_already_clicked);
                 }
 
-                renderHierarchyContextMenu(node_uid_str, node_info);
-
                 if (ImGui::IsItemClicked()) {
                     m_selected_properties.clear();
 
@@ -627,6 +625,8 @@ namespace Toolbox::UI {
 
                     m_properties_render_handler = renderObjectProperties;
                 }
+
+                renderHierarchyContextMenu(node_uid_str, node_info);
 
                 if (node_open) {
                     auto objects = std::static_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
@@ -653,29 +653,30 @@ namespace Toolbox::UI {
                         ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_already_clicked);
                 }
 
+                if (ImGui::IsItemClicked()) {
+                    m_selected_properties.clear();
+
+                    if (multi_select) {
+                        if (node_it == m_hierarchy_selected_nodes.end())
+                            m_hierarchy_selected_nodes.push_back(node_info);
+                    } else {
+                        m_hierarchy_selected_nodes.clear();
+                        m_hierarchy_selected_nodes.push_back(node_info);
+                        for (auto &member : node->getMembers()) {
+                            member->syncArray();
+                            auto prop = createProperty(member);
+                            if (prop) {
+                                m_selected_properties.push_back(std::move(prop));
+                            }
+                        }
+                    }
+
+                    m_properties_render_handler = renderObjectProperties;
+                }
+
                 renderHierarchyContextMenu(node_uid_str, node_info);
 
                 if (node_open) {
-                    if (ImGui::IsItemClicked()) {
-                        m_selected_properties.clear();
-
-                        if (multi_select) {
-                            if (node_it == m_hierarchy_selected_nodes.end())
-                                m_hierarchy_selected_nodes.push_back(node_info);
-                        } else {
-                            m_hierarchy_selected_nodes.clear();
-                            m_hierarchy_selected_nodes.push_back(node_info);
-                            for (auto &member : node->getMembers()) {
-                                member->syncArray();
-                                auto prop = createProperty(member);
-                                if (prop) {
-                                    m_selected_properties.push_back(std::move(prop));
-                                }
-                            }
-                        }
-
-                        m_properties_render_handler = renderObjectProperties;
-                    }
                     ImGui::TreePop();
                 }
             }
@@ -902,19 +903,19 @@ namespace Toolbox::UI {
                 bool is_rail_open =
                     ImGui::TreeNodeEx(rail->name().data(), rail_flags, is_rail_selected);
 
+                if (ImGui::IsItemClicked()) {
+                    if (!multi_select) {
+                        m_rail_list_selected_nodes.clear();
+                        m_rail_node_list_selected_nodes.clear();
+                    }
+                    m_rail_list_selected_nodes.push_back(rail_info);
+
+                    m_properties_render_handler = renderRailProperties;
+                }
+
                 renderRailContextMenu(rail->name(), rail_info);
 
                 if (is_rail_open) {
-                    if (ImGui::IsItemClicked()) {
-                        if (!multi_select) {
-                            m_rail_list_selected_nodes.clear();
-                            m_rail_node_list_selected_nodes.clear();
-                        }
-                        m_rail_list_selected_nodes.push_back(rail_info);
-
-                        m_properties_render_handler = renderRailProperties;
-                    }
-
                     for (size_t i = 0; i < rail->nodes().size(); ++i) {
                         auto &node            = rail->nodes()[i];
                         std::string node_name = std::format("Node {}", i);
@@ -935,18 +936,19 @@ namespace Toolbox::UI {
                         bool is_node_open =
                             ImGui::TreeNodeEx(node_name.c_str(), node_flags, is_node_selected);
 
+                        if (ImGui::IsItemClicked()) {
+                            if (!multi_select) {
+                                m_rail_list_selected_nodes.clear();
+                                m_rail_node_list_selected_nodes.clear();
+                            }
+                            m_rail_node_list_selected_nodes.push_back(node_info);
+
+                            m_properties_render_handler = renderRailNodeProperties;
+                        }
+
                         renderRailNodeContextMenu(node_name, node_info);
 
                         if (is_node_open) {
-                            if (ImGui::IsItemClicked()) {
-                                if (!multi_select) {
-                                    m_rail_list_selected_nodes.clear();
-                                    m_rail_node_list_selected_nodes.clear();
-                                }
-                                m_rail_node_list_selected_nodes.push_back(node_info);
-
-                                m_properties_render_handler = renderRailNodeProperties;
-                            }
                             ImGui::TreePop();
                         }
                     }
@@ -1446,7 +1448,7 @@ namespace Toolbox::UI {
                 return std::expected<void, BaseError>();
             });
 
-        m_rail_list_single_node_menu.addOption("Delete",
+        m_rail_node_list_single_node_menu.addOption("Delete",
                                                [this](SelectionNodeInfo<Rail::RailNode> info) {
                                                    Rail::Rail *rail = info.m_selected->rail();
                                                    rail->removeNode(info.m_selected);
@@ -1485,7 +1487,7 @@ namespace Toolbox::UI {
                 return std::expected<void, BaseError>();
             });
 
-        m_rail_list_single_node_menu.addOption(
+        m_rail_node_list_multi_node_menu.addOption(
             "Delete", [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
                 for (auto &select : info) {
                     Rail::Rail *rail = select.m_selected->rail();
