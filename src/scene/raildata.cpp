@@ -34,13 +34,13 @@ namespace Toolbox::Scene {
         return {};
     }
 
-    std::optional<RailData::rail_ptr_t> RailData::getRail(size_t index) const {
+    RailData::rail_ptr_t RailData::getRail(size_t index) const {
         if (index >= m_rails.size())
             return {};
         return m_rails[index];
     }
 
-    std::optional<RailData::rail_ptr_t> RailData::getRail(std::string_view name) const {
+    RailData::rail_ptr_t RailData::getRail(std::string_view name) const {
         auto index = getRailIndex(name);
         if (!index)
             return {};

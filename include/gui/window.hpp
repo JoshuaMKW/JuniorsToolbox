@@ -25,6 +25,11 @@ namespace Toolbox::UI {
         virtual void renderMenuBar()            = 0;
         virtual void renderBody(f32 delta_time) = 0;
 
+        virtual void onDeleteKey()   = 0;
+        virtual void onPageDownKey() = 0;
+        virtual void onPageUpKey()   = 0;
+        virtual void onHomeKey()     = 0;
+
     public:
         virtual ~IWindow() = default;
 
@@ -66,6 +71,11 @@ namespace Toolbox::UI {
         void renderMenuBar() override {}
         void renderBody(f32 delta_time) override {}
 
+        void onDeleteKey() override {}
+        void onPageDownKey() override {}
+        void onPageUpKey() override {}
+        void onHomeKey() override {}
+
     public:
         SimpleWindow() = default;
         SimpleWindow(std::optional<ImVec2> default_size) : m_default_size(default_size) {}
@@ -79,7 +89,8 @@ namespace Toolbox::UI {
             : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
               m_window_class(window_class) {}
         SimpleWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
-                     std::optional<ImVec2> max_size, ImGuiWindowClass window_class, ImGuiWindowFlags flags)
+                     std::optional<ImVec2> max_size, ImGuiWindowClass window_class,
+                     ImGuiWindowFlags flags)
             : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
               m_window_class(window_class), m_flags(flags) {}
         ~SimpleWindow() override = default;
@@ -112,9 +123,7 @@ namespace Toolbox::UI {
         [[nodiscard]] bool loadData(const std::filesystem::path &path) override { return false; }
         [[nodiscard]] bool saveData(const std::filesystem::path &path) override { return false; }
 
-        [[nodiscard]] bool update(f32 delta_time) override {
-            return true;
-        }
+        [[nodiscard]] bool update(f32 delta_time) override { return true; }
 
         [[nodiscard]] std::string title() const override {
             std::string ctx = context();
@@ -185,6 +194,11 @@ namespace Toolbox::UI {
         void renderMenuBar() override {}
         void renderBody(f32 delta_time) override {}
 
+        void onDeleteKey() override {}
+        void onPageDownKey() override {}
+        void onPageUpKey() override {}
+        void onHomeKey() override {}
+
     public:
         DockWindow() = default;
         explicit DockWindow(std::optional<ImVec2> default_size) : m_default_size(default_size) {}
@@ -198,8 +212,8 @@ namespace Toolbox::UI {
             : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
               m_window_class(window_class) {}
         DockWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
-                     std::optional<ImVec2> max_size, ImGuiWindowClass window_class,
-                     ImGuiWindowFlags flags)
+                   std::optional<ImVec2> max_size, ImGuiWindowClass window_class,
+                   ImGuiWindowFlags flags)
             : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
               m_window_class(window_class), m_flags(flags) {}
         ~DockWindow() override = default;
@@ -232,9 +246,7 @@ namespace Toolbox::UI {
         [[nodiscard]] bool loadData(const std::filesystem::path &path) override { return false; }
         [[nodiscard]] bool saveData(const std::filesystem::path &path) override { return false; }
 
-        [[nodiscard]] bool update(f32 delta_time) override {
-            return true;
-        }
+        [[nodiscard]] bool update(f32 delta_time) override { return true; }
 
         [[nodiscard]] std::string title() const override {
             std::string ctx = context();

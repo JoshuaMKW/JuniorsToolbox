@@ -78,16 +78,35 @@ namespace Toolbox::UI {
         glDeleteVertexArrays(1, &m_vao);
     }
 
-    void PathRenderer::updateGeometry() {
-        if (m_paths.size() == 0)
+    void PathRenderer::updateGeometry(const RailData &data) {
+        size_t rail_count = data.getRailCount();
+
+        if (rail_count)
             return;
 
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 
         std::vector<PathPoint> buffer;
-        for (auto &line : m_paths) {
-            for (auto &point : line) {
-                buffer.push_back(point);
+
+        // TODO: Render shortened lines with arrow tips for connections, fix color relations
+
+        for (size_t i = 0; i < rail_count; ++i) {
+            auto rail       = data.getRail(i);
+            float hue       = (static_cast<float>(i) / (rail_count - 1)) * 360.0f;
+            auto rail_color = Color::HSVToColor<Color::RGBShader>(hue, 1.0f, 1.0f);
+            for (auto &node : rail->nodes()) {
+                std::vector<PathPoint> connections;
+
+                PathPoint nodePoint(node->getPosition(),
+                                    {rail_color.m_r, rail_color.m_g, rail_color.m_b, 1.0f}, 64);
+
+                for (auto connection : rail->getNodeConnections(node)) {
+                    PathPoint connectionPoint(connection->getPosition(),
+                                              glm::vec4(1.0, 0.0, 1.0, 1.0), 64);
+                    connections.push_back(nodePoint);
+                    connections.push_back(connectionPoint);
+                };
+                buffer.push_back(nodePoint);
             }
         }
 

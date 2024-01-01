@@ -1,13 +1,12 @@
+//#include <GLFW/glfw3.h>
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 #include <J3D/Rendering/J3DRendering.hpp>
-#include <glad/glad.h>
 #include <iostream>
-#include <GLFW/glfw3.h>
 
-#include "gui/scene/renderer.hpp"
-#include "gui/input.hpp"
-#include "gui/util.hpp"
 #include "gui/application.hpp"
+#include "gui/input.hpp"
+#include "gui/scene/renderer.hpp"
+#include "gui/util.hpp"
 
 namespace Toolbox::UI {
     namespace Render {
@@ -113,10 +112,16 @@ namespace Toolbox::UI {
         m_billboard_renderer.loadBillboardTexture("res/question.png", 0);
     }
 
+    Renderer::~Renderer() {
+        glDeleteFramebuffers(1, &m_fbo_id);
+        glDeleteRenderbuffers(1, &m_rbo_id);
+        glDeleteTextures(1, &m_tex_id);
+    }
+
     void Renderer::render(std::vector<std::shared_ptr<J3DModelInstance>> renderables,
                           f32 delta_time) {
-        ImVec2 window_pos    = ImGui::GetWindowPos();
-        m_window_rect = {
+        ImVec2 window_pos = ImGui::GetWindowPos();
+        m_window_rect     = {
             window_pos,
             {window_pos.x + ImGui::GetWindowWidth(), window_pos.y + ImGui::GetWindowHeight()}
         };
@@ -127,8 +132,7 @@ namespace Toolbox::UI {
         if (m_is_window_hovered && Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
             ImGui::SetWindowFocus();
 
-        if (m_is_window_focused &&
-            Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {  // Mouse wrap
+        if (m_is_window_focused && Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {  // Mouse wrap
             ImVec2 mouse_pos   = ImGui::GetMousePos();
             ImVec2 window_pos  = ImGui::GetWindowPos();
             ImVec2 window_size = ImGui::GetWindowSize();
@@ -189,23 +193,7 @@ namespace Toolbox::UI {
     }
 
     void Renderer::initializePaths(const RailData &rail_data) {
-        m_path_renderer.m_paths.clear();
-        for (auto &rail : rail_data) {
-            for (auto &node : rail->nodes()) {
-                std::vector<PathPoint> connections;
-
-                PathPoint nodePoint(node->getPosition(), glm::vec4(1.0, 0.0, 1.0, 1.0), 64);
-
-                for (auto connection : rail->getNodeConnections(node)) {
-                    PathPoint connectionPoint(connection->getPosition(),
-                                              glm::vec4(1.0, 0.0, 1.0, 1.0), 64);
-                    connections.push_back(nodePoint);
-                    connections.push_back(connectionPoint);
-                };
-                m_path_renderer.m_paths.push_back(connections);
-            }
-        }
-        m_path_renderer.updateGeometry();
+        m_path_renderer.updateGeometry(rail_data);
     }
 
     void Renderer::initializeBillboards() {

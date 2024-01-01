@@ -34,6 +34,14 @@ namespace Toolbox::UI {
         SceneWindow();
         ~SceneWindow();
 
+        enum class EditorWindow {
+          NONE,
+          OBJECT_TREE,
+          PROPERTY_EDITOR,
+          RAIL_TREE,
+          RENDER_VIEW,
+        };
+
     protected:
         void buildDockspace(ImGuiID dockspace_id) override;
         void renderMenuBar() override;
@@ -44,10 +52,8 @@ namespace Toolbox::UI {
         void renderScene(f32 delta_time);
         void renderHierarchyContextMenu(std::string str_id,
                                         SelectionNodeInfo<Object::ISceneObject> &info);
-        void renderRailContextMenu(std::string str_id,
-                                   SelectionNodeInfo<Rail::Rail> &info);
-        void renderRailNodeContextMenu(std::string str_id,
-                                       SelectionNodeInfo<Rail::RailNode> &info);
+        void renderRailContextMenu(std::string str_id, SelectionNodeInfo<Rail::Rail> &info);
+        void renderRailNodeContextMenu(std::string str_id, SelectionNodeInfo<Rail::RailNode> &info);
 
         void renderProperties();
         static bool renderEmptyProperties(SceneWindow &window) { return false; }
@@ -69,6 +75,11 @@ namespace Toolbox::UI {
         void buildRenameObjDialog();
         void buildCreateRailDialog();
         void buildRenameRailDialog();
+
+        void onDeleteKey() override;
+        void onPageDownKey() override;
+        void onPageUpKey() override;
+        void onHomeKey() override;
 
     public:
         const ImGuiWindowClass *windowClass() const override {
@@ -160,6 +171,8 @@ namespace Toolbox::UI {
         // Rail modals
         CreateRailDialog m_create_rail_dialog;
         RenameRailDialog m_rename_rail_dialog;
+
+        EditorWindow m_focused_window = EditorWindow::NONE;
 
         std::string m_selected_add_zone{""};
 

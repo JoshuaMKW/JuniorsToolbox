@@ -5,6 +5,9 @@
 #include <glm/glm.hpp>
 #include <gui/scene/camera.hpp>
 #include <vector>
+#include <scene/raildata.hpp>
+
+using namespace Toolbox::Scene;
 
 namespace Toolbox::UI {
 
@@ -26,7 +29,7 @@ namespace Toolbox::UI {
         std::vector<std::vector<PathPoint>> m_paths;
 
         [[nodiscard]] bool initPathRenderer();
-        void updateGeometry();
+        void updateGeometry(const RailData &data);
         void drawPaths(Camera *camera);
 
         PathRenderer();

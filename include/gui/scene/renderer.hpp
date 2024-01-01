@@ -7,7 +7,6 @@
 #include "path.hpp"
 #include "types.hpp"
 #include <J3D/Data/J3DModelInstance.hpp>
-#include <glad/glad.h>
 #include <imgui_internal.h>
 #include <scene/raildata.hpp>
 #include <scene/scene.hpp>
@@ -23,11 +22,7 @@ namespace Toolbox::UI {
     class Renderer {
     public:
         Renderer();
-        ~Renderer() {
-            glDeleteFramebuffers(1, &m_fbo_id);
-            glDeleteRenderbuffers(1, &m_rbo_id);
-            glDeleteTextures(1, &m_tex_id);
-        }
+        ~Renderer();
 
         void initializeData(const SceneInstance &scene);
 

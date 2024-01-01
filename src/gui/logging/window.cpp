@@ -101,24 +101,24 @@ namespace Toolbox::UI {
                 case Log::ReportLevel::LOG:
                     if (m_logging_level != Log::ReportLevel::LOG)
                         break;
-                    ImGui::TextColored({0.2, 0.9, 0.3, 1.0}, "[LOG]     - %s",
+                    ImGui::TextColored({0.2f, 0.9f, 0.3f, 1.0f}, "[LOG]     - %s",
                                        message.m_message.c_str());
                     break;
                 case Log::ReportLevel::WARNING:
                     if (m_logging_level == Log::ReportLevel::DEBUG ||
                         m_logging_level == Log::ReportLevel::ERROR)
                         break;
-                    ImGui::TextColored({0.7, 0.5, 0.1, 1.0}, "[WARNING] - %s",
+                    ImGui::TextColored({0.7f, 0.5f, 0.1f, 1.0f}, "[WARNING] - %s",
                                        message.m_message.c_str());
                     break;
                 case Log::ReportLevel::ERROR:
                     if (m_logging_level == Log::ReportLevel::DEBUG)
                         break;
-                    ImGui::TextColored({0.9, 0.2, 0.1, 1.0}, "[ERROR]   - %s",
+                    ImGui::TextColored({0.9f, 0.2f, 0.1f, 1.0f}, "[ERROR]   - %s",
                                        message.m_message.c_str());
                     break;
                 case Log::ReportLevel::DEBUG:
-                    ImGui::TextColored({0.3, 0.4, 0.9, 1.0}, "[DEBUG]   - %s",
+                    ImGui::TextColored({0.3f, 0.4f, 0.9f, 1.0f}, "[DEBUG]   - %s",
                                        message.m_message.c_str());
                     break;
                 }
