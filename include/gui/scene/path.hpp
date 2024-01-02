@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <gui/scene/camera.hpp>
 #include <scene/raildata.hpp>
+#include <unordered_map>
 #include <vector>
 
 using namespace Toolbox::Scene;
@@ -28,7 +29,8 @@ namespace Toolbox::UI {
 
     public:
         [[nodiscard]] bool initPathRenderer();
-        void updateGeometry(const RailData &data);
+        void updateGeometry(const RailData &data,
+                            std::unordered_map<std::string, bool> visible_map);
         void drawPaths(Camera *camera);
 
         PathRenderer();

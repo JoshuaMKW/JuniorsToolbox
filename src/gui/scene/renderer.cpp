@@ -188,12 +188,13 @@ namespace Toolbox::UI {
     }
 
     void Renderer::initializeData(const SceneInstance &scene) {
-        initializePaths(scene.getRailData());
+        initializePaths(scene.getRailData(), {});
         initializeBillboards();
     }
 
-    void Renderer::initializePaths(const RailData &rail_data) {
-        m_path_renderer.updateGeometry(rail_data);
+    void Renderer::initializePaths(const RailData &rail_data,
+                                   std::unordered_map<std::string, bool> visible_map) {
+        m_path_renderer.updateGeometry(rail_data, visible_map);
     }
 
     void Renderer::initializeBillboards() {

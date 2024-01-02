@@ -81,7 +81,8 @@ namespace Toolbox::UI {
         glDeleteVertexArrays(1, &m_vao);
     }
 
-    void PathRenderer::updateGeometry(const RailData &data) {
+    void PathRenderer::updateGeometry(const RailData &data,
+                                      std::unordered_map<std::string, bool> visible_map) {
         size_t rail_count = data.getRailCount();
 
         if (rail_count == 0)
@@ -90,9 +91,14 @@ namespace Toolbox::UI {
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 
         // TODO: Render shortened lines with arrow tips for connections, fix color relations
+        m_path_connections.clear();
 
         for (size_t i = 0; i < rail_count; ++i) {
             auto rail      = data.getRail(i);
+            if (visible_map.contains(rail->name()) && visible_map[rail->name()] == false) {
+                continue;
+            }
+
             float node_hue = (static_cast<float>(i) / (rail_count - 1)) * 360.0f;
 
             size_t node_count = rail->getNodeCount();

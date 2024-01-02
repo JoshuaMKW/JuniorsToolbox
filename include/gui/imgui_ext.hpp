@@ -19,6 +19,10 @@ namespace ImGui {
                              int components, const void *p_step, const void *p_step_fast,
                              const char *format, ImGuiInputTextFlags flags = 0);
     bool TreeNodeEx(const char *label, ImGuiTreeNodeFlags flags, bool focused);
+    bool TreeNodeEx(const char *label, ImGuiTreeNodeFlags flags, bool focused, bool *visible);
     bool TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *label,
                           const char *label_end, bool focused);
+    bool TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *label,
+                          const char *label_end, bool focused, bool *visible);
+
 }  // namespace ImGui

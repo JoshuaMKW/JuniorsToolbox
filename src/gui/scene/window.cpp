@@ -266,9 +266,9 @@ namespace Toolbox::UI {
                 }
             } else {
                 if (node_visibility) {
-                    node_open = SceneTreeNodeEx(node_uid_str.c_str(),
-                                                node->getParent() ? dir_flags : node_flags,
-                                                node_already_clicked, &node_visible);
+                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(),
+                                                  node->getParent() ? dir_flags : node_flags,
+                                                  node_already_clicked, &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_renderer.markDirty();
@@ -319,8 +319,8 @@ namespace Toolbox::UI {
         } else {
             if (!is_filtered_out) {
                 if (node_visibility) {
-                    node_open = SceneTreeNodeEx(node_uid_str.c_str(), file_flags,
-                                                node_already_clicked, &node_visible);
+                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags,
+                                                  node_already_clicked, &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_renderer.markDirty();
@@ -549,7 +549,8 @@ namespace Toolbox::UI {
         ImGui::EndGroupPanel();
 
         if (is_updated) {
-            window.m_renderer.updatePaths(window.m_current_scene->getRailData());
+            window.m_renderer.updatePaths(window.m_current_scene->getRailData(),
+                                          window.m_rail_visible_map);
         }
 
         return is_updated;
@@ -587,8 +588,20 @@ namespace Toolbox::UI {
                     m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
                     [&](auto &info) { return info.m_node_id == rail_info.m_node_id; });
 
-                bool is_rail_open =
-                    ImGui::TreeNodeEx(rail->name().data(), rail_flags, is_rail_selected);
+                if (!m_rail_visible_map.contains(rail->name())) {
+                    m_rail_visible_map[rail->name()] = true;
+                }
+                bool &rail_visibility = m_rail_visible_map[rail->name()];
+                bool is_rail_visible  = rail_visibility;
+
+                bool is_rail_open = ImGui::TreeNodeEx(rail->name().data(), rail_flags,
+                                                      is_rail_selected, &is_rail_visible);
+
+                if (rail_visibility != is_rail_visible) {
+                    rail_visibility = is_rail_visible;
+                    m_renderer.updatePaths(m_current_scene->getRailData(), m_rail_visible_map);
+                    m_renderer.markDirty();
+                }
 
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
                     ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
@@ -735,8 +748,8 @@ namespace Toolbox::UI {
         m_hierarchy_virtual_node_menu.addDivider();
 
         m_hierarchy_virtual_node_menu.addOption(
-            "Rename...",
-            {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_R}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
+            "Rename...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_R},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_rename_obj_dialog.open();
                 m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
                 return std::expected<void, BaseError>();
@@ -772,8 +785,7 @@ namespace Toolbox::UI {
         m_hierarchy_virtual_node_menu.addDivider();
 
         m_hierarchy_virtual_node_menu.addOption(
-            "Delete", {GLFW_KEY_DELETE},
-            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+            "Delete", {GLFW_KEY_DELETE}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
@@ -792,7 +804,8 @@ namespace Toolbox::UI {
     void SceneWindow::buildContextMenuGroupObj() {
         m_hierarchy_group_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
-        m_hierarchy_group_node_menu.addOption("Add Child Object...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+        m_hierarchy_group_node_menu.addOption("Add Child Object...",
+                                              {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
                                               [this](SelectionNodeInfo<Object::ISceneObject> info) {
                                                   m_create_obj_dialog.open();
                                                   return std::expected<void, BaseError>();
@@ -802,10 +815,11 @@ namespace Toolbox::UI {
 
         m_hierarchy_group_node_menu.addOption("Rename...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_R},
                                               [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                m_rename_obj_dialog.open();
-                m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
-                return std::expected<void, BaseError>();
-            });
+                                                  m_rename_obj_dialog.open();
+                                                  m_rename_obj_dialog.setOriginalName(
+                                                      info.m_selected->getNameRef().name());
+                                                  return std::expected<void, BaseError>();
+                                              });
 
         m_hierarchy_group_node_menu.addDivider();
 
@@ -836,8 +850,7 @@ namespace Toolbox::UI {
         m_hierarchy_group_node_menu.addDivider();
 
         m_hierarchy_group_node_menu.addOption(
-            "Delete", {GLFW_KEY_DELETE},
-            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+            "Delete", {GLFW_KEY_DELETE}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
@@ -916,7 +929,11 @@ namespace Toolbox::UI {
 
                 Transform transform = getMetaValue<Transform>(member_ptr).value();
                 m_renderer.getCameraTranslation(transform.m_translation);
-                setMetaValue<Transform>(member_ptr, 0, transform);
+                auto result = setMetaValue<Transform>(member_ptr, 0, transform);
+                if (!result) {
+                    return make_error<void>(
+                        "Scene Hierarchy", "Failed to set the transform member of physical object");
+                }
 
                 m_renderer.markDirty();
                 return std::expected<void, BaseError>();
@@ -952,8 +969,7 @@ namespace Toolbox::UI {
         m_hierarchy_physical_node_menu.addDivider();
 
         m_hierarchy_physical_node_menu.addOption(
-            "Delete", {GLFW_KEY_DELETE},
-            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+            "Delete", {GLFW_KEY_DELETE}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
@@ -1027,7 +1043,8 @@ namespace Toolbox::UI {
     void SceneWindow::buildContextMenuRail() {
         m_rail_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::Rail>>();
 
-        m_rail_list_single_node_menu.addOption("Insert Rail Here...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+        m_rail_list_single_node_menu.addOption("Insert Rail Here...",
+                                               {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
                                                [this](SelectionNodeInfo<Rail::Rail> info) {
                                                    m_create_rail_dialog.open();
                                                    return std::expected<void, BaseError>();
@@ -1035,52 +1052,56 @@ namespace Toolbox::UI {
 
         m_rail_list_single_node_menu.addDivider();
 
-        m_rail_list_single_node_menu.addOption(
-            "Rename...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_R}, [this](SelectionNodeInfo<Rail::Rail> info) {
-                m_rename_rail_dialog.open();
-                m_rename_rail_dialog.setOriginalName(info.m_selected->name());
-                return std::expected<void, BaseError>();
-            });
+        m_rail_list_single_node_menu.addOption("Rename...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_R},
+                                               [this](SelectionNodeInfo<Rail::Rail> info) {
+                                                   m_rename_rail_dialog.open();
+                                                   m_rename_rail_dialog.setOriginalName(
+                                                       info.m_selected->name());
+                                                   return std::expected<void, BaseError>();
+                                               });
 
         // TODO: Add rail manipulators here.
 
         m_rail_list_single_node_menu.addDivider();
 
         m_rail_list_single_node_menu.addOption(
-            "Copy", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_C}, [this](SelectionNodeInfo<Rail::Rail> info) {
-            info.m_selected = make_deep_clone<Rail::Rail>(info.m_selected);
-            MainApplication::instance().getSceneRailClipboard().setData(info);
-            return std::expected<void, BaseError>();
-        });
+            "Copy", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_C},
+            [this](SelectionNodeInfo<Rail::Rail> info) {
+                info.m_selected = make_deep_clone<Rail::Rail>(info.m_selected);
+                MainApplication::instance().getSceneRailClipboard().setData(info);
+                return std::expected<void, BaseError>();
+            });
 
         m_rail_list_single_node_menu.addOption(
-            "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V}, [this](SelectionNodeInfo<Rail::Rail> info) {
-            auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
-            if (nodes.size() > 0) {
-                RailData data         = m_current_scene->getRailData();
-                size_t selected_index = data.getRailCount();
-                auto result           = data.getRailIndex(info.m_selected->name());
-                if (result) {
-                    selected_index = result.value();
+            "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V},
+            [this](SelectionNodeInfo<Rail::Rail> info) {
+                auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
+                if (nodes.size() > 0) {
+                    RailData data         = m_current_scene->getRailData();
+                    size_t selected_index = data.getRailCount();
+                    auto result           = data.getRailIndex(info.m_selected->name());
+                    if (result) {
+                        selected_index = result.value();
+                    }
+                    for (auto &node : nodes) {
+                        data.insertRail(selected_index + 1, node.m_selected);
+                        selected_index += 1;
+                    }
+                    m_current_scene->setRailData(data);
                 }
-                for (auto &node : nodes) {
-                    data.insertRail(selected_index + 1, node.m_selected);
-                    selected_index += 1;
-                }
-                m_current_scene->setRailData(data);
-            }
-            m_renderer.markDirty();
-            return std::expected<void, BaseError>();
-        });
+                m_renderer.markDirty();
+                return std::expected<void, BaseError>();
+            });
 
-        m_rail_list_single_node_menu.addOption("Delete", {GLFW_KEY_DELETE},
-                                               [this](SelectionNodeInfo<Rail::Rail> info) {
-                                                   RailData data = m_current_scene->getRailData();
-                                                   data.removeRail(info.m_selected->name());
-                                                   m_current_scene->setRailData(data);
-                                                   m_renderer.markDirty();
-                                                   return std::expected<void, BaseError>();
-                                               });
+        m_rail_list_single_node_menu.addOption(
+            "Delete", {GLFW_KEY_DELETE}, [this](SelectionNodeInfo<Rail::Rail> info) {
+                m_rail_visible_map.erase(info.m_selected->name());
+                RailData data = m_current_scene->getRailData();
+                data.removeRail(info.m_selected->name());
+                m_current_scene->setRailData(data);
+                m_renderer.markDirty();
+                return std::expected<void, BaseError>();
+            });
     }
 
     void SceneWindow::buildContextMenuMultiRail() {
@@ -1118,10 +1139,10 @@ namespace Toolbox::UI {
             });
 
         m_rail_list_multi_node_menu.addOption(
-            "Delete", {GLFW_KEY_DELETE},
-            [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
+            "Delete", {GLFW_KEY_DELETE}, [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
                 RailData data = m_current_scene->getRailData();
                 for (auto &select : info) {
+                    m_rail_visible_map.erase(select.m_selected->name());
                     data.removeRail(select.m_selected->name());
                 }
                 m_current_scene->setRailData(data);
@@ -1143,14 +1164,16 @@ namespace Toolbox::UI {
         m_rail_node_list_single_node_menu.addDivider();
 
         m_rail_node_list_single_node_menu.addOption(
-            "Copy", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_C}, [this](SelectionNodeInfo<Rail::RailNode> info) {
+            "Copy", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_C},
+            [this](SelectionNodeInfo<Rail::RailNode> info) {
                 info.m_selected = make_deep_clone<Rail::RailNode>(info.m_selected);
                 MainApplication::instance().getSceneRailNodeClipboard().setData(info);
                 return std::expected<void, BaseError>();
             });
 
         m_rail_node_list_single_node_menu.addOption(
-            "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V}, [this](SelectionNodeInfo<Rail::RailNode> info) {
+            "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V},
+            [this](SelectionNodeInfo<Rail::RailNode> info) {
                 Rail::Rail *rail      = info.m_selected->rail();
                 size_t selected_index = rail->getNodeCount();
                 auto result           = rail->getNodeIndex(info.m_selected);
@@ -1335,23 +1358,25 @@ namespace Toolbox::UI {
             rail_data.addRail(new_rail);
 
             m_current_scene->setRailData(rail_data);
-            m_renderer.updatePaths(rail_data);
+            m_renderer.updatePaths(rail_data, m_rail_visible_map);
             m_renderer.markDirty();
         });
     }
 
     void SceneWindow::buildRenameRailDialog() {
         m_rename_rail_dialog.setup();
-        m_rename_rail_dialog.setActionOnAccept(
-            [this](std::string_view new_name, SelectionNodeInfo<Rail::Rail> info) {
-                if (new_name.empty()) {
-                    auto result =
-                        make_error<void>("Scene Hierarchy", "Can not rename rail to empty string");
-                    logError(result.error());
-                    return;
-                }
-                info.m_selected->setName(new_name);
-            });
+        m_rename_rail_dialog.setActionOnAccept([this](std::string_view new_name,
+                                                      SelectionNodeInfo<Rail::Rail> info) {
+            if (new_name.empty()) {
+                auto result =
+                    make_error<void>("Scene Hierarchy", "Can not rename rail to empty string");
+                logError(result.error());
+                return;
+            }
+            m_rail_visible_map[std::string(new_name)] = m_rail_visible_map[info.m_selected->name()];
+            m_rail_visible_map.erase(info.m_selected->name());
+            info.m_selected->setName(new_name);
+        });
         m_rename_rail_dialog.setActionOnReject([](SelectionNodeInfo<Rail::Rail>) {});
     }
 
@@ -1363,7 +1388,7 @@ namespace Toolbox::UI {
         case EditorWindow::PROPERTY_EDITOR: {
             break;
         }
-        case EditorWindow::RAIL_TREE: { 
+        case EditorWindow::RAIL_TREE: {
             break;
         }
         case EditorWindow::RENDER_VIEW: {

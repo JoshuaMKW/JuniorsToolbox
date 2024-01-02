@@ -1,6 +1,7 @@
 #pragma once
 
 #include <imgui.h>
+#include <unordered_map>
 
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
@@ -26,8 +27,8 @@ namespace Toolbox::UI {
 
         void initializeData(const SceneInstance &scene);
 
-        void updatePaths(const RailData &rail_data) {
-            initializePaths(rail_data);
+        void updatePaths(const RailData &rail_data, std::unordered_map<std::string, bool> visible_map) {
+            initializePaths(rail_data, visible_map);
         }
 
         void markDirty() { m_is_dirty = true; }
@@ -42,7 +43,8 @@ namespace Toolbox::UI {
         void render(std::vector<std::shared_ptr<J3DModelInstance>> renderables, f32 delta_time);
 
     protected:
-        void initializePaths(const RailData &rail_data);
+        void initializePaths(const RailData &rail_data,
+                             std::unordered_map<std::string, bool> visible_map);
         void initializeBillboards();
 
         void viewportBegin();
