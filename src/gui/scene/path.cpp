@@ -94,7 +94,7 @@ namespace Toolbox::UI {
         m_path_connections.clear();
 
         for (size_t i = 0; i < rail_count; ++i) {
-            auto rail      = data.getRail(i);
+            auto rail = data.getRail(i);
             if (visible_map.contains(rail->name()) && visible_map[rail->name()] == false) {
                 continue;
             }
@@ -104,7 +104,6 @@ namespace Toolbox::UI {
             size_t node_count = rail->getNodeCount();
             for (size_t j = 0; j < node_count; ++j) {
                 Rail::Rail::node_ptr_t node = rail->nodes()[j];
-                std::vector<PathPoint> connections;
 
                 float node_lerp       = static_cast<float>(j) / (node_count - 1);
                 float node_saturation = std::lerp(0.5f, 1.0f, node_lerp);
@@ -112,23 +111,28 @@ namespace Toolbox::UI {
                 auto node_color =
                     Color::HSVToColor<Color::RGBShader>(node_hue, node_saturation, node_brightness);
 
-                PathPoint nodePoint(node->getPosition(),
-                                    {node_color.m_r, node_color.m_g, node_color.m_b, 1.0f}, 64);
+                PathConnection p_connection{};
+                p_connection.m_point = {
+                    node->getPosition(),
+                    {node_color.m_r, node_color.m_g, node_color.m_b, 1.0f},
+                    64
+                };
 
-                for (auto connection : rail->getNodeConnections(node)) {
+                for (Rail::Rail::node_ptr_t connection : rail->getNodeConnections(node)) {
                     PathPoint connectionPoint(
                         connection->getPosition(),
                         {node_color.m_r, node_color.m_g, node_color.m_b, 1.0f}, 64);
-                    connections.push_back(nodePoint);
-                    connections.push_back(connectionPoint);
+                    p_connection.m_connections.push_back(connectionPoint);
                 };
-                m_path_connections.push_back(connections);
+                m_path_connections.push_back(p_connection);
             }
         }
 
         std::vector<PathPoint> buffer;
         for (auto &connection : m_path_connections) {
-            for (auto &point : connection) {
+            // For the connecting points, we adjust back the end and add an arrowhead
+            for (auto &point : connection.m_connections) {
+                buffer.push_back(connection.m_point);
                 buffer.push_back(point);
             }
         }
@@ -164,9 +168,10 @@ namespace Toolbox::UI {
             int start = 0;
 
             glUniform1i(m_mode_uniform, GL_TRUE);
-            for (auto &line : m_path_connections) {
-                glDrawArrays(GL_POINTS, start, line.size());
-                start += line.size();
+            for (auto &connection : m_path_connections) {
+                // +1 for self
+                glDrawArrays(GL_POINTS, start, 1);
+                start += connection.m_connections.size() * 2;
             }
         }
 
@@ -174,46 +179,48 @@ namespace Toolbox::UI {
             int start = 0;
 
             glUniform1i(m_mode_uniform, GL_FALSE);
-            for (auto &line : m_path_connections) {
-                for (size_t i = 0; i < line.size(); i += 2) {
+            for (auto &connection : m_path_connections) {
+                for (size_t i = 0; i < connection.m_connections.size(); ++i) {
+                    const PathPoint &self_point = connection.m_point;
+                    const PathPoint &to_point   = connection.m_connections[i];
+
                     // Calculate the direction vector of the line segment
-                    glm::vec3 dir     = glm::normalize(line[i + 1].m_position - line[i].m_position);
-                    glm::quat rotQuat = glm::identity<glm::quat>();
+                    glm::vec3 dir     = glm::normalize(to_point.m_position - self_point.m_position);
 
                     // Shorten the line by some factor (e.g., arrowhead size)
-                    glm::vec3 newEndPoint = line[i + 1].m_position - dir * s_arrow_head_size;
+                    glm::vec3 adjusted_end_pos = to_point.m_position - dir * s_arrow_head_size;
 
                     // Update the buffer with the new end point
-                    PathPoint points[2] = {line[i], PathPoint(newEndPoint, line[i + 1].m_color,
-                                                              line[i + 1].m_point_size)};
-                    glBufferSubData(GL_ARRAY_BUFFER, start * sizeof(PathPoint),
-                                    2 * sizeof(PathPoint), points);
+                    PathPoint adjusted_end_point = {adjusted_end_pos, to_point.m_color,
+                                                    to_point.m_point_size};
+                    /*glBufferSubData(GL_ARRAY_BUFFER, start * sizeof(PathPoint) + (i + 1) * sizeof(PathPoint),
+                                    sizeof(PathPoint), &adjusted_end_point);*/
 
                     // Draw the shortened line segment
                     glDrawArrays(GL_LINES, start, 2);
                     start += 2;
 
-                    // Draw arrowhead here (this could be a separate VAO/VBO setup for drawing a
-                    // cone or a simple triangle) For a simple triangle arrowhead:
-                    glm::quat leftRot =
-                        glm::rotate(rotQuat, glm::radians(150.0f), glm::vec3(0, 0, 1));
-                    glm::quat rightRot =
-                        glm::rotate(rotQuat, glm::radians(210.0f), glm::vec3(0, 0, 1));
+                    //// Draw arrowhead here (this could be a separate VAO/VBO setup for drawing a
+                    //// cone or a simple triangle) For a simple triangle arrowhead:
+                    //glm::quat leftRot =
+                    //    glm::rotate(rotQuat, glm::radians(150.0f), glm::vec3(0, 0, 1));
+                    //glm::quat rightRot =
+                    //    glm::rotate(rotQuat, glm::radians(210.0f), glm::vec3(0, 0, 1));
 
-                    glm::vec3 left = glm::rotate(leftRot, dir) * s_arrow_head_size;
-                    glm::vec3 right = glm::rotate(rightRot, dir) * s_arrow_head_size;
+                    //glm::vec3 left  = glm::rotate(leftRot, dir) * s_arrow_head_size;
+                    //glm::vec3 right = glm::rotate(rightRot, dir) * s_arrow_head_size;
 
-                    PathPoint arrowhead[3] = {
-                        PathPoint(newEndPoint, line[i + 1].m_color, line[i + 1].m_point_size),
-                        PathPoint(newEndPoint + left, line[i + 1].m_color,
-                                  line[i + 1].m_point_size),
-                        PathPoint(newEndPoint + right, line[i + 1].m_color,
-                                  line[i + 1].m_point_size)};
+                    //PathPoint arrowhead[3] = {
+                    //    PathPoint(newEndPoint, line[i + 1].m_color, line[i + 1].m_point_size),
+                    //    PathPoint(newEndPoint + left, line[i + 1].m_color,
+                    //              line[i + 1].m_point_size),
+                    //    PathPoint(newEndPoint + right, line[i + 1].m_color,
+                    //              line[i + 1].m_point_size)};
 
-                    glBufferSubData(GL_ARRAY_BUFFER, start * sizeof(PathPoint),
-                                    3 * sizeof(PathPoint), arrowhead);
-                    glDrawArrays(GL_TRIANGLES, start, 3);
-                    start += 3;
+                    //glBufferSubData(GL_ARRAY_BUFFER, start * sizeof(PathPoint),
+                    //                3 * sizeof(PathPoint), arrowhead);
+                    //glDrawArrays(GL_TRIANGLES, start, 3);
+                    //start += 3;
                 }
             }
         }

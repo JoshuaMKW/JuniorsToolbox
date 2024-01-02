@@ -1,10 +1,12 @@
-//#include <GLFW/glfw3.h>
+// #include <GLFW/glfw3.h>
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 #include <J3D/Rendering/J3DRendering.hpp>
 #include <iostream>
 
 #include "gui/application.hpp"
 #include "gui/input.hpp"
+#include "gui/logging/errors.hpp"
+#include "gui/logging/logger.hpp"
 #include "gui/scene/renderer.hpp"
 #include "gui/util.hpp"
 
@@ -24,66 +26,115 @@ namespace Toolbox::UI {
         bool CompileShader(const char *vertex_shader_src, const char *geometry_shader_src,
                            const char *fragment_shader_src, uint32_t &program_id_out) {
 
-            char glErrorLogBuffer[4096];
-            uint32_t vs = glCreateShader(GL_VERTEX_SHADER);
-            // uint32_t gs = glCreateShader(GL_GEOMETRY_SHADER);  // TODO: add this
-            uint32_t fs = glCreateShader(GL_FRAGMENT_SHADER);
+            char gl_error_log_buffer[4096];
 
-            glShaderSource(vs, 1, &vertex_shader_src, nullptr);
-            glShaderSource(fs, 1, &fragment_shader_src, nullptr);
+            uint32_t vs = 0;
+            uint32_t gs = 0;
+            uint32_t fs = 0;
 
-            glCompileShader(vs);
+            uint32_t pid   = glCreateProgram();
+
+            if (vertex_shader_src) {
+                vs = glCreateShader(GL_VERTEX_SHADER);
+
+                glShaderSource(vs, 1, &vertex_shader_src, nullptr);
+
+                glCompileShader(vs);
+
+                int32_t status;
+                glGetShaderiv(vs, GL_COMPILE_STATUS, &status);
+                if (status == 0) {
+                    GLint gl_info_log_length;
+                    glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &gl_info_log_length);
+
+                    glGetShaderInfoLog(vs, gl_info_log_length, nullptr, gl_error_log_buffer);
+
+                    BaseError error =
+                        make_error<void>("Compile failure in vertex shader:", gl_error_log_buffer)
+                            .error();
+                    logError(error);
+
+                    return false;
+                }
+
+                glAttachShader(pid, vs);
+            }
+
+            if (geometry_shader_src) {
+                gs = glCreateShader(GL_GEOMETRY_SHADER);
+
+                glShaderSource(gs, 1, &geometry_shader_src, nullptr);
+
+                glCompileShader(gs);
+
+                int32_t status;
+                glGetShaderiv(gs, GL_COMPILE_STATUS, &status);
+                if (status == 0) {
+                    GLint gl_info_log_length;
+                    glGetShaderiv(gs, GL_INFO_LOG_LENGTH, &gl_info_log_length);
+
+                    glGetShaderInfoLog(gs, gl_info_log_length, nullptr, gl_error_log_buffer);
+
+                    BaseError error =
+                        make_error<void>("Compile failure in geometry shader:", gl_error_log_buffer)
+                            .error();
+                    logError(error);
+
+                    return false;
+                }
+
+                glAttachShader(pid, gs);
+            }
+
+            if (fragment_shader_src) {
+                fs = glCreateShader(GL_FRAGMENT_SHADER);
+
+                glShaderSource(fs, 1, &fragment_shader_src, nullptr);
+
+                glCompileShader(fs);
+
+                int32_t status;
+                glGetShaderiv(fs, GL_COMPILE_STATUS, &status);
+                if (status == 0) {
+                    GLint gl_info_log_length;
+                    glGetShaderiv(fs, GL_INFO_LOG_LENGTH, &gl_info_log_length);
+
+                    glGetShaderInfoLog(fs, gl_info_log_length, nullptr, gl_error_log_buffer);
+
+                    BaseError error =
+                        make_error<void>("Compile failure in fragment shader:", gl_error_log_buffer)
+                            .error();
+                    logError(error);
+
+                    return false;
+                }
+
+                glAttachShader(pid, fs);
+            }
+
+            glLinkProgram(pid);
+            program_id_out = pid;
 
             int32_t status;
-            glGetShaderiv(vs, GL_COMPILE_STATUS, &status);
-            if (status == 0) {
-                GLint infoLogLength;
-                glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &infoLogLength);
-
-                glGetShaderInfoLog(vs, infoLogLength, nullptr, glErrorLogBuffer);
-
-                std::cout << "Compile failure in vertex shader:" << glErrorLogBuffer << std::endl;
-
-                return false;
-            }
-
-            glCompileShader(fs);
-
-            glGetShaderiv(fs, GL_COMPILE_STATUS, &status);
-            if (status == 0) {
-                GLint infoLogLength;
-                glGetShaderiv(fs, GL_INFO_LOG_LENGTH, &infoLogLength);
-
-                glGetShaderInfoLog(fs, infoLogLength, nullptr, glErrorLogBuffer);
-
-                std::cout << "Compile failure in fragment shader: " << glErrorLogBuffer
-                          << std::endl;
-
-                return false;
-            }
-
-            program_id_out = glCreateProgram();
-
-            glAttachShader(program_id_out, vs);
-            glAttachShader(program_id_out, fs);
-
-            glLinkProgram(program_id_out);
-
-            glGetProgramiv(program_id_out, GL_LINK_STATUS, &status);
+            glGetProgramiv(pid, GL_LINK_STATUS, &status);
             if (status == 0) {
                 GLint logLen;
-                glGetProgramiv(program_id_out, GL_INFO_LOG_LENGTH, &logLen);
-                glGetProgramInfoLog(program_id_out, logLen, nullptr, glErrorLogBuffer);
+                glGetProgramiv(pid, GL_INFO_LOG_LENGTH, &logLen);
+                glGetProgramInfoLog(pid, logLen, nullptr, gl_error_log_buffer);
 
-                std::cout << "Shader Program Linking Error: " << glErrorLogBuffer << std::endl;
+                BaseError error =
+                    make_error<void>("Linking failure in shaders:", gl_error_log_buffer).error();
+                logError(error);
 
                 return false;
             }
 
-            glDetachShader(program_id_out, vs);
-            glDetachShader(program_id_out, fs);
+            glDetachShader(pid, vs);
+            glDetachShader(pid, gs);
+            glDetachShader(pid, fs);
 
             glDeleteShader(vs);
+            glDeleteShader(gs);
             glDeleteShader(fs);
 
             return true;

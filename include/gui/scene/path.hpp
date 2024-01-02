@@ -18,6 +18,11 @@ namespace Toolbox::UI {
         uint32_t m_point_size;
     };
 
+    struct PathConnection {
+        PathPoint m_point;
+        std::vector<PathPoint> m_connections;
+    };
+
     class PathRenderer {
         uint32_t m_program;
         uint32_t m_mvp_uniform;
@@ -25,7 +30,7 @@ namespace Toolbox::UI {
 
         uint32_t m_vao, m_vbo;
 
-        std::vector<std::vector<PathPoint>> m_path_connections;
+        std::vector<PathConnection> m_path_connections;
 
     public:
         [[nodiscard]] bool initPathRenderer();
