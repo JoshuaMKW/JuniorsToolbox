@@ -23,6 +23,7 @@
 #include "gui/scene/renderer.hpp"
 #include "gui/window.hpp"
 
+#include "raildialog.hpp"
 #include <gui/context_menu.hpp>
 #include <imgui.h>
 
@@ -33,22 +34,52 @@ namespace Toolbox::UI {
         SceneWindow();
         ~SceneWindow();
 
+        enum class EditorWindow {
+          NONE,
+          OBJECT_TREE,
+          PROPERTY_EDITOR,
+          RAIL_TREE,
+          RENDER_VIEW,
+        };
+
     protected:
         void buildDockspace(ImGuiID dockspace_id) override;
         void renderMenuBar() override;
         void renderBody(f32 delta_time) override;
         void renderHierarchy();
         void renderTree(std::shared_ptr<Object::ISceneObject> node);
-        void renderProperties();
+        void renderRailEditor();
         void renderScene(f32 delta_time);
-        void renderContextMenu(std::string str_id, NodeInfo &info);
+        void renderHierarchyContextMenu(std::string str_id,
+                                        SelectionNodeInfo<Object::ISceneObject> &info);
+        void renderRailContextMenu(std::string str_id, SelectionNodeInfo<Rail::Rail> &info);
+        void renderRailNodeContextMenu(std::string str_id, SelectionNodeInfo<Rail::RailNode> &info);
+
+        void renderProperties();
+        static bool renderEmptyProperties(SceneWindow &window) { return false; }
+        static bool renderObjectProperties(SceneWindow &window);
+        static bool renderRailProperties(SceneWindow &window);
+        static bool renderRailNodeProperties(SceneWindow &window);
 
         void buildContextMenuVirtualObj();
         void buildContextMenuGroupObj();
         void buildContextMenuPhysicalObj();
         void buildContextMenuMultiObj();
+
+        void buildContextMenuRail();
+        void buildContextMenuMultiRail();
+        void buildContextMenuRailNode();
+        void buildContextMenuMultiRailNode();
+
         void buildCreateObjDialog();
         void buildRenameObjDialog();
+        void buildCreateRailDialog();
+        void buildRenameRailDialog();
+
+        void onDeleteKey() override;
+        void onPageDownKey() override;
+        void onPageUpKey() override;
+        void onHomeKey() override;
 
     public:
         const ImGuiWindowClass *windowClass() const override {
@@ -96,31 +127,53 @@ namespace Toolbox::UI {
         bool update(f32 delta_time) override;
 
     private:
-        ContextMenu<NodeInfo> m_virtual_node_menu;
-        ContextMenu<NodeInfo> m_physical_node_menu;
-        ContextMenu<NodeInfo> m_group_node_menu;
-        ContextMenu<std::vector<NodeInfo>> m_multi_node_menu;
+        std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;
 
+        // Hierarchy view
         ImGuiTextFilter m_hierarchy_filter;
+        std::vector<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_selected_nodes = {};
+        ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_virtual_node_menu;
+        ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_physical_node_menu;
+        ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_group_node_menu;
+        ContextMenu<std::vector<SelectionNodeInfo<Object::ISceneObject>>>
+            m_hierarchy_multi_node_menu;
 
-        std::vector<NodeInfo> m_selected_nodes                        = {};
+        // Property editor
+        std::function<bool(SceneWindow &)> m_properties_render_handler;
         std::vector<std::unique_ptr<IProperty>> m_selected_properties = {};
 
+        // Object modals
         CreateObjDialog m_create_obj_dialog;
         RenameObjDialog m_rename_obj_dialog;
 
-        std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;
-
+        // Render view
+        bool m_is_render_window_open;
+        Renderer m_renderer;
         std::vector<std::shared_ptr<J3DModelInstance>> m_renderables;
         ResourceCache m_resource_cache;
 
-        bool m_is_render_window_open;
-        Renderer m_renderer;
+        // Docking facilities
+        u32 m_dock_space_id          = 0;
+        u32 m_dock_node_up_left_id   = 0;
+        u32 m_dock_node_left_id      = 0;
+        u32 m_dock_node_down_left_id = 0;
 
-        uint32_t m_dock_space_id          = 0;
-        uint32_t m_dock_node_up_left_id   = 0;
-        uint32_t m_dock_node_left_id      = 0;
-        uint32_t m_dock_node_down_left_id = 0;
+        // Rail editor
+        std::unordered_map<std::string, bool> m_rail_visible_map              = {};
+        bool m_connections_open                                               = true;
+        std::vector<SelectionNodeInfo<Rail::Rail>> m_rail_list_selected_nodes = {};
+        ContextMenu<SelectionNodeInfo<Rail::Rail>> m_rail_list_single_node_menu;
+        ContextMenu<std::vector<SelectionNodeInfo<Rail::Rail>>> m_rail_list_multi_node_menu;
+        std::vector<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_selected_nodes = {};
+        ContextMenu<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_single_node_menu;
+        ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>>
+            m_rail_node_list_multi_node_menu;
+
+        // Rail modals
+        CreateRailDialog m_create_rail_dialog;
+        RenameRailDialog m_rename_rail_dialog;
+
+        EditorWindow m_focused_window = EditorWindow::NONE;
 
         std::string m_selected_add_zone{""};
 

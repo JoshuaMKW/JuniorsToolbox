@@ -1,13 +1,14 @@
+// #include <GLFW/glfw3.h>
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 #include <J3D/Rendering/J3DRendering.hpp>
-#include <glad/glad.h>
 #include <iostream>
-#include <GLFW/glfw3.h>
 
-#include "gui/scene/renderer.hpp"
-#include "gui/input.hpp"
-#include "gui/util.hpp"
 #include "gui/application.hpp"
+#include "gui/input.hpp"
+#include "gui/logging/errors.hpp"
+#include "gui/logging/logger.hpp"
+#include "gui/scene/renderer.hpp"
+#include "gui/util.hpp"
 
 namespace Toolbox::UI {
     namespace Render {
@@ -25,66 +26,115 @@ namespace Toolbox::UI {
         bool CompileShader(const char *vertex_shader_src, const char *geometry_shader_src,
                            const char *fragment_shader_src, uint32_t &program_id_out) {
 
-            char glErrorLogBuffer[4096];
-            uint32_t vs = glCreateShader(GL_VERTEX_SHADER);
-            // uint32_t gs = glCreateShader(GL_GEOMETRY_SHADER);  // TODO: add this
-            uint32_t fs = glCreateShader(GL_FRAGMENT_SHADER);
+            char gl_error_log_buffer[4096];
 
-            glShaderSource(vs, 1, &vertex_shader_src, nullptr);
-            glShaderSource(fs, 1, &fragment_shader_src, nullptr);
+            uint32_t vs = 0;
+            uint32_t gs = 0;
+            uint32_t fs = 0;
 
-            glCompileShader(vs);
+            uint32_t pid   = glCreateProgram();
+
+            if (vertex_shader_src) {
+                vs = glCreateShader(GL_VERTEX_SHADER);
+
+                glShaderSource(vs, 1, &vertex_shader_src, nullptr);
+
+                glCompileShader(vs);
+
+                int32_t status;
+                glGetShaderiv(vs, GL_COMPILE_STATUS, &status);
+                if (status == 0) {
+                    GLint gl_info_log_length;
+                    glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &gl_info_log_length);
+
+                    glGetShaderInfoLog(vs, gl_info_log_length, nullptr, gl_error_log_buffer);
+
+                    BaseError error =
+                        make_error<void>("Compile failure in vertex shader:", gl_error_log_buffer)
+                            .error();
+                    logError(error);
+
+                    return false;
+                }
+
+                glAttachShader(pid, vs);
+            }
+
+            if (geometry_shader_src) {
+                gs = glCreateShader(GL_GEOMETRY_SHADER);
+
+                glShaderSource(gs, 1, &geometry_shader_src, nullptr);
+
+                glCompileShader(gs);
+
+                int32_t status;
+                glGetShaderiv(gs, GL_COMPILE_STATUS, &status);
+                if (status == 0) {
+                    GLint gl_info_log_length;
+                    glGetShaderiv(gs, GL_INFO_LOG_LENGTH, &gl_info_log_length);
+
+                    glGetShaderInfoLog(gs, gl_info_log_length, nullptr, gl_error_log_buffer);
+
+                    BaseError error =
+                        make_error<void>("Compile failure in geometry shader:", gl_error_log_buffer)
+                            .error();
+                    logError(error);
+
+                    return false;
+                }
+
+                glAttachShader(pid, gs);
+            }
+
+            if (fragment_shader_src) {
+                fs = glCreateShader(GL_FRAGMENT_SHADER);
+
+                glShaderSource(fs, 1, &fragment_shader_src, nullptr);
+
+                glCompileShader(fs);
+
+                int32_t status;
+                glGetShaderiv(fs, GL_COMPILE_STATUS, &status);
+                if (status == 0) {
+                    GLint gl_info_log_length;
+                    glGetShaderiv(fs, GL_INFO_LOG_LENGTH, &gl_info_log_length);
+
+                    glGetShaderInfoLog(fs, gl_info_log_length, nullptr, gl_error_log_buffer);
+
+                    BaseError error =
+                        make_error<void>("Compile failure in fragment shader:", gl_error_log_buffer)
+                            .error();
+                    logError(error);
+
+                    return false;
+                }
+
+                glAttachShader(pid, fs);
+            }
+
+            glLinkProgram(pid);
+            program_id_out = pid;
 
             int32_t status;
-            glGetShaderiv(vs, GL_COMPILE_STATUS, &status);
-            if (status == 0) {
-                GLint infoLogLength;
-                glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &infoLogLength);
-
-                glGetShaderInfoLog(vs, infoLogLength, nullptr, glErrorLogBuffer);
-
-                std::cout << "Compile failure in vertex shader:" << glErrorLogBuffer << std::endl;
-
-                return false;
-            }
-
-            glCompileShader(fs);
-
-            glGetShaderiv(fs, GL_COMPILE_STATUS, &status);
-            if (status == 0) {
-                GLint infoLogLength;
-                glGetShaderiv(fs, GL_INFO_LOG_LENGTH, &infoLogLength);
-
-                glGetShaderInfoLog(fs, infoLogLength, nullptr, glErrorLogBuffer);
-
-                std::cout << "Compile failure in fragment shader: " << glErrorLogBuffer
-                          << std::endl;
-
-                return false;
-            }
-
-            program_id_out = glCreateProgram();
-
-            glAttachShader(program_id_out, vs);
-            glAttachShader(program_id_out, fs);
-
-            glLinkProgram(program_id_out);
-
-            glGetProgramiv(program_id_out, GL_LINK_STATUS, &status);
+            glGetProgramiv(pid, GL_LINK_STATUS, &status);
             if (status == 0) {
                 GLint logLen;
-                glGetProgramiv(program_id_out, GL_INFO_LOG_LENGTH, &logLen);
-                glGetProgramInfoLog(program_id_out, logLen, nullptr, glErrorLogBuffer);
+                glGetProgramiv(pid, GL_INFO_LOG_LENGTH, &logLen);
+                glGetProgramInfoLog(pid, logLen, nullptr, gl_error_log_buffer);
 
-                std::cout << "Shader Program Linking Error: " << glErrorLogBuffer << std::endl;
+                BaseError error =
+                    make_error<void>("Linking failure in shaders:", gl_error_log_buffer).error();
+                logError(error);
 
                 return false;
             }
 
-            glDetachShader(program_id_out, vs);
-            glDetachShader(program_id_out, fs);
+            glDetachShader(pid, vs);
+            glDetachShader(pid, gs);
+            glDetachShader(pid, fs);
 
             glDeleteShader(vs);
+            glDeleteShader(gs);
             glDeleteShader(fs);
 
             return true;
@@ -113,10 +163,16 @@ namespace Toolbox::UI {
         m_billboard_renderer.loadBillboardTexture("res/question.png", 0);
     }
 
+    Renderer::~Renderer() {
+        glDeleteFramebuffers(1, &m_fbo_id);
+        glDeleteRenderbuffers(1, &m_rbo_id);
+        glDeleteTextures(1, &m_tex_id);
+    }
+
     void Renderer::render(std::vector<std::shared_ptr<J3DModelInstance>> renderables,
                           f32 delta_time) {
-        ImVec2 window_pos    = ImGui::GetWindowPos();
-        m_window_rect = {
+        ImVec2 window_pos = ImGui::GetWindowPos();
+        m_window_rect     = {
             window_pos,
             {window_pos.x + ImGui::GetWindowWidth(), window_pos.y + ImGui::GetWindowHeight()}
         };
@@ -127,8 +183,7 @@ namespace Toolbox::UI {
         if (m_is_window_hovered && Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
             ImGui::SetWindowFocus();
 
-        if (m_is_window_focused &&
-            Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {  // Mouse wrap
+        if (m_is_window_focused && Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {  // Mouse wrap
             ImVec2 mouse_pos   = ImGui::GetMousePos();
             ImVec2 window_pos  = ImGui::GetWindowPos();
             ImVec2 window_size = ImGui::GetWindowSize();
@@ -184,27 +239,13 @@ namespace Toolbox::UI {
     }
 
     void Renderer::initializeData(const SceneInstance &scene) {
-        initializePaths(scene.getRailData());
+        initializePaths(scene.getRailData(), {});
         initializeBillboards();
     }
 
-    void Renderer::initializePaths(const RailData &rail_data) {
-        for (auto &rail : rail_data) {
-            for (auto &node : rail->nodes()) {
-                std::vector<PathPoint> connections;
-
-                PathPoint nodePoint(node->getPosition(), glm::vec4(1.0, 0.0, 1.0, 1.0), 64);
-
-                for (auto connection : rail->getNodeConnections(node)) {
-                    PathPoint connectionPoint(connection->getPosition(),
-                                              glm::vec4(1.0, 0.0, 1.0, 1.0), 64);
-                    connections.push_back(nodePoint);
-                    connections.push_back(connectionPoint);
-                };
-                m_path_renderer.m_paths.push_back(connections);
-            }
-        }
-        m_path_renderer.updateGeometry();
+    void Renderer::initializePaths(const RailData &rail_data,
+                                   std::unordered_map<std::string, bool> visible_map) {
+        m_path_renderer.updateGeometry(rail_data, visible_map);
     }
 
     void Renderer::initializeBillboards() {

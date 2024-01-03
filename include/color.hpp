@@ -3,6 +3,7 @@
 #include "serial.hpp"
 #include "types.hpp"
 #include <expected>
+#include <cmath>
 
 namespace Toolbox::Color {
 
@@ -245,6 +246,86 @@ namespace Toolbox::Color {
             b = static_cast<f32>(m_color.m_b << 3) / 255;
         }
     };
+
+    template <typename _ColorT> inline _ColorT HSVToColor(float h, float s, float v) {
+        static_assert(std::is_base_of_v<BaseColor, _ColorT>,
+                      "Needs derived class of BaseColor");
+
+        _ColorT result;
+
+        // Grayscale
+        if (s == 0) {
+            result.setColor(v, v, v, 1.0f);
+            return result;
+        }
+
+        h /= 60;  // Sectors 0 to 5
+        int i   = static_cast<int>(std::floor(h));
+        float f = h - i;  // Factorial part of h
+        float p = v * (1 - s);
+        float q = v * (1 - s * f);
+        float t = v * (1 - s * (1 - f));
+
+        switch (i) {
+        case 0:
+            result.setColor(v, t, p, 1.0f);
+            break;
+        case 1:
+            result.setColor(q, v, p, 1.0f);
+            break;
+        case 2:
+            result.setColor(p, v, t, 1.0f);
+            break;
+        case 3:
+            result.setColor(p, q, v, 1.0f);
+            break;
+        case 4:
+            result.setColor(t, p, v, 1.0f);
+            break;
+        default:
+            result.setColor(v, p, q, 1.0f);
+            break;
+        }
+
+        return result;
+    }
+
+    template <typename _ColorT>
+    inline _ColorT HSVFromColor(float &h, float &s, float &v, const _ColorT &color) {
+        static_assert(std::is_base_of_v<BaseColor, _ColorT>, "Needs derived class of BaseColor");
+
+        // Convert to normalized space
+        float r, g, b, a;
+        color.getColor(r, g, b, a);
+
+        float min = std::min({r, g, b});
+        float max = std::max({r, g, b});
+        v         = max;  // Value is maximum of r, g, b
+
+        float delta = max - min;
+        if (max == 0) {
+            s = 0;
+            h = 0;
+        } else {
+            s = delta / max;
+
+            if (r == max) {
+                // Between yellow & magenta
+                h = (g - b) / delta;
+            } else if (g == max) {
+                // Between cyan & yellow
+                h = 2 + (b - r) / delta;
+            } else {
+                // Between magenta & cyan
+                h = 4 + (r - g) / delta;
+            }
+
+            h *= 60;  // Degrees
+            if (h < 0) {
+                h += 360;
+            }
+        }
+    }
 
 }  // namespace Toolbox::Color
 

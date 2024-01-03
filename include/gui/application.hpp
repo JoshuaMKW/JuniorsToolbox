@@ -31,7 +31,15 @@ namespace Toolbox::UI {
         int run();
         bool teardown();
 
-        TypedDataClipboard<NodeInfo> &getSceneClipboard() { return m_hierarchy_clipboard; }
+        TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> &getSceneObjectClipboard() {
+            return m_hierarchy_clipboard;
+        }
+        TypedDataClipboard<SelectionNodeInfo<Rail::Rail>> &getSceneRailClipboard() {
+            return m_rail_clipboard;
+        }
+        TypedDataClipboard<SelectionNodeInfo<Rail::RailNode>> &getSceneRailNodeClipboard() {
+            return m_rail_node_clipboard;
+        }
 
         ImVec2 windowScreenPos() {
             int x = 0, y = 0;
@@ -56,7 +64,9 @@ namespace Toolbox::UI {
         void renderWindows(f32 delta_time);
 
     private:
-        TypedDataClipboard<NodeInfo> m_hierarchy_clipboard;
+        TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_clipboard;
+        TypedDataClipboard<SelectionNodeInfo<Rail::Rail>> m_rail_clipboard;
+        TypedDataClipboard<SelectionNodeInfo<Rail::RailNode>> m_rail_node_clipboard;
 
         GLFWwindow *m_render_window;
         std::vector<std::shared_ptr<IWindow>> m_windows;

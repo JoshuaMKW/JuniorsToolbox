@@ -25,7 +25,7 @@ namespace Toolbox::UI {
         // m_object_name.reserve(128);
     }
 
-    void CreateObjDialog::render(NodeInfo node_info) {
+    void CreateObjDialog::render(SelectionNodeInfo<Object::ISceneObject> node_info) {
         if (!m_open)
             return;
 
@@ -182,7 +182,7 @@ namespace Toolbox::UI {
 
     void RenameObjDialog::setup() {}
 
-    void RenameObjDialog::render(NodeInfo node_info) {
+    void RenameObjDialog::render(SelectionNodeInfo<Object::ISceneObject> node_info) {
         if (!m_open)
             return;
 

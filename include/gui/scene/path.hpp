@@ -4,15 +4,24 @@
 #include <filesystem>
 #include <glm/glm.hpp>
 #include <gui/scene/camera.hpp>
+#include <scene/raildata.hpp>
+#include <unordered_map>
 #include <vector>
+
+using namespace Toolbox::Scene;
 
 namespace Toolbox::UI {
 
-    typedef struct {
+    struct PathPoint {
         glm::vec3 m_position;
         glm::vec4 m_color;
         uint32_t m_point_size;
-    } PathPoint;
+    };
+
+    struct PathConnection {
+        PathPoint m_point;
+        std::vector<PathPoint> m_connections;
+    };
 
     class PathRenderer {
         uint32_t m_program;
@@ -21,12 +30,12 @@ namespace Toolbox::UI {
 
         uint32_t m_vao, m_vbo;
 
-    public:
-        // TODO: Update this so that this is private and provide add/delete path methods
-        std::vector<std::vector<PathPoint>> m_paths;
+        std::vector<PathConnection> m_path_connections;
 
+    public:
         [[nodiscard]] bool initPathRenderer();
-        void updateGeometry();
+        void updateGeometry(const RailData &data,
+                            std::unordered_map<std::string, bool> visible_map);
         void drawPaths(Camera *camera);
 
         PathRenderer();

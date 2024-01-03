@@ -606,7 +606,6 @@ namespace Toolbox::UI {
 
         if (ImGui::CollapsingHeader(m_member->name().c_str())) {
             if (m_vectors.size() > 1) {
-                float label_width = 0;
                 for (size_t i = 0; i < m_vectors.size(); ++i) {
                     auto struct_ = m_member->value<Object::MetaStruct>(i).value();
                     auto members = struct_->members();

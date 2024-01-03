@@ -1,13 +1,13 @@
 #pragma once
 
 #include <imgui.h>
+#include <unordered_map>
 
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
 #include "path.hpp"
 #include "types.hpp"
 #include <J3D/Data/J3DModelInstance.hpp>
-#include <glad/glad.h>
 #include <imgui_internal.h>
 #include <scene/raildata.hpp>
 #include <scene/scene.hpp>
@@ -23,13 +23,13 @@ namespace Toolbox::UI {
     class Renderer {
     public:
         Renderer();
-        ~Renderer() {
-            glDeleteFramebuffers(1, &m_fbo_id);
-            glDeleteRenderbuffers(1, &m_rbo_id);
-            glDeleteTextures(1, &m_tex_id);
-        }
+        ~Renderer();
 
         void initializeData(const SceneInstance &scene);
+
+        void updatePaths(const RailData &rail_data, std::unordered_map<std::string, bool> visible_map) {
+            initializePaths(rail_data, visible_map);
+        }
 
         void markDirty() { m_is_dirty = true; }
         void getCameraTranslation(glm::vec3 &translation) { m_camera.getPos(translation); }
@@ -43,7 +43,8 @@ namespace Toolbox::UI {
         void render(std::vector<std::shared_ptr<J3DModelInstance>> renderables, f32 delta_time);
 
     protected:
-        void initializePaths(const RailData &rail_data);
+        void initializePaths(const RailData &rail_data,
+                             std::unordered_map<std::string, bool> visible_map);
         void initializeBillboards();
 
         void viewportBegin();
