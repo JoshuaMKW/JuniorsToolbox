@@ -67,9 +67,9 @@ namespace Toolbox::Rail {
         std::shared_ptr<MetaValue> value_x = m_pos_x->value<MetaValue>(0).value();
         std::shared_ptr<MetaValue> value_y = m_pos_y->value<MetaValue>(0).value();
         std::shared_ptr<MetaValue> value_z = m_pos_z->value<MetaValue>(0).value();
-        value_x->set(static_cast<s16>(position.x));
-        value_y->set(static_cast<s16>(position.y));
-        value_z->set(static_cast<s16>(position.z));
+        value_x->set(std::clamp<s16>(position.x, -32768, 32767));
+        value_y->set(std::clamp<s16>(position.y, -32768, 32767));
+        value_z->set(std::clamp<s16>(position.z, -32768, 32767));
     }
 
     u32 RailNode::getFlags() const {

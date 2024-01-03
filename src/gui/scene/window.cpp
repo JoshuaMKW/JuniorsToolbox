@@ -1060,6 +1060,8 @@ namespace Toolbox::UI {
                                                    return std::expected<void, BaseError>();
                                                });
 
+        // m_rail_list_single_node_menu.addDivider();
+        // 
         // TODO: Add rail manipulators here.
 
         m_rail_list_single_node_menu.addDivider();
@@ -1160,6 +1162,38 @@ namespace Toolbox::UI {
                                                         m_create_rail_dialog.open();
                                                         return std::expected<void, BaseError>();
                                                     });
+
+        m_rail_node_list_single_node_menu.addDivider();
+
+        m_rail_node_list_single_node_menu.addOption(
+            "View in Scene", {ImGuiMod_Alt, GLFW_KEY_V},
+            [this](SelectionNodeInfo<Rail::RailNode> info) {
+                Rail::Rail *rail   = info.m_selected->rail();
+                glm::vec3 translation = info.m_selected->getPosition();
+
+                m_renderer.setCameraOrientation(
+                    {0, 1, 0}, translation, {translation.x, translation.y, translation.z + 1000});
+                m_renderer.markDirty();
+                return std::expected<void, BaseError>();
+            });
+
+        m_rail_node_list_single_node_menu.addOption(
+            "Move to Camera", {ImGuiMod_Alt, GLFW_KEY_C},
+            [this](SelectionNodeInfo<Rail::RailNode> info) {
+                Rail::Rail *rail    = info.m_selected->rail();
+
+                glm::vec3 translation;
+                m_renderer.getCameraTranslation(translation);
+                auto result = rail->setNodePosition(info.m_selected, translation);
+                if (!result) {
+                    return make_error<void>(
+                        "Scene Hierarchy", "Failed to set the translation of the rail node");
+                }
+
+                m_renderer.updatePaths(m_current_scene->getRailData(), m_rail_visible_map);
+                m_renderer.markDirty();
+                return std::expected<void, BaseError>();
+            });
 
         m_rail_node_list_single_node_menu.addDivider();
 
