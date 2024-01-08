@@ -2,6 +2,7 @@
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 #include <J3D/Rendering/J3DRendering.hpp>
 #include <iostream>
+#include <unordered_set>
 
 #include "gui/application.hpp"
 #include "gui/input.hpp"
@@ -10,11 +11,18 @@
 #include "gui/scene/renderer.hpp"
 #include "gui/util.hpp"
 
+static std::set<std::string> s_skybox_materials = {"_02_usugumo", "_03_sky"};
+
 namespace Toolbox::UI {
     namespace Render {
         void PacketSort(J3DRendering::SortFunctionArgs packets) {
             std::sort(packets.begin(), packets.end(),
                       [](const J3DRenderPacket &a, const J3DRenderPacket &b) -> bool {
+                          const bool is_sky_mat_a = s_skybox_materials.contains(a.Material->Name);
+                          const bool is_sky_mat_b = s_skybox_materials.contains(b.Material->Name);
+                          if (is_sky_mat_a || is_sky_mat_b) {
+                              return is_sky_mat_a > is_sky_mat_b;
+                          }
                           if ((a.SortKey & 0x01000000) != (b.SortKey & 0x01000000)) {
                               return (a.SortKey & 0x01000000) > (b.SortKey & 0x01000000);
                           } else {
@@ -32,7 +40,7 @@ namespace Toolbox::UI {
             uint32_t gs = 0;
             uint32_t fs = 0;
 
-            uint32_t pid   = glCreateProgram();
+            uint32_t pid = glCreateProgram();
 
             if (vertex_shader_src) {
                 vs = glCreateShader(GL_VERTEX_SHADER);
@@ -169,8 +177,7 @@ namespace Toolbox::UI {
         glDeleteTextures(1, &m_tex_id);
     }
 
-    void Renderer::render(std::vector<std::shared_ptr<J3DModelInstance>> renderables,
-                          f32 delta_time) {
+    void Renderer::render(std::vector<ISceneObject::RenderInfo> renderables, f32 delta_time) {
         ImVec2 window_pos = ImGui::GetWindowPos();
         m_window_rect     = {
             window_pos,
@@ -228,7 +235,20 @@ namespace Toolbox::UI {
 
             glClearColor(0, 0, 0, 0);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            J3DRendering::Render(delta_time, position, view, projection, renderables);
+
+            auto sky_it = std::find_if(
+                renderables.begin(), renderables.end(),
+                [](const ISceneObject::RenderInfo &info) { return info.m_obj_type == "Sky"; });
+            if (sky_it != renderables.end()) {
+                sky_it->m_obj_model->SetTranslation(position);
+            }
+
+            std::vector<std::shared_ptr<J3DModelInstance>> models = {};
+            for (auto &renderable : renderables) {
+                models.push_back(renderable.m_obj_model);
+            }
+
+            J3DRendering::Render(delta_time, position, view, projection, models);
 
             m_path_renderer.drawPaths(&m_camera);
             m_billboard_renderer.drawBillboards(&m_camera);

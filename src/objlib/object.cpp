@@ -1,5 +1,3 @@
-#include "objlib/object.hpp"
-#include "objlib/meta/errors.hpp"
 #include <J3D/Animation/J3DAnimationLoader.hpp>
 #include <J3D/Material/J3DMaterialTableLoader.hpp>
 #include <bstream.h>
@@ -7,6 +5,9 @@
 #include <gui/modelcache.hpp>
 #include <include/decode.h>
 #include <string>
+
+#include "objlib/meta/errors.hpp"
+#include "objlib/object.hpp"
 
 namespace Toolbox::Object {
 
@@ -113,9 +114,10 @@ namespace Toolbox::Object {
         return size;
     }
 
-    std::expected<void, ObjectError>
-    VirtualSceneObject::performScene(float, std::vector<std::shared_ptr<J3DModelInstance>> &,
-                                     ResourceCache &, std::vector<J3DLight> &) {
+    std::expected<void, ObjectError> VirtualSceneObject::performScene(float,
+                                                                      std::vector<RenderInfo> &,
+                                                                      ResourceCache &,
+                                                                      std::vector<J3DLight> &) {
         return {};
     }
 
@@ -309,9 +311,10 @@ namespace Toolbox::Object {
         return it->get()->getChild(QualifiedName(name.begin() + 1, name.end()));
     }
 
-    std::expected<void, ObjectError> GroupSceneObject::performScene(
-        float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-        ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
+    std::expected<void, ObjectError>
+    GroupSceneObject::performScene(float delta_time, std::vector<RenderInfo> &renderables,
+                                   ResourceCache &resource_cache,
+                                   std::vector<J3DLight> &scene_lights) {
         if (!getIsPerforming()) {
             return {};
         }
@@ -328,11 +331,11 @@ namespace Toolbox::Object {
         if (child_errors.size() > 0) {
             ObjectGroupError err;
             {
-                err.m_message = std::format("ObjectGroupError: {} ({}): There were errors "
-                                            "performing the children:",
-                                            m_type, m_nameref.name());
-                err.m_object  = this;
-                err.m_stacktrace   = std::stacktrace::current();
+                err.m_message    = std::format("ObjectGroupError: {} ({}): There were errors "
+                                                  "performing the children:",
+                                               m_type, m_nameref.name());
+                err.m_object     = this;
+                err.m_stacktrace = std::stacktrace::current();
             }
             return std::unexpected(err);
         }
@@ -538,9 +541,10 @@ namespace Toolbox::Object {
         return size;
     }
 
-    std::expected<void, ObjectError> PhysicalSceneObject::performScene(
-        float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-        ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
+    std::expected<void, ObjectError>
+    PhysicalSceneObject::performScene(float delta_time, std::vector<RenderInfo> &renderables,
+                                      ResourceCache &resource_cache,
+                                      std::vector<J3DLight> &scene_lights) {
         if (!getIsPerforming()) {
             return {};
         }
@@ -589,14 +593,14 @@ namespace Toolbox::Object {
             } else {
                 m_model_instance->SetLight(DEFAULT_LIGHT, 1);
             }
-            //m_model_instance->SetLight(scene_lights[4], 2);  // Specular light
+            // m_model_instance->SetLight(scene_lights[4], 2);  // Specular light
         } else {
             m_model_instance->SetLight(DEFAULT_LIGHT, 0);
             m_model_instance->SetLight(DEFAULT_LIGHT, 1);
         }
 
         m_model_instance->UpdateAnimations(delta_time);
-        renderables.push_back(m_model_instance);
+        renderables.emplace_back(m_type, m_nameref, m_model_instance);
 
         return {};
     }
@@ -672,7 +676,7 @@ namespace Toolbox::Object {
                                               bStream::OpenMode::In);
 
             model_data = bmdLoader.Load(&model_stream, 0);
-            //resource_cache.m_model.insert({model_name, *model_data});
+            // resource_cache.m_model.insert({model_name, *model_data});
         } else {
             model_data = std::make_shared<J3DModelData>(resource_cache.m_model[model_name]);
         }
@@ -696,9 +700,9 @@ namespace Toolbox::Object {
             if (mat_name == "nozzlebox") {
                 std::shared_ptr<J3DMaterial> nozzle_mat = mat_table->GetMaterial("_mat1");
                 auto nozzle_type_member                 = getMember("Spawn").value();
-                std::string nozzle_type                 = getMetaValue<std::string>(nozzle_type_member).value();
+                std::string nozzle_type = getMetaValue<std::string>(nozzle_type_member).value();
                 if (nozzle_type == "normal_nozzle_item") {
-                    nozzle_mat->TevBlock->mTevColors[1]      = {0, 0, 255, 255};
+                    nozzle_mat->TevBlock->mTevColors[1] = {0, 0, 255, 255};
                 } else if (nozzle_type == "rocket_nozzle_item") {
                     nozzle_mat->TevBlock->mTevColors[1] = {255, 0, 0, 255};
                 } else if (nozzle_type == "back_nozzle_item") {
