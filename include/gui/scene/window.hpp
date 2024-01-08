@@ -149,7 +149,7 @@ namespace Toolbox::UI {
         // Render view
         bool m_is_render_window_open;
         Renderer m_renderer;
-        std::vector<std::shared_ptr<J3DModelInstance>> m_renderables;
+        std::vector<ISceneObject::RenderInfo> m_renderables;
         ResourceCache m_resource_cache;
 
         // Docking facilities

@@ -42,17 +42,6 @@ using namespace Toolbox::Scene;
 
 namespace Toolbox::UI {
 
-    void PacketSort(J3DRendering::SortFunctionArgs packets) {
-        std::sort(packets.begin(), packets.end(),
-                  [](const J3DRenderPacket &a, const J3DRenderPacket &b) -> bool {
-                      if ((a.SortKey & 0x01000000) != (b.SortKey & 0x01000000)) {
-                          return (a.SortKey & 0x01000000) > (b.SortKey & 0x01000000);
-                      } else {
-                          return a.Material->Name < b.Material->Name;
-                      }
-                  });
-    }
-
     /* icu
 
     includes:

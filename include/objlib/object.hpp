@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nameref.hpp"
+#include "objlib/errors.hpp"
 #include "objlib/meta/member.hpp"
 #include "template.hpp"
 #include "transform.hpp"
@@ -17,7 +18,6 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
-#include "objlib/errors.hpp"
 
 using namespace J3DAnimation;
 
@@ -61,6 +61,12 @@ namespace Toolbox::Object {
     class ISceneObject : public ISerializable, public IClonable {
     public:
         friend class ObjectFactory;
+
+        struct RenderInfo {
+            std::string m_obj_type;
+            NameRef m_obj_nameref;
+            std::shared_ptr<J3DModelInstance> m_obj_model;
+        };
 
         /* ABSTRACT INTERFACE */
         virtual ~ISceneObject() = default;
@@ -109,12 +115,12 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual J3DLight getLightData(int index) = 0;
 
-        [[nodiscard]] virtual bool getCanPerform() const = 0;
+        [[nodiscard]] virtual bool getCanPerform() const   = 0;
         [[nodiscard]] virtual bool getIsPerforming() const = 0;
-        virtual void setIsPerforming(bool performing)   = 0;
+        virtual void setIsPerforming(bool performing)      = 0;
 
         virtual std::expected<void, ObjectError>
-        performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
+        performScene(float delta_time, std::vector<RenderInfo> &renderables,
                      ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) = 0;
 
         virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
@@ -266,9 +272,10 @@ namespace Toolbox::Object {
         [[nodiscard]] bool getIsPerforming() const { return false; }
         void setIsPerforming(bool performing) {}
 
-        std::expected<void, ObjectError>
-        performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) override;
+        std::expected<void, ObjectError> performScene(float delta_time,
+                                                      std::vector<RenderInfo> &renderables,
+                                                      ResourceCache &resource_cache,
+                                                      std::vector<J3DLight> &scene_lights) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -365,9 +372,10 @@ namespace Toolbox::Object {
         [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
         void setIsPerforming(bool performing) { m_is_performing = performing; }
 
-        std::expected<void, ObjectError>
-        performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) override;
+        std::expected<void, ObjectError> performScene(float delta_time,
+                                                      std::vector<RenderInfo> &renderables,
+                                                      ResourceCache &resource_cache,
+                                                      std::vector<J3DLight> &scene_lights) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -405,7 +413,7 @@ namespace Toolbox::Object {
     private:
         std::shared_ptr<MetaMember> m_group_size;
         std::vector<std::shared_ptr<ISceneObject>> m_children = {};
-        bool m_is_performing = true;
+        bool m_is_performing                                  = true;
     };
 
     class PhysicalSceneObject : public ISceneObject {
@@ -539,9 +547,10 @@ namespace Toolbox::Object {
         [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
         void setIsPerforming(bool performing) { m_is_performing = performing; }
 
-        std::expected<void, ObjectError>
-        performScene(float delta_time, std::vector<std::shared_ptr<J3DModelInstance>> &renderables,
-                     ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) override;
+        std::expected<void, ObjectError> performScene(float delta_time,
+                                                      std::vector<RenderInfo> &renderables,
+                                                      ResourceCache &resource_cache,
+                                                      std::vector<J3DLight> &scene_lights) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 

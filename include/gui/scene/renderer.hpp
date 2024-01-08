@@ -40,7 +40,7 @@ namespace Toolbox::UI {
         }
 
         bool inputUpdate();
-        void render(std::vector<std::shared_ptr<J3DModelInstance>> renderables, f32 delta_time);
+        void render(std::vector<ISceneObject::RenderInfo> renderables, f32 delta_time);
 
     protected:
         void initializePaths(const RailData &rail_data,
