@@ -709,6 +709,12 @@ namespace Toolbox::Object {
                     nozzle_mat->TevBlock->mTevColors[1] = {90, 90, 120, 255};
                 }
             }
+
+            if (model_name == "sky") {
+                for (auto &mat : mat_table->GetMaterials()) {
+                    std::cout << mat->Name << std::endl;
+                }
+            }
         }
 
         // TODO: Load texture data

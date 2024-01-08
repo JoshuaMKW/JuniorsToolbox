@@ -11,7 +11,7 @@
 #include "gui/scene/renderer.hpp"
 #include "gui/util.hpp"
 
-static std::set<std::string> s_skybox_materials = {"_02_usugumo", "_03_sky"};
+static std::set<std::string> s_skybox_materials = {"_00_spline", "_01_nyudougumo", "_02_usugumo", "_03_sky"};
 
 namespace Toolbox::UI {
     namespace Render {
