@@ -129,6 +129,8 @@ namespace Toolbox::UI {
     private:
         std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;
 
+        ImGuiID m_window_seed;
+
         // Hierarchy view
         ImGuiTextFilter m_hierarchy_filter;
         std::vector<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_selected_nodes = {};

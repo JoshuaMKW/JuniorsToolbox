@@ -58,14 +58,14 @@ namespace Toolbox::Object {
 
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
-    class ISceneObject : public ISerializable, public IClonable {
+    class ISceneObject : public ISerializable, public IClonable, public std::enable_shared_from_this<ISceneObject> {
     public:
         friend class ObjectFactory;
 
         struct RenderInfo {
-            std::string m_obj_type;
-            NameRef m_obj_nameref;
-            std::shared_ptr<J3DModelInstance> m_obj_model;
+            std::shared_ptr<ISceneObject> m_object;
+            std::shared_ptr<J3DModelInstance> m_model;
+            glm::vec3 m_translation;
         };
 
         /* ABSTRACT INTERFACE */

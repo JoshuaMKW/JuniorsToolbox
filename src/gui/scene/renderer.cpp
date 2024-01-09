@@ -11,7 +11,64 @@
 #include "gui/scene/renderer.hpp"
 #include "gui/util.hpp"
 
-static std::set<std::string> s_skybox_materials = {"_00_spline", "_01_nyudougumo", "_02_usugumo", "_03_sky"};
+static std::set<std::string> s_skybox_materials = {"_00_spline", "_01_nyudougumo", "_02_usugumo",
+                                                   "_03_sky"};
+
+// Utility function to convert 2D screen space coordinates to a 3D ray in world space
+static std::pair<glm::vec3, glm::vec3>
+getRayFromMouse(const glm::vec2 &mousePos, Toolbox::Camera &camera, const glm::vec4 &viewport) {
+    // Convert mouse position to normalized device coordinates
+    glm::vec3 mouseNDC((mousePos.x / viewport.z) * 2.0f - 1.0f,
+                       (mousePos.y / viewport.w) * 2.0f - 1.0f, 1.0f);
+    mouseNDC.y = -mouseNDC.y;  // Invert Y coordinate
+
+    // Convert to world space
+    glm::vec4 rayClip(mouseNDC.x, mouseNDC.y, -1.0f, 1.0f);
+    glm::vec4 rayEye   = glm::inverse(camera.getProjMatrix()) * rayClip;
+    rayEye             = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
+    glm::vec3 rayWorld = glm::vec3(glm::inverse(camera.getViewMatrix()) * rayEye);
+    rayWorld           = glm::normalize(rayWorld);
+
+    // Ray origin is the camera position
+    glm::vec3 rayOrigin;
+    camera.getPos(rayOrigin);
+
+    return {rayOrigin, rayWorld};
+}
+
+bool intersectRayAABB(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
+                      const glm::vec3 &min, const glm::vec3 &max) {
+    float tMin = std::numeric_limits<float>::lowest();
+    float tMax = std::numeric_limits<float>::max();
+
+    for (int i = 0; i < 3; ++i) {
+        if (std::abs(rayDirection[i]) < std::numeric_limits<float>::epsilon()) {
+            // Ray is parallel to slab. No hit if origin not within slab
+            if (rayOrigin[i] < min[i] || rayOrigin[i] > max[i])
+                return false;
+        } else {
+            // Compute the intersection t value of the ray with the near and far slab planes
+            float ood = 1.0f / rayDirection[i];
+            float t1  = (min[i] - rayOrigin[i]) * ood;
+            float t2  = (max[i] - rayOrigin[i]) * ood;
+
+            // Make t1 be intersection with near plane, t2 with far plane
+            if (t1 > t2)
+                std::swap(t1, t2);
+
+            // Compute the intersection of slab intersection intervals
+            tMin = std::max(tMin, t1);
+            tMax = std::min(tMax, t2);
+
+            // Exit with no collision as soon as slab intersection becomes empty
+            if (tMin > tMax)
+                return false;
+        }
+    }
+
+    // Ray intersects all 3 slabs. Return point (tMin) is closest intersection
+    return true;
+}
 
 namespace Toolbox::UI {
     namespace Render {
@@ -236,16 +293,17 @@ namespace Toolbox::UI {
             glClearColor(0, 0, 0, 0);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            auto sky_it = std::find_if(
-                renderables.begin(), renderables.end(),
-                [](const ISceneObject::RenderInfo &info) { return info.m_obj_type == "Sky"; });
+            auto sky_it = std::find_if(renderables.begin(), renderables.end(),
+                                       [](const ISceneObject::RenderInfo &info) {
+                                           return info.m_object->type() == "Sky";
+                                       });
             if (sky_it != renderables.end()) {
-                sky_it->m_obj_model->SetTranslation(position);
+                sky_it->m_model->SetTranslation(position);
             }
 
             std::vector<std::shared_ptr<J3DModelInstance>> models = {};
             for (auto &renderable : renderables) {
-                models.push_back(renderable.m_obj_model);
+                models.push_back(renderable.m_model);
             }
 
             J3DRendering::Render(delta_time, position, view, projection, models);
@@ -372,6 +430,71 @@ namespace Toolbox::UI {
             m_camera.updateCamera();
 
         return true;
+    }
+
+    std::variant<std::shared_ptr<ISceneObject>, std::shared_ptr<Rail::Rail>, std::nullopt_t>
+    Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables, bool &should_reset) {
+        should_reset = false;
+        if (!m_is_window_hovered || !m_is_window_focused) {
+            return std::nullopt;
+        }
+
+        const bool left_click  = Input::GetMouseButton(GLFW_MOUSE_BUTTON_LEFT);
+        const bool right_click = Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT);
+
+        // Mouse pos is absolute
+        ImVec2 mouse_pos = Input::GetMousePosition();
+
+        // Get point on render window
+        glm::vec3 selection_point = {mouse_pos.x - m_window_rect.Min.x,
+                                     mouse_pos.y - m_window_rect.Min.y, 0};
+
+        if (!left_click && !right_click) {
+            return {};
+        }
+
+        // Generate ray from mouse position
+        auto [rayOrigin, rayDirection] =
+            getRayFromMouse(glm::vec2(selection_point.x, selection_point.y), m_camera,
+                            glm::vec4(m_window_rect.Min.x, m_window_rect.Min.y,
+                                      m_window_rect.Max.x - m_window_rect.Min.x,
+                                      m_window_rect.Max.y - m_window_rect.Min.y));
+
+        std::cout << "Origin: (x: " << rayOrigin.x << ", y: " << rayOrigin.y
+                  << ", z: " << rayOrigin.z << ")" << std::endl;
+
+        std::cout << "Direction: (x: " << rayDirection.x << ", y: " << rayDirection.y
+                  << ", z: " << rayDirection.z << ")" << std::endl;
+
+        const std::unordered_set<std::string> selection_blacklist = {
+            "Map",
+            "MapObjWave",
+            "Shimmer",
+            "Sky",
+        };
+
+        for (auto &renderable : renderables) {
+            if (selection_blacklist.contains(renderable.m_object->type())) {
+                continue;
+            }
+
+            glm::vec3 min, max;
+
+            // Bounding box is local
+            renderable.m_model->GetBoundingBox(min, max);
+
+            min += renderable.m_translation;
+            max += renderable.m_translation;
+
+            // Perform ray-box intersection test
+            if (intersectRayAABB(rayOrigin, rayDirection, min, max)) {
+                // Intersection detected, return the hit object
+                Log::AppLogger::instance().debugLog(
+                    std::format("[SCENE]  - Hit object {} ({})", renderable.m_object->type(),
+                                renderable.m_object->getNameRef().name()));
+                return renderable.m_object;
+            }
+        }
     }
 
 }  // namespace Toolbox::UI
