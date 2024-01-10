@@ -11,6 +11,8 @@
 #include "gui/scene/renderer.hpp"
 #include "gui/util.hpp"
 
+#include <glm/gtx/euler_angles.hpp>
+
 static std::set<std::string> s_skybox_materials = {"_00_spline", "_01_nyudougumo", "_02_usugumo",
                                                    "_03_sky"};
 
@@ -37,7 +39,7 @@ getRayFromMouse(const glm::vec2 &mousePos, Toolbox::Camera &camera, const glm::v
 }
 
 bool intersectRayAABB(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
-                      const glm::vec3 &min, const glm::vec3 &max) {
+                      const glm::vec3 &min, const glm::vec3 &max, float &intersectionDistance) {
     float tMin = std::numeric_limits<float>::lowest();
     float tMax = std::numeric_limits<float>::max();
 
@@ -65,9 +67,31 @@ bool intersectRayAABB(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
                 return false;
         }
     }
+    // Ray intersects all 3 slabs. If tMin is negative, the intersection point is behind the ray
+    // origin.
+    if (tMin < 0.0f)
+        tMin = tMax;  // If tMin is negative, use tMax instead
+    if (tMin < 0.0f)
+        return false;  // Both tMin and tMax are negative, intersection is behind the ray's origin
 
-    // Ray intersects all 3 slabs. Return point (tMin) is closest intersection
+    // Set the intersection distance before returning true
+    intersectionDistance = tMin;
     return true;
+}
+
+bool intersectRayOBB(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
+                     const glm::vec3 &obbMin, const glm::vec3 &obbMax,
+                     const glm::mat4 &obbTransform, float &intersectionDistance) {
+    // Inverse OBB transformation matrix to transform the ray into OBB's local space
+    glm::mat4 invTransform = glm::inverse(obbTransform);
+
+    // Transform the ray origin and direction into the OBB's local space
+    glm::vec4 localRayOrigin    = invTransform * glm::vec4(rayOrigin, 1.0f);
+    glm::vec4 localRayDirection = invTransform * glm::vec4(rayDirection, 0.0f);
+
+    // Perform AABB intersection test in local space
+    return intersectRayAABB(glm::vec3(localRayOrigin), glm::normalize(glm::vec3(localRayDirection)),
+                            obbMin, obbMax, intersectionDistance);
 }
 
 namespace Toolbox::UI {
@@ -432,7 +456,7 @@ namespace Toolbox::UI {
         return true;
     }
 
-    std::variant<std::shared_ptr<ISceneObject>, std::shared_ptr<Rail::Rail>, std::nullopt_t>
+    std::variant<std::shared_ptr<ISceneObject>, std::shared_ptr<Rail::RailNode>, std::nullopt_t>
     Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables, bool &should_reset) {
         should_reset = false;
         if (!m_is_window_hovered || !m_is_window_focused) {
@@ -453,6 +477,8 @@ namespace Toolbox::UI {
             return {};
         }
 
+        should_reset = true;
+
         // Generate ray from mouse position
         auto [rayOrigin, rayDirection] =
             getRayFromMouse(glm::vec2(selection_point.x, selection_point.y), m_camera,
@@ -460,18 +486,17 @@ namespace Toolbox::UI {
                                       m_window_rect.Max.x - m_window_rect.Min.x,
                                       m_window_rect.Max.y - m_window_rect.Min.y));
 
-        std::cout << "Origin: (x: " << rayOrigin.x << ", y: " << rayOrigin.y
-                  << ", z: " << rayOrigin.z << ")" << std::endl;
-
-        std::cout << "Direction: (x: " << rayDirection.x << ", y: " << rayDirection.y
-                  << ", z: " << rayDirection.z << ")" << std::endl;
-
         const std::unordered_set<std::string> selection_blacklist = {
             "Map",
             "MapObjWave",
             "Shimmer",
             "Sky",
         };
+
+        float nearest_intersection = std::numeric_limits<float>::max();
+
+        std::variant<std::shared_ptr<ISceneObject>, std::shared_ptr<Rail::RailNode>, std::nullopt_t>
+            selected_item = std::nullopt;
 
         for (auto &renderable : renderables) {
             if (selection_blacklist.contains(renderable.m_object->type())) {
@@ -483,18 +508,34 @@ namespace Toolbox::UI {
             // Bounding box is local
             renderable.m_model->GetBoundingBox(min, max);
 
-            min += renderable.m_translation;
-            max += renderable.m_translation;
+            glm::mat4x4 obb_transform = glm::identity<glm::mat4x4>();
+            obb_transform = glm::translate(obb_transform, renderable.m_transform.m_translation);
+
+            glm::mat4x4 obb_rot_mtx = glm::eulerAngleXYZ(renderable.m_transform.m_rotation.x,
+                                                         renderable.m_transform.m_rotation.y,
+                                                         renderable.m_transform.m_rotation.z);
+
+            obb_transform = obb_transform * obb_rot_mtx;
+
+            if (renderable.m_object->type() != "SunModel") {
+                obb_transform = glm::scale(obb_transform, renderable.m_transform.m_scale);
+            }
+
+            float this_intersection;
 
             // Perform ray-box intersection test
-            if (intersectRayAABB(rayOrigin, rayDirection, min, max)) {
+            if (intersectRayOBB(rayOrigin, rayDirection, min, max, obb_transform,
+                                this_intersection)) {
                 // Intersection detected, return the hit object
-                Log::AppLogger::instance().debugLog(
-                    std::format("[SCENE]  - Hit object {} ({})", renderable.m_object->type(),
-                                renderable.m_object->getNameRef().name()));
-                return renderable.m_object;
+                if (this_intersection >= nearest_intersection) {
+                    continue;
+                }
+                nearest_intersection = this_intersection;
+                selected_item = renderable.m_object;
             }
         }
+
+        return selected_item;
     }
 
 }  // namespace Toolbox::UI

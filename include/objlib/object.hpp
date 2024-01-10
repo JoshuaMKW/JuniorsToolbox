@@ -65,7 +65,7 @@ namespace Toolbox::Object {
         struct RenderInfo {
             std::shared_ptr<ISceneObject> m_object;
             std::shared_ptr<J3DModelInstance> m_model;
-            glm::vec3 m_translation;
+            Transform m_transform;
         };
 
         /* ABSTRACT INTERFACE */

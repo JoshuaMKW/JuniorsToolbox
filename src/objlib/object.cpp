@@ -574,7 +574,11 @@ namespace Toolbox::Object {
             return {};
         }
 
-        glm::vec3 translation = {0, 0, 0};
+        Transform render_transform = {
+            {0, 0, 0},
+            {0, 0, 0},
+            {1, 1, 1}
+        };
 
         auto transform_value_ptr = getMember("Transform").value();
         if (transform_value_ptr) {
@@ -582,7 +586,7 @@ namespace Toolbox::Object {
             m_model_instance->SetTranslation(transform.m_translation);
             m_model_instance->SetRotation(transform.m_rotation);
             m_model_instance->SetScale(transform.m_scale);
-            translation = transform.m_translation;
+            render_transform = transform;
         }
 
         if (m_type == "SunModel") {
@@ -603,7 +607,7 @@ namespace Toolbox::Object {
         }
 
         m_model_instance->UpdateAnimations(delta_time);
-        renderables.emplace_back(shared_from_this(), m_model_instance, translation);
+        renderables.emplace_back(shared_from_this(), m_model_instance, render_transform);
 
         return {};
     }

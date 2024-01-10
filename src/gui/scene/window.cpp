@@ -154,10 +154,19 @@ namespace Toolbox::UI {
 
         bool multi_select = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
 
+        if (should_reset && !multi_select) {
+            m_hierarchy_selected_nodes.clear();
+            m_rail_node_list_selected_nodes.clear();
+            m_selected_properties.clear();
+        }
+
         if (std::holds_alternative<std::shared_ptr<ISceneObject>>(selection)) {
             auto obj                 = std::get<std::shared_ptr<ISceneObject>>(selection);
             if (!obj)
                 return inputState;
+
+            Log::AppLogger::instance().debugLog(
+                std::format("Hit object {} ({})", obj->type(), obj->getNameRef().name()));
 
             std::string node_uid_str = getNodeUID(obj);
             ImGuiID tree_node_id =
@@ -175,9 +184,8 @@ namespace Toolbox::UI {
                 .m_parent_synced = true,
                 .m_scene_synced  = true};  // Only spacial objects get scene selection
 
-            m_selected_properties.clear();
-
             if (multi_select) {
+                m_selected_properties.clear();
                 if (node_it == m_hierarchy_selected_nodes.end())
                     m_hierarchy_selected_nodes.push_back(node_info);
             } else {
@@ -191,7 +199,32 @@ namespace Toolbox::UI {
                     }
                 }
             }
-        } else if (std::holds_alternative<std::shared_ptr<Rail::Rail>>(selection)) {
+            m_properties_render_handler = renderObjectProperties;
+        } else if (std::holds_alternative<std::shared_ptr<Rail::RailNode>>(selection)) {
+            auto node = std::get<std::shared_ptr<Rail::RailNode>>(selection);
+            if (!node)
+                return inputState;
+
+            Rail::Rail *rail = node->rail();
+
+            // In this circumstance, select the whole rail
+            if (Input::GetKey(GLFW_KEY_LEFT_ALT)) {
+                // Since a rail is selected, we should clear the nodes
+                m_rail_node_list_selected_nodes.clear();
+
+                Log::AppLogger::instance().debugLog(std::format(
+                    "Hit rail \"{}\"", rail->name()));
+            
+                m_properties_render_handler = renderRailProperties;
+            } else {
+                // Since a node is selected, we should clear the rail selections
+                m_rail_list_selected_nodes.clear();
+
+                Log::AppLogger::instance().debugLog(std::format(
+                    "Hit node {} of rail \"{}\"", rail->getNodeIndex(node).value(), rail->name()));
+
+                m_properties_render_handler = renderRailNodeProperties;
+            }
         }
 
         return inputState;
