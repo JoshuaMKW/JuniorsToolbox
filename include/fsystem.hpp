@@ -4,9 +4,9 @@
 
 #include <expected>
 #include <filesystem>
+#include <format>
 #include <stacktrace>
 #include <system_error>
-#include <format>
 
 #include "error.hpp"
 
@@ -411,13 +411,27 @@ namespace Toolbox {
     };
 
     template <typename _Ret>
-    [[nodiscard]] static inline std::expected<_Ret, FSError> make_fs_error(std::error_code code, std::string_view reason) {
-        return std::unexpected(FSError{code, std::format("FSError: {}", std::string(reason)), std::stacktrace::current()});
+    [[nodiscard]] static inline std::expected<_Ret, FSError>
+    make_fs_error(std::error_code code, std::vector<std::string> reason) {
+        std::vector<std::string> message;
+        if (reason.size() > 0) {
+            message.push_back(std::format("FSError: {}", reason[0]));
+            if (reason.size() > 1) {
+                message.insert(message.end(), reason.begin() + 1, reason.end());
+            }
+        } else {
+            message.push_back("FSError: Unknown error.");
+        }
+
+        FSError error = {message, std::stacktrace::current(), code};
+        return std::unexpected(error);
     }
 
     template <typename _Ret>
     [[nodiscard]] static inline std::expected<_Ret, FSError> make_fs_error(std::error_code code) {
-        return std::unexpected(
-            FSError{code, std::format("FSError: {}", code.message()), std::stacktrace::current()});
-    }
-}
+        std::vector<std::string> message;
+        message.push_back(std::format("FSError: {}", code.message()));
+        FSError error = {message, std::stacktrace::current(), code};
+        return std::unexpected(error);
+    }  // namespace Toolbox
+}  // namespace Toolbox

@@ -178,7 +178,7 @@ namespace Toolbox::Object {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
                 auto error = std::get<FSError>(error_v);
-                return make_serial_error<void>(in, error.m_message);
+                return make_serial_error<void>(in, error.m_message[0]);
             } else {
                 auto error = std::get<JSONError>(error_v);
                 return make_serial_error<void>(in, error.m_message);
@@ -398,7 +398,7 @@ namespace Toolbox::Object {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
                 auto error = std::get<FSError>(error_v);
-                return make_serial_error<void>(in, error.m_message);
+                return make_serial_error<void>(in, error.m_message[0]);
             } else {
                 auto error = std::get<JSONError>(error_v);
                 return make_serial_error<void>(in, error.m_message);

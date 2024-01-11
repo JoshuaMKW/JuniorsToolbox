@@ -50,7 +50,7 @@ namespace Toolbox::UI {
         switch (severity) {
         case GL_DEBUG_SEVERITY_NOTIFICATION:
         case GL_DEBUG_SEVERITY_LOW:
-            logger.info(std::format("(OpenGL) {}", message));
+            // logger.info(std::format("(OpenGL) {}", message));
             break;
         case GL_DEBUG_SEVERITY_MEDIUM:
             logger.warn(std::format("(OpenGL) {}", message));

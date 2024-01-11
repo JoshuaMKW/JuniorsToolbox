@@ -42,7 +42,7 @@ namespace Toolbox::UI {
     std::expected<void, FSError> ThemeManager::initialize() {
         auto cwd_result = Toolbox::current_path();
         if (!cwd_result) {
-            return make_fs_error<void>(cwd_result.error(), "Failed to get the cwd");
+            return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
         }
 
         auto &cwd = cwd_result.value();
@@ -55,7 +55,7 @@ namespace Toolbox::UI {
                 }
                 m_themes.emplace_back(theme);
             } catch (std::runtime_error &e) {
-                return make_fs_error<void>(std::error_code(), e.what());
+                return make_fs_error<void>(std::error_code(), {e.what()});
             }
         }
 

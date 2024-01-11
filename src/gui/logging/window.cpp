@@ -95,7 +95,7 @@ namespace Toolbox::UI {
         }
 
         if (ImGui::BeginChild(getWindowChildUID(*this, "Log View").c_str(), {},
-                              ImGuiWindowFlags_AlwaysUseWindowPadding)) {
+                              false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             for (auto &message : Log::AppLogger::instance().messages()) {
                 switch (message.m_level) {
                 case Log::ReportLevel::LOG:

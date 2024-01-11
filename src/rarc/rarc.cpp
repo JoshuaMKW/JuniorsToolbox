@@ -175,7 +175,7 @@ namespace Toolbox::RARC {
             auto dir_result = Toolbox::is_directory(path);
             if (!dir_result) {
                 return make_fs_error<ResourceArchive>(
-                    dir_result.error(), "CREATE: Failed to check if {} is a directory");
+                    dir_result.error(), {"CREATE: Failed to check if {} is a directory"});
             }
             bool folder = dir_result.value();
             if (err) {
@@ -193,8 +193,8 @@ namespace Toolbox::RARC {
 
             auto path_result = Toolbox::relative(path, root);
             if (!path_result) {
-                return make_fs_error<ResourceArchive>(path_result.error(),
-                                                      "CREATE: Failed to get relative path of {}");
+                return make_fs_error<ResourceArchive>(
+                    path_result.error(), {"CREATE: Failed to get relative path of {}"});
             }
             path = std::filesystem::path(".") / path_result.value();
 
@@ -279,7 +279,8 @@ namespace Toolbox::RARC {
         }
 
         if (!result.recalculateIDs()) {
-            return make_fs_error<ResourceArchive>(std::error_code(), "Failed to calculate the IDs");
+            return make_fs_error<ResourceArchive>(std::error_code(),
+                                                  {"Failed to calculate the IDs"});
         }
 
         return result;
@@ -673,11 +674,11 @@ namespace Toolbox::RARC {
             if (!result)
                 return make_fs_error<node_it>(result.error());
             if (!result.value())
-                return make_fs_error<node_it>(std::error_code(), "REPLACE: Path does not exist.");
+                return make_fs_error<node_it>(std::error_code(), {"REPLACE: Path does not exist."});
         }
 
         if (old_node == m_nodes.end())
-            return make_fs_error<node_it>(std::error_code(), "REPLACE: Target node not found!");
+            return make_fs_error<node_it>(std::error_code(), {"REPLACE: Target node not found!"});
 
         if (old_node->is_folder()) {
             {
@@ -685,7 +686,7 @@ namespace Toolbox::RARC {
                 if (!result)
                     return make_fs_error<node_it>(result.error());
                 if (!result.value())
-                    return make_fs_error<node_it>(std::error_code(), "REPLACE: Not a directory!");
+                    return make_fs_error<node_it>(std::error_code(), {"REPLACE: Not a directory!"});
             }
 
             auto begin    = old_node;
@@ -755,14 +756,15 @@ namespace Toolbox::RARC {
             if (!result)
                 return make_fs_error<node_it>(result.error());
             if (!result.value())
-                return make_fs_error<node_it>(std::error_code(), "REPLACE: Not a file!");
+                return make_fs_error<node_it>(std::error_code(), {"REPLACE: Not a file!"});
         }
 
         auto in = std::ifstream(path.string(), std::ios::binary | std::ios::in);
 
         auto size_result = Toolbox::file_size(path);
         if (!size_result) {
-            return make_fs_error<node_it>(std::error_code(), "REPLACE: Failed to fetch file size");
+            return make_fs_error<node_it>(std::error_code(),
+                                          {"REPLACE: Failed to fetch file size"});
         }
         auto fsize = size_result.value();
 
@@ -776,14 +778,14 @@ namespace Toolbox::RARC {
     ResourceArchive::extractNodeToFolder(const_node_it node_it,
                                          const std::filesystem::path &folder) {
         if (node_it == m_nodes.end())
-            return make_fs_error<void>(std::error_code(), "EXTRACT: Target node not found!");
+            return make_fs_error<void>(std::error_code(), {"EXTRACT: Target node not found!"});
 
         {
             auto result = Toolbox::is_directory(folder);
             if (!result)
                 return make_fs_error<void>(result.error());
             if (!result.value())
-                return make_fs_error<void>(std::error_code(), "EXTRACT: Not a directory!");
+                return make_fs_error<void>(std::error_code(), {"EXTRACT: Not a directory!"});
         }
 
         if (node_it->is_folder()) {
@@ -813,7 +815,7 @@ namespace Toolbox::RARC {
                 auto result = tmp_rarc.recalculateIDs();
                 if (!result) {
                     return make_fs_error<void>(std::error_code(),
-                                               "EXTRACT: Failed to recalculate IDs!");
+                                               {"EXTRACT: Failed to recalculate IDs!"});
                 }
             }
 

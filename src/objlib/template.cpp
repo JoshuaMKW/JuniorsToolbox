@@ -349,7 +349,7 @@ namespace Toolbox::Object {
     std::expected<void, FSError> TemplateFactory::initialize() {
         auto cwd_result = Toolbox::current_path();
         if (!cwd_result) {
-            return make_fs_error<void>(cwd_result.error(), "Failed to get the cwd");
+            return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
         }
 
         auto &cwd = cwd_result.value();
@@ -359,7 +359,7 @@ namespace Toolbox::Object {
             try {
                 template_ = Template(type_str);
             } catch (std::runtime_error &e) {
-                return make_fs_error<void>(std::error_code(), e.what());
+                return make_fs_error<void>(std::error_code(), {e.what()});
             }
             s_template_cache[type_str] = template_;
         }
@@ -377,14 +377,14 @@ namespace Toolbox::Object {
         try {
             template_ = Template(type);
         } catch (std::runtime_error &e) {
-            return make_fs_error<std::unique_ptr<Template>>(std::error_code(), e.what());
+            return make_fs_error<std::unique_ptr<Template>>(std::error_code(), {e.what()});
         }
 
         TemplateFactory::create_ret_t template_ptr;
         try {
             template_ptr = std::make_unique<Template>(template_);
         } catch (std::runtime_error &e) {
-            return make_fs_error<std::unique_ptr<Template>>(std::error_code(), e.what());
+            return make_fs_error<std::unique_ptr<Template>>(std::error_code(), {e.what()});
         }
 
         s_template_cache[type_str] = template_;

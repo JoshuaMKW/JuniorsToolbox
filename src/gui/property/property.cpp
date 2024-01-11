@@ -61,12 +61,12 @@ namespace Toolbox::UI {
 
         if (m_member->isTypeStruct()) {
             logger.error(std::format("(Property) Trying to render struct \"{}\" as bool",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_member->isTypeEnum()) {
             logger.error(std::format("(Property) Trying to render enum \"{}\" as bool",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_bools.size() != m_member->arraysize()) {
@@ -172,12 +172,12 @@ namespace Toolbox::UI {
 
         if (m_member->isTypeStruct()) {
             logger.error(std::format("(Property) Trying to render struct \"{}\" as number",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_member->isTypeEnum()) {
             logger.error(std::format("(Property) Trying to render enum \"{}\" as number",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_numbers.size() != m_member->arraysize()) {
@@ -258,12 +258,12 @@ namespace Toolbox::UI {
 
         if (m_member->isTypeStruct()) {
             logger.error(std::format("(Property) Trying to render struct \"{}\" as float",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_member->isTypeEnum()) {
             logger.error(std::format("(Property) Trying to render enum \"{}\" as float",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_numbers.size() != m_member->arraysize()) {
@@ -344,12 +344,12 @@ namespace Toolbox::UI {
 
         if (m_member->isTypeStruct()) {
             logger.error(std::format("(Property) Trying to render struct \"{}\" as double",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_member->isTypeEnum()) {
             logger.error(std::format("(Property) Trying to render enum \"{}\" as double",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_numbers.size() != m_member->arraysize()) {
@@ -430,12 +430,12 @@ namespace Toolbox::UI {
 
         if (m_member->isTypeStruct()) {
             logger.error(std::format("(Property) Trying to render struct \"{}\" as string",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_member->isTypeEnum()) {
             logger.error(std::format("(Property) Trying to render enum \"{}\" as string",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         bool any_changed = false;
@@ -505,12 +505,12 @@ namespace Toolbox::UI {
 
         if (m_member->isTypeStruct()) {
             logger.error(std::format("(Property) Trying to render struct \"{}\" as color",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_member->isTypeEnum()) {
             logger.error(std::format("(Property) Trying to render enum \"{}\" as color",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         bool any_changed = false;
@@ -609,12 +609,12 @@ namespace Toolbox::UI {
 
         if (m_member->isTypeStruct()) {
             logger.error(std::format("(Property) Trying to render struct \"{}\" as vector",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_member->isTypeEnum()) {
             logger.error(std::format("(Property) Trying to render enum \"{}\" as vector",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_vectors.size() != m_member->arraysize()) {
@@ -700,12 +700,12 @@ namespace Toolbox::UI {
 
         if (m_member->isTypeStruct()) {
             logger.error(std::format("(Property) Trying to render struct \"{}\" as transform",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_member->isTypeEnum()) {
             logger.error(std::format("(Property) Trying to render enum \"{}\" as transform",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_transforms.size() != m_member->arraysize()) {
@@ -856,12 +856,12 @@ namespace Toolbox::UI {
 
         if (m_member->isTypeStruct()) {
             logger.error(std::format("(Property) Trying to render struct \"{}\" as enum",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (!m_member->isTypeEnum()) {
             logger.error(std::format("(Property) Trying to render value \"{}\" as enum",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         bool any_changed = false;
@@ -991,12 +991,12 @@ namespace Toolbox::UI {
 
         if (m_member->isTypeEnum()) {
             logger.error(std::format("(Property) Trying to render struct \"{}\" as enum",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (!m_member->isTypeStruct()) {
             logger.error(std::format("(Property) Trying to render value \"{}\" as struct",
-                                     m_member->qualifiedName()));
+                                     m_member->qualifiedName().toString()));
         }
 
         if (m_children_ary.size() != m_member->arraysize()) {
