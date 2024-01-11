@@ -17,10 +17,10 @@
 #include <ImGuiFileDialog.h>
 #include <J3D/J3DModelLoader.hpp>
 #include <bstream.h>
+#include <gui/logging/errors.hpp>
 #include <gui/logging/window.hpp>
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <gui/logging/errors.hpp>
 
 // void ImGuiSetupTheme(bool, float);
 
@@ -76,7 +76,11 @@ namespace Toolbox::UI {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifndef NDEBUG
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+#else
+        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
+#endif
         glfwWindowHint(GLFW_DEPTH_BITS, 32);
         glfwWindowHint(GLFW_SAMPLES, 4);
 
