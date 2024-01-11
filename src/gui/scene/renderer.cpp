@@ -38,8 +38,9 @@ getRayFromMouse(const glm::vec2 &mousePos, Toolbox::Camera &camera, const glm::v
     return {rayOrigin, rayWorld};
 }
 
-bool intersectRayAABB(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
-                      const glm::vec3 &min, const glm::vec3 &max, float &intersectionDistance) {
+static bool intersectRayAABB(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
+                             const glm::vec3 &min, const glm::vec3 &max,
+                             float &intersectionDistance) {
     float tMin = std::numeric_limits<float>::lowest();
     float tMax = std::numeric_limits<float>::max();
 
@@ -79,9 +80,9 @@ bool intersectRayAABB(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
     return true;
 }
 
-bool intersectRayOBB(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
-                     const glm::vec3 &obbMin, const glm::vec3 &obbMax,
-                     const glm::mat4 &obbTransform, float &intersectionDistance) {
+static bool intersectRayOBB(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
+                            const glm::vec3 &obbMin, const glm::vec3 &obbMax,
+                            const glm::mat4 &obbTransform, float &intersectionDistance) {
     // Inverse OBB transformation matrix to transform the ray into OBB's local space
     glm::mat4 invTransform = glm::inverse(obbTransform);
 
@@ -92,6 +93,41 @@ bool intersectRayOBB(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
     // Perform AABB intersection test in local space
     return intersectRayAABB(glm::vec3(localRayOrigin), glm::normalize(glm::vec3(localRayDirection)),
                             obbMin, obbMax, intersectionDistance);
+}
+
+static bool intersectRaySphere(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
+                               const glm::vec3 &sphereCenter, float sphereRadius,
+                               float &intersectionDistance) {
+    // Calculate the coefficients of the quadratic equation
+    glm::vec3 m = rayOrigin - sphereCenter;
+    float a = glm::dot(rayDirection, rayDirection);  // Should be 1 if rayDirection is normalized
+    float b = 2.0f * glm::dot(m, rayDirection);
+    float c = glm::dot(m, m) - sphereRadius * sphereRadius;
+
+    // Calculate the discriminant
+    float discriminant = b * b - 4 * a * c;
+
+    // Check if the discriminant is negative, which means no intersection
+    if (discriminant < 0.0f) {
+        return false;
+    }
+
+    // Calculate the two potential intersection distances along the ray
+    float sqrtDiscriminant = sqrt(discriminant);
+    float t1               = (-b - sqrtDiscriminant) / (2 * a);
+    float t2               = (-b + sqrtDiscriminant) / (2 * a);
+
+    // Find the closest valid intersection distance
+    if (t1 > 0.0f && t1 < t2) {
+        intersectionDistance = t1;
+    } else if (t2 > 0.0f) {
+        intersectionDistance = t2;
+    } else {
+        // Both t1 and t2 are negative, which means the sphere is behind the ray origin
+        return false;
+    }
+
+    return true;
 }
 
 namespace Toolbox::UI {
@@ -351,7 +387,7 @@ namespace Toolbox::UI {
     }
 
     void Renderer::initializeBillboards() {
-        //m_billboard_renderer.m_billboards.push_back(Billboard(glm::vec3(0, 1000, 0), 128, 0));
+        // m_billboard_renderer.m_billboards.push_back(Billboard(glm::vec3(0, 1000, 0), 128, 0));
     }
 
     void Renderer::viewportBegin() {
@@ -400,6 +436,70 @@ namespace Toolbox::UI {
     void Renderer::viewportEnd() {
         ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_tex_id)), m_render_size,
                      {0.0f, 1.0f}, {1.0f, 0.0f});
+
+        glm::vec3 camera_pos;
+        glm::vec3 camera_dir;
+
+        m_camera.getPos(camera_pos);
+        m_camera.getDir(camera_dir);
+
+        ImDrawList *draw_list = ImGui::GetWindowDrawList();
+
+        float font_size = ImGui::GetFontSize();
+        ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
+        ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
+
+        f32 text_box_height = font_size;
+
+        ImGui::SetCursorPos({window_padding.x,
+                             m_window_size.y - text_box_height * 2.0f - window_padding.y});
+        {
+            std::string camera_pos_str = std::format("Position {}", camera_pos);
+
+            ImVec2 text_size = ImGui::CalcTextSize(camera_pos_str.c_str());
+            ImVec2 text_pos  = ImGui::GetCursorScreenPos();
+
+            ImVec4 text_bg_color = {0.0f, 0.0f, 0.0f, 0.75f};
+
+            draw_list->AddRectFilled(text_pos, text_pos + text_size,
+                                     ImGui::GetColorU32(text_bg_color));
+
+            ImGui::Text(camera_pos_str.c_str());
+        }
+
+        ImGui::SetCursorPos(
+            {window_padding.x, m_window_size.y - text_box_height - window_padding.y});
+        {
+            std::string camera_dir_str = std::format("View Direction {}", camera_dir);
+
+            ImVec2 text_size = ImGui::CalcTextSize(camera_dir_str.c_str());
+            ImVec2 text_pos  = ImGui::GetCursorScreenPos();
+
+            ImVec4 text_bg_color = {0.0f, 0.0f, 0.0f, 0.75f};
+
+            draw_list->AddRectFilled(text_pos, text_pos + text_size,
+                                     ImGui::GetColorU32(text_bg_color));
+
+            ImGui::Text(camera_dir_str.c_str());
+        }
+
+        {
+            std::string fps_str = std::format("{:.2f} FPS", ImGui::GetIO().Framerate);
+
+            ImVec2 text_size = ImGui::CalcTextSize(fps_str.c_str());
+
+            ImGui::SetCursorPos({m_window_size.x - text_size.x - window_padding.x,
+                                 m_window_size.y - text_box_height - window_padding.y});
+
+            ImVec2 text_pos  = ImGui::GetCursorScreenPos();
+
+            ImVec4 text_bg_color = {0.0f, 0.0f, 0.0f, 0.75f};
+
+            draw_list->AddRectFilled(text_pos, text_pos + text_size,
+                                     ImGui::GetColorU32(text_bg_color));
+
+            ImGui::Text(fps_str.c_str());
+        }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
@@ -470,6 +570,8 @@ namespace Toolbox::UI {
 
         // Mouse pos is absolute
         ImVec2 mouse_pos = Input::GetMousePosition();
+        glm::vec3 cam_pos;
+        m_camera.getPos(cam_pos);
 
         // Get point on render window
         glm::vec3 selection_point = {mouse_pos.x - m_window_rect.Min.x,
@@ -538,15 +640,10 @@ namespace Toolbox::UI {
         }
 
         for (auto &node : rail_nodes) {
-            glm::vec3 min = {-64, -64, -64};
-            glm::vec3 max = {64, 64, 64};
-
-            min += node->getPosition();
-            max += node->getPosition();
-
             float this_intersection;
 
-            if (intersectRayAABB(rayOrigin, rayDirection, min, max, this_intersection)) {
+            if (intersectRaySphere(rayOrigin, rayDirection, node->getPosition(), 64.0f,
+                                   this_intersection)) {
                 // Intersection detected, check if nearest and use
                 if (this_intersection >= nearest_intersection) {
                     continue;
