@@ -265,8 +265,6 @@ namespace Toolbox::UI {
             {window_pos.x + ImGui::GetWindowWidth(), window_pos.y + ImGui::GetWindowHeight()}
         };
 
-        std::cout << ImGui::GetWindowWidth() << " | " << ImGui::GetWindowHeight() << std::endl; 
-
         m_is_window_hovered = ImGui::IsWindowHovered();
         m_is_window_focused = ImGui::IsWindowFocused();
 
@@ -365,9 +363,6 @@ namespace Toolbox::UI {
                                     m_window_size.y - style.WindowPadding.y * 2 -
                                         (style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight()));
 
-        std::cout << "Window Size: " << m_window_size.x << " | " << m_window_size.y << std::endl;
-        std::cout << "Render Size: " << m_render_size.x << " | " << m_render_size.y << std::endl;
-
         // bind the framebuffer we want to render to
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
 
@@ -405,9 +400,6 @@ namespace Toolbox::UI {
     void Renderer::viewportEnd() {
         ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_tex_id)), m_render_size,
                      {0.0f, 1.0f}, {1.0f, 0.0f});
-
-        std::cout << "Window Size (After): " << m_window_size.x << " | " << m_window_size.y << std::endl;
-        std::cout << "Render Size (After): " << m_render_size.x << " | " << m_render_size.y << std::endl;
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }

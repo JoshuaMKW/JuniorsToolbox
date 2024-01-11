@@ -716,12 +716,6 @@ namespace Toolbox::Object {
                     nozzle_mat->TevBlock->mTevColors[1] = {90, 90, 120, 255};
                 }
             }
-
-            if (model_name == "sky") {
-                for (auto &mat : mat_table->GetMaterials()) {
-                    std::cout << mat->Name << std::endl;
-                }
-            }
         }
 
         // TODO: Load texture data
@@ -785,10 +779,6 @@ namespace Toolbox::Object {
             }
         }
 
-        if (type.name() == "Map") {
-            std::cout << scene_path << std::endl;
-        }
-
         // Name
         NameRef name;
         {
@@ -808,7 +798,7 @@ namespace Toolbox::Object {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
                 auto error = std::get<FSError>(error_v);
-                return make_serial_error<void>(in, error.m_message);
+                return make_serial_error<void>(in, error.m_message[0]);
             } else {
                 auto error = std::get<JSONError>(error_v);
                 return make_serial_error<void>(in, error.m_message);

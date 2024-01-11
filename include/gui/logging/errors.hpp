@@ -5,6 +5,7 @@
 #include "objlib/errors.hpp"
 #include "objlib/meta/errors.hpp"
 #include "serial.hpp"
+#include "fsystem.hpp"
 
 #include <variant>
 
@@ -64,4 +65,6 @@ namespace Toolbox::UI {
     }
 
     inline void logSerialError(const SerialError &error) { logError(error); }
+
+    inline void logFSError(const FSError &error) { logError(error); }
 }  // namespace Toolbox::UI

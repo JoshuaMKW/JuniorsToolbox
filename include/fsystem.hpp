@@ -8,6 +8,8 @@
 #include <system_error>
 #include <format>
 
+#include "error.hpp"
+
 namespace Toolbox {
 
     [[nodiscard]] static inline std::expected<std::filesystem::path, std::error_code>
@@ -404,10 +406,8 @@ namespace Toolbox {
         return result;
     }
 
-    struct FSError {
+    struct FSError : public BaseError {
         std::error_code m_errorcode;
-        std::string m_message;
-        std::stacktrace m_stacktrace;
     };
 
     template <typename _Ret>

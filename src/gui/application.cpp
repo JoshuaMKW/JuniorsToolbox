@@ -1,8 +1,8 @@
 #include "gui/application.hpp"
 #include "gui/IconsForkAwesome.h"
+#include "gui/font.hpp"
 #include "gui/input.hpp"
 #include "gui/settings/window.hpp"
-#include "gui/font.hpp"
 #include "gui/themes.hpp"
 #include "gui/util.hpp"
 
@@ -17,9 +17,10 @@
 #include <ImGuiFileDialog.h>
 #include <J3D/J3DModelLoader.hpp>
 #include <bstream.h>
+#include <gui/logging/window.hpp>
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <gui/logging/window.hpp>
+#include <gui/logging/errors.hpp>
 
 // void ImGuiSetupTheme(bool, float);
 
@@ -45,7 +46,19 @@ namespace Toolbox::UI {
 
     void DealWithGLErrors(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                           const GLchar *message, const void *userParam) {
-        // std::cout << "GL CALLBACK: " << message << std::endl;
+        Log::AppLogger &logger = Log::AppLogger::instance();
+        switch (severity) {
+        case GL_DEBUG_SEVERITY_NOTIFICATION:
+        case GL_DEBUG_SEVERITY_LOW:
+            logger.info(std::format("(OpenGL) {}", message));
+            break;
+        case GL_DEBUG_SEVERITY_MEDIUM:
+            logger.warn(std::format("(OpenGL) {}", message));
+            break;
+        case GL_DEBUG_SEVERITY_HIGH:
+            logger.error(std::format("(OpenGL) {}", message));
+            break;
+        }
     }
 
     MainApplication::MainApplication() {
@@ -99,7 +112,6 @@ namespace Toolbox::UI {
         ImGui_ImplOpenGL3_Init("#version 150");
 
         auto &font_manager = FontManager::instance();
-
         font_manager.initialize();
         font_manager.setCurrentFont("NotoSansJP-Regular", 16.0f);
 
@@ -108,26 +120,15 @@ namespace Toolbox::UI {
         {
             auto result = Object::TemplateFactory::initialize();
             if (!result) {
-                std::cout << result.error().m_message;
-                std::cout << result.error().m_stacktrace;
-                return false;
+                logFSError(result.error());
             }
         }
 
         {
             auto result = ThemeManager::instance().initialize();
             if (!result) {
-                std::cout << result.error().m_message;
-                std::cout << result.error().m_stacktrace;
-                return false;
+                logFSError(result.error());
             }
-
-            // ImGuiSetupTheme(false, 1.0);
-
-            /*auto default_ =
-                std::make_shared<ConfigTheme>(std::string_view("Dark"), ImGui::GetStyle());
-            default_->saveToFile("Dark.theme");
-            ThemeManager::instance().addTheme(default_);*/
         }
 
         auto settings_window = std::make_shared<SettingsWindow>();
@@ -182,9 +183,9 @@ namespace Toolbox::UI {
         ImGui::NewFrame();
 
         auto &font_manager = FontManager::instance();
-        ImFont *main_font    = font_manager.getCurrentFont();
+        ImFont *main_font  = font_manager.getCurrentFont();
 
-        //ImGui::PushFont(main_font);
+        // ImGui::PushFont(main_font);
 
         ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);
@@ -214,11 +215,10 @@ namespace Toolbox::UI {
         renderMenuBar();
         renderWindows(delta_time);
 
-        //ImGui::PopFont();
+        // ImGui::PopFont();
 
         // Render imgui
         ImGui::Render();
-
 
         ImGuiIO &io = ImGui::GetIO();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {

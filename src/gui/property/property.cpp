@@ -1,6 +1,7 @@
 #include "gui/property/property.hpp"
 #include "gui/imgui_ext.hpp"
 #include "gui/util.hpp"
+#include "gui/logging/logger.hpp"
 #include "objlib/meta/enum.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/object.hpp"
@@ -56,13 +57,16 @@ namespace Toolbox::UI {
 
     bool BoolProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
+        Log::AppLogger &logger = Log::AppLogger::instance();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as bool" << std::endl;
+            logger.error(std::format("(Property) Trying to render struct \"{}\" as bool",
+                                     m_member->qualifiedName()));
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as bool" << std::endl;
+            logger.error(std::format("(Property) Trying to render enum \"{}\" as bool",
+                                     m_member->qualifiedName()));
         }
 
         if (m_bools.size() != m_member->arraysize()) {
@@ -163,14 +167,17 @@ namespace Toolbox::UI {
     }
 
     bool NumberProperty::render(float label_width) {
-        ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiStyle &style      = ImGui::GetStyle();
+        Log::AppLogger &logger = Log::AppLogger::instance();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as number" << std::endl;
+            logger.error(std::format("(Property) Trying to render struct \"{}\" as number",
+                                     m_member->qualifiedName()));
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as number" << std::endl;
+            logger.error(std::format("(Property) Trying to render enum \"{}\" as number",
+                                     m_member->qualifiedName()));
         }
 
         if (m_numbers.size() != m_member->arraysize()) {
@@ -246,14 +253,17 @@ namespace Toolbox::UI {
     }
 
     bool FloatProperty::render(float label_width) {
-        ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiStyle &style      = ImGui::GetStyle();
+        Log::AppLogger &logger = Log::AppLogger::instance();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as float" << std::endl;
+            logger.error(std::format("(Property) Trying to render struct \"{}\" as float",
+                                     m_member->qualifiedName()));
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as float" << std::endl;
+            logger.error(std::format("(Property) Trying to render enum \"{}\" as float",
+                                     m_member->qualifiedName()));
         }
 
         if (m_numbers.size() != m_member->arraysize()) {
@@ -329,14 +339,17 @@ namespace Toolbox::UI {
     }
 
     bool DoubleProperty::render(float label_width) {
-        ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiStyle &style      = ImGui::GetStyle();
+        Log::AppLogger &logger = Log::AppLogger::instance();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as double" << std::endl;
+            logger.error(std::format("(Property) Trying to render struct \"{}\" as double",
+                                     m_member->qualifiedName()));
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as double" << std::endl;
+            logger.error(std::format("(Property) Trying to render enum \"{}\" as double",
+                                     m_member->qualifiedName()));
         }
 
         if (m_numbers.size() != m_member->arraysize()) {
@@ -412,14 +425,17 @@ namespace Toolbox::UI {
     }
 
     bool StringProperty::render(float label_width) {
-        ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiStyle &style      = ImGui::GetStyle();
+        Log::AppLogger &logger = Log::AppLogger::instance();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as string" << std::endl;
+            logger.error(std::format("(Property) Trying to render struct \"{}\" as string",
+                                     m_member->qualifiedName()));
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as string" << std::endl;
+            logger.error(std::format("(Property) Trying to render enum \"{}\" as string",
+                                     m_member->qualifiedName()));
         }
 
         bool any_changed = false;
@@ -484,14 +500,17 @@ namespace Toolbox::UI {
     }
 
     bool ColorProperty::render(float label_width) {
-        ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiStyle &style      = ImGui::GetStyle();
+        Log::AppLogger &logger = Log::AppLogger::instance();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as color" << std::endl;
+            logger.error(std::format("(Property) Trying to render struct \"{}\" as color",
+                                     m_member->qualifiedName()));
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as color" << std::endl;
+            logger.error(std::format("(Property) Trying to render enum \"{}\" as color",
+                                     m_member->qualifiedName()));
         }
 
         bool any_changed = false;
@@ -585,14 +604,17 @@ namespace Toolbox::UI {
     }
 
     bool VectorProperty::render(float label_width) {
-        ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiStyle &style      = ImGui::GetStyle();
+        Log::AppLogger &logger = Log::AppLogger::instance();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as vector" << std::endl;
+            logger.error(std::format("(Property) Trying to render struct \"{}\" as vector",
+                                     m_member->qualifiedName()));
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as vector" << std::endl;
+            logger.error(std::format("(Property) Trying to render enum \"{}\" as vector",
+                                     m_member->qualifiedName()));
         }
 
         if (m_vectors.size() != m_member->arraysize()) {
@@ -673,16 +695,17 @@ namespace Toolbox::UI {
     }
 
     bool TransformProperty::render(float label_width) {
-        ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiStyle &style      = ImGui::GetStyle();
+        Log::AppLogger &logger = Log::AppLogger::instance();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as transform" << std::endl;
-            return false;
+            logger.error(std::format("(Property) Trying to render struct \"{}\" as transform",
+                                     m_member->qualifiedName()));
         }
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as transform" << std::endl;
-            return false;
+            logger.error(std::format("(Property) Trying to render enum \"{}\" as transform",
+                                     m_member->qualifiedName()));
         }
 
         if (m_transforms.size() != m_member->arraysize()) {
@@ -828,14 +851,17 @@ namespace Toolbox::UI {
     }
 
     bool EnumProperty::render(float label_width) {
-        ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiStyle &style      = ImGui::GetStyle();
+        Log::AppLogger &logger = Log::AppLogger::instance();
 
         if (m_member->isTypeStruct()) {
-            std::cout << "Trying to render struct as enum" << std::endl;
+            logger.error(std::format("(Property) Trying to render struct \"{}\" as enum",
+                                     m_member->qualifiedName()));
         }
 
         if (!m_member->isTypeEnum()) {
-            std::cout << "Trying to render raw value as enum" << std::endl;
+            logger.error(std::format("(Property) Trying to render value \"{}\" as enum",
+                                     m_member->qualifiedName()));
         }
 
         bool any_changed = false;
@@ -960,16 +986,17 @@ namespace Toolbox::UI {
     }
 
     bool StructProperty::render(float label_width) {
-        ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiStyle &style      = ImGui::GetStyle();
+        Log::AppLogger &logger = Log::AppLogger::instance();
 
         if (m_member->isTypeEnum()) {
-            std::cout << "Trying to render enum as struct" << std::endl;
-            return false;
+            logger.error(std::format("(Property) Trying to render struct \"{}\" as enum",
+                                     m_member->qualifiedName()));
         }
 
         if (!m_member->isTypeStruct()) {
-            std::cout << "Trying to render raw value as struct" << std::endl;
-            return false;
+            logger.error(std::format("(Property) Trying to render value \"{}\" as struct",
+                                     m_member->qualifiedName()));
         }
 
         if (m_children_ary.size() != m_member->arraysize()) {
