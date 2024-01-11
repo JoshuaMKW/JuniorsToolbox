@@ -115,13 +115,13 @@ namespace Toolbox::UI {
                 p_connection.m_point = {
                     node->getPosition(),
                     {node_color.m_r, node_color.m_g, node_color.m_b, 1.0f},
-                    64
+                    128
                 };
 
                 for (Rail::Rail::node_ptr_t connection : rail->getNodeConnections(node)) {
                     PathPoint connectionPoint(
                         connection->getPosition(),
-                        {node_color.m_r, node_color.m_g, node_color.m_b, 1.0f}, 64);
+                        {node_color.m_r, node_color.m_g, node_color.m_b, 1.0f}, 128);
                     p_connection.m_connections.push_back(connectionPoint);
                 };
                 m_path_connections.push_back(p_connection);

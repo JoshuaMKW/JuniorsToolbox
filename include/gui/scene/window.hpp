@@ -177,6 +177,9 @@ namespace Toolbox::UI {
 
         EditorWindow m_focused_window = EditorWindow::NONE;
 
+        ImGuiWindow *m_hierarchy_window;
+        ImGuiWindow *m_rail_list_window;
+
         std::string m_selected_add_zone{""};
 
         bool m_options_open{false};

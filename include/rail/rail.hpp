@@ -13,7 +13,7 @@ using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
 
-    class Rail : public IClonable {
+    class Rail : public IClonable, public std::enable_shared_from_this<Rail> {
     public:
         using node_ptr_t = std::shared_ptr<RailNode>;
 
@@ -31,6 +31,8 @@ namespace Toolbox::Rail {
 
         Rail &operator=(const Rail &other) = default;
         Rail &operator=(Rail &&other)      = default;
+
+        std::shared_ptr<Rail> getSharedPtr() { return shared_from_this(); }
 
         [[nodiscard]] bool isSpline() const { return m_name.starts_with("S_"); }
 

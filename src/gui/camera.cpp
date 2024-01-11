@@ -47,7 +47,7 @@ namespace Toolbox {
 
 // The projection matrix
 void Camera::privUpdateProjectionMatrix(void) {
-    if (aspectRatio < 1)
+    if (aspectRatio <= 0)
         return;
     this->projMatrix = glm::perspective(fovy, aspectRatio, nearDist, farDist);
 };

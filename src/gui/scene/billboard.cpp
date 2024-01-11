@@ -107,6 +107,9 @@ namespace Toolbox::UI {
     }
 
     void BillboardRenderer::drawBillboards(Camera *camera) {
+        if (m_billboards.size() == 0)
+            return;
+
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
 

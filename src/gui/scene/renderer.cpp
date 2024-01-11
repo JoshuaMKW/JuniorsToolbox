@@ -245,7 +245,7 @@ namespace Toolbox::UI {
         }
 
         // 128x128 billboards, 10 unique images
-        if (!m_billboard_renderer.initBillboardRenderer(128, 10)) {
+        if (!m_billboard_renderer.initBillboardRenderer(256, 10)) {
             // show some error
         }
 
@@ -264,6 +264,8 @@ namespace Toolbox::UI {
             window_pos,
             {window_pos.x + ImGui::GetWindowWidth(), window_pos.y + ImGui::GetWindowHeight()}
         };
+
+        std::cout << ImGui::GetWindowWidth() << " | " << ImGui::GetWindowHeight() << std::endl; 
 
         m_is_window_hovered = ImGui::IsWindowHovered();
         m_is_window_focused = ImGui::IsWindowFocused();
@@ -351,7 +353,7 @@ namespace Toolbox::UI {
     }
 
     void Renderer::initializeBillboards() {
-        m_billboard_renderer.m_billboards.push_back(Billboard(glm::vec3(0, 1000, 0), 128, 0));
+        //m_billboard_renderer.m_billboards.push_back(Billboard(glm::vec3(0, 1000, 0), 128, 0));
     }
 
     void Renderer::viewportBegin() {
@@ -362,6 +364,9 @@ namespace Toolbox::UI {
         m_render_size      = ImVec2(m_window_size.x - style.WindowPadding.x * 2,
                                     m_window_size.y - style.WindowPadding.y * 2 -
                                         (style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight()));
+
+        std::cout << "Window Size: " << m_window_size.x << " | " << m_window_size.y << std::endl;
+        std::cout << "Render Size: " << m_render_size.x << " | " << m_render_size.y << std::endl;
 
         // bind the framebuffer we want to render to
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
@@ -400,6 +405,9 @@ namespace Toolbox::UI {
     void Renderer::viewportEnd() {
         ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_tex_id)), m_render_size,
                      {0.0f, 1.0f}, {1.0f, 0.0f});
+
+        std::cout << "Window Size (After): " << m_window_size.x << " | " << m_window_size.y << std::endl;
+        std::cout << "Render Size (After): " << m_render_size.x << " | " << m_render_size.y << std::endl;
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
@@ -457,7 +465,9 @@ namespace Toolbox::UI {
     }
 
     std::variant<std::shared_ptr<ISceneObject>, std::shared_ptr<Rail::RailNode>, std::nullopt_t>
-    Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables, bool &should_reset) {
+    Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables,
+                            std::vector<std::shared_ptr<Rail::RailNode>> rail_nodes,
+                            bool &should_reset) {
         should_reset = false;
         if (!m_is_window_hovered || !m_is_window_focused) {
             return std::nullopt;
@@ -526,12 +536,31 @@ namespace Toolbox::UI {
             // Perform ray-box intersection test
             if (intersectRayOBB(rayOrigin, rayDirection, min, max, obb_transform,
                                 this_intersection)) {
-                // Intersection detected, return the hit object
+                // Intersection detected, check if nearest and use
                 if (this_intersection >= nearest_intersection) {
                     continue;
                 }
                 nearest_intersection = this_intersection;
-                selected_item = renderable.m_object;
+                selected_item        = renderable.m_object;
+            }
+        }
+
+        for (auto &node : rail_nodes) {
+            glm::vec3 min = {-64, -64, -64};
+            glm::vec3 max = {64, 64, 64};
+
+            min += node->getPosition();
+            max += node->getPosition();
+
+            float this_intersection;
+
+            if (intersectRayAABB(rayOrigin, rayDirection, min, max, this_intersection)) {
+                // Intersection detected, check if nearest and use
+                if (this_intersection >= nearest_intersection) {
+                    continue;
+                }
+                nearest_intersection = this_intersection;
+                selected_item        = node;
             }
         }
 

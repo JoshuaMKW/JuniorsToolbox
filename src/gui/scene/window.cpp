@@ -149,8 +149,15 @@ namespace Toolbox::UI {
     bool SceneWindow::update(f32 deltaTime) {
         bool inputState = m_renderer.inputUpdate();
 
+        std::vector<std::shared_ptr<Rail::RailNode>> rendered_nodes;
+        for (auto &rail : m_current_scene->getRailData().rails()) {
+            if (!m_rail_visible_map[rail->name()])
+                continue;
+            rendered_nodes.insert(rendered_nodes.end(), rail->nodes().begin(), rail->nodes().end());
+        }
+
         bool should_reset;
-        auto selection = m_renderer.findSelection(m_renderables, should_reset);
+        auto selection = m_renderer.findSelection(m_renderables, rendered_nodes, should_reset);
 
         bool multi_select = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
 
@@ -158,15 +165,13 @@ namespace Toolbox::UI {
             m_hierarchy_selected_nodes.clear();
             m_rail_node_list_selected_nodes.clear();
             m_selected_properties.clear();
+            m_properties_render_handler = renderEmptyProperties;
         }
 
         if (std::holds_alternative<std::shared_ptr<ISceneObject>>(selection)) {
-            auto obj                 = std::get<std::shared_ptr<ISceneObject>>(selection);
+            auto obj = std::get<std::shared_ptr<ISceneObject>>(selection);
             if (!obj)
                 return inputState;
-
-            Log::AppLogger::instance().debugLog(
-                std::format("Hit object {} ({})", obj->type(), obj->getNameRef().name()));
 
             std::string node_uid_str = getNodeUID(obj);
             ImGuiID tree_node_id =
@@ -179,7 +184,7 @@ namespace Toolbox::UI {
                              });
 
             SelectionNodeInfo<Object::ISceneObject> node_info = {
-                .m_selected = std::get<std::shared_ptr<ISceneObject>>(selection),
+                .m_selected = obj,
                 .m_node_id  = ImHashStr(node_uid_str.c_str(), node_uid_str.size(), m_window_seed),
                 .m_parent_synced = true,
                 .m_scene_synced  = true};  // Only spacial objects get scene selection
@@ -199,6 +204,10 @@ namespace Toolbox::UI {
                     }
                 }
             }
+
+            Log::AppLogger::instance().debugLog(
+                std::format("Hit object {} ({})", obj->type(), obj->getNameRef().name()));
+
             m_properties_render_handler = renderObjectProperties;
         } else if (std::holds_alternative<std::shared_ptr<Rail::RailNode>>(selection)) {
             auto node = std::get<std::shared_ptr<Rail::RailNode>>(selection);
@@ -209,21 +218,47 @@ namespace Toolbox::UI {
 
             // In this circumstance, select the whole rail
             if (Input::GetKey(GLFW_KEY_LEFT_ALT)) {
+                SelectionNodeInfo<Rail::Rail> rail_info = {
+                    .m_selected = rail->getSharedPtr(),
+                    .m_node_id = ImHashStr(rail->name().data(), rail->name().size(), m_window_seed),
+                    .m_parent_synced = true,
+                    .m_scene_synced  = false};
+
                 // Since a rail is selected, we should clear the nodes
                 m_rail_node_list_selected_nodes.clear();
 
-                Log::AppLogger::instance().debugLog(std::format(
-                    "Hit rail \"{}\"", rail->name()));
-            
+                if (!multi_select) {
+                    m_rail_list_selected_nodes.clear();
+                }
+
+                m_rail_list_selected_nodes.push_back(rail_info);
+
                 m_properties_render_handler = renderRailProperties;
+
+                Log::AppLogger::instance().debugLog(std::format("Hit rail \"{}\"", rail->name()));
             } else {
+                std::string node_name = std::format("Node {}", rail->getNodeIndex(node).value());
+                std::string qual_name = std::string(rail->name()) + "##" + node_name;
+
+                SelectionNodeInfo<Rail::RailNode> node_info = {
+                    .m_selected      = node,
+                    .m_node_id       = ImHashStr(qual_name.data(), qual_name.size(), m_window_seed),
+                    .m_parent_synced = true,
+                    .m_scene_synced  = false};
+
                 // Since a node is selected, we should clear the rail selections
                 m_rail_list_selected_nodes.clear();
 
-                Log::AppLogger::instance().debugLog(std::format(
-                    "Hit node {} of rail \"{}\"", rail->getNodeIndex(node).value(), rail->name()));
+                if (!multi_select) {
+                    m_rail_node_list_selected_nodes.clear();
+                }
+
+                m_rail_node_list_selected_nodes.push_back(node_info);
 
                 m_properties_render_handler = renderRailNodeProperties;
+
+                Log::AppLogger::instance().debugLog(std::format(
+                    "Hit node {} of rail \"{}\"", rail->getNodeIndex(node).value(), rail->name()));
             }
         }
 
@@ -249,6 +284,8 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowSizeConstraints({300, 500}, {FLT_MAX, FLT_MAX});
 
         if (ImGui::Begin(getWindowChildUID(*this, "Hierarchy Editor").c_str())) {
+            m_hierarchy_window = ImGui::GetCurrentWindow();
+
             if (ImGui::IsWindowFocused()) {
                 m_focused_window = EditorWindow::OBJECT_TREE;
             }
