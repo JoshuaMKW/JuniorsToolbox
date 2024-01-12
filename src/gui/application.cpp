@@ -22,6 +22,8 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "gui/scene/ImGuizmo.h"
+
 // void ImGuiSetupTheme(bool, float);
 
 namespace Toolbox::UI {
@@ -39,6 +41,8 @@ namespace Toolbox::UI {
                 break;
 
             render(delta_time);
+
+            postRender(delta_time);
         }
 
         return 0;
@@ -185,6 +189,8 @@ namespace Toolbox::UI {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
+        ImGuizmo::BeginFrame();
 
         auto &font_manager = FontManager::instance();
         ImFont *main_font  = font_manager.getCurrentFont();
@@ -385,6 +391,22 @@ namespace Toolbox::UI {
             window->render(delta_time);
         }
     }
+
+    bool MainApplication::postRender(f32 delta_time) {
+        // Try to make sure we return an error if anything's fucky
+        if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window))
+            return false;
+
+        // Update viewer context
+        for (auto &window : m_windows) {
+            if (!window->postUpdate(delta_time)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
 }  // namespace Toolbox::UI
 
 // void ImGuiSetupTheme(bool bStyleDark_, float alpha_) {

@@ -72,6 +72,7 @@ namespace Toolbox::UI {
         [[nodiscard]] bool saveData(const std::filesystem::path &path) override { return false; }
 
         bool update(f32 delta_time) override;
+        bool postUpdate(f32 delta_time) override { return true; }
 
     private:
         Log::ReportLevel m_logging_level = Log::ReportLevel::INFO;

@@ -60,6 +60,7 @@ namespace Toolbox::UI {
         [[nodiscard]] virtual bool saveData(const std::filesystem::path &path) = 0;
 
         [[nodiscard]] virtual bool update(f32 delta_time) = 0;
+        [[nodiscard]] virtual bool postUpdate(f32 delta_time) = 0;
 
         [[nodiscard]] virtual std::string title() const = 0;
 
@@ -247,6 +248,7 @@ namespace Toolbox::UI {
         [[nodiscard]] bool saveData(const std::filesystem::path &path) override { return false; }
 
         [[nodiscard]] bool update(f32 delta_time) override { return true; }
+        [[nodiscard]] bool postUpdate(f32 delta_time) override { return true; }
 
         [[nodiscard]] std::string title() const override {
             std::string ctx = context();

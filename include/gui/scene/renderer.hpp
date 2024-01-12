@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <unordered_map>
 
+#include "gui/scene/ImGuizmo.h"
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
 #include "path.hpp"
@@ -27,7 +28,8 @@ namespace Toolbox::UI {
 
         void initializeData(const SceneInstance &scene);
 
-        void updatePaths(const RailData &rail_data, std::unordered_map<std::string, bool> visible_map) {
+        void updatePaths(const RailData &rail_data,
+                         std::unordered_map<std::string, bool> visible_map) {
             initializePaths(rail_data, visible_map);
         }
 
@@ -39,10 +41,20 @@ namespace Toolbox::UI {
             m_camera.updateCamera();
         }
 
+        void setGizmoVisible(bool visible) { m_render_gizmo = visible; }
+        bool isGizmoManipulated() const { return m_gizmo_updated; }
+        glm::mat4x4 getGizmoTransform() const { return m_gizmo_matrix; }
+        void setGizmoTransform(const glm::mat4x4 &mtx) { m_gizmo_matrix = mtx; }
+        void setGizmoOperation(ImGuizmo::OPERATION op) { m_gizmo_op = op; }
+
         bool inputUpdate();
 
-        std::variant<std::shared_ptr<ISceneObject>, std::shared_ptr<Rail::RailNode>, std::nullopt_t>
-        findSelection(std::vector<ISceneObject::RenderInfo> renderables, std::vector<std::shared_ptr<Rail::RailNode>> rail_nodes, bool &should_reset);
+        using selection_variant_t =
+            std::variant<std::shared_ptr<ISceneObject>, std::shared_ptr<Rail::RailNode>, std::nullopt_t>;
+
+        selection_variant_t findSelection(std::vector<ISceneObject::RenderInfo> renderables,
+                                          std::vector<std::shared_ptr<Rail::RailNode>> rail_nodes,
+                                          bool &should_reset);
 
         void render(std::vector<ISceneObject::RenderInfo> renderables, f32 delta_time);
 
@@ -65,11 +77,16 @@ namespace Toolbox::UI {
         PathRenderer m_path_renderer;
         Camera m_camera = {};
 
-        uint32_t m_gizmo_operation{0};
-
         ImVec2 m_render_size;
         ImRect m_window_rect;
         ImVec2 m_window_size;
         ImVec2 m_window_size_prev;
+
+        // Gizmo data
+        bool m_render_gizmo;
+        bool m_gizmo_updated;
+        ImGuizmo::MODE m_gizmo_mode = ImGuizmo::MODE::WORLD;
+        ImGuizmo::OPERATION m_gizmo_op;
+        glm::mat4x4 m_gizmo_matrix;
     };
 }  // namespace Toolbox::UI

@@ -275,7 +275,7 @@ namespace Toolbox::Rail {
             return result;
         }
         f32 distance = glm::distance(node->getPosition(), to->getPosition());
-        node->setConnectionDistance(index, distance);
+        return node->setConnectionDistance(index, distance);
     }
 
     std::expected<void, MetaError> Rail::removeConnection(size_t node, size_t index) {
@@ -322,7 +322,7 @@ namespace Toolbox::Rail {
             return result;
         }
         f32 distance = glm::distance(node->getPosition(), to->getPosition());
-        node->setConnectionDistance(index, distance);
+        return node->setConnectionDistance(index, distance);
     }
 
     std::expected<void, MetaError> Rail::connectNodeToNearest(size_t node, size_t count) {

@@ -286,6 +286,10 @@ namespace Toolbox::UI {
         }
 
         m_billboard_renderer.loadBillboardTexture("res/question.png", 0);
+
+        m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE | ImGuizmo::OPERATION::ROTATE |
+                     ImGuizmo::OPERATION::SCALE;
+        m_gizmo_mode = ImGuizmo::LOCAL;
     }
 
     Renderer::~Renderer() {
@@ -399,6 +403,12 @@ namespace Toolbox::UI {
                                     m_window_size.y - style.WindowPadding.y * 2 -
                                         (style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight()));
 
+        ImVec2 cursor_pos     = ImGui::GetCursorScreenPos();
+        ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
+
+        ImGuizmo::SetDrawlist();
+        ImGuizmo::SetRect(cursor_pos.x, cursor_pos.y, m_render_size.x, m_render_size.y);
+
         // bind the framebuffer we want to render to
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
 
@@ -437,6 +447,20 @@ namespace Toolbox::UI {
         ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_tex_id)), m_render_size,
                      {0.0f, 1.0f}, {1.0f, 0.0f});
 
+        if (m_render_gizmo) {
+            bool shift_held = Input::GetKey(GLFW_KEY_LEFT_SHIFT);
+            bool ctrl_held  = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
+
+            float snap = !ImGuizmo::IsOver(ImGuizmo::OPERATION::TRANSLATE)
+                             ? !ImGuizmo::IsOver(ImGuizmo::OPERATION::ROTATE) ? 0.1f : 15.0f
+                             : 50.0f;
+
+            m_gizmo_updated = ImGuizmo::Manipulate(
+                glm::value_ptr(m_camera.getViewMatrix()), glm::value_ptr(m_camera.getProjMatrix()),
+                m_gizmo_op, m_gizmo_mode, glm::value_ptr(m_gizmo_matrix), nullptr,
+                ctrl_held ? &snap : nullptr);
+        }
+
         glm::vec3 camera_pos;
         glm::vec3 camera_dir;
 
@@ -445,14 +469,14 @@ namespace Toolbox::UI {
 
         ImDrawList *draw_list = ImGui::GetWindowDrawList();
 
-        float font_size = ImGui::GetFontSize();
-        ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
+        float font_size       = ImGui::GetFontSize();
+        ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
         ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
 
         f32 text_box_height = font_size;
 
-        ImGui::SetCursorPos({window_padding.x,
-                             m_window_size.y - text_box_height * 2.0f - window_padding.y});
+        ImGui::SetCursorPos(
+            {window_padding.x, m_window_size.y - text_box_height * 2.0f - window_padding.y});
         {
             std::string camera_pos_str = std::format("Position {}", camera_pos);
 
@@ -491,7 +515,7 @@ namespace Toolbox::UI {
             ImGui::SetCursorPos({m_window_size.x - text_size.x - window_padding.x,
                                  m_window_size.y - text_box_height - window_padding.y});
 
-            ImVec2 text_pos  = ImGui::GetCursorScreenPos();
+            ImVec2 text_pos = ImGui::GetCursorScreenPos();
 
             ImVec4 text_bg_color = {0.0f, 0.0f, 0.0f, 0.75f};
 
@@ -556,7 +580,7 @@ namespace Toolbox::UI {
         return true;
     }
 
-    std::variant<std::shared_ptr<ISceneObject>, std::shared_ptr<Rail::RailNode>, std::nullopt_t>
+    Renderer::selection_variant_t
     Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables,
                             std::vector<std::shared_ptr<Rail::RailNode>> rail_nodes,
                             bool &should_reset) {
@@ -599,8 +623,7 @@ namespace Toolbox::UI {
 
         float nearest_intersection = std::numeric_limits<float>::max();
 
-        std::variant<std::shared_ptr<ISceneObject>, std::shared_ptr<Rail::RailNode>, std::nullopt_t>
-            selected_item = std::nullopt;
+        selection_variant_t selected_item = std::nullopt;
 
         for (auto &renderable : renderables) {
             if (selection_blacklist.contains(renderable.m_object->type())) {

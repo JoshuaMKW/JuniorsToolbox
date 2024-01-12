@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <boundbox.hpp>
 
 using namespace J3DAnimation;
 
@@ -58,7 +59,9 @@ namespace Toolbox::Object {
 
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
-    class ISceneObject : public ISerializable, public IClonable, public std::enable_shared_from_this<ISceneObject> {
+    class ISceneObject : public ISerializable,
+                         public IClonable,
+                         public std::enable_shared_from_this<ISceneObject> {
     public:
         friend class ObjectFactory;
 
@@ -105,8 +108,10 @@ namespace Toolbox::Object {
         [[nodiscard]] virtual std::optional<std::shared_ptr<ISceneObject>>
         getChild(const QualifiedName &name) = 0;
 
-        [[nodiscard]] virtual std::optional<J3DTransformInfo> getTransform() const = 0;
-        virtual void setTransform(J3DTransformInfo transform)                      = 0;
+        [[nodiscard]] virtual std::optional<Transform> getTransform() const             = 0;
+        virtual std::expected<void, MetaError> setTransform(const Transform &transform) = 0;
+
+        [[nodiscard]] virtual std::optional<BoundingBox> getBoundingBox() const = 0;
 
         [[nodiscard]] virtual std::optional<std::filesystem::path> getAnimationsPath() const = 0;
         [[nodiscard]] virtual std::optional<std::string_view>
@@ -254,8 +259,12 @@ namespace Toolbox::Object {
             return {};
         }
 
-        [[nodiscard]] std::optional<J3DTransformInfo> getTransform() const override { return {}; }
-        void setTransform(J3DTransformInfo transform) override {}
+        [[nodiscard]] std::optional<Transform> getTransform() const override { return {}; }
+        std::expected<void, MetaError> setTransform(const Transform &transform) override {
+            return {};
+        }
+
+        [[nodiscard]] std::optional<BoundingBox> getBoundingBox() const override { return {}; }
 
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
             return {};
@@ -525,12 +534,52 @@ namespace Toolbox::Object {
             return {};
         }
 
-        [[nodiscard]] std::optional<J3DTransformInfo> getTransform() const override {
-            return m_transform;
-        }
-        void setTransform(J3DTransformInfo transform) override {
+        [[nodiscard]] std::optional<Transform> getTransform() const override { return m_transform; }
+        std::expected<void, MetaError> setTransform(const Transform &transform) override {
             // TODO: Set the properties transform too
             m_transform = transform;
+            if (m_model_instance) {
+                m_model_instance->SetTranslation(transform.m_translation);
+                m_model_instance->SetRotation(transform.m_rotation);
+                m_model_instance->SetScale(transform.m_scale);
+            }
+
+            auto transform_value_ptr = getMember("Transform").value();
+            if (transform_value_ptr) {
+                auto result = setMetaValue<Transform>(transform_value_ptr, 0, transform);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            }
+
+            return {};
+        }
+
+        [[nodiscard]] std::optional<BoundingBox> getBoundingBox() const override {
+            if (!m_model_instance)
+                return {};
+
+            std::optional<Transform> transform = getTransform();
+            if (!transform)
+                return {};
+
+            glm::vec3 center, size;
+
+            glm::vec3 min, max;
+            m_model_instance->GetBoundingBox(min, max);
+
+            max.x *= transform->m_scale.x;
+            max.y *= transform->m_scale.y;
+            max.z *= transform->m_scale.z;
+
+            min.x *= transform->m_scale.x;
+            min.y *= transform->m_scale.y;
+            min.z *= transform->m_scale.z;
+
+            size = max - min;
+            center = transform->m_translation + min + (size / 2.0f);
+
+            return BoundingBox(center, size, glm::quat(transform->m_rotation));
         }
 
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
@@ -596,7 +645,7 @@ namespace Toolbox::Object {
 
         mutable MetaStruct::CacheMemberT m_member_cache;
 
-        std::optional<J3DTransformInfo> m_transform;
+        std::optional<Transform> m_transform;
         std::shared_ptr<J3DModelInstance> m_model_instance = {};
 
         bool m_is_performing = true;

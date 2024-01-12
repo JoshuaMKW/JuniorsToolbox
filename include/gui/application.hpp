@@ -62,6 +62,7 @@ namespace Toolbox::UI {
         void render(f32 delta_time);
         void renderMenuBar();
         void renderWindows(f32 delta_time);
+        bool postRender(f32 delta_time);
 
     private:
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_clipboard;

@@ -586,6 +586,7 @@ namespace Toolbox::Object {
             m_model_instance->SetTranslation(transform.m_translation);
             m_model_instance->SetRotation(transform.m_rotation);
             m_model_instance->SetScale(transform.m_scale);
+            m_transform      = transform;
             render_transform = transform;
         }
 

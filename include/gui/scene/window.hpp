@@ -125,6 +125,7 @@ namespace Toolbox::UI {
         }
 
         bool update(f32 delta_time) override;
+        bool postUpdate(f32 delta_time) override;
 
     private:
         std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;
