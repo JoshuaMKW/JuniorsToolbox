@@ -50,6 +50,7 @@ namespace Toolbox::UI {
     void BoolProperty::init() {
         m_member->syncArray();
         m_bools.resize(m_member->arraysize());
+        m_array_open.resize(m_member->arraysize(), true);
         for (size_t i = 0; i < m_bools.size(); ++i) {
             m_bools.at(i) = Object::getMetaValue<bool>(m_member, i).value();
         }
@@ -112,6 +113,7 @@ namespace Toolbox::UI {
     void NumberProperty::init() {
         m_member->syncArray();
         m_numbers.resize(m_member->arraysize());
+        m_array_open.resize(m_member->arraysize(), true);
 
         switch (Object::getMetaType(m_member).value()) {
         case Object::MetaType::S8:
@@ -244,6 +246,7 @@ namespace Toolbox::UI {
     void FloatProperty::init() {
         m_member->syncArray();
         m_numbers.resize(m_member->arraysize());
+        m_array_open.resize(m_member->arraysize(), true);
 
         for (size_t i = 0; i < m_numbers.size(); ++i) {
             m_numbers.at(i) = Object::getMetaValue<f32>(m_member, i).value();
@@ -330,6 +333,7 @@ namespace Toolbox::UI {
     void DoubleProperty::init() {
         m_member->syncArray();
         m_numbers.resize(m_member->arraysize());
+        m_array_open.resize(m_member->arraysize(), true);
 
         for (size_t i = 0; i < m_numbers.size(); ++i) {
             m_numbers.at(i) = Object::getMetaValue<f64>(m_member, i).value();
@@ -416,6 +420,7 @@ namespace Toolbox::UI {
     void StringProperty::init() {
         m_member->syncArray();
         m_strings.resize(m_member->arraysize());
+        m_array_open.resize(m_member->arraysize(), true);
 
         for (size_t i = 0; i < m_strings.size(); ++i) {
             std::string str = Object::getMetaValue<std::string>(m_member, i).value();
@@ -491,6 +496,7 @@ namespace Toolbox::UI {
     void ColorProperty::init() {
         m_member->syncArray();
         m_colors.resize(m_member->arraysize());
+        m_array_open.resize(m_member->arraysize(), true);
         for (size_t i = 0; i < m_colors.size(); ++i) {
             auto color = Object::getMetaValue<Color::RGBA32>(m_member, i).value();
             f32 r, g, b, a;
@@ -586,10 +592,10 @@ namespace Toolbox::UI {
         return any_changed;
     }
 
-    // TODO: Implement these!
     void VectorProperty::init() {
         m_member->syncArray();
         m_vectors.resize(m_member->arraysize());
+        m_array_open.resize(m_member->arraysize(), true);
 
         switch (Object::getMetaType(m_member).value()) {
         default:
@@ -681,12 +687,14 @@ namespace Toolbox::UI {
     void TransformProperty::init() {
         m_member->syncArray();
         m_transforms.resize(m_member->arraysize());
+        m_array_open.resize(m_member->arraysize());
 
         switch (Object::getMetaType(m_member).value()) {
         default:
         case Object::MetaType::TRANSFORM:
             for (size_t i = 0; i < m_transforms.size(); ++i) {
                 m_transforms.at(i) = Object::getMetaValue<Object::Transform>(m_member, i).value();
+                m_array_open.at(i) = i == 0;
             }
             m_min = -FLT_MAX;
             m_max = FLT_MAX;
@@ -717,6 +725,7 @@ namespace Toolbox::UI {
         ImVec2 window_size        = ImGui::GetWindowSize();
         const bool collapse_lines = window_size.x < 350;
 
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if (ImGui::CollapsingHeader(m_member->name().c_str())) {
             if (m_transforms.size() > 1) {
                 float label_width = 0;
