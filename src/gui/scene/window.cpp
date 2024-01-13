@@ -214,9 +214,10 @@ namespace Toolbox::UI {
 
                 gizmo_transform = glm::scale(gizmo_transform, obj_transform.m_scale);
                 m_renderer.setGizmoTransform(gizmo_transform);
-                m_renderer.setGizmoOperation(ImGuizmo::OPERATION::TRANSLATE |
+                /*m_renderer.setGizmoOperation(ImGuizmo::OPERATION::TRANSLATE |
                                              ImGuizmo::OPERATION::ROTATE |
-                                             ImGuizmo::OPERATION::SCALE);
+                                             ImGuizmo::OPERATION::SCALE |
+                                             ImGuizmo::OPERATION::SCALEU);*/
 
                 if (multi_select) {
                     m_selected_properties.clear();
@@ -330,10 +331,6 @@ namespace Toolbox::UI {
         glm::mat4x4 gizmo_transform = m_renderer.getGizmoTransform();
         Transform obj_transform;
 
-        glm::vec3 translation;
-        glm::vec3 skew;
-        glm::vec4 perspective;
-
         ImGuizmo::DecomposeMatrixToComponents(
             glm::value_ptr(gizmo_transform), glm::value_ptr(obj_transform.m_translation),
             glm::value_ptr(obj_transform.m_rotation), glm::value_ptr(obj_transform.m_scale));
@@ -348,7 +345,7 @@ namespace Toolbox::UI {
 
         m_hierarchy_selected_nodes[0].m_selected->setTransform(obj_transform);
 
-        m_renderer.markDirty();
+        m_update_render_objs = true;
         return true;
     }
 
@@ -466,7 +463,7 @@ namespace Toolbox::UI {
                                                   node_already_clicked, &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
-                        m_renderer.markDirty();
+                        m_update_render_objs = true;
                     }
                 } else {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(),
@@ -518,7 +515,7 @@ namespace Toolbox::UI {
                                                   node_already_clicked, &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
-                        m_renderer.markDirty();
+                        m_update_render_objs = true;
                     }
                 } else {
                     node_open =
@@ -571,7 +568,7 @@ namespace Toolbox::UI {
                 m_focused_window = EditorWindow::PROPERTY_EDITOR;
             }
             if (m_properties_render_handler(*this)) {
-                m_renderer.markDirty();
+                m_update_render_objs = true;
             }
         }
         ImGui::End();
@@ -795,7 +792,7 @@ namespace Toolbox::UI {
                 if (rail_visibility != is_rail_visible) {
                     rail_visibility = is_rail_visible;
                     m_renderer.updatePaths(m_current_scene->getRailData(), m_rail_visible_map);
-                    m_renderer.markDirty();
+                    m_update_render_objs = true;
                 }
 
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
@@ -867,17 +864,24 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::renderScene(f32 delta_time) {
-        m_renderables.clear();
 
         std::vector<J3DLight> lights;
 
         // perhaps find a way to limit this so it only happens when we need to re-render?
         if (m_current_scene != nullptr) {
-            auto perform_result = m_current_scene->getObjHierarchy().getRoot()->performScene(
-                delta_time, m_renderables, m_resource_cache, lights);
-            if (!perform_result) {
-                const ObjectError &error = perform_result.error();
-                logObjectError(error);
+            if (m_update_render_objs) {
+                m_renderables.clear();
+                auto perform_result = m_current_scene->getObjHierarchy().getRoot()->performScene(
+                    delta_time, m_renderables, m_resource_cache, lights);
+                if (!perform_result) {
+                    const ObjectError &error = perform_result.error();
+                    logObjectError(error);
+                }
+                m_update_render_objs = false;
+            } else {
+                for (auto &renderable : m_renderables) {
+                    renderable.m_model->UpdateAnimations(delta_time);
+                }
             }
         }
 
@@ -976,7 +980,7 @@ namespace Toolbox::UI {
                 for (auto &node : nodes) {
                     this_parent->addChild(node.m_selected);
                 }
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
 
@@ -996,7 +1000,7 @@ namespace Toolbox::UI {
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
                 m_hierarchy_selected_nodes.erase(node_it);
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
     }
@@ -1045,7 +1049,7 @@ namespace Toolbox::UI {
                 for (auto &node : nodes) {
                     this_parent->addChild(node.m_selected);
                 }
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
 
@@ -1065,7 +1069,7 @@ namespace Toolbox::UI {
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
                 m_hierarchy_selected_nodes.erase(node_it);
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
     }
@@ -1117,7 +1121,7 @@ namespace Toolbox::UI {
                                                 {transform.m_translation.x,
                                                  transform.m_translation.y,
                                                  transform.m_translation.z + 1000 * max_scale});
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
 
@@ -1150,7 +1154,7 @@ namespace Toolbox::UI {
                     return;
                 }
 
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
 
@@ -1179,7 +1183,7 @@ namespace Toolbox::UI {
                 for (auto &node : nodes) {
                     this_parent->addChild(node.m_selected);
                 }
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
 
@@ -1199,7 +1203,7 @@ namespace Toolbox::UI {
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
                 m_hierarchy_selected_nodes.erase(node_it);
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
     }
@@ -1235,7 +1239,7 @@ namespace Toolbox::UI {
                         this_parent->addChild(node.m_selected);
                     }
                 }
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
 
@@ -1258,7 +1262,7 @@ namespace Toolbox::UI {
                                              m_hierarchy_selected_nodes.end(), info);
                     m_hierarchy_selected_nodes.erase(node_it);
                 }
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
     }
@@ -1314,7 +1318,7 @@ namespace Toolbox::UI {
                     }
                     m_current_scene->setRailData(data);
                 }
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
 
@@ -1324,7 +1328,7 @@ namespace Toolbox::UI {
                 RailData data = m_current_scene->getRailData();
                 data.removeRail(info.m_selected->name());
                 m_current_scene->setRailData(data);
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
     }
@@ -1359,7 +1363,7 @@ namespace Toolbox::UI {
                     }
                     m_current_scene->setRailData(data);
                 }
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
 
@@ -1371,7 +1375,7 @@ namespace Toolbox::UI {
                     data.removeRail(select.m_selected->name());
                 }
                 m_current_scene->setRailData(data);
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
     }
@@ -1396,7 +1400,7 @@ namespace Toolbox::UI {
 
                 m_renderer.setCameraOrientation(
                     {0, 1, 0}, translation, {translation.x, translation.y, translation.z + 1000});
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return std::expected<void, BaseError>();
             });
 
@@ -1414,7 +1418,7 @@ namespace Toolbox::UI {
                 }
 
                 m_renderer.updatePaths(m_current_scene->getRailData(), m_rail_visible_map);
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
 
@@ -1442,7 +1446,7 @@ namespace Toolbox::UI {
                     rail->insertNode(selected_index + 1, node.m_selected);
                     selected_index += 1;
                 }
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return std::expected<void, BaseError>();
             });
 
@@ -1450,7 +1454,7 @@ namespace Toolbox::UI {
                                                     [this](SelectionNodeInfo<Rail::RailNode> info) {
                                                         Rail::Rail *rail = info.m_selected->rail();
                                                         rail->removeNode(info.m_selected);
-                                                        m_renderer.markDirty();
+                                                        m_update_render_objs = true;
                                                         return std::expected<void, BaseError>();
                                                     });
     }
@@ -1483,7 +1487,7 @@ namespace Toolbox::UI {
                     rail->insertNode(selected_index + 1, node.m_selected);
                     selected_index += 1;
                 }
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return std::expected<void, BaseError>();
             });
 
@@ -1494,7 +1498,7 @@ namespace Toolbox::UI {
                     Rail::Rail *rail = select.m_selected->rail();
                     rail->removeNode(select.m_selected);
                 }
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return std::expected<void, BaseError>();
             });
     }
@@ -1529,7 +1533,7 @@ namespace Toolbox::UI {
                     return;
                 }
 
-                m_renderer.markDirty();
+                m_update_render_objs = true;
                 return;
             });
         m_create_obj_dialog.setActionOnReject([](SelectionNodeInfo<Object::ISceneObject>) {});
@@ -1616,7 +1620,7 @@ namespace Toolbox::UI {
 
             m_current_scene->setRailData(rail_data);
             m_renderer.updatePaths(rail_data, m_rail_visible_map);
-            m_renderer.markDirty();
+            m_update_render_objs = true;
         });
     }
 

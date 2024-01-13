@@ -169,6 +169,9 @@ namespace Toolbox::UI {
         if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window))
             return false;
 
+        glfwPollEvents();
+        Input::UpdateInputState();
+
         // Update viewer context
         for (auto &window : m_windows) {
             if (!window->update(delta_time)) {
@@ -181,9 +184,6 @@ namespace Toolbox::UI {
 
     void MainApplication::render(f32 delta_time) {  // Begin actual rendering
         glfwMakeContextCurrent(m_render_window);
-        glfwPollEvents();
-
-        Input::UpdateInputState();
 
         // The context renders both the ImGui elements and the background elements.
         ImGui_ImplOpenGL3_NewFrame();
@@ -403,6 +403,8 @@ namespace Toolbox::UI {
                 return false;
             }
         }
+
+        Input::PostUpdateInputState();
 
         return true;
     }

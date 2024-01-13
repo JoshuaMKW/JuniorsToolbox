@@ -150,6 +150,7 @@ namespace Toolbox::UI {
         RenameObjDialog m_rename_obj_dialog;
 
         // Render view
+        bool m_update_render_objs;
         bool m_is_render_window_open;
         Renderer m_renderer;
         std::vector<ISceneObject::RenderInfo> m_renderables;

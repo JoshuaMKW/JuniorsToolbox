@@ -33,7 +33,6 @@ namespace Toolbox::UI {
             initializePaths(rail_data, visible_map);
         }
 
-        void markDirty() { m_is_dirty = true; }
         void getCameraTranslation(glm::vec3 &translation) { m_camera.getPos(translation); }
         void setCameraOrientation(const glm::vec3 &up, const glm::vec3 &translation,
                                   const glm::vec3 &look_at) {
@@ -69,7 +68,6 @@ namespace Toolbox::UI {
     private:
         u32 m_fbo_id, m_tex_id, m_rbo_id;
 
-        bool m_is_dirty          = true;
         bool m_is_window_hovered = false;
         bool m_is_window_focused = false;
 

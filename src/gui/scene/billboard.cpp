@@ -136,7 +136,7 @@ namespace Toolbox::UI {
         glBindVertexArray(m_vao);
 
         glUniformMatrix4fv(m_mvp_uniform, 1, 0, &mvp[0][0]);
-        glDrawArrays(GL_POINTS, 0, m_billboards.size());
+        glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(m_billboards.size()));
 
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
         glBindVertexArray(0);

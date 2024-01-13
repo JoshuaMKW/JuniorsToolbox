@@ -287,9 +287,8 @@ namespace Toolbox::UI {
 
         m_billboard_renderer.loadBillboardTexture("res/question.png", 0);
 
-        m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE | ImGuizmo::OPERATION::ROTATE |
-                     ImGuizmo::OPERATION::SCALE;
-        m_gizmo_mode = ImGuizmo::LOCAL;
+        m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
+        m_gizmo_mode = ImGuizmo::WORLD;
     }
 
     Renderer::~Renderer() {
@@ -344,7 +343,7 @@ namespace Toolbox::UI {
         }
 
         viewportBegin();
-        if (m_is_dirty) {
+        {
             glm::mat4 projection, view;
             projection = m_camera.getProjMatrix();
             view       = m_camera.getViewMatrix();
@@ -374,8 +373,6 @@ namespace Toolbox::UI {
 
             m_path_renderer.drawPaths(&m_camera);
             m_billboard_renderer.drawBillboards(&m_camera);
-
-            m_is_dirty = false;
         }
         viewportEnd();
     }
@@ -412,11 +409,6 @@ namespace Toolbox::UI {
         // bind the framebuffer we want to render to
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
 
-        if (!m_is_dirty) {
-            glBindTexture(GL_TEXTURE_2D, m_tex_id);
-            return;
-        }
-
         auto size_x = static_cast<GLsizei>(m_window_size.x);
         auto size_y = static_cast<GLsizei>(m_window_size.y);
 
@@ -451,14 +443,32 @@ namespace Toolbox::UI {
             bool shift_held = Input::GetKey(GLFW_KEY_LEFT_SHIFT);
             bool ctrl_held  = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
 
-            float snap = !ImGuizmo::IsOver(ImGuizmo::OPERATION::TRANSLATE)
-                             ? !ImGuizmo::IsOver(ImGuizmo::OPERATION::ROTATE) ? 0.1f : 15.0f
-                             : 50.0f;
+            float snap[3];
+            if (ImGuizmo::IsOver(ImGuizmo::OPERATION::SCALE) ||
+                ImGuizmo::IsOver(ImGuizmo::OPERATION::SCALEU)) {
+                if (ctrl_held)
+                    Log::AppLogger::instance().log("Scale Held");
+                snap[0] = 0.1f;
+                snap[1] = 0.1f;
+                snap[2] = 0.1f;
+            } else if (ImGuizmo::IsOver(ImGuizmo::OPERATION::ROTATE)) {
+                if (ctrl_held)
+                    Log::AppLogger::instance().log("Rotate Held");
+                snap[0] = IM_PI / 12.0f;
+                snap[1] = IM_PI / 12.0f;
+                snap[2] = IM_PI / 12.0f;
+            } else if (ImGuizmo::IsOver(ImGuizmo::OPERATION::TRANSLATE)) {
+                if (ctrl_held)
+                    Log::AppLogger::instance().log("Translate Held");
+                snap[0] = 50.0f;
+                snap[1] = 50.0f;
+                snap[2] = 50.0f;
+            }
 
             m_gizmo_updated = ImGuizmo::Manipulate(
                 glm::value_ptr(m_camera.getViewMatrix()), glm::value_ptr(m_camera.getProjMatrix()),
                 m_gizmo_op, m_gizmo_mode, glm::value_ptr(m_gizmo_matrix), nullptr,
-                ctrl_held ? &snap : nullptr);
+                ctrl_held ? snap : nullptr);
         }
 
         glm::vec3 camera_pos;
@@ -535,47 +545,55 @@ namespace Toolbox::UI {
 
                 m_camera.turnLeftRight(-mouse_delta.x * 0.005f);
                 m_camera.tiltUpDown(-mouse_delta.y * 0.005f);
-
-                m_is_dirty = true;
             }
 
-            float lr_delta = 0, ud_delta = 0;
-            if (Input::GetKey(GLFW_KEY_A)) {
-                lr_delta -= 1;
-                m_is_dirty = true;
-            }
-            if (Input::GetKey(GLFW_KEY_D)) {
-                lr_delta += 1;
-                m_is_dirty = true;
-            }
-            if (Input::GetKey(GLFW_KEY_W)) {
-                ud_delta += 1;
-                m_is_dirty = true;
-            }
-            if (Input::GetKey(GLFW_KEY_S)) {
-                ud_delta -= 1;
-                m_is_dirty = true;
-            }
-            if (Input::GetKey(GLFW_KEY_LEFT_SHIFT)) {
+            // Camera movement
+            {
+                float lr_delta = 0, ud_delta = 0;
+                if (Input::GetKey(GLFW_KEY_A)) {
+                    lr_delta -= 1;
+                }
+                if (Input::GetKey(GLFW_KEY_D)) {
+                    lr_delta += 1;
+                }
+                if (Input::GetKey(GLFW_KEY_W)) {
+                    ud_delta += 1;
+                }
+                if (Input::GetKey(GLFW_KEY_S)) {
+                    ud_delta -= 1;
+                }
+                if (Input::GetKey(GLFW_KEY_LEFT_SHIFT)) {
+                    lr_delta *= 10;
+                    ud_delta *= 10;
+                }
+
+                ud_delta += Input::GetMouseScrollDelta() * 10.0f;
+
                 lr_delta *= 10;
                 ud_delta *= 10;
+
+                m_camera.translateLeftRight(-lr_delta);
+                m_camera.translateFwdBack(ud_delta);
             }
 
-            lr_delta *= 10;
-            ud_delta *= 10;
-
-            m_camera.translateLeftRight(-lr_delta);
-            m_camera.translateFwdBack(ud_delta);
+            // Gizmo mode
+            {
+                if (Input::GetKeyDown(GLFW_KEY_1)) {
+                    m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
+                } else if (Input::GetKeyDown(GLFW_KEY_2)) {
+                    m_gizmo_op = ImGuizmo::OPERATION::ROTATE;
+                } else if (Input::GetKeyDown(GLFW_KEY_3)) {
+                    m_gizmo_op = ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU;
+                }
+            }
         }
 
         if (m_window_size.x != m_window_size_prev.x || m_window_size.y != m_window_size_prev.y) {
             m_camera.setAspect(m_render_size.y > 0 ? m_render_size.x / m_render_size.y
                                                    : FLT_EPSILON * 2);
-            m_is_dirty = true;
         }
 
-        if (m_is_dirty)
-            m_camera.updateCamera();
+        m_camera.updateCamera();
 
         return true;
     }
@@ -589,8 +607,8 @@ namespace Toolbox::UI {
             return std::nullopt;
         }
 
-        const bool left_click  = Input::GetMouseButton(GLFW_MOUSE_BUTTON_LEFT);
-        const bool right_click = Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT);
+        const bool left_click  = Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_LEFT);
+        const bool right_click = Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT);
 
         // Mouse pos is absolute
         ImVec2 mouse_pos = Input::GetMousePosition();

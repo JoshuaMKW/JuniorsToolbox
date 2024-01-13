@@ -19,18 +19,18 @@ namespace Toolbox::UI::Input {
         constexpr uint32_t KEY_MAX          = 512;
         constexpr uint32_t MOUSE_BUTTON_MAX = 3;
 
-        ImVec2 mMousePosition;
-        ImVec2 mMouseDelta;
-        int32_t mMouseScrollDelta;
+        ImVec2 mMousePosition = {0, 0};
+        ImVec2 mMouseDelta = {0, 0};
+        int32_t mMouseScrollDelta = 0;
 
-        bool mMouseWrapped;
+        bool mMouseWrapped = false;
 
-        bool mKeysDown[KEY_MAX];
-        bool mPrevKeysDown[KEY_MAX];
+        bool mKeysDown[KEY_MAX]{};
+        bool mPrevKeysDown[KEY_MAX]{};
 
-        bool mMouseButtonsDown[MOUSE_BUTTON_MAX];
-        bool mPrevMouseButtonsDown[MOUSE_BUTTON_MAX];
-        ImVec2 mPrevMousePosition;
+        bool mMouseButtonsDown[MOUSE_BUTTON_MAX]{};
+        bool mPrevMouseButtonsDown[MOUSE_BUTTON_MAX]{};
+        ImVec2 mPrevMousePosition = {0, 0};
 
         void SetKeyboardState(uint32_t key, bool pressed) { mKeysDown[key] = pressed; }
 
@@ -44,7 +44,10 @@ namespace Toolbox::UI::Input {
 
 bool Toolbox::UI::Input::GetKey(uint32_t key) { return mKeysDown[key]; }
 
-bool Toolbox::UI::Input::GetKeyDown(uint32_t key) { return mKeysDown[key] && !mPrevKeysDown[key]; }
+bool Toolbox::UI::Input::GetKeyDown(uint32_t key) {
+    bool is_down = mKeysDown[key] && !mPrevKeysDown[key];
+    return is_down;
+}
 
 bool Toolbox::UI::Input::GetKeyUp(uint32_t key) { return mPrevKeysDown[key] && !mKeysDown[key]; }
 
@@ -90,17 +93,20 @@ void Toolbox::UI::Input::SetMousePosition(ImVec2 pos, bool overwrite_delta) {
 void Toolbox::UI::Input::SetMouseWrapped(bool wrapped) { mMouseWrapped = wrapped; }
 
 void Toolbox::UI::Input::UpdateInputState() {
-    for (int i = 0; i < KEY_MAX; i++)
-        mPrevKeysDown[i] = mKeysDown[i];
-    for (int i = 0; i < MOUSE_BUTTON_MAX; i++)
-        mPrevMouseButtonsDown[i] = mMouseButtonsDown[i];
-
     if (!mMouseWrapped) {
         mMouseDelta = {mMousePosition.x - mPrevMousePosition.x,
                        mMousePosition.y - mPrevMousePosition.y};
     } else {
         mMouseWrapped = false;
     }
+}
+
+void Toolbox::UI::Input::PostUpdateInputState() {
+    for (int i = 0; i < KEY_MAX; i++)
+        mPrevKeysDown[i] = mKeysDown[i];
+    for (int i = 0; i < MOUSE_BUTTON_MAX; i++)
+        mPrevMouseButtonsDown[i] = mMouseButtonsDown[i];
+
     mPrevMousePosition = mMousePosition;
 
     mMouseScrollDelta = 0;

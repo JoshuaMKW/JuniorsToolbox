@@ -24,8 +24,8 @@ namespace Toolbox::UI::Input {
     bool GetMouseWrapped();
     void SetMouseWrapped(bool wrapped);
 
-    // Tick the internal state. For internal use only.
     void UpdateInputState();
+    void PostUpdateInputState();
 
     void GLFWKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
     void GLFWMousePositionCallback(GLFWwindow *window, double xpos, double ypos);

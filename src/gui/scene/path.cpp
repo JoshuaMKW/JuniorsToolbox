@@ -165,18 +165,18 @@ namespace Toolbox::UI {
         glUniformMatrix4fv(m_mvp_uniform, 1, 0, &mvp[0][0]);
 
         {
-            int start = 0;
+            GLint start = 0;
 
             glUniform1i(m_mode_uniform, GL_TRUE);
             for (auto &connection : m_path_connections) {
                 // +1 for self
                 glDrawArrays(GL_POINTS, start, 1);
-                start += connection.m_connections.size() * 2;
+                start += static_cast<GLint>(connection.m_connections.size() * 2);
             }
         }
 
         {
-            int start = 0;
+            GLint start = 0;
 
             glUniform1i(m_mode_uniform, GL_FALSE);
             for (auto &connection : m_path_connections) {
