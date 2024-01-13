@@ -282,6 +282,12 @@ namespace Toolbox::Object {
                 }
                 inst_structs.emplace_back(struct_->name(), inst_struct_members);
             }
+            MetaMember::size_type array_size = default_member.arraysize_();
+            if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
+                return MetaMember(default_member.name(), inst_structs,
+                                  std::get<MetaMember::ReferenceInfo>(array_size),
+                                  default_member.defaultValue());
+            }
             return MetaMember(default_member.name(), inst_structs, default_member.defaultValue());
         }
 
@@ -294,7 +300,13 @@ namespace Toolbox::Object {
                 value.loadJSON(member_json);
                 inst_enums.push_back(value);
             }
-            return MetaMember(default_member.name(), inst_enums, default_member.defaultValue());
+            MetaMember::size_type array_size = default_member.arraysize_();
+            if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
+                return MetaMember(default_member.name(), inst_enums, std::get<MetaMember::ReferenceInfo>(array_size),
+                                  default_member.defaultValue());
+            }
+            return MetaMember(default_member.name(), inst_enums,
+                              default_member.defaultValue());
         }
 
         std::vector<MetaValue> inst_values;
@@ -302,6 +314,12 @@ namespace Toolbox::Object {
             auto value = MetaValue(*default_member.value<MetaValue>(i).value());
             value.loadJSON(member_json);
             inst_values.push_back(value);
+        }
+        MetaMember::size_type array_size = default_member.arraysize_();
+        if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
+            return MetaMember(default_member.name(), inst_values,
+                              std::get<MetaMember::ReferenceInfo>(array_size),
+                              default_member.defaultValue());
         }
         return MetaMember(default_member.name(), inst_values, default_member.defaultValue());
     }

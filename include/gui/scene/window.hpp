@@ -82,6 +82,8 @@ namespace Toolbox::UI {
         void onHomeKey() override;
 
     public:
+        ImGuiWindowFlags flags() const override { return ImGuiWindowFlags_MenuBar; }
+
         const ImGuiWindowClass *windowClass() const override {
             if (parent() && parent()->windowClass()) {
                 return parent()->windowClass();
@@ -186,9 +188,8 @@ namespace Toolbox::UI {
 
         bool m_options_open{false};
 
-        bool m_is_docking_set_up{false};
-        bool m_is_file_dialog_open{false};
-        bool m_is_save_dialog_open{false};
-        bool m_text_editor_active{false};
+        bool m_is_save_default_ready{false};
+        bool m_is_save_as_dialog_open{false};
+        bool m_is_verify_open{false};
     };
 }  // namespace Toolbox::UI

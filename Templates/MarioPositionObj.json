@@ -16,7 +16,7 @@
         "Members": {
             "WarpPointArray": {
                 "Type": "Warp",
-                "ArraySize": 0
+                "ArraySize": 8
             }
         },
         "Wizard": {

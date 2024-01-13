@@ -87,7 +87,7 @@ namespace Toolbox::Object {
         virtual std::expected<void, ObjectGroupError> _setParent(ISceneObject *parent) = 0;
 
     public:
-        [[nodiscard]] virtual std::vector<s8> getData() const = 0;
+        [[nodiscard]] virtual std::span<u8> getData() const = 0;
         [[nodiscard]] virtual size_t getDataSize() const      = 0;
 
         [[nodiscard]] virtual bool hasMember(const QualifiedName &name) const                   = 0;
@@ -219,7 +219,7 @@ namespace Toolbox::Object {
             return {};
         }
 
-        std::vector<s8> getData() const override;
+        std::span<u8> getData() const override;
         size_t getDataSize() const override;
 
         bool hasMember(const QualifiedName &name) const override;
@@ -321,6 +321,7 @@ namespace Toolbox::Object {
         std::string m_type;
         NameRef m_nameref;
         std::vector<std::shared_ptr<MetaMember>> m_members;
+        mutable std::vector<u8> m_data;
         ISceneObject *m_parent = nullptr;
 
         mutable MetaStruct::CacheMemberT m_member_cache;
@@ -364,7 +365,7 @@ namespace Toolbox::Object {
 
         [[nodiscard]] bool isGroupObject() const override { return true; }
 
-        [[nodiscard]] std::vector<s8> getData() const override;
+        [[nodiscard]] std::span<u8> getData() const override;
         [[nodiscard]] size_t getDataSize() const override;
 
         std::expected<void, ObjectGroupError>
@@ -421,6 +422,7 @@ namespace Toolbox::Object {
 
     private:
         std::shared_ptr<MetaMember> m_group_size;
+        mutable std::vector<u8> m_data;
         std::vector<std::shared_ptr<ISceneObject>> m_children = {};
         bool m_is_performing                                  = true;
     };
@@ -494,7 +496,7 @@ namespace Toolbox::Object {
             return {};
         }
 
-        std::vector<s8> getData() const override;
+        std::span<u8> getData() const override;
         size_t getDataSize() const override;
 
         bool hasMember(const QualifiedName &name) const override;
@@ -641,6 +643,7 @@ namespace Toolbox::Object {
         std::string m_type;
         NameRef m_nameref;
         std::vector<std::shared_ptr<MetaMember>> m_members;
+        mutable std::vector<u8> m_data;
         ISceneObject *m_parent = nullptr;
 
         mutable MetaStruct::CacheMemberT m_member_cache;

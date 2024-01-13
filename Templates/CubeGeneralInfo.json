@@ -35,38 +35,65 @@
                 "ArraySize": 1
             },
             "Layer": {
-                "Type": "STR",
+                "Type": "STRING",
                 "ArraySize": 1
             }
         },
-        "Wizard": {
-            "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        3,
-                        3,
-                        3
-                    ]
-                ],
-                "Unknown": 128,
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
-                },
-                "Other": 128,
-                "Layer": "Layer1"
-            }
+      "Wizard": {
+        "Default": {
+          "Transform": [
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              3,
+              3,
+              3
+            ]
+          ],
+          "Unknown": 128,
+          "LightCount": 0,
+          "LightArray": {
+            "ID": 0,
+            "Name": "LightX"
+          },
+          "Other": 128,
+          "Layer": ""
+        },
+        "Layered": {
+          "Transform": [
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              3,
+              3,
+              3
+            ]
+          ],
+          "Unknown": 128,
+          "LightCount": 0,
+          "LightArray": {
+            "ID": 0,
+            "Name": "LightX"
+          },
+          "Other": 128,
+          "Layer": "Layer1"
         }
+      }
     }
 }

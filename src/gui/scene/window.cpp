@@ -1683,6 +1683,47 @@ namespace Toolbox::UI {
                                      m_dock_node_down_left_id);
     }
 
-    void SceneWindow::renderMenuBar() {}
+    void SceneWindow::renderMenuBar() {
+        if (ImGui::BeginMenuBar()) {
+            if (ImGui::BeginMenu("File", true)) {
+                if (ImGui::MenuItem(ICON_FK_FLOPPY_O " Save")) {
+                    m_is_save_default_ready = true;
+                }
+                if (ImGui::MenuItem(ICON_FK_FLOPPY_O " Save As...")) {
+                    m_is_save_as_dialog_open = true;
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+        }
+
+        if (m_is_save_as_dialog_open) {
+            ImGuiFileDialog::Instance()->OpenDialog("SaveSceneDialog", "Choose Directory", nullptr,
+                                                    "", "");
+        }
+
+        if (ImGuiFileDialog::Instance()->Display("SaveSceneDialog")) {
+            ImGuiFileDialog::Instance()->Close();
+            m_is_save_as_dialog_open = false;
+
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
+
+                auto dir_result = Toolbox::is_directory(path);
+                if (!dir_result) {
+                    return;
+                }
+
+                if (!dir_result.value()) {
+                    return;
+                }
+
+                auto result = m_current_scene->saveToPath(path);
+                if (!result) {
+                    logSerialError(result.error());
+                }
+            }
+        }
+    }
 
 };  // namespace Toolbox::UI

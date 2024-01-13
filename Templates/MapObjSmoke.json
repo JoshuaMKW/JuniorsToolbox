@@ -45,10 +45,6 @@
             "SpawnHeight": {
                 "Type": "FLOAT",
                 "ArraySize": 1
-            },
-            "SpawnDuration": {
-                "Type": "INT",
-                "ArraySize": 1
             }
         },
         "Wizard": {
@@ -79,8 +75,7 @@
                 "Model": "MapSmoke",
                 "SpawnObjID": -1,
                 "SpawnLength": 100,
-                "SpawnHeight": -1,
-                "SpawnDuration": 120
+                "SpawnHeight": -1
             }
         }
     }

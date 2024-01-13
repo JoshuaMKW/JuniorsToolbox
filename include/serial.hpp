@@ -5,7 +5,7 @@
 #include <bit>
 #include <expected>
 #include <iostream>
-#include <queue>
+#include <stack>
 #include <span>
 #include <stacktrace>
 #include <vector>
@@ -53,6 +53,8 @@ namespace Toolbox {
 
         template <std::endian E = std::endian::native>
         Serializer &writeString(const std::string &str) {
+            if (str.size() == 0)
+                return *this;
             write<u16, E>(str.size() & 0xFFFF);
             writeBytes(std::span(str.data(), str.size()));
             return *this;
@@ -60,6 +62,8 @@ namespace Toolbox {
 
         template <std::endian E = std::endian::native>
         Serializer &writeString(std::string_view str) {
+            if (str.size() == 0)
+                return *this;
             write<u16, E>(str.size() & 0xFFFF);
             writeBytes(std::span(str.data(), str.size()));
             return *this;
@@ -84,7 +88,9 @@ namespace Toolbox {
 
         Serializer &padTo(std::size_t alignment, std::span<const char> fill) {
             std::size_t pos       = tell();
-            std::size_t pad       = (alignment - (pos % alignment));
+            std::size_t pad = (alignment - (pos % alignment));
+            if (pad == alignment)
+                return *this;
             std::size_t fill_size = fill.size();
             for (std::size_t i = 0; i < pad; ++i) {
                 write<u8>(fill[i % fill_size]);
@@ -95,6 +101,8 @@ namespace Toolbox {
         Serializer &padTo(std::size_t alignment, char fill) {
             std::size_t pos = tell();
             std::size_t pad = (alignment - (pos % alignment));
+            if (pad == alignment)
+                return *this;
             for (std::size_t i = 0; i < pad; ++i) {
                 write<u8>(0);
             }
@@ -125,7 +133,7 @@ namespace Toolbox {
 
     private:
         std::ostream m_out;
-        std::queue<std::streampos> m_breakpoints;
+        std::stack<std::streampos> m_breakpoints;
         std::string m_file_path = "[unknown path]";
     };
 
@@ -258,7 +266,7 @@ namespace Toolbox {
 
     private:
         std::istream m_in;
-        std::queue<std::streampos> m_breakpoints;
+        std::stack<std::streampos> m_breakpoints;
         std::string m_file_path = "[unknown path]";
     };
 

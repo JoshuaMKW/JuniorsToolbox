@@ -106,6 +106,8 @@ namespace Toolbox::Scene {
         [[nodiscard]] BMG::MessageData getMessageData() const { return m_message_data; }
         void setMessageData(BMG::MessageData &message_data) { m_message_data = message_data; }
 
+        std::expected<void, SerialError> saveToPath(const std::filesystem::path &root);
+
         void dump(std::ostream &os, size_t indent, size_t indent_size) const;
         void dump(std::ostream &os, size_t indent) const { dump(os, indent, 4); }
         void dump(std::ostream &os) const { dump(os, 0); }
