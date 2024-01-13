@@ -77,7 +77,7 @@ namespace Toolbox::Scene {
 
         size_t name_size =
             std::accumulate(m_rails.begin(), m_rails.end(), static_cast<size_t>(0),
-            [](size_t accum, RailData::rail_ptr_t rail) { return rail->name().size() + 1; });
+            [](size_t accum, RailData::rail_ptr_t rail) { return accum + rail->name().size() + 1; });
 
         size_t data_start = name_start + ((name_size + 3) & ~3);
 
@@ -99,10 +99,6 @@ namespace Toolbox::Scene {
             name_start += rail->name().size() + 1;
             data_start += 68 * rail->getNodeCount();
         }
-
-        out.write<u32>(0);
-        out.write<u32>(0);
-        out.write<u32>(0);
 
         return {};
     }
