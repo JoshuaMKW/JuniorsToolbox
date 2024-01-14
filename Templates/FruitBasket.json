@@ -87,6 +87,14 @@
                 "SpawnDuration": 120,
                 "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
             }
+        },
+        "Rendering": {
+            "Default":  {
+                "Model": "mapobj/basket.bmd",
+                "Animations":  [
+                    "mapobj/basket.bck"
+                ]
+            }
         }
     }
 }

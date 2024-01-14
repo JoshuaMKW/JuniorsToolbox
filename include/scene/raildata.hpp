@@ -34,10 +34,11 @@ namespace Toolbox::Scene {
         [[nodiscard]] rail_ptr_t getRail(size_t index) const;
         [[nodiscard]] rail_ptr_t getRail(std::string_view name) const;
 
-        void addRail(std::shared_ptr<Rail::Rail> rail);
-        void insertRail(size_t index, std::shared_ptr<Rail::Rail> rail);
+        void addRail(const Rail::Rail &rail);
+        void insertRail(size_t index, const Rail::Rail &rail);
         void removeRail(size_t index);
         void removeRail(std::string_view name);
+        void removeRail(const Rail::Rail &rail);
 
         [[nodiscard]] std::vector<rail_ptr_t>::const_iterator begin() const {
             return m_rails.begin();
@@ -62,6 +63,7 @@ namespace Toolbox::Scene {
         std::unique_ptr<IClonable> clone(bool deep) const override;
 
     private:
+        u64 m_next_sibling_id = 0;
         std::vector<rail_ptr_t> m_rails = {};
     };
 

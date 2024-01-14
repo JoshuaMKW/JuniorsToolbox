@@ -3,6 +3,7 @@
 #include "boundbox.hpp"
 #include "clone.hpp"
 #include "node.hpp"
+#include "unique.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/value.hpp"
 #include "serial.hpp"
@@ -13,7 +14,7 @@ using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
 
-    class Rail : public IClonable, public std::enable_shared_from_this<Rail> {
+    class Rail : public IClonable, public IUnique {
     public:
         using node_ptr_t = std::shared_ptr<RailNode>;
 
@@ -32,7 +33,11 @@ namespace Toolbox::Rail {
         Rail &operator=(const Rail &other) = default;
         Rail &operator=(Rail &&other)      = default;
 
-        std::shared_ptr<Rail> getSharedPtr() { return shared_from_this(); }
+        [[nodiscard]] u64 getID() const override { return m_uid; }
+        void setID(u64 id) override { m_uid = id; }
+
+        [[nodiscard]] u64 getSiblingID() const override { return m_sibling_id; }
+        void setSiblingID(u64 id) override { m_sibling_id = id; }
 
         [[nodiscard]] bool isSpline() const { return m_name.starts_with("S_"); }
 
@@ -148,6 +153,8 @@ namespace Toolbox::Rail {
         void chaikinSubdivide();
 
     private:
+        u64 m_uid;
+        u64 m_sibling_id;
         std::string m_name;
         std::vector<node_ptr_t> m_nodes = {};
     };

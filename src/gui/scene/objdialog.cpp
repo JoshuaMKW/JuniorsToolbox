@@ -137,8 +137,13 @@ namespace Toolbox::UI {
 
             ImGui::SetNextItemWidth((items_width / 2) - (ImGui::GetStyle().ItemSpacing.x / 2));
 
+            // Used for duplicate name warning at end
+            ImVec2 name_input_pos = ImGui::GetCursorPos();
+
             ImGui::InputTextWithHint("##name_input", hint_text, m_object_name.data(),
                                      m_object_name.size(), ImGuiInputTextFlags_AutoSelectAll);
+
+            ImVec2 name_input_size = ImGui::GetItemRectSize();
 
             if (state_invalid) {
                 ImVec4 disabled_color = ImGui::GetStyle().Colors[ImGuiCol_Button];
@@ -156,7 +161,7 @@ namespace Toolbox::UI {
             }
 
             if (ImGui::Button("Create")) {
-                m_on_accept(proposed_name, *m_templates.at(m_template_index),
+                m_on_accept(0, proposed_name, *m_templates.at(m_template_index),
                             m_templates.at(m_template_index)->wizards().at(m_wizard_index).m_name,
                             node_info);
                 m_open = false;
@@ -176,6 +181,38 @@ namespace Toolbox::UI {
                 m_on_reject(node_info);
                 m_open = false;
             }
+
+            // Detect duplicate name
+            ISceneObject *this_parent;
+            if (node_info.m_selected->isGroupObject()) {
+                this_parent = node_info.m_selected.get();
+            } else {
+                this_parent = node_info.m_selected->getParent();
+            }
+
+            std::string name_state_msg = "Name is unique and has no collisions!";
+            ImVec4 name_state_color    = {0.2f, 0.8f, 0.2f, 1.0f};
+
+            if (this_parent) {
+                auto children = std::move(this_parent->getChildren().value());
+                auto sibling_it =
+                    std::find_if(children.begin(), children.end(), [&](const auto &child) {
+                        return child->getNameRef().name() == proposed_name;
+                    });
+                if (sibling_it != children.end()) {
+                    name_state_msg   = "Name already exists! Proceed with caution.";
+                    name_state_color = {0.8f, 0.2f, 0.1f, 1.0f};
+                }
+            }
+
+            ImVec2 name_state_text_size = ImGui::CalcTextSize(name_state_msg.c_str());
+            ImVec2 name_warning_pos     = {window_width - ImGui::GetStyle().WindowPadding.x - name_state_text_size.x,
+                                           name_input_pos.y + name_input_size.y + ImGui::GetStyle().ItemSpacing.y};
+
+
+            ImGui::SetCursorPos(name_warning_pos);
+            ImGui::TextColored(name_state_color, name_state_msg.c_str());
+
             ImGui::EndPopup();
         }
     }

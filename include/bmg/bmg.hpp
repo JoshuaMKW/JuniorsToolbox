@@ -243,7 +243,7 @@ namespace Toolbox::BMG {
     private:
         std::vector<Entry> m_entries = {};
 
-        u8 m_flag_size = 12;
+        u16 m_flag_size = 12;
 
         // Message names, PAL only
         bool m_has_str1 = false;

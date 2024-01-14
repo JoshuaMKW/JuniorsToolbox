@@ -77,7 +77,12 @@ namespace Toolbox::UI {
 
     static std::string getNodeUID(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
         std::string node_name = std::format("{} ({})##{}", node->type(), node->getNameRef().name(),
-                                            node->getQualifiedName().toString());
+                                            node->getID());
+        return node_name;
+    }
+
+    static std::string getNodeUID(std::shared_ptr<Rail::Rail> node) {
+        std::string node_name = std::format("{}##{}", node->name(), node->getSiblingID());
         return node_name;
     }
 
@@ -248,7 +253,7 @@ namespace Toolbox::UI {
                 // In this circumstance, select the whole rail
                 if (Input::GetKey(GLFW_KEY_LEFT_ALT)) {
                     SelectionNodeInfo<Rail::Rail> rail_info = {
-                        .m_selected = rail->getSharedPtr(),
+                        .m_selected = get_shared_ptr<Rail::Rail>(*rail),
                         .m_node_id =
                             ImHashStr(rail->name().data(), rail->name().size(), m_window_seed),
                         .m_parent_synced = true,
@@ -770,9 +775,11 @@ namespace Toolbox::UI {
             }
 
             for (auto &rail : m_current_scene->getRailData()) {
+                std::string uid_str                     = getNodeUID(rail);
+
                 SelectionNodeInfo<Rail::Rail> rail_info = {
                     .m_selected = rail,
-                    .m_node_id = ImHashStr(rail->name().data(), rail->name().size(), m_window_seed),
+                    .m_node_id       = ImHashStr(uid_str.data(), uid_str.size(), m_window_seed),
                     .m_parent_synced = true,
                     .m_scene_synced  = false};
 
@@ -780,13 +787,13 @@ namespace Toolbox::UI {
                     m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
                     [&](auto &info) { return info.m_node_id == rail_info.m_node_id; });
 
-                if (!m_rail_visible_map.contains(rail->name())) {
-                    m_rail_visible_map[rail->name()] = true;
+                if (!m_rail_visible_map.contains(uid_str)) {
+                    m_rail_visible_map[uid_str] = true;
                 }
-                bool &rail_visibility = m_rail_visible_map[rail->name()];
+                bool &rail_visibility = m_rail_visible_map[uid_str];
                 bool is_rail_visible  = rail_visibility;
 
-                bool is_rail_open = ImGui::TreeNodeEx(rail->name().data(), rail_flags,
+                bool is_rail_open = ImGui::TreeNodeEx(uid_str.data(), rail_flags,
                                                       is_rail_selected, &is_rail_visible);
 
                 if (rail_visibility != is_rail_visible) {
@@ -977,8 +984,18 @@ namespace Toolbox::UI {
                             .error());
                     return;
                 }
+                std::vector<std::string> sibling_names;
+                auto children = std::move(this_parent->getChildren().value());
+                for (auto &child : children) {
+                    sibling_names.push_back(std::string(child->getNameRef().name()));
+                }
                 for (auto &node : nodes) {
-                    this_parent->addChild(node.m_selected);
+                    std::shared_ptr<ISceneObject> new_object  = make_deep_clone<ISceneObject>(node.m_selected);
+                    NameRef node_ref = new_object->getNameRef();
+                    node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
+                    new_object->setNameRef(node_ref);
+                    this_parent->addChild(new_object);
+                    sibling_names.push_back(std::string(node_ref.name()));
                 }
                 m_update_render_objs = true;
                 return;
@@ -1046,8 +1063,18 @@ namespace Toolbox::UI {
                             .error());
                     return;
                 }
+                std::vector<std::string> sibling_names;
+                auto children = std::move(this_parent->getChildren().value());
+                for (auto &child : children) {
+                    sibling_names.push_back(std::string(child->getNameRef().name()));
+                }
                 for (auto &node : nodes) {
-                    this_parent->addChild(node.m_selected);
+                    auto new_object  = make_deep_clone<ISceneObject>(node.m_selected);
+                    NameRef node_ref = new_object->getNameRef();
+                    node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
+                    new_object->setNameRef(node_ref);
+                    this_parent->addChild(new_object);
+                    sibling_names.push_back(std::string(node_ref.name()));
                 }
                 m_update_render_objs = true;
                 return;
@@ -1180,8 +1207,18 @@ namespace Toolbox::UI {
                             .error());
                     return;
                 }
+                std::vector<std::string> sibling_names;
+                auto children = std::move(this_parent->getChildren().value());
+                for (auto &child : children) {
+                    sibling_names.push_back(std::string(child->getNameRef().name()));
+                }
                 for (auto &node : nodes) {
-                    this_parent->addChild(node.m_selected);
+                    auto new_object  = make_deep_clone<ISceneObject>(node.m_selected);
+                    NameRef node_ref = new_object->getNameRef();
+                    node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
+                    new_object->setNameRef(node_ref);
+                    this_parent->addChild(new_object);
+                    sibling_names.push_back(std::string(node_ref.name()));
                 }
                 m_update_render_objs = true;
                 return;
@@ -1235,8 +1272,18 @@ namespace Toolbox::UI {
                                      .error());
                         return;
                     }
+                    std::vector<std::string> sibling_names;
+                    auto children = std::move(this_parent->getChildren().value());
+                    for (auto &child : children) {
+                        sibling_names.push_back(std::string(child->getNameRef().name()));
+                    }
                     for (auto &node : nodes) {
-                        this_parent->addChild(node.m_selected);
+                        auto new_object  = make_deep_clone<ISceneObject>(node.m_selected);
+                        NameRef node_ref = new_object->getNameRef();
+                        node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
+                        new_object->setNameRef(node_ref);
+                        this_parent->addChild(new_object);
+                        sibling_names.push_back(std::string(node_ref.name()));
                     }
                 }
                 m_update_render_objs = true;
@@ -1312,8 +1359,14 @@ namespace Toolbox::UI {
                     if (result) {
                         selected_index = result.value();
                     }
+                    std::vector<std::string> sibling_names;
+                    for (auto &rail : data.rails()) {
+                        sibling_names.push_back(rail->name());
+                    }
                     for (auto &node : nodes) {
-                        data.insertRail(selected_index + 1, node.m_selected);
+                        Rail::Rail new_rail = *node.m_selected;
+                        new_rail.setName(Util::MakeNameUnique(new_rail.name(), sibling_names));
+                        data.insertRail(selected_index + 1, new_rail);
                         selected_index += 1;
                     }
                     m_current_scene->setRailData(data);
@@ -1324,9 +1377,10 @@ namespace Toolbox::UI {
 
         m_rail_list_single_node_menu.addOption(
             "Delete", {GLFW_KEY_DELETE}, [this](SelectionNodeInfo<Rail::Rail> info) {
-                m_rail_visible_map.erase(info.m_selected->name());
+                std::string uid_str = getNodeUID(info.m_selected);
+                m_rail_visible_map.erase(uid_str);
                 RailData data = m_current_scene->getRailData();
-                data.removeRail(info.m_selected->name());
+                data.removeRail(*info.m_selected);
                 m_current_scene->setRailData(data);
                 m_update_render_objs = true;
                 return;
@@ -1357,8 +1411,14 @@ namespace Toolbox::UI {
                     if (result) {
                         selected_index = result.value();
                     }
+                    std::vector<std::string> sibling_names;
+                    for (auto &rail : data.rails()) {
+                        sibling_names.push_back(rail->name());
+                    }
                     for (auto &node : nodes) {
-                        data.insertRail(selected_index + 1, node.m_selected);
+                        Rail::Rail new_rail = *node.m_selected;
+                        new_rail.setName(Util::MakeNameUnique(new_rail.name(), sibling_names));
+                        data.insertRail(selected_index + 1, new_rail);
                         selected_index += 1;
                     }
                     m_current_scene->setRailData(data);
@@ -1506,7 +1566,7 @@ namespace Toolbox::UI {
     void SceneWindow::buildCreateObjDialog() {
         m_create_obj_dialog.setup();
         m_create_obj_dialog.setActionOnAccept(
-            [this](std::string_view name, const Object::Template &template_,
+            [this](size_t sibling_index, std::string_view name, const Object::Template &template_,
                    std::string_view wizard_name, SelectionNodeInfo<Object::ISceneObject> info) {
                 auto new_object_result = Object::ObjectFactory::create(template_, wizard_name);
                 if (!name.empty()) {
@@ -1527,7 +1587,7 @@ namespace Toolbox::UI {
                     return;
                 }
 
-                auto result = this_parent->addChild(std::move(new_object_result));
+                auto result = this_parent->insertChild(sibling_index, std::move(new_object_result));
                 if (!result) {
                     logObjectGroupError(result.error());
                     return;
@@ -1589,10 +1649,10 @@ namespace Toolbox::UI {
                 angle += angle_step;
             }
 
-            auto new_rail = std::make_shared<Rail::Rail>(name, new_nodes);
+            Rail::Rail new_rail(name, new_nodes);
 
             for (u16 i = 0; i < node_count; ++i) {
-                auto result = new_rail->connectNodeToNeighbors(i, true);
+                auto result = new_rail.connectNodeToNeighbors(i, true);
                 if (!result) {
                     logMetaError(result.error());
                 }
@@ -1601,7 +1661,7 @@ namespace Toolbox::UI {
             if (!loop) {
                 // First
                 {
-                    auto result = new_rail->removeConnection(0, 1);
+                    auto result = new_rail.removeConnection(0, 1);
                     if (!result) {
                         logMetaError(result.error());
                     }
@@ -1609,7 +1669,7 @@ namespace Toolbox::UI {
 
                 // Last
                 {
-                    auto result = new_rail->removeConnection(node_count - 1, 1);
+                    auto result = new_rail.removeConnection(node_count - 1, 1);
                     if (!result) {
                         logMetaError(result.error());
                     }

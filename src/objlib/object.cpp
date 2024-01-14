@@ -13,6 +13,8 @@ namespace Toolbox::Object {
 
     /* INTERFACE */
 
+    u64 ISceneObject::s_next_object_uid = 0;
+
     QualifiedName ISceneObject::getQualifiedName() const {
         auto parent = getParent();
         if (parent)
@@ -283,20 +285,22 @@ namespace Toolbox::Object {
 
     std::expected<void, ObjectGroupError>
     GroupSceneObject::addChild(std::shared_ptr<ISceneObject> child) {
-        //auto child_it = std::find_if(
-        //    m_children.begin(), m_children.end(), [&](std::shared_ptr<ISceneObject> other) {
-        //        return other->getNameRef().name() == child->getNameRef().name();
-        //    });
+        return insertChild(m_children.size(), std::move(child));
+    }
 
-        //if (child_it != m_children.end()) {
-        //    ObjectGroupError err = {
-        //        "Child already in the group object:", std::stacktrace::current(), this, {}};
-        //    return std::unexpected(err);
-        //}
-
+    std::expected<void, ObjectGroupError>
+    GroupSceneObject::insertChild(size_t index, std::shared_ptr<ISceneObject> child) {
+        if (index > m_children.size()) {
+            ObjectGroupError err = {std::format("Insertion index {} is out of bounds (end: {})",
+                                                index, m_children.size()),
+                                    std::stacktrace::current(),
+                                    this,
+                                    {}};
+            return std::unexpected(err);
+        }
         ISceneObject *parent = child->getParent();
         if (parent) {
-            parent->removeChild(child->getNameRef().name());
+            parent->removeChild(child);
         }
         auto result = child->_setParent(this);
         if (!result) {
@@ -306,7 +310,9 @@ namespace Toolbox::Object {
                                     {result.error()}};
             return std::unexpected(err);
         }
-        m_children.push_back(child);
+
+        child->setSiblingID(m_next_sibling_id++);
+        m_children.insert(m_children.begin() + index, std::move(child));
         updateGroupSize();
         return {};
     }
@@ -731,7 +737,8 @@ namespace Toolbox::Object {
         }
 
         m_model_instance->UpdateAnimations(delta_time);
-        renderables.emplace_back(shared_from_this(), m_model_instance, render_transform);
+        renderables.emplace_back(get_shared_ptr<PhysicalSceneObject>(*this), m_model_instance,
+                                 render_transform);
 
         return {};
     }

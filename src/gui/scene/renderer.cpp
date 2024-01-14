@@ -444,20 +444,19 @@ namespace Toolbox::UI {
             bool ctrl_held  = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
 
             float snap[3];
-            if (ImGuizmo::IsOver(ImGuizmo::OPERATION::SCALE) ||
-                ImGuizmo::IsOver(ImGuizmo::OPERATION::SCALEU)) {
+            if ((m_gizmo_op & (ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU))) {
                 if (ctrl_held)
                     Log::AppLogger::instance().log("Scale Held");
                 snap[0] = 0.1f;
                 snap[1] = 0.1f;
                 snap[2] = 0.1f;
-            } else if (ImGuizmo::IsOver(ImGuizmo::OPERATION::ROTATE)) {
+            } else if ((m_gizmo_op & ImGuizmo::OPERATION::ROTATE)) {
                 if (ctrl_held)
                     Log::AppLogger::instance().log("Rotate Held");
-                snap[0] = IM_PI / 12.0f;
-                snap[1] = IM_PI / 12.0f;
-                snap[2] = IM_PI / 12.0f;
-            } else if (ImGuizmo::IsOver(ImGuizmo::OPERATION::TRANSLATE)) {
+                snap[0] = 15.0f;
+                snap[1] = 15.0f;
+                snap[2] = 15.0f;
+            } else if ((m_gizmo_op & ImGuizmo::OPERATION::TRANSLATE)) {
                 if (ctrl_held)
                     Log::AppLogger::instance().log("Translate Held");
                 snap[0] = 50.0f;

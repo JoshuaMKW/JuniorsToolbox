@@ -13,7 +13,7 @@ namespace Toolbox::UI {
 
     class CreateObjDialog {
     public:
-        using action_t = std::function<void(
+        using action_t = std::function<void(size_t,
             std::string_view, const Object::Template &, std::string_view, SelectionNodeInfo<Object::ISceneObject>)>;
         using cancel_t = std::function<void(SelectionNodeInfo<Object::ISceneObject>)>;
 

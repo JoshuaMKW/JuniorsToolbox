@@ -6,11 +6,13 @@
 #include "template.hpp"
 #include "transform.hpp"
 #include "types.hpp"
+#include "unique.hpp"
 #include <J3D/Animation/J3DAnimationInstance.hpp>
 #include <J3D/Data/J3DModelData.hpp>
 #include <J3D/Data/J3DModelInstance.hpp>
 #include <J3D/Material/J3DMaterialTable.hpp>
 #include <J3D/Rendering/J3DLight.hpp>
+#include <boundbox.hpp>
 #include <expected>
 #include <filesystem>
 #include <stacktrace>
@@ -18,7 +20,6 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
-#include <boundbox.hpp>
 
 using namespace J3DAnimation;
 
@@ -61,7 +62,10 @@ namespace Toolbox::Object {
     // holding modifiable and exotic values
     class ISceneObject : public ISerializable,
                          public IClonable,
-                         public std::enable_shared_from_this<ISceneObject> {
+                         public IUnique {
+    protected:
+        static u64 s_next_object_uid;
+
     public:
         friend class ObjectFactory;
 
@@ -88,7 +92,7 @@ namespace Toolbox::Object {
 
     public:
         [[nodiscard]] virtual std::span<u8> getData() const = 0;
-        [[nodiscard]] virtual size_t getDataSize() const      = 0;
+        [[nodiscard]] virtual size_t getDataSize() const    = 0;
 
         [[nodiscard]] virtual bool hasMember(const QualifiedName &name) const                   = 0;
         [[nodiscard]] virtual MetaStruct::GetMemberT getMember(const QualifiedName &name) const = 0;
@@ -99,6 +103,8 @@ namespace Toolbox::Object {
 
         virtual std::expected<void, ObjectGroupError>
         addChild(std::shared_ptr<ISceneObject> child) = 0;
+        virtual std::expected<void, ObjectGroupError>
+        insertChild(size_t index, std::shared_ptr<ISceneObject> child) = 0;
         virtual std::expected<void, ObjectGroupError>
         removeChild(std::shared_ptr<ISceneObject> name)                                      = 0;
         virtual std::expected<void, ObjectGroupError> removeChild(const QualifiedName &name) = 0;
@@ -213,6 +219,12 @@ namespace Toolbox::Object {
         NameRef getNameRef() const override { return m_nameref; }
         void setNameRef(NameRef nameref) override { m_nameref = nameref; }
 
+        [[nodiscard]] u64 getID() const override { return m_uid; }
+        void setID(u64 id) override { m_uid = id; }
+
+        [[nodiscard]] u64 getSiblingID() const override { return m_sibling_id; }
+        void setSiblingID(u64 id) override { m_sibling_id = id; }
+
         ISceneObject *getParent() const override { return m_parent; }
         std::expected<void, ObjectGroupError> _setParent(ISceneObject *parent) override {
             m_parent = parent;
@@ -230,6 +242,13 @@ namespace Toolbox::Object {
 
         std::expected<void, ObjectGroupError>
         addChild(std::shared_ptr<ISceneObject> child) override {
+            ObjectGroupError err = {"Cannot add child to a non-group object.",
+                                    std::stacktrace::current(), this};
+            return std::unexpected(err);
+        }
+
+        std::expected<void, ObjectGroupError>
+        insertChild(size_t index, std::shared_ptr<ISceneObject> child) override {
             ObjectGroupError err = {"Cannot add child to a non-group object.",
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
@@ -302,22 +321,31 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
         std::unique_ptr<IClonable> clone(bool deep) const override {
+            auto obj              = std::make_unique<VirtualSceneObject>();
+            obj->m_type           = m_type;
+            obj->m_nameref        = m_nameref;
+            obj->m_parent         = nullptr;
+            obj->m_members.reserve(m_members.size());
+
             if (deep) {
-                VirtualSceneObject obj;
-                obj.m_type    = m_type;
-                obj.m_nameref = m_nameref;
-                obj.m_parent  = nullptr;
-                obj.m_members.reserve(m_members.size());
                 for (const auto &member : m_members) {
                     auto new_member = make_deep_clone<MetaMember>(member);
-                    obj.m_members.push_back(new_member);
+                    obj->m_members.push_back(std::move(new_member));
                 }
-                return std::make_unique<VirtualSceneObject>(std::move(obj));
+            } else {
+                for (const auto &member : m_members) {
+                    auto new_member = make_clone<MetaMember>(member);
+                    obj->m_members.push_back(std::move(new_member));
+                }
             }
-            return std::make_unique<VirtualSceneObject>(*this);
+
+            return obj;
         }
 
     protected:
+        u64 m_uid = s_next_object_uid++;
+        u64 m_sibling_id = 0;
+
         std::string m_type;
         NameRef m_nameref;
         std::vector<std::shared_ptr<MetaMember>> m_members;
@@ -371,6 +399,8 @@ namespace Toolbox::Object {
         std::expected<void, ObjectGroupError>
         addChild(std::shared_ptr<ISceneObject> child) override;
         std::expected<void, ObjectGroupError>
+        insertChild(size_t index, std::shared_ptr<ISceneObject> child) override;
+        std::expected<void, ObjectGroupError>
         removeChild(std::shared_ptr<ISceneObject> child) override;
         std::expected<void, ObjectGroupError> removeChild(const QualifiedName &name) override;
         [[nodiscard]] std::expected<std::vector<std::shared_ptr<ISceneObject>>, ObjectGroupError>
@@ -394,23 +424,33 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
         std::unique_ptr<IClonable> clone(bool deep) const override {
+            auto obj       = std::make_unique<GroupSceneObject>();
+            obj->m_type    = m_type;
+            obj->m_nameref = m_nameref;
+            obj->m_parent  = nullptr;
+            obj->m_members.reserve(m_members.size());
             if (deep) {
-                GroupSceneObject obj;
-                obj.m_type    = m_type;
-                obj.m_nameref = m_nameref;
-                obj.m_parent  = nullptr;
-                obj.m_members.reserve(m_members.size());
                 for (const auto &member : m_members) {
                     auto new_member = make_deep_clone<MetaMember>(member);
-                    obj.m_members.push_back(new_member);
+                    obj->m_members.push_back(std::move(new_member));
                 }
-                obj.m_group_size = make_deep_clone<MetaMember>(m_group_size);
+                obj->m_group_size = make_deep_clone<MetaMember>(m_group_size);
                 for (const auto &child : m_children) {
-                    obj.m_children.push_back(make_deep_clone<ISceneObject>(child));
+                    auto new_child = make_deep_clone<ISceneObject>(child);
+                    obj->m_children.push_back(std::move(new_child));
                 }
-                return std::make_unique<GroupSceneObject>(std::move(obj));
+            } else {
+                for (const auto &member : m_members) {
+                    auto new_member = make_clone<MetaMember>(member);
+                    obj->m_members.push_back(std::move(new_member));
+                }
+                obj->m_group_size = make_clone<MetaMember>(m_group_size);
+                for (const auto &child : m_children) {
+                    auto new_child = make_clone<ISceneObject>(child);
+                    obj->m_children.push_back(std::move(new_child));
+                }
             }
-            return std::make_unique<GroupSceneObject>(*this);
+            return obj;
         }
 
         [[nodiscard]] size_t getGroupSize() const;
@@ -421,6 +461,7 @@ namespace Toolbox::Object {
         void updateGroupSize();
 
     private:
+        u64 m_next_sibling_id = 0;
         std::shared_ptr<MetaMember> m_group_size;
         mutable std::vector<u8> m_data;
         std::vector<std::shared_ptr<ISceneObject>> m_children = {};
@@ -490,6 +531,12 @@ namespace Toolbox::Object {
         NameRef getNameRef() const override { return m_nameref; }
         void setNameRef(NameRef nameref) override { m_nameref = nameref; }
 
+        [[nodiscard]] u64 getID() const override { return m_uid; }
+        void setID(u64 id) override { m_uid = id; }
+
+        [[nodiscard]] u64 getSiblingID() const override { return m_sibling_id; }
+        void setSiblingID(u64 id) override { m_sibling_id = id; }
+
         ISceneObject *getParent() const override { return m_parent; }
         std::expected<void, ObjectGroupError> _setParent(ISceneObject *parent) override {
             m_parent = parent;
@@ -507,6 +554,13 @@ namespace Toolbox::Object {
 
         std::expected<void, ObjectGroupError>
         addChild(std::shared_ptr<ISceneObject> child) override {
+            ObjectGroupError err = {"Cannot add child to a non-group object.",
+                                    std::stacktrace::current(), this};
+            return std::unexpected(err);
+        }
+
+        std::expected<void, ObjectGroupError>
+        insertChild(size_t index, std::shared_ptr<ISceneObject> child) override {
             ObjectGroupError err = {"Cannot add child to a non-group object.",
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
@@ -578,7 +632,7 @@ namespace Toolbox::Object {
             min.y *= transform->m_scale.y;
             min.z *= transform->m_scale.z;
 
-            size = max - min;
+            size   = max - min;
             center = transform->m_translation + min + (size / 2.0f);
 
             return BoundingBox(center, size, glm::quat(transform->m_rotation));
@@ -622,24 +676,35 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
         std::unique_ptr<IClonable> clone(bool deep) const override {
+            auto obj              = std::make_unique<PhysicalSceneObject>();
+            obj->m_type           = m_type;
+            obj->m_nameref        = m_nameref;
+            obj->m_parent         = nullptr;
+            obj->m_transform      = m_transform;
+            obj->m_members.reserve(m_members.size());
+
+            if (m_model_instance)
+                obj->m_model_instance = std::make_shared<J3DModelInstance>(*m_model_instance);
+
             if (deep) {
-                PhysicalSceneObject obj;
-                obj.m_type    = m_type;
-                obj.m_nameref = m_nameref;
-                obj.m_parent  = nullptr;
-                obj.m_members.reserve(m_members.size());
                 for (const auto &member : m_members) {
                     auto new_member = make_deep_clone<MetaMember>(member);
-                    obj.m_members.push_back(new_member);
+                    obj->m_members.push_back(std::move(new_member));
                 }
-                obj.m_transform      = m_transform;
-                obj.m_model_instance = m_model_instance;
-                return std::make_unique<PhysicalSceneObject>(std::move(obj));
+            } else {
+                for (const auto &member : m_members) {
+                    auto new_member = make_clone<MetaMember>(member);
+                    obj->m_members.push_back(std::move(new_member));
+                }
             }
-            return std::make_unique<PhysicalSceneObject>(*this);
+
+            return obj;
         }
 
     private:
+        u64 m_uid        = s_next_object_uid++;
+        u64 m_sibling_id = 0;
+
         std::string m_type;
         NameRef m_nameref;
         std::vector<std::shared_ptr<MetaMember>> m_members;
