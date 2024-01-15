@@ -64,7 +64,7 @@ namespace Toolbox::Object {
                          public ISmartResource,
                          public IUnique {
     protected:
-        static u64 s_next_object_uid;
+        static u32 s_next_object_uid;
 
     public:
         friend class ObjectFactory;
@@ -219,11 +219,11 @@ namespace Toolbox::Object {
         NameRef getNameRef() const override { return m_nameref; }
         void setNameRef(NameRef nameref) override { m_nameref = nameref; }
 
-        [[nodiscard]] u64 getID() const override { return m_uid; }
-        void setID(u64 id) override { m_uid = id; }
+        [[nodiscard]] u32 getID() const override { return m_uid; }
+        void setID(u32 id) override { m_uid = id; }
 
-        [[nodiscard]] u64 getSiblingID() const override { return m_sibling_id; }
-        void setSiblingID(u64 id) override { m_sibling_id = id; }
+        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
+        void setSiblingID(u32 id) override { m_sibling_id = id; }
 
         ISceneObject *getParent() const override { return m_parent; }
         std::expected<void, ObjectGroupError> _setParent(ISceneObject *parent) override {
@@ -343,8 +343,8 @@ namespace Toolbox::Object {
         }
 
     protected:
-        u64 m_uid = s_next_object_uid++;
-        u64 m_sibling_id = 0;
+        u32 m_uid = uuid();
+        u32 m_sibling_id = 0;
 
         std::string m_type;
         NameRef m_nameref;
@@ -461,7 +461,7 @@ namespace Toolbox::Object {
         void updateGroupSize();
 
     private:
-        u64 m_next_sibling_id = 0;
+        u32 m_next_sibling_id = 0;
         std::shared_ptr<MetaMember> m_group_size;
         mutable std::vector<u8> m_data;
         std::vector<std::shared_ptr<ISceneObject>> m_children = {};
@@ -531,11 +531,11 @@ namespace Toolbox::Object {
         NameRef getNameRef() const override { return m_nameref; }
         void setNameRef(NameRef nameref) override { m_nameref = nameref; }
 
-        [[nodiscard]] u64 getID() const override { return m_uid; }
-        void setID(u64 id) override { m_uid = id; }
+        [[nodiscard]] u32 getID() const override { return m_uid; }
+        void setID(u32 id) override { m_uid = id; }
 
-        [[nodiscard]] u64 getSiblingID() const override { return m_sibling_id; }
-        void setSiblingID(u64 id) override { m_sibling_id = id; }
+        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
+        void setSiblingID(u32 id) override { m_sibling_id = id; }
 
         ISceneObject *getParent() const override { return m_parent; }
         std::expected<void, ObjectGroupError> _setParent(ISceneObject *parent) override {
@@ -702,8 +702,8 @@ namespace Toolbox::Object {
         }
 
     private:
-        u64 m_uid        = s_next_object_uid++;
-        u64 m_sibling_id = 0;
+        u32 m_uid        = uuid();
+        u32 m_sibling_id = 0;
 
         std::string m_type;
         NameRef m_nameref;

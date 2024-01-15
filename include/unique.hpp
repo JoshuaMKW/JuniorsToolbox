@@ -4,9 +4,14 @@
 
 class IUnique {
 public:
-    virtual [[nodiscard]] u64 getID() const = 0;
-    virtual [[nodiscard]] u64 getSiblingID() const = 0;
+    virtual [[nodiscard]] u32 getID() const = 0;
+    virtual [[nodiscard]] u32 getSiblingID() const = 0;
 
-    virtual void setID(u64 id) = 0;
-    virtual void setSiblingID(u64 id) = 0;
+    virtual void setID(u32 id) = 0;
+    virtual void setSiblingID(u32 id) = 0;
 };
+
+static inline u32 uuid() {
+    static u32 _uuid = 0;
+    return _uuid++;
+}

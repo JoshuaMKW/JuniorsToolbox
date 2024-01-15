@@ -1,5 +1,5 @@
 #include "scene/raildata.hpp"
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "rail/rail.hpp"
 #include <algorithm>
 #include <numeric>

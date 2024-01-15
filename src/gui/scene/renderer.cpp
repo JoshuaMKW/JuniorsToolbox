@@ -383,7 +383,7 @@ namespace Toolbox::UI {
     }
 
     void Renderer::initializePaths(const RailData &rail_data,
-                                   std::unordered_map<std::string, bool> visible_map) {
+                                   std::unordered_map<ImGuiID, bool> visible_map) {
         m_path_renderer.updateGeometry(rail_data, visible_map);
     }
 

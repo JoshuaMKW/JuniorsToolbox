@@ -1,9 +1,10 @@
 #pragma once
 
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/value.hpp"
 #include "serial.hpp"
+#include "unique.hpp"
 #include <string>
 #include <vector>
 
@@ -13,8 +14,11 @@ namespace Toolbox::Rail {
 
     class Rail;
 
-    class RailNode : public ISerializable, public ISmartResource {
+    class RailNode : public ISerializable, public ISmartResource, public IUnique {
+    protected:
         friend class Rail;
+
+        static u32 s_next_rail_node_uid;
 
     public:
         RailNode();
@@ -28,6 +32,12 @@ namespace Toolbox::Rail {
         ~RailNode()                     = default;
 
         [[nodiscard]] Rail *rail() const { return m_rail; }
+
+        [[nodiscard]] u32 getID() const override { return m_uid; }
+        void setID(u32 id) override { m_uid = id; }
+
+        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
+        void setSiblingID(u32 id) override { m_sibling_id = id; }
 
         [[nodiscard]] glm::vec3 getPosition() const;
         [[nodiscard]] void getPosition(s16 &x, s16 &y, s16 &z) const;
@@ -74,7 +84,9 @@ namespace Toolbox::Rail {
     private:
         Rail *m_rail;
 
-    public:
+        u32 m_uid        = uuid();
+        u32 m_sibling_id = 0;
+
         std::shared_ptr<MetaMember> m_pos_x;
         std::shared_ptr<MetaMember> m_pos_y;
         std::shared_ptr<MetaMember> m_pos_z;

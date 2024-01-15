@@ -9,19 +9,22 @@
 #include <string_view>
 #include <vector>
 
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "fsystem.hpp"
 #include "objlib/object.hpp"
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"
 #include "serial.hpp"
+#include "unique.hpp"
 #include <imgui.h>
 #include <imgui_internal.h>
 
 namespace Toolbox::UI {
 
-    class IWindow {
+    class IWindow : public IUnique {
     protected:
+        static ImGuiID s_next_window_uid;
+
         virtual void renderMenuBar()            = 0;
         virtual void renderBody(f32 delta_time) = 0;
 
@@ -32,8 +35,6 @@ namespace Toolbox::UI {
 
     public:
         virtual ~IWindow() = default;
-
-        [[nodiscard]] virtual ImGuiID id() const = 0;
 
         virtual void open() = 0;
 
@@ -57,7 +58,7 @@ namespace Toolbox::UI {
         [[nodiscard]] virtual std::vector<std::string> extensions() const = 0;
 
         [[nodiscard]] virtual bool loadData(const std::filesystem::path &path) = 0;
-        [[nodiscard]] virtual bool saveData(const std::filesystem::path &path) = 0;
+        [[nodiscard]] virtual bool saveData(std::optional<std::filesystem::path> path) = 0;
 
         [[nodiscard]] virtual bool update(f32 delta_time) = 0;
         [[nodiscard]] virtual bool postUpdate(f32 delta_time) = 0;
@@ -98,7 +99,11 @@ namespace Toolbox::UI {
 
         void open() override { m_is_open = true; }
 
-        [[nodiscard]] ImGuiID id() const override { return m_window_id; }
+        [[nodiscard]] u32 getID() const override { return m_uid; }
+        void setID(u32 id) override { m_uid = id; }
+
+        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
+        void setSiblingID(u32 id) override { m_sibling_id = id; }
 
         [[nodiscard]] IWindow *parent() const override { return m_parent; }
         void setParent(IWindow *parent) override { m_parent = parent; }
@@ -122,7 +127,9 @@ namespace Toolbox::UI {
         [[nodiscard]] std::vector<std::string> extensions() const override { return {}; }
 
         [[nodiscard]] bool loadData(const std::filesystem::path &path) override { return false; }
-        [[nodiscard]] bool saveData(const std::filesystem::path &path) override { return false; }
+        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override {
+            return false;
+        }
 
         [[nodiscard]] bool update(f32 delta_time) override { return true; }
 
@@ -155,14 +162,14 @@ namespace Toolbox::UI {
             ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
                                                 maxSize() ? maxSize().value() : default_max);
 
-            m_window_id = ImGui::GetID(title().c_str());
+            std::string window_name = std::format("{}###{}", title(), getID());
 
             ImGuiWindowFlags flags_ = flags();
             if (unsaved()) {
                 flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
-            if (ImGui::Begin(title().c_str(), &m_is_open, flags_)) {
+            if (ImGui::Begin(window_name.c_str(), &m_is_open, flags_)) {
                 m_size = ImGui::GetWindowSize();
                 renderMenuBar();
                 renderBody(delta_time);
@@ -171,7 +178,8 @@ namespace Toolbox::UI {
         }
 
     protected:
-        ImGuiID m_window_id = {};
+        ImGuiID m_uid        = uuid();
+        ImGuiID m_sibling_id = 0;
 
         IWindow *m_parent = nullptr;
 
@@ -221,7 +229,11 @@ namespace Toolbox::UI {
 
         void open() override { m_is_open = true; }
 
-        [[nodiscard]] ImGuiID id() const override { return m_window_id; }
+        [[nodiscard]] u32 getID() const override { return m_uid; }
+        void setID(u32 id) override { m_uid = id; }
+
+        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
+        void setSiblingID(u32 id) override { m_sibling_id = id; }
 
         [[nodiscard]] IWindow *parent() const override { return m_parent; }
         void setParent(IWindow *parent) override { m_parent = parent; }
@@ -245,7 +257,7 @@ namespace Toolbox::UI {
         [[nodiscard]] std::vector<std::string> extensions() const override { return {}; }
 
         [[nodiscard]] bool loadData(const std::filesystem::path &path) override { return false; }
-        [[nodiscard]] bool saveData(const std::filesystem::path &path) override { return false; }
+        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override { return false; }
 
         [[nodiscard]] bool update(f32 delta_time) override { return true; }
         [[nodiscard]] bool postUpdate(f32 delta_time) override { return true; }
@@ -279,14 +291,14 @@ namespace Toolbox::UI {
             ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
                                                 maxSize() ? maxSize().value() : default_max);
 
-            m_window_id = ImGui::GetID(title().c_str());
+            std::string window_name = std::format("{}###{}", title(), getID());
 
             ImGuiWindowFlags flags_ = flags();
             if (unsaved()) {
                 flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
-            if (ImGui::Begin(title().c_str(), &m_is_open, flags_)) {
+            if (ImGui::Begin(window_name.c_str(), &m_is_open, flags_)) {
                 m_size = ImGui::GetWindowSize();
                 renderDockspace();
                 renderMenuBar();
@@ -296,7 +308,8 @@ namespace Toolbox::UI {
         }
 
     protected:
-        ImGuiID m_window_id = {};
+        ImGuiID m_uid        = uuid();
+        ImGuiID m_sibling_id = 0;
 
         IWindow *m_parent = nullptr;
 
@@ -312,10 +325,10 @@ namespace Toolbox::UI {
         std::optional<ImVec2> m_max_size     = {};
     };
 
-    inline std::string getWindowUID(const IWindow &window) { return window.title(); }
+    inline std::string getWindowUID(const IWindow &window) { return std::to_string(window.getID()); }
 
     inline std::string getWindowChildUID(const IWindow &window, const std::string &child_name) {
-        return child_name + "##" + getWindowUID(window);
+        return std::format("{}##{}", child_name, getWindowUID(window));
     }
 
 }  // namespace Toolbox::UI

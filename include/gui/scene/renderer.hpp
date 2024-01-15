@@ -29,7 +29,7 @@ namespace Toolbox::UI {
         void initializeData(const SceneInstance &scene);
 
         void updatePaths(const RailData &rail_data,
-                         std::unordered_map<std::string, bool> visible_map) {
+                         std::unordered_map<ImGuiID, bool> visible_map) {
             initializePaths(rail_data, visible_map);
         }
 
@@ -59,7 +59,7 @@ namespace Toolbox::UI {
 
     protected:
         void initializePaths(const RailData &rail_data,
-                             std::unordered_map<std::string, bool> visible_map);
+                             std::unordered_map<ImGuiID, bool> visible_map);
         void initializeBillboards();
 
         void viewportBegin();

@@ -1,4 +1,4 @@
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "objlib/object.hpp"
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"

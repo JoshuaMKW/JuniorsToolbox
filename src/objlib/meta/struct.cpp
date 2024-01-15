@@ -1,5 +1,5 @@
 #include "objlib/meta/struct.hpp"
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "objlib/meta/enum.hpp"
 #include "objlib/meta/errors.hpp"
 #include "objlib/template.hpp"

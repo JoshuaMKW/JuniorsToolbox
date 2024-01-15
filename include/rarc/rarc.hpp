@@ -1,6 +1,6 @@
 #pragma once
 
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "error.hpp"
 #include "fsystem.hpp"
 #include "serial.hpp"

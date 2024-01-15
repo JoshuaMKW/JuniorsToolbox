@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "fsystem.hpp"
 #include "objlib/object.hpp"
 #include "objlib/template.hpp"
@@ -46,7 +46,7 @@ namespace Toolbox::UI {
             }
 
             ImGuiWindow *currentWindow              = ImGui::GetCurrentWindow();
-            m_window_class.ClassId                  = ImGui::GetID(title().c_str());
+            m_window_class.ClassId                  = getID();
             m_window_class.ParentViewportId         = currentWindow->ViewportId;
             m_window_class.DockingAllowUnclassed    = false;
             m_window_class.DockingAlwaysTabBar      = false;
@@ -69,7 +69,7 @@ namespace Toolbox::UI {
         [[nodiscard]] std::vector<std::string> extensions() const override { return {}; }
 
         [[nodiscard]] bool loadData(const std::filesystem::path &path) override { return false; }
-        [[nodiscard]] bool saveData(const std::filesystem::path &path) override { return false; }
+        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override { return false; }
 
         bool update(f32 delta_time) override;
         bool postUpdate(f32 delta_time) override { return true; }

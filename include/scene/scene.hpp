@@ -1,7 +1,7 @@
 #pragma once
 
 #include "bmg/bmg.hpp"
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "objlib/object.hpp"
 #include "rail/rail.hpp"
 #include "raildata.hpp"

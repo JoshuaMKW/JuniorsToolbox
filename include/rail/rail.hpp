@@ -1,7 +1,7 @@
 #pragma once
 
 #include "boundbox.hpp"
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "node.hpp"
 #include "unique.hpp"
 #include "objlib/meta/member.hpp"
@@ -16,7 +16,7 @@ namespace Toolbox::Rail {
 
     class Rail : public ISmartResource, public IUnique {
     protected:
-        static u64 s_next_rail_uid;
+        static u32 s_next_rail_uid;
 
     public:
         using node_ptr_t = std::shared_ptr<RailNode>;
@@ -36,11 +36,11 @@ namespace Toolbox::Rail {
         Rail &operator=(const Rail &other) = default;
         Rail &operator=(Rail &&other)      = default;
 
-        [[nodiscard]] u64 getID() const override { return m_uid; }
-        void setID(u64 id) override { m_uid = id; }
+        [[nodiscard]] u32 getID() const override { return m_uid; }
+        void setID(u32 id) override { m_uid = id; }
 
-        [[nodiscard]] u64 getSiblingID() const override { return m_sibling_id; }
-        void setSiblingID(u64 id) override { m_sibling_id = id; }
+        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
+        void setSiblingID(u32 id) override { m_sibling_id = id; }
 
         [[nodiscard]] bool isSpline() const { return m_name.starts_with("S_"); }
 
@@ -156,8 +156,8 @@ namespace Toolbox::Rail {
         void chaikinSubdivide();
 
     private:
-        u64 m_uid = s_next_rail_uid++;
-        u64 m_sibling_id = 0;
+        u32 m_uid = uuid();
+        u32 m_sibling_id = 0;
         std::string m_name;
         std::vector<node_ptr_t> m_nodes = {};
     };

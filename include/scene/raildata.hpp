@@ -1,7 +1,7 @@
 #pragma once
 
 #include "boundbox.hpp"
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/value.hpp"
 #include "rail/node.hpp"
@@ -63,7 +63,7 @@ namespace Toolbox::Scene {
         std::unique_ptr<ISmartResource> clone(bool deep) const override;
 
     private:
-        u64 m_next_sibling_id = 0;
+        u32 m_next_sibling_id = 0;
         std::vector<rail_ptr_t> m_rails = {};
     };
 

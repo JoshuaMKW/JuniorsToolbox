@@ -3,11 +3,13 @@
 #include "objlib/object.hpp"
 #include "scene/raildata.hpp"
 
+#include <imgui.h>
+
 namespace Toolbox::UI {
 
     template <typename T> struct SelectionNodeInfo {
         std::shared_ptr<T> m_selected;
-        size_t m_node_id;
+        ImGuiID m_node_id;
         size_t m_selection_index;
         bool m_parent_synced;
         bool m_scene_synced;

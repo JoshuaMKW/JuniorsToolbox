@@ -44,9 +44,7 @@ namespace Toolbox::UI {
                 ImGui::EndMenu();
             }
 
-            ImGui::PushStyleColor(ImGuiCol_Button, {0, 0, 0, 0});
-
-            if (ImGui::Button("Copy")) {
+            if (ImGui::MenuItem("Copy")) {
                 std::string clipboard_text;
                 for (size_t i = 0; i < logger.messages().size(); ++i) {
                     const auto &message = logger.messages()[i];
@@ -54,8 +52,7 @@ namespace Toolbox::UI {
                     case Log::ReportLevel::LOG:
                         if (m_logging_level != Log::ReportLevel::LOG)
                             break;
-                        clipboard_text +=
-                            std::format("[INFO]    - {}", message.m_message.c_str());
+                        clipboard_text += std::format("[INFO]    - {}", message.m_message.c_str());
                         break;
                     case Log::ReportLevel::WARNING:
                         if (m_logging_level == Log::ReportLevel::DEBUG ||
@@ -78,11 +75,9 @@ namespace Toolbox::UI {
                 SystemClipboard::instance().setText(clipboard_text);
             }
 
-            if (ImGui::Button("Clear")) {
+            if (ImGui::MenuItem("Clear")) {
                 logger.clear();
             }
-
-            ImGui::PopStyleColor();
 
             ImGui::EndMenuBar();
         }

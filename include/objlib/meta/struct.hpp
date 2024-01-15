@@ -1,6 +1,6 @@
 #pragma once
 
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "errors.hpp"
 #include "objlib/qualname.hpp"
 #include "serial.hpp"

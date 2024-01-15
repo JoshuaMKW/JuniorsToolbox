@@ -260,6 +260,15 @@ namespace Toolbox::UI {
             }
 
             ImGui::Separator();
+
+            if (ImGui::MenuItem(ICON_FK_FLOPPY_O " Save All")) {
+                for (auto &window : m_windows) {
+                    window->saveData(std::nullopt);
+                }
+            }
+
+            ImGui::Separator();
+
             if (ImGui::MenuItem(ICON_FK_WINDOW_CLOSE " Close All")) {
                 m_windows.clear();
             }

@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "fsystem.hpp"
 #include "objlib/object.hpp"
 #include "objlib/template.hpp"
@@ -35,11 +35,11 @@ namespace Toolbox::UI {
         ~SceneWindow();
 
         enum class EditorWindow {
-          NONE,
-          OBJECT_TREE,
-          PROPERTY_EDITOR,
-          RAIL_TREE,
-          RENDER_VIEW,
+            NONE,
+            OBJECT_TREE,
+            PROPERTY_EDITOR,
+            RAIL_TREE,
+            RENDER_VIEW,
         };
 
     protected:
@@ -120,19 +120,13 @@ namespace Toolbox::UI {
         }
 
         [[nodiscard]] bool loadData(const std::filesystem::path &path) override;
-
-        [[nodiscard]] bool saveData(const std::filesystem::path &path) override {
-            // TODO: Implement saving to archive or folder.
-            return false;
-        }
+        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override;
 
         bool update(f32 delta_time) override;
         bool postUpdate(f32 delta_time) override;
 
     private:
         std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;
-
-        ImGuiID m_window_seed;
 
         // Hierarchy view
         ImGuiTextFilter m_hierarchy_filter;
@@ -159,13 +153,13 @@ namespace Toolbox::UI {
         ResourceCache m_resource_cache;
 
         // Docking facilities
-        u32 m_dock_space_id          = 0;
-        u32 m_dock_node_up_left_id   = 0;
-        u32 m_dock_node_left_id      = 0;
-        u32 m_dock_node_down_left_id = 0;
+        ImGuiID m_dock_space_id          = 0;
+        ImGuiID m_dock_node_up_left_id   = 0;
+        ImGuiID m_dock_node_left_id      = 0;
+        ImGuiID m_dock_node_down_left_id = 0;
 
         // Rail editor
-        std::unordered_map<std::string, bool> m_rail_visible_map              = {};
+        std::unordered_map<ImGuiID, bool> m_rail_visible_map                  = {};
         bool m_connections_open                                               = true;
         std::vector<SelectionNodeInfo<Rail::Rail>> m_rail_list_selected_nodes = {};
         ContextMenu<SelectionNodeInfo<Rail::Rail>> m_rail_list_single_node_menu;

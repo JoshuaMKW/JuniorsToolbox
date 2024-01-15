@@ -10,8 +10,6 @@ using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
 
-    u64 Rail::s_next_rail_uid = 0;
-
     glm::vec3 Rail::getCenteroid() const {
         size_t node_count = m_nodes.size();
         if (node_count == 0)

@@ -13,8 +13,6 @@ namespace Toolbox::Object {
 
     /* INTERFACE */
 
-    u64 ISceneObject::s_next_object_uid = 0;
-
     QualifiedName ISceneObject::getQualifiedName() const {
         auto parent = getParent();
         if (parent)

@@ -7,6 +7,7 @@
 #include <scene/raildata.hpp>
 #include <unordered_map>
 #include <vector>
+#include <imgui.h>
 
 using namespace Toolbox::Scene;
 
@@ -35,7 +36,7 @@ namespace Toolbox::UI {
     public:
         [[nodiscard]] bool initPathRenderer();
         void updateGeometry(const RailData &data,
-                            std::unordered_map<std::string, bool> visible_map);
+                            std::unordered_map<ImGuiID, bool> visible_map);
         void drawPaths(Camera *camera);
 
         PathRenderer();
