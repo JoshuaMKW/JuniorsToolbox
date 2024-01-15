@@ -147,7 +147,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::unique_ptr<IClonable> MetaMember::clone(bool deep) const {
+    std::unique_ptr<ISmartResource> MetaMember::clone(bool deep) const {
         MetaMember member;
         member.m_name      = m_name;
         member.m_parent    = m_parent;

@@ -49,7 +49,7 @@ namespace Toolbox::Object {
         return getArrayIndex(name, 0);
     }
 
-    class MetaMember : public ISerializable, public IClonable {
+    class MetaMember : public ISerializable, public ISmartResource {
     public:
         struct ReferenceInfo {
             std::shared_ptr<MetaValue> m_ref;
@@ -294,7 +294,7 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-        std::unique_ptr<IClonable> clone(bool deep) const override;
+        std::unique_ptr<ISmartResource> clone(bool deep) const override;
 
     protected:
         bool isTypeValue() const {

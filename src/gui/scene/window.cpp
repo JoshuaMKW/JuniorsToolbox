@@ -86,12 +86,7 @@ namespace Toolbox::UI {
         return node_name;
     }
 
-    SceneWindow::~SceneWindow() {
-        // J3DRendering::Cleanup();
-        m_renderables.clear();
-        m_resource_cache.m_model.clear();
-        m_resource_cache.m_material.clear();
-    }
+    SceneWindow::~SceneWindow() = default;
 
     SceneWindow::SceneWindow() : DockWindow() {
         m_properties_render_handler = renderEmptyProperties;
@@ -1754,7 +1749,20 @@ namespace Toolbox::UI {
                 }
                 ImGui::EndMenu();
             }
+            ImGui::PushStyleColor(ImGuiCol_Button, {0, 0, 0, 0});
+            if (ImGui::Button("Verify")) {
+                // TODO: Flag scene verification (ideally on new process or thread)
+            }
+            ImGui::PopStyleColor();
             ImGui::EndMenuBar();
+        }
+
+        if (m_is_save_default_ready) {
+            m_is_save_default_ready = false;
+            if (m_current_scene->rootPath())
+                m_current_scene->saveToPath(m_current_scene->rootPath().value());
+            else
+                m_is_save_as_dialog_open = true;
         }
 
         if (m_is_save_as_dialog_open) {

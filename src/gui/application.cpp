@@ -258,12 +258,11 @@ namespace Toolbox::UI {
             if (ImGui::MenuItem(ICON_FK_FOLDER_OPEN " Open Folder...")) {
                 m_is_dir_dialog_open = true;
             }
-            if (ImGui::MenuItem(ICON_FK_FLOPPY_O " Save...")) {
-                // Save Scene
-            }
 
             ImGui::Separator();
-            ImGui::MenuItem(ICON_FK_WINDOW_CLOSE " Close");
+            if (ImGui::MenuItem(ICON_FK_WINDOW_CLOSE " Close All")) {
+                m_windows.clear();
+            }
 
             ImGui::EndMenu();
         }

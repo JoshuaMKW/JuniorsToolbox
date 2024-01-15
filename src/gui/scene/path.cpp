@@ -77,6 +77,7 @@ namespace Toolbox::UI {
 
     PathRenderer::~PathRenderer() {
         // This should check
+        m_path_connections.clear();
         glDeleteBuffers(1, &m_vbo);
         glDeleteVertexArrays(1, &m_vao);
     }

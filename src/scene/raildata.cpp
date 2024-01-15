@@ -138,7 +138,7 @@ namespace Toolbox::Scene {
         }
     }
 
-    std::unique_ptr<IClonable> RailData::clone(bool deep) const {
+    std::unique_ptr<ISmartResource> RailData::clone(bool deep) const {
         std::vector<RailData::rail_ptr_t> rails;
         if (deep) {
             for (auto &rail : m_rails) {

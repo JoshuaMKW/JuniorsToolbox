@@ -152,7 +152,7 @@ namespace Toolbox::Scene {
         os << indent_str << "}" << std::endl;
     }
 
-    std::unique_ptr<IClonable> SceneInstance::clone(bool deep) const {
+    std::unique_ptr<ISmartResource> SceneInstance::clone(bool deep) const {
         if (deep) {
             SceneInstance scene_instance(
                 make_deep_clone<Object::GroupSceneObject>(m_map_objects.getRoot()),

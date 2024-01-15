@@ -115,7 +115,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::unique_ptr<IClonable> MetaStruct::clone(bool deep) const {
+    std::unique_ptr<ISmartResource> MetaStruct::clone(bool deep) const {
         MetaStruct struct_;
         struct_.m_name                     = m_name;
         struct_.m_parent                   = m_parent;

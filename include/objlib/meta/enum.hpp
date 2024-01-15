@@ -12,7 +12,7 @@
 
 namespace Toolbox::Object {
 
-    class MetaEnum : public ISerializable, public IClonable {
+    class MetaEnum : public ISerializable, public ISmartResource {
     public:
         using enum_type = std::pair<std::string, MetaValue>;
 
@@ -233,7 +233,7 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-        std::unique_ptr<IClonable> clone(bool deep) const override;
+        std::unique_ptr<ISmartResource> clone(bool deep) const override;
 
     private:
         MetaType m_type;

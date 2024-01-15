@@ -294,7 +294,7 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::unique_ptr<IClonable> RailNode::clone(bool deep) const {
+    std::unique_ptr<ISmartResource> RailNode::clone(bool deep) const {
         auto node = std::make_unique<RailNode>();
         if (deep) {
             node->m_pos_x            = make_deep_clone<MetaMember>(m_pos_x);

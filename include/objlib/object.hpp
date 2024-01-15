@@ -61,7 +61,7 @@ namespace Toolbox::Object {
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
     class ISceneObject : public ISerializable,
-                         public IClonable,
+                         public ISmartResource,
                          public IUnique {
     protected:
         static u64 s_next_object_uid;
@@ -320,7 +320,7 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-        std::unique_ptr<IClonable> clone(bool deep) const override {
+        std::unique_ptr<ISmartResource> clone(bool deep) const override {
             auto obj              = std::make_unique<VirtualSceneObject>();
             obj->m_type           = m_type;
             obj->m_nameref        = m_nameref;
@@ -423,7 +423,7 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-        std::unique_ptr<IClonable> clone(bool deep) const override {
+        std::unique_ptr<ISmartResource> clone(bool deep) const override {
             auto obj       = std::make_unique<GroupSceneObject>();
             obj->m_type    = m_type;
             obj->m_nameref = m_nameref;
@@ -484,7 +484,7 @@ namespace Toolbox::Object {
 
             for (auto &member : wizard->m_init_members) {
                 m_members.emplace_back(
-                    std::static_pointer_cast<MetaMember, IClonable>(member.clone(true)));
+                    std::static_pointer_cast<MetaMember, ISmartResource>(member.clone(true)));
             }
         }
 
@@ -675,7 +675,7 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-        std::unique_ptr<IClonable> clone(bool deep) const override {
+        std::unique_ptr<ISmartResource> clone(bool deep) const override {
             auto obj              = std::make_unique<PhysicalSceneObject>();
             obj->m_type           = m_type;
             obj->m_nameref        = m_nameref;

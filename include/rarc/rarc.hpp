@@ -47,7 +47,7 @@ namespace Toolbox::RARC {
         std::vector<Node> nodes;
     };
 
-    class ResourceArchive : public ISerializable, public IClonable {
+    class ResourceArchive : public ISerializable, public ISmartResource {
     public:
         struct FolderInfo {
             s32 parent;
@@ -129,7 +129,7 @@ namespace Toolbox::RARC {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-        std::unique_ptr<IClonable> clone(bool deep) const override;
+        std::unique_ptr<ISmartResource> clone(bool deep) const override;
 
     protected:
         std::expected<void, BaseError> recalculateIDs();

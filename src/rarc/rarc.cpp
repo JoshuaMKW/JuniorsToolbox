@@ -1049,8 +1049,8 @@ namespace Toolbox::RARC {
         return {};
     }
 
-    std::unique_ptr<IClonable> ResourceArchive::clone(bool deep) const {
-        return std::unique_ptr<IClonable>();
+    std::unique_ptr<ISmartResource> ResourceArchive::clone(bool deep) const {
+        return std::unique_ptr<ISmartResource>();
     }
 
     std::expected<void, BaseError> ResourceArchive::recalculateIDs() {

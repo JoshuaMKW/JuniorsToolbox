@@ -14,7 +14,10 @@ using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
 
-    class Rail : public IClonable, public IUnique {
+    class Rail : public ISmartResource, public IUnique {
+    protected:
+        static u64 s_next_rail_uid;
+
     public:
         using node_ptr_t = std::shared_ptr<RailNode>;
 
@@ -145,7 +148,7 @@ namespace Toolbox::Rail {
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
 
-        std::unique_ptr<IClonable> clone(bool deep) const override;
+        std::unique_ptr<ISmartResource> clone(bool deep) const override;
 
     protected:
         std::expected<void, MetaError> calcDistancesWithNode(node_ptr_t node);
@@ -153,8 +156,8 @@ namespace Toolbox::Rail {
         void chaikinSubdivide();
 
     private:
-        u64 m_uid;
-        u64 m_sibling_id;
+        u64 m_uid = s_next_rail_uid++;
+        u64 m_sibling_id = 0;
         std::string m_name;
         std::vector<node_ptr_t> m_nodes = {};
     };

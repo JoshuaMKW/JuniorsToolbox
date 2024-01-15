@@ -15,7 +15,7 @@ namespace Toolbox::Object {
 
     class MetaMember;
 
-    class MetaStruct : public ISerializable, public IClonable {
+    class MetaStruct : public ISerializable, public ISmartResource {
     public:
         using MemberT      = std::shared_ptr<MetaMember>;
         using GetMemberT   = std::expected<MemberT, MetaScopeError>;
@@ -56,7 +56,7 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-        std::unique_ptr<IClonable> clone(bool deep) const override;
+        std::unique_ptr<ISmartResource> clone(bool deep) const override;
 
     private:
         std::string m_name;
