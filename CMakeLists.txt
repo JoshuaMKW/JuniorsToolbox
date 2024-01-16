@@ -79,7 +79,7 @@ else()
   target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw Iconv::Iconv)
 endif()
 
-target_compile_definitions(JuniorsToolbox PRIVATE IMGUI_DEFINE_MATH_OPERATORS IMGUI_ENABLE_VIEWPORTS)
+target_compile_definitions(JuniorsToolbox PRIVATE IMGUI_DEFINE_MATH_OPERATORS IMGUI_ENABLE_VIEWPORT_WORKAROUND)
 
 target_include_directories(JuniorsToolbox PRIVATE "include" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/libbti" "lib/ImGuiFileDialog" "lib/glfw")
 

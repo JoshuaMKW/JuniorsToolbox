@@ -77,6 +77,10 @@ namespace Toolbox::UI {
         if (!glfwInit())
             return false;
 
+        // TODO: Load application settings
+        //
+        // ----
+
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -101,7 +105,6 @@ namespace Toolbox::UI {
 
         glfwMakeContextCurrent(m_render_window);
         gladLoadGL();
-        // gladLoadGL(glfwGetProcAddress);
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glfwSwapInterval(1);
 
@@ -114,13 +117,32 @@ namespace Toolbox::UI {
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-#ifdef IMGUI_ENABLE_VIEWPORTS
+#ifdef IMGUI_HAS_VIEWPORT
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+        // This is necessary as ImGui thinks the render view is empty space
+        // when the viewport is outside the main viewport
+        io.ConfigWindowsMoveFromTitleBarOnly = true;
+
+        // TODO: Work around until further notice
+        // Essentially, OpenGL style glfw crashes when dynamic
+        // resizing an ImGui viewport for too long,
+        // possibly due to ImGui refreshing every frame
+        // ---
+        // See: https://github.com/ocornut/imgui/issues/4534
+        // and: https://github.com/ocornut/imgui/issues/3321
+        // ---
+        // Also review gui/window.hpp for window flags used
+        // ---
+#ifdef IMGUI_ENABLE_VIEWPORT_WORKAROUND
+        io.ConfigViewportsNoAutoMerge  = true;
+        io.ConfigViewportsNoDecoration = false;
+#endif
 #endif
 
         ImGui::StyleColorsDark();
-        ImGui_ImplGlfw_InitForOpenGL(m_render_window, true);
-        ImGui_ImplOpenGL3_Init("#version 150");
+        ImGui_ImplGlfw_InitForOpenGL(m_render_window, false);
+        ImGui_ImplOpenGL3_Init("#version 410");
 
         auto &font_manager = FontManager::instance();
         font_manager.initialize();
@@ -172,6 +194,18 @@ namespace Toolbox::UI {
         if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window))
             return false;
 
+        // Apply input callbacks to detached viewports
+        if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)) {
+            ImGuiPlatformIO &platform_io = ImGui::GetPlatformIO();
+            for (int i = 0; i < platform_io.Viewports.Size; ++i) {
+                auto window = static_cast<GLFWwindow *>(platform_io.Viewports[i]->PlatformHandle);
+                glfwSetKeyCallback(window, Input::GLFWKeyCallback);
+                glfwSetCursorPosCallback(window, Input::GLFWMousePositionCallback);
+                glfwSetMouseButtonCallback(window, Input::GLFWMouseButtonCallback);
+                glfwSetScrollCallback(window, Input::GLFWMouseScrollCallback);
+            }
+        }
+
         glfwPollEvents();
         Input::UpdateInputState();
 
@@ -201,15 +235,6 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowViewport(viewport->ID);
         m_dockspace_id = ImGui::DockSpaceOverViewport(viewport);
 
-        // Update buffer size
-        int width, height;
-        glfwGetFramebufferSize(m_render_window, &width, &height);
-        glViewport(0, 0, width, height);
-
-        // Clear buffers
-        glClearColor(0.100f, 0.261f, 0.402f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         ImGuiWindowFlags window_flags =
             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
 
@@ -226,11 +251,23 @@ namespace Toolbox::UI {
         // Render imgui
         ImGui::Render();
 
+        // Update buffer size
+        int width, height;
+        glfwGetFramebufferSize(m_render_window, &width, &height);
+        glViewport(0, 0, width, height);
+        glClearColor(0.100f, 0.261f, 0.402f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         ImGuiStyle &style = ImGui::GetStyle();
         ImGuiIO &io       = ImGui::GetIO();
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+
+        if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)) {
+#ifndef IMGUI_ENABLE_VIEWPORT_WORKAROUND
             style.WindowRounding              = 0.0f;
             style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+#endif
 
             GLFWwindow *backup_window = glfwGetCurrentContext();
             {
@@ -240,8 +277,6 @@ namespace Toolbox::UI {
             glfwMakeContextCurrent(backup_window);
             m_render_window = backup_window;
         }
-
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         // Swap buffers
         glfwSwapBuffers(m_render_window);

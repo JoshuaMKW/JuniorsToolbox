@@ -287,7 +287,7 @@ namespace Toolbox::UI {
 
         m_billboard_renderer.loadBillboardTexture("res/question.png", 0);
 
-        m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
+        m_gizmo_op   = ImGuizmo::OPERATION::TRANSLATE;
         m_gizmo_mode = ImGuizmo::WORLD;
     }
 
@@ -298,48 +298,66 @@ namespace Toolbox::UI {
     }
 
     void Renderer::render(std::vector<ISceneObject::RenderInfo> renderables, f32 delta_time) {
+        ImGuiStyle &style = ImGui::GetStyle();
+
         ImVec2 window_pos = ImGui::GetWindowPos();
         m_window_rect     = {
             window_pos,
             {window_pos.x + ImGui::GetWindowWidth(), window_pos.y + ImGui::GetWindowHeight()}
         };
+        m_window_size_prev = m_window_size;
+        m_window_size      = ImGui::GetWindowSize();
+        m_render_rect      = {m_window_rect.Min + style.WindowPadding,
+                              m_window_rect.Max - style.WindowPadding};
+        // For the window bar
+        m_render_rect.Min.y += style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
+        m_render_size = ImVec2(m_window_size.x - style.WindowPadding.x * 2,
+                               m_window_size.y - style.WindowPadding.y * 2 -
+                                   (style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight()));
+
+        ImVec2 mouse_pos = ImGui::GetMousePos();
 
         m_is_window_hovered = ImGui::IsWindowHovered();
         m_is_window_focused = ImGui::IsWindowFocused();
 
-        if (m_is_window_hovered && Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
-            ImGui::SetWindowFocus();
+        bool right_click      = Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT);
+        bool right_click_down = Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT);
 
-        if (m_is_window_focused && Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {  // Mouse wrap
-            ImVec2 mouse_pos   = ImGui::GetMousePos();
-            ImVec2 window_pos  = ImGui::GetWindowPos();
-            ImVec2 window_size = ImGui::GetWindowSize();
+        if (m_render_rect.Contains(mouse_pos)) {
+            if (right_click) {
+                m_is_view_manipulating = true;
+            }
+            if (right_click_down) {
+                m_is_window_focused = true;
+                ImGui::SetWindowFocus();
+            }
+        }
 
+        if (m_is_window_focused && m_is_view_manipulating &&
+            Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {  // Mouse wrap
             bool wrapped = false;
 
-            if (mouse_pos.x < m_window_rect.Min.x) {
-                mouse_pos.x += window_size.x;
+            if (mouse_pos.x < m_render_rect.Min.x) {
+                mouse_pos.x += m_render_size.x;
                 wrapped = true;
-            } else if (mouse_pos.x >= m_window_rect.Max.x) {
-                mouse_pos.x -= window_size.x;
-                wrapped = true;
-            }
-
-            if (mouse_pos.y < m_window_rect.Min.y) {
-                mouse_pos.y += window_size.y;
-                wrapped = true;
-            } else if (mouse_pos.y >= m_window_rect.Max.y) {
-                mouse_pos.y -= window_size.y;
+            } else if (mouse_pos.x >= m_render_rect.Max.x) {
+                mouse_pos.x -= m_render_size.x;
                 wrapped = true;
             }
 
-            ImVec2 viewport_pos = MainApplication::instance().windowScreenPos();
-            mouse_pos.x += viewport_pos.x;
-            mouse_pos.y += viewport_pos.y;
+            if (mouse_pos.y < m_render_rect.Min.y) {
+                mouse_pos.y += m_render_size.y;
+                wrapped = true;
+            } else if (mouse_pos.y >= m_render_rect.Max.y) {
+                mouse_pos.y -= m_render_size.y;
+                wrapped = true;
+            }
 
             if (wrapped) {
                 Input::SetMousePosition(mouse_pos, false);
             }
+        } else {
+            m_is_view_manipulating = false;
         }
 
         viewportBegin();
@@ -393,12 +411,6 @@ namespace Toolbox::UI {
 
     void Renderer::viewportBegin() {
         ImGuiStyle &style = ImGui::GetStyle();
-
-        m_window_size_prev = m_window_size;
-        m_window_size      = ImGui::GetWindowSize();
-        m_render_size      = ImVec2(m_window_size.x - style.WindowPadding.x * 2,
-                                    m_window_size.y - style.WindowPadding.y * 2 -
-                                        (style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight()));
 
         ImVec2 cursor_pos     = ImGui::GetCursorScreenPos();
         ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
@@ -538,7 +550,7 @@ namespace Toolbox::UI {
     }
 
     bool Renderer::inputUpdate() {
-        if (m_is_window_hovered && m_is_window_focused) {
+        if (m_is_view_manipulating) {
             if (Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
                 ImVec2 mouse_delta = Input::GetMouseDelta();
 
@@ -574,16 +586,15 @@ namespace Toolbox::UI {
                 m_camera.translateLeftRight(-lr_delta);
                 m_camera.translateFwdBack(ud_delta);
             }
+        }
 
-            // Gizmo mode
-            {
-                if (Input::GetKeyDown(GLFW_KEY_1)) {
-                    m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
-                } else if (Input::GetKeyDown(GLFW_KEY_2)) {
-                    m_gizmo_op = ImGuizmo::OPERATION::ROTATE;
-                } else if (Input::GetKeyDown(GLFW_KEY_3)) {
-                    m_gizmo_op = ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU;
-                }
+        if (m_is_window_focused) {
+            if (Input::GetKeyDown(GLFW_KEY_1)) {
+                m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
+            } else if (Input::GetKeyDown(GLFW_KEY_2)) {
+                m_gizmo_op = ImGuizmo::OPERATION::ROTATE;
+            } else if (Input::GetKeyDown(GLFW_KEY_3)) {
+                m_gizmo_op = ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU;
             }
         }
 
@@ -610,7 +621,7 @@ namespace Toolbox::UI {
         const bool right_click = Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT);
 
         // Mouse pos is absolute
-        ImVec2 mouse_pos = Input::GetMousePosition();
+        ImVec2 mouse_pos = ImGui::GetMousePos();
         glm::vec3 cam_pos;
         m_camera.getPos(cam_pos);
 

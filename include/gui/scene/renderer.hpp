@@ -70,15 +70,17 @@ namespace Toolbox::UI {
 
         bool m_is_window_hovered = false;
         bool m_is_window_focused = false;
+        bool m_is_view_manipulating = false;
 
         BillboardRenderer m_billboard_renderer;
         PathRenderer m_path_renderer;
         Camera m_camera = {};
 
-        ImVec2 m_render_size;
         ImRect m_window_rect;
         ImVec2 m_window_size;
         ImVec2 m_window_size_prev;
+        ImRect m_render_rect;
+        ImVec2 m_render_size;
 
         // Gizmo data
         bool m_render_gizmo;

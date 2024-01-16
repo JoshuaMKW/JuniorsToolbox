@@ -82,7 +82,7 @@ namespace Toolbox::UI {
         void onHomeKey() override;
 
     public:
-        ImGuiWindowFlags flags() const override { return ImGuiWindowFlags_MenuBar; }
+        ImGuiWindowFlags flags() const override { return DockWindow::flags() | ImGuiWindowFlags_MenuBar; }
 
         const ImGuiWindowClass *windowClass() const override {
             if (parent() && parent()->windowClass()) {

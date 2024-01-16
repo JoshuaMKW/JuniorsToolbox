@@ -25,7 +25,7 @@ namespace Toolbox::UI {
 
             ImGui::DockBuilderFinish(dockspace_id);
         }
-        ImGui::DockSpace(dockspace_id, {}, ImGuiDockNodeFlags_PassthruCentralNode, nullptr);
+        ImGui::DockSpace(dockspace_id, {}, ImGuiDockNodeFlags_None, nullptr);
     }
 
 }  // namespace Toolbox::UI
