@@ -113,7 +113,10 @@ namespace Toolbox::UI {
         ImGuiIO &io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+#ifdef IMGUI_ENABLE_VIEWPORTS
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+#endif
 
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(m_render_window, true);
@@ -192,11 +195,6 @@ namespace Toolbox::UI {
 
         ImGuizmo::BeginFrame();
 
-        auto &font_manager = FontManager::instance();
-        ImFont *main_font  = font_manager.getCurrentFont();
-
-        // ImGui::PushFont(main_font);
-
         ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
@@ -225,13 +223,15 @@ namespace Toolbox::UI {
         renderMenuBar();
         renderWindows(delta_time);
 
-        // ImGui::PopFont();
-
         // Render imgui
         ImGui::Render();
 
-        ImGuiIO &io = ImGui::GetIO();
+        ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiIO &io       = ImGui::GetIO();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+            style.WindowRounding              = 0.0f;
+            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+
             GLFWwindow *backup_window = glfwGetCurrentContext();
             {
                 ImGui::UpdatePlatformWindows();
@@ -263,7 +263,7 @@ namespace Toolbox::UI {
 
             if (ImGui::MenuItem(ICON_FK_FLOPPY_O " Save All")) {
                 for (auto &window : m_windows) {
-                    window->saveData(std::nullopt);
+                    (void)window->saveData(std::nullopt);
                 }
             }
 

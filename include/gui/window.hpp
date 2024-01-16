@@ -298,6 +298,7 @@ namespace Toolbox::UI {
                 flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
+            ImGui::SetNextWindowBgAlpha(0.0f);
             if (ImGui::Begin(window_name.c_str(), &m_is_open, flags_)) {
                 m_size = ImGui::GetWindowSize();
                 renderDockspace();

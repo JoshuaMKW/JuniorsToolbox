@@ -82,7 +82,13 @@ namespace Toolbox::UI {
     }
 
     static std::string getNodeUID(std::shared_ptr<Rail::Rail> node) {
-        std::string node_name = std::format("{}###{}", node->name(), node->getSiblingID());
+        std::string node_name = std::format("{}###{}", node->name(), node->getID());
+        return node_name;
+    }
+
+    static std::string getNodeUID(std::shared_ptr<Rail::RailNode> node) {
+        std::string node_name =
+            std::format("Node {}###{}", node->rail()->getNodeIndex(node).value(), node->getID());
         return node_name;
     }
 
@@ -297,8 +303,9 @@ namespace Toolbox::UI {
                 } else {
                     ImGuiID node_id = node->getID();
 
-                    bool is_rail_node_selected = std::any_of(
-                        m_rail_node_list_selected_nodes.begin(), m_rail_node_list_selected_nodes.end(),
+                    bool is_rail_node_selected =
+                        std::any_of(m_rail_node_list_selected_nodes.begin(),
+                                    m_rail_node_list_selected_nodes.end(),
                                     [&](auto &info) { return info.m_node_id == node_id; });
 
                     SelectionNodeInfo<Rail::RailNode> node_info = {.m_selected      = node,
@@ -383,7 +390,7 @@ namespace Toolbox::UI {
         std::string hierarchy_window_name = getWindowChildUID(*this, "Hierarchy Editor");
 
         ImGuiWindowClass hierarchyOverride;
-        hierarchyOverride.ClassId = getID();
+        hierarchyOverride.ClassId          = getID();
         hierarchyOverride.ParentViewportId = ImGui::GetCurrentWindow()->ViewportId;
         /*hierarchyOverride.DockNodeFlagsOverrideSet =
             ImGuiDockNodeFlags_NoDockingOverMe | ImGuiDockNodeFlags_NoDockingOverOther;*/
@@ -584,11 +591,10 @@ namespace Toolbox::UI {
         std::string properties_editor_str = getWindowChildUID(*this, "Properties Editor");
 
         ImGuiWindowClass propertiesOverride;
-        propertiesOverride.ClassId          = getID();
-        propertiesOverride.ParentViewportId = ImGui::GetCurrentWindow()->ViewportId;
-        propertiesOverride.DockNodeFlagsOverrideSet =
-            ImGuiDockNodeFlags_NoDockingOverMe;
-        propertiesOverride.DockingAllowUnclassed = false;
+        propertiesOverride.ClassId                  = getID();
+        propertiesOverride.ParentViewportId         = ImGui::GetCurrentWindow()->ViewportId;
+        propertiesOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe;
+        propertiesOverride.DockingAllowUnclassed    = false;
         ImGui::SetNextWindowClass(&propertiesOverride);
 
         ImGui::SetNextWindowSizeConstraints({300, 500}, {FLT_MAX, FLT_MAX});
@@ -821,18 +827,6 @@ namespace Toolbox::UI {
                                                 return other.m_node_id == rail_id;
                                             });
 
-                if (multi_select) {
-                    m_selected_properties.clear();
-                    if (!is_rail_selected)
-                        m_rail_list_selected_nodes.push_back(rail_info);
-                } else {
-                    m_rail_list_selected_nodes.clear();
-                    m_rail_list_selected_nodes.push_back(rail_info);
-                }
-
-                // Since a rail is selected, we should clear the rail nodes
-                m_rail_node_list_selected_nodes.clear();
-
                 if (!m_rail_visible_map.contains(rail_id)) {
                     m_rail_visible_map[rail_id] = true;
                 }
@@ -851,11 +845,18 @@ namespace Toolbox::UI {
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
                     ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
                     ImGui::FocusWindow(ImGui::GetCurrentWindow());
-                    if (!multi_select) {
+
+                    if (multi_select) {
+                        m_selected_properties.clear();
+                        if (!is_rail_selected)
+                            m_rail_list_selected_nodes.push_back(rail_info);
+                    } else {
                         m_rail_list_selected_nodes.clear();
-                        m_rail_node_list_selected_nodes.clear();
+                        m_rail_list_selected_nodes.push_back(rail_info);
                     }
-                    m_rail_list_selected_nodes.push_back(rail_info);
+
+                    // Since a rail is selected, we should clear the rail nodes
+                    m_rail_node_list_selected_nodes.clear();
 
                     m_properties_render_handler = renderRailProperties;
                 }
@@ -864,9 +865,9 @@ namespace Toolbox::UI {
 
                 if (is_rail_open) {
                     for (size_t i = 0; i < rail->nodes().size(); ++i) {
-                        std::shared_ptr<Rail::RailNode> node            = rail->nodes()[i];
-                        std::string node_name = std::format("Node {}###{}", i, i);
-                        ImGuiID node_id       = node->getID();
+                        std::shared_ptr<Rail::RailNode> node = rail->nodes()[i];
+                        std::string node_uid_str             = getNodeUID(node);
+                        ImGuiID node_id                      = node->getID();
 
                         bool is_rail_node_selected =
                             std::any_of(m_rail_node_list_selected_nodes.begin(),
@@ -878,34 +879,29 @@ namespace Toolbox::UI {
                                                                        .m_parent_synced = true,
                                                                        .m_scene_synced  = false};
 
-                        if (multi_select) {
-                            m_selected_properties.clear();
-                            if (!is_rail_node_selected)
-                                m_rail_node_list_selected_nodes.push_back(node_info);
-                        } else {
-                            m_rail_node_list_selected_nodes.clear();
-                            m_rail_node_list_selected_nodes.push_back(node_info);
-                        }
-
-                        // Since a rail node is selected, we should clear the rails
-                        m_rail_list_selected_nodes.clear();
-
-                        bool is_node_open =
-                            ImGui::TreeNodeEx(node_name.c_str(), node_flags, is_rail_node_selected);
+                        bool is_node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), node_flags,
+                                                              is_rail_node_selected);
 
                         if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
                             ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
                             ImGui::FocusWindow(ImGui::GetCurrentWindow());
-                            if (!multi_select) {
-                                m_rail_list_selected_nodes.clear();
+
+                            if (multi_select) {
+                                m_selected_properties.clear();
+                                if (!is_rail_node_selected)
+                                    m_rail_node_list_selected_nodes.push_back(node_info);
+                            } else {
                                 m_rail_node_list_selected_nodes.clear();
+                                m_rail_node_list_selected_nodes.push_back(node_info);
                             }
-                            m_rail_node_list_selected_nodes.push_back(node_info);
+
+                            // Since a rail node is selected, we should clear the rails
+                            m_rail_list_selected_nodes.clear();
 
                             m_properties_render_handler = renderRailNodeProperties;
                         }
 
-                        renderRailNodeContextMenu(node_name, node_info);
+                        renderRailNodeContextMenu(node_uid_str, node_info);
 
                         if (is_node_open) {
                             ImGui::TreePop();
@@ -950,11 +946,10 @@ namespace Toolbox::UI {
         std::string scene_view_str = getWindowChildUID(*this, "Scene View");
 
         ImGuiWindowClass sceneViewOverride;
-        sceneViewOverride.ClassId          = getID();
-        sceneViewOverride.ParentViewportId = ImGui::GetCurrentWindow()->ViewportId;
-        sceneViewOverride.DockNodeFlagsOverrideSet =
-            ImGuiDockNodeFlags_NoDockingOverMe;
-        sceneViewOverride.DockingAllowUnclassed = false;
+        sceneViewOverride.ClassId                  = getID();
+        sceneViewOverride.ParentViewportId         = ImGui::GetCurrentWindow()->ViewportId;
+        sceneViewOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe;
+        sceneViewOverride.DockingAllowUnclassed    = false;
         ImGui::SetNextWindowClass(&sceneViewOverride);
 
         m_is_render_window_open = ImGui::Begin(scene_view_str.c_str());
@@ -1441,15 +1436,15 @@ namespace Toolbox::UI {
                 return;
             });
 
-        m_rail_list_single_node_menu.addOption(
-            "Delete", {GLFW_KEY_DELETE}, [this](SelectionNodeInfo<Rail::Rail> info) {
-                m_rail_visible_map.erase(info.m_node_id);
-                RailData data = m_current_scene->getRailData();
-                data.removeRail(*info.m_selected);
-                m_current_scene->setRailData(data);
-                m_update_render_objs = true;
-                return;
-            });
+        m_rail_list_single_node_menu.addOption("Delete", {GLFW_KEY_DELETE},
+                                               [this](SelectionNodeInfo<Rail::Rail> info) {
+                                                   m_rail_visible_map.erase(info.m_node_id);
+                                                   RailData data = m_current_scene->getRailData();
+                                                   data.removeRail(*info.m_selected);
+                                                   m_current_scene->setRailData(data);
+                                                   m_update_render_objs = true;
+                                                   return;
+                                               });
     }
 
     void SceneWindow::buildContextMenuMultiRail() {
@@ -1751,16 +1746,16 @@ namespace Toolbox::UI {
 
     void SceneWindow::buildRenameRailDialog() {
         m_rename_rail_dialog.setup();
-        m_rename_rail_dialog.setActionOnAccept([this](std::string_view new_name,
-                                                      SelectionNodeInfo<Rail::Rail> info) {
-            if (new_name.empty()) {
-                auto result =
-                    make_error<void>("Scene Hierarchy", "Can not rename rail to empty string");
-                logError(result.error());
-                return;
-            }
-            info.m_selected->setName(new_name);
-        });
+        m_rename_rail_dialog.setActionOnAccept(
+            [this](std::string_view new_name, SelectionNodeInfo<Rail::Rail> info) {
+                if (new_name.empty()) {
+                    auto result =
+                        make_error<void>("Scene Hierarchy", "Can not rename rail to empty string");
+                    logError(result.error());
+                    return;
+                }
+                info.m_selected->setName(new_name);
+            });
         m_rename_rail_dialog.setActionOnReject([](SelectionNodeInfo<Rail::Rail>) {});
     }
 
