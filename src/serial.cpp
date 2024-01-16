@@ -8,7 +8,7 @@ namespace Toolbox {
             return make_serial_error<void>(
                 *this, "No breakpoints to pop! (Proper serialization shouldn't have this happen)");
         }
-        m_out.seekp(m_breakpoints.front());
+        m_out.seekp(m_breakpoints.top());
         m_breakpoints.pop();
         return {};
     }
@@ -20,7 +20,7 @@ namespace Toolbox {
                 *this,
                 "No breakpoints to pop! (Proper deserialization shouldn't have this happen)");
         }
-        m_in.seekg(m_breakpoints.front());
+        m_in.seekg(m_breakpoints.top());
         m_breakpoints.pop();
         return {};
     }

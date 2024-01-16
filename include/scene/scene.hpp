@@ -1,7 +1,7 @@
 #pragma once
 
 #include "bmg/bmg.hpp"
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "objlib/object.hpp"
 #include "rail/rail.hpp"
 #include "raildata.hpp"
@@ -14,7 +14,7 @@
 
 namespace Toolbox::Scene {
 
-    class ObjectHierarchy : public ISerializable, public IClonable {
+    class ObjectHierarchy : public ISerializable, public ISmartResource {
     public:
         ObjectHierarchy() = default;
         ObjectHierarchy(std::string_view name) : m_name(name), m_root() {}
@@ -49,7 +49,7 @@ namespace Toolbox::Scene {
             return m_root->deserialize(in);
         }
 
-        std::unique_ptr<IClonable> clone(bool deep) const override {
+        std::unique_ptr<ISmartResource> clone(bool deep) const override {
             if (deep) {
                 ObjectHierarchy obj_hierarchy(make_deep_clone<Object::GroupSceneObject>(m_root));
                 return std::make_unique<ObjectHierarchy>(std::move(obj_hierarchy));
@@ -70,7 +70,7 @@ namespace Toolbox::Scene {
         std::shared_ptr<Object::GroupSceneObject> m_root;
     };
 
-    class SceneInstance : public IClonable {
+    class SceneInstance : public ISmartResource {
     public:
         SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root);
         SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root, const RailData &rails);
@@ -106,11 +106,13 @@ namespace Toolbox::Scene {
         [[nodiscard]] BMG::MessageData getMessageData() const { return m_message_data; }
         void setMessageData(BMG::MessageData &message_data) { m_message_data = message_data; }
 
+        std::expected<void, SerialError> saveToPath(const std::filesystem::path &root);
+
         void dump(std::ostream &os, size_t indent, size_t indent_size) const;
         void dump(std::ostream &os, size_t indent) const { dump(os, indent, 4); }
         void dump(std::ostream &os) const { dump(os, 0); }
 
-        std::unique_ptr<IClonable> clone(bool deep) const override;
+        std::unique_ptr<ISmartResource> clone(bool deep) const override;
 
     private:
         std::optional<std::filesystem::path> m_root_path = {};

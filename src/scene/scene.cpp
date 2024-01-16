@@ -87,6 +87,56 @@ namespace Toolbox::Scene {
 
     std::unique_ptr<SceneInstance> SceneInstance::BasicScene() { return nullptr; }
 
+    std::expected<void, SerialError> SceneInstance::saveToPath(const std::filesystem::path &root) {
+        auto scene_bin   = root / "map/scene.bin";
+        auto tables_bin  = root / "map/tables.bin";
+        auto rail_bin    = root / "map/scene.ral";
+        auto message_bin = root / "map/message.bmg";
+
+        {
+            std::ofstream file(scene_bin, std::ios::out | std::ios::binary);
+            Serializer out(file.rdbuf(), scene_bin.string());
+
+            auto result = m_map_objects.getRoot()->serialize(out);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        {
+            std::ofstream file(tables_bin, std::ios::out | std::ios::binary);
+            Serializer out(file.rdbuf(), scene_bin.string());
+
+            auto result = m_table_objects.getRoot()->serialize(out);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        {
+            std::ofstream file(rail_bin, std::ios::out | std::ios::binary);
+            Serializer out(file.rdbuf(), scene_bin.string());
+
+            auto result = m_rail_info.serialize(out);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        {
+            std::ofstream file(message_bin, std::ios::out | std::ios::binary);
+            Serializer out(file.rdbuf(), scene_bin.string());
+
+            auto result = m_message_data.serialize(out);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        m_root_path = root;
+        return {};
+    }
+
     void SceneInstance::dump(std::ostream &os, size_t indent, size_t indent_size) const {
         std::string indent_str(indent * indent_size, ' ');
         if (!m_root_path) {
@@ -102,7 +152,7 @@ namespace Toolbox::Scene {
         os << indent_str << "}" << std::endl;
     }
 
-    std::unique_ptr<IClonable> SceneInstance::clone(bool deep) const {
+    std::unique_ptr<ISmartResource> SceneInstance::clone(bool deep) const {
         if (deep) {
             SceneInstance scene_instance(
                 make_deep_clone<Object::GroupSceneObject>(m_map_objects.getRoot()),

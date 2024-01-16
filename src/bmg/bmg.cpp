@@ -58,12 +58,12 @@ namespace Toolbox::BMG {
         for (const auto &part : parts) {
             auto result = rawFromCommand(part);
             if (!result) {
-                size += part.size();
+                size += part.size() + 1;
             } else {
                 size += result.value().size();
             }
         }
-        return size + 1;
+        return size;
     }
 
     std::string CmdMessage::getString() const { return m_message_data; }
@@ -90,7 +90,6 @@ namespace Toolbox::BMG {
                 out.writeBytes(result.value());
             }
         }
-        out.write<char>('\0');
         return {};
     }
 
@@ -165,8 +164,19 @@ namespace Toolbox::BMG {
         size_t bracket_r      = 0;
         size_t next_bracket_l = 0;
 
+        if (m_message_data.find('{') == std::string::npos) {
+            parts.push_back(m_message_data);
+            return parts;
+        }
+
         while (bracket_r != std::string::npos) {
             bracket_l = m_message_data.find('{', bracket_r);
+
+            // If no more commands, return the end
+            if (bracket_l == std::string::npos && (bracket_r + 1) < m_message_data.size()) {
+                parts.push_back(m_message_data.substr(bracket_r + 1));
+                break;
+            }
 
             std::string text = m_message_data.substr(bracket_r, bracket_l);
 
@@ -298,7 +308,7 @@ namespace Toolbox::BMG {
     }
 
     size_t MessageData::getDataSize() const {
-        return getINF1Size() + getSTR1Size() + getDAT1Size();
+        return 32 + getINF1Size() + getSTR1Size() + getDAT1Size();
     }
 
     size_t MessageData::getINF1Size() const {
@@ -387,17 +397,14 @@ namespace Toolbox::BMG {
         out.write<u32, std::endian::big>('bmg1');
         out.write<u32, std::endian::big>(static_cast<u32>(getDataSize()) / 32);
         out.write<u32, std::endian::big>(m_has_str1 ? 3 : 2);
-        {
-            std::vector<char> padding(0x10, 0);
-            out.write(padding);
-        }
+        out.padTo(32);
 
         // INF1
         out.write<u32, std::endian::big>('INF1');
         out.write<u32, std::endian::big>(static_cast<u32>(getINF1Size()));
         out.write<u16, std::endian::big>(static_cast<u16>(m_entries.size()));
         out.write<u16, std::endian::big>(m_flag_size);
-        out.write<u32, std::endian::big>(0x100);  // Unknown
+        out.write<u32, std::endian::big>(0x80000);  // Unknown
 
         size_t data_offset = 1;  // Padding
         size_t name_offset = 1;  // Padding
@@ -486,7 +493,7 @@ namespace Toolbox::BMG {
         in.seek(0x10);  // Padding
 
         size_t message_count = 0;
-        size_t flag_size     = 0;
+        m_flag_size          = 0;
 
         std::vector<size_t> data_offsets;
         std::vector<size_t> name_offsets;
@@ -504,13 +511,13 @@ namespace Toolbox::BMG {
                         -8);
                 }
                 message_count = in.read<u16, std::endian::big>();
-                flag_size     = in.read<u16, std::endian::big>();
+                m_flag_size   = in.read<u16, std::endian::big>();
                 in.seek(4);  // Unknown values
 
                 for (size_t j = 0; j < message_count; ++j) {
                     Entry entry;
                     data_offsets.push_back(in.read<u32, std::endian::big>());
-                    if (flag_size == 12) {
+                    if (m_flag_size == 12) {
                         entry.m_start_frame = in.read<u16, std::endian::big>();
                         entry.m_end_frame   = in.read<u16, std::endian::big>();
                         if (m_has_str1) {
@@ -519,10 +526,10 @@ namespace Toolbox::BMG {
                         entry.m_sound = magic_enum::enum_cast<MessageSound>(in.read<u8>())
                                             .value_or(MessageSound::NOTHING);
                         in.seek(m_has_str1 ? 1 : 3);
-                    } else if (flag_size == 8) {
+                    } else if (m_flag_size == 8) {
                         entry.m_unk_flags.resize(4);
                         in.readBytes(entry.m_unk_flags);
-                    } else if (flag_size == 4) {
+                    } else if (m_flag_size == 4) {
                         // Nothing to do
                     } else {
                         return make_serial_error<void>(in, "Invalid flag size");

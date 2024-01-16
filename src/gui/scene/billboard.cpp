@@ -83,7 +83,10 @@ namespace Toolbox::UI {
 
     BillboardRenderer::BillboardRenderer() {}
 
-    BillboardRenderer::~BillboardRenderer() { glDeleteTextures(1, &m_texture); }
+    BillboardRenderer::~BillboardRenderer() {
+        m_billboards.clear();
+        glDeleteTextures(1, &m_texture);
+    }
 
     void BillboardRenderer::loadBillboardTexture(std::filesystem::path imagePath,
                                                  int textureIndex) {

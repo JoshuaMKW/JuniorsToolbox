@@ -1,5 +1,5 @@
-#include "clone.hpp"
 #include "scene/raildata.hpp"
+#include "smart_resource.hpp"
 #include "rail/rail.hpp"
 #include <algorithm>
 #include <numeric>
@@ -18,7 +18,7 @@ namespace Toolbox::Scene {
 
     std::optional<size_t> RailData::getRailIndex(const Rail::Rail &rail) const {
         for (size_t i = 0; i < m_rails.size(); ++i) {
-            if (m_rails[i]->name() == rail.name()) {
+            if (m_rails[i]->getSiblingID() == rail.getSiblingID()) {
                 return i;
             }
         }
@@ -47,15 +47,23 @@ namespace Toolbox::Scene {
         return m_rails[index.value()];
     }
 
-    void RailData::addRail(std::shared_ptr<Rail::Rail> rail) { m_rails.push_back(rail); }
+    void RailData::addRail(const Rail::Rail &rail) { insertRail(m_rails.size(), rail); }
 
-    void RailData::insertRail(size_t index, std::shared_ptr<Rail::Rail> rail) {
-        m_rails.insert(m_rails.begin() + index, rail);
+    void RailData::insertRail(size_t index, const Rail::Rail &rail) {
+        auto new_rail = std::make_shared<Rail::Rail>(rail);
+        new_rail->setSiblingID(m_next_sibling_id++);
+        m_rails.insert(m_rails.begin() + index, std::move(new_rail));
     }
 
     void RailData::removeRail(size_t index) { m_rails.erase(m_rails.begin() + index); }
     void RailData::removeRail(std::string_view name) {
         auto index = getRailIndex(name);
+        if (!index)
+            return;
+        m_rails.erase(m_rails.begin() + index.value());
+    }
+    void RailData::removeRail(const Rail::Rail &rail) {
+        auto index = getRailIndex(rail);
         if (!index)
             return;
         m_rails.erase(m_rails.begin() + index.value());
@@ -73,11 +81,12 @@ namespace Toolbox::Scene {
     std::expected<void, SerialError> RailData::serialize(Serializer &out) const {
         size_t header_start = 0;
 
-        size_t name_start   = 12 + 12 * m_rails.size();
+        size_t name_start = 12 + 12 * m_rails.size();
 
-        size_t name_size =
-            std::accumulate(m_rails.begin(), m_rails.end(), static_cast<size_t>(0),
-            [](size_t accum, RailData::rail_ptr_t rail) { return rail->name().size() + 1; });
+        size_t name_size = std::accumulate(m_rails.begin(), m_rails.end(), static_cast<size_t>(0),
+                                           [](size_t accum, RailData::rail_ptr_t rail) {
+                                               return accum + rail->name().size() + 1;
+                                           });
 
         size_t data_start = name_start + ((name_size + 3) & ~3);
 
@@ -100,10 +109,6 @@ namespace Toolbox::Scene {
             data_start += 68 * rail->getNodeCount();
         }
 
-        out.write<u32>(0);
-        out.write<u32>(0);
-        out.write<u32>(0);
-
         return {};
     }
 
@@ -117,7 +122,7 @@ namespace Toolbox::Scene {
                 return {};
 
             in.seek(name_pos, std::ios::beg);
-            auto name = in.readCString(64);
+            auto name = in.readCString(128);
 
             auto rail = std::make_shared<Rail::Rail>(name);
 
@@ -133,10 +138,10 @@ namespace Toolbox::Scene {
         }
     }
 
-    std::unique_ptr<IClonable> RailData::clone(bool deep) const {
+    std::unique_ptr<ISmartResource> RailData::clone(bool deep) const {
         std::vector<RailData::rail_ptr_t> rails;
         if (deep) {
-            for (auto& rail : m_rails) {
+            for (auto &rail : m_rails) {
                 rails.push_back(make_deep_clone<Rail::Rail>(rail));
             }
         } else {

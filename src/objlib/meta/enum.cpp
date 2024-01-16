@@ -104,7 +104,7 @@ namespace Toolbox::Object {
         }
     }
 
-    std::unique_ptr<IClonable> MetaEnum::clone(bool deep) const {
+    std::unique_ptr<ISmartResource> MetaEnum::clone(bool deep) const {
         MetaEnum enum_(std::string_view(m_name), m_type, m_values, m_bit_mask);
         enum_.m_cur_value = std::make_shared<MetaValue>(*m_cur_value);
         return std::make_unique<MetaEnum>(enum_);

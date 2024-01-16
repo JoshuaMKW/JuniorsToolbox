@@ -71,6 +71,9 @@
         "Rendering": {
             "Default": {
                 "Model": "gatekeeper/gene_pakkun_model1.bmd",
+                "Textures": {
+                    "Q_kepper_dummy_128IA4": "pollution/H_ma_rak.bti"
+                },
                 "Animations": [
                     "gatekeeper/gene_pakkun_appear1.bck",
                     "gatekeeper/gene_pakkun_appear1_end.bck",

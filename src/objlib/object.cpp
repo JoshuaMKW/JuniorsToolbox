@@ -59,9 +59,24 @@ namespace Toolbox::Object {
 
     /* VIRTUAL SCENE OBJECT */
 
-    std::vector<s8> VirtualSceneObject::getData() const { return {}; }
+    std::span<u8> VirtualSceneObject::getData() const {
+        std::stringstream ostr;
 
-    size_t VirtualSceneObject::getDataSize() const { return 0; }
+        // Lol
+        Serializer out(ostr.rdbuf());
+        Deserializer in(ostr.rdbuf());
+
+        serialize(out);
+
+        m_data.resize(in.size());
+        in.seek(0);
+
+        in.readBytes({reinterpret_cast<char *>(&m_data[0]), m_data.size()});
+
+        return {m_data.data(), m_data.size()};
+    }
+
+    size_t VirtualSceneObject::getDataSize() const { return getData().size(); }
 
     bool VirtualSceneObject::hasMember(const QualifiedName &name) const {
         return getMember(name).has_value();
@@ -144,6 +159,33 @@ namespace Toolbox::Object {
     }
 
     std::expected<void, SerialError> VirtualSceneObject::serialize(Serializer &out) const {
+        std::streampos start = out.tell();
+
+        out.pushBreakpoint();
+        {
+            // Write the size marker for now
+            out.write<u32>(0);
+
+            NameRef type_ref(m_type);
+            type_ref.serialize(out);
+
+            m_nameref.serialize(out);
+
+            for (auto &member : m_members) {
+                auto result = member->serialize(out);
+                if (!result) {
+                    return result;
+                }
+            }
+        }
+
+        u32 obj_size = static_cast<u32>(out.size() - start);
+
+        out.popBreakpoint();
+
+        // Write the size marker
+        out.write<u32, std::endian::big>(obj_size);
+        out.seek(0, std::ios::end);
         return {};
     }
 
@@ -220,26 +262,43 @@ namespace Toolbox::Object {
 
     /* GROUP SCENE OBJECT */
 
-    std::vector<s8> GroupSceneObject::getData() const { return std::vector<s8>(); }
+    std::span<u8> GroupSceneObject::getData() const {
+        std::stringstream ostr;
 
-    size_t GroupSceneObject::getDataSize() const { return size_t(); }
+        // Lol
+        Serializer out(ostr.rdbuf());
+        Deserializer in(ostr.rdbuf());
+
+        serialize(out);
+
+        m_data.resize(in.size());
+        in.seek(0);
+
+        in.readBytes({reinterpret_cast<char *>(&m_data[0]), m_data.size()});
+
+        return {m_data.data(), m_data.size()};
+    }
+
+    size_t GroupSceneObject::getDataSize() const { return getData().size(); }
 
     std::expected<void, ObjectGroupError>
     GroupSceneObject::addChild(std::shared_ptr<ISceneObject> child) {
-        auto child_it = std::find_if(
-            m_children.begin(), m_children.end(), [&](std::shared_ptr<ISceneObject> other) {
-                return other->getNameRef().name() == child->getNameRef().name();
-            });
+        return insertChild(m_children.size(), std::move(child));
+    }
 
-        if (child_it != m_children.end()) {
-            ObjectGroupError err = {
-                "Child already in the group object:", std::stacktrace::current(), this, {}};
+    std::expected<void, ObjectGroupError>
+    GroupSceneObject::insertChild(size_t index, std::shared_ptr<ISceneObject> child) {
+        if (index > m_children.size()) {
+            ObjectGroupError err = {std::format("Insertion index {} is out of bounds (end: {})",
+                                                index, m_children.size()),
+                                    std::stacktrace::current(),
+                                    this,
+                                    {}};
             return std::unexpected(err);
         }
-
         ISceneObject *parent = child->getParent();
         if (parent) {
-            parent->removeChild(child->getNameRef().name());
+            parent->removeChild(child);
         }
         auto result = child->_setParent(this);
         if (!result) {
@@ -249,7 +308,9 @@ namespace Toolbox::Object {
                                     {result.error()}};
             return std::unexpected(err);
         }
-        m_children.push_back(child);
+
+        child->setSiblingID(m_next_sibling_id++);
+        m_children.insert(m_children.begin() + index, std::move(child));
         updateGroupSize();
         return {};
     }
@@ -331,11 +392,12 @@ namespace Toolbox::Object {
         if (child_errors.size() > 0) {
             ObjectGroupError err;
             {
-                err.m_message    = std::format("ObjectGroupError: {} ({}): There were errors "
-                                                  "performing the children:",
-                                               m_type, m_nameref.name());
-                err.m_object     = this;
-                err.m_stacktrace = std::stacktrace::current();
+                err.m_message      = std::format("ObjectGroupError: {} ({}): There were errors "
+                                                      "performing the children:",
+                                                 m_type, m_nameref.name());
+                err.m_object       = this;
+                err.m_stacktrace   = std::stacktrace::current();
+                err.m_child_errors = child_errors;
             }
             return std::unexpected(err);
         }
@@ -364,6 +426,56 @@ namespace Toolbox::Object {
     }
 
     std::expected<void, SerialError> GroupSceneObject::serialize(Serializer &out) const {
+        std::streampos start = out.tell();
+
+        out.pushBreakpoint();
+        {
+            // Write the size marker for now
+            out.write<u32>(0);
+
+            NameRef type_ref(m_type);
+            type_ref.serialize(out);
+
+            m_nameref.serialize(out);
+
+            // Members
+            bool late_group_size = (type_ref.code() == 15406 || type_ref.code() == 9858);
+            if (!late_group_size) {
+                auto result = m_group_size->serialize(out);
+                if (!result) {
+                    return result;
+                }
+            }
+
+            for (auto &member : m_members) {
+                auto result = member->serialize(out);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            }
+
+            if (late_group_size) {
+                auto result = m_group_size->serialize(out);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            }
+
+            for (auto &child : m_children) {
+                auto result = child->serialize(out);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            }
+        }
+
+        u32 obj_size = static_cast<u32>(out.size() - start);
+
+        out.popBreakpoint();
+
+        // Write the size marker
+        out.write<u32, std::endian::big>(obj_size);
+        out.seek(0, std::ios::end);
         return {};
     }
 
@@ -485,9 +597,24 @@ namespace Toolbox::Object {
 
     /* PHYSICAL SCENE OBJECT */
 
-    std::vector<s8> PhysicalSceneObject::getData() const { return {}; }
+    std::span<u8> PhysicalSceneObject::getData() const {
+        std::stringstream ostr;
 
-    size_t PhysicalSceneObject::getDataSize() const { return 0; }
+        // Lol
+        Serializer out(ostr.rdbuf());
+        Deserializer in(ostr.rdbuf());
+
+        serialize(out);
+
+        m_data.resize(in.size());
+        in.seek(0);
+
+        in.readBytes({reinterpret_cast<char *>(&m_data[0]), m_data.size()});
+
+        return {m_data.data(), m_data.size()};
+    }
+
+    size_t PhysicalSceneObject::getDataSize() const { return getData().size(); }
 
     bool PhysicalSceneObject::hasMember(const QualifiedName &name) const {
         auto member = getMember(name);
@@ -608,7 +735,8 @@ namespace Toolbox::Object {
         }
 
         m_model_instance->UpdateAnimations(delta_time);
-        renderables.emplace_back(shared_from_this(), m_model_instance, render_transform);
+        renderables.emplace_back(get_shared_ptr<PhysicalSceneObject>(*this), m_model_instance,
+                                 render_transform);
 
         return {};
     }
@@ -761,7 +889,41 @@ namespace Toolbox::Object {
     }
 
     std::expected<void, SerialError> PhysicalSceneObject::serialize(Serializer &out) const {
-        return std::expected<void, SerialError>();
+        std::streampos start = out.tell();
+
+        out.pushBreakpoint();
+        {
+            // Write the size marker for now
+            out.write<u32>(0);
+
+            NameRef type_ref(m_type);
+            type_ref.serialize(out);
+
+            m_nameref.serialize(out);
+
+            bool is_map_obj_base = m_type == "MapObjBase";
+
+            for (auto &member : m_members) {
+                if (is_map_obj_base) {
+                    if (member->name() == "PoleLength" && getMetaValue<f32>(member, 0) == 0.0f) {
+                        continue;
+                    }
+                }
+                auto result = member->serialize(out);
+                if (!result) {
+                    return result;
+                }
+            }
+        }
+
+        u32 obj_size = static_cast<u32>(out.size() - start);
+
+        out.popBreakpoint();
+
+        // Write the size marker
+        out.write<u32, std::endian::big>(obj_size);
+        out.seek(0, std::ios::end);
+        return {};
     }
 
     std::expected<void, SerialError> PhysicalSceneObject::deserialize(Deserializer &in) {

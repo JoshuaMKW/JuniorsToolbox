@@ -1,8 +1,9 @@
 #pragma once
 
 #include "boundbox.hpp"
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "node.hpp"
+#include "unique.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/value.hpp"
 #include "serial.hpp"
@@ -13,7 +14,10 @@ using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
 
-    class Rail : public IClonable, public std::enable_shared_from_this<Rail> {
+    class Rail : public ISmartResource, public IUnique {
+    protected:
+        static u32 s_next_rail_uid;
+
     public:
         using node_ptr_t = std::shared_ptr<RailNode>;
 
@@ -32,7 +36,11 @@ namespace Toolbox::Rail {
         Rail &operator=(const Rail &other) = default;
         Rail &operator=(Rail &&other)      = default;
 
-        std::shared_ptr<Rail> getSharedPtr() { return shared_from_this(); }
+        [[nodiscard]] u32 getID() const override { return m_uid; }
+        void setID(u32 id) override { m_uid = id; }
+
+        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
+        void setSiblingID(u32 id) override { m_sibling_id = id; }
 
         [[nodiscard]] bool isSpline() const { return m_name.starts_with("S_"); }
 
@@ -140,7 +148,7 @@ namespace Toolbox::Rail {
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
 
-        std::unique_ptr<IClonable> clone(bool deep) const override;
+        std::unique_ptr<ISmartResource> clone(bool deep) const override;
 
     protected:
         std::expected<void, MetaError> calcDistancesWithNode(node_ptr_t node);
@@ -148,6 +156,8 @@ namespace Toolbox::Rail {
         void chaikinSubdivide();
 
     private:
+        u32 m_uid = uuid();
+        u32 m_sibling_id = 0;
         std::string m_name;
         std::vector<node_ptr_t> m_nodes = {};
     };

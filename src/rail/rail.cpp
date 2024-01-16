@@ -518,7 +518,7 @@ namespace Toolbox::Rail {
         }
     }
 
-    std::unique_ptr<IClonable> Rail::clone(bool deep) const {
+    std::unique_ptr<ISmartResource> Rail::clone(bool deep) const {
         auto clone = std::make_unique<Rail>(name());
 
         if (deep) {

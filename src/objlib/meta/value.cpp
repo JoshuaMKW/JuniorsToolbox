@@ -150,9 +150,9 @@ namespace Toolbox::Object {
                 out.write<f64, std::endian::big>(std::get<f64>(m_value));
                 break;
             case MetaType::STRING: {
-                auto str_result = String::toShiftJIS(std::get<std::string>(m_value));
+                auto str_result = String::toGameEncoding(std::get<std::string>(m_value));
                 if (!str_result) {
-                    return make_serial_error<void>(out, "Failed to serialize string as SHIFT_JIS");
+                    return make_serial_error<void>(out, str_result.error().m_message[0]);
                 }
                 out.writeString<std::endian::big>(str_result.value());
                 break;
@@ -228,9 +228,9 @@ namespace Toolbox::Object {
                 m_value = in.read<f64, std::endian::big>();
                 break;
             case MetaType::STRING: {
-                auto str_result = String::toShiftJIS(in.readString<std::endian::big>());
+                auto str_result = String::fromGameEncoding(in.readString<std::endian::big>());
                 if (!str_result) {
-                    return make_serial_error<void>(in, "Failed to deserialize string as UTF-8");
+                    return make_serial_error<void>(in, str_result.error().m_message[0]);
                 }
                 m_value = str_result.value();
                 break;

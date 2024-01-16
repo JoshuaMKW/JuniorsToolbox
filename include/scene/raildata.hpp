@@ -1,7 +1,7 @@
 #pragma once
 
 #include "boundbox.hpp"
-#include "clone.hpp"
+#include "smart_resource.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/value.hpp"
 #include "rail/node.hpp"
@@ -15,7 +15,7 @@ using namespace Toolbox::Rail;
 
 namespace Toolbox::Scene {
 
-    class RailData : public ISerializable, public IClonable {
+    class RailData : public ISerializable, public ISmartResource {
     public:
         using rail_ptr_t = std::shared_ptr<Rail::Rail>;
 
@@ -34,10 +34,11 @@ namespace Toolbox::Scene {
         [[nodiscard]] rail_ptr_t getRail(size_t index) const;
         [[nodiscard]] rail_ptr_t getRail(std::string_view name) const;
 
-        void addRail(std::shared_ptr<Rail::Rail> rail);
-        void insertRail(size_t index, std::shared_ptr<Rail::Rail> rail);
+        void addRail(const Rail::Rail &rail);
+        void insertRail(size_t index, const Rail::Rail &rail);
         void removeRail(size_t index);
         void removeRail(std::string_view name);
+        void removeRail(const Rail::Rail &rail);
 
         [[nodiscard]] std::vector<rail_ptr_t>::const_iterator begin() const {
             return m_rails.begin();
@@ -59,9 +60,10 @@ namespace Toolbox::Scene {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-        std::unique_ptr<IClonable> clone(bool deep) const override;
+        std::unique_ptr<ISmartResource> clone(bool deep) const override;
 
     private:
+        u32 m_next_sibling_id = 0;
         std::vector<rail_ptr_t> m_rails = {};
     };
 
