@@ -5,6 +5,7 @@
 #include "gui/settings/window.hpp"
 #include "gui/themes.hpp"
 #include "gui/util.hpp"
+#include "platform/service.hpp"
 
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 
@@ -144,6 +145,9 @@ namespace Toolbox::UI {
         ImGui_ImplGlfw_InitForOpenGL(m_render_window, false);
         ImGui_ImplOpenGL3_Init("#version 410");
 
+        auto &settings_manager = SettingsManager::instance();
+        settings_manager.initialize();
+
         auto &font_manager = FontManager::instance();
         font_manager.initialize();
         font_manager.setCurrentFont("NotoSansJP-Regular", 16.0f);
@@ -170,6 +174,8 @@ namespace Toolbox::UI {
         auto logging_window = std::make_shared<LoggingWindow>();
         logging_window->open();
         m_windows.push_back(logging_window);
+
+        determineEnvironmentConflicts();
 
         return true;
     }
@@ -448,6 +454,23 @@ namespace Toolbox::UI {
         }
 
         Input::PostUpdateInputState();
+
+        return true;
+    }
+
+    bool MainApplication::determineEnvironmentConflicts() {
+        auto service_result = Platform::IsServiceRunning("NahimicService");
+        if (!service_result) {
+            logError(service_result.error());
+            return true;
+        }
+
+        if (service_result.value()) {
+            Log::AppLogger::instance().warn(
+                "Found Nahimic service running on this system, this could cause "
+                "crashes to occur on window resize!");
+            return false;
+        }
 
         return true;
     }
