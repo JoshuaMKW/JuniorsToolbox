@@ -10,13 +10,12 @@
 
 #include "IconsForkAwesome.h"
 #include "fsystem.hpp"
+#include "gui/settings.hpp"
 
 namespace Toolbox::UI {
 
     class FontManager {
         std::multimap<std::string, ImFont *> m_loaded_fonts;
-        std::string m_current_name;
-        float m_current_size;
 
     public:
         static FontManager &instance() {
@@ -25,8 +24,7 @@ namespace Toolbox::UI {
         }
 
         std::set<float> fontSizes() {
-            static std::set<float> s_font_sizes = {10.0f, 12.0f, 14.0f, 16.0f,
-                                                      18.0f, 24.0f, 32.0f};
+            static std::set<float> s_font_sizes = {10.0f, 12.0f, 14.0f, 16.0f, 18.0f, 24.0f, 32.0f};
             return s_font_sizes;
         }
 
@@ -47,9 +45,18 @@ namespace Toolbox::UI {
 
         ImFont *getFont(std::string_view name, float size);
 
-        ImFont *getCurrentFont() { return getFont(m_current_name, m_current_size); }
-        std::string getCurrentFontFamily() { return m_current_name; }
-        float getCurrentFontSize() { return m_current_size; }
+        ImFont *getCurrentFont() {
+            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+            return getFont(settings.m_font_family, settings.m_font_size);
+        }
+        std::string getCurrentFontFamily() {
+            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+            return settings.m_font_family;
+        }
+        float getCurrentFontSize() {
+            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+            return settings.m_font_size;
+        }
 
         void setCurrentFont(std::string_view name, float size);
         void setCurrentFontFamily(std::string_view name);

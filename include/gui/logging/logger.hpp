@@ -56,10 +56,7 @@ namespace Toolbox::Log {
 #endif
         }
 
-        void log(ReportLevel level, const std::string &message) {
-            m_messages.emplace_back(level, message, m_indentation);
-            m_log_callback(m_messages.back());
-        }
+        void log(ReportLevel level, const std::string &message);
 
         void setLogCallback(log_callback_t cb) { m_log_callback = cb; }
 

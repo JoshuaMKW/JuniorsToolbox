@@ -64,6 +64,8 @@ namespace Toolbox::UI {
         void renderWindows(f32 delta_time);
         bool postRender(f32 delta_time);
 
+        bool determineEnvironmentConflicts();
+
     private:
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_clipboard;
         TypedDataClipboard<SelectionNodeInfo<Rail::Rail>> m_rail_clipboard;

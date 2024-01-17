@@ -9,6 +9,7 @@
 #include "gui/logging/errors.hpp"
 #include "gui/logging/logger.hpp"
 #include "gui/scene/renderer.hpp"
+#include "gui/settings.hpp"
 #include "gui/util.hpp"
 
 #include <glm/gtx/euler_angles.hpp>
@@ -267,7 +268,9 @@ namespace Toolbox::UI {
     }  // namespace Render
 
     Renderer::Renderer() {
-        m_camera.setPerspective(150, 16 / 9, 100, 600000);
+        const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+        m_camera.setPerspective(glm::radians(settings.m_camera_fov), 16 / 9, settings.m_near_plane,
+                                settings.m_far_plane);
         m_camera.setOrientAndPosition({0, 1, 0}, {0, 0, 1}, {0, 0, 0});
         m_camera.updateCamera();
         J3DRendering::SetSortFunction(Render::PacketSort);
@@ -550,6 +553,8 @@ namespace Toolbox::UI {
     }
 
     bool Renderer::inputUpdate() {
+        const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+
         if (m_is_view_manipulating) {
             if (Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
                 ImVec2 mouse_delta = Input::GetMouseDelta();
@@ -578,10 +583,10 @@ namespace Toolbox::UI {
                     ud_delta *= 10;
                 }
 
-                ud_delta += Input::GetMouseScrollDelta() * 10.0f;
+                ud_delta += Input::GetMouseScrollDelta() * 50.0f;
 
-                lr_delta *= 10;
-                ud_delta *= 10;
+                lr_delta *= 10.0f * settings.m_camera_speed;
+                ud_delta *= 10.0f * settings.m_camera_speed;
 
                 m_camera.translateLeftRight(-lr_delta);
                 m_camera.translateFwdBack(ud_delta);
@@ -589,20 +594,28 @@ namespace Toolbox::UI {
         }
 
         if (m_is_window_focused) {
-            if (Input::GetKeyDown(GLFW_KEY_1)) {
+            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+            bool translate_held   = KeyBindHeld(settings.m_gizmo_translate_mode_keybind);
+            bool rotate_held      = KeyBindHeld(settings.m_gizmo_rotate_mode_keybind);
+            bool scale_held       = KeyBindHeld(settings.m_gizmo_scale_mode_keybind);
+
+            if (translate_held) {
                 m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
-            } else if (Input::GetKeyDown(GLFW_KEY_2)) {
+            } else if (rotate_held) {
                 m_gizmo_op = ImGuizmo::OPERATION::ROTATE;
-            } else if (Input::GetKeyDown(GLFW_KEY_3)) {
+            } else if (scale_held) {
                 m_gizmo_op = ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU;
             }
         }
 
-        if (m_window_size.x != m_window_size_prev.x || m_window_size.y != m_window_size_prev.y) {
+        /*if (m_window_size.x != m_window_size_prev.x || m_window_size.y != m_window_size_prev.y) {
             m_camera.setAspect(m_render_size.y > 0 ? m_render_size.x / m_render_size.y
                                                    : FLT_EPSILON * 2);
-        }
+        }*/
 
+        float aspect = m_render_size.y > 0 ? m_render_size.x / m_render_size.y : FLT_EPSILON * 2;
+        m_camera.setPerspective(glm::radians(settings.m_camera_fov), aspect, settings.m_near_plane,
+                                settings.m_far_plane);
         m_camera.updateCamera();
 
         return true;

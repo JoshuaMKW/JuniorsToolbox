@@ -92,18 +92,21 @@ namespace Toolbox::UI {
     }
 
     void FontManager::setCurrentFont(std::string_view name, float size) {
-        m_current_name             = name;
-        m_current_size             = size;
+        AppSettings &settings      = SettingsManager::instance().getCurrentProfile();
+        settings.m_font_family     = name;
+        settings.m_font_size       = size;
         ImGui::GetIO().FontDefault = getCurrentFont();
     }
 
     void FontManager::setCurrentFontFamily(std::string_view name) {
-        m_current_name             = name;
+        AppSettings &settings      = SettingsManager::instance().getCurrentProfile();
+        settings.m_font_family     = name;
         ImGui::GetIO().FontDefault = getCurrentFont();
     }
 
     void FontManager::setCurrentFontSize(float size) {
-        m_current_size = size;
+        AppSettings &settings      = SettingsManager::instance().getCurrentProfile();
+        settings.m_font_size       = size;
         ImGui::GetIO().FontDefault = getCurrentFont();
     }
 }  // namespace Toolbox::UI

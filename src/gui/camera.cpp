@@ -39,7 +39,7 @@ namespace Toolbox {
         this->vRight = glm::cross(inUp, this->vDir);
         this->vRight = glm::normalize(this->vRight);
 
-        this->vUp = -glm::cross(this->vDir, this->vRight);
+        this->vUp = glm::cross(this->vDir, this->vRight);
         this->vUp = glm::normalize(this->vUp);
 
         this->vPos = inPos;
@@ -84,7 +84,7 @@ void Camera::privUpdateProjectionMatrix(void) {
     void Camera::translateFwdBack(float delta) { vPos += vDir * delta; }
 
     void Camera::tiltUpDown(float ang) {
-        glm::mat4x4 Rot = glm::rotate(glm::mat4(1.0f), -ang, vRight);
+        glm::mat4x4 Rot = glm::rotate(glm::mat4(1.0f), ang, vRight);
         vDir            = glm::vec3(Rot * glm::vec4(vDir, 1.0f));
         vUp             = glm::vec3(Rot * glm::vec4(vUp, 1.0f));
         setOrientAndPosition(vUp, vPos - vDir, vPos);

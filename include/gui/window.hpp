@@ -114,9 +114,11 @@ namespace Toolbox::UI {
 
         ImGuiWindowFlags flags() const override {
             ImGuiWindowFlags flags_ = m_flags;
+#ifdef IMGUI_ENABLE_VIEWPORT_WORKAROUND
             if (m_viewport && m_viewport->ID != ImGui::GetMainViewport()->ID) {
-                flags_ |= ImGuiWindowFlags_NoResize;
+                flags_ |= (ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
             }
+#endif
             return flags_;
         }
 
@@ -138,6 +140,7 @@ namespace Toolbox::UI {
         }
 
         [[nodiscard]] bool update(f32 delta_time) override { return true; }
+        [[nodiscard]] bool postUpdate(f32 delta_time) override { return true; }
 
         [[nodiscard]] std::string title() const override {
             std::string ctx = context();
@@ -174,6 +177,8 @@ namespace Toolbox::UI {
                 m_viewport = ImGui::GetWindowViewport();
                 renderMenuBar();
                 renderBody(delta_time);
+            } else {
+                m_viewport = nullptr;
             }
             ImGui::End();
         }
@@ -312,6 +317,8 @@ namespace Toolbox::UI {
                 renderDockspace();
                 renderMenuBar();
                 renderBody(delta_time);
+            } else {
+                m_viewport = nullptr;
             }
             ImGui::End();
         }
@@ -327,6 +334,7 @@ namespace Toolbox::UI {
         ImGuiWindowFlags m_flags                = 0;
         mutable ImGuiWindowClass m_window_class = ImGuiWindowClass();
 
+        ImGuiID m_dockspace_id = 0;
         bool m_is_docking_set_up = false;
 
         std::optional<ImVec2> m_default_size = {};

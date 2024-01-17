@@ -90,7 +90,7 @@ namespace Toolbox::UI {
             }
 
             ImGuiWindow *currentWindow              = ImGui::GetCurrentWindow();
-            m_window_class.ClassId                  = ImGui::GetID(title().c_str());
+            m_window_class.ClassId                  = getID();
             m_window_class.ParentViewportId         = currentWindow->ViewportId;
             m_window_class.DockingAllowUnclassed    = false;
             m_window_class.DockingAlwaysTabBar      = false;
