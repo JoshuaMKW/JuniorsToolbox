@@ -90,16 +90,16 @@ namespace Toolbox::UI {
         ImGui::Checkbox("Enable File Backup on Save", &settings.m_is_file_backup_allowed);
     }
 
-    static std::vector<int> s_gizmo_translate_keybind = {};
-    static std::vector<int> s_gizmo_rotate_keybind    = {};
-    static std::vector<int> s_gizmo_scale_keybind     = {};
-
-    static bool s_gizmo_translate_keybind_active = false;
-    static bool s_gizmo_rotate_keybind_active    = false;
-    static bool s_gizmo_scale_keybind_active     = false;
-
     void SettingsWindow::renderSettingsControl(f32 delta_time) {
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+
+        static std::vector<int> s_gizmo_translate_keybind = {};
+        static std::vector<int> s_gizmo_rotate_keybind    = {};
+        static std::vector<int> s_gizmo_scale_keybind     = {};
+
+        static bool s_gizmo_translate_keybind_active = false;
+        static bool s_gizmo_rotate_keybind_active    = false;
+        static bool s_gizmo_scale_keybind_active     = false;
 
         if (ImGui::BeginGroupPanel("Camera", nullptr, {})) {
             {

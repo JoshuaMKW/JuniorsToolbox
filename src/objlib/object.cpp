@@ -129,7 +129,7 @@ namespace Toolbox::Object {
         return size;
     }
 
-    std::expected<void, ObjectError> VirtualSceneObject::performScene(float,
+    std::expected<void, ObjectError> VirtualSceneObject::performScene(float, bool,
                                                                       std::vector<RenderInfo> &,
                                                                       ResourceCache &,
                                                                       std::vector<J3DLight> &) {
@@ -372,8 +372,8 @@ namespace Toolbox::Object {
         return it->get()->getChild(QualifiedName(name.begin() + 1, name.end()));
     }
 
-    std::expected<void, ObjectError>
-    GroupSceneObject::performScene(float delta_time, std::vector<RenderInfo> &renderables,
+    std::expected<void, ObjectError> GroupSceneObject::performScene(
+        float delta_time, bool animate, std::vector<RenderInfo> &renderables,
                                    ResourceCache &resource_cache,
                                    std::vector<J3DLight> &scene_lights) {
         if (!getIsPerforming()) {
@@ -384,7 +384,7 @@ namespace Toolbox::Object {
 
         for (auto &child : m_children) {
             auto result =
-                child->performScene(delta_time, renderables, resource_cache, scene_lights);
+                child->performScene(delta_time, animate, renderables, resource_cache, scene_lights);
             if (!result)
                 child_errors.push_back(result.error());
         }
@@ -668,10 +668,9 @@ namespace Toolbox::Object {
         return size;
     }
 
-    std::expected<void, ObjectError>
-    PhysicalSceneObject::performScene(float delta_time, std::vector<RenderInfo> &renderables,
-                                      ResourceCache &resource_cache,
-                                      std::vector<J3DLight> &scene_lights) {
+    std::expected<void, ObjectError> PhysicalSceneObject::performScene(
+        float delta_time, bool animate, std::vector<RenderInfo> &renderables,
+        ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
         if (!getIsPerforming()) {
             return {};
         }
@@ -734,7 +733,9 @@ namespace Toolbox::Object {
             m_model_instance->SetLight(DEFAULT_LIGHT, 1);
         }
 
-        m_model_instance->UpdateAnimations(delta_time);
+        if (animate)
+            m_model_instance->UpdateAnimations(delta_time);
+
         renderables.emplace_back(get_shared_ptr<PhysicalSceneObject>(*this), m_model_instance,
                                  render_transform);
 

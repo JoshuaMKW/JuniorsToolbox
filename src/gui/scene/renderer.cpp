@@ -373,7 +373,7 @@ namespace Toolbox::UI {
         }
 
         viewportBegin();
-        {
+        if (m_is_view_dirty) {
             glm::mat4 projection, view;
             projection = m_camera.getProjMatrix();
             view       = m_camera.getViewMatrix();
@@ -403,6 +403,7 @@ namespace Toolbox::UI {
 
             m_path_renderer.drawPaths(&m_camera);
             m_billboard_renderer.drawBillboards(&m_camera);
+            m_is_view_dirty = false;
         }
         viewportEnd();
     }
@@ -432,6 +433,11 @@ namespace Toolbox::UI {
 
         // bind the framebuffer we want to render to
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
+
+        if (!m_is_view_dirty) {
+            glBindTexture(GL_TEXTURE_2D, m_tex_id);
+            return;
+        }
 
         auto size_x = static_cast<GLsizei>(m_window_size.x);
         auto size_y = static_cast<GLsizei>(m_window_size.y);
@@ -561,15 +567,30 @@ namespace Toolbox::UI {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    bool Renderer::inputUpdate() {
+    bool Renderer::inputUpdate(f32 delta_time) {
         const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
-        if (m_is_view_manipulating) {
-            if (Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
-                ImVec2 mouse_delta = Input::GetMouseDelta();
+        if (m_is_view_manipulating && Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
+            ImVec2 mouse_delta = Input::GetMouseDelta();
 
-                m_camera.turnLeftRight(-mouse_delta.x * 0.005f * settings.m_camera_sensitivity);
-                m_camera.tiltUpDown(-mouse_delta.y * 0.005f * settings.m_camera_sensitivity);
+            m_camera.turnLeftRight(-mouse_delta.x * settings.m_camera_sensitivity * delta_time * 0.4f);
+            m_camera.tiltUpDown(-mouse_delta.y * settings.m_camera_sensitivity * delta_time * 0.4f);
+
+            m_is_view_dirty = true;
+        }
+
+        if (m_is_window_focused) {
+            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+            bool translate_held   = KeyBindHeld(settings.m_gizmo_translate_mode_keybind);
+            bool rotate_held      = KeyBindHeld(settings.m_gizmo_rotate_mode_keybind);
+            bool scale_held       = KeyBindHeld(settings.m_gizmo_scale_mode_keybind);
+
+            if (translate_held) {
+                m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
+            } else if (rotate_held) {
+                m_gizmo_op = ImGuizmo::OPERATION::ROTATE;
+            } else if (scale_held) {
+                m_gizmo_op = ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU;
             }
 
             // Camera movement
@@ -594,26 +615,15 @@ namespace Toolbox::UI {
 
                 ud_delta += Input::GetMouseScrollDelta() * 50.0f;
 
-                lr_delta *= 10.0f * settings.m_camera_speed;
-                ud_delta *= 10.0f * settings.m_camera_speed;
+                lr_delta *= settings.m_camera_speed * delta_time * 1000.0f;
+                ud_delta *= settings.m_camera_speed * delta_time * 1000.0f;
 
                 m_camera.translateLeftRight(-lr_delta);
                 m_camera.translateFwdBack(ud_delta);
-            }
-        }
 
-        if (m_is_window_focused) {
-            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-            bool translate_held   = KeyBindHeld(settings.m_gizmo_translate_mode_keybind);
-            bool rotate_held      = KeyBindHeld(settings.m_gizmo_rotate_mode_keybind);
-            bool scale_held       = KeyBindHeld(settings.m_gizmo_scale_mode_keybind);
-
-            if (translate_held) {
-                m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
-            } else if (rotate_held) {
-                m_gizmo_op = ImGuizmo::OPERATION::ROTATE;
-            } else if (scale_held) {
-                m_gizmo_op = ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU;
+                if (lr_delta != 0.0f || ud_delta != 0.0f) {
+                    m_is_view_dirty = true;
+                }
             }
         }
 

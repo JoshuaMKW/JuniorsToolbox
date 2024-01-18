@@ -131,7 +131,7 @@ namespace Toolbox::Object {
         virtual void setIsPerforming(bool performing)      = 0;
 
         virtual std::expected<void, ObjectError>
-        performScene(float delta_time, std::vector<RenderInfo> &renderables,
+        performScene(float delta_time, bool animate, std::vector<RenderInfo> &renderables,
                      ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) = 0;
 
         virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
@@ -300,7 +300,7 @@ namespace Toolbox::Object {
         [[nodiscard]] bool getIsPerforming() const { return false; }
         void setIsPerforming(bool performing) {}
 
-        std::expected<void, ObjectError> performScene(float delta_time,
+        std::expected<void, ObjectError> performScene(float delta_time, bool animate,
                                                       std::vector<RenderInfo> &renderables,
                                                       ResourceCache &resource_cache,
                                                       std::vector<J3DLight> &scene_lights) override;
@@ -412,7 +412,7 @@ namespace Toolbox::Object {
         [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
         void setIsPerforming(bool performing) { m_is_performing = performing; }
 
-        std::expected<void, ObjectError> performScene(float delta_time,
+        std::expected<void, ObjectError> performScene(float delta_time, bool animate,
                                                       std::vector<RenderInfo> &renderables,
                                                       ResourceCache &resource_cache,
                                                       std::vector<J3DLight> &scene_lights) override;
@@ -652,7 +652,7 @@ namespace Toolbox::Object {
         [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
         void setIsPerforming(bool performing) { m_is_performing = performing; }
 
-        std::expected<void, ObjectError> performScene(float delta_time,
+        std::expected<void, ObjectError> performScene(float delta_time, bool animate,
                                                       std::vector<RenderInfo> &renderables,
                                                       ResourceCache &resource_cache,
                                                       std::vector<J3DLight> &scene_lights) override;

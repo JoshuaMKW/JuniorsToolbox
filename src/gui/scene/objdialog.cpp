@@ -1,5 +1,7 @@
 #include "gui/scene/objdialog.hpp"
+#include "gui/settings.hpp"
 #include "objlib/template.hpp"
+#include <algorithm>
 #include <imgui.h>
 
 namespace Toolbox::UI {
@@ -7,6 +9,7 @@ namespace Toolbox::UI {
     void CreateObjDialog::setup() {
         m_templates.clear();
         m_templates = Object::TemplateFactory::createAll();
+
         std::sort(m_templates.begin(), m_templates.end(), [](auto &l, auto &r) {
             std::string_view l_type = l->type();
             std::string_view r_type = r->type();
@@ -24,6 +27,9 @@ namespace Toolbox::UI {
         m_template_index = -1;
         // m_object_name.reserve(128);
     }
+
+    static std::vector<std::string> s_better_sms_objects = {"GenericRailObj", "ParticleBox",
+                                                            "SoundBox"};
 
     void CreateObjDialog::render(SelectionNodeInfo<Object::ISceneObject> node_info) {
         if (!m_open)
@@ -63,6 +69,21 @@ namespace Toolbox::UI {
                 for (size_t i = 0; i < m_templates.size(); ++i) {
                     bool is_selected               = i == m_template_index;
                     std::string_view template_type = m_templates.at(i)->type();
+
+                    const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+                    if (!settings.m_is_better_obj_allowed) {
+                        // Selectively remove extended objects for naive user sake
+                        bool is_better_object =
+                            std::any_of(s_better_sms_objects.begin(), s_better_sms_objects.end(),
+                                        [&](const std::string &better_obj) {
+                                            return template_type == better_obj;
+                                        });
+                        if (is_better_object) {
+                            m_template_index = -1;
+                            continue;
+                        }
+                    }
+
                     if (!m_template_filter.PassFilter(
                             template_type.data(), template_type.data() + template_type.size())) {
                         if (is_selected) {
@@ -206,9 +227,9 @@ namespace Toolbox::UI {
             }
 
             ImVec2 name_state_text_size = ImGui::CalcTextSize(name_state_msg.c_str());
-            ImVec2 name_warning_pos     = {window_width - ImGui::GetStyle().WindowPadding.x - name_state_text_size.x,
-                                           name_input_pos.y + name_input_size.y + ImGui::GetStyle().ItemSpacing.y};
-
+            ImVec2 name_warning_pos     = {
+                window_width - ImGui::GetStyle().WindowPadding.x - name_state_text_size.x,
+                name_input_pos.y + name_input_size.y + ImGui::GetStyle().ItemSpacing.y};
 
             ImGui::SetCursorPos(name_warning_pos);
             ImGui::TextColored(name_state_color, name_state_msg.c_str());
