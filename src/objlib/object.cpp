@@ -855,6 +855,11 @@ namespace Toolbox::Object {
             m_model_instance->SetUseInstanceMaterialTable(true);
         }
 
+        if (type() == "Sky") {
+            // Force render behind everything
+            m_model_instance->SetSortBias(255);
+        }
+
         for (auto &anim_file : info.m_file_animations) {
             std::filesystem::path anim_path = asset_path / anim_file;
             std::string anim_name           = anim_path.stem().string();

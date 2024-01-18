@@ -136,16 +136,25 @@ namespace Toolbox::UI {
         void PacketSort(J3DRendering::SortFunctionArgs packets) {
             std::sort(packets.begin(), packets.end(),
                       [](const J3DRenderPacket &a, const J3DRenderPacket &b) -> bool {
-                          const bool is_sky_mat_a = s_skybox_materials.contains(a.Material->Name);
-                          const bool is_sky_mat_b = s_skybox_materials.contains(b.Material->Name);
-                          if (is_sky_mat_a || is_sky_mat_b) {
-                              return is_sky_mat_a > is_sky_mat_b;
+                          // Sort bias
+                          {
+                              u8 sort_bias_a = static_cast<u8>((a.SortKey & 0xFF000000) >> 24);
+                              u8 sort_bias_b = static_cast<u8>((b.SortKey & 0xFF000000) >> 24);
+                              if (sort_bias_a != sort_bias_b) {
+                                  return sort_bias_a > sort_bias_b;
+                              }
                           }
-                          if ((a.SortKey & 0x01000000) != (b.SortKey & 0x01000000)) {
-                              return (a.SortKey & 0x01000000) > (b.SortKey & 0x01000000);
-                          } else {
-                              return a.Material->Name < b.Material->Name;
+
+                          // Opaque or alpha test
+                          {
+                              u8 sort_alpha_a = static_cast<u8>((a.SortKey & 0x800000) >> 23);
+                              u8 sort_alpha_b = static_cast<u8>((b.SortKey & 0x800000) >> 23);
+                              if (sort_alpha_a != sort_alpha_b) {
+                                  return sort_alpha_a > sort_alpha_b;
+                              }
                           }
+
+                          return a.Material->Name < b.Material->Name;
                       });
         }
 
@@ -559,8 +568,8 @@ namespace Toolbox::UI {
             if (Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
                 ImVec2 mouse_delta = Input::GetMouseDelta();
 
-                m_camera.turnLeftRight(-mouse_delta.x * 0.005f);
-                m_camera.tiltUpDown(-mouse_delta.y * 0.005f);
+                m_camera.turnLeftRight(-mouse_delta.x * 0.005f * settings.m_camera_sensitivity);
+                m_camera.tiltUpDown(-mouse_delta.y * 0.005f * settings.m_camera_sensitivity);
             }
 
             // Camera movement

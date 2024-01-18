@@ -116,10 +116,10 @@ namespace Toolbox::UI {
             ImGui::SliderFloat("Far Plane", &settings.m_far_plane, 100000.0f, 10000000.0f, "%.0f",
                                ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
 
-            ImGui::SliderFloat("Speed", &settings.m_camera_speed, 0.5f, 2.0f, "%.1f",
+            ImGui::SliderFloat("Speed", &settings.m_camera_speed, 0.5f, 5.0f, "%.1f",
                                ImGuiSliderFlags_AlwaysClamp);
 
-            ImGui::SliderFloat("Sensitivity", &settings.m_camera_sensitivity, 0.5f, 2.0f, "%.1f",
+            ImGui::SliderFloat("Sensitivity", &settings.m_camera_sensitivity, 0.5f, 5.0f, "%.1f",
                                ImGuiSliderFlags_AlwaysClamp);
         }
         ImGui::EndGroupPanel();
