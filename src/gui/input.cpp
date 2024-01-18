@@ -10,6 +10,7 @@
 #error "Unsupported OS"
 #endif
 #include <GLFW/glfw3.h>
+#include <imgui_impl_glfw.h>
 
 namespace Toolbox::UI::Input {
     // Anonymous namespace within Input allows us to have private-scope variables that are only
@@ -36,7 +37,7 @@ namespace Toolbox::UI::Input {
 
         void SetMouseState(uint32_t button, bool pressed) { mMouseButtonsDown[button] = pressed; }
 
-        void SetMousePosition(uint32_t x, uint32_t y) { mMousePosition = ImVec2(x, y); }
+        void SetMousePosition(uint32_t x, uint32_t y) { mMousePosition = ImVec2((float)x, (float)y); }
 
         void SetMouseScrollDelta(uint32_t delta) { mMouseScrollDelta = delta; }
     }  // namespace
@@ -61,7 +62,7 @@ bool Toolbox::UI::Input::GetMouseButtonUp(uint32_t button) {
     return mPrevMouseButtonsDown[button] && !mMouseButtonsDown[button];
 }
 
-ImVec2 Toolbox::UI::Input::GetMousePosition() { return mMousePosition; }
+ImVec2 Toolbox::UI::Input::GetMouseViewportPosition() { return mMousePosition; }
 
 ImVec2 Toolbox::UI::Input::GetMouseDelta() { return mMouseDelta; }
 
@@ -74,7 +75,7 @@ void Toolbox::UI::Input::SetMousePosition(ImVec2 pos, bool overwrite_delta) {
         SetMouseWrapped(true);
     }
 #if WIN32
-    SetCursorPos(pos.x, pos.y);
+    SetCursorPos((int)pos.x, (int)pos.y);
 #elif __linux__
     Display *display = XOpenDisplay(0);
     if (display == nullptr)
@@ -121,10 +122,14 @@ void Toolbox::UI::Input::GLFWKeyCallback(GLFWwindow *window, int key, int scanco
         SetKeyboardState(key, true);
     else if (action == GLFW_RELEASE)
         SetKeyboardState(key, false);
+
+    ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
 }
 
 void Toolbox::UI::Input::GLFWMousePositionCallback(GLFWwindow *window, double xpos, double ypos) {
-    SetMousePosition(xpos, ypos);
+    SetMousePosition((uint32_t)xpos, (uint32_t)ypos);
+
+    ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
 }
 
 void Toolbox::UI::Input::GLFWMouseButtonCallback(GLFWwindow *window, int button, int action,
@@ -136,9 +141,13 @@ void Toolbox::UI::Input::GLFWMouseButtonCallback(GLFWwindow *window, int button,
         SetMouseState(button, true);
     else if (action == GLFW_RELEASE)
         SetMouseState(button, false);
+
+    ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
 }
 
 void Toolbox::UI::Input::GLFWMouseScrollCallback(GLFWwindow *window, double xoffset,
                                                  double yoffset) {
-    SetMouseScrollDelta(yoffset);
+    SetMouseScrollDelta((uint32_t)yoffset);
+
+    ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
 }

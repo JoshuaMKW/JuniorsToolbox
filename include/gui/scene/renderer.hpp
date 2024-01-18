@@ -33,6 +33,8 @@ namespace Toolbox::UI {
             initializePaths(rail_data, visible_map);
         }
 
+        void markDirty() { m_is_view_dirty = true; }
+
         void getCameraTranslation(glm::vec3 &translation) { m_camera.getPos(translation); }
         void setCameraOrientation(const glm::vec3 &up, const glm::vec3 &translation,
                                   const glm::vec3 &look_at) {
@@ -46,7 +48,7 @@ namespace Toolbox::UI {
         void setGizmoTransform(const glm::mat4x4 &mtx) { m_gizmo_matrix = mtx; }
         void setGizmoOperation(ImGuizmo::OPERATION op) { m_gizmo_op = op; }
 
-        bool inputUpdate();
+        bool inputUpdate(f32 delta_time);
 
         using selection_variant_t =
             std::variant<std::shared_ptr<ISceneObject>, std::shared_ptr<Rail::RailNode>, std::nullopt_t>;
@@ -70,15 +72,18 @@ namespace Toolbox::UI {
 
         bool m_is_window_hovered = false;
         bool m_is_window_focused = false;
+        bool m_is_view_manipulating = false;
+        bool m_is_view_dirty        = true;
 
         BillboardRenderer m_billboard_renderer;
         PathRenderer m_path_renderer;
         Camera m_camera = {};
 
-        ImVec2 m_render_size;
         ImRect m_window_rect;
         ImVec2 m_window_size;
         ImVec2 m_window_size_prev;
+        ImRect m_render_rect;
+        ImVec2 m_render_size;
 
         // Gizmo data
         bool m_render_gizmo;

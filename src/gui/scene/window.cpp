@@ -8,21 +8,22 @@
 #include "gui/logging/logger.hpp"
 #include "gui/scene/window.hpp"
 
+#include "gui/application.hpp"
+#include "gui/util.hpp"
+#include "gui/IconsForkAwesome.h"
+#include "gui/modelcache.hpp"
+#include "gui/imgui_ext.hpp"
+
 #include "gui/input.hpp"
 #include "gui/util.hpp"
+#include "gui/settings.hpp"
 
 #include <lib/bStream/bstream.h>
 
-#include "gui/imgui_ext.hpp"
 #include <imgui.h>
 #include <imgui_internal.h>
 
 #include <ImGuiFileDialog.h>
-
-#include "gui/application.hpp"
-#include "gui/util.hpp"
-#include <gui/IconsForkAwesome.h>
-#include <gui/modelcache.hpp>
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
@@ -179,8 +180,8 @@ namespace Toolbox::UI {
         return true;
     }
 
-    bool SceneWindow::update(f32 deltaTime) {
-        bool inputState = m_renderer.inputUpdate();
+    bool SceneWindow::update(f32 delta_time) {
+        bool inputState = m_renderer.inputUpdate(delta_time);
 
         std::vector<std::shared_ptr<Rail::RailNode>> rendered_nodes;
         for (auto &rail : m_current_scene->getRailData().rails()) {
@@ -922,6 +923,7 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::renderScene(f32 delta_time) {
+        const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
         std::vector<J3DLight> lights;
 
@@ -930,16 +932,18 @@ namespace Toolbox::UI {
             if (m_update_render_objs) {
                 m_renderables.clear();
                 auto perform_result = m_current_scene->getObjHierarchy().getRoot()->performScene(
-                    delta_time, m_renderables, m_resource_cache, lights);
+                    delta_time, !settings.m_is_rendering_simple, m_renderables, m_resource_cache, lights);
                 if (!perform_result) {
                     const ObjectError &error = perform_result.error();
                     logObjectError(error);
                 }
                 m_update_render_objs = false;
-            } else {
+                m_renderer.markDirty();
+            } else if (!settings.m_is_rendering_simple) {
                 for (auto &renderable : m_renderables) {
                     renderable.m_model->UpdateAnimations(delta_time);
                 }
+                m_renderer.markDirty();
             }
         }
 

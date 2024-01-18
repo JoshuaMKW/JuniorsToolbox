@@ -9,6 +9,7 @@
 #include "gui/logging/errors.hpp"
 #include "gui/logging/logger.hpp"
 #include "gui/scene/renderer.hpp"
+#include "gui/settings.hpp"
 #include "gui/util.hpp"
 
 #include <glm/gtx/euler_angles.hpp>
@@ -135,16 +136,25 @@ namespace Toolbox::UI {
         void PacketSort(J3DRendering::SortFunctionArgs packets) {
             std::sort(packets.begin(), packets.end(),
                       [](const J3DRenderPacket &a, const J3DRenderPacket &b) -> bool {
-                          const bool is_sky_mat_a = s_skybox_materials.contains(a.Material->Name);
-                          const bool is_sky_mat_b = s_skybox_materials.contains(b.Material->Name);
-                          if (is_sky_mat_a || is_sky_mat_b) {
-                              return is_sky_mat_a > is_sky_mat_b;
+                          // Sort bias
+                          {
+                              u8 sort_bias_a = static_cast<u8>((a.SortKey & 0xFF000000) >> 24);
+                              u8 sort_bias_b = static_cast<u8>((b.SortKey & 0xFF000000) >> 24);
+                              if (sort_bias_a != sort_bias_b) {
+                                  return sort_bias_a > sort_bias_b;
+                              }
                           }
-                          if ((a.SortKey & 0x01000000) != (b.SortKey & 0x01000000)) {
-                              return (a.SortKey & 0x01000000) > (b.SortKey & 0x01000000);
-                          } else {
-                              return a.Material->Name < b.Material->Name;
+
+                          // Opaque or alpha test
+                          {
+                              u8 sort_alpha_a = static_cast<u8>((a.SortKey & 0x800000) >> 23);
+                              u8 sort_alpha_b = static_cast<u8>((b.SortKey & 0x800000) >> 23);
+                              if (sort_alpha_a != sort_alpha_b) {
+                                  return sort_alpha_a > sort_alpha_b;
+                              }
                           }
+
+                          return a.Material->Name < b.Material->Name;
                       });
         }
 
@@ -267,7 +277,9 @@ namespace Toolbox::UI {
     }  // namespace Render
 
     Renderer::Renderer() {
-        m_camera.setPerspective(150, 16 / 9, 100, 600000);
+        const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+        m_camera.setPerspective(glm::radians(settings.m_camera_fov), 16 / 9, settings.m_near_plane,
+                                settings.m_far_plane);
         m_camera.setOrientAndPosition({0, 1, 0}, {0, 0, 1}, {0, 0, 0});
         m_camera.updateCamera();
         J3DRendering::SetSortFunction(Render::PacketSort);
@@ -287,7 +299,7 @@ namespace Toolbox::UI {
 
         m_billboard_renderer.loadBillboardTexture("res/question.png", 0);
 
-        m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
+        m_gizmo_op   = ImGuizmo::OPERATION::TRANSLATE;
         m_gizmo_mode = ImGuizmo::WORLD;
     }
 
@@ -298,52 +310,70 @@ namespace Toolbox::UI {
     }
 
     void Renderer::render(std::vector<ISceneObject::RenderInfo> renderables, f32 delta_time) {
+        ImGuiStyle &style = ImGui::GetStyle();
+
         ImVec2 window_pos = ImGui::GetWindowPos();
         m_window_rect     = {
             window_pos,
             {window_pos.x + ImGui::GetWindowWidth(), window_pos.y + ImGui::GetWindowHeight()}
         };
+        m_window_size_prev = m_window_size;
+        m_window_size      = ImGui::GetWindowSize();
+        m_render_rect      = {m_window_rect.Min + style.WindowPadding,
+                              m_window_rect.Max - style.WindowPadding};
+        // For the window bar
+        m_render_rect.Min.y += style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
+        m_render_size = ImVec2(m_window_size.x - style.WindowPadding.x * 2,
+                               m_window_size.y - style.WindowPadding.y * 2 -
+                                   (style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight()));
+
+        ImVec2 mouse_pos = ImGui::GetMousePos();
 
         m_is_window_hovered = ImGui::IsWindowHovered();
         m_is_window_focused = ImGui::IsWindowFocused();
 
-        if (m_is_window_hovered && Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
-            ImGui::SetWindowFocus();
+        bool right_click      = Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT);
+        bool right_click_down = Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT);
 
-        if (m_is_window_focused && Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {  // Mouse wrap
-            ImVec2 mouse_pos   = ImGui::GetMousePos();
-            ImVec2 window_pos  = ImGui::GetWindowPos();
-            ImVec2 window_size = ImGui::GetWindowSize();
+        if (m_render_rect.Contains(mouse_pos)) {
+            if (right_click) {
+                m_is_view_manipulating = true;
+            }
+            if (right_click_down) {
+                m_is_window_focused = true;
+                ImGui::SetWindowFocus();
+            }
+        }
 
+        if (m_is_window_focused && m_is_view_manipulating &&
+            Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {  // Mouse wrap
             bool wrapped = false;
 
-            if (mouse_pos.x < m_window_rect.Min.x) {
-                mouse_pos.x += window_size.x;
+            if (mouse_pos.x < m_render_rect.Min.x) {
+                mouse_pos.x += m_render_size.x;
                 wrapped = true;
-            } else if (mouse_pos.x >= m_window_rect.Max.x) {
-                mouse_pos.x -= window_size.x;
-                wrapped = true;
-            }
-
-            if (mouse_pos.y < m_window_rect.Min.y) {
-                mouse_pos.y += window_size.y;
-                wrapped = true;
-            } else if (mouse_pos.y >= m_window_rect.Max.y) {
-                mouse_pos.y -= window_size.y;
+            } else if (mouse_pos.x >= m_render_rect.Max.x) {
+                mouse_pos.x -= m_render_size.x;
                 wrapped = true;
             }
 
-            ImVec2 viewport_pos = MainApplication::instance().windowScreenPos();
-            mouse_pos.x += viewport_pos.x;
-            mouse_pos.y += viewport_pos.y;
+            if (mouse_pos.y < m_render_rect.Min.y) {
+                mouse_pos.y += m_render_size.y;
+                wrapped = true;
+            } else if (mouse_pos.y >= m_render_rect.Max.y) {
+                mouse_pos.y -= m_render_size.y;
+                wrapped = true;
+            }
 
             if (wrapped) {
                 Input::SetMousePosition(mouse_pos, false);
             }
+        } else {
+            m_is_view_manipulating = false;
         }
 
         viewportBegin();
-        {
+        if (m_is_view_dirty) {
             glm::mat4 projection, view;
             projection = m_camera.getProjMatrix();
             view       = m_camera.getViewMatrix();
@@ -373,6 +403,7 @@ namespace Toolbox::UI {
 
             m_path_renderer.drawPaths(&m_camera);
             m_billboard_renderer.drawBillboards(&m_camera);
+            m_is_view_dirty = false;
         }
         viewportEnd();
     }
@@ -394,12 +425,6 @@ namespace Toolbox::UI {
     void Renderer::viewportBegin() {
         ImGuiStyle &style = ImGui::GetStyle();
 
-        m_window_size_prev = m_window_size;
-        m_window_size      = ImGui::GetWindowSize();
-        m_render_size      = ImVec2(m_window_size.x - style.WindowPadding.x * 2,
-                                    m_window_size.y - style.WindowPadding.y * 2 -
-                                        (style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight()));
-
         ImVec2 cursor_pos     = ImGui::GetCursorScreenPos();
         ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
 
@@ -408,6 +433,11 @@ namespace Toolbox::UI {
 
         // bind the framebuffer we want to render to
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
+
+        if (!m_is_view_dirty) {
+            glBindTexture(GL_TEXTURE_2D, m_tex_id);
+            return;
+        }
 
         auto size_x = static_cast<GLsizei>(m_window_size.x);
         auto size_y = static_cast<GLsizei>(m_window_size.y);
@@ -537,13 +567,30 @@ namespace Toolbox::UI {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    bool Renderer::inputUpdate() {
-        if (m_is_window_hovered && m_is_window_focused) {
-            if (Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
-                ImVec2 mouse_delta = Input::GetMouseDelta();
+    bool Renderer::inputUpdate(f32 delta_time) {
+        const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
-                m_camera.turnLeftRight(-mouse_delta.x * 0.005f);
-                m_camera.tiltUpDown(-mouse_delta.y * 0.005f);
+        if (m_is_view_manipulating && Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
+            ImVec2 mouse_delta = Input::GetMouseDelta();
+
+            m_camera.turnLeftRight(-mouse_delta.x * settings.m_camera_sensitivity * delta_time * 0.4f);
+            m_camera.tiltUpDown(-mouse_delta.y * settings.m_camera_sensitivity * delta_time * 0.4f);
+
+            m_is_view_dirty = true;
+        }
+
+        if (m_is_window_focused) {
+            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+            bool translate_held   = KeyBindHeld(settings.m_gizmo_translate_mode_keybind);
+            bool rotate_held      = KeyBindHeld(settings.m_gizmo_rotate_mode_keybind);
+            bool scale_held       = KeyBindHeld(settings.m_gizmo_scale_mode_keybind);
+
+            if (translate_held) {
+                m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
+            } else if (rotate_held) {
+                m_gizmo_op = ImGuizmo::OPERATION::ROTATE;
+            } else if (scale_held) {
+                m_gizmo_op = ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU;
             }
 
             // Camera movement
@@ -566,32 +613,28 @@ namespace Toolbox::UI {
                     ud_delta *= 10;
                 }
 
-                ud_delta += Input::GetMouseScrollDelta() * 10.0f;
+                ud_delta += Input::GetMouseScrollDelta() * 50.0f;
 
-                lr_delta *= 10;
-                ud_delta *= 10;
+                lr_delta *= settings.m_camera_speed * delta_time * 1000.0f;
+                ud_delta *= settings.m_camera_speed * delta_time * 1000.0f;
 
                 m_camera.translateLeftRight(-lr_delta);
                 m_camera.translateFwdBack(ud_delta);
-            }
 
-            // Gizmo mode
-            {
-                if (Input::GetKeyDown(GLFW_KEY_1)) {
-                    m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
-                } else if (Input::GetKeyDown(GLFW_KEY_2)) {
-                    m_gizmo_op = ImGuizmo::OPERATION::ROTATE;
-                } else if (Input::GetKeyDown(GLFW_KEY_3)) {
-                    m_gizmo_op = ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU;
+                if (lr_delta != 0.0f || ud_delta != 0.0f) {
+                    m_is_view_dirty = true;
                 }
             }
         }
 
-        if (m_window_size.x != m_window_size_prev.x || m_window_size.y != m_window_size_prev.y) {
+        /*if (m_window_size.x != m_window_size_prev.x || m_window_size.y != m_window_size_prev.y) {
             m_camera.setAspect(m_render_size.y > 0 ? m_render_size.x / m_render_size.y
                                                    : FLT_EPSILON * 2);
-        }
+        }*/
 
+        float aspect = m_render_size.y > 0 ? m_render_size.x / m_render_size.y : FLT_EPSILON * 2;
+        m_camera.setPerspective(glm::radians(settings.m_camera_fov), aspect, settings.m_near_plane,
+                                settings.m_far_plane);
         m_camera.updateCamera();
 
         return true;
@@ -610,7 +653,7 @@ namespace Toolbox::UI {
         const bool right_click = Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT);
 
         // Mouse pos is absolute
-        ImVec2 mouse_pos = Input::GetMousePosition();
+        ImVec2 mouse_pos = ImGui::GetMousePos();
         glm::vec3 cam_pos;
         m_camera.getPos(cam_pos);
 

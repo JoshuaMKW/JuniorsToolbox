@@ -82,7 +82,7 @@ namespace Toolbox::UI {
         void onHomeKey() override;
 
     public:
-        ImGuiWindowFlags flags() const override { return ImGuiWindowFlags_MenuBar; }
+        ImGuiWindowFlags flags() const override { return DockWindow::flags() | ImGuiWindowFlags_MenuBar; }
 
         const ImGuiWindowClass *windowClass() const override {
             if (parent() && parent()->windowClass()) {
@@ -90,7 +90,7 @@ namespace Toolbox::UI {
             }
 
             ImGuiWindow *currentWindow              = ImGui::GetCurrentWindow();
-            m_window_class.ClassId                  = ImGui::GetID(title().c_str());
+            m_window_class.ClassId                  = getID();
             m_window_class.ParentViewportId         = currentWindow->ViewportId;
             m_window_class.DockingAllowUnclassed    = false;
             m_window_class.DockingAlwaysTabBar      = false;

@@ -28,6 +28,8 @@ file(GLOB TOOLBOX_SRC
     "include/bti/*.hpp"
     "src/objlib/*.cpp"
     "include/objlib/*.hpp"
+    "src/platform/*.cpp"
+    "include/platform/*.hpp"
     "src/rail/*.cpp"
     "include/rail/*.hpp"
     "src/rarc/*.cpp"
@@ -79,7 +81,13 @@ else()
   target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw Iconv::Iconv)
 endif()
 
-target_compile_definitions(JuniorsToolbox PRIVATE IMGUI_DEFINE_MATH_OPERATORS IMGUI_ENABLE_VIEWPORTS)
+if (WIN32)
+#  link this library so we can find Nahimic service
+#  this is because it crashes window corner resizing :P
+    target_link_libraries(JuniorsToolbox PRIVATE Advapi32)
+endif()
+
+target_compile_definitions(JuniorsToolbox PRIVATE IMGUI_DEFINE_MATH_OPERATORS)
 
 target_include_directories(JuniorsToolbox PRIVATE "include" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/libbti" "lib/ImGuiFileDialog" "lib/glfw")
 

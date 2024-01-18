@@ -17,15 +17,15 @@
 namespace Toolbox::UI {
 
     void DockWindow::renderDockspace() {
-        ImGuiID dockspace_id = ImGui::GetID(getWindowUID(*this).c_str());
-        if (!ImGui::DockBuilderGetNode(dockspace_id)) {
-            ImGui::DockBuilderAddNode(dockspace_id);
+        m_dockspace_id = ImGui::GetID(getWindowUID(*this).c_str());
+        if (!ImGui::DockBuilderGetNode(m_dockspace_id)) {
+            ImGui::DockBuilderAddNode(m_dockspace_id);
 
-            buildDockspace(dockspace_id);
+            buildDockspace(m_dockspace_id);
 
-            ImGui::DockBuilderFinish(dockspace_id);
+            ImGui::DockBuilderFinish(m_dockspace_id);
         }
-        ImGui::DockSpace(dockspace_id, {}, ImGuiDockNodeFlags_PassthruCentralNode, nullptr);
+        ImGui::DockSpace(m_dockspace_id, {}, ImGuiDockNodeFlags_None, nullptr);
     }
 
 }  // namespace Toolbox::UI

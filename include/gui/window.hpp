@@ -9,12 +9,12 @@
 #include <string_view>
 #include <vector>
 
-#include "smart_resource.hpp"
 #include "fsystem.hpp"
 #include "objlib/object.hpp"
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"
 #include "serial.hpp"
+#include "smart_resource.hpp"
 #include "unique.hpp"
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -57,10 +57,10 @@ namespace Toolbox::UI {
         // Returns the supported file type, or empty if designed for a folder.
         [[nodiscard]] virtual std::vector<std::string> extensions() const = 0;
 
-        [[nodiscard]] virtual bool loadData(const std::filesystem::path &path) = 0;
+        [[nodiscard]] virtual bool loadData(const std::filesystem::path &path)         = 0;
         [[nodiscard]] virtual bool saveData(std::optional<std::filesystem::path> path) = 0;
 
-        [[nodiscard]] virtual bool update(f32 delta_time) = 0;
+        [[nodiscard]] virtual bool update(f32 delta_time)     = 0;
         [[nodiscard]] virtual bool postUpdate(f32 delta_time) = 0;
 
         [[nodiscard]] virtual std::string title() const = 0;
@@ -112,7 +112,15 @@ namespace Toolbox::UI {
             return m_parent ? m_parent->windowClass() : &m_window_class;
         }
 
-        ImGuiWindowFlags flags() const override { return m_flags; }
+        ImGuiWindowFlags flags() const override {
+            ImGuiWindowFlags flags_ = m_flags;
+#ifdef IMGUI_ENABLE_VIEWPORT_WORKAROUND
+            if (m_viewport && m_viewport->ID != ImGui::GetMainViewport()->ID) {
+                flags_ |= (ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+            }
+#endif
+            return flags_;
+        }
 
         [[nodiscard]] std::optional<ImVec2> defaultSize() const override { return m_default_size; }
         [[nodiscard]] std::optional<ImVec2> size() const override { return m_size; }
@@ -132,6 +140,7 @@ namespace Toolbox::UI {
         }
 
         [[nodiscard]] bool update(f32 delta_time) override { return true; }
+        [[nodiscard]] bool postUpdate(f32 delta_time) override { return true; }
 
         [[nodiscard]] std::string title() const override {
             std::string ctx = context();
@@ -148,12 +157,6 @@ namespace Toolbox::UI {
             if (!m_is_open)
                 return;
 
-            const ImGuiViewport *mainViewport = ImGui::GetMainViewport();
-
-            ImGuiDockNodeFlags dockFlags = ImGuiDockNodeFlags_PassthruCentralNode |
-                                           ImGuiDockNodeFlags_AutoHideTabBar |
-                                           ImGuiDockNodeFlags_NoDockingInCentralNode;
-
             if (defaultSize())
                 ImGui::SetNextWindowSize(defaultSize().value(), ImGuiCond_Once);
 
@@ -169,10 +172,14 @@ namespace Toolbox::UI {
                 flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
+            ImGui::SetNextWindowClass(windowClass());
             if (ImGui::Begin(window_name.c_str(), &m_is_open, flags_)) {
-                m_size = ImGui::GetWindowSize();
+                m_size     = ImGui::GetWindowSize();
+                m_viewport = ImGui::GetWindowViewport();
                 renderMenuBar();
                 renderBody(delta_time);
+            } else {
+                m_viewport = nullptr;
             }
             ImGui::End();
         }
@@ -184,6 +191,7 @@ namespace Toolbox::UI {
         IWindow *m_parent = nullptr;
 
         bool m_is_open                          = false;
+        ImGuiViewport *m_viewport               = nullptr;
         ImGuiWindowFlags m_flags                = 0;
         mutable ImGuiWindowClass m_window_class = ImGuiWindowClass();
 
@@ -242,7 +250,15 @@ namespace Toolbox::UI {
             return m_parent ? m_parent->windowClass() : &m_window_class;
         }
 
-        ImGuiWindowFlags flags() const override { return m_flags; }
+        ImGuiWindowFlags flags() const override {
+            ImGuiWindowFlags flags_ = m_flags;
+#ifdef IMGUI_ENABLE_VIEWPORT_WORKAROUND
+            if (m_viewport && m_viewport->ID != ImGui::GetMainViewport()->ID) {
+                flags_ |= (ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+            }
+#endif
+            return flags_;
+        }
 
         [[nodiscard]] std::optional<ImVec2> defaultSize() const override { return m_default_size; }
         [[nodiscard]] std::optional<ImVec2> size() const override { return m_size; }
@@ -257,7 +273,9 @@ namespace Toolbox::UI {
         [[nodiscard]] std::vector<std::string> extensions() const override { return {}; }
 
         [[nodiscard]] bool loadData(const std::filesystem::path &path) override { return false; }
-        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override { return false; }
+        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override {
+            return false;
+        }
 
         [[nodiscard]] bool update(f32 delta_time) override { return true; }
         [[nodiscard]] bool postUpdate(f32 delta_time) override { return true; }
@@ -277,12 +295,6 @@ namespace Toolbox::UI {
             if (!m_is_open)
                 return;
 
-            const ImGuiViewport *mainViewport = ImGui::GetMainViewport();
-
-            ImGuiDockNodeFlags dockFlags = ImGuiDockNodeFlags_PassthruCentralNode |
-                                           ImGuiDockNodeFlags_AutoHideTabBar |
-                                           ImGuiDockNodeFlags_NoDockingInCentralNode;
-
             if (defaultSize())
                 ImGui::SetNextWindowSize(defaultSize().value(), ImGuiCond_Once);
 
@@ -298,12 +310,16 @@ namespace Toolbox::UI {
                 flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
-            ImGui::SetNextWindowBgAlpha(0.0f);
+            ImGui::SetNextWindowClass(windowClass());
             if (ImGui::Begin(window_name.c_str(), &m_is_open, flags_)) {
-                m_size = ImGui::GetWindowSize();
+                m_size     = ImGui::GetWindowSize();
+                m_viewport = ImGui::GetWindowViewport();
+
                 renderDockspace();
                 renderMenuBar();
                 renderBody(delta_time);
+            } else {
+                m_viewport = nullptr;
             }
             ImGui::End();
         }
@@ -315,9 +331,11 @@ namespace Toolbox::UI {
         IWindow *m_parent = nullptr;
 
         bool m_is_open                          = false;
+        ImGuiViewport *m_viewport               = nullptr;
         ImGuiWindowFlags m_flags                = 0;
         mutable ImGuiWindowClass m_window_class = ImGuiWindowClass();
 
+        ImGuiID m_dockspace_id = 0;
         bool m_is_docking_set_up = false;
 
         std::optional<ImVec2> m_default_size = {};
@@ -326,7 +344,9 @@ namespace Toolbox::UI {
         std::optional<ImVec2> m_max_size     = {};
     };
 
-    inline std::string getWindowUID(const IWindow &window) { return std::to_string(window.getID()); }
+    inline std::string getWindowUID(const IWindow &window) {
+        return std::to_string(window.getID());
+    }
 
     inline std::string getWindowChildUID(const IWindow &window, const std::string &child_name) {
         return std::format("{}##{}", child_name, getWindowUID(window));

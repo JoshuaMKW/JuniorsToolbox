@@ -11,7 +11,7 @@ public:
     virtual void setSiblingID(u32 id) = 0;
 };
 
-static inline u32 uuid() {
+inline u32 uuid() {
     static u32 _uuid = 0;
     return _uuid++;
 }

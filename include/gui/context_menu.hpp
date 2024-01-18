@@ -14,10 +14,9 @@
 #include <imgui.h>
 
 #include "gui/input.hpp"
+#include "gui/keybind.hpp"
 
 namespace Toolbox::UI {
-
-    std::string keyNameFromEnum(int key);
 
     template <typename _DataT> class ContextMenu {
     public:
@@ -78,14 +77,7 @@ namespace Toolbox::UI {
                 ImGui::Separator();
             }
 
-            std::string keybind_name = "";
-            for (size_t j = 0; j < option.m_keybind.size(); ++j) {
-                int key = option.m_keybind.at(j);
-                keybind_name += keyNameFromEnum(key);
-                if (j < option.m_keybind.size() - 1) {
-                    keybind_name += "+";
-                }
-            }
+            std::string keybind_name = KeyBindToString(option.m_keybind);
 
             std::string display_name = keybind_name.empty()
                                            ? option.m_name

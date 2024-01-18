@@ -31,7 +31,7 @@ namespace Toolbox::UI {
         }
         ~LoggingWindow() = default;
 
-        ImGuiWindowFlags flags() const override { return ImGuiWindowFlags_MenuBar; }
+        ImGuiWindowFlags flags() const override { return SimpleWindow::flags() | ImGuiWindowFlags_MenuBar; }
 
     protected:
         static void appendMessageToPool(const Log::AppLogger::LogMessage &message);

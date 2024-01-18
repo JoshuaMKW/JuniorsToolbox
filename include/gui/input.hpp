@@ -15,7 +15,7 @@ namespace Toolbox::UI::Input {
     bool GetMouseButtonDown(uint32_t button);
     bool GetMouseButtonUp(uint32_t button);
 
-    ImVec2 GetMousePosition();
+    ImVec2 GetMouseViewportPosition();
     void SetMousePosition(ImVec2 pos, bool overwrite_delta = true);
 
     ImVec2 GetMouseDelta();

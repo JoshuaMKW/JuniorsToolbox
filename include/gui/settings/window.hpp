@@ -6,13 +6,14 @@
 
 namespace Toolbox::UI {
 
-    class SettingsWindow : public DockWindow {
+    class SettingsWindow : public SimpleWindow {
     public:
-        SettingsWindow() : DockWindow() {}
+        SettingsWindow() : SimpleWindow() {}
         ~SettingsWindow() override = default;
 
         ImGuiWindowFlags flags() const override {
-            return ImGuiWindowFlags_NoDocking; }
+            return SimpleWindow::flags() | ImGuiWindowFlags_NoResize;
+        }
 
         std::optional<ImVec2> minSize() const override {
             return {
@@ -30,7 +31,7 @@ namespace Toolbox::UI {
             }
 
             ImGuiWindow *currentWindow              = ImGui::GetCurrentWindow();
-            m_window_class.ClassId                  = ImGui::GetID(title().c_str());
+            m_window_class.ClassId                  = getID();
             m_window_class.ParentViewportId         = currentWindow->ViewportId;
             m_window_class.DockingAllowUnclassed    = false;
             m_window_class.DockingAlwaysTabBar      = false;
@@ -38,8 +39,14 @@ namespace Toolbox::UI {
             return &m_window_class;
         }
 
-        void buildDockspace(ImGuiID dockspace_id) override;
         void renderBody(f32 delta_time) override;
+
+    protected:
+        void renderSettingsGeneral(f32 delta_time);
+        void renderSettingsControl(f32 delta_time);
+        void renderSettingsUI(f32 delta_time);
+        void renderSettingsPreview(f32 delta_time);
+        void renderSettingsAdvanced(f32 delta_time);
     };
 
 }  // namespace Toolbox::UI
