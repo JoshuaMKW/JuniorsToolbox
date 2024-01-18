@@ -184,8 +184,8 @@ namespace Toolbox::UI {
         {"\\",                GLFW_KEY_BACKSLASH    },
         {"]",                 GLFW_KEY_RIGHT_BRACKET},
         {"`",                 GLFW_KEY_GRAVE_ACCENT },
-        {"World1",            GLFW_KEY_WORLD_1      },  /* non-US #1 */
-        {"World2",            GLFW_KEY_WORLD_2      },  /* non-US #2 */
+        {"World1",            GLFW_KEY_WORLD_1      }, /* non-US #1 */
+        {"World2",            GLFW_KEY_WORLD_2      }, /* non-US #2 */
         {"Esc",               GLFW_KEY_ESCAPE       },
         {"Enter",             GLFW_KEY_ENTER        },
         {"Tab",               GLFW_KEY_TAB          },
@@ -260,6 +260,25 @@ namespace Toolbox::UI {
     bool KeyBindHeld(const std::vector<int> &keybind) {
         return std::all_of(keybind.begin(), keybind.end(),
                            [](int keybind) { return Input::GetKey(keybind); });
+    }
+
+    bool KeyBindScanInput(std::vector<int> &current_keybind) {
+        // Check if any of the keys are still being held
+        bool any_keys_held = std::any_of(current_keybind.begin(), current_keybind.end(),
+                                          [](int key) { return Input::GetKey(key); });
+        if (current_keybind.size() > 0 && !any_keys_held) {
+            return true;
+        }
+        // Check if any new keys have been pressed
+        for (int key = 0; key < 512; ++key) {
+            bool is_already_held = std::any_of(current_keybind.begin(), current_keybind.end(),
+                                               [&](int our_key) { return our_key == key; });
+            if (!is_already_held && Input::GetKey(key)) {
+                current_keybind.push_back(key);
+            }
+        }
+        // Force a max length of 3 keys
+        return current_keybind.size() >= 3;
     }
 
     std::string KeyNameFromEnum(int key) { return s_key_to_name[key]; }

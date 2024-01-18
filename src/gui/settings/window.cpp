@@ -1,21 +1,60 @@
 #include "gui/settings/window.hpp"
 #include "gui/font.hpp"
+#include "gui/imgui_ext.hpp"
+#include "gui/keybind.hpp"
 #include "gui/settings.hpp"
 #include "gui/themes.hpp"
-#include "gui/imgui_ext.hpp"
 
 namespace Toolbox::UI {
 
+    bool KeyBindInput(std::string_view text, bool *is_reading, const std::vector<int> &keybind,
+                      std::vector<int> &new_binding) {
+        if (!is_reading)
+            return false;
+
+        ImGui::PushID(text.data());
+
+        std::string keybind_name = *is_reading ? KeyBindToString(new_binding) + " ..."
+                                               : KeyBindToString(keybind);
+        ImGui::InputText("##binding_text", keybind_name.data(), keybind_name.size(),
+                         ImGuiInputTextFlags_ReadOnly);
+
+        ImGui::SameLine();
+
+        ImVec2 padding     = ImGui::GetStyle().FramePadding;
+        ImVec2 text_size   = ImGui::CalcTextSize(ICON_FK_KEYBOARD_O);
+        ImVec2 button_size = {
+            text_size.x + padding.x * 2,
+            text_size.y + padding.y * 2,
+        };
+
+        if (ImGui::Button((*is_reading) ? ICON_FK_UNDO : ICON_FK_KEYBOARD_O,
+                          button_size)) {
+            *is_reading ^= true;
+        }
+
+        ImGui::SameLine();
+
+        ImGui::Text(text.data());
+
+        bool is_binding_finalized = false;
+
+        if (!(*is_reading)) {
+            new_binding.clear();
+        } else {
+            is_binding_finalized = KeyBindScanInput(new_binding);
+            if (is_binding_finalized) {
+                *is_reading = false;
+            }
+        }
+
+        ImGui::PopID();
+
+        return is_binding_finalized;
+    }
+
     void SettingsWindow::renderBody(f32 delta_time) {
-
-        /*ImGuiWindowClass panelOverride;
-        panelOverride.ClassId                  = getID();
-        panelOverride.ParentViewportId         = ImGui::GetCurrentWindow()->ViewportId;
-        panelOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe;
-        panelOverride.DockingAllowUnclassed    = false;*/
-
         if (ImGui::BeginTabBar("##settings_tabs", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) {
-
             if (ImGui::BeginTabItem("General")) {
                 renderSettingsGeneral(delta_time);
                 ImGui::EndTabItem();
@@ -51,7 +90,64 @@ namespace Toolbox::UI {
         ImGui::Checkbox("Enable File Backup on Save", &settings.m_is_file_backup_allowed);
     }
 
-    void SettingsWindow::renderSettingsControl(f32 delta_time) {}
+    static std::vector<int> s_gizmo_translate_keybind = {};
+    static std::vector<int> s_gizmo_rotate_keybind    = {};
+    static std::vector<int> s_gizmo_scale_keybind     = {};
+
+    static bool s_gizmo_translate_keybind_active = false;
+    static bool s_gizmo_rotate_keybind_active    = false;
+    static bool s_gizmo_scale_keybind_active     = false;
+
+    void SettingsWindow::renderSettingsControl(f32 delta_time) {
+        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+
+        if (ImGui::BeginGroupPanel("Camera", nullptr, {})) {
+            {
+                bool should_clear_others_on_use = !s_gizmo_translate_keybind_active;
+                if (KeyBindInput("Translate", &s_gizmo_translate_keybind_active,
+                                 settings.m_gizmo_translate_mode_keybind,
+                                 s_gizmo_translate_keybind)) {
+                    if (!s_gizmo_translate_keybind.empty()) {
+                        settings.m_gizmo_translate_mode_keybind = s_gizmo_translate_keybind;
+                        s_gizmo_translate_keybind.clear();
+                    }
+                }
+                if (should_clear_others_on_use && s_gizmo_translate_keybind_active) {
+                    s_gizmo_rotate_keybind_active = false;
+                    s_gizmo_scale_keybind_active  = false;
+                }
+            }
+            {
+                bool should_clear_others_on_use = !s_gizmo_rotate_keybind_active;
+                if (KeyBindInput("Rotate", &s_gizmo_rotate_keybind_active,
+                                 settings.m_gizmo_rotate_mode_keybind, s_gizmo_rotate_keybind)) {
+                    if (!s_gizmo_rotate_keybind.empty()) {
+                        settings.m_gizmo_rotate_mode_keybind = s_gizmo_rotate_keybind;
+                        s_gizmo_rotate_keybind.clear();
+                    }
+                }
+                if (should_clear_others_on_use && s_gizmo_rotate_keybind_active) {
+                    s_gizmo_translate_keybind_active = false;
+                    s_gizmo_scale_keybind_active     = false;
+                }
+            }
+            {
+                bool should_clear_others_on_use = !s_gizmo_scale_keybind_active;
+                if (KeyBindInput("Scale", &s_gizmo_scale_keybind_active,
+                                 settings.m_gizmo_scale_mode_keybind, s_gizmo_scale_keybind)) {
+                    if (!s_gizmo_scale_keybind.empty()) {
+                        settings.m_gizmo_scale_mode_keybind = s_gizmo_scale_keybind;
+                        s_gizmo_scale_keybind.clear();
+                    }
+                }
+                if (should_clear_others_on_use && s_gizmo_scale_keybind_active) {
+                    s_gizmo_translate_keybind_active = false;
+                    s_gizmo_rotate_keybind_active    = false;
+                }
+            }
+        }
+        ImGui::EndGroupPanel();
+    }
 
     void SettingsWindow::renderSettingsUI(f32 delta_time) {
         auto &manager = ThemeManager::instance();

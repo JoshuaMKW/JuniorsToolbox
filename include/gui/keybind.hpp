@@ -7,6 +7,9 @@
 namespace Toolbox::UI {
 
     bool KeyBindHeld(const std::vector<int> &keybind);
+
+    // Returns true when the keybind is complete
+    bool KeyBindScanInput(std::vector<int> &current_keybind);
     
     // Takes in GLFW_KEY_XXX
     std::string KeyNameFromEnum(int key);
