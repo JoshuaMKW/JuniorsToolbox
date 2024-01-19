@@ -92,10 +92,9 @@ namespace Toolbox::UI {
             ImGuiWindow *currentWindow              = ImGui::GetCurrentWindow();
             m_window_class.ClassId                  = getID();
             m_window_class.ParentViewportId         = currentWindow->ViewportId;
-            m_window_class.DockingAllowUnclassed    = false;
+            m_window_class.DockingAllowUnclassed    = true;
             m_window_class.DockingAlwaysTabBar      = false;
-            m_window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe;
-            return &m_window_class;
+            return nullptr;
         }
 
         std::optional<ImVec2> minSize() const override {

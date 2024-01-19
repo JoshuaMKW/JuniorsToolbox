@@ -172,7 +172,10 @@ namespace Toolbox::UI {
                 flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
-            ImGui::SetNextWindowClass(windowClass());
+            /*const ImGuiWindowClass *window_class = windowClass();
+            if (window_class)
+                ImGui::SetNextWindowClass(window_class);*/
+
             if (ImGui::Begin(window_name.c_str(), &m_is_open, flags_)) {
                 m_size     = ImGui::GetWindowSize();
                 m_viewport = ImGui::GetWindowViewport();
@@ -310,7 +313,10 @@ namespace Toolbox::UI {
                 flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
-            ImGui::SetNextWindowClass(windowClass());
+            /*const ImGuiWindowClass *window_class = windowClass();
+            if (window_class)
+                ImGui::SetNextWindowClass(window_class);*/
+
             if (ImGui::Begin(window_name.c_str(), &m_is_open, flags_)) {
                 m_size     = ImGui::GetWindowSize();
                 m_viewport = ImGui::GetWindowViewport();
