@@ -12,6 +12,7 @@
 #include "clipboard.hpp"
 
 #include <GLFW/glfw3.h>
+#include <thread>
 
 namespace Toolbox::UI {
 
@@ -74,13 +75,15 @@ namespace Toolbox::UI {
         GLFWwindow *m_render_window;
         std::vector<std::shared_ptr<IWindow>> m_windows;
 
-        std::unordered_map<std::string, bool> m_docked_map;
+        std::unordered_map<ImGuiID, bool> m_docked_map;
         ImGuiID m_dockspace_id;
         bool m_dockspace_built;
 
         bool m_options_open        = false;
         bool m_is_file_dialog_open = false;
         bool m_is_dir_dialog_open  = false;
+
+        std::thread m_thread_templates_init;
     };
 
 }  // namespace Toolbox::UI

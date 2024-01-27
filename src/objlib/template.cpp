@@ -10,6 +10,7 @@
 #include <fstream>
 #include <glm/glm.hpp>
 #include <optional>
+#include <thread>
 
 namespace Toolbox::Object {
 
@@ -364,22 +365,33 @@ namespace Toolbox::Object {
 
     static std::unordered_map<std::string, Template> s_template_cache;
 
+    static std::expected<void, FSError> threadLoadTemplate(const std::string &type) {
+        Template template_;
+        try {
+            template_ = Template(type);
+        } catch (std::runtime_error &e) {
+            return make_fs_error<void>(std::error_code(), {e.what()});
+        }
+        s_template_cache[type] = template_;
+        return {};
+    }
+
     std::expected<void, FSError> TemplateFactory::initialize() {
         auto cwd_result = Toolbox::current_path();
         if (!cwd_result) {
             return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
         }
 
+        std::vector<std::thread> threads;
+
         auto &cwd = cwd_result.value();
         for (auto &subpath : std::filesystem::directory_iterator{cwd / "Templates"}) {
             auto type_str = subpath.path().stem().string();
-            Template template_;
-            try {
-                template_ = Template(type_str);
-            } catch (std::runtime_error &e) {
-                return make_fs_error<void>(std::error_code(), {e.what()});
-            }
-            s_template_cache[type_str] = template_;
+            threads.push_back(std::thread(threadLoadTemplate, type_str));
+        }
+
+        for (auto &th : threads) {
+            th.join();
         }
 
         return {};

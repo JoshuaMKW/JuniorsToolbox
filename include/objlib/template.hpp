@@ -47,12 +47,13 @@ namespace Toolbox::Object {
         using json_t = nlohmann::ordered_json;
 
         Template()                 = default;
+        Template(std::string_view type);
+
         Template(const Template &) = default;
         Template(Template &&)      = default;
         ~Template()                = default;
 
     protected:
-        Template(std::string_view type);
         Template(std::string_view type, Deserializer &in) : m_type(type) { deserialize(in); }
 
     public:

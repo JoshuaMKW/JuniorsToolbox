@@ -573,8 +573,8 @@ namespace Toolbox::UI {
         if (m_is_view_manipulating && Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
             ImVec2 mouse_delta = Input::GetMouseDelta();
 
-            m_camera.turnLeftRight(-mouse_delta.x * settings.m_camera_sensitivity * delta_time * 0.4f);
-            m_camera.tiltUpDown(-mouse_delta.y * settings.m_camera_sensitivity * delta_time * 0.4f);
+            m_camera.turnLeftRight(-mouse_delta.x * settings.m_camera_sensitivity * delta_time * 0.1f);
+            m_camera.tiltUpDown(-mouse_delta.y * settings.m_camera_sensitivity * delta_time * 0.1f);
 
             m_is_view_dirty = true;
         }
@@ -613,10 +613,10 @@ namespace Toolbox::UI {
                     ud_delta *= 10;
                 }
 
-                ud_delta += Input::GetMouseScrollDelta() * 50.0f;
+                ud_delta += Input::GetMouseScrollDelta() * 10.0f;
 
-                lr_delta *= settings.m_camera_speed * delta_time * 1000.0f;
-                ud_delta *= settings.m_camera_speed * delta_time * 1000.0f;
+                lr_delta *= settings.m_camera_speed * delta_time * 500.0f;
+                ud_delta *= settings.m_camera_speed * delta_time * 500.0f;
 
                 m_camera.translateLeftRight(-lr_delta);
                 m_camera.translateFwdBack(ud_delta);

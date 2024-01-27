@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
@@ -143,7 +144,7 @@ namespace Toolbox::UI {
 
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(m_render_window, false);
-        ImGui_ImplOpenGL3_Init("#version 410");
+        ImGui_ImplOpenGL3_Init("#version 150");
 
         auto &settings_manager = SettingsManager::instance();
         settings_manager.initialize();
@@ -155,10 +156,12 @@ namespace Toolbox::UI {
         // glEnable(GL_MULTISAMPLE);
 
         {
-            auto result = Object::TemplateFactory::initialize();
-            if (!result) {
-                logFSError(result.error());
-            }
+            m_thread_templates_init = std::thread([]() {
+                auto result = Object::TemplateFactory::initialize();
+                if (!result) {
+                    logFSError(result.error());
+                }
+            });
         }
 
         {
@@ -241,13 +244,9 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowViewport(viewport->ID);
         m_dockspace_id = ImGui::DockSpaceOverViewport(viewport);
 
-        ImGuiWindowFlags window_flags =
-            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
-
         m_dockspace_built = ImGui::DockBuilderGetNode(m_dockspace_id);
         if (!m_dockspace_built) {
-            ImGui::DockBuilderRemoveNode(m_dockspace_id);
-            ImGui::DockBuilderAddNode(m_dockspace_id, ImGuiDockNodeFlags_None);
+            ImGui::DockBuilderAddNode(m_dockspace_id, ImGuiDockNodeFlags_DockSpace);
             ImGui::DockBuilderFinish(m_dockspace_id);
         }
 
@@ -430,9 +429,10 @@ namespace Toolbox::UI {
     void MainApplication::renderWindows(f32 delta_time) {
         // Render viewer context
         for (auto &window : m_windows) {
-            if (!m_dockspace_built && !m_docked_map[window->title()]) {
-                ImGui::DockBuilderDockWindow(window->title().c_str(), m_dockspace_id);
-                m_docked_map[window->title()] = true;
+            if (!m_dockspace_built && !m_docked_map[window->getID()]) {
+                std::string window_name = std::format("{}###{}", window->title(), window->getID());
+                ImGui::DockBuilderDockWindow(window_name.c_str(), m_dockspace_id);
+                m_docked_map[window->getID()] = true;
             }
         }
 

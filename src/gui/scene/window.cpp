@@ -393,8 +393,6 @@ namespace Toolbox::UI {
         ImGuiWindowClass hierarchyOverride;
         hierarchyOverride.ClassId          = getID();
         hierarchyOverride.ParentViewportId = ImGui::GetCurrentWindow()->ViewportId;
-        /*hierarchyOverride.DockNodeFlagsOverrideSet =
-            ImGuiDockNodeFlags_NoDockingOverMe | ImGuiDockNodeFlags_NoDockingOverOther;*/
         hierarchyOverride.DockingAllowUnclassed = false;
         ImGui::SetNextWindowClass(&hierarchyOverride);
 
@@ -1796,6 +1794,7 @@ namespace Toolbox::UI {
                                                                0.5f, nullptr, &m_dock_node_left_id);
         m_dock_node_down_left_id = ImGui::DockBuilderSplitNode(
             m_dock_node_up_left_id, ImGuiDir_Down, 0.5f, nullptr, &m_dock_node_up_left_id);
+
         ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Scene View").c_str(), dockspace_id);
         ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Hierarchy Editor").c_str(),
                                      m_dock_node_up_left_id);
