@@ -65,9 +65,10 @@ add_subdirectory(lib/libbti)
 add_subdirectory(lib/glfw)
 
 if(MSVC)
-    target_compile_options(j3dultra PRIVATE /w)
+    # target_compile_options(j3dultra PRIVATE /w)
+    target_compile_options(JuniorsToolbox PRIVATE /FS)
 else()
-    target_compile_options(j3dultra PRIVATE -w)
+    # target_compile_options(j3dultra PRIVATE -w)
 endif()
 
 # find_package(ICU 61.0 COMPONENTS uc i18n REQUIRED)
