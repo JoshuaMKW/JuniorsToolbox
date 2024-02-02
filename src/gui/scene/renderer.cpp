@@ -7,7 +7,7 @@
 #include "gui/application.hpp"
 #include "gui/input.hpp"
 #include "gui/logging/errors.hpp"
-#include "gui/logging/logger.hpp"
+#include "core/log.hpp"
 #include "gui/scene/renderer.hpp"
 #include "gui/settings.hpp"
 #include "gui/util.hpp"
@@ -414,7 +414,7 @@ namespace Toolbox::UI {
     }
 
     void Renderer::initializePaths(const RailData &rail_data,
-                                   std::unordered_map<ImGuiID, bool> visible_map) {
+                                   std::unordered_map<UUID64, bool> visible_map) {
         m_path_renderer.updateGeometry(rail_data, visible_map);
     }
 
@@ -476,19 +476,19 @@ namespace Toolbox::UI {
             float snap[3];
             if ((m_gizmo_op & (ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU))) {
                 if (ctrl_held)
-                    Log::AppLogger::instance().log("Scale Held");
+                    TOOLBOX_DEBUG_LOG("Scale Held");
                 snap[0] = 0.1f;
                 snap[1] = 0.1f;
                 snap[2] = 0.1f;
             } else if ((m_gizmo_op & ImGuizmo::OPERATION::ROTATE)) {
                 if (ctrl_held)
-                    Log::AppLogger::instance().log("Rotate Held");
+                    TOOLBOX_DEBUG_LOG("Rotate Held");
                 snap[0] = 15.0f;
                 snap[1] = 15.0f;
                 snap[2] = 15.0f;
             } else if ((m_gizmo_op & ImGuizmo::OPERATION::TRANSLATE)) {
                 if (ctrl_held)
-                    Log::AppLogger::instance().log("Translate Held");
+                    TOOLBOX_DEBUG_LOG("Translate Held");
                 snap[0] = 50.0f;
                 snap[1] = 50.0f;
                 snap[2] = 50.0f;

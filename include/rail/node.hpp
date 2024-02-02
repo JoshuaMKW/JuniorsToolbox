@@ -18,8 +18,6 @@ namespace Toolbox::Rail {
     protected:
         friend class Rail;
 
-        static u32 s_next_rail_node_uid;
-
     public:
         RailNode();
         RailNode(u32 flags);
@@ -33,11 +31,7 @@ namespace Toolbox::Rail {
 
         [[nodiscard]] Rail *rail() const { return m_rail; }
 
-        [[nodiscard]] u32 getID() const override { return m_uid; }
-        void setID(u32 id) override { m_uid = id; }
-
-        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
-        void setSiblingID(u32 id) override { m_sibling_id = id; }
+        [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
 
         [[nodiscard]] glm::vec3 getPosition() const;
         [[nodiscard]] void getPosition(s16 &x, s16 &y, s16 &z) const;
@@ -84,8 +78,7 @@ namespace Toolbox::Rail {
     private:
         Rail *m_rail;
 
-        u32 m_uid        = uuid();
-        u32 m_sibling_id = 0;
+        UUID64 m_UUID64;
 
         std::shared_ptr<MetaMember> m_pos_x;
         std::shared_ptr<MetaMember> m_pos_y;

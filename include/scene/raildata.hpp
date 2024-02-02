@@ -13,7 +13,7 @@
 
 using namespace Toolbox::Rail;
 
-namespace Toolbox::Scene {
+namespace Toolbox {
 
     class RailData : public ISerializable, public ISmartResource {
     public:

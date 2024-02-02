@@ -309,7 +309,6 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        child->setSiblingID(m_next_sibling_id++);
         m_children.insert(m_children.begin() + index, std::move(child));
         updateGroupSize();
         return {};

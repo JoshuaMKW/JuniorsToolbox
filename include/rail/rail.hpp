@@ -15,9 +15,6 @@ using namespace Toolbox::Object;
 namespace Toolbox::Rail {
 
     class Rail : public ISmartResource, public IUnique {
-    protected:
-        static u32 s_next_rail_uid;
-
     public:
         using node_ptr_t = std::shared_ptr<RailNode>;
 
@@ -36,11 +33,10 @@ namespace Toolbox::Rail {
         Rail &operator=(const Rail &other) = default;
         Rail &operator=(Rail &&other)      = default;
 
-        [[nodiscard]] u32 getID() const override { return m_uid; }
-        void setID(u32 id) override { m_uid = id; }
+        [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
 
-        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
-        void setSiblingID(u32 id) override { m_sibling_id = id; }
+        [[nodiscard]] u32 getSiblingID() const { return m_sibling_id; }
+        void setSiblingID(u32 id) { m_sibling_id = id; }
 
         [[nodiscard]] bool isSpline() const { return m_name.starts_with("S_"); }
 
@@ -156,7 +152,7 @@ namespace Toolbox::Rail {
         void chaikinSubdivide();
 
     private:
-        u32 m_uid = uuid();
+        UUID64 m_UUID64;
         u32 m_sibling_id = 0;
         std::string m_name;
         std::vector<node_ptr_t> m_nodes = {};

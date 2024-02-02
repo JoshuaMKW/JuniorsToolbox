@@ -11,8 +11,9 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include <entt.hpp>
 
-namespace Toolbox::Scene {
+namespace Toolbox {
 
     class ObjectHierarchy : public ISerializable, public ISmartResource {
     public:
@@ -71,17 +72,14 @@ namespace Toolbox::Scene {
     };
 
     class SceneInstance : public ISmartResource {
-    public:
-        SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root);
-        SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root, const RailData &rails);
-        SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root,
-                      std::shared_ptr<Object::GroupSceneObject> table_root, const RailData &rails);
-
-    protected:
-        SceneInstance() = default;
+        friend class Entity;
 
     public:
-        ~SceneInstance() = default;
+        SceneInstance();
+        SceneInstance(const SceneInstance &);
+
+    public:
+        ~SceneInstance();
 
         
         static std::expected<std::unique_ptr<SceneInstance>, SerialError>
@@ -94,6 +92,8 @@ namespace Toolbox::Scene {
         [[nodiscard]] static std::unique_ptr<SceneInstance> BasicScene();
 
         [[nodiscard]] std::optional<std::filesystem::path> rootPath() const { return m_root_path; }
+
+        [[nodiscard]] entt::registry &registry() { return m_registry; }
 
         [[nodiscard]] ObjectHierarchy getObjHierarchy() const { return m_map_objects; }
         void setObjHierarchy(const ObjectHierarchy &obj_root) { m_map_objects = obj_root; }
@@ -113,6 +113,9 @@ namespace Toolbox::Scene {
         void dump(std::ostream &os) const { dump(os, 0); }
 
         std::unique_ptr<ISmartResource> clone(bool deep) const override;
+
+    protected:
+        entt::registry m_registry;
 
     private:
         std::optional<std::filesystem::path> m_root_path = {};

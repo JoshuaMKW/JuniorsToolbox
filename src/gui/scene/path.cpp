@@ -83,7 +83,7 @@ namespace Toolbox::UI {
     }
 
     void PathRenderer::updateGeometry(const RailData &data,
-                                      std::unordered_map<ImGuiID, bool> visible_map) {
+                                      std::unordered_map<UUID64, bool> visible_map) {
         size_t rail_count = data.getRailCount();
 
         if (rail_count == 0)
@@ -96,7 +96,7 @@ namespace Toolbox::UI {
 
         for (size_t i = 0; i < rail_count; ++i) {
             auto rail = data.getRail(i);
-            if (visible_map.contains(rail->getID()) && visible_map[rail->getID()] == false) {
+            if (visible_map.contains(rail->getUUID()) && visible_map[rail->getUUID()] == false) {
                 continue;
             }
 

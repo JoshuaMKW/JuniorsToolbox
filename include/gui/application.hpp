@@ -75,7 +75,7 @@ namespace Toolbox::UI {
         GLFWwindow *m_render_window;
         std::vector<std::shared_ptr<IWindow>> m_windows;
 
-        std::unordered_map<ImGuiID, bool> m_docked_map;
+        std::unordered_map<UUID64, bool> m_docked_map;
         ImGuiID m_dockspace_id;
         bool m_dockspace_built;
 

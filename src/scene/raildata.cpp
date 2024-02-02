@@ -7,7 +7,7 @@
 
 using namespace Toolbox::Rail;
 
-namespace Toolbox::Scene {
+namespace Toolbox {
 
     size_t RailData::getDataSize() const {
         size_t size = std::accumulate(

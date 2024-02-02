@@ -24,6 +24,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "core/core.hpp"
 #include "gui/scene/ImGuizmo.h"
 
 // void ImGuiSetupTheme(bool, float);
@@ -52,17 +53,16 @@ namespace Toolbox::UI {
 
     void DealWithGLErrors(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                           const GLchar *message, const void *userParam) {
-        Log::AppLogger &logger = Log::AppLogger::instance();
         switch (severity) {
         case GL_DEBUG_SEVERITY_NOTIFICATION:
         case GL_DEBUG_SEVERITY_LOW:
-            // logger.info(std::format("(OpenGL) {}", message));
+            // TOOLBOX_INFO("(OpenGL) {}", message);
             break;
         case GL_DEBUG_SEVERITY_MEDIUM:
-            logger.warn(std::format("(OpenGL) {}", message));
+            TOOLBOX_WARN("(OpenGL) {}", message);
             break;
         case GL_DEBUG_SEVERITY_HIGH:
-            logger.error(std::format("(OpenGL) {}", message));
+            TOOLBOX_ERROR("(OpenGL) {}", message);
             break;
         }
     }
@@ -250,6 +250,11 @@ namespace Toolbox::UI {
             ImGui::DockBuilderFinish(m_dockspace_id);
         }
 
+#ifdef TOOLBOX_DEBUG
+        ImGui::ShowMetricsWindow();
+        ImGui::ShowDebugLogWindow();
+#endif
+
         renderMenuBar();
         renderWindows(delta_time);
 
@@ -429,10 +434,11 @@ namespace Toolbox::UI {
     void MainApplication::renderWindows(f32 delta_time) {
         // Render viewer context
         for (auto &window : m_windows) {
-            if (!m_dockspace_built && !m_docked_map[window->getID()]) {
-                std::string window_name = std::format("{}###{}", window->title(), window->getID());
+            if (!m_dockspace_built && !m_docked_map[window->getUUID()]) {
+                std::string window_name =
+                    std::format("{}###{}", window->title(), window->getUUID());
                 ImGui::DockBuilderDockWindow(window_name.c_str(), m_dockspace_id);
-                m_docked_map[window->getID()] = true;
+                m_docked_map[window->getUUID()] = true;
             }
         }
 
@@ -466,9 +472,8 @@ namespace Toolbox::UI {
         }
 
         if (service_result.value()) {
-            Log::AppLogger::instance().warn(
-                "Found Nahimic service running on this system, this could cause "
-                "crashes to occur on window resize!");
+            TOOLBOX_WARN("Found Nahimic service running on this system, this could cause "
+                         "crashes to occur on window resize!");
             return false;
         }
 

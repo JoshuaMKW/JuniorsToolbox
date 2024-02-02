@@ -43,7 +43,9 @@ namespace Toolbox::Object {
 
     std::expected<void, SerialError> Template::serialize(Serializer &out) const { return {}; }
 
-    std::expected<void, SerialError> Template::deserialize(Deserializer &in) {
+    std::expected<void, SerialError> Template::deserialize(Deserializer &in) { return loadFromJSON(in); }
+
+    std::expected<void, SerialError> Template::loadFromJSON(Deserializer &in) {
         json_t template_json;
 
         auto result = tryJSON(template_json, [&](json_t &j) {
@@ -303,11 +305,11 @@ namespace Toolbox::Object {
             }
             MetaMember::size_type array_size = default_member.arraysize_();
             if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
-                return MetaMember(default_member.name(), inst_enums, std::get<MetaMember::ReferenceInfo>(array_size),
+                return MetaMember(default_member.name(), inst_enums,
+                                  std::get<MetaMember::ReferenceInfo>(array_size),
                                   default_member.defaultValue());
             }
-            return MetaMember(default_member.name(), inst_enums,
-                              default_member.defaultValue());
+            return MetaMember(default_member.name(), inst_enums, default_member.defaultValue());
         }
 
         std::vector<MetaValue> inst_values;
@@ -363,7 +365,7 @@ namespace Toolbox::Object {
         }
     }
 
-    static std::unordered_map<std::string, Template> s_template_cache;
+    std::unordered_map<std::string, Template> g_template_cache;
 
     static std::expected<void, FSError> threadLoadTemplate(const std::string &type) {
         Template template_;
@@ -372,7 +374,7 @@ namespace Toolbox::Object {
         } catch (std::runtime_error &e) {
             return make_fs_error<void>(std::error_code(), {e.what()});
         }
-        s_template_cache[type] = template_;
+        g_template_cache[type] = template_;
         return {};
     }
 
@@ -399,8 +401,8 @@ namespace Toolbox::Object {
 
     TemplateFactory::create_t TemplateFactory::create(std::string_view type) {
         auto type_str = std::string(type);
-        if (s_template_cache.contains(type_str)) {
-            return std::make_unique<Template>(s_template_cache[type_str]);
+        if (g_template_cache.contains(type_str)) {
+            return std::make_unique<Template>(g_template_cache[type_str]);
         }
 
         Template template_;
@@ -417,16 +419,93 @@ namespace Toolbox::Object {
             return make_fs_error<std::unique_ptr<Template>>(std::error_code(), {e.what()});
         }
 
-        s_template_cache[type_str] = template_;
+        g_template_cache[type_str] = template_;
         return std::make_unique<Template>(template_);
     }
 
     std::vector<TemplateFactory::create_ret_t> TemplateFactory::createAll() {
         std::vector<TemplateFactory::create_ret_t> ret;
-        for (auto &item : s_template_cache) {
+        for (auto &item : g_template_cache) {
             ret.push_back(std::make_unique<Template>(item.second));
         }
         return ret;
+    }
+
+    struct TemplateCacheInfoLow : public ISerializable {
+        u32 m_name_offset;
+        u32 m_wizard_count;
+        u32 m_wizard_offset;
+        u32 m_struct_count;
+        u32 m_struct_offset;
+        u32 m_enum_count;
+        u32 m_enum_offset;
+
+        std::expected<void, SerialError> deserialize(Deserializer &in) {
+            m_name_offset   = in.read<u32>();
+            m_wizard_count  = in.read<u32>();
+            m_wizard_offset = in.read<u32>();
+            m_struct_count  = in.read<u32>();
+            m_struct_offset = in.read<u32>();
+            m_enum_count    = in.read<u32>();
+            m_enum_offset   = in.read<u32>();
+        }
+
+        std::expected<void, SerialError> serialize(Serializer &out) {
+            out.write(m_name_offset);
+            out.write(m_wizard_count);
+            out.write(m_wizard_offset);
+            out.write(m_struct_count);
+            out.write(m_struct_offset);
+            out.write(m_enum_count);
+            out.write(m_enum_offset);
+        }
+    };
+
+    struct WizardCacheInfoLow : public ISerializable {
+        u32 m_name_offset;
+        u32 m_member_count;
+        u32 m_member_offset;
+        u32 m_model_name_offset;
+        u32 m_material_path_offset;
+        u32 m_animation_path_count;
+        u32 m_animation_path_offset;
+
+        std::expected<void, SerialError> deserialize(Deserializer &in) {
+            m_name_offset   = in.read<u32>();
+            m_member_count  = in.read<u32>();
+            m_member_offset = in.read<u32>();
+            m_model_name_offset = in.read<u32>();
+            m_material_path_offset = in.read<u32>();
+            m_animation_path_count = in.read<u32>();
+            m_animation_path_offset = in.read<u32>();
+        }
+
+        std::expected<void, SerialError> serialize(Serializer &out) {
+            out.write(m_name_offset);
+            out.write(m_member_count);
+            out.write(m_member_offset);
+            out.write(m_model_name_offset);
+            out.write(m_material_path_offset);
+            out.write(m_animation_path_count);
+            out.write(m_animation_path_offset);
+        }
+    };
+
+
+    std::expected<void, SerialError> TemplateFactory::loadFromCacheBlob(Deserializer &in) {
+        return std::expected<void, SerialError>();
+    }
+
+    std::expected<void, SerialError> TemplateFactory::saveToCacheBlob(Serializer &out) {
+        out.pushBreakpoint();
+        {
+            out.write<u32>('TMPL');
+            out.write<u32>(0);     // TMP SIZE
+            out.write<u32>(0x20);  // Template section offset
+            out.write<u32>(0);     // Names section offset
+        }
+
+        return std::expected<void, SerialError>();
     }
 
 }  // namespace Toolbox::Object

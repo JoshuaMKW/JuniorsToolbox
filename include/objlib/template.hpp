@@ -8,7 +8,7 @@
 #include "qualname.hpp"
 #include "serial.hpp"
 #include "transform.hpp"
-#include "types.hpp"
+#include "core/types.hpp"
 #include <expected>
 #include <format>
 #include <string>
@@ -91,6 +91,9 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
+        std::expected<void, SerialError> loadFromBlob(Deserializer &in);
+        std::expected<void, SerialError> loadFromJSON(Deserializer &in);
+
     protected:
         void cacheEnums(json_t &enums);
         void cacheStructs(json_t &structs);
@@ -126,6 +129,9 @@ namespace Toolbox::Object {
         static std::expected<void, FSError> initialize();
         static create_t create(std::string_view type);
         static std::vector<create_ret_t> createAll();
+
+        static std::expected<void, SerialError> loadFromCacheBlob(Deserializer &in);
+        static std::expected<void, SerialError> saveToCacheBlob(Serializer &out);
     };
 
 }  // namespace Toolbox::Object

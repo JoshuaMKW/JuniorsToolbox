@@ -1,4 +1,4 @@
-#include "gui/logging/logger.hpp"
+#include "core/log.hpp"
 #include "gui/settings.hpp"
 
 namespace Toolbox::Log {

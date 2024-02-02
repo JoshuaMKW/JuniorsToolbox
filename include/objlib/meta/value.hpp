@@ -5,7 +5,7 @@
 #include "jsonlib.hpp"
 #include "objlib/transform.hpp"
 #include "serial.hpp"
-#include "types.hpp"
+#include "core/types.hpp"
 #include <expected>
 #include <functional>
 #include <glm/glm.hpp>

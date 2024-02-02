@@ -1,11 +1,11 @@
 #pragma once
 
+#include "core/types.hpp"
 #include "nameref.hpp"
 #include "objlib/errors.hpp"
 #include "objlib/meta/member.hpp"
 #include "template.hpp"
 #include "transform.hpp"
-#include "types.hpp"
 #include "unique.hpp"
 #include <J3D/Animation/J3DAnimationInstance.hpp>
 #include <J3D/Data/J3DModelData.hpp>
@@ -60,12 +60,7 @@ namespace Toolbox::Object {
 
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
-    class ISceneObject : public ISerializable,
-                         public ISmartResource,
-                         public IUnique {
-    protected:
-        static u32 s_next_object_uid;
-
+    class ISceneObject : public ISerializable, public ISmartResource, public IUnique {
     public:
         friend class ObjectFactory;
 
@@ -219,11 +214,7 @@ namespace Toolbox::Object {
         NameRef getNameRef() const override { return m_nameref; }
         void setNameRef(NameRef nameref) override { m_nameref = nameref; }
 
-        [[nodiscard]] u32 getID() const override { return m_uid; }
-        void setID(u32 id) override { m_uid = id; }
-
-        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
-        void setSiblingID(u32 id) override { m_sibling_id = id; }
+        [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
 
         ISceneObject *getParent() const override { return m_parent; }
         std::expected<void, ObjectGroupError> _setParent(ISceneObject *parent) override {
@@ -321,10 +312,10 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
         std::unique_ptr<ISmartResource> clone(bool deep) const override {
-            auto obj              = std::make_unique<VirtualSceneObject>();
-            obj->m_type           = m_type;
-            obj->m_nameref        = m_nameref;
-            obj->m_parent         = nullptr;
+            auto obj       = std::make_unique<VirtualSceneObject>();
+            obj->m_type    = m_type;
+            obj->m_nameref = m_nameref;
+            obj->m_parent  = nullptr;
             obj->m_members.reserve(m_members.size());
 
             if (deep) {
@@ -343,7 +334,7 @@ namespace Toolbox::Object {
         }
 
     protected:
-        u32 m_uid = uuid();
+        UUID64 m_UUID64;
         u32 m_sibling_id = 0;
 
         std::string m_type;
@@ -461,7 +452,6 @@ namespace Toolbox::Object {
         void updateGroupSize();
 
     private:
-        u32 m_next_sibling_id = 0;
         std::shared_ptr<MetaMember> m_group_size;
         mutable std::vector<u8> m_data;
         std::vector<std::shared_ptr<ISceneObject>> m_children = {};
@@ -522,7 +512,14 @@ namespace Toolbox::Object {
         PhysicalSceneObject(PhysicalSceneObject &&)      = default;
 
     public:
-        ~PhysicalSceneObject() override = default;
+        ~PhysicalSceneObject() override {
+            m_data.clear();
+            try {
+                m_model_instance.reset();
+            } catch (...) {
+                return;
+            }
+        }
 
         [[nodiscard]] bool isGroupObject() const override { return false; }
 
@@ -531,11 +528,7 @@ namespace Toolbox::Object {
         NameRef getNameRef() const override { return m_nameref; }
         void setNameRef(NameRef nameref) override { m_nameref = nameref; }
 
-        [[nodiscard]] u32 getID() const override { return m_uid; }
-        void setID(u32 id) override { m_uid = id; }
-
-        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
-        void setSiblingID(u32 id) override { m_sibling_id = id; }
+        [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
 
         ISceneObject *getParent() const override { return m_parent; }
         std::expected<void, ObjectGroupError> _setParent(ISceneObject *parent) override {
@@ -676,11 +669,11 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
         std::unique_ptr<ISmartResource> clone(bool deep) const override {
-            auto obj              = std::make_unique<PhysicalSceneObject>();
-            obj->m_type           = m_type;
-            obj->m_nameref        = m_nameref;
-            obj->m_parent         = nullptr;
-            obj->m_transform      = m_transform;
+            auto obj         = std::make_unique<PhysicalSceneObject>();
+            obj->m_type      = m_type;
+            obj->m_nameref   = m_nameref;
+            obj->m_parent    = nullptr;
+            obj->m_transform = m_transform;
             obj->m_members.reserve(m_members.size());
 
             if (m_model_instance)
@@ -702,8 +695,7 @@ namespace Toolbox::Object {
         }
 
     private:
-        u32 m_uid        = uuid();
-        u32 m_sibling_id = 0;
+        UUID64 m_UUID64;
 
         std::string m_type;
         NameRef m_nameref;

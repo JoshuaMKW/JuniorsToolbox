@@ -4,19 +4,19 @@
 
 #include <cmath>
 
+#include "core/log.hpp"
 #include "gui/logging/errors.hpp"
-#include "gui/logging/logger.hpp"
 #include "gui/scene/window.hpp"
 
-#include "gui/application.hpp"
-#include "gui/util.hpp"
 #include "gui/IconsForkAwesome.h"
-#include "gui/modelcache.hpp"
+#include "gui/application.hpp"
 #include "gui/imgui_ext.hpp"
+#include "gui/modelcache.hpp"
+#include "gui/util.hpp"
 
 #include "gui/input.hpp"
-#include "gui/util.hpp"
 #include "gui/settings.hpp"
+#include "gui/util.hpp"
 
 #include <lib/bStream/bstream.h>
 
@@ -41,7 +41,7 @@
 
 #include <glm/gtx/euler_angles.hpp>
 
-using namespace Toolbox::Scene;
+using namespace Toolbox;
 
 namespace Toolbox::UI {
 
@@ -78,18 +78,18 @@ namespace Toolbox::UI {
 
     static std::string getNodeUID(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
         std::string node_name =
-            std::format("{} ({})###{}", node->type(), node->getNameRef().name(), node->getID());
+            std::format("{} ({})###{}", node->type(), node->getNameRef().name(), node->getUUID());
         return node_name;
     }
 
     static std::string getNodeUID(std::shared_ptr<Rail::Rail> node) {
-        std::string node_name = std::format("{}###{}", node->name(), node->getID());
+        std::string node_name = std::format("{}###{}", node->name(), node->getUUID());
         return node_name;
     }
 
     static std::string getNodeUID(std::shared_ptr<Rail::RailNode> node) {
         std::string node_name =
-            std::format("Node {}###{}", node->rail()->getNodeIndex(node).value(), node->getID());
+            std::format("Node {}###{}", node->rail()->getNodeIndex(node).value(), node->getUUID());
         return node_name;
     }
 
@@ -130,16 +130,7 @@ namespace Toolbox::UI {
 
             auto scene_result = SceneInstance::FromPath(path);
             if (!scene_result) {
-                const SerialError &error = scene_result.error();
-                for (auto &line : error.m_message) {
-                    Log::AppLogger::instance().error(line);
-                }
-#ifndef NDEBUG
-                for (auto &entry : error.m_stacktrace) {
-                    Log::AppLogger::instance().debugLog(
-                        std::format("{} at line {}", entry.source_file(), entry.source_line()));
-                }
-#endif
+                logSerialError(scene_result.error());
                 return false;
             } else {
                 m_current_scene = std::move(scene_result.value());
@@ -156,14 +147,12 @@ namespace Toolbox::UI {
     }
 
     bool SceneWindow::saveData(std::optional<std::filesystem::path> path) {
-        Log::AppLogger &logger = Log::AppLogger::instance();
-
         std::filesystem::path root_path;
 
         if (!path) {
             auto opt_path = m_current_scene->rootPath();
             if (!opt_path) {
-                logger.error("(SCENE) Failed to save the scene due to lack of a root path.");
+                TOOLBOX_ERROR("(SCENE) Failed to save the scene due to lack of a root path.");
                 return false;
             }
             root_path = opt_path.value();
@@ -185,7 +174,7 @@ namespace Toolbox::UI {
 
         std::vector<std::shared_ptr<Rail::RailNode>> rendered_nodes;
         for (auto &rail : m_current_scene->getRailData().rails()) {
-            if (!m_rail_visible_map[rail->getID()])
+            if (!m_rail_visible_map[rail->getUUID()])
                 continue;
             rendered_nodes.insert(rendered_nodes.end(), rail->nodes().begin(), rail->nodes().end());
         }
@@ -213,7 +202,7 @@ namespace Toolbox::UI {
             auto render_obj = std::get<std::shared_ptr<ISceneObject>>(selection);
             if (render_obj) {
                 std::string node_uid_str = getNodeUID(render_obj);
-                ImGuiID tree_node_id     = render_obj->getID();
+                ImGuiID tree_node_id     = static_cast<ImGuiID>(render_obj->getUUID());
 
                 bool is_object_selected = std::any_of(
                     m_hierarchy_selected_nodes.begin(), m_hierarchy_selected_nodes.end(),
@@ -261,14 +250,14 @@ namespace Toolbox::UI {
 
                 m_properties_render_handler = renderObjectProperties;
 
-                Log::AppLogger::instance().debugLog(std::format(
-                    "Hit object {} ({})", render_obj->type(), render_obj->getNameRef().name()));
+                TOOLBOX_DEBUG_LOG("Hit object {} ({})", render_obj->type(),
+                                  render_obj->getNameRef().name());
             }
         } else if (std::holds_alternative<std::shared_ptr<Rail::RailNode>>(selection)) {
             auto node = std::get<std::shared_ptr<Rail::RailNode>>(selection);
             if (node) {
                 std::shared_ptr<Rail::Rail> rail = get_shared_ptr(*node->rail());
-                ImGuiID rail_id                  = rail->getID();
+                ImGuiID rail_id                  = static_cast<ImGuiID>(rail->getUUID());
 
                 // In this circumstance, select the whole rail
                 if (Input::GetKey(GLFW_KEY_LEFT_ALT)) {
@@ -299,10 +288,9 @@ namespace Toolbox::UI {
 
                     m_properties_render_handler = renderRailProperties;
 
-                    Log::AppLogger::instance().debugLog(
-                        std::format("Hit rail \"{}\"", rail->name()));
+                    TOOLBOX_DEBUG_LOG("Hit rail \"{}\"", rail->name());
                 } else {
-                    ImGuiID node_id = node->getID();
+                    ImGuiID node_id = static_cast<ImGuiID>(node->getUUID());
 
                     bool is_rail_node_selected =
                         std::any_of(m_rail_node_list_selected_nodes.begin(),
@@ -332,9 +320,8 @@ namespace Toolbox::UI {
 
                     m_properties_render_handler = renderRailNodeProperties;
 
-                    Log::AppLogger::instance().debugLog(
-                        std::format("Hit node {} of rail \"{}\"", rail->getNodeIndex(node).value(),
-                                    rail->name()));
+                    TOOLBOX_DEBUG_LOG("Hit node {} of rail \"{}\"",
+                                      rail->getNodeIndex(node).value(), rail->name());
                 }
             }
         }
@@ -391,8 +378,8 @@ namespace Toolbox::UI {
         std::string hierarchy_window_name = getWindowChildUID(*this, "Hierarchy Editor");
 
         ImGuiWindowClass hierarchyOverride;
-        hierarchyOverride.ClassId          = getID();
-        hierarchyOverride.ParentViewportId = ImGui::GetCurrentWindow()->ViewportId;
+        hierarchyOverride.ClassId               = static_cast<ImGuiID>(getUUID());
+        hierarchyOverride.ParentViewportId      = ImGui::GetCurrentWindow()->ViewportId;
         hierarchyOverride.DockingAllowUnclassed = false;
         ImGui::SetNextWindowClass(&hierarchyOverride);
 
@@ -458,7 +445,7 @@ namespace Toolbox::UI {
         bool is_filtered_out     = !m_hierarchy_filter.PassFilter(display_name.c_str());
 
         std::string node_uid_str = getNodeUID(node);
-        ImGuiID tree_node_id     = node->getID();
+        ImGuiID tree_node_id     = static_cast<ImGuiID>(node->getUUID());
 
         auto node_it =
             std::find_if(m_hierarchy_selected_nodes.begin(), m_hierarchy_selected_nodes.end(),
@@ -590,7 +577,7 @@ namespace Toolbox::UI {
         std::string properties_editor_str = getWindowChildUID(*this, "Properties Editor");
 
         ImGuiWindowClass propertiesOverride;
-        propertiesOverride.ClassId                  = getID();
+        propertiesOverride.ClassId                  = static_cast<ImGuiID>(getUUID());
         propertiesOverride.ParentViewportId         = ImGui::GetCurrentWindow()->ViewportId;
         propertiesOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe;
         propertiesOverride.DockingAllowUnclassed    = false;
@@ -629,8 +616,6 @@ namespace Toolbox::UI {
     bool SceneWindow::renderRailProperties(SceneWindow &window) { return false; }
 
     bool SceneWindow::renderRailNodeProperties(SceneWindow &window) {
-        auto &logger = Log::AppLogger::instance();
-
         ImVec2 window_size        = ImGui::GetWindowSize();
         const bool collapse_lines = window_size.x < 350;
 
@@ -791,7 +776,7 @@ namespace Toolbox::UI {
                                               ImGuiTreeNodeFlags_SpanAvailWidth;
         const ImGuiTreeNodeFlags node_flags = rail_flags | ImGuiTreeNodeFlags_Leaf;
         ImGuiWindowClass hierarchyOverride;
-        hierarchyOverride.ClassId          = getID();
+        hierarchyOverride.ClassId          = static_cast<ImGuiID>(getUUID());
         hierarchyOverride.ParentViewportId = ImGui::GetCurrentWindow()->ViewportId;
         /*hierarchyOverride.DockNodeFlagsOverrideSet =
             ImGuiDockNodeFlags_NoDockingOverMe | ImGuiDockNodeFlags_NoDockingOverOther;*/
@@ -809,7 +794,7 @@ namespace Toolbox::UI {
 
             for (auto &rail : m_current_scene->getRailData()) {
                 std::string uid_str = getNodeUID(rail);
-                ImGuiID rail_id     = rail->getID();
+                ImGuiID rail_id     = static_cast<ImGuiID>(rail->getUUID());
 
                 bool is_rail_selected = std::any_of(
                     m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
@@ -866,7 +851,7 @@ namespace Toolbox::UI {
                     for (size_t i = 0; i < rail->nodes().size(); ++i) {
                         std::shared_ptr<Rail::RailNode> node = rail->nodes()[i];
                         std::string node_uid_str             = getNodeUID(node);
-                        ImGuiID node_id                      = node->getID();
+                        ImGuiID node_id = static_cast<ImGuiID>(node->getUUID());
 
                         bool is_rail_node_selected =
                             std::any_of(m_rail_node_list_selected_nodes.begin(),
@@ -930,7 +915,8 @@ namespace Toolbox::UI {
             if (m_update_render_objs) {
                 m_renderables.clear();
                 auto perform_result = m_current_scene->getObjHierarchy().getRoot()->performScene(
-                    delta_time, !settings.m_is_rendering_simple, m_renderables, m_resource_cache, lights);
+                    delta_time, !settings.m_is_rendering_simple, m_renderables, m_resource_cache,
+                    lights);
                 if (!perform_result) {
                     const ObjectError &error = perform_result.error();
                     logObjectError(error);
@@ -948,7 +934,7 @@ namespace Toolbox::UI {
         std::string scene_view_str = getWindowChildUID(*this, "Scene View");
 
         ImGuiWindowClass sceneViewOverride;
-        sceneViewOverride.ClassId                  = getID();
+        sceneViewOverride.ClassId                  = static_cast<ImGuiID>(getUUID());
         sceneViewOverride.ParentViewportId         = ImGui::GetCurrentWindow()->ViewportId;
         sceneViewOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe;
         sceneViewOverride.DockingAllowUnclassed    = false;
