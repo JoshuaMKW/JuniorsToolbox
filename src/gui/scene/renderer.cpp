@@ -394,7 +394,7 @@ namespace Toolbox::UI {
                 sky_it->m_model->SetTranslation(position);
             }
 
-            std::vector<std::shared_ptr<J3DModelInstance>> models = {};
+            std::vector<RefPtr<J3DModelInstance>> models = {};
             for (auto &renderable : renderables) {
                 models.push_back(renderable.m_model);
             }
@@ -573,8 +573,8 @@ namespace Toolbox::UI {
         if (m_is_view_manipulating && Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
             ImVec2 mouse_delta = Input::GetMouseDelta();
 
-            m_camera.turnLeftRight(-mouse_delta.x * settings.m_camera_sensitivity * delta_time * 0.1f);
-            m_camera.tiltUpDown(-mouse_delta.y * settings.m_camera_sensitivity * delta_time * 0.1f);
+            m_camera.turnLeftRight(-mouse_delta.x * settings.m_camera_sensitivity * delta_time * 0.25f);
+            m_camera.tiltUpDown(-mouse_delta.y * settings.m_camera_sensitivity * delta_time * 0.25f);
 
             m_is_view_dirty = true;
         }
@@ -642,7 +642,7 @@ namespace Toolbox::UI {
 
     Renderer::selection_variant_t
     Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables,
-                            std::vector<std::shared_ptr<Rail::RailNode>> rail_nodes,
+                            std::vector<RefPtr<Rail::RailNode>> rail_nodes,
                             bool &should_reset) {
         should_reset = false;
         if (!m_is_window_hovered || !m_is_window_focused) {

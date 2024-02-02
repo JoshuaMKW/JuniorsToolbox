@@ -76,18 +76,18 @@ namespace Toolbox::UI {
     }
     */
 
-    static std::string getNodeUID(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
+    static std::string getNodeUID(RefPtr<Toolbox::Object::ISceneObject> node) {
         std::string node_name =
             std::format("{} ({})###{}", node->type(), node->getNameRef().name(), node->getUUID());
         return node_name;
     }
 
-    static std::string getNodeUID(std::shared_ptr<Rail::Rail> node) {
+    static std::string getNodeUID(RefPtr<Rail::Rail> node) {
         std::string node_name = std::format("{}###{}", node->name(), node->getUUID());
         return node_name;
     }
 
-    static std::string getNodeUID(std::shared_ptr<Rail::RailNode> node) {
+    static std::string getNodeUID(RefPtr<Rail::RailNode> node) {
         std::string node_name =
             std::format("Node {}###{}", node->rail()->getNodeIndex(node).value(), node->getUUID());
         return node_name;
@@ -172,7 +172,7 @@ namespace Toolbox::UI {
     bool SceneWindow::update(f32 delta_time) {
         bool inputState = m_renderer.inputUpdate(delta_time);
 
-        std::vector<std::shared_ptr<Rail::RailNode>> rendered_nodes;
+        std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
         for (auto &rail : m_current_scene->getRailData().rails()) {
             if (!m_rail_visible_map[rail->getUUID()])
                 continue;
@@ -198,8 +198,8 @@ namespace Toolbox::UI {
             m_properties_render_handler = renderEmptyProperties;
         }
 
-        if (std::holds_alternative<std::shared_ptr<ISceneObject>>(selection)) {
-            auto render_obj = std::get<std::shared_ptr<ISceneObject>>(selection);
+        if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
+            auto render_obj = std::get<RefPtr<ISceneObject>>(selection);
             if (render_obj) {
                 std::string node_uid_str = getNodeUID(render_obj);
                 ImGuiID tree_node_id     = static_cast<ImGuiID>(render_obj->getUUID());
@@ -250,13 +250,13 @@ namespace Toolbox::UI {
 
                 m_properties_render_handler = renderObjectProperties;
 
-                TOOLBOX_DEBUG_LOG("Hit object {} ({})", render_obj->type(),
+                TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", render_obj->type(),
                                   render_obj->getNameRef().name());
             }
-        } else if (std::holds_alternative<std::shared_ptr<Rail::RailNode>>(selection)) {
-            auto node = std::get<std::shared_ptr<Rail::RailNode>>(selection);
+        } else if (std::holds_alternative<RefPtr<Rail::RailNode>>(selection)) {
+            auto node = std::get<RefPtr<Rail::RailNode>>(selection);
             if (node) {
-                std::shared_ptr<Rail::Rail> rail = get_shared_ptr(*node->rail());
+                RefPtr<Rail::Rail> rail = get_shared_ptr(*node->rail());
                 ImGuiID rail_id                  = static_cast<ImGuiID>(rail->getUUID());
 
                 // In this circumstance, select the whole rail
@@ -288,7 +288,7 @@ namespace Toolbox::UI {
 
                     m_properties_render_handler = renderRailProperties;
 
-                    TOOLBOX_DEBUG_LOG("Hit rail \"{}\"", rail->name());
+                    TOOLBOX_DEBUG_LOG_V("Hit rail \"{}\"", rail->name());
                 } else {
                     ImGuiID node_id = static_cast<ImGuiID>(node->getUUID());
 
@@ -320,7 +320,7 @@ namespace Toolbox::UI {
 
                     m_properties_render_handler = renderRailNodeProperties;
 
-                    TOOLBOX_DEBUG_LOG("Hit node {} of rail \"{}\"",
+                    TOOLBOX_DEBUG_LOG_V("Hit node {} of rail \"{}\"",
                                       rail->getNodeIndex(node).value(), rail->name());
                 }
             }
@@ -353,7 +353,7 @@ namespace Toolbox::UI {
             glm::value_ptr(gizmo_transform), glm::value_ptr(obj_transform.m_translation),
             glm::value_ptr(obj_transform.m_rotation), glm::value_ptr(obj_transform.m_scale));
 
-        // std::shared_ptr<ISceneObject> obj = m_hierarchy_selected_nodes[0].m_selected;
+        // RefPtr<ISceneObject> obj = m_hierarchy_selected_nodes[0].m_selected;
         // BoundingBox obj_old_bb            = obj->getBoundingBox().value();
         // Transform obj_old_transform       = obj->getTransform().value();
 
@@ -429,7 +429,7 @@ namespace Toolbox::UI {
         }
     }
 
-    void SceneWindow::renderTree(std::shared_ptr<Toolbox::Object::ISceneObject> node) {
+    void SceneWindow::renderTree(RefPtr<Toolbox::Object::ISceneObject> node) {
         constexpr auto dir_flags = ImGuiTreeNodeFlags_OpenOnArrow |
                                    ImGuiTreeNodeFlags_OpenOnDoubleClick |
                                    ImGuiTreeNodeFlags_SpanFullWidth;
@@ -849,7 +849,7 @@ namespace Toolbox::UI {
 
                 if (is_rail_open) {
                     for (size_t i = 0; i < rail->nodes().size(); ++i) {
-                        std::shared_ptr<Rail::RailNode> node = rail->nodes()[i];
+                        RefPtr<Rail::RailNode> node = rail->nodes()[i];
                         std::string node_uid_str             = getNodeUID(node);
                         ImGuiID node_id = static_cast<ImGuiID>(node->getUUID());
 
@@ -1038,7 +1038,7 @@ namespace Toolbox::UI {
                     sibling_names.push_back(std::string(child->getNameRef().name()));
                 }
                 for (auto &node : nodes) {
-                    std::shared_ptr<ISceneObject> new_object =
+                    RefPtr<ISceneObject> new_object =
                         make_deep_clone<ISceneObject>(node.m_selected);
                     NameRef node_ref = new_object->getNameRef();
                     node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
@@ -1691,7 +1691,7 @@ namespace Toolbox::UI {
                     z = i * node_distance;
                 }
 
-                auto node = std::make_shared<Rail::RailNode>(x, y, z, 0);
+                auto node = make_referable<Rail::RailNode>(x, y, z, 0);
                 new_nodes.push_back(node);
 
                 angle += angle_step;

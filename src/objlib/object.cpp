@@ -152,7 +152,7 @@ namespace Toolbox::Object {
     void VirtualSceneObject::applyWizard(const TemplateWizard &wizard) {
         m_nameref.setName(wizard.m_name);
         for (auto &member : wizard.m_init_members) {
-            std::shared_ptr<MetaMember> new_member = make_deep_clone<MetaMember>(member);
+            RefPtr<MetaMember> new_member = make_deep_clone<MetaMember>(member);
             new_member->updateReferenceToList(m_members);
             m_members.emplace_back(new_member);
         }
@@ -282,12 +282,12 @@ namespace Toolbox::Object {
     size_t GroupSceneObject::getDataSize() const { return getData().size(); }
 
     std::expected<void, ObjectGroupError>
-    GroupSceneObject::addChild(std::shared_ptr<ISceneObject> child) {
+    GroupSceneObject::addChild(RefPtr<ISceneObject> child) {
         return insertChild(m_children.size(), std::move(child));
     }
 
     std::expected<void, ObjectGroupError>
-    GroupSceneObject::insertChild(size_t index, std::shared_ptr<ISceneObject> child) {
+    GroupSceneObject::insertChild(size_t index, RefPtr<ISceneObject> child) {
         if (index > m_children.size()) {
             ObjectGroupError err = {std::format("Insertion index {} is out of bounds (end: {})",
                                                 index, m_children.size()),
@@ -315,7 +315,7 @@ namespace Toolbox::Object {
     }
 
     std::expected<void, ObjectGroupError>
-    GroupSceneObject::removeChild(std::shared_ptr<ISceneObject> child) {
+    GroupSceneObject::removeChild(RefPtr<ISceneObject> child) {
         auto it = std::find_if(m_children.begin(), m_children.end(),
                                [child](const auto &ptr) { return ptr == child; });
         if (it == m_children.end()) {
@@ -354,12 +354,12 @@ namespace Toolbox::Object {
         return it->get()->removeChild(QualifiedName(name.begin() + 1, name.end()));
     }
 
-    std::expected<std::vector<std::shared_ptr<ISceneObject>>, ObjectGroupError>
+    std::expected<std::vector<RefPtr<ISceneObject>>, ObjectGroupError>
     GroupSceneObject::getChildren() {
         return m_children;
     }
 
-    std::optional<std::shared_ptr<ISceneObject>>
+    std::optional<RefPtr<ISceneObject>>
     GroupSceneObject::getChild(const QualifiedName &name) {
         auto scope = name[0];
         auto it    = std::find_if(m_children.begin(), m_children.end(),
@@ -770,9 +770,9 @@ namespace Toolbox::Object {
         J3DModelLoader bmdLoader;
         J3DMaterialTableLoader bmtLoader;
 
-        std::shared_ptr<J3DModelData> model_data;
-        std::shared_ptr<J3DMaterialTable> mat_table;
-        std::shared_ptr<J3DAnimationInstance> anim_data;
+        RefPtr<J3DModelData> model_data;
+        RefPtr<J3DMaterialTable> mat_table;
+        RefPtr<J3DAnimationInstance> anim_data;
 
         std::optional<std::string> model_file;
         std::optional<std::string> mat_file = info.m_file_materials;
@@ -814,7 +814,7 @@ namespace Toolbox::Object {
             model_data = bmdLoader.Load(&model_stream, 0);
             // resource_cache.m_model.insert({model_name, *model_data});
         } else {
-            model_data = std::make_shared<J3DModelData>(resource_cache.m_model[model_name]);
+            model_data = make_referable<J3DModelData>(resource_cache.m_model[model_name]);
         }
 
         if (!mat_file) {
@@ -834,7 +834,7 @@ namespace Toolbox::Object {
 
             mat_table = bmtLoader.Load(&mat_stream, model_data);
             if (mat_name == "nozzlebox") {
-                std::shared_ptr<J3DMaterial> nozzle_mat = mat_table->GetMaterial("_mat1");
+                RefPtr<J3DMaterial> nozzle_mat = mat_table->GetMaterial("_mat1");
                 auto nozzle_type_member                 = getMember("Spawn").value();
                 std::string nozzle_type = getMetaValue<std::string>(nozzle_type_member).value();
                 if (nozzle_type == "normal_nozzle_item") {
@@ -1014,14 +1014,14 @@ namespace Toolbox::Object {
 
     ObjectFactory::create_t ObjectFactory::create(Deserializer &in) {
         if (isGroupObject(in)) {
-            auto obj    = std::make_unique<GroupSceneObject>();
+            auto obj    = make_scoped<GroupSceneObject>();
             auto result = obj->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
             return obj;
         } else {
-            auto obj    = std::make_unique<PhysicalSceneObject>();
+            auto obj    = make_scoped<PhysicalSceneObject>();
             auto result = obj->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
@@ -1033,11 +1033,11 @@ namespace Toolbox::Object {
     ObjectFactory::create_ret_t ObjectFactory::create(const Template &template_,
                                                       std::string_view wizard_name) {
         if (isGroupObject(template_.type())) {
-            return std::make_unique<GroupSceneObject>(template_, wizard_name);
+            return make_scoped<GroupSceneObject>(template_, wizard_name);
         } else if (isPhysicalObject(template_.type())) {
-            return std::make_unique<PhysicalSceneObject>(template_, wizard_name);
+            return make_scoped<PhysicalSceneObject>(template_, wizard_name);
         } else {
-            return std::make_unique<VirtualSceneObject>(template_, wizard_name);
+            return make_scoped<VirtualSceneObject>(template_, wizard_name);
         }
     }
 

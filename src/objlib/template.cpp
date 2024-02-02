@@ -140,9 +140,9 @@ namespace Toolbox::Object {
         }
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
             return MetaMember(name, enums, std::get<MetaMember::ReferenceInfo>(array_size),
-                              std::make_shared<MetaEnum>(*enum_));
+                              make_referable<MetaEnum>(*enum_));
         }
-        return MetaMember(name, enums, std::make_shared<MetaEnum>(*enum_));
+        return MetaMember(name, enums, make_referable<MetaEnum>(*enum_));
     }
 
     std::optional<MetaMember> Template::loadMemberStruct(std::string_view name,
@@ -170,9 +170,9 @@ namespace Toolbox::Object {
         }
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
             return MetaMember(name, structs, std::get<MetaMember::ReferenceInfo>(array_size),
-                              std::make_shared<MetaStruct>(*struct_));
+                              make_referable<MetaStruct>(*struct_));
         }
-        return MetaMember(name, structs, std::make_shared<MetaStruct>(*struct_));
+        return MetaMember(name, structs, make_referable<MetaStruct>(*struct_));
     }
 
     std::optional<MetaMember> Template::loadMemberPrimitive(std::string_view name,
@@ -199,9 +199,9 @@ namespace Toolbox::Object {
         }
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
             return MetaMember(name, values, std::get<MetaMember::ReferenceInfo>(array_size),
-                              std::make_shared<MetaValue>(vtype.value()));
+                              make_referable<MetaValue>(vtype.value()));
         }
-        return MetaMember(name, values, std::make_shared<MetaValue>(vtype.value()));
+        return MetaMember(name, values, make_referable<MetaValue>(vtype.value()));
     }
 
     void Template::loadMembers(json_t &members, std::vector<MetaMember> &out) {
@@ -402,31 +402,31 @@ namespace Toolbox::Object {
     TemplateFactory::create_t TemplateFactory::create(std::string_view type) {
         auto type_str = std::string(type);
         if (g_template_cache.contains(type_str)) {
-            return std::make_unique<Template>(g_template_cache[type_str]);
+            return make_scoped<Template>(g_template_cache[type_str]);
         }
 
         Template template_;
         try {
             template_ = Template(type);
         } catch (std::runtime_error &e) {
-            return make_fs_error<std::unique_ptr<Template>>(std::error_code(), {e.what()});
+            return make_fs_error<ScopePtr<Template>>(std::error_code(), {e.what()});
         }
 
         TemplateFactory::create_ret_t template_ptr;
         try {
-            template_ptr = std::make_unique<Template>(template_);
+            template_ptr = make_scoped<Template>(template_);
         } catch (std::runtime_error &e) {
-            return make_fs_error<std::unique_ptr<Template>>(std::error_code(), {e.what()});
+            return make_fs_error<ScopePtr<Template>>(std::error_code(), {e.what()});
         }
 
         g_template_cache[type_str] = template_;
-        return std::make_unique<Template>(template_);
+        return make_scoped<Template>(template_);
     }
 
     std::vector<TemplateFactory::create_ret_t> TemplateFactory::createAll() {
         std::vector<TemplateFactory::create_ret_t> ret;
         for (auto &item : g_template_cache) {
-            ret.push_back(std::make_unique<Template>(item.second));
+            ret.push_back(make_scoped<Template>(item.second));
         }
         return ret;
     }

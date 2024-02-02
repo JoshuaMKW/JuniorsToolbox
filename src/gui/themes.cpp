@@ -48,7 +48,7 @@ namespace Toolbox::UI {
         auto &cwd = cwd_result.value();
         for (auto &subpath : std::filesystem::directory_iterator{cwd / "Themes"}) {
             try {
-                auto theme = std::make_shared<ConfigTheme>(subpath.path().stem().string());
+                auto theme = make_referable<ConfigTheme>(subpath.path().stem().string());
                 if (theme->name() == "Default") {
                     theme->apply();
                     m_active_theme = m_themes.size();

@@ -61,12 +61,12 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR("(Property) Trying to render struct \"{}\" as bool",
+            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as bool",
                           m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR("(Property) Trying to render enum \"{}\" as bool",
+            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as bool",
                           m_member->qualifiedName().toString());
         }
 
@@ -172,12 +172,12 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR("(Property) Trying to render struct \"{}\" as number",
+            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as number",
                           m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR("(Property) Trying to render enum \"{}\" as number",
+            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as number",
                           m_member->qualifiedName().toString());
         }
 
@@ -258,12 +258,12 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR("(Property) Trying to render struct \"{}\" as float",
+            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as float",
                           m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR("(Property) Trying to render enum \"{}\" as float",
+            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as float",
                           m_member->qualifiedName().toString());
         }
 
@@ -344,12 +344,12 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR("(Property) Trying to render struct \"{}\" as double",
+            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as double",
                           m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR("(Property) Trying to render enum \"{}\" as double",
+            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as double",
                           m_member->qualifiedName().toString());
         }
 
@@ -430,12 +430,12 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR("(Property) Trying to render struct \"{}\" as string",
+            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as string",
                           m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR("(Property) Trying to render enum \"{}\" as string",
+            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as string",
                           m_member->qualifiedName().toString());
         }
 
@@ -505,12 +505,12 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR("(Property) Trying to render struct \"{}\" as color",
+            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as color",
                           m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR("(Property) Trying to render enum \"{}\" as color",
+            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as color",
                           m_member->qualifiedName().toString());
         }
 
@@ -608,12 +608,12 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR("(Property) Trying to render struct \"{}\" as vector",
+            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as vector",
                           m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR("(Property) Trying to render enum \"{}\" as vector",
+            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as vector",
                           m_member->qualifiedName().toString());
         }
 
@@ -701,12 +701,12 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR("(Property) Trying to render struct \"{}\" as transform",
+            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as transform",
                           m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR("(Property) Trying to render enum \"{}\" as transform",
+            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as transform",
                           m_member->qualifiedName().toString());
         }
 
@@ -857,12 +857,12 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR("(Property) Trying to render struct \"{}\" as enum",
+            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as enum",
                           m_member->qualifiedName().toString());
         }
 
         if (!m_member->isTypeEnum()) {
-            TOOLBOX_ERROR("(Property) Trying to render value \"{}\" as enum",
+            TOOLBOX_ERROR_V("(Property) Trying to render value \"{}\" as enum",
                           m_member->qualifiedName().toString());
         }
 
@@ -943,7 +943,7 @@ namespace Toolbox::UI {
         return any_changed;
     }
 
-    StructProperty::StructProperty(std::shared_ptr<Object::MetaMember> prop)
+    StructProperty::StructProperty(RefPtr<Object::MetaMember> prop)
         : IProperty(prop), m_open(true) {
         prop->syncArray();
         m_children_ary.resize(prop->arraysize());
@@ -991,12 +991,12 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR("(Property) Trying to render struct \"{}\" as enum",
+            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as enum",
                           m_member->qualifiedName().toString());
         }
 
         if (!m_member->isTypeStruct()) {
-            TOOLBOX_ERROR("(Property) Trying to render value \"{}\" as struct",
+            TOOLBOX_ERROR_V("(Property) Trying to render value \"{}\" as struct",
                           m_member->qualifiedName().toString());
         }
 
@@ -1047,30 +1047,30 @@ namespace Toolbox::UI {
         return any_changed;
     }
 
-    std::unique_ptr<IProperty> createProperty(std::shared_ptr<Object::MetaMember> m_member) {
+    ScopePtr<IProperty> createProperty(RefPtr<Object::MetaMember> m_member) {
         auto meta_type = Object::getMetaType(m_member);
         if (m_member->isTypeStruct()) {
-            return std::make_unique<StructProperty>(m_member);
+            return make_scoped<StructProperty>(m_member);
         } else if (m_member->isTypeEnum()) {
-            return std::make_unique<EnumProperty>(m_member);
+            return make_scoped<EnumProperty>(m_member);
         } else if (meta_type == Object::MetaType::STRING) {
-            return std::make_unique<StringProperty>(m_member);
+            return make_scoped<StringProperty>(m_member);
         } else if (meta_type == Object::MetaType::RGB || meta_type == Object::MetaType::RGBA) {
-            return std::make_unique<ColorProperty>(m_member);
+            return make_scoped<ColorProperty>(m_member);
         } else if (meta_type == Object::MetaType::VEC3) {
-            return std::make_unique<VectorProperty>(m_member);
+            return make_scoped<VectorProperty>(m_member);
         } else if (meta_type == Object::MetaType::TRANSFORM) {
-            return std::make_unique<TransformProperty>(m_member);
+            return make_scoped<TransformProperty>(m_member);
         } else if (meta_type == Object::MetaType::F32) {
-            return std::make_unique<FloatProperty>(m_member);
+            return make_scoped<FloatProperty>(m_member);
         } else if (meta_type == Object::MetaType::F64) {
-            return std::make_unique<DoubleProperty>(m_member);
+            return make_scoped<DoubleProperty>(m_member);
         } else if (meta_type == Object::MetaType::BOOL) {
-            return std::make_unique<FloatProperty>(m_member);
+            return make_scoped<FloatProperty>(m_member);
         } else if (meta_type == Object::MetaType::COMMENT) {
             return {};
         } else {
-            return std::make_unique<NumberProperty>(m_member);
+            return make_scoped<NumberProperty>(m_member);
         }
     }
 

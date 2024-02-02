@@ -10,9 +10,9 @@ namespace Toolbox {
         os << indent_str << "}\n";
     }
 
-    std::expected<std::unique_ptr<SceneInstance>, SerialError>
+    std::expected<ScopePtr<SceneInstance>, SerialError>
     SceneInstance::FromPath(const std::filesystem::path &root) {
-        auto scene        = std::make_unique<SceneInstance>();
+        auto scene         = make_scoped<SceneInstance>();
         scene->m_root_path = root;
 
         auto scene_bin   = root / "map/scene.bin";
@@ -43,14 +43,14 @@ namespace Toolbox {
             }
         }
 
-        std::shared_ptr<Object::GroupSceneObject> map_root_obj_ptr =
+        RefPtr<Object::GroupSceneObject> map_root_obj_ptr =
             std::static_pointer_cast<GroupSceneObject, ISceneObject>(
                 std::move(map_root_obj.value()));
-        std::shared_ptr<Object::GroupSceneObject> table_root_obj_ptr =
+        RefPtr<Object::GroupSceneObject> table_root_obj_ptr =
             std::static_pointer_cast<GroupSceneObject, ISceneObject>(
                 std::move(table_root_obj.value()));
 
-        scene->m_map_objects = ObjectHierarchy("Map", map_root_obj_ptr);
+        scene->m_map_objects   = ObjectHierarchy("Map", map_root_obj_ptr);
         scene->m_table_objects = ObjectHierarchy("Table", table_root_obj_ptr);
 
         {
@@ -76,7 +76,7 @@ namespace Toolbox {
 
     SceneInstance::~SceneInstance() {}
 
-    std::unique_ptr<SceneInstance> SceneInstance::BasicScene() { return nullptr; }
+    ScopePtr<SceneInstance> SceneInstance::BasicScene() { return nullptr; }
 
     std::expected<void, SerialError> SceneInstance::saveToPath(const std::filesystem::path &root) {
         auto scene_bin   = root / "map/scene.bin";
@@ -143,8 +143,8 @@ namespace Toolbox {
         os << indent_str << "}" << std::endl;
     }
 
-    std::unique_ptr<ISmartResource> SceneInstance::clone(bool deep) const {
-        auto scene_instance = std::make_unique<SceneInstance>();
+    ScopePtr<ISmartResource> SceneInstance::clone(bool deep) const {
+        auto scene_instance = make_scoped<SceneInstance>();
         scene_instance->m_root_path = m_root_path;
         
         if (deep) {

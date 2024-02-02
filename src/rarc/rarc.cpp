@@ -94,7 +94,7 @@ namespace Toolbox::RARC {
     }
     static bool isSpecialPath(std::string_view name) { return name == "." || name == ".."; }
 
-    static std::expected<std::unique_ptr<LowResourceArchive>, SerialError>
+    static std::expected<ScopePtr<LowResourceArchive>, SerialError>
     loadLowResourceArchive(Deserializer &in);
 
     static std::expected<void, SerialError>
@@ -1049,8 +1049,8 @@ namespace Toolbox::RARC {
         return {};
     }
 
-    std::unique_ptr<ISmartResource> ResourceArchive::clone(bool deep) const {
-        return std::unique_ptr<ISmartResource>();
+    ScopePtr<ISmartResource> ResourceArchive::clone(bool deep) const {
+        return ScopePtr<ISmartResource>();
     }
 
     std::expected<void, BaseError> ResourceArchive::recalculateIDs() {
@@ -1103,21 +1103,21 @@ namespace Toolbox::RARC {
         return {};
     }
 
-    static std::expected<std::unique_ptr<LowResourceArchive>, SerialError>
+    static std::expected<ScopePtr<LowResourceArchive>, SerialError>
     loadLowResourceArchive(Deserializer &in) {
-        auto low_archive = std::make_unique<LowResourceArchive>();
+        auto low_archive = make_scoped<LowResourceArchive>();
 
         // Metaheader
         {
             low_archive->meta_header.magic = in.read<u32, std::endian::big>();
             if (!ResourceArchive::isMagicValid(low_archive->meta_header.magic)) {
-                return make_serial_error<std::unique_ptr<LowResourceArchive>>(
+                return make_serial_error<ScopePtr<LowResourceArchive>>(
                     in, "Invalid magic (Expected RARC)", -4);
             }
 
             low_archive->meta_header.size = in.read<u32, std::endian::big>();
             if (low_archive->meta_header.size != in.size()) {
-                return make_serial_error<std::unique_ptr<LowResourceArchive>>(
+                return make_serial_error<ScopePtr<LowResourceArchive>>(
                     in, "Invalid size (Stream size doesn't match)", -4);
             }
 

@@ -50,7 +50,7 @@ namespace Toolbox {
     void RailData::addRail(const Rail::Rail &rail) { insertRail(m_rails.size(), rail); }
 
     void RailData::insertRail(size_t index, const Rail::Rail &rail) {
-        auto new_rail = std::make_shared<Rail::Rail>(rail);
+        auto new_rail = make_referable<Rail::Rail>(rail);
         new_rail->setSiblingID(m_next_sibling_id++);
         m_rails.insert(m_rails.begin() + index, std::move(new_rail));
     }
@@ -124,11 +124,11 @@ namespace Toolbox {
             in.seek(name_pos, std::ios::beg);
             auto name = in.readCString(128);
 
-            auto rail = std::make_shared<Rail::Rail>(name);
+            auto rail = make_referable<Rail::Rail>(name);
 
             in.seek(data_pos, std::ios::beg);
             for (size_t i = 0; i < node_count; ++i) {
-                auto node = std::make_shared<Rail::RailNode>();
+                auto node = make_referable<Rail::RailNode>();
                 node->deserialize(in);
                 rail->addNode(node);
             }
@@ -138,7 +138,7 @@ namespace Toolbox {
         }
     }
 
-    std::unique_ptr<ISmartResource> RailData::clone(bool deep) const {
+    ScopePtr<ISmartResource> RailData::clone(bool deep) const {
         std::vector<RailData::rail_ptr_t> rails;
         if (deep) {
             for (auto &rail : m_rails) {
@@ -149,7 +149,7 @@ namespace Toolbox {
                 rails.push_back(make_clone<Rail::Rail>(rail));
             }
         }
-        return std::make_unique<RailData>(rails);
+        return make_scoped<RailData>(rails);
     }
 
 }  // namespace Toolbox::Scene

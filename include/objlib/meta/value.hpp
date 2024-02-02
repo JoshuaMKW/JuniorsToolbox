@@ -14,6 +14,8 @@
 #include <variant>
 #include <magic_enum.hpp>
 
+#include "core/memory.hpp"
+
 template <> struct std::formatter<glm::vec3> : std::formatter<string_view> {
     template <typename FormatContext> auto format(const glm::vec3 &obj, FormatContext &ctx) const {
         std::string outstr;
@@ -425,7 +427,7 @@ namespace Toolbox::Object {
         MetaType m_type = MetaType::UNKNOWN;
     };
 
-    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, bool value, MetaType type) {
+    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, bool value, MetaType type) {
         try {
             switch (type) {
             case MetaType::BOOL:
@@ -438,7 +440,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, s64 value,
+    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, s64 value,
                                                 MetaType type) {
         try {
             switch (type) {
@@ -462,7 +464,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, f64 value, MetaType type) {
+    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, f64 value, MetaType type) {
         try {
             switch (type) {
             case MetaType::F32:
@@ -477,7 +479,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, const std::string &value, MetaType type) {
+    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, const std::string &value, MetaType type) {
         try {
             switch (type) {
             case MetaType::STRING:
@@ -491,7 +493,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value,
+    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value,
                                                        std::string_view value, MetaType type) {
         try {
             switch (type) {
@@ -506,7 +508,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, glm::vec3 value, MetaType type) {
+    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, glm::vec3 value, MetaType type) {
         try {
             switch (type) {
             case MetaType::VEC3:
@@ -519,7 +521,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, const Transform &value, MetaType type) {
+    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, const Transform &value, MetaType type) {
         try {
             switch (type) {
             case MetaType::TRANSFORM:
@@ -532,7 +534,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, const Color::RGB24 &value,
+    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, const Color::RGB24 &value,
                                                 MetaType type) {
         try {
             switch (type) {
@@ -546,7 +548,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(std::shared_ptr<MetaValue> meta_value, const Color::RGBA32 &value,
+    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, const Color::RGBA32 &value,
                                                 MetaType type) {
         try {
             switch (type) {

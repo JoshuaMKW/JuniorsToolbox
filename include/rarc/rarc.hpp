@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/memory.hpp"
 #include "smart_resource.hpp"
 #include "error.hpp"
 #include "fsystem.hpp"
@@ -129,7 +130,7 @@ namespace Toolbox::RARC {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-        std::unique_ptr<ISmartResource> clone(bool deep) const override;
+        ScopePtr<ISmartResource> clone(bool deep) const override;
 
     protected:
         std::expected<void, BaseError> recalculateIDs();

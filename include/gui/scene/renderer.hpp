@@ -51,10 +51,10 @@ namespace Toolbox::UI {
         bool inputUpdate(f32 delta_time);
 
         using selection_variant_t =
-            std::variant<std::shared_ptr<ISceneObject>, std::shared_ptr<Rail::RailNode>, std::nullopt_t>;
+            std::variant<RefPtr<ISceneObject>, RefPtr<Rail::RailNode>, std::nullopt_t>;
 
         selection_variant_t findSelection(std::vector<ISceneObject::RenderInfo> renderables,
-                                          std::vector<std::shared_ptr<Rail::RailNode>> rail_nodes,
+                                          std::vector<RefPtr<Rail::RailNode>> rail_nodes,
                                           bool &should_reset);
 
         void render(std::vector<ISceneObject::RenderInfo> renderables, f32 delta_time);

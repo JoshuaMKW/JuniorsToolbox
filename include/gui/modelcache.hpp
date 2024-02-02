@@ -1,3 +1,5 @@
+#pragma once
+
 #include <map>
 #include <string>
 
@@ -8,4 +10,6 @@
 #include <J3D/Data/J3DModelInstance.hpp>
 #include <J3D/Rendering/J3DRendering.hpp>
 
-extern std::map<std::string, std::shared_ptr<J3DModelData>> ModelCache;
+#include "core/memory.hpp"
+
+extern std::map<std::string, Toolbox::RefPtr<J3DModelData>> ModelCache;

@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 
+#include "core/memory.hpp"
 #include "smart_resource.hpp"
 #include "fsystem.hpp"
 #include "objlib/object.hpp"
@@ -47,7 +48,7 @@ namespace Toolbox::UI {
         void renderMenuBar() override;
         void renderBody(f32 delta_time) override;
         void renderHierarchy();
-        void renderTree(std::shared_ptr<Object::ISceneObject> node);
+        void renderTree(RefPtr<Object::ISceneObject> node);
         void renderRailEditor();
         void renderScene(f32 delta_time);
         void renderHierarchyContextMenu(std::string str_id,
@@ -125,7 +126,7 @@ namespace Toolbox::UI {
         bool postUpdate(f32 delta_time) override;
 
     private:
-        std::unique_ptr<Toolbox::SceneInstance> m_current_scene;
+        ScopePtr<Toolbox::SceneInstance> m_current_scene;
 
         // Hierarchy view
         ImGuiTextFilter m_hierarchy_filter;
@@ -138,7 +139,7 @@ namespace Toolbox::UI {
 
         // Property editor
         std::function<bool(SceneWindow &)> m_properties_render_handler;
-        std::vector<std::unique_ptr<IProperty>> m_selected_properties = {};
+        std::vector<ScopePtr<IProperty>> m_selected_properties = {};
 
         // Object modals
         CreateObjDialog m_create_obj_dialog;

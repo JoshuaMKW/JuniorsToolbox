@@ -121,7 +121,7 @@ namespace Toolbox::Object {
 
     class TemplateFactory {
     public:
-        using create_ret_t = std::unique_ptr<Template>;
+        using create_ret_t = ScopePtr<Template>;
         using create_err_t = std::variant<FSError, JSONError>;
         using create_t     = std::expected<create_ret_t, create_err_t>;
 

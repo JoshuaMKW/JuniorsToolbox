@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/memory.hpp"
 #include "smart_resource.hpp"
 #include "errors.hpp"
 #include "objlib/qualname.hpp"
@@ -17,7 +18,7 @@ namespace Toolbox::Object {
 
     class MetaStruct : public ISerializable, public ISmartResource {
     public:
-        using MemberT      = std::shared_ptr<MetaMember>;
+        using MemberT      = RefPtr<MetaMember>;
         using GetMemberT   = std::expected<MemberT, MetaScopeError>;
         using CacheMemberT = std::unordered_map<std::string, MemberT>;
 
@@ -33,7 +34,7 @@ namespace Toolbox::Object {
     public:
         [[nodiscard]] constexpr std::string_view name() const { return m_name; }
 
-        [[nodiscard]] constexpr std::vector<std::shared_ptr<MetaMember>> members() const {
+        [[nodiscard]] constexpr std::vector<RefPtr<MetaMember>> members() const {
             return m_members;
         }
 
@@ -56,11 +57,11 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-        std::unique_ptr<ISmartResource> clone(bool deep) const override;
+        ScopePtr<ISmartResource> clone(bool deep) const override;
 
     private:
         std::string m_name;
-        std::vector<std::shared_ptr<MetaMember>> m_members = {};
+        std::vector<RefPtr<MetaMember>> m_members = {};
         MetaStruct *m_parent                               = nullptr;
 
         mutable CacheMemberT m_member_cache;

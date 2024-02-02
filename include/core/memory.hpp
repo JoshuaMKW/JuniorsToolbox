@@ -1,3 +1,5 @@
+#pragma once
+
 #include <memory>
 
 #include "core/assert.hpp"
@@ -6,13 +8,13 @@
 namespace Toolbox {
 
     template <typename T> using RefPtr = std::shared_ptr<T>;
-    template <typename T, typename... Args> RefPtr<T> create_referable(Args &&...args) {
-        return std::make_shared<T, Args>(std::forward<Args>(args)...);
+    template <typename T, typename... Args> RefPtr<T> make_referable(Args &&...args) {
+        return std::make_shared<T>(std::forward<Args>(args)...);
     }
 
     template <typename T> using ScopePtr = std::unique_ptr<T>;
-    template <typename T, typename... Args> ScopePtr<T> create_scoped(Args &&...args) {
-        return std::make_unique<T, Args>(std::forward<Args>(args)...);
+    template <typename T, typename... Args> ScopePtr<T> make_scoped(Args &&...args) {
+        return std::make_unique<T>(std::forward<Args>(args)...);
     }
 
     class Buffer {

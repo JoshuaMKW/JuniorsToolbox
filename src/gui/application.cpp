@@ -56,13 +56,13 @@ namespace Toolbox::UI {
         switch (severity) {
         case GL_DEBUG_SEVERITY_NOTIFICATION:
         case GL_DEBUG_SEVERITY_LOW:
-            // TOOLBOX_INFO("(OpenGL) {}", message);
+            // TOOLBOX_INFO_V("(OpenGL) {}", message);
             break;
         case GL_DEBUG_SEVERITY_MEDIUM:
-            TOOLBOX_WARN("(OpenGL) {}", message);
+            TOOLBOX_WARN_V("(OpenGL) {}", message);
             break;
         case GL_DEBUG_SEVERITY_HIGH:
-            TOOLBOX_ERROR("(OpenGL) {}", message);
+            TOOLBOX_ERROR_V("(OpenGL) {}", message);
             break;
         }
     }
@@ -171,10 +171,10 @@ namespace Toolbox::UI {
             }
         }
 
-        auto settings_window = std::make_shared<SettingsWindow>();
+        auto settings_window = make_referable<SettingsWindow>();
         m_windows.push_back(settings_window);
 
-        auto logging_window = std::make_shared<LoggingWindow>();
+        auto logging_window = make_referable<LoggingWindow>();
         logging_window->open();
         m_windows.push_back(logging_window);
 
@@ -357,7 +357,7 @@ namespace Toolbox::UI {
                 }
 
                 if (path.filename() == "scene") {
-                    auto scene_window = std::make_shared<SceneWindow>();
+                    auto scene_window = make_referable<SceneWindow>();
 
                     for (auto window : m_windows) {
                         if (window->name() == scene_window->name() &&
@@ -397,7 +397,7 @@ namespace Toolbox::UI {
                 }
 
                 if (path.extension() == ".szs" || path.extension() == ".arc") {
-                    auto scene_window = std::make_shared<SceneWindow>();
+                    auto scene_window = make_referable<SceneWindow>();
                     if (!scene_window->loadData(path)) {
                         return;
                     }

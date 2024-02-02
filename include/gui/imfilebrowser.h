@@ -188,12 +188,12 @@ namespace ImGui
 inline ImGui::FileBrowser::FileBrowser(ImGuiFileBrowserFlags flags)
     : width_(700), height_(450), posX_(0), posY_(0), flags_(flags),
       openFlag_(false), closeFlag_(false), isOpened_(false), ok_(false), posIsSet_(false),
-      rangeSelectionStart_(0), inputNameBuf_(std::make_unique<std::array<char, INPUT_NAME_BUF_SIZE>>())
+      rangeSelectionStart_(0), inputNameBuf_(make_scoped<std::array<char, INPUT_NAME_BUF_SIZE>>())
 {
     if(flags_ & ImGuiFileBrowserFlags_CreateNewDir)
     {
         newDirNameBuf_ =
-            std::make_unique<std::array<char, INPUT_NAME_BUF_SIZE>>();
+            make_scoped<std::array<char, INPUT_NAME_BUF_SIZE>>();
     }
 
     inputNameBuf_->front() = '\0';
@@ -251,7 +251,7 @@ inline ImGui::FileBrowser &ImGui::FileBrowser::operator=(
     openNewDirLabel_ = copyFrom.openNewDirLabel_;
     if(flags_ & ImGuiFileBrowserFlags_CreateNewDir)
     {
-        newDirNameBuf_ = std::make_unique<
+        newDirNameBuf_ = make_scoped<
             std::array<char, INPUT_NAME_BUF_SIZE>>();
         *newDirNameBuf_ = *copyFrom.newDirNameBuf_;
     }

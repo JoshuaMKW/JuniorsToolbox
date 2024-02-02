@@ -9,22 +9,22 @@ namespace Toolbox::Object {
         return tryJSON(json_value, [this](const json &j) {
             switch (m_type) {
             case MetaType::S8:
-                m_cur_value = std::make_shared<MetaValue>(j.get<s8>());
+                m_cur_value = make_referable<MetaValue>(j.get<s8>());
                 break;
             case MetaType::U8:
-                m_cur_value = std::make_shared<MetaValue>(j.get<u8>());
+                m_cur_value = make_referable<MetaValue>(j.get<u8>());
                 break;
             case MetaType::S16:
-                m_cur_value = std::make_shared<MetaValue>(j.get<s16>());
+                m_cur_value = make_referable<MetaValue>(j.get<s16>());
                 break;
             case MetaType::U16:
-                m_cur_value = std::make_shared<MetaValue>(j.get<u16>());
+                m_cur_value = make_referable<MetaValue>(j.get<u16>());
                 break;
             case MetaType::S32:
-                m_cur_value = std::make_shared<MetaValue>(j.get<s32>());
+                m_cur_value = make_referable<MetaValue>(j.get<s32>());
                 break;
             case MetaType::U32:
-                m_cur_value = std::make_shared<MetaValue>(j.get<u32>());
+                m_cur_value = make_referable<MetaValue>(j.get<u32>());
                 break;
             default:
                 break;
@@ -104,10 +104,10 @@ namespace Toolbox::Object {
         }
     }
 
-    std::unique_ptr<ISmartResource> MetaEnum::clone(bool deep) const {
+    ScopePtr<ISmartResource> MetaEnum::clone(bool deep) const {
         MetaEnum enum_(std::string_view(m_name), m_type, m_values, m_bit_mask);
-        enum_.m_cur_value = std::make_shared<MetaValue>(*m_cur_value);
-        return std::make_unique<MetaEnum>(enum_);
+        enum_.m_cur_value = make_referable<MetaValue>(*m_cur_value);
+        return make_scoped<MetaEnum>(enum_);
     }
 
 }  // namespace Toolbox::Object

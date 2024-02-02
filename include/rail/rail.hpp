@@ -16,7 +16,7 @@ namespace Toolbox::Rail {
 
     class Rail : public ISmartResource, public IUnique {
     public:
-        using node_ptr_t = std::shared_ptr<RailNode>;
+        using node_ptr_t = RefPtr<RailNode>;
 
         Rail() = delete;
         explicit Rail(std::string_view name) : m_name(name) {}
@@ -144,7 +144,7 @@ namespace Toolbox::Rail {
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
 
-        std::unique_ptr<ISmartResource> clone(bool deep) const override;
+        ScopePtr<ISmartResource> clone(bool deep) const override;
 
     protected:
         std::expected<void, MetaError> calcDistancesWithNode(node_ptr_t node);
