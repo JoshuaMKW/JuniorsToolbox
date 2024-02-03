@@ -100,6 +100,7 @@ namespace Toolbox::UI {
             return false;
         }
 
+        glfwSetCharCallback(m_render_window, ImGui_ImplGlfw_CharCallback);
         glfwSetKeyCallback(m_render_window, Input::GLFWKeyCallback);
         glfwSetCursorPosCallback(m_render_window, Input::GLFWMousePositionCallback);
         glfwSetMouseButtonCallback(m_render_window, Input::GLFWMouseButtonCallback);
@@ -206,6 +207,7 @@ namespace Toolbox::UI {
             ImGuiPlatformIO &platform_io = ImGui::GetPlatformIO();
             for (int i = 0; i < platform_io.Viewports.Size; ++i) {
                 auto window = static_cast<GLFWwindow *>(platform_io.Viewports[i]->PlatformHandle);
+                glfwSetCharCallback(window, ImGui_ImplGlfw_CharCallback);
                 glfwSetKeyCallback(window, Input::GLFWKeyCallback);
                 glfwSetCursorPosCallback(window, Input::GLFWMousePositionCallback);
                 glfwSetMouseButtonCallback(window, Input::GLFWMouseButtonCallback);
