@@ -94,8 +94,29 @@ namespace Toolbox::Object {
             bool enum_bitmask = e["Multi"].get<bool>();
             std::vector<MetaEnum::enum_type> values;
             for (auto &value : e["Flags"].items()) {
-                auto vs                   = value.value().get<std::string>();
-                MetaEnum::enum_type enumv = {value.key(), MetaValue(std::stoi(vs, nullptr, 0))};
+                std::string value_str = value.value().get<std::string>();
+                MetaValue meta_value(enum_type.value());
+                switch (enum_type.value()) {
+                case MetaType::S8:
+                    meta_value.set(static_cast<s8>(std::stoi(value_str, nullptr, 0)));
+                    break;
+                case MetaType::U8:
+                    meta_value.set(static_cast<u8>(std::stoi(value_str, nullptr, 0)));
+                    break;
+                case MetaType::S16:
+                    meta_value.set(static_cast<s16>(std::stoi(value_str, nullptr, 0)));
+                    break;
+                case MetaType::U16:
+                    meta_value.set(static_cast<u16>(std::stoi(value_str, nullptr, 0)));
+                    break;
+                case MetaType::S32:
+                    meta_value.set(static_cast<s32>(std::stoi(value_str, nullptr, 0)));
+                    break;
+                case MetaType::U32:
+                    meta_value.set(static_cast<u32>(std::stoi(value_str, nullptr, 0)));
+                    break;
+                }
+                MetaEnum::enum_type enumv = {value.key(), meta_value};
                 values.push_back(enumv);
             }
             MetaEnum menum(item.key(), enum_type.value(), values, enum_bitmask);
@@ -429,83 +450,6 @@ namespace Toolbox::Object {
             ret.push_back(make_scoped<Template>(item.second));
         }
         return ret;
-    }
-
-    struct TemplateCacheInfoLow : public ISerializable {
-        u32 m_name_offset;
-        u32 m_wizard_count;
-        u32 m_wizard_offset;
-        u32 m_struct_count;
-        u32 m_struct_offset;
-        u32 m_enum_count;
-        u32 m_enum_offset;
-
-        std::expected<void, SerialError> deserialize(Deserializer &in) {
-            m_name_offset   = in.read<u32>();
-            m_wizard_count  = in.read<u32>();
-            m_wizard_offset = in.read<u32>();
-            m_struct_count  = in.read<u32>();
-            m_struct_offset = in.read<u32>();
-            m_enum_count    = in.read<u32>();
-            m_enum_offset   = in.read<u32>();
-        }
-
-        std::expected<void, SerialError> serialize(Serializer &out) {
-            out.write(m_name_offset);
-            out.write(m_wizard_count);
-            out.write(m_wizard_offset);
-            out.write(m_struct_count);
-            out.write(m_struct_offset);
-            out.write(m_enum_count);
-            out.write(m_enum_offset);
-        }
-    };
-
-    struct WizardCacheInfoLow : public ISerializable {
-        u32 m_name_offset;
-        u32 m_member_count;
-        u32 m_member_offset;
-        u32 m_model_name_offset;
-        u32 m_material_path_offset;
-        u32 m_animation_path_count;
-        u32 m_animation_path_offset;
-
-        std::expected<void, SerialError> deserialize(Deserializer &in) {
-            m_name_offset   = in.read<u32>();
-            m_member_count  = in.read<u32>();
-            m_member_offset = in.read<u32>();
-            m_model_name_offset = in.read<u32>();
-            m_material_path_offset = in.read<u32>();
-            m_animation_path_count = in.read<u32>();
-            m_animation_path_offset = in.read<u32>();
-        }
-
-        std::expected<void, SerialError> serialize(Serializer &out) {
-            out.write(m_name_offset);
-            out.write(m_member_count);
-            out.write(m_member_offset);
-            out.write(m_model_name_offset);
-            out.write(m_material_path_offset);
-            out.write(m_animation_path_count);
-            out.write(m_animation_path_offset);
-        }
-    };
-
-
-    std::expected<void, SerialError> TemplateFactory::loadFromCacheBlob(Deserializer &in) {
-        return std::expected<void, SerialError>();
-    }
-
-    std::expected<void, SerialError> TemplateFactory::saveToCacheBlob(Serializer &out) {
-        out.pushBreakpoint();
-        {
-            out.write<u32>('TMPL');
-            out.write<u32>(0);     // TMP SIZE
-            out.write<u32>(0x20);  // Template section offset
-            out.write<u32>(0);     // Names section offset
-        }
-
-        return std::expected<void, SerialError>();
     }
 
 }  // namespace Toolbox::Object

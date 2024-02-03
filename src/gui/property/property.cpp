@@ -1067,8 +1067,6 @@ namespace Toolbox::UI {
             return make_scoped<DoubleProperty>(m_member);
         } else if (meta_type == Object::MetaType::BOOL) {
             return make_scoped<FloatProperty>(m_member);
-        } else if (meta_type == Object::MetaType::COMMENT) {
-            return {};
         } else {
             return make_scoped<NumberProperty>(m_member);
         }

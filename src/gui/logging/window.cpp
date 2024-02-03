@@ -84,7 +84,7 @@ namespace Toolbox::UI {
     }
 
     void LoggingWindow::renderBody(f32 delta_time) {
-        ImFont *mono_font = FontManager::instance().getFont("NanumGothicCoding-Bold", 14.0f);
+        ImFont *mono_font = FontManager::instance().getFont("NanumGothicCoding-Bold", 12.0f);
         if (mono_font) {
             ImGui::PushFont(mono_font);
         }

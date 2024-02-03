@@ -12,41 +12,42 @@ namespace Toolbox::Object {
         return tryJSON(json_value, [this](const json &j) {
             switch (m_type) {
             case MetaType::BOOL:
-                m_value = j.get<bool>();
+                set(j.get<bool>());
                 break;
             case MetaType::S8:
-                m_value = j.get<s8>();
+                set(j.get<s8>());
                 break;
             case MetaType::U8:
-                m_value = j.get<u8>();
+                set(j.get<u8>());
                 break;
             case MetaType::S16:
-                m_value = j.get<s16>();
+                set(j.get<s16>());
                 break;
             case MetaType::U16:
-                m_value = j.get<u16>();
+                set(j.get<u16>());
                 break;
             case MetaType::S32:
-                m_value = j.get<s32>();
+                set(j.get<s32>());
                 break;
             case MetaType::U32:
-                m_value = j.get<u32>();
+                set(j.get<u32>());
                 break;
             case MetaType::F32:
-                m_value = j.get<f32>();
+                set(j.get<f32>());
                 break;
             case MetaType::F64:
-                m_value = j.get<f64>();
+                set(j.get<f64>());
                 break;
-            case MetaType::STRING:
-                m_value = j.get<std::string>();
+            case MetaType::STRING: {
+                set(j.get<std::string>());
                 break;
+            }
             case MetaType::VEC3: {
                 glm::vec3 new_value;
                 new_value.x = j[0].get<f32>();
                 new_value.y = j[1].get<f32>();
                 new_value.z = j[2].get<f32>();
-                m_value     = new_value;
+                set(new_value);
                 break;
             }
             case MetaType::TRANSFORM: {
@@ -60,20 +61,22 @@ namespace Toolbox::Object {
                 new_value.m_scale.x       = j[2][0].get<f32>();
                 new_value.m_scale.y       = j[2][1].get<f32>();
                 new_value.m_scale.z       = j[2][2].get<f32>();
-                m_value                   = new_value;
+                set(new_value);
                 break;
             }
             case MetaType::RGB: {
                 Color::RGB24 new_value(j[0].get<u8>(), j[1].get<u8>(), j[2].get<u8>());
-                m_value = new_value;
+                set(new_value);
                 break;
             }
             case MetaType::RGBA: {
                 Color::RGBA32 new_value(j[0].get<u8>(), j[1].get<u8>(), j[2].get<u8>(),
                                         j[3].get<u8>());
-                m_value = new_value;
+                set(new_value);
                 break;
             }
+            default:
+                break;
             }
         });
     }
@@ -81,76 +84,74 @@ namespace Toolbox::Object {
     std::string MetaValue::toString() const {
         switch (m_type) {
         case MetaType::BOOL:
-            return std::format("{}", std::get<bool>(m_value));
+            return std::format("{}", get<bool>().value());
         case MetaType::S8:
-            return std::format("{}", std::get<s8>(m_value));
+            return std::format("{}", get<s8>().value());
         case MetaType::U8:
-            return std::format("{}", std::get<u8>(m_value));
+            return std::format("{}", get<u8>().value());
         case MetaType::S16:
-            return std::format("{}", std::get<s16>(m_value));
+            return std::format("{}", get<s16>().value());
         case MetaType::U16:
-            return std::format("{}", std::get<u16>(m_value));
+            return std::format("{}", get<u16>().value());
         case MetaType::S32:
-            return std::format("{}", std::get<s32>(m_value));
+            return std::format("{}", get<s32>().value());
         case MetaType::U32:
-            return std::format("{}", std::get<u32>(m_value));
+            return std::format("{}", get<u32>().value());
         case MetaType::F32:
-            return std::format("{}", std::get<f32>(m_value));
+            return std::format("{}", get<f32>().value());
         case MetaType::F64:
-            return std::format("{}", std::get<f64>(m_value));
+            return std::format("{}", get<f64>().value());
         case MetaType::STRING:
-            return std::format("\"{}\"", std::get<std::string>(m_value));
+            return std::format("\"{}\"", get<std::string>().value());
         case MetaType::VEC3:
-            return std::format("{}", std::get<glm::vec3>(m_value));
+            return std::format("{}", get<glm::vec3>().value());
         case MetaType::TRANSFORM:
-            return std::format("{}", std::get<Transform>(m_value));
+            return std::format("{}", get<Transform>().value());
         case MetaType::RGB:
-            return std::format("{}", std::get<Color::RGB24>(m_value));
+            return std::format("{}", get<Color::RGB24>().value());
         case MetaType::RGBA:
-            return std::format("{}", std::get<Color::RGBA32>(m_value));
-        case MetaType::COMMENT:
-            // return std::get<std::string>(m_value);
+            return std::format("{}", get<Color::RGBA32>().value());
         default:
             return "null";
         }
     }
 
     bool MetaValue::operator==(const MetaValue &other) const {
-        return m_type == other.m_type && m_value == other.m_value;
+        return m_type == other.m_type && m_value_buf == other.m_value_buf;
     }
 
     std::expected<void, SerialError> MetaValue::serialize(Serializer &out) const {
         try {
             switch (m_type) {
             case MetaType::BOOL:
-                out.write(std::get<bool>(m_value));
+                out.write(get<bool>().value());
                 break;
             case MetaType::S8:
-                out.write(std::get<s8>(m_value));
+                out.write(get<s8>().value());
                 break;
             case MetaType::U8:
-                out.write(std::get<u8>(m_value));
+                out.write(get<u8>().value());
                 break;
             case MetaType::S16:
-                out.write<s16, std::endian::big>(std::get<s16>(m_value));
+                out.write<s16, std::endian::big>(get<s16>().value());
                 break;
             case MetaType::U16:
-                out.write<u16, std::endian::big>(std::get<u16>(m_value));
+                out.write<u16, std::endian::big>(get<u16>().value());
                 break;
             case MetaType::S32:
-                out.write<s32, std::endian::big>(std::get<s32>(m_value));
+                out.write<s32, std::endian::big>(get<s32>().value());
                 break;
             case MetaType::U32:
-                out.write<u32, std::endian::big>(std::get<u32>(m_value));
+                out.write<u32, std::endian::big>(get<u32>().value());
                 break;
             case MetaType::F32:
-                out.write<f32, std::endian::big>(std::get<f32>(m_value));
+                out.write<f32, std::endian::big>(get<f32>().value());
                 break;
             case MetaType::F64:
-                out.write<f64, std::endian::big>(std::get<f64>(m_value));
+                out.write<f64, std::endian::big>(get<f64>().value());
                 break;
             case MetaType::STRING: {
-                auto str_result = String::toGameEncoding(std::get<std::string>(m_value));
+                auto str_result = String::toGameEncoding(get<std::string>().value());
                 if (!str_result) {
                     return make_serial_error<void>(out, str_result.error().m_message[0]);
                 }
@@ -158,14 +159,14 @@ namespace Toolbox::Object {
                 break;
             }
             case MetaType::VEC3: {
-                auto vec = std::get<glm::vec3>(m_value);
+                auto vec = get<glm::vec3>().value();
                 out.write<f32, std::endian::big>(vec.x);
                 out.write<f32, std::endian::big>(vec.y);
                 out.write<f32, std::endian::big>(vec.z);
                 break;
             }
             case MetaType::TRANSFORM: {
-                auto transform = std::get<Transform>(m_value);
+                auto transform = get<Transform>().value();
                 out.write<f32, std::endian::big>(transform.m_translation.x);
                 out.write<f32, std::endian::big>(transform.m_translation.y);
                 out.write<f32, std::endian::big>(transform.m_translation.z);
@@ -178,16 +179,15 @@ namespace Toolbox::Object {
                 break;
             }
             case MetaType::RGB: {
-                auto rgb = std::get<Color::RGB24>(m_value);
+                auto rgb = get<Color::RGB24>().value();
                 rgb.serialize(out);
                 break;
             }
             case MetaType::RGBA: {
-                auto rgba = std::get<Color::RGBA32>(m_value);
+                auto rgba = get<Color::RGBA32>().value();
                 rgba.serialize(out);
                 break;
             }
-            case MetaType::COMMENT:
             default:
                 break;
             }
@@ -201,38 +201,38 @@ namespace Toolbox::Object {
         try {
             switch (m_type) {
             case MetaType::BOOL:
-                m_value = in.read<bool, std::endian::big>();
+                set(in.read<bool, std::endian::big>());
                 break;
             case MetaType::S8:
-                m_value = in.read<s8, std::endian::big>();
+                set(in.read<s8, std::endian::big>());
                 break;
             case MetaType::U8:
-                m_value = in.read<u8, std::endian::big>();
+                set(in.read<u8, std::endian::big>());
                 break;
             case MetaType::S16:
-                m_value = in.read<s16, std::endian::big>();
+                set(in.read<s16, std::endian::big>());
                 break;
             case MetaType::U16:
-                m_value = in.read<u16, std::endian::big>();
+                set(in.read<u16, std::endian::big>());
                 break;
             case MetaType::S32:
-                m_value = in.read<s32, std::endian::big>();
+                set(in.read<s32, std::endian::big>());
                 break;
             case MetaType::U32:
-                m_value = in.read<u32, std::endian::big>();
+                set(in.read<u32, std::endian::big>());
                 break;
             case MetaType::F32:
-                m_value = in.read<f32, std::endian::big>();
+                set(in.read<f32, std::endian::big>());
                 break;
             case MetaType::F64:
-                m_value = in.read<f64, std::endian::big>();
+                set(in.read<f64, std::endian::big>());
                 break;
             case MetaType::STRING: {
                 auto str_result = String::fromGameEncoding(in.readString<std::endian::big>());
                 if (!str_result) {
                     return make_serial_error<void>(in, str_result.error().m_message[0]);
                 }
-                m_value = str_result.value();
+                set(str_result.value());
                 break;
             }
             case MetaType::VEC3:
@@ -240,7 +240,7 @@ namespace Toolbox::Object {
                 vec.x   = in.read<f32, std::endian::big>();
                 vec.y   = in.read<f32, std::endian::big>();
                 vec.z   = in.read<f32, std::endian::big>();
-                m_value = vec;
+                set(vec);
                 break;
             case MetaType::TRANSFORM: {
                 Transform transform;
@@ -253,22 +253,21 @@ namespace Toolbox::Object {
                 transform.m_scale.x       = in.read<f32, std::endian::big>();
                 transform.m_scale.y       = in.read<f32, std::endian::big>();
                 transform.m_scale.z       = in.read<f32, std::endian::big>();
-                m_value                   = transform;
+                set(transform);
                 break;
             }
             case MetaType::RGB: {
                 Color::RGB24 rgb;
                 rgb.deserialize(in);
-                m_value = rgb;
+                set(rgb);
                 break;
             }
             case MetaType::RGBA: {
                 Color::RGBA32 rgba;
                 rgba.deserialize(in);
-                m_value = rgba;
+                set(rgba);
                 break;
             }
-            case MetaType::COMMENT:
             default:
                 break;
             }

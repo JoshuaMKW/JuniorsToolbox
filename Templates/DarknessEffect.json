@@ -1,0 +1,73 @@
+﻿{
+  "DarknessEffect": {
+    "Enums": {
+      "BehaviorType": {
+        "Type": "U8",
+        "Flags": {
+          "Disabled": "0",
+          "Static": "1",
+          "FollowPlayer": "2"
+        },
+        "Multi": false
+      }
+    },
+    "Structs": {},
+    "Members": {
+      "Translation": {
+        "Type": "VEC3",
+        "ArraySize": 1
+      },
+      "BaseScale": {
+        "Type": "F32",
+        "ArraySize": 1
+      },
+      "LayerScale": {
+        "Type": "F32",
+        "ArraySize": 1
+      },
+      "Type": {
+        "Type": "BehaviorType",
+        "ArraySize": 1
+      },
+      "Color": {
+        "Type": "RGBA",
+        "ArraySize": 1
+      },
+      "Darkness": {
+        "Type": "U8",
+        "ArraySize": 1
+      },
+      "Layers": {
+        "Type": "U8",
+        "ArraySize": 1
+      }
+    },
+    "Wizard": {
+      "Transform": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "Translation": [0.0, 0.0, 0.0],
+      "BaseScale": 2048,
+      "LayerScale": 8,
+      "Type": 2,
+      "Color": [0, 0, 20, 255],
+      "Darkness": 120,
+      "Layers": 24
+    }
+  },
+  "Rendering": {}
+}

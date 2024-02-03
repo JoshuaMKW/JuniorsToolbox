@@ -251,10 +251,6 @@ namespace Toolbox::Object {
             return isTypeValue() &&
                    std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::RGBA;
         }
-        [[nodiscard]] bool isTypeComment() const {
-            return isTypeValue() &&
-                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::COMMENT;
-        }
         [[nodiscard]] bool isTypeUnknown() const {
             return isTypeValue() &&
                    std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::UNKNOWN;

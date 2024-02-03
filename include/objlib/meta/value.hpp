@@ -41,72 +41,67 @@ namespace Toolbox::Object {
         TRANSFORM,
         RGB,
         RGBA,
-        COMMENT,
         UNKNOWN,
     };
 
-    template <typename T, bool comment = false> struct map_to_type_enum {
+    template <typename T> struct map_to_type_enum {
         static constexpr MetaType value = MetaType::UNKNOWN;
     };
 
-    template <> struct map_to_type_enum<bool, false> {
+    template <> struct map_to_type_enum<bool> {
         static constexpr MetaType value = MetaType::BOOL;
     };
 
-    template <> struct map_to_type_enum<s8, false> {
+    template <> struct map_to_type_enum<s8> {
         static constexpr MetaType value = MetaType::S8;
     };
 
-    template <> struct map_to_type_enum<u8, false> {
+    template <> struct map_to_type_enum<u8> {
         static constexpr MetaType value = MetaType::U8;
     };
 
-    template <> struct map_to_type_enum<s16, false> {
+    template <> struct map_to_type_enum<s16> {
         static constexpr MetaType value = MetaType::S16;
     };
 
-    template <> struct map_to_type_enum<u16, false> {
+    template <> struct map_to_type_enum<u16> {
         static constexpr MetaType value = MetaType::U16;
     };
 
-    template <> struct map_to_type_enum<s32, false> {
+    template <> struct map_to_type_enum<s32> {
         static constexpr MetaType value = MetaType::S32;
     };
 
-    template <> struct map_to_type_enum<u32, false> {
+    template <> struct map_to_type_enum<u32> {
         static constexpr MetaType value = MetaType::U32;
     };
 
-    template <> struct map_to_type_enum<f32, false> {
+    template <> struct map_to_type_enum<f32> {
         static constexpr MetaType value = MetaType::F32;
     };
 
-    template <> struct map_to_type_enum<f64, false> {
+    template <> struct map_to_type_enum<f64> {
         static constexpr MetaType value = MetaType::F64;
     };
 
-    template <> struct map_to_type_enum<std::string, false> {
+    template <> struct map_to_type_enum<std::string> {
         static constexpr MetaType value = MetaType::STRING;
     };
 
-    template <> struct map_to_type_enum<glm::vec3, false> {
+    template <> struct map_to_type_enum<glm::vec3> {
         static constexpr MetaType value = MetaType::VEC3;
     };
 
-    template <> struct map_to_type_enum<Transform, false> {
+    template <> struct map_to_type_enum<Transform> {
         static constexpr MetaType value = MetaType::TRANSFORM;
     };
 
-    template <> struct map_to_type_enum<Color::RGB24, false> {
+    template <> struct map_to_type_enum<Color::RGB24> {
         static constexpr MetaType value = MetaType::RGB;
     };
 
-    template <> struct map_to_type_enum<Color::RGBA32, false> {
+    template <> struct map_to_type_enum<Color::RGBA32> {
         static constexpr MetaType value = MetaType::RGBA;
-    };
-
-    template <> struct map_to_type_enum<std::string, true> {
-        static constexpr MetaType value = MetaType::COMMENT;
     };
 
     template <typename T, bool comment = false>
@@ -202,12 +197,6 @@ namespace Toolbox::Object {
         static constexpr size_t alignment      = 1;
     };
 
-    template <> struct meta_type_info<MetaType::COMMENT> {
-        static constexpr std::string_view name = "comment";
-        static constexpr size_t size           = 0;
-        static constexpr size_t alignment      = 0;
-    };
-
     constexpr std::string_view meta_type_name(MetaType type) {
         switch (type) {
         case MetaType::BOOL:
@@ -238,8 +227,6 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::RGB>::name;
         case MetaType::RGBA:
             return meta_type_info<MetaType::RGBA>::name;
-        case MetaType::COMMENT:
-            return meta_type_info<MetaType::COMMENT>::name;
         case MetaType::UNKNOWN:
         default:
             return meta_type_info<MetaType::UNKNOWN>::name;
@@ -274,8 +261,6 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::RGB>::size;
         case MetaType::RGBA:
             return meta_type_info<MetaType::RGBA>::size;
-        case MetaType::COMMENT:
-            return meta_type_info<MetaType::COMMENT>::size;
         case MetaType::UNKNOWN:
         default:
             return meta_type_info<MetaType::UNKNOWN>::size;
@@ -304,8 +289,6 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::F64>::alignment;
         case MetaType::STRING:
             return meta_type_info<MetaType::STRING>::alignment;
-        case MetaType::COMMENT:
-            return meta_type_info<MetaType::COMMENT>::alignment;
         case MetaType::TRANSFORM:
             return meta_type_info<MetaType::TRANSFORM>::alignment;
         case MetaType::RGB:
@@ -320,96 +303,72 @@ namespace Toolbox::Object {
 
     class MetaValue : public ISerializable {
     public:
-        using value_type =
-            std::variant<bool, s8, u8, s16, u16, s32, u32, s64, u64, f32, f64, std::string,
-                         glm::vec3, Transform, Color::RGBA32, Color::RGB24>;
-
-        constexpr MetaValue() = delete;
-        template <typename T> explicit constexpr MetaValue(T value) : m_value(value) {
-            set<T, false>(value);
+        MetaValue() = delete;
+        template <typename T> explicit MetaValue(T value) : m_value_buf() {
+            m_value_buf.alloc(128);
+            m_value_buf.initTo(0);
+            set<T>(value);
         }
-        constexpr MetaValue(MetaType type) : m_type(type) {
+        explicit MetaValue(MetaType type) : m_type(type), m_value_buf() {
+            m_value_buf.alloc(128);
+            m_value_buf.initTo(0);
             switch (type) {
-            case MetaType::BOOL:
-                m_value = false;
-                break;
-            case MetaType::S8:
-                m_value = static_cast<s8>(0);
-                break;
-            case MetaType::U8:
-                m_value = static_cast<u8>(0);
-                break;
-            case MetaType::S16:
-                m_value = static_cast<s16>(0);
-                break;
-            case MetaType::U16:
-                m_value = static_cast<u16>(0);
-                break;
-            case MetaType::S32:
-                m_value = static_cast<s32>(0);
-                break;
-            case MetaType::U32:
-                m_value = static_cast<u32>(0);
-                break;
-            case MetaType::F32:
-                m_value = static_cast<f32>(0);
-                break;
-            case MetaType::F64:
-                m_value = static_cast<f64>(0);
-                break;
-            case MetaType::STRING:
-                m_value = std::string();
-                break;
-            case MetaType::VEC3:
-                m_value = glm::vec3();
-                break;
             case MetaType::TRANSFORM:
-                m_value = Transform();
+                m_value_buf.set<Transform>(0, Transform());
                 break;
-            case MetaType::RGB:
-                m_value = Color::RGB24();
-                break;
-            case MetaType::RGBA:
-                m_value = Color::RGBA32();
+            default:
                 break;
             }
         }
-        constexpr MetaValue(const MetaValue &other) = default;
-        constexpr MetaValue(MetaValue &&other)      = default;
+        MetaValue(const MetaValue &other) = default;
+        MetaValue(MetaValue &&other)      = default;
 
-        constexpr MetaValue &operator=(const MetaValue &other) = default;
-        constexpr MetaValue &operator=(MetaValue &&other)      = default;
-        template <typename T> constexpr MetaValue &operator=(T &&value) {
-            set<T, false>(value);
+        MetaValue &operator=(const MetaValue &other) = default;
+        MetaValue &operator=(MetaValue &&other)      = default;
+        template <typename T> MetaValue &operator=(T &&value) {
+            set<T>(value);
             return *this;
         }
-        template <typename T> constexpr MetaValue &operator=(const T &value) {
-            set<T, false>(value);
+        template <typename T> MetaValue &operator=(const T &value) {
+            set<T>(value);
             return *this;
         }
 
-        [[nodiscard]] constexpr bool is_comment() const { return m_type == MetaType::COMMENT; }
+        [[nodiscard]] MetaType type() const { return m_type; }
 
-        [[nodiscard]] constexpr MetaType type() const { return m_type; }
-
-        template <typename T, bool comment = false>
-        [[nodiscard]] constexpr std::expected<T, std::string> get() const {
-            if (m_type != map_to_type_enum<T, comment>::value)
+        template <typename T>
+        [[nodiscard]] std::expected<T, std::string> get() const {
+            if (m_type != map_to_type_enum<T>::value)
                 return std::unexpected("Type record mismatch");
-            try {
-                return std::get<T>(m_value);
-            } catch (const std::bad_variant_access &e) {
-                return std::unexpected(e.what());
-            }
+            return m_value_buf.get<T>(0);
         }
 
-        template <typename T, bool comment = false> constexpr bool set(const T &value) {
-            if constexpr (std::is_same_v<std::remove_reference_t<T>, std::string> && comment) {
-                m_type = MetaType::COMMENT;
-            } else {
-                m_type = map_to_type_enum<T>::value;
+        template <> [[nodiscard]] std::expected<std::string, std::string> get() const {
+            std::string out;
+            for (size_t i = 0; i < m_value_buf.size(); ++i) {
+                char ch = m_value_buf.get<char>(i);
+                if (ch == '\0')
+                    break;
+
+                out.push_back(ch);
             }
-            m_value = value;
+            return out;
+        }
+
+        template <typename T> bool set(const T &value) {
+            m_type = map_to_type_enum<T>::value;
+            m_value_buf.set<T>(0, value);
+            return true;
+        }
+
+        template <> bool set(const std::string& value) {
+            m_type = MetaType::STRING;
+            if (value.size() > m_value_buf.size()) {
+                m_value_buf.resize(static_cast<size_t>(value.size() * 1.5f));
+            }
+            for (size_t i = 0; i < value.size(); ++i) {
+                m_value_buf.set<char>(i, value[i]);
+            }
             return true;
         }
 
@@ -423,7 +382,7 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
     private:
-        value_type m_value;
+        Buffer m_value_buf;
         MetaType m_type = MetaType::UNKNOWN;
     };
 
@@ -484,9 +443,6 @@ namespace Toolbox::Object {
             switch (type) {
             case MetaType::STRING:
                 return meta_value->set<std::string>(value);
-            case MetaType::COMMENT:
-            default:
-                return false;
             }
         } catch (std::exception &e) {
             return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
@@ -499,9 +455,6 @@ namespace Toolbox::Object {
             switch (type) {
             case MetaType::STRING:
                 return meta_value->set(std::string(value));
-            case MetaType::COMMENT:
-            default:
-                return false;
             }
         } catch (std::exception &e) {
             return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));

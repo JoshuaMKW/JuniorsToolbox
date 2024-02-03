@@ -32,19 +32,19 @@ namespace Toolbox::Object {
                 m_cur_value = make_referable<MetaValue>(static_cast<s8>(0));
                 break;
             case MetaType::U8:
-                m_cur_value = make_referable<MetaValue>(static_cast<s8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<u8>(0));
                 break;
             case MetaType::S16:
-                m_cur_value = make_referable<MetaValue>(static_cast<s8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<s16>(0));
                 break;
             case MetaType::U16:
-                m_cur_value = make_referable<MetaValue>(static_cast<s8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<u16>(0));
                 break;
             case MetaType::S32:
-                m_cur_value = make_referable<MetaValue>(static_cast<s8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<s32>(0));
                 break;
             case MetaType::U32:
-                m_cur_value = make_referable<MetaValue>(static_cast<s8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<u32>(0));
                 break;
             default:
                 break;

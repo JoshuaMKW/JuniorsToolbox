@@ -281,8 +281,7 @@ namespace Toolbox::Object {
 
     size_t GroupSceneObject::getDataSize() const { return getData().size(); }
 
-    std::expected<void, ObjectGroupError>
-    GroupSceneObject::addChild(RefPtr<ISceneObject> child) {
+    std::expected<void, ObjectGroupError> GroupSceneObject::addChild(RefPtr<ISceneObject> child) {
         return insertChild(m_children.size(), std::move(child));
     }
 
@@ -359,8 +358,7 @@ namespace Toolbox::Object {
         return m_children;
     }
 
-    std::optional<RefPtr<ISceneObject>>
-    GroupSceneObject::getChild(const QualifiedName &name) {
+    std::optional<RefPtr<ISceneObject>> GroupSceneObject::getChild(const QualifiedName &name) {
         auto scope = name[0];
         auto it    = std::find_if(m_children.begin(), m_children.end(),
                                   [&](const auto &ptr) { return ptr->getNameRef().name() == scope; });
@@ -373,8 +371,7 @@ namespace Toolbox::Object {
 
     std::expected<void, ObjectError> GroupSceneObject::performScene(
         float delta_time, bool animate, std::vector<RenderInfo> &renderables,
-                                   ResourceCache &resource_cache,
-                                   std::vector<J3DLight> &scene_lights) {
+        ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
         if (!getIsPerforming()) {
             return {};
         }
@@ -781,10 +778,12 @@ namespace Toolbox::Object {
         auto model_member_result = getMember("Model");
         if (model_member_result) {
             if (model_member_result.value()) {
-                model_file =
-                    std::format("mapobj/{}.bmd",
-                                getMetaValue<std::string>(model_member_result.value()).value());
+                std::string model_member_value =
+                    getMetaValue<std::string>(model_member_result.value()).value();
+                model_file = std::format("mapobj/{}.bmd", model_member_value);
             }
+        } else {
+            return make_fs_error<void>(std::error_code(), model_member_result.error().m_message);
         }
 
         if (info.m_file_model) {
@@ -835,7 +834,7 @@ namespace Toolbox::Object {
             mat_table = bmtLoader.Load(&mat_stream, model_data);
             if (mat_name == "nozzlebox") {
                 RefPtr<J3DMaterial> nozzle_mat = mat_table->GetMaterial("_mat1");
-                auto nozzle_type_member                 = getMember("Spawn").value();
+                auto nozzle_type_member        = getMember("Spawn").value();
                 std::string nozzle_type = getMetaValue<std::string>(nozzle_type_member).value();
                 if (nozzle_type == "normal_nozzle_item") {
                     nozzle_mat->TevBlock->mTevColors[1] = {0, 0, 255, 255};
