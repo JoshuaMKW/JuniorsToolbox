@@ -330,6 +330,9 @@ namespace Toolbox {
     is_directory(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_directory(p, ec);
+        if (!result) {
+            return result;
+        }
         if (ec) {
             return std::unexpected(ec);
         }

@@ -455,6 +455,8 @@ namespace Toolbox::Object {
             switch (type) {
             case MetaType::STRING:
                 return meta_value->set(std::string(value));
+            default:
+                return false;
             }
         } catch (std::exception &e) {
             return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));

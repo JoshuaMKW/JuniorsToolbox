@@ -60,14 +60,23 @@
           1
         ]
       ],
-      "Translation": [0.0, 0.0, 0.0],
+      "Translation": [
+        0.0,
+        0.0,
+        0.0
+      ],
       "BaseScale": 2048,
       "LayerScale": 8,
       "Type": 2,
-      "Color": [0, 0, 20, 255],
+      "Color": [
+        0,
+        0,
+        20,
+        255
+      ],
       "Darkness": 120,
       "Layers": 24
-    }
-  },
-  "Rendering": {}
+    },
+    "Rendering": {}
+  }
 }

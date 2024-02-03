@@ -156,12 +156,10 @@ namespace Toolbox::UI {
         // glEnable(GL_MULTISAMPLE);
 
         {
-            m_thread_templates_init = std::thread([]() {
-                auto result = Object::TemplateFactory::initialize();
-                if (!result) {
-                    logFSError(result.error());
-                }
-            });
+            auto result = Object::TemplateFactory::initialize();
+            if (!result) {
+                logFSError(result.error());
+            }
         }
 
         {
