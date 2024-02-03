@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 
+#include "core/memory.hpp"
 #include "smart_resource.hpp"
 #include "fsystem.hpp"
 #include "objlib/object.hpp"
@@ -47,7 +48,7 @@ namespace Toolbox::UI {
         void renderMenuBar() override;
         void renderBody(f32 delta_time) override;
         void renderHierarchy();
-        void renderTree(std::shared_ptr<Object::ISceneObject> node);
+        void renderTree(RefPtr<Object::ISceneObject> node);
         void renderRailEditor();
         void renderScene(f32 delta_time);
         void renderHierarchyContextMenu(std::string str_id,
@@ -90,12 +91,11 @@ namespace Toolbox::UI {
             }
 
             ImGuiWindow *currentWindow              = ImGui::GetCurrentWindow();
-            m_window_class.ClassId                  = getID();
+            m_window_class.ClassId                  = (ImGuiID)getUUID();
             m_window_class.ParentViewportId         = currentWindow->ViewportId;
-            m_window_class.DockingAllowUnclassed    = false;
+            m_window_class.DockingAllowUnclassed    = true;
             m_window_class.DockingAlwaysTabBar      = false;
-            m_window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe;
-            return &m_window_class;
+            return nullptr;
         }
 
         std::optional<ImVec2> minSize() const override {
@@ -126,7 +126,7 @@ namespace Toolbox::UI {
         bool postUpdate(f32 delta_time) override;
 
     private:
-        std::unique_ptr<Toolbox::Scene::SceneInstance> m_current_scene;
+        ScopePtr<Toolbox::SceneInstance> m_current_scene;
 
         // Hierarchy view
         ImGuiTextFilter m_hierarchy_filter;
@@ -139,7 +139,7 @@ namespace Toolbox::UI {
 
         // Property editor
         std::function<bool(SceneWindow &)> m_properties_render_handler;
-        std::vector<std::unique_ptr<IProperty>> m_selected_properties = {};
+        std::vector<ScopePtr<IProperty>> m_selected_properties = {};
 
         // Object modals
         CreateObjDialog m_create_obj_dialog;
@@ -159,7 +159,7 @@ namespace Toolbox::UI {
         ImGuiID m_dock_node_down_left_id = 0;
 
         // Rail editor
-        std::unordered_map<ImGuiID, bool> m_rail_visible_map                  = {};
+        std::unordered_map<UUID64, bool> m_rail_visible_map                  = {};
         bool m_connections_open                                               = true;
         std::vector<SelectionNodeInfo<Rail::Rail>> m_rail_list_selected_nodes = {};
         ContextMenu<SelectionNodeInfo<Rail::Rail>> m_rail_list_single_node_menu;

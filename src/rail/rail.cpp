@@ -518,8 +518,8 @@ namespace Toolbox::Rail {
         }
     }
 
-    std::unique_ptr<ISmartResource> Rail::clone(bool deep) const {
-        auto clone = std::make_unique<Rail>(name());
+    ScopePtr<ISmartResource> Rail::clone(bool deep) const {
+        auto clone = make_scoped<Rail>(name());
 
         if (deep) {
             for (const auto &node : m_nodes) {

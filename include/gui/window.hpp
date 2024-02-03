@@ -99,11 +99,7 @@ namespace Toolbox::UI {
 
         void open() override { m_is_open = true; }
 
-        [[nodiscard]] u32 getID() const override { return m_uid; }
-        void setID(u32 id) override { m_uid = id; }
-
-        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
-        void setSiblingID(u32 id) override { m_sibling_id = id; }
+        [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
 
         [[nodiscard]] IWindow *parent() const override { return m_parent; }
         void setParent(IWindow *parent) override { m_parent = parent; }
@@ -165,14 +161,17 @@ namespace Toolbox::UI {
             ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
                                                 maxSize() ? maxSize().value() : default_max);
 
-            std::string window_name = std::format("{}###{}", title(), getID());
+            std::string window_name = std::format("{}###{}", title(), getUUID());
 
             ImGuiWindowFlags flags_ = flags();
             if (unsaved()) {
                 flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
-            ImGui::SetNextWindowClass(windowClass());
+            /*const ImGuiWindowClass *window_class = windowClass();
+            if (window_class)
+                ImGui::SetNextWindowClass(window_class);*/
+
             if (ImGui::Begin(window_name.c_str(), &m_is_open, flags_)) {
                 m_size     = ImGui::GetWindowSize();
                 m_viewport = ImGui::GetWindowViewport();
@@ -185,7 +184,7 @@ namespace Toolbox::UI {
         }
 
     protected:
-        ImGuiID m_uid        = uuid();
+        UUID64 m_UUID64;
         ImGuiID m_sibling_id = 0;
 
         IWindow *m_parent = nullptr;
@@ -237,11 +236,7 @@ namespace Toolbox::UI {
 
         void open() override { m_is_open = true; }
 
-        [[nodiscard]] u32 getID() const override { return m_uid; }
-        void setID(u32 id) override { m_uid = id; }
-
-        [[nodiscard]] u32 getSiblingID() const override { return m_sibling_id; }
-        void setSiblingID(u32 id) override { m_sibling_id = id; }
+        [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
 
         [[nodiscard]] IWindow *parent() const override { return m_parent; }
         void setParent(IWindow *parent) override { m_parent = parent; }
@@ -303,14 +298,17 @@ namespace Toolbox::UI {
             ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
                                                 maxSize() ? maxSize().value() : default_max);
 
-            std::string window_name = std::format("{}###{}", title(), getID());
+            std::string window_name = std::format("{}###{}", title(), getUUID());
 
             ImGuiWindowFlags flags_ = flags();
             if (unsaved()) {
                 flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
-            ImGui::SetNextWindowClass(windowClass());
+            /*const ImGuiWindowClass *window_class = windowClass();
+            if (window_class)
+                ImGui::SetNextWindowClass(window_class);*/
+
             if (ImGui::Begin(window_name.c_str(), &m_is_open, flags_)) {
                 m_size     = ImGui::GetWindowSize();
                 m_viewport = ImGui::GetWindowViewport();
@@ -325,8 +323,7 @@ namespace Toolbox::UI {
         }
 
     protected:
-        ImGuiID m_uid        = uuid();
-        ImGuiID m_sibling_id = 0;
+        UUID64 m_UUID64;
 
         IWindow *m_parent = nullptr;
 
@@ -345,7 +342,7 @@ namespace Toolbox::UI {
     };
 
     inline std::string getWindowUID(const IWindow &window) {
-        return std::to_string(window.getID());
+        return std::to_string(window.getUUID());
     }
 
     inline std::string getWindowChildUID(const IWindow &window, const std::string &child_name) {

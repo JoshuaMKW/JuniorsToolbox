@@ -1,162 +1,423 @@
 {
-    "Static Map Object": {
-        "Enums": {},
-        "Structs": {
-            "LightInfo": {
-                "ID": {
-                    "Type": "INT",
-                    "ArraySize": 1
-                },
-                "Name": {
-                    "Type": "STRING",
-                    "ArraySize": 1
-                }
-            }
+  "Static Map Object": {
+    "Enums": {},
+    "Structs": {
+      "LightInfo": {
+        "ID": {
+          "Type": "INT",
+          "ArraySize": 1
         },
-        "Members": {
-            "Transform": {
-                "Type": "TRANSFORM",
-                "ArraySize": 1
-            },
-            "Character": {
-                "Type": "STRING",
-                "ArraySize": 1
-            },
-            "LightCount": {
-                "Type": "U32",
-                "ArraySize": 1
-            },
-            "LightArray": {
-                "Type": "LightInfo",
-                "ArraySize": "LightCount"
-            },
-            "Model": {
-                "Type": "STRING",
-                "ArraySize": 1
-            }
-        },
-        "Wizard": {
-            "滝つぼ": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "滝つぼ キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
-                },
-                "Model": "ReflectSky"
-            },
-            "鏡内空": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "鏡内空 キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
-                },
-                "Model": "ReflectSky"
-            },
-            "鏡内地形": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "鏡内地形 キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
-                },
-                "Model": "ReflectParts"
-            },
-            "TopOfCorona": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "TopOfCorona キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
-                },
-                "Model": "TopOfCorona"
-            }
-        },
-        "Rendering": {
-            "滝つぼ": {
-                "Model": "mapobj/falls.bmd"
-            },
-            "鏡内空": {
-                "Model": "map/map/reflectsky.bmd",
-                "Animations": [
-                    "map/map/reflectsky.btk"
-                ]
-            },
-            "鏡内地形": {
-                "Model": "map/map/reflectparts.bmd"
-            },
-            "TopOfCorona": {
-                "Model": "mapobj/TopOfCorona.bmd"
-            }
+        "Name": {
+          "Type": "STRING",
+          "ArraySize": 1
         }
+      }
+    },
+    "Members": {
+      "Transform": {
+        "Type": "TRANSFORM",
+        "ArraySize": 1
+      },
+      "Character": {
+        "Type": "STRING",
+        "ArraySize": 1
+      },
+      "LightCount": {
+        "Type": "U32",
+        "ArraySize": 1
+      },
+      "LightArray": {
+        "Type": "LightInfo",
+        "ArraySize": "LightCount"
+      },
+      "Model": {
+        "Type": "STRING",
+        "ArraySize": 1
+      }
+    },
+    "Wizard": {
+      "滝つぼ": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "滝つぼ キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "ReflectSky"
+      },
+      "鏡内空": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "鏡内空 キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "ReflectSky"
+      },
+      "鏡内地形": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "鏡内地形 キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "ReflectParts"
+      },
+      "TopOfCorona": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "TopOfCorona キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "TopOfCorona"
+      },
+      "riccoSeaPollutionS0": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "riccoSeaPollutionS0 キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "riccoSeaPollutionS0"
+      },
+      "riccoSeaPollutionS1": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "riccoSeaPollutionS1 キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "riccoSeaPollutionS1"
+      },
+      "riccoSeaPollutionS2": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "riccoSeaPollutionS2 キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "riccoSeaPollutionS2"
+      },
+      "riccoSeaPollutionS3": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "riccoSeaPollutionS3 キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "riccoSeaPollutionS3"
+      },
+      "riccoSeaPollutionS4": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "riccoSeaPollutionS4 キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "riccoSeaPollutionS4"
+      },
+      "Mare5ExGate": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "mareSeaPollutionS0 キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "mare5exgate"
+      },
+      "mareSeaPollutionS0": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "mareSeaPollutionS0 キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "mareSeaPollutionS0"
+      },
+      "mareSeaPollutionS12": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "mareSeaPollutionS12 キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "mareSeaPollutionS12"
+      },
+      "mareSeaPollutionS34567": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "Character": "mareSeaPollutionS34567 キャラ",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "Model": "mareSeaPollutionS34567"
+      }
+    },
+    "Rendering": {
+      "滝つぼ": {
+        "Model": "mapobj/falls.bmd"
+      },
+      "鏡内空": {
+        "Model": "map/map/reflectsky.bmd",
+        "Animations": [
+          "map/map/reflectsky.btk"
+        ]
+      },
+      "鏡内地形": {
+        "Model": "map/map/reflectparts.bmd"
+      },
+      "TopOfCorona": {
+        "Model": "mapobj/TopOfCorona.bmd"
+      },
+      "riccoSeaPollutionS0": {
+        "Model": "map/map/riccoseapollutions0.bmd"
+      },
+      "riccoSeaPollutionS1": {
+        "Model": "map/map/riccoseapollutions1.bmd"
+      },
+      "riccoSeaPollutionS2": {
+        "Model": "map/map/riccoseapollutions2.bmd"
+      },
+      "riccoSeaPollutionS3": {
+        "Model": "map/map/riccoseapollutions3.bmd"
+      },
+      "riccoSeaPollutionS4": {
+        "Model": "map/map/riccoseapollutions4.bmd"
+      },
+      "Mare5ExGate": {
+        "Model": "map/map/mare5exgate.bmd"
+      },
+      "mareSeaPollutionS0": {
+        "Model": "map/map/mareseapollutions0.bmd"
+      },
+      "mareSeaPollutionS12": {
+        "Model": "map/map/mareseapollutions12.bmd"
+      },
+      "mareSeaPollutionS34567": {
+        "Model": "map/map/mareseapollutions34567.bmd"
+      }
     }
+  }
 }

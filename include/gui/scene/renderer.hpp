@@ -7,13 +7,13 @@
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
 #include "path.hpp"
-#include "types.hpp"
+#include "core/types.hpp"
 #include <J3D/Data/J3DModelInstance.hpp>
 #include <imgui_internal.h>
 #include <scene/raildata.hpp>
 #include <scene/scene.hpp>
 
-using namespace Toolbox::Scene;
+using namespace Toolbox;
 
 namespace Toolbox::UI {
     namespace Render {
@@ -29,7 +29,7 @@ namespace Toolbox::UI {
         void initializeData(const SceneInstance &scene);
 
         void updatePaths(const RailData &rail_data,
-                         std::unordered_map<ImGuiID, bool> visible_map) {
+                         std::unordered_map<UUID64, bool> visible_map) {
             initializePaths(rail_data, visible_map);
         }
 
@@ -51,17 +51,17 @@ namespace Toolbox::UI {
         bool inputUpdate(f32 delta_time);
 
         using selection_variant_t =
-            std::variant<std::shared_ptr<ISceneObject>, std::shared_ptr<Rail::RailNode>, std::nullopt_t>;
+            std::variant<RefPtr<ISceneObject>, RefPtr<Rail::RailNode>, std::nullopt_t>;
 
         selection_variant_t findSelection(std::vector<ISceneObject::RenderInfo> renderables,
-                                          std::vector<std::shared_ptr<Rail::RailNode>> rail_nodes,
+                                          std::vector<RefPtr<Rail::RailNode>> rail_nodes,
                                           bool &should_reset);
 
         void render(std::vector<ISceneObject::RenderInfo> renderables, f32 delta_time);
 
     protected:
         void initializePaths(const RailData &rail_data,
-                             std::unordered_map<ImGuiID, bool> visible_map);
+                             std::unordered_map<UUID64, bool> visible_map);
         void initializeBillboards();
 
         void viewportBegin();

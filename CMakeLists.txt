@@ -3,15 +3,15 @@
 #
 cmake_minimum_required (VERSION 3.8)
 
-# Require C++20
+# Require C++23 for stacktrace etc
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Enable Hot Reload for MSVC compilers if supported.
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
-endif()
+# if (POLICY CMP0141)
+#   cmake_policy(SET CMP0141 NEW)
+#   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+# endif()
 
 project(JuniorsToolbox)
 
@@ -26,6 +26,8 @@ file(GLOB TOOLBOX_SRC
     "include/bmg/*.hpp"
     "src/bti/*.cpp"
     "include/bti/*.hpp"
+    "src/core/*.cpp"
+    "include/core/*.hpp"
     "src/objlib/*.cpp"
     "include/objlib/*.hpp"
     "src/platform/*.cpp"
@@ -90,7 +92,7 @@ endif()
 
 target_compile_definitions(JuniorsToolbox PRIVATE IMGUI_DEFINE_MATH_OPERATORS)
 
-target_include_directories(JuniorsToolbox PRIVATE "include" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/libbti" "lib/ImGuiFileDialog" "lib/glfw")
+target_include_directories(JuniorsToolbox PRIVATE "include" "lib" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/libbti" "lib/ImGuiFileDialog" "lib/glfw")
 
 
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD

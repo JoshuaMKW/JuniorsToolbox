@@ -1,5 +1,6 @@
 #include "objlib/template.hpp"
 #include "color.hpp"
+#include "gui/settings.hpp"
 #include "jsonlib.hpp"
 #include "magic_enum.hpp"
 #include "objlib/meta/enum.hpp"
@@ -10,6 +11,7 @@
 #include <fstream>
 #include <glm/glm.hpp>
 #include <optional>
+#include <thread>
 
 namespace Toolbox::Object {
 
@@ -49,10 +51,10 @@ namespace Toolbox::Object {
             in.stream() >> j;
 
             for (auto &item : j.items()) {
-                json_t &metadata    = item.value();
-                json_t &member_data = metadata["Members"];
-                json_t &struct_data = metadata["Structs"];
-                json_t &enum_data   = metadata["Enums"];
+                const json_t &metadata    = item.value();
+                const json_t &member_data = metadata["Members"];
+                const json_t &struct_data = metadata["Structs"];
+                const json_t &enum_data   = metadata["Enums"];
 
                 TemplateWizard default_wizard;
 
@@ -62,7 +64,9 @@ namespace Toolbox::Object {
 
                 m_wizards.push_back(default_wizard);
 
-                loadWizards(metadata["Wizard"], metadata["Rendering"]);
+                auto rendering_it = metadata.find("Rendering");
+                loadWizards(metadata["Wizard"],
+                            rendering_it == metadata.end() ? json_t() : metadata["Rendering"]);
                 break;
             }
         });
@@ -75,7 +79,32 @@ namespace Toolbox::Object {
         return {};
     }
 
-    void Template::cacheEnums(json_t &enums) {
+    std::expected<void, JSONError> Template::loadFromJSON(const json_t &the_json) {
+        auto result = tryJSON(the_json, [&](const json_t &j) {
+            const json_t &member_data = j["Members"];
+            const json_t &struct_data = j["Structs"];
+            const json_t &enum_data   = j["Enums"];
+
+            TemplateWizard default_wizard;
+
+            cacheEnums(enum_data);
+            cacheStructs(struct_data);
+            loadMembers(member_data, default_wizard.m_init_members);
+
+            m_wizards.push_back(default_wizard);
+
+            auto rendering_it = j.find("Rendering");
+            loadWizards(j["Wizard"], rendering_it == j.end() ? json_t() : j["Rendering"]);
+        });
+
+        if (!result) {
+            return std::unexpected(result.error());
+        }
+
+        return {};
+    }
+
+    void Template::cacheEnums(const json_t &enums) {
         for (const auto &item : enums.items()) {
             const auto &e    = item.value();
             auto member_type = e["Type"].get<std::string>();
@@ -91,8 +120,29 @@ namespace Toolbox::Object {
             bool enum_bitmask = e["Multi"].get<bool>();
             std::vector<MetaEnum::enum_type> values;
             for (auto &value : e["Flags"].items()) {
-                auto vs                   = value.value().get<std::string>();
-                MetaEnum::enum_type enumv = {value.key(), MetaValue(std::stoi(vs, nullptr, 0))};
+                std::string value_str = value.value().get<std::string>();
+                MetaValue meta_value(enum_type.value());
+                switch (enum_type.value()) {
+                case MetaType::S8:
+                    meta_value.set(static_cast<s8>(std::stoi(value_str, nullptr, 0)));
+                    break;
+                case MetaType::U8:
+                    meta_value.set(static_cast<u8>(std::stoi(value_str, nullptr, 0)));
+                    break;
+                case MetaType::S16:
+                    meta_value.set(static_cast<s16>(std::stoi(value_str, nullptr, 0)));
+                    break;
+                case MetaType::U16:
+                    meta_value.set(static_cast<u16>(std::stoi(value_str, nullptr, 0)));
+                    break;
+                case MetaType::S32:
+                    meta_value.set(static_cast<s32>(std::stoi(value_str, nullptr, 0)));
+                    break;
+                case MetaType::U32:
+                    meta_value.set(static_cast<u32>(std::stoi(value_str, nullptr, 0)));
+                    break;
+                }
+                MetaEnum::enum_type enumv = {value.key(), meta_value};
                 values.push_back(enumv);
             }
             MetaEnum menum(item.key(), enum_type.value(), values, enum_bitmask);
@@ -100,7 +150,7 @@ namespace Toolbox::Object {
         }
     }
 
-    void Template::cacheStructs(json_t &structs) {
+    void Template::cacheStructs(const json_t &structs) {
         std::vector<std::string> visited;
         for (const auto &item : structs.items()) {
             auto name         = item.key();
@@ -137,9 +187,9 @@ namespace Toolbox::Object {
         }
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
             return MetaMember(name, enums, std::get<MetaMember::ReferenceInfo>(array_size),
-                              std::make_shared<MetaEnum>(*enum_));
+                              make_referable<MetaEnum>(*enum_));
         }
-        return MetaMember(name, enums, std::make_shared<MetaEnum>(*enum_));
+        return MetaMember(name, enums, make_referable<MetaEnum>(*enum_));
     }
 
     std::optional<MetaMember> Template::loadMemberStruct(std::string_view name,
@@ -167,9 +217,9 @@ namespace Toolbox::Object {
         }
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
             return MetaMember(name, structs, std::get<MetaMember::ReferenceInfo>(array_size),
-                              std::make_shared<MetaStruct>(*struct_));
+                              make_referable<MetaStruct>(*struct_));
         }
-        return MetaMember(name, structs, std::make_shared<MetaStruct>(*struct_));
+        return MetaMember(name, structs, make_referable<MetaStruct>(*struct_));
     }
 
     std::optional<MetaMember> Template::loadMemberPrimitive(std::string_view name,
@@ -196,12 +246,12 @@ namespace Toolbox::Object {
         }
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
             return MetaMember(name, values, std::get<MetaMember::ReferenceInfo>(array_size),
-                              std::make_shared<MetaValue>(vtype.value()));
+                              make_referable<MetaValue>(vtype.value()));
         }
-        return MetaMember(name, values, std::make_shared<MetaValue>(vtype.value()));
+        return MetaMember(name, values, make_referable<MetaValue>(vtype.value()));
     }
 
-    void Template::loadMembers(json_t &members, std::vector<MetaMember> &out) {
+    void Template::loadMembers(const json_t &members, std::vector<MetaMember> &out) {
 
         for (const auto &item : members.items()) {
             auto member_name = item.key();
@@ -302,11 +352,11 @@ namespace Toolbox::Object {
             }
             MetaMember::size_type array_size = default_member.arraysize_();
             if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
-                return MetaMember(default_member.name(), inst_enums, std::get<MetaMember::ReferenceInfo>(array_size),
+                return MetaMember(default_member.name(), inst_enums,
+                                  std::get<MetaMember::ReferenceInfo>(array_size),
                                   default_member.defaultValue());
             }
-            return MetaMember(default_member.name(), inst_enums,
-                              default_member.defaultValue());
+            return MetaMember(default_member.name(), inst_enums, default_member.defaultValue());
         }
 
         std::vector<MetaValue> inst_values;
@@ -324,7 +374,7 @@ namespace Toolbox::Object {
         return MetaMember(default_member.name(), inst_values, default_member.defaultValue());
     }
 
-    void Template::loadWizards(json_t &wizards, json_t &render_infos) {
+    void Template::loadWizards(const json_t &wizards, const json_t &render_infos) {
         if (m_wizards.size() == 0) {
             return;
         }
@@ -362,7 +412,32 @@ namespace Toolbox::Object {
         }
     }
 
-    static std::unordered_map<std::string, Template> s_template_cache;
+    std::unordered_map<std::string, Template> g_template_cache;
+
+    void Template::threadLoadTemplate(const std::string &type) {
+        Template template_;
+        try {
+            template_ = Template(type);
+        } catch (std::runtime_error &e) {
+            TOOLBOX_ERROR(e.what());
+            return;
+        }
+        g_template_cache[type] = template_;
+        return;
+    }
+
+    void Template::threadLoadTemplateBlob(const std::string &type, const json_t &the_json) {
+        Template template_;
+        try {
+            template_.m_type = type;
+            template_.loadFromJSON(the_json);
+        } catch (std::runtime_error &e) {
+            TOOLBOX_ERROR(e.what());
+            return;
+        }
+        g_template_cache[type] = template_;
+        return;
+    }
 
     std::expected<void, FSError> TemplateFactory::initialize() {
         auto cwd_result = Toolbox::current_path();
@@ -370,49 +445,167 @@ namespace Toolbox::Object {
             return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
         }
 
-        auto &cwd = cwd_result.value();
-        for (auto &subpath : std::filesystem::directory_iterator{cwd / "Templates"}) {
-            auto type_str = subpath.path().stem().string();
-            Template template_;
-            try {
-                template_ = Template(type_str);
-            } catch (std::runtime_error &e) {
-                return make_fs_error<void>(std::error_code(), {e.what()});
-            }
-            s_template_cache[type_str] = template_;
+        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+
+        bool templates_preloaded = false;
+        if (settings.m_is_template_cache_allowed) {
+            templates_preloaded = loadFromCacheBlob().has_value();
         }
+
+        if (!templates_preloaded) {
+            std::vector<std::thread> threads;
+
+            auto &cwd = cwd_result.value();
+            for (auto &subpath : std::filesystem::directory_iterator{cwd / "Templates"}) {
+                auto type_str = subpath.path().stem().string();
+                threads.push_back(std::thread(Template::threadLoadTemplate, type_str));
+            }
+
+            for (auto &th : threads) {
+                th.join();
+            }
+        }
+
+        if (settings.m_is_template_cache_allowed && !templates_preloaded) {
+            return saveToCacheBlob();
+        }
+
+        return {};
+    }
+
+    std::expected<void, FSError> TemplateFactory::loadFromCacheBlob() {
+        auto cwd_result = Toolbox::current_path();
+        if (!cwd_result) {
+            return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
+        }
+
+        auto &cwd      = cwd_result.value();
+        auto blob_path = cwd / "Templates/.cache/blob.json";
+
+        auto path_result = Toolbox::is_regular_file(blob_path);
+        if (!path_result) {
+            return make_fs_error<void>(path_result.error());
+        }
+
+        if (!path_result.value()) {
+            return make_fs_error<void>(std::error_code(),
+                                       {"(TemplateFactory) blob.json not found!"});
+        }
+
+        std::ifstream file(blob_path, std::ios::in);
+        if (!file.is_open()) {
+            return make_fs_error<void>(std::error_code(),
+                                       {"(TemplateFactory) failed to open cache blob!"});
+        }
+
+        Deserializer in(file.rdbuf());
+        json blob_json;
+        in.stream() >> blob_json;
+
+        for (auto &item : blob_json.items()) {
+            Template::threadLoadTemplateBlob(item.key(), item.value());
+        }
+
+        return {};
+    }
+
+    std::expected<void, FSError> TemplateFactory::saveToCacheBlob() {
+        auto cwd_result = Toolbox::current_path();
+        if (!cwd_result) {
+            return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
+        }
+
+        json blob_json;
+
+        {
+            std::vector<std::thread> threads;
+
+            auto &cwd = cwd_result.value();
+            for (auto &subpath : std::filesystem::directory_iterator{cwd / "Templates"}) {
+                auto type_str = subpath.path().stem().string();
+                threads.push_back(std::thread(
+                    [&](const std::string &type_str, const std::filesystem::path &path) {
+                        std::ifstream file(path, std::ios::in);
+                        if (!file.is_open()) {
+                            TOOLBOX_ERROR_V("(TemplateFactory) failed to open template json {}",
+                                            path.filename().string());
+                            return;
+                        }
+
+                        Deserializer in(file.rdbuf());
+                        json t_json;
+                        in.stream() >> t_json;
+
+                        for (auto &[key, value] : t_json.items()) {
+                            blob_json[key] = value;
+                        }
+
+                        file.close();
+                    },
+                    type_str, subpath.path()));
+            }
+
+            for (auto &th : threads) {
+                th.join();
+            }
+        }
+
+        auto &cwd                = cwd_result.value();
+        auto blob_path           = cwd / "Templates/.cache/blob.json";
+        auto cache_folder_result = Toolbox::is_directory(blob_path.parent_path());
+        if (!cache_folder_result) {
+            return make_fs_error<void>(cache_folder_result.error());
+        }
+
+        if (!cache_folder_result.value()) {
+            auto result = Toolbox::create_directory(blob_path.parent_path());
+            if (!result) {
+                return make_fs_error<void>(result.error());
+            }
+        }
+
+        std::ofstream file(blob_path, std::ios::out);
+        if (!file.is_open()) {
+            return make_fs_error<void>(std::error_code(),
+                                       {"(TemplateFactory) failed to open cache blob!"});
+        }
+
+        Serializer out(file.rdbuf());
+        out.stream() << blob_json;
+
+        file.close();
 
         return {};
     }
 
     TemplateFactory::create_t TemplateFactory::create(std::string_view type) {
         auto type_str = std::string(type);
-        if (s_template_cache.contains(type_str)) {
-            return std::make_unique<Template>(s_template_cache[type_str]);
+        if (g_template_cache.contains(type_str)) {
+            return make_scoped<Template>(g_template_cache[type_str]);
         }
 
         Template template_;
         try {
             template_ = Template(type);
         } catch (std::runtime_error &e) {
-            return make_fs_error<std::unique_ptr<Template>>(std::error_code(), {e.what()});
+            return make_fs_error<ScopePtr<Template>>(std::error_code(), {e.what()});
         }
 
         TemplateFactory::create_ret_t template_ptr;
         try {
-            template_ptr = std::make_unique<Template>(template_);
+            template_ptr = make_scoped<Template>(template_);
         } catch (std::runtime_error &e) {
-            return make_fs_error<std::unique_ptr<Template>>(std::error_code(), {e.what()});
+            return make_fs_error<ScopePtr<Template>>(std::error_code(), {e.what()});
         }
 
-        s_template_cache[type_str] = template_;
-        return std::make_unique<Template>(template_);
+        g_template_cache[type_str] = template_;
+        return make_scoped<Template>(template_);
     }
 
     std::vector<TemplateFactory::create_ret_t> TemplateFactory::createAll() {
         std::vector<TemplateFactory::create_ret_t> ret;
-        for (auto &item : s_template_cache) {
-            ret.push_back(std::make_unique<Template>(item.second));
+        for (auto &item : g_template_cache) {
+            ret.push_back(make_scoped<Template>(item.second));
         }
         return ret;
     }

@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
@@ -23,6 +24,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "core/core.hpp"
 #include "gui/scene/ImGuizmo.h"
 
 // void ImGuiSetupTheme(bool, float);
@@ -51,17 +53,16 @@ namespace Toolbox::UI {
 
     void DealWithGLErrors(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                           const GLchar *message, const void *userParam) {
-        Log::AppLogger &logger = Log::AppLogger::instance();
         switch (severity) {
         case GL_DEBUG_SEVERITY_NOTIFICATION:
         case GL_DEBUG_SEVERITY_LOW:
-            // logger.info(std::format("(OpenGL) {}", message));
+            // TOOLBOX_INFO_V("(OpenGL) {}", message);
             break;
         case GL_DEBUG_SEVERITY_MEDIUM:
-            logger.warn(std::format("(OpenGL) {}", message));
+            TOOLBOX_WARN_V("(OpenGL) {}", message);
             break;
         case GL_DEBUG_SEVERITY_HIGH:
-            logger.error(std::format("(OpenGL) {}", message));
+            TOOLBOX_ERROR_V("(OpenGL) {}", message);
             break;
         }
     }
@@ -143,7 +144,7 @@ namespace Toolbox::UI {
 
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(m_render_window, false);
-        ImGui_ImplOpenGL3_Init("#version 410");
+        ImGui_ImplOpenGL3_Init("#version 150");
 
         auto &settings_manager = SettingsManager::instance();
         settings_manager.initialize();
@@ -168,10 +169,10 @@ namespace Toolbox::UI {
             }
         }
 
-        auto settings_window = std::make_shared<SettingsWindow>();
+        auto settings_window = make_referable<SettingsWindow>();
         m_windows.push_back(settings_window);
 
-        auto logging_window = std::make_shared<LoggingWindow>();
+        auto logging_window = make_referable<LoggingWindow>();
         logging_window->open();
         m_windows.push_back(logging_window);
 
@@ -241,15 +242,16 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowViewport(viewport->ID);
         m_dockspace_id = ImGui::DockSpaceOverViewport(viewport);
 
-        ImGuiWindowFlags window_flags =
-            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
-
         m_dockspace_built = ImGui::DockBuilderGetNode(m_dockspace_id);
         if (!m_dockspace_built) {
-            ImGui::DockBuilderRemoveNode(m_dockspace_id);
-            ImGui::DockBuilderAddNode(m_dockspace_id, ImGuiDockNodeFlags_None);
+            ImGui::DockBuilderAddNode(m_dockspace_id, ImGuiDockNodeFlags_DockSpace);
             ImGui::DockBuilderFinish(m_dockspace_id);
         }
+
+#ifdef TOOLBOX_DEBUG
+        ImGui::ShowMetricsWindow();
+        ImGui::ShowDebugLogWindow();
+#endif
 
         renderMenuBar();
         renderWindows(delta_time);
@@ -353,7 +355,7 @@ namespace Toolbox::UI {
                 }
 
                 if (path.filename() == "scene") {
-                    auto scene_window = std::make_shared<SceneWindow>();
+                    auto scene_window = make_referable<SceneWindow>();
 
                     for (auto window : m_windows) {
                         if (window->name() == scene_window->name() &&
@@ -393,7 +395,7 @@ namespace Toolbox::UI {
                 }
 
                 if (path.extension() == ".szs" || path.extension() == ".arc") {
-                    auto scene_window = std::make_shared<SceneWindow>();
+                    auto scene_window = make_referable<SceneWindow>();
                     if (!scene_window->loadData(path)) {
                         return;
                     }
@@ -430,9 +432,11 @@ namespace Toolbox::UI {
     void MainApplication::renderWindows(f32 delta_time) {
         // Render viewer context
         for (auto &window : m_windows) {
-            if (!m_dockspace_built && !m_docked_map[window->title()]) {
-                ImGui::DockBuilderDockWindow(window->title().c_str(), m_dockspace_id);
-                m_docked_map[window->title()] = true;
+            if (!m_dockspace_built && !m_docked_map[window->getUUID()]) {
+                std::string window_name =
+                    std::format("{}###{}", window->title(), window->getUUID());
+                ImGui::DockBuilderDockWindow(window_name.c_str(), m_dockspace_id);
+                m_docked_map[window->getUUID()] = true;
             }
         }
 
@@ -466,9 +470,8 @@ namespace Toolbox::UI {
         }
 
         if (service_result.value()) {
-            Log::AppLogger::instance().warn(
-                "Found Nahimic service running on this system, this could cause "
-                "crashes to occur on window resize!");
+            TOOLBOX_WARN("Found Nahimic service running on this system, this could cause "
+                         "crashes to occur on window resize!");
             return false;
         }
 

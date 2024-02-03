@@ -10,7 +10,7 @@
 namespace Toolbox::Object {
     MetaStruct::MetaStruct(std::string_view name, std::vector<MetaMember> members) : m_name(name) {
         for (const auto &m : members) {
-            auto p = std::make_shared<MetaMember>(m);
+            auto p = make_referable<MetaMember>(m);
             m_members.push_back(std::move(p));
         }
     }
@@ -115,7 +115,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::unique_ptr<ISmartResource> MetaStruct::clone(bool deep) const {
+    ScopePtr<ISmartResource> MetaStruct::clone(bool deep) const {
         MetaStruct struct_;
         struct_.m_name                     = m_name;
         struct_.m_parent                   = m_parent;
@@ -133,7 +133,7 @@ namespace Toolbox::Object {
             }
         }
 
-        return std::make_unique<MetaStruct>(struct_);
+        return make_scoped<MetaStruct>(struct_);
     }
 
 }  // namespace Toolbox::Object

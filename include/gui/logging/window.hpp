@@ -7,14 +7,15 @@
 #include <string_view>
 #include <vector>
 
-#include "smart_resource.hpp"
 #include "fsystem.hpp"
 #include "objlib/object.hpp"
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"
+#include "smart_resource.hpp"
 
+#include "core/log.hpp"
+#include "core/types.hpp"
 #include "gui/clipboard.hpp"
-#include "gui/logging/logger.hpp"
 #include "gui/property/property.hpp"
 #include "gui/window.hpp"
 
@@ -26,12 +27,14 @@ namespace Toolbox::UI {
     class LoggingWindow final : public SimpleWindow {
     public:
         LoggingWindow() {
-            Log::AppLogger::instance().setLogCallback(appendMessageToPool);
-            Log::AppLogger::instance().debugLog("Logger successfully started!");
+            TOOLBOX_LOG_CALLBACK(appendMessageToPool);
+            TOOLBOX_INFO("Logger successfully started!");
         }
         ~LoggingWindow() = default;
 
-        ImGuiWindowFlags flags() const override { return SimpleWindow::flags() | ImGuiWindowFlags_MenuBar; }
+        ImGuiWindowFlags flags() const override {
+            return SimpleWindow::flags() | ImGuiWindowFlags_MenuBar;
+        }
 
     protected:
         static void appendMessageToPool(const Log::AppLogger::LogMessage &message);
@@ -46,7 +49,7 @@ namespace Toolbox::UI {
             }
 
             ImGuiWindow *currentWindow              = ImGui::GetCurrentWindow();
-            m_window_class.ClassId                  = getID();
+            m_window_class.ClassId                  = 0;
             m_window_class.ParentViewportId         = currentWindow->ViewportId;
             m_window_class.DockingAllowUnclassed    = false;
             m_window_class.DockingAlwaysTabBar      = false;
@@ -69,13 +72,15 @@ namespace Toolbox::UI {
         [[nodiscard]] std::vector<std::string> extensions() const override { return {}; }
 
         [[nodiscard]] bool loadData(const std::filesystem::path &path) override { return false; }
-        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override { return false; }
+        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override {
+            return false;
+        }
 
         bool update(f32 delta_time) override;
         bool postUpdate(f32 delta_time) override { return true; }
 
     private:
         Log::ReportLevel m_logging_level = Log::ReportLevel::INFO;
-        uint32_t m_dock_space_id = 0;
+        uint32_t m_dock_space_id         = 0;
     };
 }  // namespace Toolbox::UI

@@ -70,7 +70,7 @@
       "Pitch": 1.0,
       "SpawnRate": 15,
       "Shape": 0
-    }
-  },
-  "Rendering": {}
+    },
+    "Rendering": {}
+  }
 }

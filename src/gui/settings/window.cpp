@@ -155,7 +155,7 @@ namespace Toolbox::UI {
         auto themes = manager.themes();
 
         size_t selected_index                  = manager.getActiveThemeIndex();
-        std::shared_ptr<ITheme> selected_theme = themes.at(manager.getActiveThemeIndex());
+        RefPtr<ITheme> selected_theme = themes.at(manager.getActiveThemeIndex());
 
         if (ImGui::BeginCombo("Theme", selected_theme->name().data())) {
             for (size_t i = 0; i < themes.size(); ++i) {

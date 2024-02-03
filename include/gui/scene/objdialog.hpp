@@ -3,11 +3,12 @@
 #include <array>
 #include <functional>
 #include <vector>
+#include <imgui.h>
 
+#include "core/memory.hpp"
 #include "error.hpp"
 #include "gui/scene/nodeinfo.hpp"
 #include "objlib/template.hpp"
-#include <imgui.h>
 
 namespace Toolbox::UI {
 
@@ -46,7 +47,7 @@ namespace Toolbox::UI {
         action_t m_on_accept;
         cancel_t m_on_reject;
 
-        std::vector<std::unique_ptr<Object::Template>> m_templates = {};
+        std::vector<ScopePtr<Object::Template>> m_templates = {};
     };
 
     class RenameObjDialog {

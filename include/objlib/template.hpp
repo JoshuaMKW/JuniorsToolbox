@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/types.hpp"
 #include "fsystem.hpp"
 #include "jsonlib.hpp"
 #include "meta/member.hpp"
@@ -8,7 +9,6 @@
 #include "qualname.hpp"
 #include "serial.hpp"
 #include "transform.hpp"
-#include "types.hpp"
 #include <expected>
 #include <format>
 #include <string>
@@ -46,13 +46,14 @@ namespace Toolbox::Object {
 
         using json_t = nlohmann::ordered_json;
 
-        Template()                 = default;
+        Template() = default;
+        Template(std::string_view type);
+
         Template(const Template &) = default;
         Template(Template &&)      = default;
         ~Template()                = default;
 
     protected:
-        Template(std::string_view type);
         Template(std::string_view type, Deserializer &in) : m_type(type) { deserialize(in); }
 
     public:
@@ -90,9 +91,11 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
+        std::expected<void, JSONError> loadFromJSON(const json_t &the_json);
+
     protected:
-        void cacheEnums(json_t &enums);
-        void cacheStructs(json_t &structs);
+        void cacheEnums(const json_t &enums);
+        void cacheStructs(const json_t &structs);
 
         std::optional<MetaMember> loadMemberEnum(std::string_view name, std::string_view type,
                                                  MetaMember::size_type array_size);
@@ -103,8 +106,11 @@ namespace Toolbox::Object {
         std::optional<MetaMember> loadMemberPrimitive(std::string_view name, std::string_view type,
                                                       MetaMember::size_type array_size);
 
-        void loadMembers(json_t &members, std::vector<MetaMember> &out);
-        void loadWizards(json_t &wizards, json_t &render_infos);
+        void loadMembers(const json_t &members, std::vector<MetaMember> &out);
+        void loadWizards(const json_t &wizards, const json_t &render_infos);
+
+        static void threadLoadTemplate(const std::string &type);
+        static void threadLoadTemplateBlob(const std::string &type, const json_t &the_json);
 
     private:
         std::string m_type;
@@ -117,7 +123,7 @@ namespace Toolbox::Object {
 
     class TemplateFactory {
     public:
-        using create_ret_t = std::unique_ptr<Template>;
+        using create_ret_t = ScopePtr<Template>;
         using create_err_t = std::variant<FSError, JSONError>;
         using create_t     = std::expected<create_ret_t, create_err_t>;
 
@@ -125,6 +131,9 @@ namespace Toolbox::Object {
         static std::expected<void, FSError> initialize();
         static create_t create(std::string_view type);
         static std::vector<create_ret_t> createAll();
+
+        static std::expected<void, FSError> loadFromCacheBlob();
+        static std::expected<void, FSError> saveToCacheBlob();
     };
 
 }  // namespace Toolbox::Object

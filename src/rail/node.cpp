@@ -12,11 +12,11 @@ namespace Toolbox::Rail {
     RailNode::RailNode(s16 x, s16 y, s16 z) : RailNode(x, y, z, 0) {}
 
     RailNode::RailNode(s16 x, s16 y, s16 z, u32 flags) {
-        m_pos_x = std::make_shared<MetaMember>("PositionX", MetaValue(x));
-        m_pos_y = std::make_shared<MetaMember>("PositionY", MetaValue(y));
-        m_pos_z = std::make_shared<MetaMember>("PositionZ", MetaValue(z));
+        m_pos_x = make_referable<MetaMember>("PositionX", MetaValue(x));
+        m_pos_y = make_referable<MetaMember>("PositionY", MetaValue(y));
+        m_pos_z = make_referable<MetaMember>("PositionZ", MetaValue(z));
 
-        m_flags = std::make_shared<MetaMember>("Flags", MetaValue(flags));
+        m_flags = make_referable<MetaMember>("Flags", MetaValue(flags));
 
         MetaValue values_default = MetaValue(static_cast<s16>(-1));
 
@@ -26,19 +26,19 @@ namespace Toolbox::Rail {
         values.push_back(values_default);
         values.push_back(values_default);
 
-        m_values = std::make_shared<MetaMember>("Values", values,
-                                                std::make_shared<MetaValue>(values_default));
+        m_values = make_referable<MetaMember>("Values", values,
+                                                make_referable<MetaValue>(values_default));
 
         m_connection_count =
-            std::make_shared<MetaMember>("ConnectionCount", MetaValue(static_cast<u32>(0)));
+            make_referable<MetaMember>("ConnectionCount", MetaValue(static_cast<u32>(0)));
 
         auto connection_value          = m_connection_count->value<MetaValue>(0).value();
         MetaMember::ReferenceInfo info = {connection_value, "ConnectionCount"};
 
-        m_connections = std::make_shared<MetaMember>(
-            "Connections", info, std::make_shared<MetaValue>(MetaValue(static_cast<s16>(0))));
-        m_distances = std::make_shared<MetaMember>(
-            "Distances", info, std::make_shared<MetaValue>(MetaValue(static_cast<f32>(0))));
+        m_connections = make_referable<MetaMember>(
+            "Connections", info, make_referable<MetaValue>(MetaValue(static_cast<s16>(0))));
+        m_distances = make_referable<MetaMember>(
+            "Distances", info, make_referable<MetaValue>(MetaValue(static_cast<f32>(0))));
     }
 
     RailNode::RailNode(glm::vec3 pos)
@@ -48,32 +48,32 @@ namespace Toolbox::Rail {
                    flags) {}
 
     glm::vec3 RailNode::getPosition() const {
-        std::shared_ptr<MetaValue> value_x = m_pos_x->value<MetaValue>(0).value();
-        std::shared_ptr<MetaValue> value_y = m_pos_y->value<MetaValue>(0).value();
-        std::shared_ptr<MetaValue> value_z = m_pos_z->value<MetaValue>(0).value();
+        RefPtr<MetaValue> value_x = m_pos_x->value<MetaValue>(0).value();
+        RefPtr<MetaValue> value_y = m_pos_y->value<MetaValue>(0).value();
+        RefPtr<MetaValue> value_z = m_pos_z->value<MetaValue>(0).value();
         return glm::vec3(*value_x->get<s16>(), *value_y->get<s16>(), *value_z->get<s16>());
     }
 
     void RailNode::getPosition(s16 &x, s16 &y, s16 &z) const {
-        std::shared_ptr<MetaValue> value_x = m_pos_x->value<MetaValue>(0).value();
-        std::shared_ptr<MetaValue> value_y = m_pos_y->value<MetaValue>(0).value();
-        std::shared_ptr<MetaValue> value_z = m_pos_z->value<MetaValue>(0).value();
+        RefPtr<MetaValue> value_x = m_pos_x->value<MetaValue>(0).value();
+        RefPtr<MetaValue> value_y = m_pos_y->value<MetaValue>(0).value();
+        RefPtr<MetaValue> value_z = m_pos_z->value<MetaValue>(0).value();
         x                                  = *value_x->get<s16>();
         y                                  = *value_y->get<s16>();
         z                                  = *value_z->get<s16>();
     }
 
     void RailNode::setPosition(const glm::vec3 &position) {
-        std::shared_ptr<MetaValue> value_x = m_pos_x->value<MetaValue>(0).value();
-        std::shared_ptr<MetaValue> value_y = m_pos_y->value<MetaValue>(0).value();
-        std::shared_ptr<MetaValue> value_z = m_pos_z->value<MetaValue>(0).value();
+        RefPtr<MetaValue> value_x = m_pos_x->value<MetaValue>(0).value();
+        RefPtr<MetaValue> value_y = m_pos_y->value<MetaValue>(0).value();
+        RefPtr<MetaValue> value_z = m_pos_z->value<MetaValue>(0).value();
         value_x->set(std::clamp<s16>(static_cast<s16>(position.x), -32768, 32767));
         value_y->set(std::clamp<s16>(static_cast<s16>(position.y), -32768, 32767));
         value_z->set(std::clamp<s16>(static_cast<s16>(position.z), -32768, 32767));
     }
 
     u32 RailNode::getFlags() const {
-        std::shared_ptr<MetaValue> value = m_flags->value<MetaValue>(0).value();
+        RefPtr<MetaValue> value = m_flags->value<MetaValue>(0).value();
         return *value->get<u32>();
     }
 
@@ -118,7 +118,7 @@ namespace Toolbox::Rail {
     }
 
     void RailNode::setFlags(u32 flags) {
-        std::shared_ptr<MetaValue> value = m_flags->value<MetaValue>(0).value();
+        RefPtr<MetaValue> value = m_flags->value<MetaValue>(0).value();
         value->set<u32>(flags);
     }
 
@@ -294,8 +294,8 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::unique_ptr<ISmartResource> RailNode::clone(bool deep) const {
-        auto node = std::make_unique<RailNode>();
+    ScopePtr<ISmartResource> RailNode::clone(bool deep) const {
+        auto node = make_scoped<RailNode>();
         if (deep) {
             node->m_pos_x            = make_deep_clone<MetaMember>(m_pos_x);
             node->m_pos_y            = make_deep_clone<MetaMember>(m_pos_y);

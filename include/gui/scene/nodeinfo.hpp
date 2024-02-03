@@ -8,7 +8,7 @@
 namespace Toolbox::UI {
 
     template <typename T> struct SelectionNodeInfo {
-        std::shared_ptr<T> m_selected;
+        RefPtr<T> m_selected;
         ImGuiID m_node_id;
         size_t m_selection_index;
         bool m_parent_synced;

@@ -2,7 +2,8 @@
 
 #include "smart_resource.hpp"
 #include "serial.hpp"
-#include "types.hpp"
+#include "core/memory.hpp"
+#include "core/types.hpp"
 #include "value.hpp"
 #include <expected>
 #include <optional>
@@ -28,22 +29,22 @@ namespace Toolbox::Object {
               m_bit_mask(bit_mask) {
             switch (m_type) {
             case MetaType::S8:
-                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<s8>(0));
                 break;
             case MetaType::U8:
-                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<u8>(0));
                 break;
             case MetaType::S16:
-                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<s16>(0));
                 break;
             case MetaType::U16:
-                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<u16>(0));
                 break;
             case MetaType::S32:
-                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<s32>(0));
                 break;
             case MetaType::U32:
-                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<u32>(0));
                 break;
             default:
                 break;
@@ -55,22 +56,22 @@ namespace Toolbox::Object {
             m_type = type;
             switch (type) {
             case MetaType::S8:
-                m_cur_value = std::make_shared<MetaValue>(static_cast<s8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<s8>(0));
                 break;
             case MetaType::U8:
-                m_cur_value = std::make_shared<MetaValue>(static_cast<u8>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<u8>(0));
                 break;
             case MetaType::S16:
-                m_cur_value = std::make_shared<MetaValue>(static_cast<s16>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<s16>(0));
                 break;
             case MetaType::U16:
-                m_cur_value = std::make_shared<MetaValue>(static_cast<u16>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<u16>(0));
                 break;
             case MetaType::S32:
-                m_cur_value = std::make_shared<MetaValue>(static_cast<s32>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<s32>(0));
                 break;
             case MetaType::U32:
-                m_cur_value = std::make_shared<MetaValue>(static_cast<u32>(0));
+                m_cur_value = make_referable<MetaValue>(static_cast<u32>(0));
                 break;
             default:
                 break;
@@ -82,7 +83,7 @@ namespace Toolbox::Object {
 
         [[nodiscard]] MetaType type() const { return m_type; }
         [[nodiscard]] std::string_view name() const { return m_name; }
-        [[nodiscard]] std::shared_ptr<MetaValue> value() const { return m_cur_value; }
+        [[nodiscard]] RefPtr<MetaValue> value() const { return m_cur_value; }
         [[nodiscard]] std::vector<enum_type> enums() const { return m_values; }
 
         [[nodiscard]] bool isBitMasked() const { return m_bit_mask; }
@@ -233,13 +234,13 @@ namespace Toolbox::Object {
         std::expected<void, SerialError> serialize(Serializer &out) const override;
         std::expected<void, SerialError> deserialize(Deserializer &in) override;
 
-        std::unique_ptr<ISmartResource> clone(bool deep) const override;
+        ScopePtr<ISmartResource> clone(bool deep) const override;
 
     private:
         MetaType m_type;
         std::string m_name;
         std::vector<enum_type> m_values        = {};
-        std::shared_ptr<MetaValue> m_cur_value = {};
+        RefPtr<MetaValue> m_cur_value = {};
         bool m_bit_mask                        = false;
     };
 

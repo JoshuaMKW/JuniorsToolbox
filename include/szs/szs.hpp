@@ -4,7 +4,7 @@
 
 #include <cstdint>
 #include <cstring>
-#include "types.hpp"
+#include "core/types.hpp"
 
 template <typename T> inline T seadMathMin(T a, T b) {
     if (a < b)

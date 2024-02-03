@@ -7,7 +7,7 @@
 #include "gui/application.hpp"
 #include "gui/input.hpp"
 #include "gui/logging/errors.hpp"
-#include "gui/logging/logger.hpp"
+#include "core/log.hpp"
 #include "gui/scene/renderer.hpp"
 #include "gui/settings.hpp"
 #include "gui/util.hpp"
@@ -394,7 +394,7 @@ namespace Toolbox::UI {
                 sky_it->m_model->SetTranslation(position);
             }
 
-            std::vector<std::shared_ptr<J3DModelInstance>> models = {};
+            std::vector<RefPtr<J3DModelInstance>> models = {};
             for (auto &renderable : renderables) {
                 models.push_back(renderable.m_model);
             }
@@ -414,7 +414,7 @@ namespace Toolbox::UI {
     }
 
     void Renderer::initializePaths(const RailData &rail_data,
-                                   std::unordered_map<ImGuiID, bool> visible_map) {
+                                   std::unordered_map<UUID64, bool> visible_map) {
         m_path_renderer.updateGeometry(rail_data, visible_map);
     }
 
@@ -476,19 +476,19 @@ namespace Toolbox::UI {
             float snap[3];
             if ((m_gizmo_op & (ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU))) {
                 if (ctrl_held)
-                    Log::AppLogger::instance().log("Scale Held");
+                    TOOLBOX_DEBUG_LOG("Scale Held");
                 snap[0] = 0.1f;
                 snap[1] = 0.1f;
                 snap[2] = 0.1f;
             } else if ((m_gizmo_op & ImGuizmo::OPERATION::ROTATE)) {
                 if (ctrl_held)
-                    Log::AppLogger::instance().log("Rotate Held");
+                    TOOLBOX_DEBUG_LOG("Rotate Held");
                 snap[0] = 15.0f;
                 snap[1] = 15.0f;
                 snap[2] = 15.0f;
             } else if ((m_gizmo_op & ImGuizmo::OPERATION::TRANSLATE)) {
                 if (ctrl_held)
-                    Log::AppLogger::instance().log("Translate Held");
+                    TOOLBOX_DEBUG_LOG("Translate Held");
                 snap[0] = 50.0f;
                 snap[1] = 50.0f;
                 snap[2] = 50.0f;
@@ -573,8 +573,8 @@ namespace Toolbox::UI {
         if (m_is_view_manipulating && Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
             ImVec2 mouse_delta = Input::GetMouseDelta();
 
-            m_camera.turnLeftRight(-mouse_delta.x * settings.m_camera_sensitivity * delta_time * 0.4f);
-            m_camera.tiltUpDown(-mouse_delta.y * settings.m_camera_sensitivity * delta_time * 0.4f);
+            m_camera.turnLeftRight(-mouse_delta.x * settings.m_camera_sensitivity * delta_time * 0.25f);
+            m_camera.tiltUpDown(-mouse_delta.y * settings.m_camera_sensitivity * delta_time * 0.25f);
 
             m_is_view_dirty = true;
         }
@@ -613,10 +613,10 @@ namespace Toolbox::UI {
                     ud_delta *= 10;
                 }
 
-                ud_delta += Input::GetMouseScrollDelta() * 50.0f;
+                ud_delta += Input::GetMouseScrollDelta() * 10.0f;
 
-                lr_delta *= settings.m_camera_speed * delta_time * 1000.0f;
-                ud_delta *= settings.m_camera_speed * delta_time * 1000.0f;
+                lr_delta *= settings.m_camera_speed * delta_time * 500.0f;
+                ud_delta *= settings.m_camera_speed * delta_time * 500.0f;
 
                 m_camera.translateLeftRight(-lr_delta);
                 m_camera.translateFwdBack(ud_delta);
@@ -642,7 +642,7 @@ namespace Toolbox::UI {
 
     Renderer::selection_variant_t
     Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables,
-                            std::vector<std::shared_ptr<Rail::RailNode>> rail_nodes,
+                            std::vector<RefPtr<Rail::RailNode>> rail_nodes,
                             bool &should_reset) {
         should_reset = false;
         if (!m_is_window_hovered || !m_is_window_focused) {

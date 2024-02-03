@@ -74,7 +74,7 @@
       "SpawnScale": 1.0,
       "Shape": 0,
       "Strict": false
-    }
-  },
-  "Rendering": {}
+    },
+    "Rendering": {}
+  }
 }

@@ -11,15 +11,16 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include <entt.hpp>
 
-namespace Toolbox::Scene {
+namespace Toolbox {
 
     class ObjectHierarchy : public ISerializable, public ISmartResource {
     public:
         ObjectHierarchy() = default;
         ObjectHierarchy(std::string_view name) : m_name(name), m_root() {}
-        ObjectHierarchy(std::shared_ptr<Object::GroupSceneObject> root) : m_root(root) {}
-        ObjectHierarchy(std::string_view name, std::shared_ptr<Object::GroupSceneObject> root)
+        ObjectHierarchy(RefPtr<Object::GroupSceneObject> root) : m_root(root) {}
+        ObjectHierarchy(std::string_view name, RefPtr<Object::GroupSceneObject> root)
             : m_name(name), m_root(root) {}
 
         ObjectHierarchy(const ObjectHierarchy &) = default;
@@ -29,14 +30,14 @@ namespace Toolbox::Scene {
         std::string_view name() const { return m_name; }
         void setName(std::string_view name) { m_name = name; }
 
-        std::shared_ptr<Object::GroupSceneObject> getRoot() const { return m_root; }
-        void setRoot(std::shared_ptr<Object::GroupSceneObject> root) { m_root = root; }
+        RefPtr<Object::GroupSceneObject> getRoot() const { return m_root; }
+        void setRoot(RefPtr<Object::GroupSceneObject> root) { m_root = root; }
 
-        std::optional<std::shared_ptr<Object::ISceneObject>>
+        std::optional<RefPtr<Object::ISceneObject>>
         findObject(std::string_view name) const {
             return m_root->getChild(name);
         }
-        std::optional<std::shared_ptr<Object::ISceneObject>>
+        std::optional<RefPtr<Object::ISceneObject>>
         findObject(const QualifiedName &name) const {
             return m_root->getChild(name);
         }
@@ -49,14 +50,14 @@ namespace Toolbox::Scene {
             return m_root->deserialize(in);
         }
 
-        std::unique_ptr<ISmartResource> clone(bool deep) const override {
+        ScopePtr<ISmartResource> clone(bool deep) const override {
             if (deep) {
                 ObjectHierarchy obj_hierarchy(make_deep_clone<Object::GroupSceneObject>(m_root));
-                return std::make_unique<ObjectHierarchy>(std::move(obj_hierarchy));
+                return make_scoped<ObjectHierarchy>(std::move(obj_hierarchy));
             }
 
             ObjectHierarchy obj_hierarchy(make_clone<Object::GroupSceneObject>(m_root));
-            return std::make_unique<ObjectHierarchy>(*this);
+            return make_scoped<ObjectHierarchy>(*this);
         }
 
         ObjectHierarchy &operator=(const ObjectHierarchy &) = default;
@@ -67,33 +68,32 @@ namespace Toolbox::Scene {
 
     private:
         std::string m_name = "ObjectHierarchy";
-        std::shared_ptr<Object::GroupSceneObject> m_root;
+        RefPtr<Object::GroupSceneObject> m_root;
     };
 
     class SceneInstance : public ISmartResource {
-    public:
-        SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root);
-        SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root, const RailData &rails);
-        SceneInstance(std::shared_ptr<Object::GroupSceneObject> obj_root,
-                      std::shared_ptr<Object::GroupSceneObject> table_root, const RailData &rails);
-
-    protected:
-        SceneInstance() = default;
+        friend class Entity;
 
     public:
-        ~SceneInstance() = default;
+        SceneInstance();
+        SceneInstance(const SceneInstance &);
+
+    public:
+        ~SceneInstance();
 
         
-        static std::expected<std::unique_ptr<SceneInstance>, SerialError>
+        static std::expected<ScopePtr<SceneInstance>, SerialError>
         FromPath(const std::filesystem::path &root);
 
-        [[nodiscard]] static std::unique_ptr<SceneInstance> EmptyScene() {
+        [[nodiscard]] static ScopePtr<SceneInstance> EmptyScene() {
             SceneInstance scene;
-            return std::make_unique<SceneInstance>(std::move(scene));
+            return make_scoped<SceneInstance>(std::move(scene));
         }
-        [[nodiscard]] static std::unique_ptr<SceneInstance> BasicScene();
+        [[nodiscard]] static ScopePtr<SceneInstance> BasicScene();
 
         [[nodiscard]] std::optional<std::filesystem::path> rootPath() const { return m_root_path; }
+
+        [[nodiscard]] entt::registry &registry() { return m_registry; }
 
         [[nodiscard]] ObjectHierarchy getObjHierarchy() const { return m_map_objects; }
         void setObjHierarchy(const ObjectHierarchy &obj_root) { m_map_objects = obj_root; }
@@ -112,7 +112,10 @@ namespace Toolbox::Scene {
         void dump(std::ostream &os, size_t indent) const { dump(os, indent, 4); }
         void dump(std::ostream &os) const { dump(os, 0); }
 
-        std::unique_ptr<ISmartResource> clone(bool deep) const override;
+        ScopePtr<ISmartResource> clone(bool deep) const override;
+
+    protected:
+        entt::registry m_registry;
 
     private:
         std::optional<std::filesystem::path> m_root_path = {};

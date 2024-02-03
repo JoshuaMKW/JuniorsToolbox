@@ -24,13 +24,13 @@ namespace Toolbox::Object {
                m_arraysize == other.m_arraysize && m_parent == other.m_parent;
     }
 
-    void MetaMember::updateReferenceToList(const std::vector<std::shared_ptr<MetaMember>> &list) {
+    void MetaMember::updateReferenceToList(const std::vector<RefPtr<MetaMember>> &list) {
         if (!std::holds_alternative<ReferenceInfo>(m_arraysize))
             return;
 
         auto reference    = std::get<ReferenceInfo>(m_arraysize);
         auto reference_it = std::find_if(list.begin(), list.end(),
-                                         [&reference](const std::shared_ptr<MetaMember> &m) {
+                                         [&reference](const RefPtr<MetaMember> &m) {
                                              return m->name() == reference.m_name;
                                          });
         if (reference_it != list.end()) {
@@ -48,16 +48,16 @@ namespace Toolbox::Object {
                 return;
 
             if (isTypeStruct()) {
-                auto _struct = std::get<std::shared_ptr<MetaStruct>>(m_values[0]);
+                auto _struct = std::get<RefPtr<MetaStruct>>(m_values[0]);
                 out << self_indent << _struct->name() << " " << m_name << " ";
                 _struct->dump(out, indention, indention_width, true);
                 out << ";\n";
             } else if (isTypeEnum()) {
-                auto _enum = std::get<std::shared_ptr<MetaEnum>>(m_values[0]);
+                auto _enum = std::get<RefPtr<MetaEnum>>(m_values[0]);
                 out << self_indent << _enum->name() << " " << m_name << " = "
                     << _enum->value()->toString() << ";\n";
             } else if (isTypeValue()) {
-                auto _value = std::get<std::shared_ptr<MetaValue>>(m_values[0]);
+                auto _value = std::get<RefPtr<MetaValue>>(m_values[0]);
                 out << self_indent << meta_type_name(_value->type()) << " " << m_name << " = "
                     << _value->toString() << ";\n";
             }
@@ -65,32 +65,32 @@ namespace Toolbox::Object {
         }
 
         if (isTypeStruct()) {
-            out << self_indent << std::get<std::shared_ptr<MetaStruct>>(m_values[0])->name() << " "
+            out << self_indent << std::get<RefPtr<MetaStruct>>(m_values[0])->name() << " "
                 << m_name << " = [\n";
             for (const auto &v : m_values) {
-                auto _struct = std::get<std::shared_ptr<MetaStruct>>(v);
+                auto _struct = std::get<RefPtr<MetaStruct>>(v);
                 std::cout << value_indent;
-                std::get<std::shared_ptr<MetaStruct>>(v)->dump(out, indention + 1, indention_width,
+                std::get<RefPtr<MetaStruct>>(v)->dump(out, indention + 1, indention_width,
                                                                true);
                 std::cout << ",\n";
             }
             out << self_indent << "];\n";
         } else if (isTypeEnum()) {
-            out << self_indent << std::get<std::shared_ptr<MetaEnum>>(m_values[0])->name() << " "
+            out << self_indent << std::get<RefPtr<MetaEnum>>(m_values[0])->name() << " "
                 << m_name << " = [\n";
             for (const auto &v : m_values) {
-                auto _enum = std::get<std::shared_ptr<MetaEnum>>(v);
+                auto _enum = std::get<RefPtr<MetaEnum>>(v);
                 out << _enum->value()->toString() << ",\n";
             }
             out << self_indent << "];\n";
         } else if (isTypeValue()) {
             out << self_indent
-                << meta_type_name(std::get<std::shared_ptr<MetaValue>>(m_values[0])->type())
+                << meta_type_name(std::get<RefPtr<MetaValue>>(m_values[0])->type())
                 << m_name << " = [\n";
             for (const auto &v : m_values) {
-                auto _value = std::get<std::shared_ptr<MetaValue>>(v);
+                auto _value = std::get<RefPtr<MetaValue>>(v);
                 out << value_indent << meta_type_name(_value->type()) << m_name << " = "
-                    << std::get<std::shared_ptr<MetaValue>>(v)->toString() << ",\n";
+                    << std::get<RefPtr<MetaValue>>(v)->toString() << ",\n";
             }
             out << self_indent << "];\n";
         }
@@ -99,19 +99,19 @@ namespace Toolbox::Object {
     std::expected<void, SerialError> MetaMember::serialize(Serializer &out) const {
         for (u32 i = 0; i < arraysize(); ++i) {
             if (isTypeStruct()) {
-                auto _struct = std::get<std::shared_ptr<MetaStruct>>(m_values[i]);
+                auto _struct = std::get<RefPtr<MetaStruct>>(m_values[i]);
                 auto result  = _struct->serialize(out);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
             } else if (isTypeEnum()) {
-                auto _enum  = std::get<std::shared_ptr<MetaEnum>>(m_values[i]);
+                auto _enum  = std::get<RefPtr<MetaEnum>>(m_values[i]);
                 auto result = _enum->serialize(out);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
             } else if (isTypeValue()) {
-                auto _value = std::get<std::shared_ptr<MetaValue>>(m_values[i]);
+                auto _value = std::get<RefPtr<MetaValue>>(m_values[i]);
                 auto result = _value->serialize(out);
                 if (!result) {
                     return std::unexpected(result.error());
@@ -125,19 +125,19 @@ namespace Toolbox::Object {
         syncArray();
         for (u32 i = 0; i < arraysize(); ++i) {
             if (isTypeStruct()) {
-                auto _struct = std::get<std::shared_ptr<MetaStruct>>(m_values[i]);
+                auto _struct = std::get<RefPtr<MetaStruct>>(m_values[i]);
                 auto result = _struct->deserialize(in);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
             } else if (isTypeEnum()) {
-                auto _enum = std::get<std::shared_ptr<MetaEnum>>(m_values[i]);
+                auto _enum = std::get<RefPtr<MetaEnum>>(m_values[i]);
                 auto result = _enum->deserialize(in);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
             } else if (isTypeValue()) {
-                auto _value = std::get<std::shared_ptr<MetaValue>>(m_values[i]);
+                auto _value = std::get<RefPtr<MetaValue>>(m_values[i]);
                 auto result = _value->deserialize(in);
                 if (!result) {
                     return std::unexpected(result.error());
@@ -147,7 +147,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::unique_ptr<ISmartResource> MetaMember::clone(bool deep) const {
+    ScopePtr<ISmartResource> MetaMember::clone(bool deep) const {
         MetaMember member;
         member.m_name      = m_name;
         member.m_parent    = m_parent;
@@ -158,13 +158,13 @@ namespace Toolbox::Object {
             for (auto &value : m_values) {
                 if (isTypeStruct()) {
                     member.m_values.push_back(
-                        make_deep_clone<MetaStruct>(std::get<std::shared_ptr<MetaStruct>>(value)));
+                        make_deep_clone<MetaStruct>(std::get<RefPtr<MetaStruct>>(value)));
                 } else if (isTypeEnum()) {
                     member.m_values.push_back(
-                        make_deep_clone<MetaEnum>(std::get<std::shared_ptr<MetaEnum>>(value)));
+                        make_deep_clone<MetaEnum>(std::get<RefPtr<MetaEnum>>(value)));
                 } else {
                     auto _copy =
-                        std::make_shared<MetaValue>(*std::get<std::shared_ptr<MetaValue>>(value));
+                        make_referable<MetaValue>(*std::get<RefPtr<MetaValue>>(value));
                     member.m_values.push_back(_copy);
                 }
             }
@@ -172,19 +172,19 @@ namespace Toolbox::Object {
             for (auto &value : m_values) {
                 if (isTypeStruct()) {
                     member.m_values.push_back(
-                        make_clone<MetaStruct>(std::get<std::shared_ptr<MetaStruct>>(value)));
+                        make_clone<MetaStruct>(std::get<RefPtr<MetaStruct>>(value)));
                 } else if (isTypeEnum()) {
                     member.m_values.push_back(
-                        make_clone<MetaEnum>(std::get<std::shared_ptr<MetaEnum>>(value)));
+                        make_clone<MetaEnum>(std::get<RefPtr<MetaEnum>>(value)));
                 } else {
                     auto _copy =
-                        std::make_shared<MetaValue>(*std::get<std::shared_ptr<MetaValue>>(value));
+                        make_referable<MetaValue>(*std::get<RefPtr<MetaValue>>(value));
                     member.m_values.push_back(_copy);
                 }
             }
         }
 
-        return std::make_unique<MetaMember>(member);
+        return make_scoped<MetaMember>(member);
     }
 
 }  // namespace Toolbox::Object

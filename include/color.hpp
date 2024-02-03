@@ -1,7 +1,7 @@
 #pragma once
 
 #include "serial.hpp"
-#include "types.hpp"
+#include "core/types.hpp"
 #include <expected>
 #include <cmath>
 

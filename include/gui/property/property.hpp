@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/memory.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/object.hpp"
 
@@ -11,23 +12,23 @@ namespace Toolbox::UI {
 
     class IProperty {
     public:
-        IProperty(std::shared_ptr<Object::MetaMember> prop) : m_member(prop) {}
+        IProperty(RefPtr<Object::MetaMember> prop) : m_member(prop) {}
         virtual ~IProperty() = default;
 
-        virtual std::shared_ptr<Object::MetaMember> member() { return m_member; }
+        virtual RefPtr<Object::MetaMember> member() { return m_member; }
         virtual void init()                    = 0;
         virtual bool render(float label_width) = 0;
 
         ImVec2 labelSize();
 
     protected:
-        std::shared_ptr<Object::MetaMember> m_member;
+        RefPtr<Object::MetaMember> m_member;
         std::vector<char> m_array_open = {};
     };
 
     class BoolProperty : public IProperty {
     public:
-        BoolProperty(std::shared_ptr<Object::MetaMember> prop) : IProperty(prop) {}
+        BoolProperty(RefPtr<Object::MetaMember> prop) : IProperty(prop) {}
         ~BoolProperty() override = default;
 
         void init() override;
@@ -40,7 +41,7 @@ namespace Toolbox::UI {
 
     class NumberProperty : public IProperty {
     public:
-        NumberProperty(std::shared_ptr<Object::MetaMember> prop)
+        NumberProperty(RefPtr<Object::MetaMember> prop)
             : IProperty(prop), m_min(0), m_max(0) {}
         ~NumberProperty() override = default;
 
@@ -59,7 +60,7 @@ namespace Toolbox::UI {
 
     class FloatProperty : public IProperty {
     public:
-        FloatProperty(std::shared_ptr<Object::MetaMember> prop)
+        FloatProperty(RefPtr<Object::MetaMember> prop)
             : IProperty(prop), m_min(0), m_max(0) {}
         ~FloatProperty() override = default;
 
@@ -77,7 +78,7 @@ namespace Toolbox::UI {
 
     class DoubleProperty : public IProperty {
     public:
-        DoubleProperty(std::shared_ptr<Object::MetaMember> prop)
+        DoubleProperty(RefPtr<Object::MetaMember> prop)
             : IProperty(prop), m_min(0), m_max(0) {}
         ~DoubleProperty() override = default;
 
@@ -95,7 +96,7 @@ namespace Toolbox::UI {
 
     class StringProperty : public IProperty {
     public:
-        StringProperty(std::shared_ptr<Object::MetaMember> prop) : IProperty(prop) {}
+        StringProperty(RefPtr<Object::MetaMember> prop) : IProperty(prop) {}
         ~StringProperty() override = default;
 
         void init() override;
@@ -108,7 +109,7 @@ namespace Toolbox::UI {
 
     class ColorProperty : public IProperty {
     public:
-        ColorProperty(std::shared_ptr<Object::MetaMember> prop) : IProperty(prop) {}
+        ColorProperty(RefPtr<Object::MetaMember> prop) : IProperty(prop) {}
         ~ColorProperty() override = default;
 
         void init() override;
@@ -123,7 +124,7 @@ namespace Toolbox::UI {
 
     class VectorProperty : public IProperty {
     public:
-        VectorProperty(std::shared_ptr<Object::MetaMember> prop) : IProperty(prop) {}
+        VectorProperty(RefPtr<Object::MetaMember> prop) : IProperty(prop) {}
         ~VectorProperty() override = default;
 
         void init() override;
@@ -140,7 +141,7 @@ namespace Toolbox::UI {
 
     class TransformProperty : public IProperty {
     public:
-        TransformProperty(std::shared_ptr<Object::MetaMember> prop) : IProperty(prop) {}
+        TransformProperty(RefPtr<Object::MetaMember> prop) : IProperty(prop) {}
         ~TransformProperty() override = default;
 
         void init() override;
@@ -157,7 +158,7 @@ namespace Toolbox::UI {
 
     class EnumProperty : public NumberProperty {
     public:
-        EnumProperty(std::shared_ptr<Object::MetaMember> prop) : NumberProperty(prop) {}
+        EnumProperty(RefPtr<Object::MetaMember> prop) : NumberProperty(prop) {}
         ~EnumProperty() override = default;
 
         bool render(float label_width) override;
@@ -169,17 +170,17 @@ namespace Toolbox::UI {
 
     class StructProperty : public IProperty {
     public:
-        StructProperty(std::shared_ptr<Object::MetaMember> prop);
+        StructProperty(RefPtr<Object::MetaMember> prop);
         ~StructProperty() override = default;
 
         void init() override;
         bool render(float label_width) override;
 
     private:
-        std::vector<std::vector<std::unique_ptr<IProperty>>> m_children_ary;
+        std::vector<std::vector<ScopePtr<IProperty>>> m_children_ary;
         bool m_open = false;
     };
 
-    std::unique_ptr<IProperty> createProperty(std::shared_ptr<Object::MetaMember> prop);
+    ScopePtr<IProperty> createProperty(RefPtr<Object::MetaMember> prop);
 
 }  // namespace Toolbox::UI

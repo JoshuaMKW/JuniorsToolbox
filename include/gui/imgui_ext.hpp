@@ -1,5 +1,15 @@
 #pragma once
 
+#include "core/assert.hpp"
+#include "core/core.hpp"
+
+#define IM_ASSERT(_EXPR) TOOLBOX_CORE_ASSERT(_EXPR)
+
+#ifndef TOOLBOX_DEBUG
+#define IMGUI_DISABLE_DEMO_WINDOWS
+#define IMGUI_DISABLE_DEBUG_TOOLS
+#endif
+
 #include "imgui_internal.h"
 
 static ImVector<ImRect> s_GroupPanelLabelStack;

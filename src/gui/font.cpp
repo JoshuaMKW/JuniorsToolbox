@@ -22,6 +22,7 @@ namespace Toolbox::UI {
             }
             addFont(child_path.path(), nullptr, io.Fonts->GetGlyphRangesJapanese());
         }
+        return true;
     }
 
     bool FontManager::addFontOTF(const std::string_view name, const ImFontConfig *font_cfg_template,
