@@ -1,3 +1,11 @@
+#include <expected>
+#include <fstream>
+#include <mutex>
+#include <optional>
+#include <thread>
+
+#include <glm/glm.hpp>
+
 #include "objlib/template.hpp"
 #include "color.hpp"
 #include "gui/settings.hpp"
@@ -7,11 +15,6 @@
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/struct.hpp"
 #include "objlib/transform.hpp"
-#include <expected>
-#include <fstream>
-#include <glm/glm.hpp>
-#include <optional>
-#include <thread>
 
 namespace Toolbox::Object {
 
@@ -499,7 +502,7 @@ namespace Toolbox::Object {
         }
 
         Deserializer in(file.rdbuf());
-        json blob_json;
+        Template::json_t blob_json;
         in.stream() >> blob_json;
 
         for (auto &item : blob_json.items()) {
@@ -509,13 +512,15 @@ namespace Toolbox::Object {
         return {};
     }
 
+    static std::mutex s_templates_mutex;
+
     std::expected<void, FSError> TemplateFactory::saveToCacheBlob() {
         auto cwd_result = Toolbox::current_path();
         if (!cwd_result) {
             return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
         }
 
-        json blob_json;
+        Template::json_t blob_json;
 
         {
             std::vector<std::thread> threads;
@@ -533,12 +538,14 @@ namespace Toolbox::Object {
                         }
 
                         Deserializer in(file.rdbuf());
-                        json t_json;
+                        Template::json_t t_json;
                         in.stream() >> t_json;
 
+                        s_templates_mutex.lock();
                         for (auto &[key, value] : t_json.items()) {
                             blob_json[key] = value;
                         }
+                        s_templates_mutex.unlock();
 
                         file.close();
                     },
