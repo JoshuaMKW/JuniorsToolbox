@@ -4,6 +4,7 @@
 #include "gui/keybind.hpp"
 #include "gui/settings.hpp"
 #include "gui/themes.hpp"
+#include <gui/logging/errors.hpp>
 
 namespace Toolbox::UI {
 
@@ -28,8 +29,7 @@ namespace Toolbox::UI {
             text_size.y + padding.y * 2,
         };
 
-        if (ImGui::Button((*is_reading) ? ICON_FK_UNDO : ICON_FK_KEYBOARD_O,
-                          button_size)) {
+        if (ImGui::Button((*is_reading) ? ICON_FK_UNDO : ICON_FK_KEYBOARD_O, button_size)) {
             *is_reading ^= true;
         }
 
@@ -54,6 +54,8 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderBody(f32 delta_time) {
+        renderProfileBar(delta_time);
+
         if (ImGui::BeginTabBar("##settings_tabs", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) {
             if (ImGui::BeginTabItem("General")) {
                 renderSettingsGeneral(delta_time);
@@ -81,6 +83,101 @@ namespace Toolbox::UI {
             }
 
             ImGui::EndTabBar();
+        }
+    }
+
+    void SettingsWindow::renderProfileBar(f32 delta_time) {
+        SettingsManager &manager = SettingsManager::instance();
+
+        ImGui::Text("Current Profile");
+
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(150.0f);
+        if (m_is_making_profile) {
+            if (ImGui::InputTextWithHint(
+                    "##profile_input", "Enter a unique name...", m_profile_create_input.data(),
+                    m_profile_create_input.size(), ImGuiInputTextFlags_EnterReturnsTrue)) {
+                std::string_view profile_name(m_profile_create_input.data());
+                if (profile_name != "") {
+                    auto result = manager.addProfile(profile_name, AppSettings());
+                    if (!result) {
+                        logSerialError(result.error());
+                    } else {
+                        manager.setCurrentProfile(profile_name);
+                        TOOLBOX_INFO_V("(Settings) Created profile \"{}\" successfully!",
+                                       profile_name);
+                    }
+                }
+                m_is_making_profile = false;
+            }
+            if (!m_is_profile_focused_yet) {
+                ImGui::FocusItem();
+                m_is_profile_focused_yet = true;
+            } else if (!ImGui::IsItemFocused()) {
+                std::string_view profile_name(m_profile_create_input.data());
+                if (profile_name != "") {
+                    manager.addProfile(profile_name, AppSettings());
+                    manager.setCurrentProfile(profile_name);
+                }
+                m_is_making_profile = false;
+            }
+        } else {
+            if (ImGui::BeginCombo("##profile_combo", manager.getCurrentProfileName().data(),
+                                  ImGuiComboFlags_PopupAlignLeft)) {
+                for (auto &profile : manager.getProfileNames()) {
+                    bool throwaway = false;
+                    if (ImGui::Selectable(profile.c_str(), &throwaway)) {
+                        manager.setCurrentProfile(profile);
+                        break;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("New")) {
+            // Clear the input state
+            for (size_t i = 0; i < m_profile_create_input.size(); ++i) {
+                m_profile_create_input[i] = '\0';
+            }
+            m_is_making_profile      = true;
+            m_is_profile_focused_yet = false;
+        }
+
+        ImGui::SameLine();
+
+        const bool can_use_io =
+            !m_is_making_profile && manager.getCurrentProfileName() != "Default";
+        if (!can_use_io) {
+            ImGui::BeginDisabled();
+        }
+
+        if (ImGui::Button("Delete")) {
+            std::string profile_name = std::string(manager.getCurrentProfileName());
+            auto result              = manager.removeProfile(profile_name);
+            if (!result) {
+                logSerialError(result.error());
+            } else {
+                TOOLBOX_INFO_V("(Settings) Deleted profile \"{}\" successfully!", profile_name);
+            }
+        }
+
+        ImGui::SameLine();
+
+        ImVec2 text_size      = ImGui::CalcTextSize("Save Profile");
+        ImVec2 item_padding   = ImGui::GetStyle().FramePadding;
+        ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
+        ImVec2 window_size    = ImGui::GetWindowSize();
+
+        ImGui::SetCursorPosX(window_size.x - window_padding.x - text_size.x - item_padding.x * 2);
+        if (ImGui::Button("Save Profile")) {
+            manager.saveProfile(manager.getCurrentProfileName());
+        }
+
+        if (!can_use_io) {
+            ImGui::EndDisabled();
         }
     }
 
@@ -154,7 +251,7 @@ namespace Toolbox::UI {
 
         auto themes = manager.themes();
 
-        size_t selected_index                  = manager.getActiveThemeIndex();
+        size_t selected_index         = manager.getActiveThemeIndex();
         RefPtr<ITheme> selected_theme = themes.at(manager.getActiveThemeIndex());
 
         if (ImGui::BeginCombo("Theme", selected_theme->name().data())) {
@@ -225,6 +322,25 @@ namespace Toolbox::UI {
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();
         ImGui::Checkbox("Cache Object Templates", &settings.m_is_template_cache_allowed);
         ImGui::Checkbox("Pipe Logs To Terminal", &settings.m_log_to_cout_cerr);
+
+        if (ImGui::Button("Clear Cache")) {
+            auto cwd_result = Toolbox::current_path();
+            if (!cwd_result) {
+                TOOLBOX_ERROR("(Settings) Failed to get cwd!");
+                return;
+            }
+            auto cwd = cwd_result.value();
+
+            auto template_cache_result = Toolbox::remove_all(cwd / "Templates/.cache");
+            if (!template_cache_result) {
+                TOOLBOX_ERROR("(Settings) Failed to clear Template cache!");
+                TOOLBOX_ERROR_V("              Reason: {}", template_cache_result.error().message());
+            }
+
+            TOOLBOX_INFO("(Settings) Cleared Template cache successfully!");
+
+            // Any other caches...
+        }
     }
 
 }  // namespace Toolbox::UI

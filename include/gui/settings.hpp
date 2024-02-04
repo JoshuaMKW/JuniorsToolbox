@@ -1,9 +1,10 @@
 #pragma once
 
+#include "core/assert.hpp"
+#include "core/types.hpp"
 #include "fsystem.hpp"
 #include "json.hpp"
 #include "serial.hpp"
-#include "core/types.hpp"
 
 #include <expected>
 #include <string>
@@ -60,12 +61,26 @@ namespace Toolbox {
         }
 
         bool initialize();
+        bool save();
+
+        bool saveProfile(std::string_view name);
+
+        std::filesystem::path getPath() const { return m_profile_path; }
+        void setPath(const std::filesystem::path &profile_path) { m_profile_path = profile_path; }
 
         AppSettings &getProfile(std::string_view name) {
             return m_settings_profiles[std::string(name)];
         }
 
-        AppSettings &getCurrentProfile() { return m_settings_profiles[m_current_profile]; }
+        AppSettings &getCurrentProfile() {
+            if (m_current_profile == "") {
+                m_current_profile = "Default";
+            }
+            return m_settings_profiles[m_current_profile];
+        }
+
+        std::string_view getCurrentProfileName() const { return m_current_profile; }
+        void setCurrentProfile(std::string_view name) { m_current_profile = std::string(name); }
 
         std::vector<std::string> getProfileNames() const {
             std::vector<std::string> names;
@@ -75,14 +90,19 @@ namespace Toolbox {
             return names;
         }
 
-        void addProfile(std::string_view name, const AppSettings &profile) {
-            m_settings_profiles[std::string(name)] = profile;
-        }
+        std::expected<void, SerialError> addProfile(std::string_view name,
+                                                    const AppSettings &profile);
+        std::expected<void, SerialError> removeProfile(std::string_view name);
 
-        std::expected<void, SerialError> loadProfiles(const std::filesystem::path &path);
-        std::expected<void, SerialError> saveProfiles(const std::filesystem::path &path);
+    protected:
+        std::expected<void, SerialError> loadProfiles();
+        std::expected<void, SerialError> saveProfiles();
+
+        std::expected<void, SerialError> saveProfile(std::string_view name,
+                                                     const AppSettings &profile);
 
     private:
+        std::filesystem::path m_profile_path;
         std::string m_current_profile;
         std::unordered_map<std::string, AppSettings> m_settings_profiles;
     };
