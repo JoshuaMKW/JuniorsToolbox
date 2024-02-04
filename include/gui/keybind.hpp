@@ -33,7 +33,7 @@ namespace Toolbox::UI {
         size_t key_begin_index = 0;
         while (true) {
             size_t next_delimiter_index = keybind_str.find('+', key_begin_index);
-            std::string key_name        = std::string(keybind_str.substr(key_begin_index, next_delimiter_index));
+            std::string key_name        = std::string(keybind_str.substr(key_begin_index, next_delimiter_index - key_begin_index));
             keybind.push_back(KeyNameToEnum(key_name));
 
             // Last character is + or we reached end of string

@@ -17,7 +17,7 @@ namespace Toolbox::UI {
 
         std::optional<ImVec2> minSize() const override {
             return {
-                {600, 500}
+                {500, 500}
             };
         }
         std::optional<ImVec2> maxSize() const override { return minSize(); }
@@ -42,11 +42,17 @@ namespace Toolbox::UI {
         void renderBody(f32 delta_time) override;
 
     protected:
+        void renderProfileBar(f32 delta_time);
         void renderSettingsGeneral(f32 delta_time);
         void renderSettingsControl(f32 delta_time);
         void renderSettingsUI(f32 delta_time);
         void renderSettingsPreview(f32 delta_time);
         void renderSettingsAdvanced(f32 delta_time);
+
+    private:
+        bool m_is_making_profile = false;
+        bool m_is_profile_focused_yet = false;
+        std::array<char, 128> m_profile_create_input;
     };
 
 }  // namespace Toolbox::UI
