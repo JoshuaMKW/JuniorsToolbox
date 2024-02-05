@@ -1,6 +1,8 @@
 // #include <GLFW/glfw3.h>
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 #include <J3D/Rendering/J3DRendering.hpp>
+#include <J3D/Picking/J3DPicking.hpp>
+
 #include <iostream>
 #include <unordered_set>
 
@@ -401,6 +403,10 @@ namespace Toolbox::UI {
 
             J3DRendering::Render(delta_time, position, view, projection, models);
 
+            if (m_is_window_hovered && Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_LEFT)) {
+                J3D::Picking::RenderPickingScene(view, projection, models);
+            }
+
             m_path_renderer.drawPaths(&m_camera);
             m_billboard_renderer.drawBillboards(&m_camera);
             m_is_view_dirty = false;
@@ -430,6 +436,9 @@ namespace Toolbox::UI {
 
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(cursor_pos.x, cursor_pos.y, m_render_size.x, m_render_size.y);
+
+        J3D::Picking::ResizeFramebuffer(static_cast<uint32_t>(m_render_size.x),
+                                        static_cast<uint32_t>(m_render_size.y));
 
         // bind the framebuffer we want to render to
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
@@ -642,8 +651,7 @@ namespace Toolbox::UI {
 
     Renderer::selection_variant_t
     Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables,
-                            std::vector<RefPtr<Rail::RailNode>> rail_nodes,
-                            bool &should_reset) {
+                            std::vector<RefPtr<Rail::RailNode>> rail_nodes, bool &should_reset) {
         should_reset = false;
         if (!m_is_window_hovered || !m_is_window_focused) {
             return std::nullopt;
@@ -658,8 +666,8 @@ namespace Toolbox::UI {
         m_camera.getPos(cam_pos);
 
         // Get point on render window
-        glm::vec3 selection_point = {mouse_pos.x - m_window_rect.Min.x,
-                                     mouse_pos.y - m_window_rect.Min.y, 0};
+        glm::vec3 selection_point = {mouse_pos.x - m_render_rect.Min.x,
+                                     mouse_pos.y - m_render_rect.Min.y, 0};
 
         if (!left_click && !right_click) {
             return {};
@@ -670,9 +678,9 @@ namespace Toolbox::UI {
         // Generate ray from mouse position
         auto [rayOrigin, rayDirection] =
             getRayFromMouse(glm::vec2(selection_point.x, selection_point.y), m_camera,
-                            glm::vec4(m_window_rect.Min.x, m_window_rect.Min.y,
-                                      m_window_rect.Max.x - m_window_rect.Min.x,
-                                      m_window_rect.Max.y - m_window_rect.Min.y));
+                            glm::vec4(m_render_rect.Min.x, m_render_rect.Min.y,
+                                      m_render_rect.Max.x - m_render_rect.Min.x,
+                                      m_render_rect.Max.y - m_render_rect.Min.y));
 
         const std::unordered_set<std::string> selection_blacklist = {
             "Map",
@@ -685,40 +693,16 @@ namespace Toolbox::UI {
 
         selection_variant_t selected_item = std::nullopt;
 
+        J3D::Picking::ModelMaterialIdPair query_result =
+            J3D::Picking::Query(static_cast<uint32_t>(selection_point.x),
+                                static_cast<uint32_t>(m_render_size.y - selection_point.y));
+
         for (auto &renderable : renderables) {
             if (selection_blacklist.contains(renderable.m_object->type())) {
                 continue;
             }
-
-            glm::vec3 min, max;
-
-            // Bounding box is local
-            renderable.m_model->GetBoundingBox(min, max);
-
-            glm::mat4x4 obb_transform = glm::identity<glm::mat4x4>();
-            obb_transform = glm::translate(obb_transform, renderable.m_transform.m_translation);
-
-            glm::mat4x4 obb_rot_mtx = glm::eulerAngleXYZ(renderable.m_transform.m_rotation.x,
-                                                         renderable.m_transform.m_rotation.y,
-                                                         renderable.m_transform.m_rotation.z);
-
-            obb_transform = obb_transform * obb_rot_mtx;
-
-            if (renderable.m_object->type() != "SunModel") {
-                obb_transform = glm::scale(obb_transform, renderable.m_transform.m_scale);
-            }
-
-            float this_intersection;
-
-            // Perform ray-box intersection test
-            if (intersectRayOBB(rayOrigin, rayDirection, min, max, obb_transform,
-                                this_intersection)) {
-                // Intersection detected, check if nearest and use
-                if (this_intersection >= nearest_intersection) {
-                    continue;
-                }
-                nearest_intersection = this_intersection;
-                selected_item        = renderable.m_object;
+            if (renderable.m_model->GetModelId() == std::get<0>(query_result)) {
+                selected_item = renderable.m_object;
             }
         }
 

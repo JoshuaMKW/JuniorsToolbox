@@ -77,6 +77,8 @@ namespace Toolbox::UI {
         void buildCreateRailDialog();
         void buildRenameRailDialog();
 
+        void processSelection(f32 delta_time);
+
         void onDeleteKey() override;
         void onPageDownKey() override;
         void onPageUpKey() override;
@@ -148,6 +150,7 @@ namespace Toolbox::UI {
         // Render view
         bool m_update_render_objs;
         bool m_is_render_window_open;
+        bool m_is_render_window_focused;
         Renderer m_renderer;
         std::vector<ISceneObject::RenderInfo> m_renderables;
         ResourceCache m_resource_cache;

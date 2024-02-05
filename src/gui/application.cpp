@@ -8,6 +8,7 @@
 #include "platform/service.hpp"
 
 #include <J3D/Material/J3DUniformBufferObject.hpp>
+#include <J3D/Picking/J3DPicking.hpp>
 
 #include <iostream>
 #include <string>
@@ -146,6 +147,7 @@ namespace Toolbox::UI {
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(m_render_window, false);
         ImGui_ImplOpenGL3_Init("#version 150");
+        J3D::Picking::InitFramebuffer(720, 480);
 
         auto &settings_manager = SettingsManager::instance();
         settings_manager.initialize();
@@ -191,6 +193,7 @@ namespace Toolbox::UI {
         glfwTerminate();
 
         J3DUniformBufferObject::DestroyUBO();
+        J3D::Picking::DestroyFramebuffer();
 
         m_windows.clear();
 

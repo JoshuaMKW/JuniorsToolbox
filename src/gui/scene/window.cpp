@@ -171,173 +171,11 @@ namespace Toolbox::UI {
 
     bool SceneWindow::update(f32 delta_time) {
         bool inputState = m_renderer.inputUpdate(delta_time);
-
-        std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
-        for (auto &rail : m_current_scene->getRailData().rails()) {
-            if (!m_rail_visible_map[rail->getUUID()])
-                continue;
-            rendered_nodes.insert(rendered_nodes.end(), rail->nodes().begin(), rail->nodes().end());
-        }
-
-        bool should_reset                       = false;
-        bool should_select                      = false;
-        Renderer::selection_variant_t selection = std::nullopt;
-        if (!ImGuizmo::IsOver()) {
-            should_select = true;
-            selection     = m_renderer.findSelection(m_renderables, rendered_nodes, should_reset);
-        } else {
-            return inputState;
-        }
-
-        bool multi_select = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
-
-        if (should_reset && should_select && !multi_select) {
-            m_hierarchy_selected_nodes.clear();
-            m_rail_node_list_selected_nodes.clear();
-            m_selected_properties.clear();
-            m_properties_render_handler = renderEmptyProperties;
-        }
-
-        if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
-            auto render_obj = std::get<RefPtr<ISceneObject>>(selection);
-            if (render_obj) {
-                std::string node_uid_str = getNodeUID(render_obj);
-                ImGuiID tree_node_id     = static_cast<ImGuiID>(render_obj->getUUID());
-
-                bool is_object_selected = std::any_of(
-                    m_hierarchy_selected_nodes.begin(), m_hierarchy_selected_nodes.end(),
-                    [&](auto &info) { return info.m_node_id == tree_node_id; });
-
-                SelectionNodeInfo<Object::ISceneObject> node_info = {
-                    .m_selected      = render_obj,
-                    .m_node_id       = tree_node_id,
-                    .m_parent_synced = true,
-                    .m_scene_synced  = true};  // Only spacial objects get scene selection
-
-                if (multi_select) {
-                    m_selected_properties.clear();
-                    if (!is_object_selected)
-                        m_hierarchy_selected_nodes.push_back(node_info);
-                } else {
-                    m_hierarchy_selected_nodes.clear();
-                    m_hierarchy_selected_nodes.push_back(node_info);
-                    for (auto &member : render_obj->getMembers()) {
-                        member->syncArray();
-                        auto prop = createProperty(member);
-                        if (prop) {
-                            m_selected_properties.push_back(std::move(prop));
-                        }
-                    }
-                }
-
-                Transform obj_transform = render_obj->getTransform().value();
-                // BoundingBox obj_bb      = render_obj->getBoundingBox().value();
-
-                glm::mat4x4 gizmo_transform =
-                    glm::translate(glm::identity<glm::mat4x4>(), obj_transform.m_translation);
-
-                /*glm::mat4x4 obb_rot_mtx =
-                    glm::eulerAngleXYZ(glm::radians(obj_transform.m_rotation.x),
-                   glm::radians(obj_transform.m_rotation.y),
-                                       glm::radians(obj_transform.m_rotation.z));*/
-
-                // TODO: Figure out why this rotation composes wrong.
-                glm::mat4x4 obb_rot_mtx = glm::toMat4(glm::quat(obj_transform.m_rotation));
-                gizmo_transform         = gizmo_transform * obb_rot_mtx;
-
-                gizmo_transform = glm::scale(gizmo_transform, obj_transform.m_scale);
-                m_renderer.setGizmoTransform(gizmo_transform);
-
-                m_properties_render_handler = renderObjectProperties;
-
-                TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", render_obj->type(),
-                                  render_obj->getNameRef().name());
-            }
-        } else if (std::holds_alternative<RefPtr<Rail::RailNode>>(selection)) {
-            auto node = std::get<RefPtr<Rail::RailNode>>(selection);
-            if (node) {
-                RefPtr<Rail::Rail> rail = get_shared_ptr(*node->rail());
-                ImGuiID rail_id                  = static_cast<ImGuiID>(rail->getUUID());
-
-                // In this circumstance, select the whole rail
-                if (Input::GetKey(GLFW_KEY_LEFT_ALT)) {
-                    bool is_rail_selected = std::any_of(
-                        m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
-                        [&](auto &info) { return info.m_node_id == rail_id; });
-
-                    SelectionNodeInfo<Rail::Rail> rail_info = {.m_selected      = rail,
-                                                               .m_node_id       = rail_id,
-                                                               .m_parent_synced = true,
-                                                               .m_scene_synced  = false};
-
-                    if (multi_select) {
-                        m_selected_properties.clear();
-                        if (!is_rail_selected)
-                            m_rail_list_selected_nodes.push_back(rail_info);
-                    } else {
-                        m_rail_list_selected_nodes.clear();
-                        m_rail_list_selected_nodes.push_back(rail_info);
-                    }
-
-                    // Since a rail is selected, we should clear the rail nodes
-                    m_rail_node_list_selected_nodes.clear();
-
-                    glm::mat4x4 gizmo_transform =
-                        glm::translate(glm::identity<glm::mat4x4>(), rail->getCenteroid());
-                    m_renderer.setGizmoTransform(gizmo_transform);
-
-                    m_properties_render_handler = renderRailProperties;
-
-                    TOOLBOX_DEBUG_LOG_V("Hit rail \"{}\"", rail->name());
-                } else {
-                    ImGuiID node_id = static_cast<ImGuiID>(node->getUUID());
-
-                    bool is_rail_node_selected =
-                        std::any_of(m_rail_node_list_selected_nodes.begin(),
-                                    m_rail_node_list_selected_nodes.end(),
-                                    [&](auto &info) { return info.m_node_id == node_id; });
-
-                    SelectionNodeInfo<Rail::RailNode> node_info = {.m_selected      = node,
-                                                                   .m_node_id       = node_id,
-                                                                   .m_parent_synced = true,
-                                                                   .m_scene_synced  = false};
-
-                    if (multi_select) {
-                        m_selected_properties.clear();
-                        if (!is_rail_node_selected)
-                            m_rail_node_list_selected_nodes.push_back(node_info);
-                    } else {
-                        m_rail_node_list_selected_nodes.clear();
-                        m_rail_node_list_selected_nodes.push_back(node_info);
-                    }
-
-                    // Since a rail node is selected, we should clear the rails
-                    m_rail_list_selected_nodes.clear();
-
-                    glm::mat4x4 gizmo_transform =
-                        glm::translate(glm::identity<glm::mat4x4>(), node->getPosition());
-                    m_renderer.setGizmoTransform(gizmo_transform);
-
-                    m_properties_render_handler = renderRailNodeProperties;
-
-                    TOOLBOX_DEBUG_LOG_V("Hit node {} of rail \"{}\"",
-                                      rail->getNodeIndex(node).value(), rail->name());
-                }
-            }
-        }
-
-        if (m_hierarchy_selected_nodes.empty() && m_rail_list_selected_nodes.empty() &&
-            m_rail_node_list_selected_nodes.empty()) {
-            m_renderer.setGizmoVisible(false);
-        } else {
-            m_renderer.setGizmoVisible(true);
-        }
-
         return inputState;
     }
 
     bool SceneWindow::postUpdate(f32 delta_time) {
-        if (!m_renderer.isGizmoManipulated()) {
+        if (!m_is_render_window_focused || !m_renderer.isGizmoManipulated()) {
             return true;
         }
 
@@ -367,11 +205,12 @@ namespace Toolbox::UI {
         return true;
     }
 
-    void SceneWindow::renderBody(f32 deltaTime) {
+    void SceneWindow::renderBody(f32 delta_time) {
         renderHierarchy();
         renderProperties();
         renderRailEditor();
-        renderScene(deltaTime);
+        renderScene(delta_time);
+        processSelection(delta_time);
     }
 
     void SceneWindow::renderHierarchy() {
@@ -1841,6 +1680,169 @@ namespace Toolbox::UI {
                     logSerialError(result.error());
                 }
             }
+        }
+    }
+
+    void SceneWindow::processSelection(f32 delta_time) {
+        std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
+        for (auto &rail : m_current_scene->getRailData().rails()) {
+            if (!m_rail_visible_map[rail->getUUID()])
+                continue;
+            rendered_nodes.insert(rendered_nodes.end(), rail->nodes().begin(), rail->nodes().end());
+        }
+
+        bool should_reset                       = false;
+        bool should_select                      = false;
+        Renderer::selection_variant_t selection = std::nullopt;
+        if (!ImGuizmo::IsOver()) {
+            should_select = true;
+            selection     = m_renderer.findSelection(m_renderables, rendered_nodes, should_reset);
+        } else {
+            return;
+        }
+
+        bool multi_select = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
+
+        if (should_reset && should_select && !multi_select) {
+            m_hierarchy_selected_nodes.clear();
+            m_rail_node_list_selected_nodes.clear();
+            m_selected_properties.clear();
+            m_properties_render_handler = renderEmptyProperties;
+        }
+
+        if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
+            auto render_obj = std::get<RefPtr<ISceneObject>>(selection);
+            if (render_obj) {
+                std::string node_uid_str = getNodeUID(render_obj);
+                ImGuiID tree_node_id     = static_cast<ImGuiID>(render_obj->getUUID());
+
+                bool is_object_selected = std::any_of(
+                    m_hierarchy_selected_nodes.begin(), m_hierarchy_selected_nodes.end(),
+                    [&](auto &info) { return info.m_node_id == tree_node_id; });
+
+                SelectionNodeInfo<Object::ISceneObject> node_info = {
+                    .m_selected      = render_obj,
+                    .m_node_id       = tree_node_id,
+                    .m_parent_synced = true,
+                    .m_scene_synced  = true};  // Only spacial objects get scene selection
+
+                if (multi_select) {
+                    m_selected_properties.clear();
+                    if (!is_object_selected)
+                        m_hierarchy_selected_nodes.push_back(node_info);
+                } else {
+                    m_hierarchy_selected_nodes.clear();
+                    m_hierarchy_selected_nodes.push_back(node_info);
+                    for (auto &member : render_obj->getMembers()) {
+                        member->syncArray();
+                        auto prop = createProperty(member);
+                        if (prop) {
+                            m_selected_properties.push_back(std::move(prop));
+                        }
+                    }
+                }
+
+                Transform obj_transform = render_obj->getTransform().value();
+                // BoundingBox obj_bb      = render_obj->getBoundingBox().value();
+
+                glm::mat4x4 gizmo_transform =
+                    glm::translate(glm::identity<glm::mat4x4>(), obj_transform.m_translation);
+
+                /*glm::mat4x4 obb_rot_mtx =
+                    glm::eulerAngleXYZ(glm::radians(obj_transform.m_rotation.x),
+                   glm::radians(obj_transform.m_rotation.y),
+                                       glm::radians(obj_transform.m_rotation.z));*/
+
+                // TODO: Figure out why this rotation composes wrong.
+                glm::mat4x4 obb_rot_mtx = glm::toMat4(glm::quat(obj_transform.m_rotation));
+                gizmo_transform         = gizmo_transform * obb_rot_mtx;
+
+                gizmo_transform = glm::scale(gizmo_transform, obj_transform.m_scale);
+                m_renderer.setGizmoTransform(gizmo_transform);
+
+                m_properties_render_handler = renderObjectProperties;
+
+                TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", render_obj->type(),
+                                    render_obj->getNameRef().name());
+            }
+        } else if (std::holds_alternative<RefPtr<Rail::RailNode>>(selection)) {
+            auto node = std::get<RefPtr<Rail::RailNode>>(selection);
+            if (node) {
+                RefPtr<Rail::Rail> rail = get_shared_ptr(*node->rail());
+                ImGuiID rail_id         = static_cast<ImGuiID>(rail->getUUID());
+
+                // In this circumstance, select the whole rail
+                if (Input::GetKey(GLFW_KEY_LEFT_ALT)) {
+                    bool is_rail_selected = std::any_of(
+                        m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
+                        [&](auto &info) { return info.m_node_id == rail_id; });
+
+                    SelectionNodeInfo<Rail::Rail> rail_info = {.m_selected      = rail,
+                                                               .m_node_id       = rail_id,
+                                                               .m_parent_synced = true,
+                                                               .m_scene_synced  = false};
+
+                    if (multi_select) {
+                        m_selected_properties.clear();
+                        if (!is_rail_selected)
+                            m_rail_list_selected_nodes.push_back(rail_info);
+                    } else {
+                        m_rail_list_selected_nodes.clear();
+                        m_rail_list_selected_nodes.push_back(rail_info);
+                    }
+
+                    // Since a rail is selected, we should clear the rail nodes
+                    m_rail_node_list_selected_nodes.clear();
+
+                    glm::mat4x4 gizmo_transform =
+                        glm::translate(glm::identity<glm::mat4x4>(), rail->getCenteroid());
+                    m_renderer.setGizmoTransform(gizmo_transform);
+
+                    m_properties_render_handler = renderRailProperties;
+
+                    TOOLBOX_DEBUG_LOG_V("Hit rail \"{}\"", rail->name());
+                } else {
+                    ImGuiID node_id = static_cast<ImGuiID>(node->getUUID());
+
+                    bool is_rail_node_selected =
+                        std::any_of(m_rail_node_list_selected_nodes.begin(),
+                                    m_rail_node_list_selected_nodes.end(),
+                                    [&](auto &info) { return info.m_node_id == node_id; });
+
+                    SelectionNodeInfo<Rail::RailNode> node_info = {.m_selected      = node,
+                                                                   .m_node_id       = node_id,
+                                                                   .m_parent_synced = true,
+                                                                   .m_scene_synced  = false};
+
+                    if (multi_select) {
+                        m_selected_properties.clear();
+                        if (!is_rail_node_selected)
+                            m_rail_node_list_selected_nodes.push_back(node_info);
+                    } else {
+                        m_rail_node_list_selected_nodes.clear();
+                        m_rail_node_list_selected_nodes.push_back(node_info);
+                    }
+
+                    // Since a rail node is selected, we should clear the rails
+                    m_rail_list_selected_nodes.clear();
+
+                    glm::mat4x4 gizmo_transform =
+                        glm::translate(glm::identity<glm::mat4x4>(), node->getPosition());
+                    m_renderer.setGizmoTransform(gizmo_transform);
+
+                    m_properties_render_handler = renderRailNodeProperties;
+
+                    TOOLBOX_DEBUG_LOG_V("Hit node {} of rail \"{}\"",
+                                        rail->getNodeIndex(node).value(), rail->name());
+                }
+            }
+        }
+
+        if (m_hierarchy_selected_nodes.empty() && m_rail_list_selected_nodes.empty() &&
+            m_rail_node_list_selected_nodes.empty()) {
+            m_renderer.setGizmoVisible(false);
+        } else {
+            m_renderer.setGizmoVisible(true);
         }
     }
 
