@@ -31,7 +31,6 @@
 #include <iconv.h>
 
 #if WIN32
-#define NOMINMAX
 #include <windows.h>
 #endif
 #include <gui/context_menu.hpp>

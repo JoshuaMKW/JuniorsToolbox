@@ -93,6 +93,7 @@ namespace Toolbox {
                 settings.m_far_plane            = j["Camera Far Plane"];
 
                 // Advanced
+                settings.m_dolphin_refresh_rate      = j["Dolphin Refresh Rate"];
                 settings.m_is_template_cache_allowed = j["Cache Object Templates"];
                 settings.m_log_to_cout_cerr          = j["Log To Terminal"];
             });
@@ -131,48 +132,7 @@ namespace Toolbox {
         }
 
         for (auto &[key, value] : m_settings_profiles) {
-            std::filesystem::path child_path = m_profile_path / (key + ".json");
-            std::ofstream out_stream(child_path, std::ios::out);
-
-            json_t profile_json;
-            auto result = tryJSON(profile_json, [&](json_t &j) {
-                // General
-                j["Include Better Objects"] = value.m_is_better_obj_allowed;
-                j["Backup File On Save"]    = value.m_is_file_backup_allowed;
-
-                // Control
-                j["Gizmo Translate Mode"] =
-                    UI::KeyBindToString(value.m_gizmo_translate_mode_keybind);
-                j["Gizmo Rotate Mode"] = UI::KeyBindToString(value.m_gizmo_rotate_mode_keybind);
-                j["Gizmo Scale Mode"]  = UI::KeyBindToString(value.m_gizmo_scale_mode_keybind);
-
-                // UI
-                j["App Theme"]   = value.m_gui_theme;
-                j["Font Family"] = value.m_font_family;
-                j["Font Size"]   = value.m_font_size;
-
-                // Preview
-                j["Simple Rendering"]   = value.m_is_rendering_simple;
-                j["Show Origin Point"]  = value.m_is_show_origin_point;
-                j["Unique Rail Colors"] = value.m_is_unique_rail_color;
-                j["Camera FOV"]         = value.m_camera_fov;
-                j["Camera Speed"]       = value.m_camera_speed;
-                j["Camera Sensitivity"] = value.m_camera_sensitivity;
-                j["Camera Near Plane"]  = value.m_near_plane;
-                j["Camera Far Plane"]   = value.m_far_plane;
-
-                // Advanced
-                j["Cache Object Templates"] = value.m_is_template_cache_allowed;
-                j["Log To Terminal"]        = value.m_log_to_cout_cerr;
-            });
-
-            if (!result) {
-                JSONError &err = result.error();
-                return make_serial_error<void>(err.m_message, err.m_reason, err.m_byte,
-                                               child_path.string());
-            }
-
-            out_stream << profile_json;
+            saveProfile(key, value);
         }
 
         std::filesystem::path child_path = m_profile_path / "profile.txt";
@@ -253,6 +213,7 @@ namespace Toolbox {
             j["Camera Far Plane"]   = profile.m_far_plane;
 
             // Advanced
+            j["Dolphin Refresh Rate"]   = profile.m_dolphin_refresh_rate;
             j["Cache Object Templates"] = profile.m_is_template_cache_allowed;
             j["Log To Terminal"]        = profile.m_log_to_cout_cerr;
         });

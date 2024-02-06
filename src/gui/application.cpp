@@ -26,6 +26,7 @@
 
 #include "core/core.hpp"
 #include "gui/scene/ImGuizmo.h"
+#include "dolphin/hook.hpp"
 
 // void ImGuiSetupTheme(bool, float);
 
@@ -179,6 +180,8 @@ namespace Toolbox::UI {
 
         determineEnvironmentConflicts();
 
+        m_dolphin_communicator.start();
+
         return true;
     }
 
@@ -193,6 +196,8 @@ namespace Toolbox::UI {
         J3DUniformBufferObject::DestroyUBO();
 
         m_windows.clear();
+
+        m_dolphin_communicator.kill();
 
         return true;
     }

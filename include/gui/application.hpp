@@ -13,9 +13,11 @@
 #include "gui/window.hpp"
 
 #include "clipboard.hpp"
+#include "dolphin/process.hpp"
 
 #include <GLFW/glfw3.h>
 #include <thread>
+using namespace Toolbox::Dolphin;
 
 namespace Toolbox::UI {
 
@@ -87,6 +89,7 @@ namespace Toolbox::UI {
         bool m_is_dir_dialog_open  = false;
 
         std::thread m_thread_templates_init;
+        DolphinCommunicator m_dolphin_communicator;
     };
 
 }  // namespace Toolbox::UI

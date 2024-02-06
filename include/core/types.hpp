@@ -26,8 +26,8 @@ namespace Toolbox {
         constexpr endian_swapped_t() : mData(T{}) {}
         constexpr endian_swapped_t(T v) : mData(getFlipped(v)) {}
 
-        constexpr operator T() const { return getFlipped(mData); }
-        constexpr T operator*() const { return getFlipped(mData); }
+        constexpr operator T() const { return mData; }
+        constexpr T operator*() const { return mData; }
 
     private:
         static constexpr T getFlipped(T v) {

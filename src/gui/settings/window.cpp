@@ -320,6 +320,16 @@ namespace Toolbox::UI {
 
     void SettingsWindow::renderSettingsAdvanced(f32 delta_time) {
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+
+        if (ImGui::BeginGroupPanel("Dolphin Integration", nullptr, {})) {
+            s64 min = 10;
+            s64 max = 100;
+            ImGui::SliderScalar("Hook Refresh Rate", ImGuiDataType_S64,
+                                &settings.m_dolphin_refresh_rate, &min, &max, nullptr,
+                                ImGuiSliderFlags_AlwaysClamp);
+        }
+        ImGui::EndGroupPanel();
+
         ImGui::Checkbox("Cache Object Templates", &settings.m_is_template_cache_allowed);
         ImGui::Checkbox("Pipe Logs To Terminal", &settings.m_log_to_cout_cerr);
 
@@ -334,7 +344,8 @@ namespace Toolbox::UI {
             auto template_cache_result = Toolbox::remove_all(cwd / "Templates/.cache");
             if (!template_cache_result) {
                 TOOLBOX_ERROR("(Settings) Failed to clear Template cache!");
-                TOOLBOX_ERROR_V("              Reason: {}", template_cache_result.error().message());
+                TOOLBOX_ERROR_V("              Reason: {}",
+                                template_cache_result.error().message());
             }
 
             TOOLBOX_INFO("(Settings) Cleared Template cache successfully!");

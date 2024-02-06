@@ -1,8 +1,6 @@
 #include <string>
 #include <string_view>
 
-#define NOMINMAX
-
 #include "dolphin/hook.hpp"
 
 namespace Toolbox::Dolphin {
@@ -62,6 +60,7 @@ namespace Toolbox::Dolphin {
             return make_error<void *>(
                 "(SHARED_MEM) Failed to get view of shared process memory handle.");
         }
+        return mem_buf;
     }
 
     static std::expected<void, BaseError>
@@ -104,7 +103,8 @@ namespace Toolbox::Dolphin {
             return {};
         }
 
-        const ProcessID sentinel                  = std::numeric_limits<ProcessID>::max();
+        constexpr ProcessID sentinel                  = std::numeric_limits<ProcessID>::max();
+
         ProcessID pid                             = sentinel;
         std::vector<std::string> target_processes = {"Dolphin", "DolphinQt2",
                                                      "DolphinWx"};
@@ -147,6 +147,12 @@ namespace Toolbox::Dolphin {
         }
 
         m_mem_view = view_result.value();
+
+        bu32 magic_ptr = *static_cast<u32 *>(m_mem_view);
+        if ((magic_ptr >> 8) != 'GMS') {
+            return make_error<void>(
+                "(PROCESS) Found Dolphin game, but it's not Super Mario Sunshine (GMS)!");
+        }
 
         TOOLBOX_INFO_V("(DOLPHIN) Successfully hooked to process! (Name={}, PID={}, View={})",
                        m_proc_name, m_proc_id, m_mem_view);

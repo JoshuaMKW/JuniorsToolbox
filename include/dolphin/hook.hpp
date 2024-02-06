@@ -67,6 +67,14 @@ namespace Toolbox::Dolphin {
 
         std::expected<void, BaseError> hook();
         std::expected<void, BaseError> unhook();
+        std::expected<void, BaseError> refresh() {
+            auto unhook_result = unhook();
+            if (!unhook_result) {
+                return std::unexpected(unhook_result.error());
+            }
+
+            return hook();
+        }
 
         std::expected<void, BaseError> readBytes(char *buf, u32 address, size_t size);
         std::expected<void, BaseError> writeBytes(const char *buf, u32 address, size_t size);
