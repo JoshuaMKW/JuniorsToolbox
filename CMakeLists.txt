@@ -28,6 +28,8 @@ file(GLOB TOOLBOX_SRC
     "include/bti/*.hpp"
     "src/core/*.cpp"
     "include/core/*.hpp"
+    "src/dolphin/*.cpp"
+    "include/dolphin/*.hpp"
     "src/objlib/*.cpp"
     "include/objlib/*.hpp"
     "src/platform/*.cpp"
