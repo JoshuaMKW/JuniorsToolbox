@@ -1,5 +1,6 @@
 #include <string>
 #include <string_view>
+#include <mutex>
 
 #include "dolphin/hook.hpp"
 
@@ -179,17 +180,23 @@ namespace Toolbox::Dolphin {
         return {};
     }
 
+    static std::mutex s_memory_mutex;
+
     std::expected<void, BaseError> DolphinHookManager::readBytes(char *buf, u32 address,
                                                                  size_t size) {
+        s_memory_mutex.lock();
         const char *true_address = static_cast<const char *>(m_mem_view) + (address & 0x7FFFFFFF);
         memcpy(buf, true_address, size);
+        s_memory_mutex.unlock();
         return {};
     }
 
     std::expected<void, BaseError> DolphinHookManager::writeBytes(const char *buf, u32 address,
                                                                   size_t size) {
+        s_memory_mutex.lock();
         char *true_address = static_cast<char *>(m_mem_view) + (address & 0x7FFFFFFF);
         memcpy(true_address, buf, size);
+        s_memory_mutex.unlock();
         return {};
     }
 

@@ -1,4 +1,4 @@
-#include "gui/clipboard.hpp"
+#include "core/clipboard.hpp"
 
 #ifdef WIN32
 #include <Windows.h>

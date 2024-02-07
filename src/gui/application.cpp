@@ -1,4 +1,4 @@
-#include "gui/application.hpp"
+#include "core/application.hpp"
 #include "gui/IconsForkAwesome.h"
 #include "gui/font.hpp"
 #include "gui/input.hpp"
@@ -30,7 +30,7 @@
 
 // void ImGuiSetupTheme(bool, float);
 
-namespace Toolbox::UI {
+namespace Toolbox {
 
     int MainApplication::run() {
         Clock::time_point lastFrameTime, thisFrameTime;

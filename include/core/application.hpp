@@ -17,9 +17,15 @@
 
 #include <GLFW/glfw3.h>
 #include <thread>
+
 using namespace Toolbox::Dolphin;
 
-namespace Toolbox::UI {
+#define EXIT_CODE_OK 0
+#define EXIT_CODE_FAILED_RUNTIME 1
+#define EXIT_CODE_FAILED_SETUP 2
+#define EXIT_CODE_FAILED_TEARDOWN 3
+
+namespace Toolbox {
 
     class MainApplication {
     protected:
@@ -46,6 +52,8 @@ namespace Toolbox::UI {
         TypedDataClipboard<SelectionNodeInfo<Rail::RailNode>> &getSceneRailNodeClipboard() {
             return m_rail_node_clipboard;
         }
+
+        DolphinCommunicator &getDolphinCommunicator() { return m_dolphin_communicator; }
 
         ImVec2 windowScreenPos() {
             int x = 0, y = 0;
@@ -92,4 +100,4 @@ namespace Toolbox::UI {
         DolphinCommunicator m_dolphin_communicator;
     };
 
-}  // namespace Toolbox::UI
+}  // namespace Toolbox

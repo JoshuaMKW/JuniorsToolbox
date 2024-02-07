@@ -14,7 +14,7 @@
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"
 
-#include "gui/clipboard.hpp"
+#include "core/clipboard.hpp"
 #include "gui/property/property.hpp"
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"

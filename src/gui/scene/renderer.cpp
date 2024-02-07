@@ -5,7 +5,7 @@
 #include <iostream>
 #include <unordered_set>
 
-#include "gui/application.hpp"
+#include "core/application.hpp"
 #include "gui/input.hpp"
 #include "gui/logging/errors.hpp"
 #include "core/log.hpp"

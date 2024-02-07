@@ -15,7 +15,7 @@
 
 #include "core/log.hpp"
 #include "core/types.hpp"
-#include "gui/clipboard.hpp"
+#include "core/clipboard.hpp"
 #include "gui/property/property.hpp"
 #include "gui/window.hpp"
 

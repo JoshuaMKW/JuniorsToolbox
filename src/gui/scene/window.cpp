@@ -9,7 +9,7 @@
 #include "gui/scene/window.hpp"
 
 #include "gui/IconsForkAwesome.h"
-#include "gui/application.hpp"
+#include "core/application.hpp"
 #include "gui/imgui_ext.hpp"
 #include "gui/modelcache.hpp"
 #include "gui/util.hpp"

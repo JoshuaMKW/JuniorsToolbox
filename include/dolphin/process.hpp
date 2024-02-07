@@ -21,6 +21,8 @@ namespace Toolbox::Dolphin {
     public:
         DolphinCommunicator() = default;
 
+        DolphinHookManager &manager() const { return DolphinHookManager::instance(); }
+
         // Starts the detached thread
         void start() {
             if (!m_started) {
@@ -40,8 +42,25 @@ namespace Toolbox::Dolphin {
 
         void signalHook() { m_hook_flag.store(true); }
 
-        template <typename T> T read(u32 address) {}
-        template <typename T> void write(u32 address, const T &value) {}
+        template <typename T> std::expected<T, BaseError> read(u32 address) {
+            T data;
+
+            auto result = DolphinHookManager::instance().readBytes(reinterpret_cast<char *>(&data),
+                                                                   address, sizeof(T));
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+
+            return data;
+        }
+        template <typename T> std::expected<void, BaseError> write(u32 address, const T &value) {
+            auto result = DolphinHookManager::instance().writeBytes(
+                reinterpret_cast<const char *>(std::addressof(value)), address, sizeof(T));
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            return {};
+        }
 
     protected:
         void run();
