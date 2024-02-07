@@ -50,7 +50,7 @@ namespace Toolbox::Game {
         template <typename _Callable, typename... _Args>
         std::expected<void, BaseError> submitTask(_Callable task, _Args... args) {
             m_task_queue.push(
-                [&](Dolphin::DolphinCommunicator &) { return task(std::forward<Args>(args)...); });
+                [&](Dolphin::DolphinCommunicator &) { return task(std::forward<_Args>(args)...); });
             return {};
         }
 
