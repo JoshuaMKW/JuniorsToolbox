@@ -30,6 +30,8 @@ file(GLOB TOOLBOX_SRC
     "include/core/*.hpp"
     "src/dolphin/*.cpp"
     "include/dolphin/*.hpp"
+    "src/game/*.cpp"
+    "include/game/*.hpp"
     "src/objlib/*.cpp"
     "include/objlib/*.hpp"
     "src/platform/*.cpp"
