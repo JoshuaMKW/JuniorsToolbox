@@ -96,7 +96,7 @@ namespace Toolbox::Object {
         }
     }
 
-    std::expected<void, SerialError> MetaMember::serialize(Serializer &out) const {
+    Result<void, SerialError> MetaMember::serialize(Serializer &out) const {
         for (u32 i = 0; i < arraysize(); ++i) {
             if (isTypeStruct()) {
                 auto _struct = std::get<RefPtr<MetaStruct>>(m_values[i]);
@@ -121,7 +121,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::expected<void, SerialError> MetaMember::deserialize(Deserializer &in) {
+    Result<void, SerialError> MetaMember::deserialize(Deserializer &in) {
         syncArray();
         for (u32 i = 0; i < arraysize(); ++i) {
             if (isTypeStruct()) {

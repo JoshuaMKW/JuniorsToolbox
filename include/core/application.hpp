@@ -21,9 +21,9 @@
 using namespace Toolbox::Dolphin;
 
 #define EXIT_CODE_OK 0
-#define EXIT_CODE_FAILED_RUNTIME 1
-#define EXIT_CODE_FAILED_SETUP 2
-#define EXIT_CODE_FAILED_TEARDOWN 3
+#define EXIT_CODE_FAILED_RUNTIME  (1 << 28) | 1
+#define EXIT_CODE_FAILED_SETUP    (1 << 28) | 2
+#define EXIT_CODE_FAILED_TEARDOWN (1 << 28) | 3
 
 namespace Toolbox {
 

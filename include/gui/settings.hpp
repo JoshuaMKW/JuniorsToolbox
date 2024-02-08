@@ -91,15 +91,15 @@ namespace Toolbox {
             return names;
         }
 
-        std::expected<void, SerialError> addProfile(std::string_view name,
+        Result<void, SerialError> addProfile(std::string_view name,
                                                     const AppSettings &profile);
-        std::expected<void, SerialError> removeProfile(std::string_view name);
+        Result<void, SerialError> removeProfile(std::string_view name);
 
     protected:
-        std::expected<void, SerialError> loadProfiles();
-        std::expected<void, SerialError> saveProfiles();
+        Result<void, SerialError> loadProfiles();
+        Result<void, SerialError> saveProfiles();
 
-        std::expected<void, SerialError> saveProfile(std::string_view name,
+        Result<void, SerialError> saveProfile(std::string_view name,
                                                      const AppSettings &profile);
 
     private:

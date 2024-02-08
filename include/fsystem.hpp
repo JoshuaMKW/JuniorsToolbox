@@ -8,11 +8,11 @@
 #include <stacktrace>
 #include <system_error>
 
-#include "error.hpp"
+#include "core/error.hpp"
 
 namespace Toolbox {
 
-    [[nodiscard]] static inline std::expected<std::filesystem::path, std::error_code>
+    [[nodiscard]] static inline Result<std::filesystem::path, std::error_code>
     absolute(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::absolute(p, ec);
@@ -21,7 +21,7 @@ namespace Toolbox {
         }
         return result;
     }
-    [[nodiscard]] static inline std::expected<std::filesystem::path, std::error_code>
+    [[nodiscard]] static inline Result<std::filesystem::path, std::error_code>
     canonical(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::canonical(p, ec);
@@ -31,7 +31,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<std::filesystem::path, std::error_code>
+    [[nodiscard]] static inline Result<std::filesystem::path, std::error_code>
     weakly_canonical(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::weakly_canonical(p, ec);
@@ -41,7 +41,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<std::filesystem::path, std::error_code>
+    [[nodiscard]] static inline Result<std::filesystem::path, std::error_code>
     relative(const std::filesystem::path &p,
              const std::filesystem::path &base = std::filesystem::current_path()) {
         std::error_code ec;
@@ -52,7 +52,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<std::filesystem::path, std::error_code>
+    [[nodiscard]] static inline Result<std::filesystem::path, std::error_code>
     proximate(const std::filesystem::path &p,
               const std::filesystem::path &base = std::filesystem::current_path()) {
         std::error_code ec;
@@ -63,7 +63,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<void, std::error_code>
+    [[nodiscard]] static inline Result<void, std::error_code>
     copy(const std::filesystem::path &from, const std::filesystem::path &to,
          std::filesystem::copy_options options = std::filesystem::copy_options::none) {
         std::error_code ec;
@@ -74,7 +74,7 @@ namespace Toolbox {
         return {};
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     copy_file(const std::filesystem::path &from, const std::filesystem::path &to,
               std::filesystem::copy_options options = std::filesystem::copy_options::none) {
         std::error_code ec;
@@ -85,7 +85,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<void, std::error_code>
+    [[nodiscard]] static inline Result<void, std::error_code>
     copy_symlink(const std::filesystem::path &existing_symlink,
                  const std::filesystem::path &new_symlink) {
         std::error_code ec;
@@ -96,7 +96,7 @@ namespace Toolbox {
         return {};
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     create_directory(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::create_directory(p, ec);
@@ -106,7 +106,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     create_directories(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::create_directories(p, ec);
@@ -116,7 +116,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<void, std::error_code>
+    [[nodiscard]] static inline Result<void, std::error_code>
     create_hard_link(const std::filesystem::path &to, const std::filesystem::path &new_hard_link) {
         std::error_code ec;
         std::filesystem::create_hard_link(to, new_hard_link, ec);
@@ -126,7 +126,7 @@ namespace Toolbox {
         return {};
     }
 
-    [[nodiscard]] static inline std::expected<void, std::error_code>
+    [[nodiscard]] static inline Result<void, std::error_code>
     create_symlink(const std::filesystem::path &to, const std::filesystem::path &new_symlink) {
         std::error_code ec;
         std::filesystem::create_symlink(to, new_symlink, ec);
@@ -136,7 +136,7 @@ namespace Toolbox {
         return {};
     }
 
-    [[nodiscard]] static inline std::expected<void, std::error_code>
+    [[nodiscard]] static inline Result<void, std::error_code>
     create_directory_symlink(const std::filesystem::path &to,
                              const std::filesystem::path &new_symlink) {
         std::error_code ec;
@@ -147,7 +147,7 @@ namespace Toolbox {
         return {};
     }
 
-    [[nodiscard]] static inline std::expected<std::filesystem::path, std::error_code>
+    [[nodiscard]] static inline Result<std::filesystem::path, std::error_code>
     current_path() {
         std::error_code ec;
         auto result = std::filesystem::current_path(ec);
@@ -157,7 +157,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     exists(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::exists(p, ec);
@@ -167,7 +167,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     equivalent(const std::filesystem::path &p1, const std::filesystem::path &p2) {
         std::error_code ec;
         auto result = std::filesystem::equivalent(p1, p2, ec);
@@ -177,7 +177,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<uintmax_t, std::error_code>
+    [[nodiscard]] static inline Result<uintmax_t, std::error_code>
     file_size(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::file_size(p, ec);
@@ -187,7 +187,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<uintmax_t, std::error_code>
+    [[nodiscard]] static inline Result<uintmax_t, std::error_code>
     hard_link_count(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::hard_link_count(p, ec);
@@ -197,7 +197,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<std::filesystem::file_time_type, std::error_code>
+    [[nodiscard]] static inline Result<std::filesystem::file_time_type, std::error_code>
     last_write_time(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::last_write_time(p, ec);
@@ -207,7 +207,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<void, std::error_code>
+    [[nodiscard]] static inline Result<void, std::error_code>
     permissions(const std::filesystem::path &p, std::filesystem::perms prms,
                 std::filesystem::perm_options opts = std::filesystem::perm_options::replace) {
         std::error_code ec;
@@ -217,7 +217,7 @@ namespace Toolbox {
         }
         return {};
     }
-    [[nodiscard]] static inline std::expected<std::filesystem::path, std::error_code>
+    [[nodiscard]] static inline Result<std::filesystem::path, std::error_code>
     read_symlink(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::read_symlink(p, ec);
@@ -227,7 +227,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     remove(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::remove(p, ec);
@@ -237,7 +237,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<uintmax_t, std::error_code>
+    [[nodiscard]] static inline Result<uintmax_t, std::error_code>
     remove_all(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::remove_all(p, ec);
@@ -247,7 +247,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<void, std::error_code>
+    [[nodiscard]] static inline Result<void, std::error_code>
     rename(const std::filesystem::path &from, const std::filesystem::path &to) {
         std::error_code ec;
         std::filesystem::rename(from, to, ec);
@@ -257,7 +257,7 @@ namespace Toolbox {
         return {};
     }
 
-    [[nodiscard]] static inline std::expected<void, std::error_code>
+    [[nodiscard]] static inline Result<void, std::error_code>
     resize_file(const std::filesystem::path &p, uintmax_t size) {
         std::error_code ec;
         std::filesystem::resize_file(p, size, ec);
@@ -267,7 +267,7 @@ namespace Toolbox {
         return {};
     }
 
-    [[nodiscard]] static inline std::expected<std::filesystem::space_info, std::error_code>
+    [[nodiscard]] static inline Result<std::filesystem::space_info, std::error_code>
     space(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::space(p, ec);
@@ -277,7 +277,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<std::filesystem::file_status, std::error_code>
+    [[nodiscard]] static inline Result<std::filesystem::file_status, std::error_code>
     status(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::status(p, ec);
@@ -287,7 +287,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<std::filesystem::file_status, std::error_code>
+    [[nodiscard]] static inline Result<std::filesystem::file_status, std::error_code>
     symlink_status(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::symlink_status(p, ec);
@@ -297,7 +297,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<std::filesystem::path, std::error_code>
+    [[nodiscard]] static inline Result<std::filesystem::path, std::error_code>
     temp_directory_path() {
         std::error_code ec;
         auto result = std::filesystem::temp_directory_path(ec);
@@ -306,7 +306,7 @@ namespace Toolbox {
         }
         return result;
     }
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     is_block_file(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_block_file(p, ec);
@@ -316,7 +316,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     is_character_file(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_character_file(p, ec);
@@ -326,7 +326,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     is_directory(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_directory(p, ec);
@@ -339,7 +339,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     is_empty(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_empty(p, ec);
@@ -349,7 +349,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     is_fifo(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_fifo(p, ec);
@@ -359,7 +359,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     is_other(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_other(p, ec);
@@ -369,7 +369,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     is_regular_file(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_regular_file(p, ec);
@@ -379,7 +379,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     is_socket(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_socket(p, ec);
@@ -389,7 +389,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     is_symlink(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_symlink(p, ec);
@@ -399,7 +399,7 @@ namespace Toolbox {
         return result;
     }
 
-    [[nodiscard]] static inline std::expected<bool, std::error_code>
+    [[nodiscard]] static inline Result<bool, std::error_code>
     status_known(const std::filesystem::file_status &s) {
         std::error_code ec;
         auto result = std::filesystem::status_known(s);
@@ -414,7 +414,7 @@ namespace Toolbox {
     };
 
     template <typename _Ret>
-    [[nodiscard]] static inline std::expected<_Ret, FSError>
+    [[nodiscard]] static inline Result<_Ret, FSError>
     make_fs_error(std::error_code code, std::vector<std::string> reason) {
         std::vector<std::string> message;
         if (reason.size() > 0) {
@@ -431,7 +431,7 @@ namespace Toolbox {
     }
 
     template <typename _Ret>
-    [[nodiscard]] static inline std::expected<_Ret, FSError> make_fs_error(std::error_code code) {
+    [[nodiscard]] static inline Result<_Ret, FSError> make_fs_error(std::error_code code) {
         std::vector<std::string> message;
         message.push_back(std::format("FSError: {}", code.message()));
         FSError error = {message, std::stacktrace::current(), code};

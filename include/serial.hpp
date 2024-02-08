@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error.hpp"
+#include "core/error.hpp"
 #include "core/types.hpp"
 #include <bit>
 #include <expected>
@@ -129,7 +129,7 @@ namespace Toolbox {
         }
 
         void pushBreakpoint();
-        std::expected<void, SerialError> popBreakpoint();
+        Result<void, SerialError> popBreakpoint();
 
     private:
         std::ostream m_out;
@@ -262,7 +262,7 @@ namespace Toolbox {
         }
 
         void pushBreakpoint();
-        std::expected<void, SerialError> popBreakpoint();
+        Result<void, SerialError> popBreakpoint();
 
     private:
         std::istream m_in;
@@ -275,15 +275,15 @@ namespace Toolbox {
         ISerializable() = default;
         ISerializable(Deserializer &in) { deserialize(in); }
 
-        virtual std::expected<void, SerialError> serialize(Serializer &out) const = 0;
-        virtual std::expected<void, SerialError> deserialize(Deserializer &in)    = 0;
+        virtual Result<void, SerialError> serialize(Serializer &out) const = 0;
+        virtual Result<void, SerialError> deserialize(Deserializer &in)    = 0;
 
         void operator<<(Serializer &out) { serialize(out); }
         void operator>>(Deserializer &in) { deserialize(in); }
     };
 
     template <typename _Ret>
-    inline std::expected<_Ret, SerialError>
+    inline Result<_Ret, SerialError>
     make_serial_error(std::string_view context, std::string_view reason, size_t error_pos,
                       std::string_view filepath) {
         SerialError err = {
@@ -296,7 +296,7 @@ namespace Toolbox {
     }
 
     template <typename _Ret>
-    inline std::expected<_Ret, SerialError>
+    inline Result<_Ret, SerialError>
     make_serial_error(Serializer &s, std::string_view reason, int error_adjust) {
         auto pos = std::max(static_cast<size_t>(s.tell()) + error_adjust, static_cast<size_t>(0));
         return make_serial_error<_Ret>(
@@ -305,13 +305,13 @@ namespace Toolbox {
     }
 
     template <typename _Ret>
-    inline std::expected<_Ret, SerialError> make_serial_error(Serializer &s,
+    inline Result<_Ret, SerialError> make_serial_error(Serializer &s,
                                                               std::string_view reason) {
         return make_serial_error<_Ret>(s, reason, 0);
     }
 
     template <typename _Ret>
-    inline std::expected<_Ret, SerialError>
+    inline Result<_Ret, SerialError>
     make_serial_error(Deserializer &s, std::string_view reason, int error_adjust) {
         auto pos = std::max(static_cast<size_t>(s.tell()) + error_adjust, static_cast<size_t>(0));
         return make_serial_error<_Ret>(
@@ -320,7 +320,7 @@ namespace Toolbox {
     }
 
     template <typename _Ret>
-    inline std::expected<_Ret, SerialError> make_serial_error(Deserializer &s,
+    inline Result<_Ret, SerialError> make_serial_error(Deserializer &s,
                                                               std::string_view reason) {
         return make_serial_error<_Ret>(s, reason, 0);
     }

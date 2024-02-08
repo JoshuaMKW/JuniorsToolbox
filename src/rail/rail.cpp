@@ -73,7 +73,7 @@ namespace Toolbox::Rail {
         m_nodes.push_back(node);
     }
 
-    std::expected<void, MetaError> Rail::insertNode(size_t index, node_ptr_t node) {
+    Result<void, MetaError> Rail::insertNode(size_t index, node_ptr_t node) {
         if (index > m_nodes.size()) {
             return make_meta_error<void>("Error inserting node", index, m_nodes.size());
         }
@@ -82,7 +82,7 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::expected<void, MetaError> Rail::removeNode(size_t index) {
+    Result<void, MetaError> Rail::removeNode(size_t index) {
         if (index >= m_nodes.size()) {
             return make_meta_error<void>("Error removing node", index, m_nodes.size());
         }
@@ -100,7 +100,7 @@ namespace Toolbox::Rail {
         return true;
     }
 
-    std::expected<void, MetaError> Rail::swapNodes(size_t index1, size_t index2) {
+    Result<void, MetaError> Rail::swapNodes(size_t index1, size_t index2) {
         if (index1 >= m_nodes.size()) {
             return make_meta_error<void>("Error swapping node (1)", index1, m_nodes.size());
         }
@@ -176,11 +176,11 @@ namespace Toolbox::Rail {
         return connections;
     }
 
-    std::expected<void, MetaError> Rail::setNodePosition(size_t node, s16 x, s16 y, s16 z) {
+    Result<void, MetaError> Rail::setNodePosition(size_t node, s16 x, s16 y, s16 z) {
         return setNodePosition(node, glm::vec3(x, y, z));
     }
 
-    std::expected<void, MetaError> Rail::setNodePosition(size_t node, const glm::vec3 &pos) {
+    Result<void, MetaError> Rail::setNodePosition(size_t node, const glm::vec3 &pos) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error setting node position", node, m_nodes.size());
         }
@@ -188,40 +188,40 @@ namespace Toolbox::Rail {
         return setNodePosition(m_nodes[node], pos);
     }
 
-    std::expected<void, MetaError> Rail::setNodePosition(node_ptr_t node, s16 x, s16 y, s16 z) {
+    Result<void, MetaError> Rail::setNodePosition(node_ptr_t node, s16 x, s16 y, s16 z) {
         node->setPosition(glm::vec3(x, y, z));
         return calcDistancesWithNode(node);
     }
 
-    std::expected<void, MetaError> Rail::setNodePosition(node_ptr_t node, const glm::vec3 &pos) {
+    Result<void, MetaError> Rail::setNodePosition(node_ptr_t node, const glm::vec3 &pos) {
         node->setPosition(pos);
         return calcDistancesWithNode(node);
     }
 
-    std::expected<void, MetaError> Rail::setNodeFlag(size_t node, u32 flag) {
+    Result<void, MetaError> Rail::setNodeFlag(size_t node, u32 flag) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error setting node flag", node, m_nodes.size());
         }
         return setNodeFlag(m_nodes[node], flag);
     }
 
-    std::expected<void, MetaError> Rail::setNodeFlag(node_ptr_t node, u32 flag) {
+    Result<void, MetaError> Rail::setNodeFlag(node_ptr_t node, u32 flag) {
         node->setFlags(flag);
         return {};
     }
 
-    std::expected<void, MetaError> Rail::setNodeValue(size_t node, size_t index, s16 value) {
+    Result<void, MetaError> Rail::setNodeValue(size_t node, size_t index, s16 value) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error setting node value", node, m_nodes.size());
         }
         return setNodeValue(m_nodes[node], index, value);
     }
 
-    std::expected<void, MetaError> Rail::setNodeValue(node_ptr_t node, size_t index, s16 value) {
+    Result<void, MetaError> Rail::setNodeValue(node_ptr_t node, size_t index, s16 value) {
         return node->setValue(static_cast<int>(index), value);
     }
 
-    std::expected<void, MetaError> Rail::addConnection(size_t node, size_t to) {
+    Result<void, MetaError> Rail::addConnection(size_t node, size_t to) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error adding connection (from)", node, m_nodes.size());
         }
@@ -231,7 +231,7 @@ namespace Toolbox::Rail {
         return addConnection(m_nodes[node], m_nodes[to]);
     }
 
-    std::expected<void, MetaError> Rail::addConnection(node_ptr_t node, node_ptr_t to) {
+    Result<void, MetaError> Rail::addConnection(node_ptr_t node, node_ptr_t to) {
         auto connectionCount = node->getConnectionCount();
         if (connectionCount >= 8) {
             return make_meta_error<void>("Error adding connection (max)", connectionCount, 8);
@@ -247,7 +247,7 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::expected<void, MetaError> Rail::insertConnection(size_t node, size_t index, size_t to) {
+    Result<void, MetaError> Rail::insertConnection(size_t node, size_t index, size_t to) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error inserting connection (from)", node, m_nodes.size());
         }
@@ -257,7 +257,7 @@ namespace Toolbox::Rail {
         return insertConnection(m_nodes[node], index, m_nodes[to]);
     }
 
-    std::expected<void, MetaError> Rail::insertConnection(node_ptr_t node, size_t index,
+    Result<void, MetaError> Rail::insertConnection(node_ptr_t node, size_t index,
                                                           node_ptr_t to) {
         auto connectionCount = node->getConnectionCount();
         if (connectionCount >= 8) {
@@ -278,14 +278,14 @@ namespace Toolbox::Rail {
         return node->setConnectionDistance(index, distance);
     }
 
-    std::expected<void, MetaError> Rail::removeConnection(size_t node, size_t index) {
+    Result<void, MetaError> Rail::removeConnection(size_t node, size_t index) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error removing connection (from)", node, m_nodes.size());
         }
         return removeConnection(m_nodes[node], index);
     }
 
-    std::expected<void, MetaError> Rail::removeConnection(node_ptr_t node, size_t index) {
+    Result<void, MetaError> Rail::removeConnection(node_ptr_t node, size_t index) {
         auto connectionCount = node->getConnectionCount();
         if (index >= connectionCount) {
             return make_meta_error<void>("Error removing connection (index)", index,
@@ -301,7 +301,7 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::expected<void, MetaError> Rail::replaceConnection(size_t node, size_t index, size_t to) {
+    Result<void, MetaError> Rail::replaceConnection(size_t node, size_t index, size_t to) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error replacing connection (from)", node, m_nodes.size());
         }
@@ -311,7 +311,7 @@ namespace Toolbox::Rail {
         return replaceConnection(m_nodes[node], index, m_nodes[to]);
     }
 
-    std::expected<void, MetaError> Rail::replaceConnection(node_ptr_t node, size_t index,
+    Result<void, MetaError> Rail::replaceConnection(node_ptr_t node, size_t index,
                                                            node_ptr_t to) {
         if (index >= node->getConnectionCount()) {
             return make_meta_error<void>("Error replacing connection (index)", index,
@@ -325,14 +325,14 @@ namespace Toolbox::Rail {
         return node->setConnectionDistance(index, distance);
     }
 
-    std::expected<void, MetaError> Rail::connectNodeToNearest(size_t node, size_t count) {
+    Result<void, MetaError> Rail::connectNodeToNearest(size_t node, size_t count) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error connecting node to nearest", node, m_nodes.size());
         }
         return connectNodeToNearest(m_nodes[node], count);
     }
 
-    std::expected<void, MetaError> Rail::connectNodeToNearest(node_ptr_t node, size_t count) {
+    Result<void, MetaError> Rail::connectNodeToNearest(node_ptr_t node, size_t count) {
         std::vector<std::pair<f32, node_ptr_t>> nearest_nodes;
         for (auto &n : m_nodes) {
             if (n == node) {
@@ -358,14 +358,14 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::expected<void, MetaError> Rail::connectNodeToPrev(size_t node) {
+    Result<void, MetaError> Rail::connectNodeToPrev(size_t node) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error connecting node to prev", node, m_nodes.size());
         }
         return connectNodeToPrev(m_nodes[node]);
     }
 
-    std::expected<void, MetaError> Rail::connectNodeToPrev(node_ptr_t node) {
+    Result<void, MetaError> Rail::connectNodeToPrev(node_ptr_t node) {
         auto result = getNodeIndex(node);
         if (!result) {
             return make_meta_error<void>("Error connecting node to prev (not from rail)",
@@ -389,14 +389,14 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::expected<void, MetaError> Rail::connectNodeToNext(size_t node) {
+    Result<void, MetaError> Rail::connectNodeToNext(size_t node) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error connecting node to next", node, m_nodes.size());
         }
         return connectNodeToNext(m_nodes[node]);
     }
 
-    std::expected<void, MetaError> Rail::connectNodeToNext(node_ptr_t node) {
+    Result<void, MetaError> Rail::connectNodeToNext(node_ptr_t node) {
         auto result = getNodeIndex(node);
         if (!result) {
             return make_meta_error<void>("Error connecting node to next (not from rail)",
@@ -420,7 +420,7 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::expected<void, MetaError> Rail::connectNodeToNeighbors(size_t node, bool loop_ok) {
+    Result<void, MetaError> Rail::connectNodeToNeighbors(size_t node, bool loop_ok) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error connecting node to neighbors", node,
                                          m_nodes.size());
@@ -428,7 +428,7 @@ namespace Toolbox::Rail {
         return connectNodeToNeighbors(m_nodes[node], loop_ok);
     }
 
-    std::expected<void, MetaError> Rail::connectNodeToNeighbors(node_ptr_t node, bool loop_ok) {
+    Result<void, MetaError> Rail::connectNodeToNeighbors(node_ptr_t node, bool loop_ok) {
         auto result = getNodeIndex(node);
         if (!result) {
             return make_meta_error<void>("Error connecting node to neighbors (not from rail)",
@@ -474,7 +474,7 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::expected<void, MetaError> Rail::connectNodeToReferrers(size_t node) {
+    Result<void, MetaError> Rail::connectNodeToReferrers(size_t node) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error connecting node to referrers", node,
                                          m_nodes.size());
@@ -482,7 +482,7 @@ namespace Toolbox::Rail {
         return connectNodeToReferrers(m_nodes[node]);
     }
 
-    std::expected<void, MetaError> Rail::connectNodeToReferrers(node_ptr_t node) {
+    Result<void, MetaError> Rail::connectNodeToReferrers(node_ptr_t node) {
         auto result = getNodeIndex(node);
         if (!result) {
             return make_meta_error<void>("Error connecting node to referrers (not from rail)",
@@ -535,7 +535,7 @@ namespace Toolbox::Rail {
         return clone;
     }
 
-    std::expected<void, MetaError> Rail::calcDistancesWithNode(node_ptr_t node) {
+    Result<void, MetaError> Rail::calcDistancesWithNode(node_ptr_t node) {
         const s16 node_index = static_cast<s16>(
             std::distance(m_nodes.begin(), std::find(m_nodes.begin(), m_nodes.end(), node)));
 

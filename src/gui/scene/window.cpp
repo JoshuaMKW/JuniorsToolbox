@@ -944,6 +944,34 @@ namespace Toolbox::UI {
             if (ImGui::IsWindowFocused()) {
                 m_focused_window = EditorWindow::RENDER_VIEW;
             }
+
+            bool is_dolphin_running = DolphinHookManager::instance().isProcessRunning();
+            if (is_dolphin_running) {
+                ImGui::BeginDisabled();
+            }
+
+            if (ImGui::Button(ICON_FK_PLAY)) {
+                DolphinHookManager::instance().startProcess();
+            }
+
+            if (is_dolphin_running) {
+                ImGui::EndDisabled();
+            }
+
+            ImGui::SameLine();
+
+            if (!is_dolphin_running) {
+                ImGui::BeginDisabled();
+            }
+
+            if (ImGui::Button(ICON_FK_STOP)) {
+                DolphinHookManager::instance().stopProcess();
+            }
+
+            if (!is_dolphin_running) {
+                ImGui::EndDisabled();
+            }
+
             m_renderer.render(m_renderables, delta_time);
         }
         ImGui::End();
@@ -1494,7 +1522,7 @@ namespace Toolbox::UI {
                                                     {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
                                                     [this](SelectionNodeInfo<Rail::RailNode> info) {
                                                         m_create_rail_dialog.open();
-                                                        return std::expected<void, BaseError>();
+                                                        return Result<void>();
                                                     });
 
         m_rail_node_list_single_node_menu.addDivider();
@@ -1508,7 +1536,7 @@ namespace Toolbox::UI {
                 m_renderer.setCameraOrientation(
                     {0, 1, 0}, translation, {translation.x, translation.y, translation.z + 1000});
                 m_update_render_objs = true;
-                return std::expected<void, BaseError>();
+                return Result<void>();
             });
 
         m_rail_node_list_single_node_menu.addOption(
@@ -1536,7 +1564,7 @@ namespace Toolbox::UI {
             [this](SelectionNodeInfo<Rail::RailNode> info) {
                 info.m_selected = make_deep_clone<Rail::RailNode>(info.m_selected);
                 MainApplication::instance().getSceneRailNodeClipboard().setData(info);
-                return std::expected<void, BaseError>();
+                return Result<void>();
             });
 
         m_rail_node_list_single_node_menu.addOption(
@@ -1554,7 +1582,7 @@ namespace Toolbox::UI {
                     selected_index += 1;
                 }
                 m_update_render_objs = true;
-                return std::expected<void, BaseError>();
+                return Result<void>();
             });
 
         m_rail_node_list_single_node_menu.addOption("Delete", {GLFW_KEY_DELETE},
@@ -1562,7 +1590,7 @@ namespace Toolbox::UI {
                                                         Rail::Rail *rail = info.m_selected->rail();
                                                         rail->removeNode(info.m_selected);
                                                         m_update_render_objs = true;
-                                                        return std::expected<void, BaseError>();
+                                                        return Result<void>();
                                                     });
     }
 
@@ -1577,7 +1605,7 @@ namespace Toolbox::UI {
                     select.m_selected = make_deep_clone<Rail::RailNode>(select.m_selected);
                 }
                 MainApplication::instance().getSceneRailNodeClipboard().setData(info);
-                return std::expected<void, BaseError>();
+                return Result<void>();
             });
 
         m_rail_node_list_multi_node_menu.addOption(
@@ -1595,7 +1623,7 @@ namespace Toolbox::UI {
                     selected_index += 1;
                 }
                 m_update_render_objs = true;
-                return std::expected<void, BaseError>();
+                return Result<void>();
             });
 
         m_rail_node_list_multi_node_menu.addOption(
@@ -1606,7 +1634,7 @@ namespace Toolbox::UI {
                     rail->removeNode(select.m_selected);
                 }
                 m_update_render_objs = true;
-                return std::expected<void, BaseError>();
+                return Result<void>();
             });
     }
 

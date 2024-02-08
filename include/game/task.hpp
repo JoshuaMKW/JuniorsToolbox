@@ -9,7 +9,7 @@
 #include "core/memory.hpp"
 #include "core/types.hpp"
 #include "dolphin/process.hpp"
-#include "error.hpp"
+#include "core/error.hpp"
 #include "objlib/object.hpp"
 
 using namespace Toolbox;
@@ -20,37 +20,36 @@ namespace Toolbox::Game {
     public:
         TaskCommunicator() = default;
 
-        std::expected<void, BaseError> loadScene(u8 stage, u8 scenario);
+        Result<void> loadScene(u8 stage, u8 scenario);
 
-        std::expected<void, BaseError> addSceneObject(RefPtr<ISceneObject> object,
+        Result<void> addSceneObject(RefPtr<ISceneObject> object,
                                                       RefPtr<GroupSceneObject> parent);
 
-        std::expected<void, BaseError> removeSceneObject(RefPtr<ISceneObject> object,
+        Result<void> removeSceneObject(RefPtr<ISceneObject> object,
                                                          RefPtr<GroupSceneObject> parent);
 
-        std::expected<void, BaseError> updateSceneObjectParameter(const QualifiedName &member_name,
+        Result<void> updateSceneObjectParameter(const QualifiedName &member_name,
                                                                   RefPtr<ISceneObject> object,
                                                                   RefPtr<GroupSceneObject> parent);
 
-        std::expected<void, BaseError> setObjectTransformToMario(RefPtr<ISceneObject> object,
+        Result<void> setObjectTransformToMario(RefPtr<ISceneObject> object,
                                                                  RefPtr<GroupSceneObject> parent);
 
-        std::expected<void, BaseError> setObjectTransformToCamera(RefPtr<ISceneObject> object,
+        Result<void> setObjectTransformToCamera(RefPtr<ISceneObject> object,
                                                                   RefPtr<GroupSceneObject> parent);
-        
-        std::expected<void, BaseError> playCameraDemo(RefPtr<ISceneObject> object,
-                                                      RefPtr<GroupSceneObject> parent);
 
-        std::expected<void, BaseError> setCameraTransformToGameCamera(Transform &camera_transform);
+        Result<void> playCameraDemo(std::string_view demo_name);
 
-        std::expected<void, BaseError> setMarioToCameraTransform(const Transform &camera_transform);
+        Result<void> setCameraTransformToGameCamera(Transform &camera_transform);
 
+        Result<void> setMarioToCameraTransform(const Transform &camera_transform);
 
     protected:
         template <typename _Callable, typename... _Args>
-        std::expected<void, BaseError> submitTask(_Callable task, _Args... args) {
-            m_task_queue.push(
-                [&](Dolphin::DolphinCommunicator &) { return task(std::forward<_Args>(args)...); });
+        Result<void, SerialError> submitTask(_Callable task, _Args... args) {
+            m_task_queue.push([&](Dolphin::DolphinCommunicator &communicator) {
+                return task(communicator, std::forward<_Args>(args)...);
+            });
             return {};
         }
 

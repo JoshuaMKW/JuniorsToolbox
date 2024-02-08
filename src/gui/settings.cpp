@@ -46,7 +46,7 @@ namespace Toolbox {
         return true;
     }
 
-    std::expected<void, SerialError>
+    Result<void, SerialError>
     SettingsManager::loadProfiles() {
         auto path_result = Toolbox::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
@@ -119,7 +119,7 @@ namespace Toolbox {
         return {};
     }
 
-    std::expected<void, SerialError>
+    Result<void, SerialError>
     SettingsManager::saveProfiles() {
         auto path_result = Toolbox::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
@@ -142,13 +142,13 @@ namespace Toolbox {
         return {};
     }
 
-    std::expected<void, SerialError> SettingsManager::addProfile(std::string_view name,
+    Result<void, SerialError> SettingsManager::addProfile(std::string_view name,
                                                                  const AppSettings &profile) {
         m_settings_profiles[std::string(name)] = profile;
         return saveProfile(name, profile);
     }
 
-    std::expected<void, SerialError> SettingsManager::removeProfile(std::string_view name) {
+    Result<void, SerialError> SettingsManager::removeProfile(std::string_view name) {
         m_settings_profiles.erase(std::string(name));
 
         auto path_result = Toolbox::is_directory(m_profile_path);
@@ -172,7 +172,7 @@ namespace Toolbox {
         return {};
     }
 
-    std::expected<void, SerialError> SettingsManager::saveProfile(std::string_view name, const AppSettings &profile) {
+    Result<void, SerialError> SettingsManager::saveProfile(std::string_view name, const AppSettings &profile) {
         auto path_result = Toolbox::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
             TOOLBOX_WARN("Folder \"Profiles\" not found, generating the folder now.");

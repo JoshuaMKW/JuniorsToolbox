@@ -71,12 +71,12 @@ namespace Toolbox::Rail {
 
         void addNode(node_ptr_t node);
 
-        std::expected<void, MetaError> insertNode(size_t index, node_ptr_t node);
+        Result<void, MetaError> insertNode(size_t index, node_ptr_t node);
 
-        std::expected<void, MetaError> removeNode(size_t index);
+        Result<void, MetaError> removeNode(size_t index);
         bool removeNode(node_ptr_t node);
 
-        std::expected<void, MetaError> swapNodes(size_t index1, size_t index2);
+        Result<void, MetaError> swapNodes(size_t index1, size_t index2);
         bool swapNodes(node_ptr_t node1, node_ptr_t node2);
 
         [[nodiscard]] bool isNodeConnectedToOther(size_t node_a, size_t node_b) const;
@@ -86,49 +86,49 @@ namespace Toolbox::Rail {
         std::vector<node_ptr_t> getNodeConnections(size_t node) const;
         std::vector<node_ptr_t> getNodeConnections(node_ptr_t node) const;
 
-        std::expected<void, MetaError> setNodePosition(size_t node, s16 x, s16 y, s16 z);
-        std::expected<void, MetaError> setNodePosition(size_t node, const glm::vec3 &pos);
-        std::expected<void, MetaError> setNodePosition(node_ptr_t node, s16 x, s16 y, s16 z);
-        std::expected<void, MetaError> setNodePosition(node_ptr_t node, const glm::vec3 &pos);
+        Result<void, MetaError> setNodePosition(size_t node, s16 x, s16 y, s16 z);
+        Result<void, MetaError> setNodePosition(size_t node, const glm::vec3 &pos);
+        Result<void, MetaError> setNodePosition(node_ptr_t node, s16 x, s16 y, s16 z);
+        Result<void, MetaError> setNodePosition(node_ptr_t node, const glm::vec3 &pos);
 
-        std::expected<void, MetaError> setNodeFlag(size_t node, u32 flag);
-        std::expected<void, MetaError> setNodeFlag(node_ptr_t node, u32 flag);
+        Result<void, MetaError> setNodeFlag(size_t node, u32 flag);
+        Result<void, MetaError> setNodeFlag(node_ptr_t node, u32 flag);
 
-        std::expected<void, MetaError> setNodeValue(size_t node, size_t index, s16 value);
-        std::expected<void, MetaError> setNodeValue(node_ptr_t node, size_t index, s16 value);
+        Result<void, MetaError> setNodeValue(size_t node, size_t index, s16 value);
+        Result<void, MetaError> setNodeValue(node_ptr_t node, size_t index, s16 value);
 
-        std::expected<void, MetaError> addConnection(size_t node, size_t to);
-        std::expected<void, MetaError> addConnection(node_ptr_t node, node_ptr_t to);
+        Result<void, MetaError> addConnection(size_t node, size_t to);
+        Result<void, MetaError> addConnection(node_ptr_t node, node_ptr_t to);
 
-        std::expected<void, MetaError> insertConnection(size_t node, size_t index, size_t to);
-        std::expected<void, MetaError> insertConnection(node_ptr_t node, size_t index,
+        Result<void, MetaError> insertConnection(size_t node, size_t index, size_t to);
+        Result<void, MetaError> insertConnection(node_ptr_t node, size_t index,
                                                         node_ptr_t to);
 
-        std::expected<void, MetaError> removeConnection(size_t node, size_t index);
-        std::expected<void, MetaError> removeConnection(node_ptr_t node, size_t index);
+        Result<void, MetaError> removeConnection(size_t node, size_t index);
+        Result<void, MetaError> removeConnection(node_ptr_t node, size_t index);
 
-        std::expected<void, MetaError> replaceConnection(size_t node, size_t index, size_t to);
-        std::expected<void, MetaError> replaceConnection(node_ptr_t node, size_t index,
+        Result<void, MetaError> replaceConnection(size_t node, size_t index, size_t to);
+        Result<void, MetaError> replaceConnection(node_ptr_t node, size_t index,
                                                          node_ptr_t to);
 
         // Destructive connection algorithms
 
-        std::expected<void, MetaError> connectNodeToNearest(size_t node, size_t count);
-        std::expected<void, MetaError> connectNodeToNearest(node_ptr_t node, size_t count);
-        std::expected<void, MetaError> connectNodeToNearest(size_t node) { return connectNodeToNearest(node, 1);}
-        std::expected<void, MetaError> connectNodeToNearest(node_ptr_t node) { return connectNodeToNearest(node, 1);}
+        Result<void, MetaError> connectNodeToNearest(size_t node, size_t count);
+        Result<void, MetaError> connectNodeToNearest(node_ptr_t node, size_t count);
+        Result<void, MetaError> connectNodeToNearest(size_t node) { return connectNodeToNearest(node, 1);}
+        Result<void, MetaError> connectNodeToNearest(node_ptr_t node) { return connectNodeToNearest(node, 1);}
 
-        std::expected<void, MetaError> connectNodeToPrev(size_t node);
-        std::expected<void, MetaError> connectNodeToPrev(node_ptr_t node);
+        Result<void, MetaError> connectNodeToPrev(size_t node);
+        Result<void, MetaError> connectNodeToPrev(node_ptr_t node);
 
-        std::expected<void, MetaError> connectNodeToNext(size_t node);
-        std::expected<void, MetaError> connectNodeToNext(node_ptr_t node);
+        Result<void, MetaError> connectNodeToNext(size_t node);
+        Result<void, MetaError> connectNodeToNext(node_ptr_t node);
 
-        std::expected<void, MetaError> connectNodeToNeighbors(size_t node, bool loop_ok);
-        std::expected<void, MetaError> connectNodeToNeighbors(node_ptr_t node, bool loop_ok);
+        Result<void, MetaError> connectNodeToNeighbors(size_t node, bool loop_ok);
+        Result<void, MetaError> connectNodeToNeighbors(node_ptr_t node, bool loop_ok);
 
-        std::expected<void, MetaError> connectNodeToReferrers(size_t node);
-        std::expected<void, MetaError> connectNodeToReferrers(node_ptr_t node);
+        Result<void, MetaError> connectNodeToReferrers(size_t node);
+        Result<void, MetaError> connectNodeToReferrers(node_ptr_t node);
 
         [[nodiscard]] std::vector<node_ptr_t>::const_iterator begin() const {
             return m_nodes.begin();
@@ -147,7 +147,7 @@ namespace Toolbox::Rail {
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
     protected:
-        std::expected<void, MetaError> calcDistancesWithNode(node_ptr_t node);
+        Result<void, MetaError> calcDistancesWithNode(node_ptr_t node);
 
         void chaikinSubdivide();
 

@@ -7,7 +7,7 @@
 #include <string>
 #include <string_view>
 
-#include "error.hpp"
+#include "core/error.hpp"
 
 #define GAME_ENCODING  "SHIFT_JIS"
 #define IMGUI_ENCODING "UTF-8"
@@ -20,7 +20,7 @@ namespace Toolbox::String {
     };
 
     template <typename T>
-    inline std::expected<T, EncodingError>
+    inline Result<T, EncodingError>
     make_encoding_error(std::string_view context, std::string_view reason,
                         std::string_view from_encoding, std::string_view to_encoding) {
         EncodingError err = {std::vector({std::format("{}: {}.", context, reason)}),
@@ -29,7 +29,7 @@ namespace Toolbox::String {
         return std::unexpected<EncodingError>(err);
     }
 
-    inline std::expected<std::string, EncodingError>
+    inline Result<std::string, EncodingError>
     asEncoding(std::string_view value, std::string_view from, std::string_view to) {
         iconv_t conv = iconv_open(to.data(), from.data());
         if (conv == (iconv_t)(-1)) {
@@ -55,11 +55,11 @@ namespace Toolbox::String {
         return sjis;
     }
 
-    inline std::expected<std::string, EncodingError> fromGameEncoding(std::string_view value) {
+    inline Result<std::string, EncodingError> fromGameEncoding(std::string_view value) {
         return asEncoding(value, GAME_ENCODING, IMGUI_ENCODING);
     }
 
-    inline std::expected<std::string, EncodingError> toGameEncoding(std::string_view value) {
+    inline Result<std::string, EncodingError> toGameEncoding(std::string_view value) {
         return asEncoding(value, IMGUI_ENCODING, GAME_ENCODING);
     }
 

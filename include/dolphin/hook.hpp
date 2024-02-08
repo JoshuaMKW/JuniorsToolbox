@@ -5,8 +5,10 @@
 #include <span>
 
 #include "core/core.hpp"
+#include "core/error.hpp"
 #include "core/memory.hpp"
-#include "error.hpp"
+#include "platform/process.hpp"
+
 #include "unique.hpp"
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
@@ -20,14 +22,6 @@ namespace Toolbox::Dolphin {
 
     class DolphinHookManager {
     public:
-#ifdef TOOLBOX_PLATFORM_WINDOWS
-        typedef HANDLE LowHandle;
-        typedef DWORD ProcessID;
-#elif TOOLBOX_PLATFORM_LINUX
-        typedef void *MemoryHandle;
-        typedef u64 ProcessID;
-#endif
-
         static DolphinHookManager &instance() {
             static DolphinHookManager _instance;
             return _instance;
@@ -63,11 +57,15 @@ namespace Toolbox::Dolphin {
 
         //---
 
+        bool isProcessRunning();
+        Result<void> startProcess();
+        Result<void> stopProcess();
+
         bool isHooked() const { return m_mem_view; }
 
-        std::expected<void, BaseError> hook();
-        std::expected<void, BaseError> unhook();
-        std::expected<void, BaseError> refresh() {
+        Result<void> hook();
+        Result<void> unhook();
+        Result<void> refresh() {
             auto unhook_result = unhook();
             if (!unhook_result) {
                 return std::unexpected(unhook_result.error());
@@ -76,14 +74,13 @@ namespace Toolbox::Dolphin {
             return hook();
         }
 
-        std::expected<void, BaseError> readBytes(char *buf, u32 address, size_t size);
-        std::expected<void, BaseError> writeBytes(const char *buf, u32 address, size_t size);
+        Result<void> readBytes(char *buf, u32 address, size_t size);
+        Result<void> writeBytes(const char *buf, u32 address, size_t size);
 
     private:
-        ProcessID m_proc_id;
-        std::string m_proc_name;
+        Platform::ProcessInformation m_proc_info;
 
-        LowHandle m_mem_handle;
+        Platform::LowHandle m_mem_handle;
         void *m_mem_view;
 
         std::optional<UUID64> m_owner;

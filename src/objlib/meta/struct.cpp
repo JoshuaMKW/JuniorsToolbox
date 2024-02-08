@@ -95,7 +95,7 @@ namespace Toolbox::Object {
         return m_name == other.m_name && m_members == other.m_members && m_parent == other.m_parent;
     }
 
-    std::expected<void, SerialError> MetaStruct::serialize(Serializer &out) const {
+    Result<void, SerialError> MetaStruct::serialize(Serializer &out) const {
         for (auto m : m_members) {
             auto result = m->serialize(out);
             if (!result) {
@@ -105,7 +105,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::expected<void, SerialError> MetaStruct::deserialize(Deserializer &in) {
+    Result<void, SerialError> MetaStruct::deserialize(Deserializer &in) {
         for (auto m : m_members) {
             auto result = m->deserialize(in);
             if (!result) {

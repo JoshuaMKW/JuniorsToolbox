@@ -3,7 +3,7 @@
 namespace Toolbox {
 
     void Serializer::pushBreakpoint() { m_breakpoints.push(m_out.tellp()); }
-    std::expected<void, SerialError> Serializer::popBreakpoint() {
+    Result<void, SerialError> Serializer::popBreakpoint() {
         if (m_breakpoints.empty()) {
             return make_serial_error<void>(
                 *this, "No breakpoints to pop! (Proper serialization shouldn't have this happen)");
@@ -14,7 +14,7 @@ namespace Toolbox {
     }
 
     void Deserializer::pushBreakpoint() { m_breakpoints.push(m_in.tellg()); }
-    std::expected<void, SerialError> Deserializer::popBreakpoint() {
+    Result<void, SerialError> Deserializer::popBreakpoint() {
         if (m_breakpoints.empty()) {
             return make_serial_error<void>(
                 *this,

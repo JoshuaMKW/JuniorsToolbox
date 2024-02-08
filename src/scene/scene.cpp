@@ -10,7 +10,7 @@ namespace Toolbox {
         os << indent_str << "}\n";
     }
 
-    std::expected<ScopePtr<SceneInstance>, SerialError>
+    Result<ScopePtr<SceneInstance>, SerialError>
     SceneInstance::FromPath(const std::filesystem::path &root) {
         auto scene         = make_scoped<SceneInstance>();
         scene->m_root_path = root;
@@ -78,7 +78,7 @@ namespace Toolbox {
 
     ScopePtr<SceneInstance> SceneInstance::BasicScene() { return nullptr; }
 
-    std::expected<void, SerialError> SceneInstance::saveToPath(const std::filesystem::path &root) {
+    Result<void, SerialError> SceneInstance::saveToPath(const std::filesystem::path &root) {
         auto scene_bin   = root / "map/scene.bin";
         auto tables_bin  = root / "map/tables.bin";
         auto rail_bin    = root / "map/scene.ral";

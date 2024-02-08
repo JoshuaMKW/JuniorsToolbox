@@ -1,6 +1,9 @@
+#include <mutex>
 #include <string>
 #include <string_view>
-#include <mutex>
+
+#include "core/application.hpp"
+#include "gui/settings.hpp"
 
 #include "dolphin/hook.hpp"
 
@@ -9,13 +12,12 @@ namespace Toolbox::Dolphin {
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <tlhelp32.h>
 
-    static std::expected<DolphinHookManager::ProcessID, BaseError>
-    FindProcessPID(std::string_view process_name) {
+    static Result<Platform::ProcessID, BaseError> FindProcessPID(std::string_view process_name) {
         std::string process_file = std::string(process_name) + ".exe";
 
-        DolphinHookManager::LowHandle hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        Platform::LowHandle hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
         if (hSnapshot == INVALID_HANDLE_VALUE) {
-            return make_error<DolphinHookManager::ProcessID>(std::format(
+            return make_error<Platform::ProcessID>(std::format(
                 "(PROCESS) Failed to create snapshot to find process \"{}\".", process_file));
         }
 
@@ -24,12 +26,11 @@ namespace Toolbox::Dolphin {
 
         if (!Process32First(hSnapshot, &pe32)) {
             CloseHandle(hSnapshot);
-            return make_error<DolphinHookManager::ProcessID>(
+            return make_error<Platform::ProcessID>(
                 "(PROCESS) Failed to retrieve first process entry!");
         }
 
-        DolphinHookManager::ProcessID pid =
-            std::numeric_limits<DolphinHookManager::ProcessID>::max();
+        Platform::ProcessID pid = std::numeric_limits<Platform::ProcessID>::max();
         do {
             if (strcmp(pe32.szExeFile, process_file.data()) == 0) {
                 pid = pe32.th32ProcessID;
@@ -42,20 +43,18 @@ namespace Toolbox::Dolphin {
         return pid;
     }
 
-    static std::expected<DolphinHookManager::LowHandle, BaseError>
-    OpenProcessMemory(std::string_view memory_name) {
-        DolphinHookManager::LowHandle memory_handle =
+    static Result<Platform::LowHandle, BaseError> OpenProcessMemory(std::string_view memory_name) {
+        Platform::LowHandle memory_handle =
             OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, memory_name.data());
         if (!memory_handle) {
-            return make_error<DolphinHookManager::LowHandle>(std::format(
+            return make_error<Platform::LowHandle>(std::format(
                 "(SHARED_MEM) Failed to find shared process memory handle \"{}\".", memory_name));
         }
 
         return memory_handle;
     }
 
-    static std::expected<void *, BaseError>
-    OpenMemoryView(DolphinHookManager::LowHandle memory_handle) {
+    static Result<void *, BaseError> OpenMemoryView(Platform::LowHandle memory_handle) {
         void *mem_buf = MapViewOfFile(memory_handle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
         if (!mem_buf) {
             return make_error<void *>(
@@ -64,74 +63,105 @@ namespace Toolbox::Dolphin {
         return mem_buf;
     }
 
-    static std::expected<void, BaseError>
-    CloseProcessMemory(DolphinHookManager::LowHandle memory_handle) {
+    static Result<void> CloseProcessMemory(Platform::LowHandle memory_handle) {
         CloseHandle(memory_handle);
         return {};
     }
 
-    static std::expected<void, BaseError> CloseMemoryView(void *memory_view) {
+    static Result<void> CloseMemoryView(void *memory_view) {
         UnmapViewOfFile(memory_view);
         return {};
     }
 
 #elif TOOLBOX_PLATFORM_LINUX
-    static std::expected<DolphinHookManager::ProcessID, BaseError>
-    FindProcessPID(std::string_view process_name) {
-        return make_error<DolphinHookManager::ProcessID>("Linux support unimplemented!");
+    static Result<Platform::ProcessID, BaseError> FindProcessPID(std::string_view process_name) {
+        return make_error<Platform::ProcessID>("Linux support unimplemented!");
     }
 
-    static std::expected<DolphinHookManager::MemoryHandle, BaseError>
+    static Result<Platform::MemoryHandle, BaseError>
     OpenProcessMemory(std::string_view memory_name) {
         return nullptr;
     }
 
-    static std::expected<void *, BaseError>
-    OpenMemoryView(DolphinHookManager::MemoryHandle memory_handle) {
+    static Result<void *, BaseError> OpenMemoryView(Platform::MemoryHandle memory_handle) {
         return nullptr;
     }
 
-    static std::expected<void, BaseError>
-    CloseProcessMemory(DolphinHookManager::MemoryHandle memory_handle) {
+    static Result<void> CloseProcessMemory(Platform::MemoryHandle memory_handle) { return {}; }
+
+    static Result<void> CloseMemoryView(void *memory_view) { return {}; }
+#endif
+
+    bool DolphinHookManager::isProcessRunning() {
+        return Platform::IsExProcessRunning(m_proc_info);
+    }
+
+    Result<void> DolphinHookManager::startProcess() {
+        AppSettings &settings        = SettingsManager::instance().getCurrentProfile();
+        MainApplication &application = MainApplication::instance();
+
+        if (isProcessRunning()) {
+            return {};
+        }
+
+        auto process_result = Platform::CreateExProcess(
+            "C:/Users/Kyler-Josh/3D Objects/Dolphin/Dolphin-x64/Dolphin.exe",
+            "-e C:/Users/Kyler-Josh/Dropbox/Master_Builds/Eclipse_Master/sys/main.dol -d -c -a "
+            "HLE");
+        if (!process_result) {
+            return std::unexpected(process_result.error());
+        }
+
+        m_proc_info = process_result.value();
         return {};
     }
 
-    static std::expected<void, BaseError> CloseMemoryView(void *memory_view) { return {}; }
-#endif
+    Result<void> DolphinHookManager::stopProcess() {
+        auto process_result = Platform::KillExProcess(m_proc_info);
+        if (!process_result) {
+            return std::unexpected(process_result.error());
+        }
 
-    std::expected<void, BaseError> DolphinHookManager::hook() {
+        m_proc_info  = Platform::ProcessInformation{};
+        m_mem_handle = nullptr;
+        m_mem_view   = nullptr;
+        return {};
+    }
+
+    Result<void> DolphinHookManager::hook() {
         if (m_mem_view) {
             return {};
         }
 
-        constexpr ProcessID sentinel                  = std::numeric_limits<ProcessID>::max();
+        constexpr Platform::ProcessID sentinel = std::numeric_limits<Platform::ProcessID>::max();
 
-        ProcessID pid                             = sentinel;
-        std::vector<std::string> target_processes = {"Dolphin", "DolphinQt2",
-                                                     "DolphinWx"};
+        if (!IsExProcessRunning(m_proc_info)) {
+            Platform::ProcessID pid                   = sentinel;
+            std::vector<std::string> target_processes = {"Dolphin", "DolphinQt2", "DolphinWx"};
 
-        size_t i = 0;
-        for (auto &proc_name : target_processes) {
-            auto pid_result = FindProcessPID(proc_name);
-            if (!pid_result) {
-                return std::unexpected(pid_result.error());
+            size_t i = 0;
+            for (auto &proc_name : target_processes) {
+                auto pid_result = FindProcessPID(proc_name);
+                if (!pid_result) {
+                    return std::unexpected(pid_result.error());
+                }
+                pid = pid_result.value();
+                if (pid != sentinel) {
+                    break;
+                }
+                i += 1;
+            };
+
+            if (pid == sentinel) {
+                return make_error<void>(
+                    "(PROCESS) Failed to find valid Dolphin Emulator instance running!");
             }
-            pid = pid_result.value();
-            if (pid != sentinel) {
-                break;
-            }
-            i += 1;
-        };
 
-        if (pid == sentinel) {
-            return make_error<void>(
-                "(PROCESS) Failed to find valid Dolphin Emulator instance running!");
+            m_proc_info.m_process_name = target_processes[i];
+            m_proc_info.m_process_id   = pid;
         }
 
-        m_proc_id = pid;
-        m_proc_name = target_processes[i];
-
-        std::string dolphin_memory_name = std::format("dolphin-emu.{}", pid);
+        std::string dolphin_memory_name = std::format("dolphin-emu.{}", m_proc_info.m_process_id);
 
         auto handle_result = OpenProcessMemory(dolphin_memory_name);
         if (!handle_result || handle_result.value() == nullptr) {
@@ -156,12 +186,12 @@ namespace Toolbox::Dolphin {
         }
 
         TOOLBOX_INFO_V("(DOLPHIN) Successfully hooked to process! (Name={}, PID={}, View={})",
-                       m_proc_name, m_proc_id, m_mem_view);
+                       m_proc_info.m_process_name, m_proc_info.m_process_id, m_mem_view);
 
         return {};
     }
 
-    std::expected<void, BaseError> DolphinHookManager::unhook() {
+    Result<void> DolphinHookManager::unhook() {
         if (!m_mem_view) {
             return {};
         }
@@ -182,8 +212,7 @@ namespace Toolbox::Dolphin {
 
     static std::mutex s_memory_mutex;
 
-    std::expected<void, BaseError> DolphinHookManager::readBytes(char *buf, u32 address,
-                                                                 size_t size) {
+    Result<void> DolphinHookManager::readBytes(char *buf, u32 address, size_t size) {
         s_memory_mutex.lock();
         const char *true_address = static_cast<const char *>(m_mem_view) + (address & 0x7FFFFFFF);
         memcpy(buf, true_address, size);
@@ -191,8 +220,7 @@ namespace Toolbox::Dolphin {
         return {};
     }
 
-    std::expected<void, BaseError> DolphinHookManager::writeBytes(const char *buf, u32 address,
-                                                                  size_t size) {
+    Result<void> DolphinHookManager::writeBytes(const char *buf, u32 address, size_t size) {
         s_memory_mutex.lock();
         char *true_address = static_cast<char *>(m_mem_view) + (address & 0x7FFFFFFF);
         memcpy(true_address, buf, size);

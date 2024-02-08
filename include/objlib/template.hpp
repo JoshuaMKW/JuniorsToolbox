@@ -88,10 +88,10 @@ namespace Toolbox::Object {
             return *this;
         }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override;
-        std::expected<void, SerialError> deserialize(Deserializer &in) override;
+        Result<void, SerialError> serialize(Serializer &out) const override;
+        Result<void, SerialError> deserialize(Deserializer &in) override;
 
-        std::expected<void, JSONError> loadFromJSON(const json_t &the_json);
+        Result<void, JSONError> loadFromJSON(const json_t &the_json);
 
     protected:
         void cacheEnums(const json_t &enums);
@@ -125,15 +125,15 @@ namespace Toolbox::Object {
     public:
         using create_ret_t = ScopePtr<Template>;
         using create_err_t = std::variant<FSError, JSONError>;
-        using create_t     = std::expected<create_ret_t, create_err_t>;
+        using create_t     = Result<create_ret_t, create_err_t>;
 
         // Cached create method
-        static std::expected<void, FSError> initialize();
+        static Result<void, FSError> initialize();
         static create_t create(std::string_view type);
         static std::vector<create_ret_t> createAll();
 
-        static std::expected<void, FSError> loadFromCacheBlob();
-        static std::expected<void, FSError> saveToCacheBlob();
+        static Result<void, FSError> loadFromCacheBlob();
+        static Result<void, FSError> saveToCacheBlob();
     };
 
 }  // namespace Toolbox::Object

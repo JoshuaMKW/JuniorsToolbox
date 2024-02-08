@@ -40,9 +40,12 @@ namespace Toolbox::Dolphin {
             m_kill_condition.wait(lk);
         }
 
+        void spinProcess() {
+            
+        }
         void signalHook() { m_hook_flag.store(true); }
 
-        template <typename T> std::expected<T, BaseError> read(u32 address) {
+        template <typename T> Result<T, BaseError> read(u32 address) {
             T data;
 
             auto result = DolphinHookManager::instance().readBytes(reinterpret_cast<char *>(&data),
@@ -53,7 +56,7 @@ namespace Toolbox::Dolphin {
 
             return data;
         }
-        template <typename T> std::expected<void, BaseError> write(u32 address, const T &value) {
+        template <typename T> Result<void> write(u32 address, const T &value) {
             auto result = DolphinHookManager::instance().writeBytes(
                 reinterpret_cast<const char *>(std::addressof(value)), address, sizeof(T));
             if (!result) {

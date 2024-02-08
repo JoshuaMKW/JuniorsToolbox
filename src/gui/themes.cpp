@@ -39,7 +39,7 @@ namespace Toolbox::UI {
         out.write(reinterpret_cast<const char *>(&m_style), sizeof(m_style));
     }
 
-    std::expected<void, FSError> ThemeManager::initialize() {
+    Result<void, FSError> ThemeManager::initialize() {
         auto cwd_result = Toolbox::current_path();
         if (!cwd_result) {
             return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});

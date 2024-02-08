@@ -129,7 +129,7 @@ namespace Toolbox::Object {
         return size;
     }
 
-    std::expected<void, ObjectError> VirtualSceneObject::performScene(float, bool,
+    Result<void, ObjectError> VirtualSceneObject::performScene(float, bool,
                                                                       std::vector<RenderInfo> &,
                                                                       ResourceCache &,
                                                                       std::vector<J3DLight> &) {
@@ -158,7 +158,7 @@ namespace Toolbox::Object {
         }
     }
 
-    std::expected<void, SerialError> VirtualSceneObject::serialize(Serializer &out) const {
+    Result<void, SerialError> VirtualSceneObject::serialize(Serializer &out) const {
         std::streampos start = out.tell();
 
         out.pushBreakpoint();
@@ -189,7 +189,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::expected<void, SerialError> VirtualSceneObject::deserialize(Deserializer &in) {
+    Result<void, SerialError> VirtualSceneObject::deserialize(Deserializer &in) {
         // Metadata
         auto length           = in.read<u32, std::endian::big>();
         std::streampos endpos = static_cast<std::size_t>(in.tell()) + length - 4;
@@ -281,11 +281,11 @@ namespace Toolbox::Object {
 
     size_t GroupSceneObject::getDataSize() const { return getData().size(); }
 
-    std::expected<void, ObjectGroupError> GroupSceneObject::addChild(RefPtr<ISceneObject> child) {
+    Result<void, ObjectGroupError> GroupSceneObject::addChild(RefPtr<ISceneObject> child) {
         return insertChild(m_children.size(), std::move(child));
     }
 
-    std::expected<void, ObjectGroupError>
+    Result<void, ObjectGroupError>
     GroupSceneObject::insertChild(size_t index, RefPtr<ISceneObject> child) {
         if (index > m_children.size()) {
             ObjectGroupError err = {std::format("Insertion index {} is out of bounds (end: {})",
@@ -313,7 +313,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::expected<void, ObjectGroupError>
+    Result<void, ObjectGroupError>
     GroupSceneObject::removeChild(RefPtr<ISceneObject> child) {
         auto it = std::find_if(m_children.begin(), m_children.end(),
                                [child](const auto &ptr) { return ptr == child; });
@@ -327,7 +327,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::expected<void, ObjectGroupError> GroupSceneObject::removeChild(const QualifiedName &name) {
+    Result<void, ObjectGroupError> GroupSceneObject::removeChild(const QualifiedName &name) {
         if (name.empty())
             return std::unexpected(ObjectGroupError{"Cannot remove a child with an empty name.",
                                                     std::stacktrace::current(), this});
@@ -353,7 +353,7 @@ namespace Toolbox::Object {
         return it->get()->removeChild(QualifiedName(name.begin() + 1, name.end()));
     }
 
-    std::expected<std::vector<RefPtr<ISceneObject>>, ObjectGroupError>
+    Result<std::vector<RefPtr<ISceneObject>>, ObjectGroupError>
     GroupSceneObject::getChildren() {
         return m_children;
     }
@@ -369,7 +369,7 @@ namespace Toolbox::Object {
         return it->get()->getChild(QualifiedName(name.begin() + 1, name.end()));
     }
 
-    std::expected<void, ObjectError> GroupSceneObject::performScene(
+    Result<void, ObjectError> GroupSceneObject::performScene(
         float delta_time, bool animate, std::vector<RenderInfo> &renderables,
         ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
         if (!getIsPerforming()) {
@@ -421,7 +421,7 @@ namespace Toolbox::Object {
         out << self_indent << "}\n";
     }
 
-    std::expected<void, SerialError> GroupSceneObject::serialize(Serializer &out) const {
+    Result<void, SerialError> GroupSceneObject::serialize(Serializer &out) const {
         std::streampos start = out.tell();
 
         out.pushBreakpoint();
@@ -475,7 +475,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::expected<void, SerialError> GroupSceneObject::deserialize(Deserializer &in) {
+    Result<void, SerialError> GroupSceneObject::deserialize(Deserializer &in) {
         // Metadata
         auto length           = in.read<u32, std::endian::big>();
         std::streampos endpos = static_cast<std::size_t>(in.tell()) + length - 4;
@@ -664,7 +664,7 @@ namespace Toolbox::Object {
         return size;
     }
 
-    std::expected<void, ObjectError> PhysicalSceneObject::performScene(
+    Result<void, ObjectError> PhysicalSceneObject::performScene(
         float delta_time, bool animate, std::vector<RenderInfo> &renderables,
         ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
         if (!getIsPerforming()) {
@@ -760,7 +760,7 @@ namespace Toolbox::Object {
         }
     }
 
-    std::expected<void, FSError>
+    Result<void, FSError>
     PhysicalSceneObject::loadRenderData(const std::filesystem::path &asset_path,
                                         const TemplateRenderInfo &info,
                                         ResourceCache &resource_cache) {
@@ -892,7 +892,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::expected<void, SerialError> PhysicalSceneObject::serialize(Serializer &out) const {
+    Result<void, SerialError> PhysicalSceneObject::serialize(Serializer &out) const {
         std::streampos start = out.tell();
 
         out.pushBreakpoint();
@@ -930,7 +930,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::expected<void, SerialError> PhysicalSceneObject::deserialize(Deserializer &in) {
+    Result<void, SerialError> PhysicalSceneObject::deserialize(Deserializer &in) {
         auto scene_path = std::filesystem::path(in.filepath()).parent_path();
 
         // Metadata

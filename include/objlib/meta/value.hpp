@@ -337,13 +337,13 @@ namespace Toolbox::Object {
         [[nodiscard]] MetaType type() const { return m_type; }
 
         template <typename T>
-        [[nodiscard]] std::expected<T, std::string> get() const {
+        [[nodiscard]] Result<T, std::string> get() const {
             if (m_type != map_to_type_enum<T>::value)
                 return std::unexpected("Type record mismatch");
             return m_value_buf.get<T>(0);
         }
 
-        template <> [[nodiscard]] std::expected<std::string, std::string> get() const {
+        template <> [[nodiscard]] Result<std::string, std::string> get() const {
             std::string out;
             for (size_t i = 0; i < m_value_buf.size(); ++i) {
                 char ch = m_value_buf.get<char>(i);
@@ -372,21 +372,21 @@ namespace Toolbox::Object {
             return true;
         }
 
-        std::expected<void, JSONError> loadJSON(const nlohmann::json &json_value);
+        Result<void, JSONError> loadJSON(const nlohmann::json &json_value);
 
         [[nodiscard]] std::string toString() const;
 
         bool operator==(const MetaValue &other) const;
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override;
-        std::expected<void, SerialError> deserialize(Deserializer &in) override;
+        Result<void, SerialError> serialize(Serializer &out) const override;
+        Result<void, SerialError> deserialize(Deserializer &in) override;
 
     private:
         Buffer m_value_buf;
         MetaType m_type = MetaType::UNKNOWN;
     };
 
-    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, bool value, MetaType type) {
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, bool value, MetaType type) {
         try {
             switch (type) {
             case MetaType::BOOL:
@@ -399,7 +399,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, s64 value,
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, s64 value,
                                                 MetaType type) {
         try {
             switch (type) {
@@ -423,7 +423,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, f64 value, MetaType type) {
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, f64 value, MetaType type) {
         try {
             switch (type) {
             case MetaType::F32:
@@ -438,7 +438,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, const std::string &value, MetaType type) {
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, const std::string &value, MetaType type) {
         try {
             switch (type) {
             case MetaType::STRING:
@@ -449,7 +449,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value,
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value,
                                                        std::string_view value, MetaType type) {
         try {
             switch (type) {
@@ -463,7 +463,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, glm::vec3 value, MetaType type) {
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, glm::vec3 value, MetaType type) {
         try {
             switch (type) {
             case MetaType::VEC3:
@@ -476,7 +476,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, const Transform &value, MetaType type) {
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, const Transform &value, MetaType type) {
         try {
             switch (type) {
             case MetaType::TRANSFORM:
@@ -489,7 +489,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, const Color::RGB24 &value,
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, const Color::RGB24 &value,
                                                 MetaType type) {
         try {
             switch (type) {
@@ -503,7 +503,7 @@ namespace Toolbox::Object {
         }
     }
 
-    inline std::expected<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, const Color::RGBA32 &value,
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, const Color::RGBA32 &value,
                                                 MetaType type) {
         try {
             switch (type) {

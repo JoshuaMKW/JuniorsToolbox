@@ -6,7 +6,7 @@
 #include <imgui.h>
 
 #include "core/memory.hpp"
-#include "error.hpp"
+#include "core/error.hpp"
 #include "gui/scene/nodeinfo.hpp"
 #include "objlib/template.hpp"
 
