@@ -4,19 +4,20 @@
 
 #include <cmath>
 
+#include "core/application.hpp"
 #include "core/log.hpp"
-#include "gui/logging/errors.hpp"
-#include "gui/scene/window.hpp"
 
 #include "gui/IconsForkAwesome.h"
-#include "core/application.hpp"
+#include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
-#include "gui/modelcache.hpp"
-#include "gui/util.hpp"
-
 #include "gui/input.hpp"
+#include "gui/logging/errors.hpp"
+#include "gui/modelcache.hpp"
+#include "gui/scene/window.hpp"
 #include "gui/settings.hpp"
 #include "gui/util.hpp"
+
+#include "platform/capture.hpp"
 
 #include <lib/bStream/bstream.h>
 
@@ -92,10 +93,12 @@ namespace Toolbox::UI {
         return node_name;
     }
 
-    SceneWindow::~SceneWindow() = default;
+    SceneWindow::~SceneWindow() { m_communicator.kill(); }
 
     SceneWindow::SceneWindow() : DockWindow() {
         m_properties_render_handler = renderEmptyProperties;
+
+        m_communicator.start();
 
         buildContextMenuVirtualObj();
         buildContextMenuGroupObj();
@@ -250,13 +253,13 @@ namespace Toolbox::UI {
                 m_properties_render_handler = renderObjectProperties;
 
                 TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", render_obj->type(),
-                                  render_obj->getNameRef().name());
+                                    render_obj->getNameRef().name());
             }
         } else if (std::holds_alternative<RefPtr<Rail::RailNode>>(selection)) {
             auto node = std::get<RefPtr<Rail::RailNode>>(selection);
             if (node) {
                 RefPtr<Rail::Rail> rail = get_shared_ptr(*node->rail());
-                ImGuiID rail_id                  = static_cast<ImGuiID>(rail->getUUID());
+                ImGuiID rail_id         = static_cast<ImGuiID>(rail->getUUID());
 
                 // In this circumstance, select the whole rail
                 if (Input::GetKey(GLFW_KEY_LEFT_ALT)) {
@@ -320,7 +323,7 @@ namespace Toolbox::UI {
                     m_properties_render_handler = renderRailNodeProperties;
 
                     TOOLBOX_DEBUG_LOG_V("Hit node {} of rail \"{}\"",
-                                      rail->getNodeIndex(node).value(), rail->name());
+                                        rail->getNodeIndex(node).value(), rail->name());
                 }
             }
         }
@@ -371,6 +374,7 @@ namespace Toolbox::UI {
         renderProperties();
         renderRailEditor();
         renderScene(deltaTime);
+        renderDolphin(deltaTime);
     }
 
     void SceneWindow::renderHierarchy() {
@@ -849,8 +853,8 @@ namespace Toolbox::UI {
                 if (is_rail_open) {
                     for (size_t i = 0; i < rail->nodes().size(); ++i) {
                         RefPtr<Rail::RailNode> node = rail->nodes()[i];
-                        std::string node_uid_str             = getNodeUID(node);
-                        ImGuiID node_id = static_cast<ImGuiID>(node->getUUID());
+                        std::string node_uid_str    = getNodeUID(node);
+                        ImGuiID node_id             = static_cast<ImGuiID>(node->getUUID());
 
                         bool is_rail_node_selected =
                             std::any_of(m_rail_node_list_selected_nodes.begin(),
@@ -945,14 +949,36 @@ namespace Toolbox::UI {
                 m_focused_window = EditorWindow::RENDER_VIEW;
             }
 
+            m_renderer.render(m_renderables, delta_time);
+
+            float window_bar_height =
+                ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
+            ImGui::SetCursorPos({0, window_bar_height + 10});
+
+            const ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
+            const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
+
+            const ImVec2 window_size = ImGui::GetWindowSize();
+            ImVec2 cmd_button_size   = ImGui::CalcTextSize(ICON_FK_UNDO) + frame_padding;
+            cmd_button_size.x        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.5f;
+            cmd_button_size.y        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.f;
+
             bool is_dolphin_running = DolphinHookManager::instance().isProcessRunning();
             if (is_dolphin_running) {
                 ImGui::BeginDisabled();
             }
 
-            if (ImGui::Button(ICON_FK_PLAY)) {
+            ImGui::PushStyleColor(ImGuiCol_Button, {0.1f, 0.35f, 0.1f, 0.9f});
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.2f, 0.7f, 0.2f, 0.9f});
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.7f, 0.2f, 1.0f});
+
+            ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
+            if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
                 DolphinHookManager::instance().startProcess();
+                m_communicator.loadScene(1, 2);
             }
+
+            ImGui::PopStyleColor(3);
 
             if (is_dolphin_running) {
                 ImGui::EndDisabled();
@@ -960,22 +986,70 @@ namespace Toolbox::UI {
 
             ImGui::SameLine();
 
+            ImGui::PushStyleColor(ImGuiCol_Button, {0.35f, 0.1f, 0.1f, 0.9f});
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.7f, 0.2f, 0.2f, 0.9f});
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.7f, 0.2f, 0.2f, 1.0f});
+
             if (!is_dolphin_running) {
                 ImGui::BeginDisabled();
             }
 
-            if (ImGui::Button(ICON_FK_STOP)) {
+            ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 + cmd_button_size.x);
+            if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size)) {
                 DolphinHookManager::instance().stopProcess();
             }
+
+            ImGui::PopStyleColor(3);
+
+            ImGui::SameLine();
+
+            ImGui::PushStyleColor(ImGuiCol_Button, {0.1f, 0.2f, 0.4f, 0.9f});
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.2f, 0.4f, 0.8f, 0.9f});
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.4f, 0.8f, 1.0f});
+
+            ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
+            if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size)) {
+                m_communicator.loadScene(1, 2);
+            }
+
+            ImGui::PopStyleColor(3);
 
             if (!is_dolphin_running) {
                 ImGui::EndDisabled();
             }
-
-            m_renderer.render(m_renderables, delta_time);
         }
         ImGui::End();
     }
+
+    void SceneWindow::renderDolphin(f32 delta_time) {
+        std::string dolphin_view_str = getWindowChildUID(*this, "Dolphin View");
+
+        ImGuiWindowClass dolphinViewOverride;
+        dolphinViewOverride.ClassId                  = static_cast<ImGuiID>(getUUID());
+        dolphinViewOverride.ParentViewportId         = ImGui::GetCurrentWindow()->ViewportId;
+        dolphinViewOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe;
+        dolphinViewOverride.DockingAllowUnclassed    = false;
+        ImGui::SetNextWindowClass(&dolphinViewOverride);
+
+        if (ImGui::Begin(dolphin_view_str.c_str())) {
+            if (m_dolphin_texture_id != std::numeric_limits<GLuint>::max()) {
+                glDeleteTextures(1, &m_dolphin_texture_id);
+            }
+            m_dolphin_texture_id =
+                m_communicator.captureXFBAsTexture(static_cast<int>(ImGui::GetWindowWidth()),
+                                                   static_cast<int>(ImGui::GetWindowHeight()));
+            if (m_dolphin_texture_id == std::numeric_limits<GLuint>::max()) {
+                ImGui::Text("Start a Dolphin process running\nSuper Mario Sunshine to get started");
+            } else {
+                ImVec2 render_size = {
+                    ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x * 2,
+                    ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y * 2 -
+                        (ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight())};
+                ImGui::Image((ImTextureID)m_dolphin_texture_id, render_size);
+            }
+        }
+        ImGui::End();
+    }  // namespace Toolbox::UI
 
     void SceneWindow::renderHierarchyContextMenu(std::string str_id,
                                                  SelectionNodeInfo<Object::ISceneObject> &info) {
@@ -1809,6 +1883,8 @@ namespace Toolbox::UI {
             m_dock_node_up_left_id, ImGuiDir_Down, 0.5f, nullptr, &m_dock_node_up_left_id);
 
         ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Scene View").c_str(), dockspace_id);
+        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Dolphin View").c_str(),
+                                     dockspace_id);
         ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Hierarchy Editor").c_str(),
                                      m_dock_node_up_left_id);
         ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Rail Editor").c_str(),
@@ -1870,5 +1946,4 @@ namespace Toolbox::UI {
             }
         }
     }
-
 };  // namespace Toolbox::UI

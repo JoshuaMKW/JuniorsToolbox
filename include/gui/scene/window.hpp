@@ -15,6 +15,7 @@
 #include "scene/scene.hpp"
 
 #include "core/clipboard.hpp"
+#include "game/task.hpp"
 #include "gui/property/property.hpp"
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
@@ -51,6 +52,7 @@ namespace Toolbox::UI {
         void renderTree(RefPtr<Object::ISceneObject> node);
         void renderRailEditor();
         void renderScene(f32 delta_time);
+        void renderDolphin(f32 delta_time);
         void renderHierarchyContextMenu(std::string str_id,
                                         SelectionNodeInfo<Object::ISceneObject> &info);
         void renderRailContextMenu(std::string str_id, SelectionNodeInfo<Rail::Rail> &info);
@@ -185,5 +187,8 @@ namespace Toolbox::UI {
         bool m_is_save_default_ready{false};
         bool m_is_save_as_dialog_open{false};
         bool m_is_verify_open{false};
+
+        Game::TaskCommunicator m_communicator;
+        u32 m_dolphin_texture_id;
     };
 }  // namespace Toolbox::UI

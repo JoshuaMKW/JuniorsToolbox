@@ -1,6 +1,8 @@
+#include <chrono>
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <thread>
 
 #include "core/application.hpp"
 #include "gui/settings.hpp"
@@ -47,8 +49,9 @@ namespace Toolbox::Dolphin {
         Platform::LowHandle memory_handle =
             OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, memory_name.data());
         if (!memory_handle) {
-            return make_error<Platform::LowHandle>(std::format(
-                "(SHARED_MEM) Failed to find shared process memory handle \"{}\".", memory_name));
+            return make_error<Platform::LowHandle>(
+                "SHARED_MEMORY",
+                std::format("Failed to find shared process memory handle \"{}\".", memory_name));
         }
 
         return memory_handle;
@@ -57,8 +60,8 @@ namespace Toolbox::Dolphin {
     static Result<void *, BaseError> OpenMemoryView(Platform::LowHandle memory_handle) {
         void *mem_buf = MapViewOfFile(memory_handle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
         if (!mem_buf) {
-            return make_error<void *>(
-                "(SHARED_MEM) Failed to get view of shared process memory handle.");
+            return make_error<void *>("SHARED_MEMORY",
+                                      "Failed to get view of shared process memory handle.");
         }
         return mem_buf;
     }
@@ -128,7 +131,7 @@ namespace Toolbox::Dolphin {
         return {};
     }
 
-    Result<void> DolphinHookManager::hook() {
+    Result<bool> DolphinHookManager::hook() {
         if (m_mem_view) {
             return {};
         }
@@ -153,8 +156,7 @@ namespace Toolbox::Dolphin {
             };
 
             if (pid == sentinel) {
-                return make_error<void>(
-                    "(PROCESS) Failed to find valid Dolphin Emulator instance running!");
+                return false;
             }
 
             m_proc_info.m_process_name = target_processes[i];
@@ -179,19 +181,20 @@ namespace Toolbox::Dolphin {
 
         m_mem_view = view_result.value();
 
-        bu32 magic_ptr = *static_cast<u32 *>(m_mem_view);
-        if ((magic_ptr >> 8) != 'GMS') {
-            return make_error<void>(
-                "(PROCESS) Found Dolphin game, but it's not Super Mario Sunshine (GMS)!");
-        }
-
-        TOOLBOX_INFO_V("(DOLPHIN) Successfully hooked to process! (Name={}, PID={}, View={})",
+        TOOLBOX_INFO_V("DOLPHIN: Successfully hooked to process! (Name={}, PID={}, View={})",
                        m_proc_info.m_process_name, m_proc_info.m_process_id, m_mem_view);
+
+        char magic[4];
+        readBytes(magic, 0x80000000, 4);
+        if ((magic[0] != 'G' || magic[1] != 'M' || magic[2] != 'S') &&
+            (magic[0] != '\0' || magic[1] != '\0' || magic[2] != '\0')) {
+            TOOLBOX_WARN("DOLPHIN: Game found is not Super Mario Sunshine (GMS)!");
+        }
 
         return {};
     }
 
-    Result<void> DolphinHookManager::unhook() {
+    Result<bool> DolphinHookManager::unhook() {
         if (!m_mem_view) {
             return {};
         }
@@ -210,21 +213,27 @@ namespace Toolbox::Dolphin {
         return {};
     }
 
-    static std::mutex s_memory_mutex;
-
     Result<void> DolphinHookManager::readBytes(char *buf, u32 address, size_t size) {
-        s_memory_mutex.lock();
+        if (!m_mem_view)
+            return make_error<void>("SHARED_MEMORY",
+                                    "Tried to read bytes without a memory handle!");
+
+        m_memory_mutex.lock();
         const char *true_address = static_cast<const char *>(m_mem_view) + (address & 0x7FFFFFFF);
         memcpy(buf, true_address, size);
-        s_memory_mutex.unlock();
+        m_memory_mutex.unlock();
         return {};
     }
 
     Result<void> DolphinHookManager::writeBytes(const char *buf, u32 address, size_t size) {
-        s_memory_mutex.lock();
+        if (!m_mem_view)
+            return make_error<void>("SHARED_MEMORY",
+                                    "Tried to write bytes without a memory handle!");
+
+        m_memory_mutex.lock();
         char *true_address = static_cast<char *>(m_mem_view) + (address & 0x7FFFFFFF);
         memcpy(true_address, buf, size);
-        s_memory_mutex.unlock();
+        m_memory_mutex.unlock();
         return {};
     }
 

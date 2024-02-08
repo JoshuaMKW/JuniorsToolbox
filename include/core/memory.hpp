@@ -27,12 +27,13 @@ namespace Toolbox {
             m_size = other.m_size;
             memcpy(m_buf, other.m_buf, other.m_size);
         }
-        Buffer(Buffer &&other) {
+        Buffer(Buffer &&other) noexcept {
             m_buf        = std::move(other.m_buf);
             m_size       = other.m_size;
             other.m_buf  = nullptr;
             other.m_size = 0;
         }
+        ~Buffer() { free(); }
 
         bool alloc(size_t size) {
             free();
@@ -70,7 +71,8 @@ namespace Toolbox {
 
         size_t size() const { return m_size; }
 
-        template <typename T> T &as() { get<T>(0); }
+        template <typename T> T &as() { return get<T>(0); }
+        template <typename T = void> T *buf() { return reinterpret_cast<T *>(m_buf); }
 
         template <typename T> T &get(size_t at) {
             TOOLBOX_CORE_ASSERT(m_buf);
@@ -108,8 +110,8 @@ namespace Toolbox {
         bool operator==(const Buffer &other) { return m_buf == other.m_buf; }
 
     private:
-        void *m_buf;
-        size_t m_size;
+        void *m_buf = nullptr;
+        size_t m_size = 0;
     };
 
 }  // namespace Toolbox

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <expected>
+#include <mutex>
 #include <optional>
 #include <span>
 
@@ -58,17 +59,23 @@ namespace Toolbox::Dolphin {
         //---
 
         bool isProcessRunning();
+
+        const Platform::ProcessInformation &getProcess() const { return m_proc_info; }
         Result<void> startProcess();
         Result<void> stopProcess();
 
-        bool isHooked() const { return m_mem_view; }
+        bool isHooked() const {
+            return m_mem_view && Platform::IsExProcessRunning(m_proc_info);
+        }
 
-        Result<void> hook();
-        Result<void> unhook();
-        Result<void> refresh() {
-            auto unhook_result = unhook();
-            if (!unhook_result) {
-                return std::unexpected(unhook_result.error());
+        Result<bool> hook();
+        Result<bool> unhook();
+        Result<bool> refresh() {
+            if (!Platform::IsExProcessRunning(m_proc_info)) {
+                auto unhook_result = unhook();
+                if (!unhook_result) {
+                    return std::unexpected(unhook_result.error());
+                }
             }
 
             return hook();
@@ -77,11 +84,15 @@ namespace Toolbox::Dolphin {
         Result<void> readBytes(char *buf, u32 address, size_t size);
         Result<void> writeBytes(const char *buf, u32 address, size_t size);
 
+        u32 captureXFBAsTexture(int width, int height, u32 xfb_start, int xfb_width, int xfb_height);
+
     private:
         Platform::ProcessInformation m_proc_info;
 
-        Platform::LowHandle m_mem_handle;
-        void *m_mem_view;
+        Platform::LowHandle m_mem_handle{};
+        void *m_mem_view = nullptr;
+
+        std::mutex m_memory_mutex;
 
         std::optional<UUID64> m_owner;
     };

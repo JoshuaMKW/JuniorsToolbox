@@ -20,6 +20,7 @@ namespace Toolbox::Dolphin {
     class DolphinCommunicator {
     public:
         DolphinCommunicator() = default;
+        ~DolphinCommunicator() { kill(); }
 
         DolphinHookManager &manager() const { return DolphinHookManager::instance(); }
 
@@ -40,9 +41,6 @@ namespace Toolbox::Dolphin {
             m_kill_condition.wait(lk);
         }
 
-        void spinProcess() {
-            
-        }
         void signalHook() { m_hook_flag.store(true); }
 
         template <typename T> Result<T, BaseError> read(u32 address) {
@@ -54,11 +52,12 @@ namespace Toolbox::Dolphin {
                 return std::unexpected(result.error());
             }
 
-            return data;
+            return *endian_swapped_t<T>(data);
         }
         template <typename T> Result<void> write(u32 address, const T &value) {
+            T swapped_v = *endian_swapped_t<T>(value);
             auto result = DolphinHookManager::instance().writeBytes(
-                reinterpret_cast<const char *>(std::addressof(value)), address, sizeof(T));
+                reinterpret_cast<const char *>(std::addressof(swapped_v)), address, sizeof(T));
             if (!result) {
                 return std::unexpected(result.error());
             }
