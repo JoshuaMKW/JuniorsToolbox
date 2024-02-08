@@ -8,6 +8,8 @@
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
 #elif TOOLBOX_PLATFORM_LINUX
+#include <sys/types.h>
+#include <unistd.h>
 #endif
 
 namespace Toolbox::Platform {
@@ -17,7 +19,7 @@ namespace Toolbox::Platform {
     typedef DWORD ProcessID;
 #elif TOOLBOX_PLATFORM_LINUX
     typedef void *MemoryHandle;
-    typedef u64 ProcessID;
+    typedef pid_t ProcessID;
 #endif
 
     struct ProcessInformation {

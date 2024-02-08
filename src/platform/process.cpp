@@ -10,6 +10,12 @@
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
 #elif TOOLBOX_PLATFORM_LINUX
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <signal.h>
+#include <limits>
+#include <process.h>
 #endif
 
 namespace Toolbox::Platform {
@@ -104,17 +110,65 @@ namespace Toolbox::Platform {
     }
 
 #elif TOOLBOX_PLATFORM_LINUX
-    static std::string GetLastErrorMessage() { return "Unimplemented on Linux"; }
+    std::string GetLastErrorMessage() { return std::strerror(errno); }
 
     Result<ProcessInformation> CreateExProcess(const std::filesystem::path &program_path,
-                                               std::string_view cmdargs) {
-        return make_error<ProcessInformation>("PROCESS", GetLastErrorMessage());
+                                       const std::string &cmdargs) {
+        std::string true_cmdargs =
+            std::format("\"{}\" {}", program_path.string().c_str(), cmdargs.data());
+
+        ProcessID pid = fork();  // Fork the current process
+        if (pid == -1) {
+            // Handle error
+            return make_error<ProcessInformation>("PROCESS", GetLastErrorMessage());
+        } else if (pid > 0) {
+            // Parent process
+            return ProcessInformation{program_path.stem().string(), pid};
+        } else {
+            // Child process
+            execl(program_path.c_str(), true_cmdargs.c_str(), (char *)NULL);
+            // execl only returns on error
+            _exit(EXIT_FAILURE);
+        }
     }
 
-    Result<void> KillExProcess(const ProcessInformation &process) {
-        return make_error<void>("PROCESS", "Unimplemented on Linux");
+    Result<void> KillExProcess(const ProcessInformation &process, size_t max_wait) {
+        if (kill(process.m_process_id, SIGTERM) == -1) {
+            return make_error<void>("PROCESS", GetLastErrorMessage());
+        }
+
+        int status;
+        ProcessID result = waitpid(process.m_process_id, &status, WNOHANG);
+        if (result == 0) {
+            // Process is still running, try to wait for max_wait time
+            sleep(max_wait);
+            result = waitpid(process.m_process_id, &status, WNOHANG);
+            if (result == 0) {
+                // Process is still running, force kill it
+                if (kill(process.m_process_id, SIGKILL) == -1) {
+                    return make_error<void>("PROCESS", GetLastErrorMessage());
+                }
+            }
+        }
+
+        return {};
     }
 
-    bool IsExProcessRunning(const ProcessInformation &process) { return false; }
+    bool IsExProcessRunning(const ProcessInformation &process) {
+        if (process.m_process_id <= 0 ||
+            process.m_process_id == std::numeric_limits<ProcessID>::max()) {
+            return false;
+        }
+
+        if (kill(process.m_process_id, 0) == -1) {
+            if (errno == ESRCH) {
+                // The process does not exist.
+                return false;
+            }
+            // Other errors indicate that the process exists and may be a zombie.
+        }
+
+        return true;
+    }
 #endif
 }  // namespace Toolbox::Platform
