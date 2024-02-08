@@ -134,7 +134,7 @@ static bool intersectRaySphere(const glm::vec3 &rayOrigin, const glm::vec3 &rayD
 
 namespace Toolbox::UI {
     namespace Render {
-        void PacketSort(J3DRendering::SortFunctionArgs packets) {
+        void PacketSort(J3D::Rendering::RenderPacketVector packets) {
             std::sort(packets.begin(), packets.end(),
                       [](const J3DRenderPacket &a, const J3DRenderPacket &b) -> bool {
                           // Sort bias
@@ -283,7 +283,7 @@ namespace Toolbox::UI {
                                 settings.m_far_plane);
         m_camera.setOrientAndPosition({0, 1, 0}, {0, 0, 1}, {0, 0, 0});
         m_camera.updateCamera();
-        J3DRendering::SetSortFunction(Render::PacketSort);
+        J3D::Rendering::SetSortFunction(Render::PacketSort);
 
         // Create framebuffer for this window
         glGenFramebuffers(1, &m_fbo_id);
@@ -400,7 +400,9 @@ namespace Toolbox::UI {
                 models.push_back(renderable.m_model);
             }
 
-            J3DRendering::Render(delta_time, position, view, projection, models);
+            J3D::Rendering::RenderPacketVector packets =
+                J3D::Rendering::SortPackets(models, position);
+            J3D::Rendering::Render(delta_time, view, projection, packets);
 
             m_path_renderer.drawPaths(&m_camera);
             m_billboard_renderer.drawBillboards(&m_camera);

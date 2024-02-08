@@ -47,7 +47,7 @@ namespace Toolbox::Log {
         }
 
         void debugLog(const std::string &message) {
-#ifndef TOOLBOX_DEBUG
+#ifdef TOOLBOX_DEBUG
             log(ReportLevel::DEBUG, message);
 #endif
         }
@@ -65,7 +65,7 @@ namespace Toolbox::Log {
         }
 
         void trace(const std::stacktrace &stack) {
-#ifndef TOOLBOX_DEBUG
+#ifdef TOOLBOX_DEBUG
             for (size_t i = 0; i < std::min(m_max_trace, stack.size()); ++i) {
                 debugLog(
                     std::format("{} at line {}", stack[i].source_file(), stack[i].source_line()));
