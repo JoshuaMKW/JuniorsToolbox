@@ -603,7 +603,7 @@ namespace Toolbox::Object {
         serialize(out);
 
         m_data.resize(in.size());
-        in.seek(0);
+        in.seek(0, std::ios::beg);
 
         in.readBytes({reinterpret_cast<char *>(&m_data[0]), m_data.size()});
 

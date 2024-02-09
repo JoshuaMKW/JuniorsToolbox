@@ -124,7 +124,7 @@ namespace Toolbox {
             auto pos = tell();
             seek(0, std::ios::end);
             auto size = static_cast<size_t>(tell());
-            seek(pos);
+            seek(pos, std::ios::beg);
             return size;
         }
 
@@ -257,7 +257,7 @@ namespace Toolbox {
             auto pos = tell();
             seek(0, std::ios::end);
             auto size = static_cast<size_t>(tell());
-            seek(pos);
+            seek(pos, std::ios::beg);
             return size;
         }
 

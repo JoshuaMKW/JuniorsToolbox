@@ -79,7 +79,9 @@ namespace Toolbox::UI {
                                             return template_type == better_obj;
                                         });
                         if (is_better_object) {
-                            m_template_index = -1;
+                            if (is_selected) {
+                                m_template_index = -1;
+                            }
                             continue;
                         }
                     }

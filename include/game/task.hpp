@@ -49,10 +49,10 @@ namespace Toolbox::Game {
                                                 RefPtr<ISceneObject> object,
                                                 RefPtr<GroupSceneObject> parent);
 
-        Result<void> setObjectTransformToMario(RefPtr<ISceneObject> object,
+        Result<void> setObjectTransformToMario(RefPtr<PhysicalSceneObject> object,
                                                RefPtr<GroupSceneObject> parent);
 
-        Result<void> setObjectTransformToCamera(RefPtr<ISceneObject> object,
+        Result<void> setObjectTransformToCamera(RefPtr<PhysicalSceneObject> object,
                                                 RefPtr<GroupSceneObject> parent);
 
         Result<void> playCameraDemo(std::string_view demo_name);
@@ -74,8 +74,11 @@ namespace Toolbox::Game {
 
         void run();
 
+        Result<u32> findActorPtr(RefPtr<ISceneObject> actor);
+
     private:
         std::queue<std::function<bool(Dolphin::DolphinCommunicator &)>> m_task_queue;
+        std::unordered_map<UUID64, u32> m_actor_address_map;
 
         bool m_started = false;
 

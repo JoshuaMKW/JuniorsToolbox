@@ -64,6 +64,14 @@ namespace Toolbox::Dolphin {
             return {};
         }
 
+        Result<void> readBytes(char *buf, u32 address, size_t size) {
+            return DolphinHookManager::instance().readBytes(buf, address, size);
+        }
+
+        Result<void> writeBytes(const char* buf, u32 address, size_t size) {
+            return DolphinHookManager::instance().writeBytes(buf, address, size);
+        }
+
     protected:
         void run();
 

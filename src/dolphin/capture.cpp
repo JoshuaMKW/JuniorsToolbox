@@ -7,28 +7,37 @@ namespace Toolbox::Dolphin {
     static Buffer YUV422ToRGB888(const u8 *yuv, int width, int height) {
         Buffer out;
         out.alloc(width * height * 3);
-        out.initTo(0);
 
-        for (int i = 0; i < width * height / 2; ++i) {  // Processing two pixels at a time
-            int index = i * 4;
-            int y1    = yuv[index];
-            int y2    = yuv[index + 2];
-            int u     = yuv[index + 1] - 128;
-            int v     = yuv[index + 3] - 128;
+        // YUV 4:2:2 each 4 bytes is 2 pixels
+        // Y0 U0 Y1 V0
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; x += 2) {
+                int base_index = (y * width + x) * 2;
 
-            int rgbIndex = i * 6;  // Two pixels * 3 colors each
+                // Scale colors from studio to full range
+                int y0        = static_cast<int>((yuv[base_index] - 16) * 255 / 219);
+                int y1        = static_cast<int>((yuv[base_index + 2] - 16) * 255 / 219);
+                int u         = static_cast<int>((yuv[base_index + 1] - 128) * 255 / 224);
+                int v         = static_cast<int>((yuv[base_index + 3] - 128) * 255 / 224);
 
-            // clang-format off
-            // Convert first pixel (Y1, U, V) to RGB
-            out.set<u8>(rgbIndex,     std::clamp<u8>(static_cast<u8>(y1 + 1.402 * v), 0, 255));
-            out.set<u8>(rgbIndex + 1, std::clamp<u8>(static_cast<u8>(y1 - 0.344136 * u - 0.714136 * v), 0, 255));
-            out.set<u8>(rgbIndex + 2, std::clamp<u8>(static_cast<u8>(y1 + 1.772 * u), 0, 255));
+                int r0 = std::clamp(static_cast<int>(y0 + 1.402 * v), 0, 255);
+                int g0 = std::clamp(static_cast<int>(y0 - 0.344136 * u - 0.714136 * v), 0, 255);
+                int b0 = std::clamp(static_cast<int>(y0 + 1.772 * u), 0, 255);
 
-            // Convert second pixel (Y2, U, V) to RGB
-            out.set<u8>(rgbIndex + 3, std::clamp<u8>(static_cast<u8>(y2 + 1.402 * v), 0, 255));
-            out.set<u8>(rgbIndex + 4, std::clamp<u8>(static_cast<u8>(y2 - 0.344136 * u - 0.714136 * v), 0, 255));
-            out.set<u8>(rgbIndex + 5, std::clamp<u8>(static_cast<u8>(y2 + 1.772 * u), 0, 255));
-            // clang-format on
+                int r1 = std::clamp(static_cast<int>(y1 + 1.402 * v), 0, 255);
+                int g1 = std::clamp(static_cast<int>(y1 - 0.344136 * u - 0.714136 * v), 0, 255);
+                int b1 = std::clamp(static_cast<int>(y1 + 1.772 * u), 0, 255);
+
+                size_t rgb_index = static_cast<size_t>((y * width + x) * 3);
+
+                out.set(rgb_index, static_cast<u8>(r0));
+                out.set(rgb_index + 1, static_cast<u8>(g0));
+                out.set(rgb_index + 2, static_cast<u8>(b0));
+
+                out.set(rgb_index + 3, static_cast<u8>(r1));
+                out.set(rgb_index + 4, static_cast<u8>(g1));
+                out.set(rgb_index + 5, static_cast<u8>(b1));
+            }
         }
 
         return out;

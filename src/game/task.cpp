@@ -17,6 +17,15 @@ using namespace Toolbox;
 
 namespace Toolbox::Game {
 
+    enum class ETask {
+        NONE,
+        GET_NAMEREF_PTR,
+        CREATE_NAMEREF,
+        DELETE_NAMEREF,
+        PLAY_CAMERA_DEMO,
+        SET_NAMEREF_PARAMETER
+    };
+
     void TaskCommunicator::run() {
         while (!m_kill_flag.load()) {
             AppSettings &settings = SettingsManager::instance().getCurrentProfile();
@@ -32,6 +41,8 @@ namespace Toolbox::Game {
                     if (task(communicator)) {
                         m_task_queue.pop();
                     }
+                    std::this_thread::sleep_for(
+                        std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
                 }
             }
 
@@ -39,6 +50,69 @@ namespace Toolbox::Game {
         }
 
         m_kill_condition.notify_all();
+    }
+
+    Result<u32> TaskCommunicator::findActorPtr(RefPtr<ISceneObject> actor) {
+        if (m_actor_address_map.contains(actor->getUUID())) {
+            return m_actor_address_map[actor->getUUID()];
+        }
+        submitTask(
+            [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object) {
+                // Early exit to avoid errors
+                if (!communicator.manager().isHooked()) {
+                    return false;
+                }
+
+                u32 comm_state = communicator.read<u32>(0x80000298).value();
+
+                // Check if already communicated
+                if ((comm_state & BIT(0))) {
+                    // If so, check for response
+                    ETask task = (ETask)communicator.read<u32>(0x800002E0).value();
+                    if (task == ETask::NONE) {
+                        u32 response_buffer_address = communicator.read<u32>(0x800002E8).value();
+                        if (response_buffer_address != 0) {
+                            m_actor_address_map[object->getUUID()] =
+                                communicator.read<u32>(response_buffer_address).value();
+                        }
+                        communicator.write<u32>(0x80000298, comm_state & ~BIT(0));
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+
+                u32 request_buffer_address = communicator.read<u32>(0x800002E4).value();
+                if (request_buffer_address == 0) {
+                    return true;
+                }
+
+                // Lock access
+                communicator.write<u32>(0x80000298, comm_state | BIT(0));
+
+                // Write cmd type
+                communicator.write<u32>(0x800002E0, (u32)ETask::GET_NAMEREF_PTR);
+
+                Buffer request_buffer;
+                request_buffer.alloc(0x10000);
+                request_buffer.initTo(0);
+
+                {
+                    char *internal_buf = request_buffer.buf<char>();
+
+                    NameRef nameref           = object->getNameRef();
+                    std::string shift_jis_ref = String::toGameEncoding(nameref.name()).value();
+
+                    strncpy_s(internal_buf, shift_jis_ref.size() + 1, shift_jis_ref.data(),
+                              shift_jis_ref.size() + 1);
+                }
+
+                communicator.writeBytes(request_buffer.buf<char>(), request_buffer_address,
+                                        request_buffer.size());
+
+                return false;
+            },
+            actor);
     }
 
     Result<void> TaskCommunicator::loadScene(u8 stage, u8 scenario) {
@@ -120,12 +194,144 @@ namespace Toolbox::Game {
 
     Result<void> TaskCommunicator::addSceneObject(RefPtr<ISceneObject> object,
                                                   RefPtr<GroupSceneObject> parent) {
-        return Result<void>();
+        return submitTask(
+            [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object,
+                RefPtr<GroupSceneObject> parent) {
+                // Early exit to avoid errors
+                if (!communicator.manager().isHooked()) {
+                    return false;
+                }
+
+                u32 comm_state = communicator.read<u32>(0x80000298).value();
+
+                // Check if already communicated
+                if ((comm_state & BIT(30))) {
+                    // If so, check for response
+                    ETask task = (ETask)communicator.read<u32>(0x800002E0).value();
+                    if (task == ETask::NONE) {
+                        u32 response_buffer_address = communicator.read<u32>(0x800002E8).value();
+                        if (response_buffer_address != 0) {
+                            m_actor_address_map[object->getUUID()] =
+                                communicator.read<u32>(response_buffer_address).value();
+                        }
+                        communicator.write<u32>(0x80000298, comm_state & ~BIT(30));
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+
+                u32 request_buffer_address = communicator.read<u32>(0x800002E4).value();
+                if (request_buffer_address == 0) {
+                    return true;
+                }
+
+                // Lock access
+                communicator.write<u32>(0x80000298, comm_state | BIT(30));
+
+                // Write cmd type
+                communicator.write<u32>(0x800002E0, (u32)ETask::CREATE_NAMEREF);
+
+                Buffer request_buffer;
+                request_buffer.alloc(0x10000);
+                request_buffer.initTo(0);
+
+                {
+                    char *internal_buf = request_buffer.buf<char>();
+
+                    std::string _type = parent->type();
+                    strncpy_s(internal_buf, _type.size() + 1, _type.c_str(), _type.size() + 1);
+
+                    NameRef nameref           = parent->getNameRef();
+                    std::string shift_jis_ref = String::toGameEncoding(nameref.name()).value();
+
+                    strncpy_s(internal_buf + 0x80, shift_jis_ref.size() + 1, shift_jis_ref.data(),
+                              shift_jis_ref.size() + 1);
+
+                    std::span<u8> obj_data = object->getData();
+                    memcpy_s(internal_buf + 0x200, obj_data.size() + 1, obj_data.data(),
+                             obj_data.size() + 1);
+                }
+
+                communicator.writeBytes(request_buffer.buf<char>(), request_buffer_address,
+                                        request_buffer.size());
+
+                return false;
+            },
+            object, parent);
     }
 
     Result<void> TaskCommunicator::removeSceneObject(RefPtr<ISceneObject> object,
                                                      RefPtr<GroupSceneObject> parent) {
-        return Result<void>();
+        return submitTask(
+            [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object,
+                RefPtr<GroupSceneObject> parent) {
+                // Early exit to avoid errors
+                if (!communicator.manager().isHooked()) {
+                    return false;
+                }
+
+                u32 comm_state = communicator.read<u32>(0x80000298).value();
+
+                // Check if already communicated
+                if ((comm_state & BIT(29))) {
+                    // If so, check for response
+                    ETask task = (ETask)communicator.read<u32>(0x800002E0).value();
+                    if (task == ETask::NONE) {
+                        m_actor_address_map.erase(object->getUUID());
+                        communicator.write<u32>(0x80000298, comm_state & ~BIT(29));
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+
+                u32 request_buffer_address = communicator.read<u32>(0x800002E4).value();
+                if (request_buffer_address == 0) {
+                    return true;
+                }
+
+                // Lock access
+                communicator.write<u32>(0x80000298, comm_state | BIT(29));
+
+                // Write cmd type
+                communicator.write<u32>(0x800002E0, (u32)ETask::DELETE_NAMEREF);
+
+                Buffer request_buffer;
+                request_buffer.alloc(0x10000);
+                request_buffer.initTo(0);
+
+                {
+                    char *internal_buf = request_buffer.buf<char>();
+
+                    std::string _type = parent->type();
+                    strncpy_s(internal_buf, _type.size() + 1, _type.c_str(), _type.size() + 1);
+
+                    {
+                        NameRef parent_nameref = parent->getNameRef();
+                        std::string shift_jis_ref =
+                            String::toGameEncoding(parent_nameref.name()).value();
+
+                        strncpy_s(internal_buf + 0x80, shift_jis_ref.size() + 1,
+                                  shift_jis_ref.data(), shift_jis_ref.size() + 1);
+                    }
+
+                    {
+                        NameRef this_nameref = object->getNameRef();
+                        std::string shift_jis_ref =
+                            String::toGameEncoding(this_nameref.name()).value();
+
+                        strncpy_s(internal_buf + 0x200, shift_jis_ref.size() + 1,
+                                  shift_jis_ref.data(), shift_jis_ref.size() + 1);
+                    }
+                }
+
+                communicator.writeBytes(request_buffer.buf<char>(), request_buffer_address,
+                                        request_buffer.size());
+
+                return false;
+            },
+            object, parent);
     }
 
     Result<void> TaskCommunicator::updateSceneObjectParameter(const QualifiedName &member_name,
@@ -134,12 +340,12 @@ namespace Toolbox::Game {
         return Result<void>();
     }
 
-    Result<void> TaskCommunicator::setObjectTransformToMario(RefPtr<ISceneObject> object,
+    Result<void> TaskCommunicator::setObjectTransformToMario(RefPtr<PhysicalSceneObject> object,
                                                              RefPtr<GroupSceneObject> parent) {
         return Result<void>();
     }
 
-    Result<void> TaskCommunicator::setObjectTransformToCamera(RefPtr<ISceneObject> object,
+    Result<void> TaskCommunicator::setObjectTransformToCamera(RefPtr<PhysicalSceneObject> object,
                                                               RefPtr<GroupSceneObject> parent) {
         return Result<void>();
     }
@@ -168,7 +374,8 @@ namespace Toolbox::Game {
         u16 xfb_width           = communicator.read<u16>(display_address + 0x14).value();
         u16 xfb_height          = communicator.read<u16>(display_address + 0x18).value();
 
-        return communicator.manager().captureXFBAsTexture(width, height, xfb_address, xfb_width, xfb_height);
+        return communicator.manager().captureXFBAsTexture(width, height, xfb_address, xfb_width,
+                                                          xfb_height);
     }
 
 }  // namespace Toolbox::Game

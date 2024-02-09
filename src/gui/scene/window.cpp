@@ -1164,6 +1164,9 @@ namespace Toolbox::UI {
                     return;
                 }
                 this_parent->removeChild(info.m_selected->getNameRef().name());
+
+                m_communicator.removeSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
                 m_hierarchy_selected_nodes.erase(node_it);
@@ -1243,6 +1246,9 @@ namespace Toolbox::UI {
                     return;
                 }
                 this_parent->removeChild(info.m_selected->getNameRef().name());
+
+                m_communicator.removeSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
                 m_hierarchy_selected_nodes.erase(node_it);
@@ -1387,6 +1393,9 @@ namespace Toolbox::UI {
                     return;
                 }
                 this_parent->removeChild(info.m_selected->getNameRef().name());
+
+                m_communicator.removeSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
                 m_hierarchy_selected_nodes.erase(node_it);
@@ -1455,6 +1464,9 @@ namespace Toolbox::UI {
                         return;
                     }
                     this_parent->removeChild(info.m_selected->getNameRef().name());
+
+                    m_communicator.removeSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+
                     auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                              m_hierarchy_selected_nodes.end(), info);
                     m_hierarchy_selected_nodes.erase(node_it);
@@ -1722,11 +1734,11 @@ namespace Toolbox::UI {
                     new_object_result->setNameRef(name);
                 }
 
-                ISceneObject *this_parent;
+                GroupSceneObject *this_parent;
                 if (info.m_selected->isGroupObject()) {
-                    this_parent = info.m_selected.get();
+                    this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected.get());
                 } else {
-                    this_parent = info.m_selected->getParent();
+                    this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 }
 
                 if (!this_parent) {
@@ -1741,6 +1753,9 @@ namespace Toolbox::UI {
                     logObjectGroupError(result.error());
                     return;
                 }
+
+                RefPtr<ISceneObject> object = this_parent->getChild(std::string(name)).value();
+                m_communicator.addSceneObject(object, get_shared_ptr(*this_parent));
 
                 m_update_render_objs = true;
                 return;
