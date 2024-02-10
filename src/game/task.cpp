@@ -52,12 +52,16 @@ namespace Toolbox::Game {
         m_kill_condition.notify_all();
     }
 
-    Result<u32> TaskCommunicator::findActorPtr(RefPtr<ISceneObject> actor) {
+    Result<void> TaskCommunicator::taskFindActorPtr(RefPtr<ISceneObject> actor,
+                                                   transact_complete_cb complete_cb) {
         if (m_actor_address_map.contains(actor->getUUID())) {
-            return m_actor_address_map[actor->getUUID()];
+            if (complete_cb)
+                complete_cb(m_actor_address_map[actor->getUUID()]);
+            return {};
         }
-        submitTask(
-            [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object) {
+
+        return submitTask(
+            [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object, transact_complete_cb cb) {
                 // Early exit to avoid errors
                 if (!communicator.manager().isHooked()) {
                     return false;
@@ -70,12 +74,17 @@ namespace Toolbox::Game {
                     // If so, check for response
                     ETask task = (ETask)communicator.read<u32>(0x800002E0).value();
                     if (task == ETask::NONE) {
+                        communicator.write<u32>(0x80000298, comm_state & ~BIT(0));
                         u32 response_buffer_address = communicator.read<u32>(0x800002E8).value();
                         if (response_buffer_address != 0) {
-                            m_actor_address_map[object->getUUID()] =
-                                communicator.read<u32>(response_buffer_address).value();
+                            u32 obj_addr = communicator.read<u32>(response_buffer_address).value();
+                            m_actor_address_map[object->getUUID()] = obj_addr;
+                            if (cb)
+                                cb(obj_addr);
+                        } else {
+                            if (cb)
+                                cb(0);
                         }
-                        communicator.write<u32>(0x80000298, comm_state & ~BIT(0));
                         return true;
                     } else {
                         return false;
@@ -112,14 +121,65 @@ namespace Toolbox::Game {
 
                 return false;
             },
-            actor);
+            actor, complete_cb);
     }
 
-    Result<void> TaskCommunicator::loadScene(u8 stage, u8 scenario) {
+    bool TaskCommunicator::isSceneLoaded(u8 stage, u8 scenario) {
+        constexpr u8 c_mar_director_id = 5;
+        constexpr u32 application_addr = 0x803E9700;
+
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        // Early exit to avoid errors
+        if (!communicator.manager().isHooked()) {
+            return false;
+        }
+
+        auto game_stage_result = communicator.read<u8>(application_addr + 0xE);
+        if (!game_stage_result) {
+            logError(game_stage_result.error());
+            return false;
+        }
+
+        auto game_scenario_result = communicator.read<u8>(application_addr + 0xF);
+        if (!game_scenario_result) {
+            logError(game_scenario_result.error());
+            return false;
+        }
+
+        u8 game_stage    = game_stage_result.value();
+        u8 game_scenario = game_scenario_result.value();
+
+        // The game stage is not what we want, tell the game to reload is possible
+        if (game_stage != stage || game_scenario != game_scenario) {
+            return false;
+        }
+
+        // The mar director ain't directing
+        if (communicator.read<u8>(application_addr + 0x8).value() != c_mar_director_id) {
+            return false;
+        }
+
+        u32 mar_director_address = communicator.read<u32>(application_addr + 0x4).value();
+
+        u8 mar_game_stage_result    = communicator.read<u8>(mar_director_address + 0x7C).value();
+        u8 mar_game_scenario_result = communicator.read<u8>(mar_director_address + 0x7D).value();
+
+        // The game stage is not what we want, tell the game to reload is possible
+        if (mar_game_stage_result != stage || mar_game_scenario_result != game_scenario) {
+            return false;
+        }
+
+        return true;
+    }
+
+    Result<void> TaskCommunicator::taskLoadScene(u8 stage, u8 scenario,
+                                                 transact_complete_cb complete_cb) {
         constexpr u8 c_mar_director_id = 5;
 
         return submitTask(
-            [](Dolphin::DolphinCommunicator &communicator, u8 stage, u8 scenario) {
+            [&](Dolphin::DolphinCommunicator &communicator, u8 stage, u8 scenario,
+                transact_complete_cb cb) {
                 constexpr u32 application_addr = 0x803E9700;
 
                 // Early exit to avoid errors
@@ -180,6 +240,9 @@ namespace Toolbox::Game {
                                                 mar_director_state | new_flags);
 
                         communicator.write<u32>(0x80000298, comm_state & ~BIT(31));
+
+                        if (cb)
+                            cb(communicator.read<u32>(0x800002E8).value());
                         return true;
                     }
 
@@ -189,14 +252,15 @@ namespace Toolbox::Game {
                 communicator.write<u32>(0x80000298, comm_state & ~BIT(31));
                 return true;
             },
-            stage, scenario);
+            stage, scenario, complete_cb);
     }
 
-    Result<void> TaskCommunicator::addSceneObject(RefPtr<ISceneObject> object,
-                                                  RefPtr<GroupSceneObject> parent) {
+    Result<void> TaskCommunicator::taskAddSceneObject(RefPtr<ISceneObject> object,
+                                                      RefPtr<GroupSceneObject> parent,
+                                                      transact_complete_cb complete_cb) {
         return submitTask(
             [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object,
-                RefPtr<GroupSceneObject> parent) {
+                RefPtr<GroupSceneObject> parent, transact_complete_cb cb) {
                 // Early exit to avoid errors
                 if (!communicator.manager().isHooked()) {
                     return false;
@@ -209,12 +273,19 @@ namespace Toolbox::Game {
                     // If so, check for response
                     ETask task = (ETask)communicator.read<u32>(0x800002E0).value();
                     if (task == ETask::NONE) {
+                        communicator.write<u32>(0x80000298, comm_state & ~BIT(30));
+
                         u32 response_buffer_address = communicator.read<u32>(0x800002E8).value();
                         if (response_buffer_address != 0) {
-                            m_actor_address_map[object->getUUID()] =
-                                communicator.read<u32>(response_buffer_address).value();
+                            u32 obj_addr = communicator.read<u32>(response_buffer_address).value();
+                            m_actor_address_map[object->getUUID()] = obj_addr;
+                            if (cb)
+                                cb(obj_addr);
+                        } else {
+                            if (cb)
+                                cb(0);
                         }
-                        communicator.write<u32>(0x80000298, comm_state & ~BIT(30));
+
                         return true;
                     } else {
                         return false;
@@ -258,14 +329,15 @@ namespace Toolbox::Game {
 
                 return false;
             },
-            object, parent);
+            object, parent, complete_cb);
     }
 
-    Result<void> TaskCommunicator::removeSceneObject(RefPtr<ISceneObject> object,
-                                                     RefPtr<GroupSceneObject> parent) {
+    Result<void> TaskCommunicator::taskRemoveSceneObject(RefPtr<ISceneObject> object,
+                                                         RefPtr<GroupSceneObject> parent,
+                                                         transact_complete_cb complete_cb) {
         return submitTask(
             [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object,
-                RefPtr<GroupSceneObject> parent) {
+                RefPtr<GroupSceneObject> parent, transact_complete_cb cb) {
                 // Early exit to avoid errors
                 if (!communicator.manager().isHooked()) {
                     return false;
@@ -280,6 +352,7 @@ namespace Toolbox::Game {
                     if (task == ETask::NONE) {
                         m_actor_address_map.erase(object->getUUID());
                         communicator.write<u32>(0x80000298, comm_state & ~BIT(29));
+                        cb(communicator.read<u32>(0x800002E8).value());
                         return true;
                     } else {
                         return false;
@@ -331,10 +404,16 @@ namespace Toolbox::Game {
 
                 return false;
             },
-            object, parent);
+            object, parent, complete_cb);
+    }
+
+    Result<void> TaskCommunicator::taskPlayCameraDemo(std::string_view demo_name,
+                                                      transact_complete_cb complete_cb) {
+        return Result<void>();
     }
 
     Result<void> TaskCommunicator::updateSceneObjectParameter(const QualifiedName &member_name,
+                                                              size_t member_game_offset,
                                                               RefPtr<ISceneObject> object,
                                                               RefPtr<GroupSceneObject> parent) {
         return Result<void>();
@@ -347,10 +426,6 @@ namespace Toolbox::Game {
 
     Result<void> TaskCommunicator::setObjectTransformToCamera(RefPtr<PhysicalSceneObject> object,
                                                               RefPtr<GroupSceneObject> parent) {
-        return Result<void>();
-    }
-
-    Result<void> TaskCommunicator::playCameraDemo(std::string_view demo_name) {
         return Result<void>();
     }
 

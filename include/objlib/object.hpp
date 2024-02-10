@@ -151,6 +151,9 @@ namespace Toolbox::Object {
         bool startAnimation(AnimationType type);
         bool stopAnimation(AnimationType type);
 
+        virtual u32 getGamePtr() const = 0;
+        virtual void setGamePtr(u32 ptr) = 0;
+
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
     };
@@ -294,7 +297,10 @@ namespace Toolbox::Object {
         Result<void, ObjectError> performScene(float delta_time, bool animate,
                                                       std::vector<RenderInfo> &renderables,
                                                       ResourceCache &resource_cache,
-                                                      std::vector<J3DLight> &scene_lights) override;
+                                               std::vector<J3DLight> &scene_lights) override;
+
+        u32 getGamePtr() const override { return m_game_ptr; }
+        void setGamePtr(u32 ptr) override { m_game_ptr = ptr; }
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -344,6 +350,8 @@ namespace Toolbox::Object {
         ISceneObject *m_parent = nullptr;
 
         mutable MetaStruct::CacheMemberT m_member_cache;
+
+        u32 m_game_ptr = 0;
     };
 
     class GroupSceneObject : public VirtualSceneObject {
@@ -648,7 +656,10 @@ namespace Toolbox::Object {
         Result<void, ObjectError> performScene(float delta_time, bool animate,
                                                       std::vector<RenderInfo> &renderables,
                                                       ResourceCache &resource_cache,
-                                                      std::vector<J3DLight> &scene_lights) override;
+                                               std::vector<J3DLight> &scene_lights) override;
+
+        u32 getGamePtr() const override { return m_game_ptr; }
+        void setGamePtr(u32 ptr) override { m_game_ptr = ptr; }
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -709,6 +720,8 @@ namespace Toolbox::Object {
         RefPtr<J3DModelInstance> m_model_instance = {};
 
         bool m_is_performing = true;
+
+        u32 m_game_ptr = 0;
     };
 
     class ObjectFactory {

@@ -78,7 +78,7 @@ namespace Toolbox::UI {
 
     static std::string getNodeUID(RefPtr<Toolbox::Object::ISceneObject> node) {
         std::string node_name =
-            std::format("{} ({})###{}", node->type(), node->getNameRef().name(), node->getUUID());
+            std::format("{} ({}) [{:08X}]###{}", node->type(), node->getNameRef().name(), node->getGamePtr(), node->getUUID());
         return node_name;
     }
 
@@ -139,6 +139,10 @@ namespace Toolbox::UI {
                 if (m_current_scene != nullptr) {
                     m_renderer.initializeData(*m_current_scene);
                 }
+            }
+
+            if (m_communicator.isSceneLoaded(1, 2)) {
+                reassignAllActorPtrs(0);
             }
 
             return true;
@@ -771,6 +775,26 @@ namespace Toolbox::UI {
         return is_updated;
     }
 
+    static void recursiveAssignActorPtrs(Game::TaskCommunicator &communicator,
+                                         RefPtr<ISceneObject> actor, u32 param) {
+        communicator.taskFindActorPtr(actor,
+                                      [actor](u32 actor_ptr) { actor->setGamePtr(actor_ptr); });
+        if (actor->isGroupObject()) {
+            auto root_children = actor->getChildren().value();
+            for (auto &child : root_children) {
+                recursiveAssignActorPtrs(communicator, child, param);
+            }
+        }
+    }
+
+    void SceneWindow::reassignAllActorPtrs(u32 param) {
+        RefPtr<GroupSceneObject> root = m_current_scene->getObjHierarchy().getRoot();
+        auto root_children            = root->getChildren().value();
+        for (auto &child : root_children) {
+            recursiveAssignActorPtrs(m_communicator, child, param);
+        }
+    }
+
     void SceneWindow::renderRailEditor() {
         const std::string rail_editor_str = getWindowChildUID(*this, "Rail Editor");
 
@@ -975,7 +999,7 @@ namespace Toolbox::UI {
             ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
             if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
                 DolphinHookManager::instance().startProcess();
-                m_communicator.loadScene(1, 2);
+                m_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
             }
 
             ImGui::PopStyleColor(3);
@@ -1009,7 +1033,7 @@ namespace Toolbox::UI {
 
             ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
             if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size)) {
-                m_communicator.loadScene(1, 2);
+                m_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
             }
 
             ImGui::PopStyleColor(3);
@@ -1165,7 +1189,7 @@ namespace Toolbox::UI {
                 }
                 this_parent->removeChild(info.m_selected->getNameRef().name());
 
-                m_communicator.removeSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+                m_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
 
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
@@ -1247,7 +1271,7 @@ namespace Toolbox::UI {
                 }
                 this_parent->removeChild(info.m_selected->getNameRef().name());
 
-                m_communicator.removeSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+                m_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
 
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
@@ -1394,7 +1418,7 @@ namespace Toolbox::UI {
                 }
                 this_parent->removeChild(info.m_selected->getNameRef().name());
 
-                m_communicator.removeSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+                m_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
 
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
@@ -1465,7 +1489,8 @@ namespace Toolbox::UI {
                     }
                     this_parent->removeChild(info.m_selected->getNameRef().name());
 
-                    m_communicator.removeSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+                    m_communicator.taskRemoveSceneObject(info.m_selected,
+                                                         get_shared_ptr(*this_parent));
 
                     auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                              m_hierarchy_selected_nodes.end(), info);
@@ -1738,7 +1763,8 @@ namespace Toolbox::UI {
                 if (info.m_selected->isGroupObject()) {
                     this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected.get());
                 } else {
-                    this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+                    this_parent =
+                        reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 }
 
                 if (!this_parent) {
@@ -1755,7 +1781,9 @@ namespace Toolbox::UI {
                 }
 
                 RefPtr<ISceneObject> object = this_parent->getChild(std::string(name)).value();
-                m_communicator.addSceneObject(object, get_shared_ptr(*this_parent));
+                m_communicator.taskAddSceneObject(
+                    object, get_shared_ptr(*this_parent),
+                    [object](u32 actor_ptr) { object->setGamePtr(actor_ptr); });
 
                 m_update_render_objs = true;
                 return;

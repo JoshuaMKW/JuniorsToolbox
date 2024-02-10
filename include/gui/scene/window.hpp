@@ -64,6 +64,8 @@ namespace Toolbox::UI {
         static bool renderRailProperties(SceneWindow &window);
         static bool renderRailNodeProperties(SceneWindow &window);
 
+        void reassignAllActorPtrs(u32 param);
+
         void buildContextMenuVirtualObj();
         void buildContextMenuGroupObj();
         void buildContextMenuPhysicalObj();

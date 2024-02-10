@@ -21,6 +21,8 @@ namespace Toolbox::Game {
         TaskCommunicator() = default;
         ~TaskCommunicator() { kill(); }
 
+        using transact_complete_cb = std::function<void(u32)>;
+
         // Starts the detached thread
         void start() {
             if (!m_started) {
@@ -38,14 +40,27 @@ namespace Toolbox::Game {
             m_kill_condition.wait(lk);
         }
 
-        Result<void> loadScene(u8 stage, u8 scenario);
+        bool isSceneLoaded(u8 stage, u8 scenario);
 
-        Result<void> addSceneObject(RefPtr<ISceneObject> object, RefPtr<GroupSceneObject> parent);
+        Result<void> taskLoadScene(u8 stage, u8 scenario,
+                                   transact_complete_cb complete_cb = nullptr);
 
-        Result<void> removeSceneObject(RefPtr<ISceneObject> object,
-                                       RefPtr<GroupSceneObject> parent);
+        Result<void> taskFindActorPtr(RefPtr<ISceneObject> actor,
+                                      transact_complete_cb complete_cb = nullptr);
+
+        Result<void> taskAddSceneObject(RefPtr<ISceneObject> object,
+                                        RefPtr<GroupSceneObject> parent,
+                                        transact_complete_cb complete_cb = nullptr);
+
+        Result<void> taskRemoveSceneObject(RefPtr<ISceneObject> object,
+                                           RefPtr<GroupSceneObject> parent,
+                                           transact_complete_cb complete_cb = nullptr);
+
+        Result<void> taskPlayCameraDemo(std::string_view demo_name,
+                                        transact_complete_cb complete_cb = nullptr);
 
         Result<void> updateSceneObjectParameter(const QualifiedName &member_name,
+                                                size_t member_game_offset,
                                                 RefPtr<ISceneObject> object,
                                                 RefPtr<GroupSceneObject> parent);
 
@@ -54,8 +69,6 @@ namespace Toolbox::Game {
 
         Result<void> setObjectTransformToCamera(RefPtr<PhysicalSceneObject> object,
                                                 RefPtr<GroupSceneObject> parent);
-
-        Result<void> playCameraDemo(std::string_view demo_name);
 
         Result<void> setCameraTransformToGameCamera(Transform &camera_transform);
 
@@ -66,15 +79,15 @@ namespace Toolbox::Game {
     protected:
         template <typename _Callable, typename... _Args>
         Result<void, SerialError> submitTask(_Callable task, _Args... args) {
-            m_task_queue.push(std::bind([task](Dolphin::DolphinCommunicator &communicator, _Args... _args) {
-                return task(communicator, std::forward<_Args>(_args)...);
-            }, std::placeholders::_1, std::forward<_Args>(args)...));
+            m_task_queue.push(std::bind(
+                [task](Dolphin::DolphinCommunicator &communicator, _Args... _args) {
+                    return task(communicator, std::forward<_Args>(_args)...);
+                },
+                std::placeholders::_1, std::forward<_Args>(args)...));
             return {};
         }
 
         void run();
-
-        Result<u32> findActorPtr(RefPtr<ISceneObject> actor);
 
     private:
         std::queue<std::function<bool(Dolphin::DolphinCommunicator &)>> m_task_queue;
