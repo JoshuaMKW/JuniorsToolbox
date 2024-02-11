@@ -2,6 +2,7 @@
 
 #include "core/types.hpp"
 
+// From Dolphin
 enum Opcode : Toolbox::u8 {
     Invalid,
     Subtable,

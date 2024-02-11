@@ -1,6 +1,8 @@
 #pragma once
 
+#include "core/core.hpp"
 #include "core/memory.hpp"
+
 #include "registers.hpp"
 #include "serial.hpp"
 
@@ -41,70 +43,70 @@ namespace Toolbox::Interpreter {
     public:
         FixedPointProcessor() = default;
         void process(const PPC::DForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::XER &xer);
+                     Register::LR &lr, Register::CTR &ctr);
         void process(const PPC::DSForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::XER &xer);
+                     Register::LR &lr, Register::CTR &ctr);
         void process(const PPC::MForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::XER &xer);
+                     Register::LR &lr, Register::CTR &ctr);
         void process(const PPC::MDForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::XER &xer);
+                     Register::LR &lr, Register::CTR &ctr);
         void process(const PPC::MDSForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::XER &xer);
+                     Register::LR &lr, Register::CTR &ctr);
         void process(const PPC::XForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::XER &xer);
+                     Register::LR &lr, Register::CTR &ctr);
         void process(const PPC::XFXForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::XER &xer);
+                     Register::LR &lr, Register::CTR &ctr);
         void process(const PPC::XOForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::XER &xer);
+                     Register::LR &lr, Register::CTR &ctr);
         void process(const PPC::XSForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::XER &xer);
+                     Register::LR &lr, Register::CTR &ctr);
 
     private:
         // Memory
-        void lbz(u8 rt, u8 ra, s16 d, Buffer &memory);
-        void lbzu(u8 rt, u8 ra, s16 d, Register::PC &pc, Buffer &memory);
+        void lbz(u8 rt, s16 d, u8 ra, Buffer &memory);
+        void lbzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
         void lbzx(u8 rt, u8 ra, u8 rb, Buffer &memory);
         void lbzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
 
-        void lhz(u8 rt, u8 ra, s16 d, Buffer &memory);
-        void lhzu(u8 rt, u8 ra, s16 d, Register::PC &pc, Buffer &memory);
+        void lhz(u8 rt, s16 d, u8 ra, Buffer &memory);
+        void lhzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
         void lhzx(u8 rt, u8 ra, u8 rb, Buffer &memory);
         void lhzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
-        void lha(u8 rt, u8 ra, s16 d, Buffer &memory);
-        void lhau(u8 rt, u8 ra, s16 d, Register::PC &pc, Buffer &memory);
+        void lha(u8 rt, s16 d, u8 ra, Buffer &memory);
+        void lhau(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
         void lhax(u8 rt, u8 ra, u8 rb, Buffer &memory);
         void lhaux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
 
-        void lwz(u8 rt, u8 ra, s16 d, Buffer &memory);
-        void lwzu(u8 rt, u8 ra, s16 d, Register::PC &pc, Buffer &memory);
+        void lwz(u8 rt, s16 d, u8 ra, Buffer &memory);
+        void lwzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
         void lwzx(u8 rt, u8 ra, u8 rb, Buffer &memory);
         void lwzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
-        void lwa(u8 rt, u8 ra, s16 d, Buffer &memory);
+        void lwa(u8 rt, s16 d, u8 ra, Buffer &memory);
         void lwax(u8 rt, u8 ra, u8 rb, Buffer &memory);
         void lwaux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
 
-        void ld(u8 rt, u8 ra, s16 d, Buffer &memory);
-        void ldu(u8 rt, u8 ra, s16 d, Register::PC &pc, Buffer &memory);
+        void ld(u8 rt, s16 d, u8 ra, Buffer &memory);
+        void ldu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
         void ldx(u8 rt, u8 ra, u8 rb, Buffer &memory);
         void ldux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
 
-        void stb(u8 rs, u8 ra, s16 d, Buffer &memory);
-        void stbu(u8 rs, u8 ra, s16 d, Register::PC &pc, Buffer &memory);
+        void stb(u8 rs, s16 d, u8 ra, Buffer &memory);
+        void stbu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
         void stbx(u8 rs, u8 ra, u8 rb, Buffer &memory);
         void stbux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
 
-        void sth(u8 rs, u8 ra, s16 d, Buffer &memory);
-        void sthu(u8 rs, u8 ra, s16 d, Register::PC &pc, Buffer &memory);
+        void sth(u8 rs, s16 d, u8 ra, Buffer &memory);
+        void sthu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
         void sthx(u8 rs, u8 ra, u8 rb, Buffer &memory);
         void sthux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
 
-        void stw(u8 rs, u8 ra, s16 d, Buffer &memory);
-        void stwu(u8 rs, u8 ra, s16 d, Register::PC &pc, Buffer &memory);
+        void stw(u8 rs, s16 d, u8 ra, Buffer &memory);
+        void stwu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
         void stwx(u8 rs, u8 ra, u8 rb, Buffer &memory);
         void stwux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
 
-        void std(u8 rs, u8 ra, s16 d, Buffer &memory);
-        void stdu(u8 rs, u8 ra, s16 d, Register::PC &pc, Buffer &memory);
+        void std(u8 rs, s16 d, u8 ra, Buffer &memory);
+        void stdu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
         void stdx(u8 rs, u8 ra, u8 rb, Buffer &memory);
         void stdux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
 
@@ -114,8 +116,8 @@ namespace Toolbox::Interpreter {
         void sthbrx(u8 rs, u8 ra, u8 rb, Buffer &memory);
         void stwbrx(u8 rs, u8 ra, u8 rb, Buffer &memory);
 
-        void lmw(u8 rt, u8 ra, s16 d, Buffer &memory);
-        void stmw(u8 rs, u8 ra, s16 d, Buffer &memory);
+        void lmw(u8 rt, s16 d, u8 ra, Buffer &memory);
+        void stmw(u8 rs, s16 d, u8 ra, Buffer &memory);
 
         void lswi(u8 rt, u8 ra, u8 nb, Buffer &memory);
         void lswx(u8 rt, u8 ra, u8 rb, Buffer &memory);
@@ -127,31 +129,31 @@ namespace Toolbox::Interpreter {
 
         void addi(u8 rt, u8 ra, s16 si);
         void addis(u8 rt, u8 ra, s16 si);
-        void add(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void addic(u8 rt, u8 ra, s16 si, bool rc, Register::CR &cr, Register::XER &xer);
-        void subf(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void subfic(u8 rt, u8 ra, s16 si, Register::XER &xer);
-        void addc(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void subfc(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void adde(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void subfe(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void addme(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void subfme(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void addze(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void subfze(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
+        void add(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
+        void addic(u8 rt, u8 ra, s16 si, bool rc, Register::CR &cr);
+        void subf(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
+        void subfic(u8 rt, u8 ra, s16 si);
+        void addc(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
+        void subfc(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
+        void adde(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
+        void subfe(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
+        void addme(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr);
+        void subfme(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr);
+        void addze(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr);
+        void subfze(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr);
 
         void mulli(u8 rt, u8 ra, s16 si);
-        void mulld(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void mullw(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
+        void mulld(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
+        void mullw(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
         void mullhd(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr);
         void mullhdu(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr);
         void mullhw(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr);
         void mullhwu(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr);
 
-        void divd(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void divw(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void divdu(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
-        void divwu(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr, Register::XER &xer);
+        void divd(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
+        void divw(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
+        void divdu(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
+        void divwu(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
 
         // Compare
 
@@ -208,20 +210,120 @@ namespace Toolbox::Interpreter {
         void slw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
         void srd(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
         void srw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
-        void sradi(u8 ra, u8 rs, u8 sh, bool rc, Register::CR &cr, Register::XER &xer);
-        void srawi(u8 ra, u8 rs, u8 sh, bool rc, Register::CR &cr, Register::XER &xer);
-        void srad(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr, Register::XER &xer);
-        void sraw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr, Register::XER &xer);
+        void sradi(u8 ra, u8 rs, u8 sh, bool rc, Register::CR &cr);
+        void srawi(u8 ra, u8 rs, u8 sh, bool rc, Register::CR &cr);
+        void srad(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
+        void sraw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
 
         // SPRs
 
-        void mtspr(u16 spr, u8 rs, Register::XER &xer, Register::LR &lr, Register::CTR &ctr);
-        void mfspr(u16 spr, u8 rt, const Register::XER &xer, const Register::LR &lr,
-                   const Register::CTR &ctr);
+        void mtspr(u16 spr, u8 rs, Register::LR &lr, Register::CTR &ctr);
+        void mfspr(u16 spr, u8 rt, const Register::LR &lr, const Register::CTR &ctr);
         void mtcrf(u16 fxm, u8 rs, Register::CR &cr);
         void mfcr(u8 rt, const Register::CR &cr);
 
+        // Extended
+
+        void mtocrf(u8 fxm, u8 rs, Register::CR &cr);
+        void mfocrf(u8 fxm, u8 rt, const Register::CR &cr);
+
+        Register::XER m_xer;
         Register::GPR m_gpr[32];
+    };
+
+    class FloatingPointProcessor {
+    public:
+        FloatingPointProcessor() = default;
+        void process(const PPC::AForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr);
+        void process(const PPC::DForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr);
+        void process(const PPC::XForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr);
+        void process(const PPC::XFLForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr);
+
+    private:
+        // Memory
+
+        void lfs(u8 frt, s16 d, u8 ra);
+        void lfsu(u8 frt, s16 d, u8 ra);
+        void lfsx(u8 frt, u8 ra, u8 rb);
+        void lfsux(u8 frt, u8 ra, u8 rb);
+
+        void lfd(u8 frt, s16 d, u8 ra);
+        void lfdu(u8 frt, s16 d, u8 ra);
+        void lfdx(u8 frt, u8 ra, u8 rb);
+        void lfdux(u8 frt, u8 ra, u8 rb);
+
+        void stfs(u8 frs, s16 d, u8 ra);
+        void stfsu(u8 frs, s16 d, u8 ra);
+        void stfsx(u8 frs, u8 ra, u8 rb);
+        void stfsux(u8 frs, u8 ra, u8 rb);
+
+        void stfd(u8 frs, s16 d, u8 ra);
+        void stfdu(u8 frs, s16 d, u8 ra);
+        void stfdx(u8 frs, u8 ra, u8 rb);
+        void stfdux(u8 frs, u8 ra, u8 rb);
+
+        void stfiwx(u8 frs, u8 ra, u8 rb);
+
+        // Move
+
+        void fmr(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void fabs(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void fneg(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void fnabs(u8 frt, u8 frb, bool rc, Register::CR &cr);
+
+        // Math
+
+        void fadd(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
+        void fadds(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
+        void fsub(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
+        void fsubs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
+        void fmul(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
+        void fmuls(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
+        void fdiv(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
+        void fdivs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
+
+        void fmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
+        void fmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
+        void fmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
+        void fmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
+        void fnmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
+        void fnmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
+        void fnmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
+        void fnmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
+
+        // Rounding and conversion
+
+        void fsrp(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void fctid(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void fdtidz(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void fcfid(u8 frt, u8 frb, bool rc, Register::CR &cr);
+
+        // Compare
+
+        void fcmpu(u8 bf, u8 fra, u8 frb, Register::CR &cr);
+        void fcmpo(u8 bf, u8 fra, u8 frb, Register::CR &cr);
+
+        // FPSCR
+
+        void mffs(u8 frt, bool rc, Register::CR &cr);
+        void mcrfs(u8 bf, u8 bfa, Register::CR &cr);
+        void mtfsfi(u8 bf, u8 u, bool rc, Register::CR &cr);
+        void mtfsf(u8 flm, u8 frb, bool rc, Register::CR &cr);
+        void mtfsb0(u8 bt, bool rc, Register::CR &cr);
+        void mtfsb1(u8 bt, bool rc, Register::CR &cr);
+
+        // Extended
+
+        void fsqrt(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void fsqrts(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void fre(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void fres(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void frsqrte(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void frsqrtes(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void fsel(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
+
+        Register::FPSCR m_fpscr;
+        Register::FPR m_fpr[32];
     };
 
 }  // namespace Toolbox::Interpreter
