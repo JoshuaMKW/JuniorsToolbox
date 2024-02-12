@@ -107,8 +107,11 @@ namespace Toolbox::Dolphin {
             return {};
         }
 
+        std::string dolphin_args = std::format(
+            "-e {}/sys/main.dol -d -c -a HLE", application.getProjectRoot().string());
+
         auto process_result = Platform::CreateExProcess(
-            "C:/Users/Kyler-Josh/3D Objects/Dolphin/Dolphin-x64/Dolphin.exe",
+            settings.m_dolphin_path,
             "-e C:/Users/Kyler-Josh/Dropbox/Master_Builds/Eclipse_Master/sys/main.dol -d -c -a "
             "HLE");
         if (!process_result) {
