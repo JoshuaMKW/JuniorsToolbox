@@ -129,6 +129,13 @@ namespace Toolbox::UI {
                     bool throwaway = false;
                     if (ImGui::Selectable(profile.c_str(), &throwaway)) {
                         manager.setCurrentProfile(profile);
+                        std::string dolphin_path_str =
+                            manager.getCurrentProfile().m_dolphin_path.string();
+                        for (size_t i = 0;
+                             i < std::min(dolphin_path_str.size(), m_dolphin_path_input.size());
+                             ++i) {
+                            m_dolphin_path_input[i] = dolphin_path_str[i];
+                        }
                         break;
                     }
                 }
@@ -323,13 +330,7 @@ namespace Toolbox::UI {
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
         if (ImGui::BeginGroupPanel("Dolphin Integration", nullptr, {})) {
-            m_dolphin_path_input.fill('\0');
-            if (!settings.m_dolphin_path.empty()) {
-                std::copy(settings.m_dolphin_path.string().begin(),
-                          settings.m_dolphin_path.string().end(), m_dolphin_path_input.begin());
-            }
-
-            s64 min = 10;
+            s64 min = 1;
             s64 max = 100;
             float button_width =
                 ImGui::CalcTextSize("...").x + ImGui::GetStyle().FramePadding.x * 2.0f;
@@ -379,8 +380,7 @@ namespace Toolbox::UI {
 
         if (m_is_path_dialog_open) {
             ImGuiFileDialog::Instance()->OpenDialog(
-                "OpenDolphinDialog", "Choose Dolphin EXE",
-                {"Dolphin{.exe}"},
+                "OpenDolphinDialog", "Choose Dolphin EXE", {"Dolphin{.exe}"},
                 settings.m_dolphin_path.string(), "Dolphin.exe");
         }
 
@@ -401,6 +401,11 @@ namespace Toolbox::UI {
                 }
 
                 settings.m_dolphin_path = path;
+                std::string path_str    = path.string();
+                for (size_t i = 0; i < std::min(path_str.size(), m_dolphin_path_input.size());
+                     ++i) {
+                    m_dolphin_path_input[i] = path_str[i];
+                }
             }
         }
     }
