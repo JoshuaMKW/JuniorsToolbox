@@ -53,7 +53,7 @@ namespace Toolbox::Game {
     }
 
     Result<void> TaskCommunicator::taskFindActorPtr(RefPtr<ISceneObject> actor,
-                                                   transact_complete_cb complete_cb) {
+                                                    transact_complete_cb complete_cb) {
         if (m_actor_address_map.contains(actor->getUUID())) {
             if (complete_cb)
                 complete_cb(m_actor_address_map[actor->getUUID()]);
@@ -61,7 +61,8 @@ namespace Toolbox::Game {
         }
 
         return submitTask(
-            [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object, transact_complete_cb cb) {
+            [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object,
+                transact_complete_cb cb) {
                 // Early exit to avoid errors
                 if (!communicator.manager().isHooked()) {
                     return false;
@@ -170,6 +171,11 @@ namespace Toolbox::Game {
             return false;
         }
 
+        u16 mar_director_state = communicator.read<u16>(mar_director_address + 0x4C).value();
+        if (mar_director_state == 0) {
+            return false;
+        }
+
         return true;
     }
 
@@ -214,43 +220,48 @@ namespace Toolbox::Game {
                     if (communicator.read<u8>(application_addr + 0x8).value() ==
                         c_mar_director_id) {
                         // Check if already communicated
-                        if ((comm_state & BIT(31))) {
-                            return false;
+                        if (!(comm_state & BIT(31))) {
+                            communicator.write<u32>(0x80000298, comm_state | BIT(31));
+
+                            u32 mar_director_address =
+                                communicator.read<u32>(application_addr + 0x4).value();
+
+                            u16 mar_director_state =
+                                communicator.read<u16>(mar_director_address + 0x4C).value();
+
+                            u16 new_flags = 0;
+                            if ((game_stage == 1 && stage == 5) ||
+                                (game_stage == 1 && stage == 6) ||
+                                (game_stage == 1 && stage == 11)) {
+                                new_flags |= 0x8;
+                            } else {
+                                new_flags |= 0x2;
+                            }
+                            if (stage == 7) {
+                                new_flags |= 0x100;
+                            }
+
+                            communicator.write<u16>(mar_director_address + 0x4C,
+                                                    mar_director_state | new_flags);
                         }
-                        communicator.write<u32>(0x80000298, comm_state | BIT(31));
 
-                        u32 mar_director_address =
-                            communicator.read<u32>(application_addr + 0x4).value();
+                        return false;
+                    } else {
+                        // ... todo: allow for direct boot out of other directors?
 
-                        u16 mar_director_state =
-                            communicator.read<u16>(mar_director_address + 0x4C).value();
-
-                        u16 new_flags = 0;
-                        if ((game_stage == 1 && stage == 5) || (game_stage == 1 && stage == 6) ||
-                            (game_stage == 1 && stage == 11)) {
-                            new_flags |= 0x8;
-                        } else {
-                            new_flags |= 0x2;
-                        }
-                        if (stage == 7) {
-                            new_flags |= 0x100;
-                        }
-
-                        communicator.write<u16>(mar_director_address + 0x4C,
-                                                mar_director_state | new_flags);
-
-                        communicator.write<u32>(0x80000298, comm_state & ~BIT(31));
-
-                        if (cb)
-                            cb(communicator.read<u32>(0x800002E8).value());
-                        return true;
+                        return false;
                     }
-
-                    return false;
                 }
 
-                communicator.write<u32>(0x80000298, comm_state & ~BIT(31));
-                return true;
+                // Stage is loaded and the task was performed
+                if (isSceneLoaded(stage, scenario)) {
+                    if (cb)
+                        cb(communicator.read<u32>(0x800002E8).value());
+                    communicator.write<u32>(0x80000298, comm_state & ~BIT(31));
+                    return true;
+                }
+
+                return false;
             },
             stage, scenario, complete_cb);
     }

@@ -45,9 +45,10 @@ namespace Toolbox {
         std::vector<int> m_gizmo_scale_mode_keybind     = {GLFW_KEY_3};
 
         // Advanced
-        s64 m_dolphin_refresh_rate       = 100;  // In milliseconds
-        bool m_is_template_cache_allowed = true;
-        bool m_log_to_cout_cerr          = false;
+        std::filesystem::path m_dolphin_path = "";
+        s64 m_dolphin_refresh_rate           = 100;  // In milliseconds
+        bool m_is_template_cache_allowed     = true;
+        bool m_log_to_cout_cerr              = false;
     };
 
     class SettingsManager {
@@ -91,16 +92,14 @@ namespace Toolbox {
             return names;
         }
 
-        Result<void, SerialError> addProfile(std::string_view name,
-                                                    const AppSettings &profile);
+        Result<void, SerialError> addProfile(std::string_view name, const AppSettings &profile);
         Result<void, SerialError> removeProfile(std::string_view name);
 
     protected:
         Result<void, SerialError> loadProfiles();
         Result<void, SerialError> saveProfiles();
 
-        Result<void, SerialError> saveProfile(std::string_view name,
-                                                     const AppSettings &profile);
+        Result<void, SerialError> saveProfile(std::string_view name, const AppSettings &profile);
 
     private:
         std::filesystem::path m_profile_path;

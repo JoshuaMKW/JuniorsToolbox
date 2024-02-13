@@ -310,6 +310,9 @@ namespace Toolbox {
     is_block_file(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_block_file(p, ec);
+        if (result) {
+            return result;
+        }
         if (ec) {
             return std::unexpected(ec);
         }
@@ -320,6 +323,9 @@ namespace Toolbox {
     is_character_file(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_character_file(p, ec);
+        if (result) {
+            return result;
+        }
         if (ec) {
             return std::unexpected(ec);
         }
@@ -330,7 +336,7 @@ namespace Toolbox {
     is_directory(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_directory(p, ec);
-        if (!result) {
+        if (result) {
             return result;
         }
         if (ec) {
@@ -343,6 +349,9 @@ namespace Toolbox {
     is_empty(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_empty(p, ec);
+        if (result) {
+            return result;
+        }
         if (ec) {
             return std::unexpected(ec);
         }
@@ -353,6 +362,9 @@ namespace Toolbox {
     is_fifo(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_fifo(p, ec);
+        if (result) {
+            return result;
+        }
         if (ec) {
             return std::unexpected(ec);
         }
@@ -363,6 +375,9 @@ namespace Toolbox {
     is_other(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_other(p, ec);
+        if (result) {
+            return result;
+        }
         if (ec) {
             return std::unexpected(ec);
         }
@@ -373,6 +388,9 @@ namespace Toolbox {
     is_regular_file(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_regular_file(p, ec);
+        if (result) {
+            return result;
+        }
         if (ec) {
             return std::unexpected(ec);
         }
@@ -383,6 +401,9 @@ namespace Toolbox {
     is_socket(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_socket(p, ec);
+        if (result) {
+            return result;
+        }
         if (ec) {
             return std::unexpected(ec);
         }
@@ -393,6 +414,9 @@ namespace Toolbox {
     is_symlink(const std::filesystem::path &p) {
         std::error_code ec;
         auto result = std::filesystem::is_symlink(p, ec);
+        if (result) {
+            return result;
+        }
         if (ec) {
             return std::unexpected(ec);
         }

@@ -27,7 +27,7 @@ namespace Toolbox {
     }
 
     bool SettingsManager::save() {
-        auto result       = saveProfiles();
+        auto result = saveProfiles();
         if (!result) {
             UI::logSerialError(result.error());
             return false;
@@ -46,8 +46,7 @@ namespace Toolbox {
         return true;
     }
 
-    Result<void, SerialError>
-    SettingsManager::loadProfiles() {
+    Result<void, SerialError> SettingsManager::loadProfiles() {
         auto path_result = Toolbox::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
             return {};
@@ -93,6 +92,7 @@ namespace Toolbox {
                 settings.m_far_plane            = j["Camera Far Plane"];
 
                 // Advanced
+                settings.m_dolphin_path              = std::filesystem::path(std::string(j["Dolphin Path"]));
                 settings.m_dolphin_refresh_rate      = j["Dolphin Refresh Rate"];
                 settings.m_is_template_cache_allowed = j["Cache Object Templates"];
                 settings.m_log_to_cout_cerr          = j["Log To Terminal"];
@@ -119,8 +119,7 @@ namespace Toolbox {
         return {};
     }
 
-    Result<void, SerialError>
-    SettingsManager::saveProfiles() {
+    Result<void, SerialError> SettingsManager::saveProfiles() {
         auto path_result = Toolbox::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
             TOOLBOX_WARN("Folder \"Profiles\" not found, generating the folder now.");
@@ -143,7 +142,7 @@ namespace Toolbox {
     }
 
     Result<void, SerialError> SettingsManager::addProfile(std::string_view name,
-                                                                 const AppSettings &profile) {
+                                                          const AppSettings &profile) {
         m_settings_profiles[std::string(name)] = profile;
         return saveProfile(name, profile);
     }
@@ -162,7 +161,7 @@ namespace Toolbox {
         }
 
         std::filesystem::path child_path = m_profile_path / (std::string(name) + ".json");
-        auto result = Toolbox::remove(child_path);
+        auto result                      = Toolbox::remove(child_path);
         if (!result) {
             TOOLBOX_ERROR("Failed to remove deleted profile from Folder \"Profiles\"");
         }
@@ -172,7 +171,8 @@ namespace Toolbox {
         return {};
     }
 
-    Result<void, SerialError> SettingsManager::saveProfile(std::string_view name, const AppSettings &profile) {
+    Result<void, SerialError> SettingsManager::saveProfile(std::string_view name,
+                                                           const AppSettings &profile) {
         auto path_result = Toolbox::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
             TOOLBOX_WARN("Folder \"Profiles\" not found, generating the folder now.");
@@ -213,6 +213,7 @@ namespace Toolbox {
             j["Camera Far Plane"]   = profile.m_far_plane;
 
             // Advanced
+            j["Dolphin Path"]           = profile.m_dolphin_path.string();
             j["Dolphin Refresh Rate"]   = profile.m_dolphin_refresh_rate;
             j["Cache Object Templates"] = profile.m_is_template_cache_allowed;
             j["Log To Terminal"]        = profile.m_log_to_cout_cerr;

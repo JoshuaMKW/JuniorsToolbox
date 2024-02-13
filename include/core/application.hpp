@@ -55,6 +55,10 @@ namespace Toolbox {
 
         DolphinCommunicator &getDolphinCommunicator() { return m_dolphin_communicator; }
 
+        std::filesystem::path getProjectRoot() const {
+            return m_project_root;
+        }
+
         ImVec2 windowScreenPos() {
             int x = 0, y = 0;
             if (m_render_window) {
@@ -84,6 +88,10 @@ namespace Toolbox {
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_clipboard;
         TypedDataClipboard<SelectionNodeInfo<Rail::Rail>> m_rail_clipboard;
         TypedDataClipboard<SelectionNodeInfo<Rail::RailNode>> m_rail_node_clipboard;
+
+        std::filesystem::path m_project_root = std::filesystem::current_path();
+        std::filesystem::path m_load_path = std::filesystem::current_path();
+        std::filesystem::path m_save_path = std::filesystem::current_path();
 
         GLFWwindow *m_render_window;
         std::vector<RefPtr<IWindow>> m_windows;
