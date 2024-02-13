@@ -8,18 +8,88 @@
 
 namespace Toolbox::Interpreter {
 
-    class BranchProcessor {
-    public:
-        BranchProcessor() = default;
+    using func_ret_cb = std::function<void(const Register::RegisterSnapshot &snapshot)>;
+    using func_exception_cb =
+        std::function<void(u32 bad_instr_ptr, const Register::RegisterSnapshot &snapshot)>;
 
-        void process(const PPC::BForm &instr, Register::PC &pc);
-        void process(const PPC::IForm &instr, Register::PC &pc);
-        void process(const PPC::SCForm &instr, Register::PC &pc);
-        void process(const PPC::XLForm &instr, Register::PC &pc);
+    enum class BOHint : u8 {
+        NONE,
+        RESERVED,
+        UNLIKELY,
+        LIKELY,
+    };
+
+    enum class SyncType : u8 {
+        HEAVY,
+        LIGHT,
+        HEAVY_ORDERED,
+        RESERVED,
+    };
+
+    enum class DataCacheHintType : u8 {
+        THIS_BLOCK,
+        THIS_STREAM_ALL,
+        THIS_BLOCK_ALL,
+        STREAM_DESCRIPT = 8,
+    };
+
+    class SystemProcessor {
+    public:
+        friend class SystemDolphin;
+
+        SystemProcessor() = default;
+
+        void onException(func_exception_cb cb) { m_exception_cb = cb; }
 
     private:
+        void mftb(u8 rt, u16 tbr);
+
+        // Storage control
+
+        void icbi(u8 ra, u8 rb, Buffer &storage) {}
+        void dcbt(u8 ra, u8 rb, DataCacheHintType th, Buffer &storage) {}
+        void dcbf(u8 ra, u8 rb, bool l, Buffer &storage) {}
+        void dcbtst(u8 ra, u8 rb, Buffer &storage) {}
+        void dcbz(u8 ra, u8 rb, Buffer &storage) {}
+        void dcbst(u8 ra, u8 rb, Buffer &storage) {}
+
+        // Sync - order
+
+        void isync() {}
+        void sync(SyncType l) {}
+        void eieio() {}
+
+        // External control
+
+        void eciwx(u8 rt, u8 ra, u8 rb, Buffer &storage) {}
+        void ecowx(u8 rs, u8 ra, u8 rb, Buffer &storage) {}
+
+        // Interrupt flow
+
+        void rfid() {}
+        void hrfid() {}
+
+        Register::PC m_pc;
+        Register::TB m_tb;
+        Register::MSR m_msr;
+        Register::DAR m_dar;
+        Register::DSISR m_dsisr;
+
+        func_exception_cb m_exception_cb;
+    };
+
+    class BranchProcessor {
+    public:
+        friend class SystemDolphin;
+
+        BranchProcessor() = default;
+
+        void onReturn(func_ret_cb cb) { m_return_cb = cb; }
+        void onException(func_exception_cb cb) { m_exception_cb = cb; }
+
+    protected:
         void b(s32 target_addr, bool aa, bool lk, Register::PC &pc);
-        void bc(s32 target_addr, u8 bi, u8 bo, bool aa, bool lk, Register::PC &pc);
+        void bc(s32 target_addr, u8 bo, u8 bi, bool aa, bool lk, Register::PC &pc);
         void bclr(u8 bo, u8 bi, u8 bh, bool lk, Register::PC &pc);
         void bcctr(u8 bo, u8 bi, u8 bh, bool lk, Register::PC &pc);
 
@@ -34,96 +104,86 @@ namespace Toolbox::Interpreter {
         void crnor(u8 bt, u8 ba, u8 bb, Register::PC &pc);
         void crxor(u8 bt, u8 ba, u8 bb, Register::PC &pc);
 
+    private:
         Register::CR m_cr;
         Register::LR m_lr;
         Register::CTR m_ctr;
+
+        func_ret_cb m_return_cb;
+        func_exception_cb m_exception_cb;
     };
 
     class FixedPointProcessor {
     public:
+        friend class SystemDolphin;
+
         FixedPointProcessor() = default;
-        void process(const PPC::DForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::LR &lr, Register::CTR &ctr);
-        void process(const PPC::DSForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::LR &lr, Register::CTR &ctr);
-        void process(const PPC::MForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::LR &lr, Register::CTR &ctr);
-        void process(const PPC::MDForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::LR &lr, Register::CTR &ctr);
-        void process(const PPC::MDSForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::LR &lr, Register::CTR &ctr);
-        void process(const PPC::XForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::LR &lr, Register::CTR &ctr);
-        void process(const PPC::XFXForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::LR &lr, Register::CTR &ctr);
-        void process(const PPC::XOForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::LR &lr, Register::CTR &ctr);
-        void process(const PPC::XSForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr,
-                     Register::LR &lr, Register::CTR &ctr);
 
-    private:
+        void onException(func_exception_cb cb) { m_exception_cb = cb; }
+
+    protected:
         // Memory
-        void lbz(u8 rt, s16 d, u8 ra, Buffer &memory);
-        void lbzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
-        void lbzx(u8 rt, u8 ra, u8 rb, Buffer &memory);
-        void lbzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
+        void lbz(u8 rt, s16 d, u8 ra, Buffer &storage);
+        void lbzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void lbzx(u8 rt, u8 ra, u8 rb, Buffer &storage);
+        void lbzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
 
-        void lhz(u8 rt, s16 d, u8 ra, Buffer &memory);
-        void lhzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
-        void lhzx(u8 rt, u8 ra, u8 rb, Buffer &memory);
-        void lhzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
-        void lha(u8 rt, s16 d, u8 ra, Buffer &memory);
-        void lhau(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
-        void lhax(u8 rt, u8 ra, u8 rb, Buffer &memory);
-        void lhaux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
+        void lhz(u8 rt, s16 d, u8 ra, Buffer &storage);
+        void lhzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void lhzx(u8 rt, u8 ra, u8 rb, Buffer &storage);
+        void lhzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
+        void lha(u8 rt, s16 d, u8 ra, Buffer &storage);
+        void lhau(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void lhax(u8 rt, u8 ra, u8 rb, Buffer &storage);
+        void lhaux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
 
-        void lwz(u8 rt, s16 d, u8 ra, Buffer &memory);
-        void lwzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
-        void lwzx(u8 rt, u8 ra, u8 rb, Buffer &memory);
-        void lwzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
-        void lwa(u8 rt, s16 d, u8 ra, Buffer &memory);
-        void lwax(u8 rt, u8 ra, u8 rb, Buffer &memory);
-        void lwaux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
+        void lwz(u8 rt, s16 d, u8 ra, Buffer &storage);
+        void lwzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void lwzx(u8 rt, u8 ra, u8 rb, Buffer &storage);
+        void lwzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
+        void lwa(u8 rt, s16 d, u8 ra, Buffer &storage);
+        void lwax(u8 rt, u8 ra, u8 rb, Buffer &storage);
+        void lwaux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
 
-        void ld(u8 rt, s16 d, u8 ra, Buffer &memory);
-        void ldu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
-        void ldx(u8 rt, u8 ra, u8 rb, Buffer &memory);
-        void ldux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
+        void ld(u8 rt, s16 d, u8 ra, Buffer &storage);
+        void ldu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void ldx(u8 rt, u8 ra, u8 rb, Buffer &storage);
+        void ldux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
 
-        void stb(u8 rs, s16 d, u8 ra, Buffer &memory);
-        void stbu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
-        void stbx(u8 rs, u8 ra, u8 rb, Buffer &memory);
-        void stbux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
+        void stb(u8 rs, s16 d, u8 ra, Buffer &storage);
+        void stbu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void stbx(u8 rs, u8 ra, u8 rb, Buffer &storage);
+        void stbux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
 
-        void sth(u8 rs, s16 d, u8 ra, Buffer &memory);
-        void sthu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
-        void sthx(u8 rs, u8 ra, u8 rb, Buffer &memory);
-        void sthux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
+        void sth(u8 rs, s16 d, u8 ra, Buffer &storage);
+        void sthu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void sthx(u8 rs, u8 ra, u8 rb, Buffer &storage);
+        void sthux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
 
-        void stw(u8 rs, s16 d, u8 ra, Buffer &memory);
-        void stwu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
-        void stwx(u8 rs, u8 ra, u8 rb, Buffer &memory);
-        void stwux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
+        void stw(u8 rs, s16 d, u8 ra, Buffer &storage);
+        void stwu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void stwx(u8 rs, u8 ra, u8 rb, Buffer &storage);
+        void stwux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
 
-        void std(u8 rs, s16 d, u8 ra, Buffer &memory);
-        void stdu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &memory);
-        void stdx(u8 rs, u8 ra, u8 rb, Buffer &memory);
-        void stdux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &memory);
+        void std(u8 rs, s16 d, u8 ra, Buffer &storage);
+        void stdu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void stdx(u8 rs, u8 ra, u8 rb, Buffer &storage);
+        void stdux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
 
-        void lhbrx(u8 rt, u8 ra, u8 rb, Buffer &memory);
-        void lwbrx(u8 rt, u8 ra, u8 rb, Buffer &memory);
+        void lhbrx(u8 rt, u8 ra, u8 rb, Buffer &storage);
+        void lwbrx(u8 rt, u8 ra, u8 rb, Buffer &storage);
 
-        void sthbrx(u8 rs, u8 ra, u8 rb, Buffer &memory);
-        void stwbrx(u8 rs, u8 ra, u8 rb, Buffer &memory);
+        void sthbrx(u8 rs, u8 ra, u8 rb, Buffer &storage);
+        void stwbrx(u8 rs, u8 ra, u8 rb, Buffer &storage);
 
-        void lmw(u8 rt, s16 d, u8 ra, Buffer &memory);
-        void stmw(u8 rs, s16 d, u8 ra, Buffer &memory);
+        void lmw(u8 rt, s16 d, u8 ra, Buffer &storage);
+        void stmw(u8 rs, s16 d, u8 ra, Buffer &storage);
 
-        void lswi(u8 rt, u8 ra, u8 nb, Buffer &memory);
-        void lswx(u8 rt, u8 ra, u8 rb, Buffer &memory);
+        void lswi(u8 rt, u8 ra, u8 nb, Buffer &storage);
+        void lswx(u8 rt, u8 ra, u8 rb, Buffer &storage);
 
-        void stswi(u8 rt, u8 ra, u8 nb, Buffer &memory);
-        void stswx(u8 rt, u8 ra, u8 rb, Buffer &memory);
+        void stswi(u8 rt, u8 ra, u8 nb, Buffer &storage);
+        void stswx(u8 rt, u8 ra, u8 rb, Buffer &storage);
 
         // Math
 
@@ -217,29 +277,34 @@ namespace Toolbox::Interpreter {
 
         // SPRs
 
-        void mtspr(u16 spr, u8 rs, Register::LR &lr, Register::CTR &ctr);
-        void mfspr(u16 spr, u8 rt, const Register::LR &lr, const Register::CTR &ctr);
+        void mtspr(SPRType spr, u8 rs, Register::LR &lr, Register::CTR &ctr);
+        void mfspr(SPRType spr, u8 rt, const Register::LR &lr, const Register::CTR &ctr);
         void mtcrf(u16 fxm, u8 rs, Register::CR &cr);
         void mfcr(u8 rt, const Register::CR &cr);
+        void mtmsrd(u8 rs, bool l, Register::MSR &msr);
+        void mfmsr(u8 rs, const Register::MSR &msr);
 
         // Extended
 
         void mtocrf(u8 fxm, u8 rs, Register::CR &cr);
         void mfocrf(u8 fxm, u8 rt, const Register::CR &cr);
 
+    private:
         Register::XER m_xer;
         Register::GPR m_gpr[32];
+
+        func_exception_cb m_exception_cb;
     };
 
     class FloatingPointProcessor {
     public:
-        FloatingPointProcessor() = default;
-        void process(const PPC::AForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr);
-        void process(const PPC::DForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr);
-        void process(const PPC::XForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr);
-        void process(const PPC::XFLForm &instr, Register::PC &pc, Buffer &memory, Register::CR &cr);
+        friend class SystemDolphin;
 
-    private:
+        FloatingPointProcessor() = default;
+
+        void onException(func_exception_cb cb) { m_exception_cb = cb; }
+
+    protected:
         // Memory
 
         void lfs(u8 frt, s16 d, u8 ra);
@@ -322,8 +387,11 @@ namespace Toolbox::Interpreter {
         void frsqrtes(u8 frt, u8 frb, bool rc, Register::CR &cr);
         void fsel(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
 
+    private:
         Register::FPSCR m_fpscr;
         Register::FPR m_fpr[32];
+
+        func_exception_cb m_exception_cb;
     };
 
 }  // namespace Toolbox::Interpreter

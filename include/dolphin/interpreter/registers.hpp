@@ -9,8 +9,120 @@ using namespace Toolbox;
 
 namespace Toolbox::Interpreter::Register {
 
+    enum class SPRType : u32 {
+        XER    = 1,
+        LR     = 8,
+        CTR    = 9,
+        DSISR  = 18,
+        DAR    = 19,
+        DEC    = 22,
+        SDR1   = 25,
+        SRR0   = 26,
+        SRR1   = 27,
+        SPRG0  = 272,
+        SPRG1  = 273,
+        SPRG2  = 274,
+        SPRG3  = 275,
+        EAR    = 282,
+        TBL    = 284,
+        TBU    = 285,
+        PVR    = 287,
+        IBAT0U = 528,
+        IBAT0L = 529,
+        IBAT1U = 530,
+        IBAT1L = 531,
+        IBAT2U = 532,
+        IBAT2L = 533,
+        IBAT3U = 534,
+        IBAT3L = 535,
+        DBAT0U = 536,
+        DBAT0L = 537,
+        DBAT1U = 538,
+        DBAT1L = 539,
+        DBAT1U = 540,
+        DBAT1L = 541,
+        DBAT1U = 542,
+        DBAT1L = 543,
+        GQR0   = 912,
+        GQR1   = 913,
+        GQR2   = 914,
+        GQR3   = 915,
+        GQR4   = 916,
+        GQR5   = 917,
+        GQR6   = 918,
+        GQR7   = 919,
+        HID2   = 920,
+        WPAR   = 921,
+        DMA_U  = 922,
+        DMA_L  = 923,
+        ECID_U = 924,
+        ECID_M = 925,
+        ECID_L = 926,
+        UMMCR0 = 936,
+        UPMC1  = 937,
+        UPMC2  = 938,
+        USIA   = 939,
+        UMMCR1 = 940,
+        UPMC3  = 941,
+        UPMC4  = 942,
+        USDA   = 943,
+        MMCR0  = 952,
+        PMC1   = 953,
+        PMC2   = 954,
+        SIA    = 955,
+        MMCR1  = 956,
+        PMC3   = 957,
+        PMC4   = 958,
+        SDA    = 959,
+        HID0   = 1008,
+        HID1   = 1009,
+        IABR   = 1010,
+        HID4   = 1011,
+        DABR   = 1013,
+        L2CR   = 1017,
+        ICTC   = 1019,
+        THRM1  = 1020,
+        THRM2  = 1021,
+        THRM3  = 1022,
+    };
+
     struct PC {
         u64 m_address;
+    };
+
+    struct TB {
+        u64 m_value;
+    };
+
+    struct MSR {
+        bool m_sf          : 1;
+        u8 m_reserved_1    : 2;
+        bool m_hv          : 1;
+        u64 m_reserved_4   : 43;
+        bool m_reserved_47 : 1;
+        bool m_ee          : 1;
+        bool m_pr          : 1;
+        bool m_fp          : 1;
+        bool m_me          : 1;
+        bool m_fe0         : 1;
+        bool m_se          : 1;
+        bool m_be          : 1;
+        bool m_fe1         : 1;
+        u8 m_reserved_56   : 2;
+        bool m_ir          : 1;
+        bool m_dr          : 1;
+        bool m_reserved_60 : 1;
+        bool m_pmm         : 1;
+        bool m_ri          : 1;
+        bool m_le          : 1;
+    };
+
+    struct DAR {
+        u64 m_value;
+    };
+
+    struct DSISR {
+        u32 m_value;
     };
 
     struct GPR {
@@ -244,6 +356,29 @@ namespace Toolbox::Interpreter::Register {
             m_cr0 = CRCmp::EQ | (xer.m_so ? CRCmp::SO : CRCmp::NONE);
             return;
         }
+
+        bool is(u8 field, CRCmp cmp) {
+            switch (field) {
+            case 0:
+                return (bool)(m_cr0 & cmp);
+            case 1:
+                return (bool)(m_cr1 & cmp);
+            case 2:
+                return (bool)(m_cr2 & cmp);
+            case 3:
+                return (bool)(m_cr3 & cmp);
+            case 4:
+                return (bool)(m_cr4 & cmp);
+            case 5:
+                return (bool)(m_cr5 & cmp);
+            case 6:
+                return (bool)(m_cr6 & cmp);
+            case 7:
+                return (bool)(m_cr7 & cmp);
+            default:
+                return false;
+            }
+        }
     };
 
     struct LR {
@@ -255,6 +390,20 @@ namespace Toolbox::Interpreter::Register {
             s64 m_count;
             u64 m_target_address;
         } m_0;
+    };
+
+    struct RegisterSnapshot {
+        GPR m_gpr[32];
+        FPR m_fpr[32];
+        CR m_cr;
+        LR m_lr;
+        CTR m_ctr;
+        XER m_xer;
+        FPSCR m_fpscr;
+        MSR m_msr;
+        TB m_tb;
+        DAR m_dar;
+        DSISR m_dsisr;
     };
 
 }  // namespace Toolbox::Interpreter::Register
