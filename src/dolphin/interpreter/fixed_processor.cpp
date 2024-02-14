@@ -25,43 +25,280 @@ inline u32 MakeRotationMask(u32 mb, u32 me) {
 
 namespace Toolbox::Interpreter {
 
+    inline bool MemoryContainsVAddress(const Buffer &buffer, u32 address) {
+        return address >= 0x80000000 && address < 0x80000000 + buffer.size();
+    }
+
+    inline bool MemoryContainsPAddress(const Buffer &buffer, s32 address) {
+        return address >= 0 && address < buffer.size();
+    }
+
     // Memory
-    void FixedPointProcessor::lbz(u8 rt, s16 d, u8 ra, Buffer &storage) {}
-    void FixedPointProcessor::lbzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage) {}
-    void FixedPointProcessor::lbzx(u8 rt, u8 ra, u8 rb, Buffer &storage) {}
-    void FixedPointProcessor::lbzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage) {}
+    void FixedPointProcessor::lbz(u8 rt, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<u8>(destination);
+    }
 
-    void FixedPointProcessor::lhz(u8 rt, s16 d, u8 ra, Buffer &storage) {}
-    void FixedPointProcessor::lhzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage) {}
-    void FixedPointProcessor::lhzx(u8 rt, u8 ra, u8 rb, Buffer &storage) {}
-    void FixedPointProcessor::lhzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage) {}
-    void FixedPointProcessor::lha(u8 rt, s16 d, u8 ra, Buffer &storage) {}
-    void FixedPointProcessor::lhau(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage) {}
-    void FixedPointProcessor::lhax(u8 rt, u8 ra, u8 rb, Buffer &storage) {}
-    void FixedPointProcessor::lhaux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage) {}
+    void FixedPointProcessor::lbzu(u8 rt, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<u8>(destination);
+        m_gpr[ra] += d;
+    }
 
-    void FixedPointProcessor::lwz(u8 rt, s16 d, u8 ra, Buffer &storage) {}
-    void FixedPointProcessor::lwzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage) {}
-    void FixedPointProcessor::lwzx(u8 rt, u8 ra, u8 rb, Buffer &storage) {}
-    void FixedPointProcessor::lwzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage) {}
-    void FixedPointProcessor::lwa(u8 rt, s16 d, u8 ra, Buffer &storage) {}
-    void FixedPointProcessor::lwax(u8 rt, u8 ra, u8 rb, Buffer &storage) {}
-    void FixedPointProcessor::lwaux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage) {}
+    void FixedPointProcessor::lbzx(u8 rt, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<u8>(destination);
+    }
 
-    void FixedPointProcessor::stb(u8 rs, s16 d, u8 ra, Buffer &storage) {}
-    void FixedPointProcessor::stbu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage) {}
-    void FixedPointProcessor::stbx(u8 rs, u8 ra, u8 rb, Buffer &storage) {}
-    void FixedPointProcessor::stbux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &storage) {}
+    void FixedPointProcessor::lbzux(u8 rt, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<u8>(destination);
+        m_gpr[ra] += m_gpr[rb];
+    }
 
-    void FixedPointProcessor::sth(u8 rs, s16 d, u8 ra, Buffer &storage) {}
-    void FixedPointProcessor::sthu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage) {}
-    void FixedPointProcessor::sthx(u8 rs, u8 ra, u8 rb, Buffer &storage) {}
-    void FixedPointProcessor::sthux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &storage) {}
+    void FixedPointProcessor::lhz(u8 rt, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<u16>(destination);
+    }
 
-    void FixedPointProcessor::stw(u8 rs, s16 d, u8 ra, Buffer &storage) {}
-    void FixedPointProcessor::stwu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage) {}
-    void FixedPointProcessor::stwx(u8 rs, u8 ra, u8 rb, Buffer &storage) {}
-    void FixedPointProcessor::stwux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &storage) {}
+    void FixedPointProcessor::lhzu(u8 rt, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<u16>(destination);
+        m_gpr[ra] += d;
+    }
+
+    void FixedPointProcessor::lhzx(u8 rt, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<u16>(destination);
+    }
+
+    void FixedPointProcessor::lhzux(u8 rt, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<u16>(destination);
+        m_gpr[ra] += m_gpr[rb];
+    }
+
+    void FixedPointProcessor::lha(u8 rt, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<s16>(destination);
+    }
+
+    void FixedPointProcessor::lhau(u8 rt, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<s16>(destination);
+        m_gpr[ra] += d;
+    }
+
+    void FixedPointProcessor::lhax(u8 rt, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<s16>(destination);
+    }
+
+    void FixedPointProcessor::lhaux(u8 rt, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<s16>(destination);
+        m_gpr[ra] += m_gpr[rb];
+    }
+
+    void FixedPointProcessor::lwz(u8 rt, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<u32>(destination);
+    }
+
+    void FixedPointProcessor::lwzu(u8 rt, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<u32>(destination);
+        m_gpr[ra] += d;
+    }
+
+    void FixedPointProcessor::lwzx(u8 rt, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<u32>(destination);
+    }
+
+    void FixedPointProcessor::lwzux(u8 rt, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_gpr[rt] = storage.get<u32>(destination);
+        m_gpr[ra] += m_gpr[rb];
+    }
+
+    void FixedPointProcessor::stb(u8 rs, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u8>(destination, m_gpr[rs]);
+    }
+
+    void FixedPointProcessor::stbu(u8 rs, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u8>(destination, m_gpr[rs]);
+        m_gpr[ra] += d;
+    }
+
+    void FixedPointProcessor::stbx(u8 rs, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u8>(destination, m_gpr[rs]);
+    }
+
+    void FixedPointProcessor::stbux(u8 rs, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u8>(destination, m_gpr[rs]);
+        m_gpr[ra] += m_gpr[rb];
+    }
+
+    void FixedPointProcessor::sth(u8 rs, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u16>(destination, m_gpr[rs]);
+    }
+
+    void FixedPointProcessor::sthu(u8 rs, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u16>(destination, m_gpr[rs]);
+        m_gpr[ra] += d;
+    }
+
+    void FixedPointProcessor::sthx(u8 rs, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u16>(destination, m_gpr[rs]);
+    }
+
+    void FixedPointProcessor::sthux(u8 rs, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u16>(destination, m_gpr[rs]);
+        m_gpr[ra] += m_gpr[rb];
+    }
+
+    void FixedPointProcessor::stw(u8 rs, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u32>(destination, m_gpr[rs]);
+    }
+
+    void FixedPointProcessor::stwu(u8 rs, s16 d, u8 ra, Buffer &storage) {
+        s32 destination = m_gpr[ra] + d - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u32>(destination, m_gpr[rs]);
+        m_gpr[ra] += d;
+    }
+
+    void FixedPointProcessor::stwx(u8 rs, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u32>(destination, m_gpr[rs]);
+    }
+
+    void FixedPointProcessor::stwux(u8 rs, u8 ra, u8 rb, Buffer &storage) {
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u32>(destination, m_gpr[rs]);
+        m_gpr[ra] += m_gpr[rb];
+    }
 
     void FixedPointProcessor::lhbrx(u8 rt, u8 ra, u8 rb, Buffer &storage) {}
     void FixedPointProcessor::lwbrx(u8 rt, u8 ra, u8 rb, Buffer &storage) {}

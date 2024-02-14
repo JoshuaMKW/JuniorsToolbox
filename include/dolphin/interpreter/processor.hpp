@@ -26,7 +26,7 @@ namespace Toolbox::Interpreter {
 #define PROC_INVALID_MSG(proc, instr, reason) "[" #proc "] " #instr ": " reason
 
     using proc_ret_cb       = std::function<void()>;
-    using proc_exception_cb = std::function<void()>;
+    using proc_exception_cb = std::function<void(ExceptionCause reason)>;
     using proc_invalid_cb   = std::function<void(std::string reason)>;
 
     enum class BOHint : u8 {
@@ -143,41 +143,38 @@ namespace Toolbox::Interpreter {
     protected:
         // Memory
         void lbz(u8 rt, s16 d, u8 ra, Buffer &storage);
-        void lbzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void lbzu(u8 rt, s16 d, u8 ra, Buffer &storage);
         void lbzx(u8 rt, u8 ra, u8 rb, Buffer &storage);
-        void lbzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
+        void lbzux(u8 rt, u8 ra, u8 rb, Buffer &storage);
 
         void lhz(u8 rt, s16 d, u8 ra, Buffer &storage);
-        void lhzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void lhzu(u8 rt, s16 d, u8 ra, Buffer &storage);
         void lhzx(u8 rt, u8 ra, u8 rb, Buffer &storage);
-        void lhzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
+        void lhzux(u8 rt, u8 ra, u8 rb, Buffer &storage);
         void lha(u8 rt, s16 d, u8 ra, Buffer &storage);
-        void lhau(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void lhau(u8 rt, s16 d, u8 ra, Buffer &storage);
         void lhax(u8 rt, u8 ra, u8 rb, Buffer &storage);
-        void lhaux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
+        void lhaux(u8 rt, u8 ra, u8 rb, Buffer &storage);
 
         void lwz(u8 rt, s16 d, u8 ra, Buffer &storage);
-        void lwzu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void lwzu(u8 rt, s16 d, u8 ra, Buffer &storage);
         void lwzx(u8 rt, u8 ra, u8 rb, Buffer &storage);
-        void lwzux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
-        void lwa(u8 rt, s16 d, u8 ra, Buffer &storage);
-        void lwax(u8 rt, u8 ra, u8 rb, Buffer &storage);
-        void lwaux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
+        void lwzux(u8 rt, u8 ra, u8 rb, Buffer &storage);
 
         void stb(u8 rs, s16 d, u8 ra, Buffer &storage);
-        void stbu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void stbu(u8 rs, s16 d, u8 ra, Buffer &storage);
         void stbx(u8 rs, u8 ra, u8 rb, Buffer &storage);
-        void stbux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
+        void stbux(u8 rs, u8 ra, u8 rb, Buffer &storage);
 
         void sth(u8 rs, s16 d, u8 ra, Buffer &storage);
-        void sthu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void sthu(u8 rs, s16 d, u8 ra, Buffer &storage);
         void sthx(u8 rs, u8 ra, u8 rb, Buffer &storage);
-        void sthux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
+        void sthux(u8 rs, u8 ra, u8 rb, Buffer &storage);
 
         void stw(u8 rs, s16 d, u8 ra, Buffer &storage);
-        void stwu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
+        void stwu(u8 rs, s16 d, u8 ra, Buffer &storage);
         void stwx(u8 rs, u8 ra, u8 rb, Buffer &storage);
-        void stwux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
+        void stwux(u8 rs, u8 ra, u8 rb, Buffer &storage);
 
         void lhbrx(u8 rt, u8 ra, u8 rb, Buffer &storage);
         void lwbrx(u8 rt, u8 ra, u8 rb, Buffer &storage);
