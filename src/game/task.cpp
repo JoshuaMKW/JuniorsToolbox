@@ -26,7 +26,7 @@ namespace Toolbox::Game {
         SET_NAMEREF_PARAMETER
     };
 
-    void TaskCommunicator::run() {
+    void TaskCommunicator::tRun(void *param) {
         while (!m_kill_flag.load()) {
             AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
@@ -59,6 +59,8 @@ namespace Toolbox::Game {
                 complete_cb(m_actor_address_map[actor->getUUID()]);
             return {};
         }
+
+        // TODO: Have interpreter evaluate this
 
         return submitTask(
             [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object,
@@ -247,7 +249,7 @@ namespace Toolbox::Game {
 
                         return false;
                     } else {
-                        // ... todo: allow for direct boot out of other directors?
+                        // ... TODO: allow for direct boot out of other directors?
 
                         return false;
                     }
@@ -363,7 +365,8 @@ namespace Toolbox::Game {
                     if (task == ETask::NONE) {
                         m_actor_address_map.erase(object->getUUID());
                         communicator.write<u32>(0x80000298, comm_state & ~BIT(29));
-                        cb(communicator.read<u32>(0x800002E8).value());
+                        if (cb)
+                            cb(communicator.read<u32>(0x800002E8).value());
                         return true;
                     } else {
                         return false;

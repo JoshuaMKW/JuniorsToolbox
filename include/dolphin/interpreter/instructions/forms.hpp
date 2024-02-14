@@ -358,9 +358,9 @@ namespace Toolbox::Interpreter::PPC {
             u8 rs : 5;
         } m_6;
         union {
-            u8 spr : 10;
-            u8 tbr : 10;
-            u8 fxm : 10;
+            u16 spr : 10;
+            u16 tbr : 10;
+            u16 fxm : 10;
         } m_11;
         u16 m_xo           : 10;
         bool m_reserved_31 : 1;
@@ -423,14 +423,14 @@ namespace Toolbox::Interpreter::PPC {
         Opcode m_opcode : 6;
         u8 m_rs         : 5;
         u8 m_ra         : 5;
-        u8 m_sh         : 5;
+        u8 m_sh_16      : 5;
         union {
             u8 mb : 6;
             u8 me : 6;
         } m_21;
-        u8 m_xo   : 3;
-        bool m_sh : 1;
-        bool m_rc : 1;
+        u8 m_xo      : 3;
+        bool m_sh_30 : 1;
+        bool m_rc    : 1;
     };
 
     struct MDSForm {
@@ -482,7 +482,7 @@ namespace Toolbox::Interpreter::PPC {
 #define FORM_BO(inst)    (u8)(((inst) >> 21) & 0x1f)
 #define FORM_BI(inst)    (u8)(((inst) >> 16) & 0x1f)
 #define FORM_BD(inst)    (s16)(((inst) >> 2) & 0x3fff)
-#define FORM_D(inst)    (s16)(((inst) >> 16) & 0xffff)
+#define FORM_D(inst)     (s16)(((inst) >> 16) & 0xffff)
 #define FORM_SI(inst)    (s16)(((inst) >> 16) & 0xffff)
 #define FORM_UI(inst)    (u16)(((inst) >> 16) & 0xffff)
 

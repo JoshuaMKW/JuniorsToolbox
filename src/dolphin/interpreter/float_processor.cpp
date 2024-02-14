@@ -7,7 +7,606 @@
 
 #include "dolphin/interpreter/processor.hpp"
 
+// Copyright 2018 Dolphin Emulator Project
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#include <array>
+#include <limits>
+
+namespace DolphinLib {
+    using namespace Toolbox::Interpreter::Register;
+
+    template <typename T> constexpr T SNANConstant() {
+        return std::numeric_limits<T>::signaling_NaN();
+    }
+
+    // The most significant bit of the fraction is an is-quiet bit on all architectures we care
+    // about.
+    static constexpr u64 DOUBLE_QBIT = 0x0008000000000000ULL;
+    static constexpr u64 DOUBLE_SIGN = 0x8000000000000000ULL;
+    static constexpr u64 DOUBLE_EXP  = 0x7FF0000000000000ULL;
+    static constexpr u64 DOUBLE_FRAC = 0x000FFFFFFFFFFFFFULL;
+    static constexpr u64 DOUBLE_ZERO = 0x0000000000000000ULL;
+
+    static constexpr u32 FLOAT_SIGN = 0x80000000;
+    static constexpr u32 FLOAT_EXP  = 0x7F800000;
+    static constexpr u32 FLOAT_FRAC = 0x007FFFFF;
+    static constexpr u32 FLOAT_ZERO = 0x00000000;
+
+    inline bool IsQNAN(f64 d) {
+        const u64 i = std::bit_cast<u64>(d);
+        return ((i & DOUBLE_EXP) == DOUBLE_EXP) && ((i & DOUBLE_QBIT) == DOUBLE_QBIT);
+    }
+
+    inline bool IsSNAN(f64 d) {
+        const u64 i = std::bit_cast<u64>(d);
+        return ((i & DOUBLE_EXP) == DOUBLE_EXP) && ((i & DOUBLE_FRAC) != DOUBLE_ZERO) &&
+               ((i & DOUBLE_QBIT) == DOUBLE_ZERO);
+    }
+
+    inline float FlushToZero(float f) {
+        u32 i = std::bit_cast<u32>(f);
+        if ((i & FLOAT_EXP) == 0) {
+            // Turn into signed zero
+            i &= FLOAT_SIGN;
+        }
+        return std::bit_cast<float>(i);
+    }
+
+    inline f64 FlushToZero(f64 d) {
+        u64 i = std::bit_cast<u64>(d);
+        if ((i & DOUBLE_EXP) == 0) {
+            // Turn into signed zero
+            i &= DOUBLE_SIGN;
+        }
+        return std::bit_cast<f64>(i);
+    }
+
+    // Uses PowerPC conventions for the return value, so it can be easily
+    // used directly in CPU emulation.
+    FPRState ClassifyDouble(f64 dvalue) {
+        const u64 ivalue = std::bit_cast<u64>(dvalue);
+        const u64 sign   = ivalue & DOUBLE_SIGN;
+        const u64 exp    = ivalue & DOUBLE_EXP;
+
+        if (exp > DOUBLE_ZERO && exp < DOUBLE_EXP) {
+            // Nice normalized number.
+            return sign ? FPRState::FPR_NNORMALIZED : FPRState::FPR_PNORMALIZED;
+        }
+
+        const u64 mantissa = ivalue & DOUBLE_FRAC;
+        if (mantissa) {
+            if (exp)
+                return FPRState::FPR_NAN;
+
+            // Denormalized number.
+            return sign ? FPRState::FPR_NDENORMALIZED : FPRState::FPR_PDENORMALIZED;
+        }
+
+        if (exp) {
+            // Infinite
+            return sign ? FPRState::FPR_NINFINITE : FPRState::FPR_PINFINITE;
+        }
+
+        // Zero
+        return sign ? FPRState::FPR_NZERO : FPRState::FPR_PZERO;
+    }
+
+    FPRState ClassifyFloat(float fvalue) {
+        const u32 ivalue = std::bit_cast<u32>(fvalue);
+        const u32 sign   = ivalue & FLOAT_SIGN;
+        const u32 exp    = ivalue & FLOAT_EXP;
+
+        if (exp > FLOAT_ZERO && exp < FLOAT_EXP) {
+            // Nice normalized number.
+            return sign ? FPRState::FPR_NNORMALIZED : FPRState::FPR_PNORMALIZED;
+        }
+
+        const u32 mantissa = ivalue & FLOAT_FRAC;
+        if (mantissa) {
+            if (exp)
+                return FPRState::FPR_NAN;
+
+            // Denormalized number.
+            return sign ? FPRState::FPR_NDENORMALIZED : FPRState::FPR_PDENORMALIZED;
+        }
+
+        if (exp) {
+            // Infinite
+            return sign ? FPRState::FPR_NINFINITE : FPRState::FPR_PINFINITE;
+        }
+
+        // Zero
+        return sign ? FPRState::FPR_NZERO : FPRState::FPR_PZERO;
+    }
+
+    struct BaseAndDec {
+        int m_base;
+        int m_dec;
+    };
+
+    const std::array<BaseAndDec, 32> frsqrte_expected = {
+        {
+         {0x3ffa000, 0x7a4}, {0x3c29000, 0x700}, {0x38aa000, 0x670}, {0x3572000, 0x5f2},
+         {0x3279000, 0x584}, {0x2fb7000, 0x524}, {0x2d26000, 0x4cc}, {0x2ac0000, 0x47e},
+         {0x2881000, 0x43a}, {0x2665000, 0x3fa}, {0x2468000, 0x3c2}, {0x2287000, 0x38e},
+         {0x20c1000, 0x35e}, {0x1f12000, 0x332}, {0x1d79000, 0x30a}, {0x1bf4000, 0x2e6},
+         {0x1a7e800, 0x568}, {0x17cb800, 0x4f3}, {0x1552800, 0x48d}, {0x130c000, 0x435},
+         {0x10f2000, 0x3e7}, {0x0eff000, 0x3a2}, {0x0d2e000, 0x365}, {0x0b7c000, 0x32e},
+         {0x09e5000, 0x2fc}, {0x0867000, 0x2d0}, {0x06ff000, 0x2a8}, {0x05ab800, 0x283},
+         {0x046a000, 0x261}, {0x0339800, 0x243}, {0x0218800, 0x226}, {0x0105800, 0x20b},
+         }
+    };
+
+    const std::array<BaseAndDec, 32> fres_expected = {
+        {
+         {0x7ff800, 0x3e1}, {0x783800, 0x3a7}, {0x70ea00, 0x371}, {0x6a0800, 0x340},
+         {0x638800, 0x313}, {0x5d6200, 0x2ea}, {0x579000, 0x2c4}, {0x520800, 0x2a0},
+         {0x4cc800, 0x27f}, {0x47ca00, 0x261}, {0x430800, 0x245}, {0x3e8000, 0x22a},
+         {0x3a2c00, 0x212}, {0x360800, 0x1fb}, {0x321400, 0x1e5}, {0x2e4a00, 0x1d1},
+         {0x2aa800, 0x1be}, {0x272c00, 0x1ac}, {0x23d600, 0x19b}, {0x209e00, 0x18b},
+         {0x1d8800, 0x17c}, {0x1a9000, 0x16e}, {0x17ae00, 0x15b}, {0x14f800, 0x15b},
+         {0x124400, 0x143}, {0x0fbe00, 0x143}, {0x0d3800, 0x12d}, {0x0ade00, 0x12d},
+         {0x088400, 0x11a}, {0x065000, 0x11a}, {0x041c00, 0x108}, {0x020c00, 0x106},
+         }
+    };
+
+    // PowerPC approximation algorithms
+    f64 ApproximateReciprocalSquareRoot(f64 val) {
+        s64 integral   = std::bit_cast<s64>(val);
+        s64 mantissa   = integral & ((1LL << 52) - 1);
+        const s64 sign = integral & (1ULL << 63);
+        s64 exponent   = integral & (0x7FFLL << 52);
+
+        // Special case 0
+        if (mantissa == 0 && exponent == 0) {
+            return sign ? -std::numeric_limits<f64>::infinity()
+                        : std::numeric_limits<f64>::infinity();
+        }
+
+        // Special case NaN-ish numbers
+        if (exponent == (0x7FFLL << 52)) {
+            if (mantissa == 0) {
+                if (sign)
+                    return std::numeric_limits<f64>::quiet_NaN();
+
+                return 0.0;
+            }
+
+            return 0.0 + val;
+        }
+
+        // Negative numbers return NaN
+        if (sign)
+            return std::numeric_limits<f64>::quiet_NaN();
+
+        if (!exponent) {
+            // "Normalize" denormal values
+            do {
+                exponent -= 1LL << 52;
+                mantissa <<= 1;
+            } while (!(mantissa & (1LL << 52)));
+            mantissa &= (1LL << 52) - 1;
+            exponent += 1LL << 52;
+        }
+
+        const bool odd_exponent = !(exponent & (1LL << 52));
+        exponent = ((0x3FFLL << 52) - ((exponent - (0x3FELL << 52)) / 2)) & (0x7FFLL << 52);
+        integral = sign | exponent;
+
+        const int i       = static_cast<int>(mantissa >> 37);
+        const int index   = i / 2048 + (odd_exponent ? 16 : 0);
+        const auto &entry = frsqrte_expected[index];
+        integral |= static_cast<s64>(entry.m_base - entry.m_dec * (i % 2048)) << 26;
+
+        return std::bit_cast<f64>(integral);
+    }
+
+    f64 ApproximateReciprocal(f64 val) {
+        s64 integral       = std::bit_cast<s64>(val);
+        const s64 mantissa = integral & ((1LL << 52) - 1);
+        const s64 sign     = integral & (1ULL << 63);
+        s64 exponent       = integral & (0x7FFLL << 52);
+
+        // Special case 0
+        if (mantissa == 0 && exponent == 0)
+            return std::copysign(std::numeric_limits<f64>::infinity(), val);
+
+        // Special case NaN-ish numbers
+        if (exponent == (0x7FFLL << 52)) {
+            if (mantissa == 0)
+                return std::copysign(0.0, val);
+            return 0.0 + val;
+        }
+
+        // Special case small inputs
+        if (exponent < (895LL << 52))
+            return std::copysign(std::numeric_limits<float>::max(), val);
+
+        // Special case large inputs
+        if (exponent >= (1149LL << 52))
+            return std::copysign(0.0, val);
+
+        exponent = (0x7FDLL << 52) - exponent;
+
+        const int i       = static_cast<int>(mantissa >> 37);
+        const auto &entry = fres_expected[i / 1024];
+        integral          = sign | exponent;
+        integral |= static_cast<s64>(entry.m_base - (entry.m_dec * (i % 1024) + 1) / 2) << 29;
+
+        return std::bit_cast<f64>(integral);
+    }
+
+}  // namespace DolphinLib
+
 namespace Toolbox::Interpreter {
+
+    // Pulled FP stuff from the Dolphin Emulator Project, thanks :)
+
+    using namespace Register;
+
+    constexpr f64 PPC_NAN = std::numeric_limits<f64>::quiet_NaN();
+
+    inline void CheckFPExceptions(Register::FPSCR &fpscr, Register::MSR &msr,
+                                  Register::SRR1 &srr1) {
+        if (FPSCR_FEX(fpscr) && (MSR_FE0(msr) || MSR_FE1(msr)))
+            srr1 = (u32)ExceptionCause::EXCEPTION_FPU_UNAVAILABLE;
+    }
+
+    inline void UpdateFPExceptionSummary(Register::FPSCR &fpscr, Register::MSR &msr,
+                                         Register::SRR1 &srr1) {
+        FPSCR_SET_VX(fpscr, (fpscr & FPSCRExceptionFlag::FPSCR_EX_VX_ANY) != 0);
+        FPSCR_SET_FEX(fpscr, (fpscr & FPSCRExceptionFlag::FPSCR_EX_ANY_E) != 0);
+
+        CheckFPExceptions(fpscr, msr, srr1);
+    }
+
+    inline void SetFPException(Register::FPSCR &fpscr, Register::MSR &msr, Register::SRR1 &srr1,
+                               u32 mask) {
+        if ((fpscr & mask) != mask) {
+            FPSCR_SET_FX(fpscr, true);
+        }
+
+        fpscr |= mask;
+        UpdateFPExceptionSummary(fpscr, msr, srr1);
+    }
+
+    inline float ForceSingle(const Register::FPSCR &fpscr, f64 value) {
+        if (FPSCR_NI(fpscr)) {
+            // Emulate a rounding quirk. If the conversion result before rounding is a subnormal
+            // single, it's always flushed to zero, even if rounding would have caused it to become
+            // normal.
+
+            constexpr u64 smallest_normal_single = 0x3810000000000000;
+            const u64 value_without_sign =
+                std::bit_cast<u64>(value) & (DolphinLib::DOUBLE_EXP | DolphinLib::DOUBLE_FRAC);
+
+            if (value_without_sign < smallest_normal_single) {
+                const u64 flushed_f64    = std::bit_cast<u64>(value) & DolphinLib::DOUBLE_SIGN;
+                const u32 flushed_single = static_cast<u32>(flushed_f64 >> 32);
+                return std::bit_cast<float>(flushed_single);
+            }
+        }
+
+        // Emulate standard conversion to single precision.
+
+        float x = static_cast<float>(value);
+        if (FPSCR_NI(fpscr)) {
+            x = DolphinLib::FlushToZero(x);
+        }
+        return x;
+    }
+
+    inline f64 ForceDouble(const Register::FPSCR &fpscr, f64 d) {
+        if (FPSCR_NI(fpscr)) {
+            d = DolphinLib::FlushToZero(d);
+        }
+        return d;
+    }
+
+    inline f64 Force25Bit(f64 d) {
+        u64 integral = std::bit_cast<u64>(d);
+
+        integral = (integral & 0xFFFFFFFFF8000000ULL) + (integral & 0x8000000);
+
+        return std::bit_cast<f64>(integral);
+    }
+
+    inline f64 MakeQuiet(f64 d) {
+        const u64 integral = std::bit_cast<u64>(d) | DolphinLib::DOUBLE_QBIT;
+
+        return std::bit_cast<f64>(integral);
+    }
+
+    // these functions allow globally modify operations behaviour
+    // also, these may be used to set flags like FR, FI, OX, UX
+
+    struct FPResult {
+        bool HasNoInvalidExceptions() const {
+            return (exception & FPSCRExceptionFlag::FPSCR_EX_VX_ANY) == 0;
+        }
+
+        void SetException(Register::FPSCR &fpscr, Register::MSR &msr, Register::SRR1 &srr1,
+                          FPSCRExceptionFlag flag) {
+            exception = flag;
+            SetFPException(fpscr, msr, srr1, flag);
+        }
+
+        f64 value = 0.0;
+        FPSCRExceptionFlag exception{};
+    };
+
+    inline FPResult NI_mul(Register::FPSCR &fpscr, Register::MSR &msr, Register::SRR1 &srr1, f64 a,
+                           f64 b) {
+        FPResult result{a * b};
+
+        if (std::isnan(result.value)) {
+            if (DolphinLib::IsSNAN(a) || DolphinLib::IsSNAN(b)) {
+                result.SetException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+            }
+
+            FPSCR_SET_FI(fpscr, false);
+            FPSCR_SET_FR(fpscr, false);
+
+            if (std::isnan(a)) {
+                result.value = MakeQuiet(a);
+                return result;
+            }
+            if (std::isnan(b)) {
+                result.value = MakeQuiet(b);
+                return result;
+            }
+
+            result.value = PPC_NAN;
+            result.SetException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXIMZ);
+            return result;
+        }
+
+        return result;
+    }
+
+    inline FPResult NI_div(Register::FPSCR &fpscr, Register::MSR &msr, Register::SRR1 &srr1, f64 a,
+                           f64 b) {
+        FPResult result{a / b};
+
+        if (std::isinf(result.value)) {
+            if (b == 0.0) {
+                result.SetException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_ZX);
+                return result;
+            }
+        } else if (std::isnan(result.value)) {
+            if (DolphinLib::IsSNAN(a) || DolphinLib::IsSNAN(b))
+                result.SetException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+
+            FPSCR_SET_FI(fpscr, false);
+            FPSCR_SET_FR(fpscr, false);
+
+            if (std::isnan(a)) {
+                result.value = MakeQuiet(a);
+                return result;
+            }
+            if (std::isnan(b)) {
+                result.value = MakeQuiet(b);
+                return result;
+            }
+
+            if (b == 0.0)
+                result.SetException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXZDZ);
+            else if (std::isinf(a) && std::isinf(b))
+                result.SetException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXIDI);
+
+            result.value = PPC_NAN;
+            return result;
+        }
+
+        return result;
+    }
+
+    inline FPResult NI_add(Register::FPSCR &fpscr, Register::MSR &msr, Register::SRR1 &srr1, f64 a,
+                           f64 b) {
+        FPResult result{a + b};
+
+        if (std::isnan(result.value)) {
+            if (DolphinLib::IsSNAN(a) || DolphinLib::IsSNAN(b))
+                result.SetException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+
+            FPSCR_SET_FI(fpscr, false);
+            FPSCR_SET_FR(fpscr, false);
+
+            if (std::isnan(a)) {
+                result.value = MakeQuiet(a);
+                return result;
+            }
+            if (std::isnan(b)) {
+                result.value = MakeQuiet(b);
+                return result;
+            }
+
+            result.SetException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXISI);
+            result.value = PPC_NAN;
+            return result;
+        }
+
+        if (std::isinf(a) || std::isinf(b))
+
+            FPSCR_SET_FI(fpscr, false);
+        FPSCR_SET_FR(fpscr, false);
+
+        return result;
+    }
+
+    inline FPResult NI_sub(Register::FPSCR &fpscr, Register::MSR &msr, Register::SRR1 &srr1, f64 a,
+                           f64 b) {
+        FPResult result{a - b};
+
+        if (std::isnan(result.value)) {
+            if (DolphinLib::IsSNAN(a) || DolphinLib::IsSNAN(b))
+                result.SetException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+
+            FPSCR_SET_FI(fpscr, false);
+            FPSCR_SET_FR(fpscr, false);
+
+            if (std::isnan(a)) {
+                result.value = MakeQuiet(a);
+                return result;
+            }
+            if (std::isnan(b)) {
+                result.value = MakeQuiet(b);
+                return result;
+            }
+
+            result.SetException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXISI);
+            result.value = PPC_NAN;
+            return result;
+        }
+
+        if (std::isinf(a) || std::isinf(b)) {
+            FPSCR_SET_FI(fpscr, false);
+            FPSCR_SET_FR(fpscr, false);
+        }
+
+        return result;
+    }
+
+    // FMA instructions on PowerPC are weird:
+    // They calculate (a * c) + b, but the order in which
+    // inputs are checked for NaN is still a, b, c.
+    inline FPResult NI_madd(Register::FPSCR &fpscr, Register::MSR &msr, Register::SRR1 &srr1, f64 a,
+                            f64 c, f64 b) {
+        FPResult result{std::fma(a, c, b)};
+
+        if (std::isnan(result.value)) {
+            if (DolphinLib::IsSNAN(a) || DolphinLib::IsSNAN(b) || DolphinLib::IsSNAN(c))
+                result.SetException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+
+            FPSCR_SET_FI(fpscr, false);
+            FPSCR_SET_FR(fpscr, false);
+
+            if (std::isnan(a)) {
+                result.value = MakeQuiet(a);
+                return result;
+            }
+            if (std::isnan(b)) {
+                result.value = MakeQuiet(b);  // !
+                return result;
+            }
+            if (std::isnan(c)) {
+                result.value = MakeQuiet(c);
+                return result;
+            }
+
+            result.SetException(fpscr, msr, srr1,
+                                std::isnan(a * c) ? FPSCRExceptionFlag::FPSCR_EX_VXIMZ
+                                                  : FPSCRExceptionFlag::FPSCR_EX_VXISI);
+            result.value = PPC_NAN;
+            return result;
+        }
+
+        if (std::isinf(a) || std::isinf(b) || std::isinf(c))
+            FPSCR_SET_FI(fpscr, false);
+        FPSCR_SET_FR(fpscr, false);
+
+        return result;
+    }
+
+    inline FPResult NI_msub(Register::FPSCR &fpscr, Register::MSR &msr, Register::SRR1 &srr1, f64 a,
+                            f64 c, f64 b) {
+        FPResult result{std::fma(a, c, -b)};
+
+        if (std::isnan(result.value)) {
+            if (DolphinLib::IsSNAN(a) || DolphinLib::IsSNAN(b) || DolphinLib::IsSNAN(c))
+                result.SetException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+
+            FPSCR_SET_FI(fpscr, false);
+            FPSCR_SET_FR(fpscr, false);
+
+            if (std::isnan(a)) {
+                result.value = MakeQuiet(a);
+                return result;
+            }
+            if (std::isnan(b)) {
+                result.value = MakeQuiet(b);  // !
+                return result;
+            }
+            if (std::isnan(c)) {
+                result.value = MakeQuiet(c);
+                return result;
+            }
+
+            result.SetException(fpscr, msr, srr1,
+                                std::isnan(a * c) ? FPSCRExceptionFlag::FPSCR_EX_VXIMZ
+                                                  : FPSCRExceptionFlag::FPSCR_EX_VXISI);
+            result.value = PPC_NAN;
+            return result;
+        }
+
+        if (std::isinf(a) || std::isinf(b) || std::isinf(c))
+            FPSCR_SET_FI(fpscr, false);
+        FPSCR_SET_FR(fpscr, false);
+
+        return result;
+    }
+
+    // used by stfsXX instructions and ps_rsqrte
+    inline u32 ConvertToSingle(u64 x) {
+        const u32 exp = u32((x >> 52) & 0x7ff);
+
+        if (exp > 896 || (x & ~DolphinLib::DOUBLE_SIGN) == 0) {
+            return u32(((x >> 32) & 0xc0000000) | ((x >> 29) & 0x3fffffff));
+        } else if (exp >= 874) {
+            u32 t = u32(0x80000000 | ((x & DolphinLib::DOUBLE_FRAC) >> 21));
+            t     = t >> (905 - exp);
+            t |= u32((x >> 32) & 0x80000000);
+            return t;
+        } else {
+            // This is said to be undefined.
+            // The code is based on hardware tests.
+            return u32(((x >> 32) & 0xc0000000) | ((x >> 29) & 0x3fffffff));
+        }
+    }
+
+    // used by psq_stXX operations.
+    inline u32 ConvertToSingleFTZ(u64 x) {
+        const u32 exp = u32((x >> 52) & 0x7ff);
+
+        if (exp > 896 || (x & ~DolphinLib::DOUBLE_SIGN) == 0) {
+            return u32(((x >> 32) & 0xc0000000) | ((x >> 29) & 0x3fffffff));
+        } else {
+            return u32((x >> 32) & 0x80000000);
+        }
+    }
+
+    inline u64 ConvertToDouble(u32 value) {
+        // This is a little-endian re-implementation of the algorithm described in
+        // the PowerPC Programming Environments Manual for loading single
+        // precision floating point numbers.
+        // See page 566 of http://www.freescale.com/files/product/doc/MPCFPE32B.pdf
+
+        u64 x    = value;
+        u64 exp  = (x >> 23) & 0xff;
+        u64 frac = x & 0x007fffff;
+
+        if (exp > 0 && exp < 255)  // Normal number
+        {
+            u64 y = !(exp >> 7);
+            u64 z = y << 61 | y << 60 | y << 59;
+            return ((x & 0xc0000000) << 32) | z | ((x & 0x3fffffff) << 29);
+        } else if (exp == 0 && frac != 0)  // Subnormal number
+        {
+            exp = 1023 - 126;
+            do {
+                frac <<= 1;
+                exp -= 1;
+            } while ((frac & 0x00800000) == 0);
+
+            return ((x & 0x80000000) << 32) | (exp << 52) | ((frac & 0x007fffff) << 29);
+        } else  // QNaN, SNaN or Zero
+        {
+            u64 y = exp >> 7;
+            u64 z = y << 61 | y << 60 | y << 59;
+            return ((x & 0xc0000000) << 32) | z | ((x & 0x3fffffff) << 29);
+        }
+    }
 
     void FloatingPointProcessor::lfs(u8 frt, s16 d, u8 ra) {}
     void FloatingPointProcessor::lfsu(u8 frt, s16 d, u8 ra) {}
@@ -33,66 +632,475 @@ namespace Toolbox::Interpreter {
 
     // Move
 
-    void FloatingPointProcessor::fmr(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fabs(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fneg(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fnabs(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
+    void FloatingPointProcessor::fmr(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                                     Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::fabs(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                                      Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::fneg(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                                      Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::fnabs(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {}
 
     // Math
 
-    void FloatingPointProcessor::fadd(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fadds(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fsub(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fsubs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fmul(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fmuls(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fdiv(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fdivs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr) {}
+    void FloatingPointProcessor::fadd(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                      Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult sum =
+            NI_add(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble());
 
-    void FloatingPointProcessor::fmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr) {
+        if (FPSCR_VE(m_fpscr) == 0 || sum.HasNoInvalidExceptions()) {
+            const f64 result = ForceDouble(m_fpscr, sum.value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyDouble(result));
+        }
+
+        if (rc) {
+            cr.cmp(1, m_fpr[frt].ps0AsDouble(), 0);
+        }
     }
-    void FloatingPointProcessor::fmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr) {
+
+    void FloatingPointProcessor::fadds(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult sum =
+            NI_add(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || sum.HasNoInvalidExceptions()) {
+            const f32 result = ForceSingle(m_fpscr, sum.value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(result));
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
     }
-    void FloatingPointProcessor::fnmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr) {
+
+    void FloatingPointProcessor::fsub(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                      Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult sub =
+            NI_sub(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || sub.HasNoInvalidExceptions()) {
+            const f64 result = ForceDouble(m_fpscr, sub.value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyDouble(result));
+        }
+
+        if (rc) {
+            cr.cmp(1, m_fpr[frt].ps0AsDouble(), 0);
+        }
     }
-    void FloatingPointProcessor::fnmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc,
-                                         Register::CR &cr) {}
-    void FloatingPointProcessor::fnmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr) {
+
+    void FloatingPointProcessor::fsubs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult sub =
+            NI_sub(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || sub.HasNoInvalidExceptions()) {
+            const f32 result = ForceSingle(m_fpscr, sub.value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(result));
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
     }
-    void FloatingPointProcessor::fnmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc,
-                                         Register::CR &cr) {}
+
+    void FloatingPointProcessor::fmul(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                      Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult mul =
+            NI_mul(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || mul.HasNoInvalidExceptions()) {
+            const f64 result = ForceDouble(m_fpscr, mul.value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyDouble(result));
+        }
+
+        if (rc) {
+            cr.cmp(1, m_fpr[frt].ps0AsDouble(), 0);
+        }
+    }
+
+    void FloatingPointProcessor::fmuls(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult mul =
+            NI_mul(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || mul.HasNoInvalidExceptions()) {
+            const f32 result = ForceSingle(m_fpscr, mul.value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(result));
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::fdiv(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                      Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult div =
+            NI_div(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || div.HasNoInvalidExceptions()) {
+            const f64 result = ForceDouble(m_fpscr, div.value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyDouble(result));
+        }
+
+        if (rc) {
+            cr.cmp(1, m_fpr[frt].ps0AsDouble(), 0);
+        }
+    }
+
+    void FloatingPointProcessor::fdivs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult div =
+            NI_div(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || div.HasNoInvalidExceptions()) {
+            const f32 result = ForceSingle(m_fpscr, div.value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(result));
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::fmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult madd = NI_madd(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                                      m_fpr[frc].ps0AsDouble(), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || madd.HasNoInvalidExceptions()) {
+            const f64 result = ForceDouble(m_fpscr, madd.value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyDouble(result));
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::fmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult madd =
+            NI_madd(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                    Force25Bit(m_fpr[frc].ps0AsDouble()), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || madd.HasNoInvalidExceptions()) {
+            const f32 result = ForceSingle(m_fpscr, madd.value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(result));
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
+    }
+    void FloatingPointProcessor::fmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult msub = NI_msub(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                                      m_fpr[frc].ps0AsDouble(), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || msub.HasNoInvalidExceptions()) {
+            const f64 result = ForceDouble(m_fpscr, msub.value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyDouble(result));
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::fmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult msub =
+            NI_msub(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                    Force25Bit(m_fpr[frc].ps0AsDouble()), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || msub.HasNoInvalidExceptions()) {
+            const f32 result = ForceSingle(m_fpscr, msub.value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(result));
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
+    }
+    void FloatingPointProcessor::fnmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult madd = NI_madd(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                                      m_fpr[frc].ps0AsDouble(), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || madd.HasNoInvalidExceptions()) {
+
+            f64 result = ForceDouble(m_fpscr, madd.value);
+            if (!std::isnan(result))
+                result = -result;
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyDouble(result));
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
+    }
+    void FloatingPointProcessor::fnmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                         Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult madd =
+            NI_madd(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                    Force25Bit(m_fpr[frc].ps0AsDouble()), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || madd.HasNoInvalidExceptions()) {
+
+            f32 result = ForceSingle(m_fpscr, madd.value);
+            if (!std::isnan(result))
+                result = -result;
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(result));
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
+    }
+    void FloatingPointProcessor::fnmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult msub = NI_msub(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                                      m_fpr[frc].ps0AsDouble(), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || msub.HasNoInvalidExceptions()) {
+
+            f64 result = ForceDouble(m_fpscr, msub.value);
+            if (!std::isnan(result))
+                result = -result;
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyDouble(result));
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
+    }
+    void FloatingPointProcessor::fnmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                         Register::MSR &msr, Register::SRR1 &srr1) {
+        const FPResult msub =
+            NI_msub(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                    Force25Bit(m_fpr[frc].ps0AsDouble()), m_fpr[frb].ps0AsDouble());
+
+        if (FPSCR_VE(m_fpscr) == 0 || msub.HasNoInvalidExceptions()) {
+
+            f32 result = ForceSingle(m_fpscr, msub.value);
+            if (!std::isnan(result))
+                result = -result;
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(result));
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
+    }
 
     // Rounding and conversion
 
-    void FloatingPointProcessor::fsrp(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fctid(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fdtidz(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fcfid(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
+    void FloatingPointProcessor::frsp(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                                      Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::fctid(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::fdtidz(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::fcfid(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {}
 
     // Compare
 
-    void FloatingPointProcessor::fcmpu(u8 bf, u8 fra, u8 frb, Register::CR &cr) {}
-    void FloatingPointProcessor::fcmpo(u8 bf, u8 fra, u8 frb, Register::CR &cr) {}
+    void FloatingPointProcessor::fcmpu(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
+                                       Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::fcmpo(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
+                                       Register::SRR1 &srr1) {}
 
     // FPSCR
 
-    void FloatingPointProcessor::mffs(u8 frt, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::mcrfs(u8 bf, u8 bfa, Register::CR &cr) {}
-    void FloatingPointProcessor::mtfsfi(u8 bf, u8 u, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::mtfsf(u8 flm, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::mtfsb0(u8 bt, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::mtfsb1(u8 bt, bool rc, Register::CR &cr) {}
+    void FloatingPointProcessor::mffs(u8 frt, bool rc, Register::CR &cr, Register::MSR &msr,
+                                      Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::mcrfs(u8 bf, u8 bfa, Register::CR &cr, Register::MSR &msr,
+                                       Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::mtfsfi(u8 bf, u8 u, bool rc, Register::CR &cr, Register::MSR &msr,
+                                        Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::mtfsf(u8 flm, u8 frb, bool rc, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::mtfsb0(u8 bt, bool rc, Register::CR &cr, Register::MSR &msr,
+                                        Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::mtfsb1(u8 bt, bool rc, Register::CR &cr, Register::MSR &msr,
+                                        Register::SRR1 &srr1) {}
 
     // Extended
 
-    void FloatingPointProcessor::fsqrt(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fsqrts(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fre(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fres(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::frsqrte(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::frsqrtes(u8 frt, u8 frb, bool rc, Register::CR &cr) {}
-    void FloatingPointProcessor::fsel(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr) {}
+    void FloatingPointProcessor::fsqrt(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::fsqrts(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {}
+    void FloatingPointProcessor::fres(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                                      Register::SRR1 &srr1) {
+        const double b = m_fpr[frb].ps0AsDouble();
+
+        const auto compute_result = [this, frt](double value) {
+            const double result = DolphinLib::ApproximateReciprocal(value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(result));
+        };
+
+        if (b == 0.0) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_ZX);
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+
+            if (FPSCR_ZE(m_fpscr) == 0)
+                compute_result(b);
+        } else if (DolphinLib::IsSNAN(b)) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+
+            if (FPSCR_VE(m_fpscr) == 0)
+                compute_result(b);
+        } else {
+            if (std::isnan(b) || std::isinf(b)) {
+                FPSCR_SET_FI(m_fpscr, false);
+                FPSCR_SET_FR(m_fpscr, false);
+            }
+
+            compute_result(b);
+        }
+    }
+    void FloatingPointProcessor::frsqrte(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                         Register::MSR &msr, Register::SRR1 &srr1) {
+        const double b = m_fpr[frb].ps0AsDouble();
+
+        const auto compute_result = [this, frt](double value) {
+            const double result = DolphinLib::ApproximateReciprocalSquareRoot(value);
+            m_fpr[frt].setPS0(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyDouble(result));
+        };
+
+        if (b < 0.0) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSQRT);
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+
+            if (FPSCR_VE(m_fpscr) == 0)
+                compute_result(b);
+        } else if (b == 0.0) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_ZX);
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+
+            if (FPSCR_ZE(m_fpscr) == 0)
+                compute_result(b);
+        } else if (DolphinLib::IsSNAN(b)) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+
+            if (FPSCR_VE(m_fpscr) == 0)
+                compute_result(b);
+        } else {
+            if (std::isnan(b) || std::isinf(b)) {
+                FPSCR_SET_FI(m_fpscr, false);
+                FPSCR_SET_FR(m_fpscr, false);
+            }
+
+            compute_result(b);
+        }
+    }
+    void FloatingPointProcessor::frsqrtes(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                          Register::MSR &msr, Register::SRR1 &srr1) {
+        const double b = m_fpr[frb].ps0AsDouble();
+
+        const auto compute_result = [this, frt](double value) {
+            double result = DolphinLib::ApproximateReciprocalSquareRoot(value);
+            result        = ForceSingle(m_fpscr, result);
+            m_fpr[frt].setPS0(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(result));
+        };
+
+        if (b < 0.0) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSQRT);
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+
+            if (FPSCR_VE(m_fpscr) == 0)
+                compute_result(b);
+        } else if (b == 0.0) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_ZX);
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+
+            if (FPSCR_ZE(m_fpscr) == 0)
+                compute_result(b);
+        } else if (DolphinLib::IsSNAN(b)) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+
+            if (FPSCR_VE(m_fpscr) == 0)
+                compute_result(b);
+        } else {
+            if (std::isnan(b) || std::isinf(b)) {
+                FPSCR_SET_FI(m_fpscr, false);
+                FPSCR_SET_FR(m_fpscr, false);
+            }
+
+            compute_result(b);
+        }
+    }
+    void FloatingPointProcessor::fsel(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                      Register::MSR &msr, Register::SRR1 &srr1) {
+        const auto &a = m_fpr[fra];
+        const auto &b = m_fpr[frb];
+        const auto &c = m_fpr[frc];
+
+        m_fpr[frt].setPS0((a.ps0AsDouble() >= -0.0) ? c.ps0AsDouble() : b.ps0AsDouble());
+
+        // This is a binary instruction. Does not alter FPSCR
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+        }
+    }
 
 }  // namespace Toolbox::Interpreter

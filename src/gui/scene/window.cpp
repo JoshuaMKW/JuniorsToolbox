@@ -93,12 +93,12 @@ namespace Toolbox::UI {
         return node_name;
     }
 
-    SceneWindow::~SceneWindow() { m_communicator.kill(); }
+    SceneWindow::~SceneWindow() = default;
 
     SceneWindow::SceneWindow() : DockWindow() {
         m_properties_render_handler = renderEmptyProperties;
 
-        m_communicator.start();
+        m_communicator.tStart(true, nullptr);
 
         buildContextMenuVirtualObj();
         buildContextMenuGroupObj();

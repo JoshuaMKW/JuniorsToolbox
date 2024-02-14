@@ -12,27 +12,50 @@ namespace Toolbox {
         virtual _ExitT tRun(void *param) = 0;
 
     public:
-        virtual ~Threaded() { tKill(); }
+        virtual ~Threaded() { tKill(false); }
 
         // Starts the detached thread
         void tStart(bool detached, void *param) {
             if (!_m_started) {
                 _m_thread = std::thread(&Threaded::tRun_, this, param);
+                _m_detached = detached;
                 if (detached)
                     _m_thread.detach();
                 _m_started = true;
             }
         }
 
+        // Call this from the main thread
+        bool tJoin() {
+            if (!_m_started) {
+                return false;
+            }
+            if (_m_killed) {
+                return false;
+            }
+            if (_m_detached) {
+                return false;
+            }
+            _m_thread.join();
+            return true;
+        }
+
+        // Call this from the main thread
         void tKill(bool wait) {
+            if (tIsKilled()) {
+                return;
+            }
+
             _m_kill_flag.store(true);
-            if (wait) {
-                std::unique_lock<std::mutex> lk(m_mutex);
+            if (_m_detached && wait) {
+                std::unique_lock<std::mutex> lk(_m_mutex);
                 _m_kill_condition.wait(lk);
+            } else {
+                _m_thread.join();
             }
         }
 
-        bool tIsKilled() const { return _m_kill_flag.load(); }
+        bool tIsKilled() const { return _m_killed; }
 
     private:
         void tRun_(void *param) {
@@ -47,10 +70,13 @@ namespace Toolbox {
                     _m_exit_cb(ret);
                 }
             }
+            _m_killed = true;
             _m_kill_condition.notify_all();
         }
 
-        bool _m_started = false;
+        bool _m_started  = false;
+        bool _m_detached = false;
+        bool _m_killed   = false;
 
         std::mutex _m_mutex;
         std::thread _m_thread;

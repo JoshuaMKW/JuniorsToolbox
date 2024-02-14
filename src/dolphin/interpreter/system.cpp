@@ -21,7 +21,7 @@ namespace Toolbox::Interpreter {
             return;
         }
 
-        u32 inst = communicator.read<u32>(m_system_proc.m_pc.m_address).value();
+        u32 inst = communicator.read<u32>(static_cast<u32>(m_system_proc.m_pc)).value();
         Opcode opcode   = FORM_OPCD(inst);
         switch (opcode) {
         case Opcode::OP_TDI: {

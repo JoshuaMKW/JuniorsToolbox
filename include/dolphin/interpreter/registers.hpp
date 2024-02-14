@@ -10,133 +10,168 @@ using namespace Toolbox;
 namespace Toolbox::Interpreter::Register {
 
     enum class SPRType : u32 {
-        XER    = 1,
-        LR     = 8,
-        CTR    = 9,
-        DSISR  = 18,
-        DAR    = 19,
-        DEC    = 22,
-        SDR1   = 25,
-        SRR0   = 26,
-        SRR1   = 27,
-        SPRG0  = 272,
-        SPRG1  = 273,
-        SPRG2  = 274,
-        SPRG3  = 275,
-        EAR    = 282,
-        TBL    = 284,
-        TBU    = 285,
-        PVR    = 287,
-        IBAT0U = 528,
-        IBAT0L = 529,
-        IBAT1U = 530,
-        IBAT1L = 531,
-        IBAT2U = 532,
-        IBAT2L = 533,
-        IBAT3U = 534,
-        IBAT3L = 535,
-        DBAT0U = 536,
-        DBAT0L = 537,
-        DBAT1U = 538,
-        DBAT1L = 539,
-        DBAT1U = 540,
-        DBAT1L = 541,
-        DBAT1U = 542,
-        DBAT1L = 543,
-        GQR0   = 912,
-        GQR1   = 913,
-        GQR2   = 914,
-        GQR3   = 915,
-        GQR4   = 916,
-        GQR5   = 917,
-        GQR6   = 918,
-        GQR7   = 919,
-        HID2   = 920,
-        WPAR   = 921,
-        DMA_U  = 922,
-        DMA_L  = 923,
-        ECID_U = 924,
-        ECID_M = 925,
-        ECID_L = 926,
-        UMMCR0 = 936,
-        UPMC1  = 937,
-        UPMC2  = 938,
-        USIA   = 939,
-        UMMCR1 = 940,
-        UPMC3  = 941,
-        UPMC4  = 942,
-        USDA   = 943,
-        MMCR0  = 952,
-        PMC1   = 953,
-        PMC2   = 954,
-        SIA    = 955,
-        MMCR1  = 956,
-        PMC3   = 957,
-        PMC4   = 958,
-        SDA    = 959,
-        HID0   = 1008,
-        HID1   = 1009,
-        IABR   = 1010,
-        HID4   = 1011,
-        DABR   = 1013,
-        L2CR   = 1017,
-        ICTC   = 1019,
-        THRM1  = 1020,
-        THRM2  = 1021,
-        THRM3  = 1022,
+        SPR_XER    = 1,
+        SPR_LR     = 8,
+        SPR_CTR    = 9,
+        SPR_DSISR  = 18,
+        SPR_DAR    = 19,
+        SPR_DEC    = 22,
+        SPR_SDR1   = 25,
+        SPR_SRR0   = 26,
+        SPR_SRR1   = 27,
+        SPR_SPRG0  = 272,
+        SPR_SPRG1  = 273,
+        SPR_SPRG2  = 274,
+        SPR_SPRG3  = 275,
+        SPR_EAR    = 282,
+        SPR_TBL    = 284,
+        SPR_TBU    = 285,
+        SPR_PVR    = 287,
+        SPR_IBAT0U = 528,
+        SPR_IBAT0L = 529,
+        SPR_IBAT1U = 530,
+        SPR_IBAT1L = 531,
+        SPR_IBAT2U = 532,
+        SPR_IBAT2L = 533,
+        SPR_IBAT3U = 534,
+        SPR_IBAT3L = 535,
+        SPR_DBAT0U = 536,
+        SPR_DBAT0L = 537,
+        SPR_DBAT1U = 538,
+        SPR_DBAT1L = 539,
+        SPR_DBAT2U = 540,
+        SPR_DBAT2L = 541,
+        SPR_DBAT3U = 542,
+        SPR_DBAT3L = 543,
+        SPR_GQR0   = 912,
+        SPR_GQR1   = 913,
+        SPR_GQR2   = 914,
+        SPR_GQR3   = 915,
+        SPR_GQR4   = 916,
+        SPR_GQR5   = 917,
+        SPR_GQR6   = 918,
+        SPR_GQR7   = 919,
+        SPR_HID2   = 920,
+        SPR_WPAR   = 921,
+        SPR_DMA_U  = 922,
+        SPR_DMA_L  = 923,
+        SPR_ECID_U = 924,
+        SPR_ECID_M = 925,
+        SPR_ECID_L = 926,
+        SPR_UMMCR0 = 936,
+        SPR_UPMC1  = 937,
+        SPR_UPMC2  = 938,
+        SPR_USIA   = 939,
+        SPR_UMMCR1 = 940,
+        SPR_UPMC3  = 941,
+        SPR_UPMC4  = 942,
+        SPR_USDA   = 943,
+        SPR_MMCR0  = 952,
+        SPR_PMC1   = 953,
+        SPR_PMC2   = 954,
+        SPR_SIA    = 955,
+        SPR_MMCR1  = 956,
+        SPR_PMC3   = 957,
+        SPR_PMC4   = 958,
+        SPR_SDA    = 959,
+        SPR_HID0   = 1008,
+        SPR_HID1   = 1009,
+        SPR_IABR   = 1010,
+        SPR_HID4   = 1011,
+        SPR_DABR   = 1013,
+        SPR_L2CR   = 1017,
+        SPR_ICTC   = 1019,
+        SPR_THRM1  = 1020,
+        SPR_THRM2  = 1021,
+        SPR_THRM3  = 1022,
     };
 
-    struct PC {
-        u64 m_address;
-    };
+    typedef u64 PC;
 
-    struct TB {
-        u64 m_value;
-    };
+    typedef u64 TB;
 
-    struct MSR {
-        bool m_sf          : 1;
-        u8 m_reserved_1    : 2;
-        bool m_hv          : 1;
-        u64 m_reserved_4   : 43;
-        bool m_reserved_47 : 1;
-        bool m_ee          : 1;
-        bool m_pr          : 1;
-        bool m_fp          : 1;
-        bool m_me          : 1;
-        bool m_fe0         : 1;
-        bool m_se          : 1;
-        bool m_be          : 1;
-        bool m_fe1         : 1;
-        u8 m_reserved_56   : 2;
-        bool m_ir          : 1;
-        bool m_dr          : 1;
-        bool m_reserved_60 : 1;
-        bool m_pmm         : 1;
-        bool m_ri          : 1;
-        bool m_le          : 1;
-    };
+    typedef u32 MSR;
 
-    struct DAR {
-        u64 m_value;
-    };
+    // clang-format off
+#define MSR_EE(msr)  (((msr) >> 15) & 0b1)
+#define MSR_PR(msr)  (((msr) >> 14) & 0b1)
+#define MSR_FP(msr)  (((msr) >> 13) & 0b1)
+#define MSR_ME(msr)  (((msr) >> 12) & 0b1)
+#define MSR_FE0(msr) (((msr) >> 11) & 0b1)
+#define MSR_SE(msr)  (((msr) >> 10) & 0b1)
+#define MSR_BE(msr)  (((msr) >> 9) & 0b1)
+#define MSR_FE1(msr) (((msr) >> 8) & 0b1)
+#define MSR_IR(msr)  (((msr) >> 5) & 0b1)
+#define MSR_DR(msr)  (((msr) >> 4) & 0b1)
+#define MSR_PMM(msr) (((msr) >> 2) & 0b1)
+#define MSR_RI(msr)  (((msr) >> 1) & 0b1)
+#define MSR_LE(msr)  ((msr) & 0b1)
 
-    struct DSISR {
-        u32 m_value;
-    };
+#define MSR_SET_EE(msr, value)  ((msr) = ((msr) & ~(0b1 << 15)) | (((value)&0b1) << 15))
+#define MSR_SET_PR(msr, value)  ((msr) = ((msr) & ~(0b1 << 14)) | (((value)&0b1) << 14))
+#define MSR_SET_FP(msr, value)  ((msr) = ((msr) & ~(0b1 << 13)) | (((value)&0b1) << 13))
+#define MSR_SET_ME(msr, value)  ((msr) = ((msr) & ~(0b1 << 12)) | (((value)&0b1) << 12))
+#define MSR_SET_FE0(msr, value) ((msr) = ((msr) & ~(0b1 << 11)) | (((value)&0b1) << 11))
+#define MSR_SET_SE(msr, value)  ((msr) = ((msr) & ~(0b1 << 10)) | (((value)&0b1) << 10))
+#define MSR_SET_BE(msr, value)  ((msr) = ((msr) & ~(0b1 << 9)) | (((value)&0b1) << 9))
+#define MSR_SET_FE1(msr, value) ((msr) = ((msr) & ~(0b1 << 8)) | (((value)&0b1) << 8))
+#define MSR_SET_IR(msr, value)  ((msr) = ((msr) & ~(0b1 << 5)) | (((value)&0b1) << 5))
+#define MSR_SET_DR(msr, value)  ((msr) = ((msr) & ~(0b1 << 4)) | (((value)&0b1) << 4))
+#define MSR_SET_PMM(msr, value) ((msr) = ((msr) & ~(0b1 << 2)) | (((value)&0b1) << 2))
+#define MSR_SET_RI(msr, value)  ((msr) = ((msr) & ~(0b1 << 1)) | (((value)&0b1) << 1))
+#define MSR_SET_LE(msr, value)  ((msr) = ((msr) & ~(0b1)) | ((value)&0b1))
 
-    struct GPR {
-        u64 m_value;
-    };
+    typedef u64 DAR;
+
+    typedef u32 DSISR;
+
+    typedef u64 GPR;
 
     enum class FPRState {
-        ZERO,
-        NORMALIZED,
-        DENORMALIZED,
-        INFINITE,
-        NANS,
+        FPR_NZERO = 0x12,
+        FPR_PZERO = 0x2,
+        FPR_NNORMALIZED = 0x8,
+        FPR_PNORMALIZED = 0x4,
+        FPR_NDENORMALIZED = 0x18,
+        FPR_PDENORMALIZED = 0x14,
+        FPR_NINFINITE = 0x9,
+        FPR_PINFINITE = 0x5,
+        FPR_NAN = 0x11,
     };
 
+    struct PairedSingle {
+        u64 ps0AsU64() const { return m_ps0; }
+        u64 ps1AsU64() const { return m_ps1; }
+
+        u32 ps0AsU32() const { return static_cast<u32>(m_ps0); }
+        u32 ps1AsU32() const { return static_cast<u32>(m_ps1); }
+
+        f64 ps0AsDouble() const { return std::bit_cast<f64>(m_ps0); }
+        f64 ps1AsDouble() const { return std::bit_cast<f64>(m_ps1); }
+
+        void setPS0(u64 value) { m_ps0 = value; }
+        void setPS0(f64 value) { m_ps0 = std::bit_cast<u64>(m_ps0); }
+
+        void setPS1(u64 value) { m_ps1 = value; }
+        void setPS1(f64 value) { m_ps1 = std::bit_cast<u64>(m_ps1); }
+
+        void setBoth(u64 lhs, u64 rhs) {
+            setPS0(lhs);
+            setPS1(rhs);
+        }
+        void setBoth(f64 lhs, f64 rhs) {
+            setPS0(lhs);
+            setPS1(rhs);
+        }
+
+        void fill(u64 value) { setBoth(value, value); }
+        void fill(f64 value) { setBoth(value, value); }
+
+        u64 m_ps0 = 0;
+        u64 m_ps1 = 0;
+    };
+
+#if 0
     struct FPR {
         union {
             union {
@@ -146,7 +181,7 @@ namespace Toolbox::Interpreter::Register {
             } ieee_32;
             union {
                 bool m_sign    : 1;
-                u8 m_exp_bias  : 11;
+                u16 m_exp_bias : 11;
                 u64 m_fraction : 52;
             } ieee_64;
             f32 float_32;
@@ -158,20 +193,20 @@ namespace Toolbox::Interpreter::Register {
             if (state)
                 *state = st;
             switch (st) {
-            case FPRState::ZERO:
+            case FPRState::FPR_ZERO:
                 return 0.0f;
-            case FPRState::INFINITE: {
+            case FPRState::FPR_INFINITE: {
                 float sign = m_value.ieee_32.m_sign ? -1.0f : 1.0f;
                 return sign * INFINITY;
             }
-            case FPRState::NANS:
+            case FPRState::FPR_NANS:
                 return NAN;
-            case FPRState::NORMALIZED:
-            case FPRState::DENORMALIZED: {
+            case FPRState::FPR_DENORMALIZED:
+            case FPRState::FPR_NORMALIZED: {
                 float sign        = m_value.ieee_32.m_sign ? -1.0f : 1.0f;
                 int exponent      = static_cast<int>(m_value.ieee_32.m_exp_bias) - 127;
                 float significand = 1.0f + (m_value.ieee_32.m_fraction / 8388608.0f);
-                return sign * std::pow(2, exponent) * significand;
+                return static_cast<float>(sign * std::pow(2, exponent) * significand);
             }
             }
         }
@@ -181,16 +216,16 @@ namespace Toolbox::Interpreter::Register {
             if (state)
                 *state = st;
             switch (st) {
-            case FPRState::ZERO:
+            case FPRState::FPR_ZERO:
                 return 0.0f;
-            case FPRState::INFINITE: {
+            case FPRState::FPR_INFINITE: {
                 double sign = m_value.ieee_64.m_sign ? -1.0 : 1.0;
                 return sign * INFINITY;
             }
-            case FPRState::NANS:
+            case FPRState::FPR_NANS:
                 return NAN;
-            case FPRState::NORMALIZED:
-            case FPRState::DENORMALIZED: {
+            case FPRState::FPR_DENORMALIZED:
+            case FPRState::FPR_NORMALIZED: {
                 double sign        = m_value.ieee_64.m_sign ? -1.0 : 1.0;
                 int exponent       = static_cast<int>(m_value.ieee_64.m_exp_bias) - 1023;
                 double significand = 1.0 + (m_value.ieee_64.m_fraction / 4503599627370496.0);
@@ -203,39 +238,42 @@ namespace Toolbox::Interpreter::Register {
         FPRState evalStatef() const {
             if (m_value.ieee_32.m_exp_bias == 0) {
                 if (m_value.ieee_32.m_fraction == 0) {
-                    return FPRState::ZERO;
+                    return FPRState::FPR_ZERO;
                 }
-                return FPRState::DENORMALIZED;
+                return FPRState::FPR_DENORMALIZED;
             }
 
             if (m_value.ieee_32.m_exp_bias == 255) {
                 if (m_value.ieee_32.m_fraction == 0) {
-                    return FPRState::INFINITE;
+                    return FPRState::FPR_INFINITE;
                 }
-                return FPRState::NANS;
+                return FPRState::FPR_NANS;
             }
 
-            return FPRState::NORMALIZED;
+            return FPRState::FPR_NORMALIZED;
         }
 
         FPRState evalStated() const {
             if (m_value.ieee_64.m_exp_bias == 0) {
                 if (m_value.ieee_64.m_fraction == 0) {
-                    return FPRState::ZERO;
+                    return FPRState::FPR_ZERO;
                 }
-                return FPRState::DENORMALIZED;
+                return FPRState::FPR_DENORMALIZED;
             }
 
             if (m_value.ieee_64.m_exp_bias == 2047) {
                 if (m_value.ieee_64.m_fraction == 0) {
-                    return FPRState::INFINITE;
+                    return FPRState::FPR_INFINITE;
                 }
-                return FPRState::NANS;
+                return FPRState::FPR_NANS;
             }
 
-            return FPRState::NORMALIZED;
+            return FPRState::FPR_NORMALIZED;
         }
     };
+#else
+    typedef PairedSingle FPR;
+#endif
 
     enum class FPSCRCmp : u8 {
         NONE = 0,
@@ -247,51 +285,120 @@ namespace Toolbox::Interpreter::Register {
     TOOLBOX_BITWISE_ENUM(FPSCRCmp)
 
     enum class FPSCRRound : u8 {
-        NEAREST,
-        ZERO,
-        PINFINITY,
-        NINFINITY,
+        FPSCR_NEAREST,
+        FPSCR_ZERO,
+        FPSCR_PINFINITY,
+        FPSCR_NINFINITY,
     };
 
-    struct FPSCR {
-        bool m_fx          : 1;
-        bool m_fex         : 1;
-        bool m_vx          : 1;
-        bool m_ox          : 1;
-        bool m_ux          : 1;
-        bool m_zx          : 1;
-        bool m_xx          : 1;
-        bool m_vxsnan      : 1;
-        bool m_vxisi       : 1;
-        bool m_vxidi       : 1;
-        bool m_vxzdz       : 1;
-        bool m_vximz       : 1;
-        bool m_vxvc        : 1;
-        bool m_fr          : 1;
-        bool m_fi          : 1;
-        bool m_c           : 1;
-        FPSCRCmp m_fpcc    : 4;
-        bool m_reserved_20 : 1;
-        bool m_vxsoft      : 1;
-        bool m_vxsqrt      : 1;
-        bool m_vxcvi       : 1;
-        bool m_ve          : 1;
-        bool m_oe          : 1;
-        bool m_ue          : 1;
-        bool m_ze          : 1;
-        bool m_xe          : 1;
-        bool m_ni          : 1;
-        FPSCRRound m_rn    : 2;
-    };
+#define FPRF_SHIFT 12
+#define FPRF_WIDTH 5
+#define FPRF_MASK  (0x1F << FPRF_SHIFT)
+#define FPCC_MASK  (0xF << FPRF_SHIFT)
 
-    struct XER {
-        u32 m_reserved_0  : 32;
-        bool m_so         : 1;
-        bool m_ov         : 1;
-        bool m_ca         : 1;
-        u32 m_reserved_35 : 22;
-        u32 m_str_size    : 7;
+    // FPSCR exception flags
+    enum FPSCRExceptionFlag : u32 {
+        FPSCR_EX_FX     = 1U << (31 - 0),
+        FPSCR_EX_FEX    = 1U << (31 - 1),
+        FPSCR_EX_VX     = 1U << (31 - 2),
+        FPSCR_EX_OX     = 1U << (31 - 3),
+        FPSCR_EX_UX     = 1U << (31 - 4),
+        FPSCR_EX_ZX     = 1U << (31 - 5),
+        FPSCR_EX_XX     = 1U << (31 - 6),
+        FPSCR_EX_VXSNAN = 1U << (31 - 7),
+        FPSCR_EX_VXISI  = 1U << (31 - 8),
+        FPSCR_EX_VXIDI  = 1U << (31 - 9),
+        FPSCR_EX_VXZDZ  = 1U << (31 - 10),
+        FPSCR_EX_VXIMZ  = 1U << (31 - 11),
+        FPSCR_EX_VXVC   = 1U << (31 - 12),
+        FPSCR_EX_VXSOFT = 1U << (31 - 21),
+        FPSCR_EX_VXSQRT = 1U << (31 - 22),
+        FPSCR_EX_VXCVI  = 1U << (31 - 23),
+        FPSCR_EX_VE     = 1U << (31 - 24),
+        FPSCR_EX_OE     = 1U << (31 - 25),
+        FPSCR_EX_UE     = 1U << (31 - 26),
+        FPSCR_EX_ZE     = 1U << (31 - 27),
+        FPSCR_EX_XE     = 1U << (31 - 28),
+
+        FPSCR_EX_VX_ANY = FPSCR_EX_VXSNAN | FPSCR_EX_VXISI | FPSCR_EX_VXIDI | FPSCR_EX_VXZDZ | FPSCR_EX_VXIMZ |
+                       FPSCR_EX_VXVC | FPSCR_EX_VXSOFT | FPSCR_EX_VXSQRT | FPSCR_EX_VXCVI,
+
+        FPSCR_EX_ANY_X = FPSCR_EX_OX | FPSCR_EX_UX | FPSCR_EX_ZX | FPSCR_EX_XX | FPSCR_EX_VX_ANY,
+
+        FPSCR_EX_ANY_E = FPSCR_EX_VE | FPSCR_EX_OE | FPSCR_EX_UE | FPSCR_EX_ZE | FPSCR_EX_XE,
     };
+    TOOLBOX_BITWISE_ENUM(FPSCRExceptionFlag)
+
+    typedef u32 FPSCR;
+
+    // clang-format off
+#define FPSCR_FX(fpscr)     (bool)(((fpscr) >> 31) & 0b1)
+#define FPSCR_FEX(fpscr)    (bool)(((fpscr) >> 30) & 0b1)
+#define FPSCR_VX(fpscr)     (bool)(((fpscr) >> 29) & 0b1)
+#define FPSCR_OX(fpscr)     (bool)(((fpscr) >> 28) & 0b1)
+#define FPSCR_UX(fpscr)     (bool)(((fpscr) >> 27) & 0b1)
+#define FPSCR_ZX(fpscr)     (bool)(((fpscr) >> 26) & 0b1)
+#define FPSCR_XX(fpscr)     (bool)(((fpscr) >> 25) & 0b1)
+#define FPSCR_VXSNAN(fpscr) (bool)(((fpscr) >> 24) & 0b1)
+#define FPSCR_VXISI(fpscr)  (bool)(((fpscr) >> 23) & 0b1)
+#define FPSCR_VXIDI(fpscr)  (bool)(((fpscr) >> 22) & 0b1)
+#define FPSCR_VXZDZ(fpscr)  (bool)(((fpscr) >> 21) & 0b1)
+#define FPSCR_VXIMZ(fpscr)  (bool)(((fpscr) >> 20) & 0b1)
+#define FPSCR_VXVC(fpscr)   (bool)(((fpscr) >> 19) & 0b1)
+#define FPSCR_FR(fpscr)     (bool)(((fpscr) >> 18) & 0b1)
+#define FPSCR_FI(fpscr)     (bool)(((fpscr) >> 17) & 0b1)
+#define FPSCR_C(fpscr)      (bool)(((fpscr) >> 16) & 0b1)
+#define FPSCR_FPRT(fpscr)   (FPSCRCmp)(((fpscr) >> 15) & 0b11111)
+#define FPSCR_VXSOFT(fpscr) (bool)(((fpscr) >> 10) & 0b1)
+#define FPSCR_VXSQRT(fpscr) (bool)(((fpscr) >> 9) & 0b1)
+#define FPSCR_VXCVI(fpscr)  (bool)(((fpscr) >> 8) & 0b1)
+#define FPSCR_VE(fpscr)     (bool)(((fpscr) >> 7) & 0b1)
+#define FPSCR_OE(fpscr)     (bool)(((fpscr) >> 6) & 0b1)
+#define FPSCR_UE(fpscr)     (bool)(((fpscr) >> 5) & 0b1)
+#define FPSCR_ZE(fpscr)     (bool)(((fpscr) >> 4) & 0b1)
+#define FPSCR_XE(fpscr)     (bool)(((fpscr) >> 3) & 0b1)
+#define FPSCR_NI(fpscr)     (bool)(((fpscr) >> 2) & 0b1)
+#define FPSCR_RN(fpscr)     (FPSCRRound)((fpscr)&0b11)
+
+#define FPSCR_SET_FX(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 31)) | (((value)&0b1) << 31))
+#define FPSCR_SET_FEX(fpscr, value)    ((fpscr) = ((fpscr) & ~(0b1 << 30)) | (((value)&0b1) << 30))
+#define FPSCR_SET_VX(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 29)) | (((value)&0b1) << 29))
+#define FPSCR_SET_OX(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 28)) | (((value)&0b1) << 28))
+#define FPSCR_SET_UX(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 27)) | (((value)&0b1) << 27))
+#define FPSCR_SET_ZX(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 26)) | (((value)&0b1) << 26))
+#define FPSCR_SET_XX(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 25)) | (((value)&0b1) << 25))
+#define FPSCR_SET_VXSNAN(fpscr, value) ((fpscr) = ((fpscr) & ~(0b1 << 24)) | (((value)&0b1) << 24))
+#define FPSCR_SET_VXISI(fpscr, value)  ((fpscr) = ((fpscr) & ~(0b1 << 23)) | (((value)&0b1) << 23))
+#define FPSCR_SET_VXIDI(fpscr, value)  ((fpscr) = ((fpscr) & ~(0b1 << 22)) | (((value)&0b1) << 22))
+#define FPSCR_SET_VXZDZ(fpscr, value)  ((fpscr) = ((fpscr) & ~(0b1 << 21)) | (((value)&0b1) << 21))
+#define FPSCR_SET_VXIMZ(fpscr, value)  ((fpscr) = ((fpscr) & ~(0b1 << 20)) | (((value)&0b1) << 20))
+#define FPSCR_SET_VXVC(fpscr, value)   ((fpscr) = ((fpscr) & ~(0b1 << 19)) | (((value)&0b1) << 19))
+#define FPSCR_SET_FR(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 18)) | (((value)&0b1) << 18))
+#define FPSCR_SET_FI(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 17)) | (((value)&0b1) << 17))
+#define FPSCR_SET_FPRT(fpscr, value)   ((fpscr) = ((fpscr) & ~(0b11111 << 12)) | (((value)&0b11111) << 12))
+#define FPSCR_SET_VXSOFT(fpscr, value) ((fpscr) = ((fpscr) & ~(0b1 << 10)) | (((value)&0b1) << 10))
+#define FPSCR_SET_VXSQRT(fpscr, value) ((fpscr) = ((fpscr) & ~(0b1 << 9)) | (((value)&0b1) << 9))
+#define FPSCR_SET_VXCVI(fpscr, value)  ((fpscr) = ((fpscr) & ~(0b1 << 8)) | (((value)&0b1) << 8))
+#define FPSCR_SET_VE(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 7)) | (((value)&0b1) << 7))
+#define FPSCR_SET_OE(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 6)) | (((value)&0b1) << 6))
+#define FPSCR_SET_UE(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 5)) | (((value)&0b1) << 5))
+#define FPSCR_SET_ZE(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 4)) | (((value)&0b1) << 4))
+#define FPSCR_SET_XE(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 3)) | (((value)&0b1) << 3))
+#define FPSCR_SET_NI(fpscr, value)     ((fpscr) = ((fpscr) & ~(0b1 << 2)) | (((value)&0b1) << 2))
+#define FPSCR_SET_RN(fpscr, value)     ((fpscr) = ((fpscr) & ~0b11) | ((value)&0b11))
+    // clang-format on
+
+    typedef u32 XER;
+
+#define XER_SO(fpscr)  (bool)(((fpscr) >> 31) & 0b1)
+#define XER_OV(fpscr)  (bool)(((fpscr) >> 30) & 0b1)
+#define XER_CA(fpscr)  (bool)(((fpscr) >> 29) & 0b1)
+#define XER_STR(fpscr) (bool)((fpscr)&0b1111111)
+
+#define XER_SET_SO(fpscr, value)  ((fpscr) = ((fpscr) & ~(0b1 << 31)) | ((value) << 31))
+#define XER_SET_OV(fpscr, value)  ((fpscr) = ((fpscr) & ~(0b1 << 30)) | ((value) << 30))
+#define XER_SET_CA(fpscr, value)  ((fpscr) = ((fpscr) & ~(0b1 << 29)) | ((value) << 29))
+#define XER_SET_STR(fpscr, value) ((fpscr) = ((fpscr) & ~0b1111111) | ((value)&0b1111111))
 
     enum class CRCmp : u8 {
         NONE = 0,
@@ -303,94 +410,81 @@ namespace Toolbox::Interpreter::Register {
     TOOLBOX_BITWISE_ENUM(CRCmp)
 
     struct CR {
-        CRCmp m_cr0 : 4;
-        CRCmp m_cr1 : 4;
-        CRCmp m_cr2 : 4;
-        CRCmp m_cr3 : 4;
-        CRCmp m_cr4 : 4;
-        CRCmp m_cr5 : 4;
-        CRCmp m_cr6 : 4;
-        CRCmp m_cr7 : 4;
+        u32 m_crf;
 
-        void cmp(s32 ra, s32 rb, const XER &xer) {
+        void cmp(u8 crf, s32 ra, s32 rb, const XER &xer) {
             if (ra < rb) {
-                m_cr0 = CRCmp::LT | (xer.m_so ? CRCmp::SO : CRCmp::NONE);
+                m_crf = (u8)(CRCmp::LT | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE))
+                        << ((7 - crf) * 4);
                 return;
             }
 
             if (ra > rb) {
-                m_cr0 = CRCmp::GT | (xer.m_so ? CRCmp::SO : CRCmp::NONE);
+                m_crf = (u8)(CRCmp::GT | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE))
+                        << ((7 - crf) * 4);
                 return;
             }
 
-            m_cr0 = CRCmp::EQ | (xer.m_so ? CRCmp::SO : CRCmp::NONE);
+            m_crf = (u8)(CRCmp::EQ | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE)) << ((7 - crf) * 4);
             return;
         }
 
-        void cmp(f32 fa, f32 fb, const XER &xer) {
+        void cmp(u8 crf, u32 ra, u32 rb, const XER &xer) {
+            if (ra < rb) {
+                m_crf = (u8)(CRCmp::LT | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE))
+                        << ((7 - crf) * 4);
+                return;
+            }
+
+            if (ra > rb) {
+                m_crf = (u8)(CRCmp::GT | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE))
+                        << ((7 - crf) * 4);
+                return;
+            }
+
+            m_crf = (u8)(CRCmp::EQ | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE)) << ((7 - crf) * 4);
+            return;
+        }
+
+        void cmp(u8 crf, f32 fa, f32 fb) {
             if (fa < fb) {
-                m_cr0 = CRCmp::LT | (xer.m_so ? CRCmp::SO : CRCmp::NONE);
+                m_crf = (u8)(CRCmp::LT);
                 return;
             }
 
             if (fa > fb) {
-                m_cr0 = CRCmp::GT | (xer.m_so ? CRCmp::SO : CRCmp::NONE);
+                m_crf = (u8)(CRCmp::GT);
                 return;
             }
 
-            m_cr0 = CRCmp::EQ | (xer.m_so ? CRCmp::SO : CRCmp::NONE);
+            m_crf = (u8)(CRCmp::EQ);
             return;
         }
 
-        void cmp(f64 fa, f64 fb, const XER &xer) {
+        void cmp(u8 crf, f64 fa, f64 fb) {
             if (fa < fb) {
-                m_cr0 = CRCmp::LT | (xer.m_so ? CRCmp::SO : CRCmp::NONE);
+                m_crf = (u8)(CRCmp::LT);
                 return;
             }
 
             if (fa > fb) {
-                m_cr0 = CRCmp::GT | (xer.m_so ? CRCmp::SO : CRCmp::NONE);
+                m_crf = (u8)(CRCmp::GT);
                 return;
             }
 
-            m_cr0 = CRCmp::EQ | (xer.m_so ? CRCmp::SO : CRCmp::NONE);
+            m_crf = (u8)(CRCmp::EQ);
             return;
         }
 
-        bool is(u8 field, CRCmp cmp) {
-            switch (field) {
-            case 0:
-                return (bool)(m_cr0 & cmp);
-            case 1:
-                return (bool)(m_cr1 & cmp);
-            case 2:
-                return (bool)(m_cr2 & cmp);
-            case 3:
-                return (bool)(m_cr3 & cmp);
-            case 4:
-                return (bool)(m_cr4 & cmp);
-            case 5:
-                return (bool)(m_cr5 & cmp);
-            case 6:
-                return (bool)(m_cr6 & cmp);
-            case 7:
-                return (bool)(m_cr7 & cmp);
-            default:
-                return false;
-            }
-        }
+        bool is(u8 crf, CRCmp cmp) const { return (bool)((m_crf >> ((7 - crf) * 4)) & (u8)cmp); }
     };
 
-    struct LR {
-        u64 m_target_address;
-    };
+    #define SET_CR_FIELD(cr, field, value) ((cr).m_crf = ((cr).m_crf & ~(0b1111 << ((7 - (field)) * 4))) | (((value) & 0b1111) << ((7 - (field)) * 4)))
 
-    struct CTR {
-        union {
-            s64 m_count;
-            u64 m_target_address;
-        } m_0;
-    };
+    typedef u64 LR;
+    typedef u64 CTR;
+    typedef u64 SRR0;
+    typedef u64 SRR1;
 
     struct RegisterSnapshot {
         GPR m_gpr[32];
@@ -404,6 +498,8 @@ namespace Toolbox::Interpreter::Register {
         TB m_tb;
         DAR m_dar;
         DSISR m_dsisr;
+        SRR0 m_srr0;
+        SRR1 m_srr1;
     };
 
 }  // namespace Toolbox::Interpreter::Register

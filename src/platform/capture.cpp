@@ -1,8 +1,6 @@
 #include "platform/capture.hpp"
 #include "core/types.hpp"
 
-#include <gl/GL.h>
-
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 
 #include <Windows.h>

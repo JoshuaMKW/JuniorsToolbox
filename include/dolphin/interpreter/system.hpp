@@ -8,6 +8,12 @@
 
 namespace Toolbox::Interpreter {
 
+    using func_ret_cb = std::function<void(const Register::RegisterSnapshot &snapshot)>;
+    using func_exception_cb =
+        std::function<void(u32 bad_instr_ptr, const Register::RegisterSnapshot &snapshot)>;
+    using func_exception_cb =
+        std::function<void(u32 bad_instr_ptr, const Register::RegisterSnapshot &snapshot)>;
+
     class SystemDolphin : public Threaded<void> {
     public:
         SystemDolphin() {
@@ -26,15 +32,15 @@ namespace Toolbox::Interpreter {
                 m_eval_condition.wait(lk);
             }
 
-            m_system_proc.m_pc.m_address = function_ptr;
-            m_branch_proc.m_lr.m_target_address = 0xDEADBEEF;  // Sentinel for return detection
+            m_system_proc.m_pc = function_ptr;
+            m_branch_proc.m_lr = 0xDEADBEEF;  // Sentinel for return detection
 
             for (u8 gpr_arg = 0; gpr_arg < gpr_argc; ++gpr_arg) {
-                m_fixed_proc.m_gpr[gpr_arg + 3].m_value = gpr_argv[gpr_arg];
+                m_fixed_proc.m_gpr[gpr_arg + 3] = gpr_argv[gpr_arg];
             }
 
             for (u8 fpr_arg = 0; fpr_arg < fpr_argc; ++fpr_arg) {
-                m_float_proc.m_fpr[fpr_arg + 3].m_value.float_64 = fpr_argv[fpr_arg];
+                m_float_proc.m_fpr[fpr_arg + 3].fill(fpr_argv[fpr_arg]);
             }
 
             m_eval_ready.store(true);
@@ -60,10 +66,11 @@ namespace Toolbox::Interpreter {
         void evaluateFunction();
         void evaluateInstruction();
 
-        void internalReturnCB(const Register::RegisterSnapshot &snapshot) {
+        void internalReturnCB() {
             // If the LR matches the sentinel we know we've returned from
             // the function rather than a child function
-            if (m_branch_proc.m_lr.m_target_address == 0xDEADBEEF) {
+            if (m_branch_proc.m_lr == 0xDEADBEEF) {
+                Register::RegisterSnapshot snapshot;
                 m_evaluating.store(false);
                 m_eval_ready.store(false);
                 m_system_return_cb(snapshot);
@@ -71,10 +78,11 @@ namespace Toolbox::Interpreter {
             }
         }
 
-        void internalExceptionCB(u32 bad_instr_ptr, const Register::RegisterSnapshot& snapshot) {
+        void internalExceptionCB() {
+            Register::RegisterSnapshot snapshot;
             m_evaluating.store(false);
             m_eval_ready.store(false);
-            m_system_exception_cb(bad_instr_ptr, snapshot);
+            m_system_exception_cb(m_system_proc.m_pc, snapshot);
             m_eval_condition.notify_all();
         }
 

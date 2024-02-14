@@ -3,9 +3,9 @@
 namespace Toolbox {
 
     enum class TriState {
-        FALSE,
-        TRUE,
-        INDETERMINATE,
+        TS_FALSE,
+        TS_TRUE,
+        TS_INDETERMINATE,
     };
 
 }

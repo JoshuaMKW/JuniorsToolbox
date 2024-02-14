@@ -15,7 +15,10 @@
 #include "clipboard.hpp"
 #include "dolphin/process.hpp"
 
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#undef GLFW_INCLUDE_NONE
+
 #include <thread>
 
 using namespace Toolbox::Dolphin;

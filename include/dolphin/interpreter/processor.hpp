@@ -8,29 +8,46 @@
 
 namespace Toolbox::Interpreter {
 
-    using func_ret_cb = std::function<void(const Register::RegisterSnapshot &snapshot)>;
-    using func_exception_cb =
-        std::function<void(u32 bad_instr_ptr, const Register::RegisterSnapshot &snapshot)>;
+    // Dolphin Emulator
+    enum class ExceptionCause {
+        EXCEPTION_DECREMENTER         = (1 << 0),
+        EXCEPTION_SYSCALL             = (1 << 1),
+        EXCEPTION_EXTERNAL_INT        = (1 << 2),
+        EXCEPTION_DSI                 = (1 << 3),
+        EXCEPTION_ISI                 = (1 << 4),
+        EXCEPTION_ALIGNMENT           = (1 << 5),
+        EXCEPTION_FPU_UNAVAILABLE     = (1 << 6),
+        EXCEPTION_PROGRAM             = (1 << 7),
+        EXCEPTION_PERFORMANCE_MONITOR = (1 << 8),
+
+        EXCEPTION_FAKE_MEMCHECK_HIT = (1 << 9),
+    };
+
+#define PROC_INVALID_MSG(proc, instr, reason) "[" #proc "] " #instr ": " reason
+
+    using proc_ret_cb       = std::function<void()>;
+    using proc_exception_cb = std::function<void()>;
+    using proc_invalid_cb   = std::function<void(std::string reason)>;
 
     enum class BOHint : u8 {
-        NONE,
-        RESERVED,
-        UNLIKELY,
-        LIKELY,
+        BO_NONE,
+        BO_RESERVED,
+        BO_UNLIKELY,
+        BO_LIKELY,
     };
 
     enum class SyncType : u8 {
-        HEAVY,
-        LIGHT,
-        HEAVY_ORDERED,
-        RESERVED,
+        SYNC_HEAVY,
+        SYNC_LIGHT,
+        SYNC_HEAVY_ORDERED,
+        SYNC_RESERVED,
     };
 
     enum class DataCacheHintType : u8 {
-        THIS_BLOCK,
-        THIS_STREAM_ALL,
-        THIS_BLOCK_ALL,
-        STREAM_DESCRIPT = 8,
+        HINT_THIS_BLOCK,
+        HINT_THIS_STREAM_ALL,
+        HINT_THIS_BLOCK_ALL,
+        HINT_STREAM_DESCRIPT = 8,
     };
 
     class SystemProcessor {
@@ -39,7 +56,8 @@ namespace Toolbox::Interpreter {
 
         SystemProcessor() = default;
 
-        void onException(func_exception_cb cb) { m_exception_cb = cb; }
+        void onException(proc_exception_cb cb) { m_exception_cb = cb; }
+        void onInvalid(proc_invalid_cb cb) { m_invalid_cb = cb; }
 
     private:
         void mftb(u8 rt, u16 tbr);
@@ -59,23 +77,20 @@ namespace Toolbox::Interpreter {
         void sync(SyncType l) {}
         void eieio() {}
 
-        // External control
-
-        void eciwx(u8 rt, u8 ra, u8 rb, Buffer &storage) {}
-        void ecowx(u8 rs, u8 ra, u8 rb, Buffer &storage) {}
-
         // Interrupt flow
 
-        void rfid() {}
-        void hrfid() {}
+        void rfi() {}
 
         Register::PC m_pc;
         Register::TB m_tb;
         Register::MSR m_msr;
         Register::DAR m_dar;
         Register::DSISR m_dsisr;
+        Register::SRR0 m_srr0;
+        Register::SRR1 m_srr1;
 
-        func_exception_cb m_exception_cb;
+        proc_exception_cb m_exception_cb;
+        proc_invalid_cb m_invalid_cb;
     };
 
     class BranchProcessor {
@@ -84,8 +99,9 @@ namespace Toolbox::Interpreter {
 
         BranchProcessor() = default;
 
-        void onReturn(func_ret_cb cb) { m_return_cb = cb; }
-        void onException(func_exception_cb cb) { m_exception_cb = cb; }
+        void onReturn(proc_ret_cb cb) { m_return_cb = cb; }
+        void onException(proc_exception_cb cb) { m_exception_cb = cb; }
+        void onInvalid(proc_invalid_cb cb) { m_invalid_cb = cb; }
 
     protected:
         void b(s32 target_addr, bool aa, bool lk, Register::PC &pc);
@@ -93,7 +109,8 @@ namespace Toolbox::Interpreter {
         void bclr(u8 bo, u8 bi, u8 bh, bool lk, Register::PC &pc);
         void bcctr(u8 bo, u8 bi, u8 bh, bool lk, Register::PC &pc);
 
-        void sc(u8 lev, Register::PC &pc);
+        void sc(u8 lev, Register::PC &pc, Register::SRR0 &srr0, Register::SRR1 &srr1,
+                Register::MSR &msr);
 
         void crand(u8 bt, u8 ba, u8 bb, Register::PC &pc);
         void crandc(u8 bt, u8 ba, u8 bb, Register::PC &pc);
@@ -109,8 +126,9 @@ namespace Toolbox::Interpreter {
         Register::LR m_lr;
         Register::CTR m_ctr;
 
-        func_ret_cb m_return_cb;
-        func_exception_cb m_exception_cb;
+        proc_ret_cb m_return_cb;
+        proc_exception_cb m_exception_cb;
+        proc_invalid_cb m_invalid_cb;
     };
 
     class FixedPointProcessor {
@@ -119,7 +137,8 @@ namespace Toolbox::Interpreter {
 
         FixedPointProcessor() = default;
 
-        void onException(func_exception_cb cb) { m_exception_cb = cb; }
+        void onException(proc_exception_cb cb) { m_exception_cb = cb; }
+        void onInvalid(proc_invalid_cb cb) { m_invalid_cb = cb; }
 
     protected:
         // Memory
@@ -145,11 +164,6 @@ namespace Toolbox::Interpreter {
         void lwax(u8 rt, u8 ra, u8 rb, Buffer &storage);
         void lwaux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
 
-        void ld(u8 rt, s16 d, u8 ra, Buffer &storage);
-        void ldu(u8 rt, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
-        void ldx(u8 rt, u8 ra, u8 rb, Buffer &storage);
-        void ldux(u8 rt, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
-
         void stb(u8 rs, s16 d, u8 ra, Buffer &storage);
         void stbu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
         void stbx(u8 rs, u8 ra, u8 rb, Buffer &storage);
@@ -164,11 +178,6 @@ namespace Toolbox::Interpreter {
         void stwu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
         void stwx(u8 rs, u8 ra, u8 rb, Buffer &storage);
         void stwux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
-
-        void std(u8 rs, s16 d, u8 ra, Buffer &storage);
-        void stdu(u8 rs, s16 d, u8 ra, Register::PC &pc, Buffer &storage);
-        void stdx(u8 rs, u8 ra, u8 rb, Buffer &storage);
-        void stdux(u8 rs, u8 ra, u8 rb, Register::PC &pc, Buffer &storage);
 
         void lhbrx(u8 rt, u8 ra, u8 rb, Buffer &storage);
         void lwbrx(u8 rt, u8 ra, u8 rb, Buffer &storage);
@@ -203,16 +212,13 @@ namespace Toolbox::Interpreter {
         void subfze(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr);
 
         void mulli(u8 rt, u8 ra, s16 si);
-        void mulld(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
         void mullw(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
         void mullhd(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr);
         void mullhdu(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr);
         void mullhw(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr);
         void mullhwu(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr);
 
-        void divd(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
         void divw(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
-        void divdu(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
         void divwu(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
 
         // Compare
@@ -242,14 +248,12 @@ namespace Toolbox::Interpreter {
         void nand_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
         void nor_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
         void eqv_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
-        void andc_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
-        void orc_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
+        void andc(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
+        void orc(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
 
         void extsb(u8 ra, u8 rs, bool rc, Register::CR &cr);
         void extsh(u8 ra, u8 rs, bool rc, Register::CR &cr);
-        void extsw(u8 ra, u8 rs, bool rc, Register::CR &cr);
 
-        void cntlzd(u8 ra, u8 rs, bool rc, Register::CR &cr);
         void cntlzw(u8 ra, u8 rs, bool rc, Register::CR &cr);
 
         void popcntb(u8 ra, u8 rs);
@@ -263,22 +267,17 @@ namespace Toolbox::Interpreter {
         void rldcl(u8 ra, u8 rs, u8 rb, u8 mb, bool rc, Register::CR &cr);
         void rldcr(u8 ra, u8 rs, u8 rb, u8 me, bool rc, Register::CR &cr);
         void rlwnm(u8 ra, u8 rs, u8 rb, u8 mb, u8 me, bool rc, Register::CR &cr);
-        void rldimi(u8 ra, u8 rs, u8 sh, u8 mb, bool rc, Register::CR &cr);
         void rlwimi(u8 ra, u8 rs, u8 sh, u8 mb, u8 me, bool rc, Register::CR &cr);
 
-        void sld(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
         void slw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
-        void srd(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
         void srw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
-        void sradi(u8 ra, u8 rs, u8 sh, bool rc, Register::CR &cr);
         void srawi(u8 ra, u8 rs, u8 sh, bool rc, Register::CR &cr);
-        void srad(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
         void sraw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
 
         // SPRs
 
-        void mtspr(SPRType spr, u8 rs, Register::LR &lr, Register::CTR &ctr);
-        void mfspr(SPRType spr, u8 rt, const Register::LR &lr, const Register::CTR &ctr);
+        void mtspr(Register::SPRType spr, u8 rs, Register::LR &lr, Register::CTR &ctr);
+        void mfspr(Register::SPRType spr, u8 rt, const Register::LR &lr, const Register::CTR &ctr);
         void mtcrf(u16 fxm, u8 rs, Register::CR &cr);
         void mfcr(u8 rt, const Register::CR &cr);
         void mtmsrd(u8 rs, bool l, Register::MSR &msr);
@@ -289,11 +288,17 @@ namespace Toolbox::Interpreter {
         void mtocrf(u8 fxm, u8 rs, Register::CR &cr);
         void mfocrf(u8 fxm, u8 rt, const Register::CR &cr);
 
+        // External control
+
+        void eciwx(u8 rt, u8 ra, u8 rb, Buffer &storage);
+        void ecowx(u8 rs, u8 ra, u8 rb, Buffer &storage);
+
     private:
         Register::XER m_xer;
         Register::GPR m_gpr[32];
 
-        func_exception_cb m_exception_cb;
+        proc_exception_cb m_exception_cb;
+        proc_invalid_cb m_invalid_cb;
     };
 
     class FloatingPointProcessor {
@@ -302,7 +307,8 @@ namespace Toolbox::Interpreter {
 
         FloatingPointProcessor() = default;
 
-        void onException(func_exception_cb cb) { m_exception_cb = cb; }
+        void onException(proc_exception_cb cb) { m_exception_cb = cb; }
+        void onInvalid(proc_invalid_cb cb) { m_invalid_cb = cb; }
 
     protected:
         // Memory
@@ -331,67 +337,68 @@ namespace Toolbox::Interpreter {
 
         // Move
 
-        void fmr(u8 frt, u8 frb, bool rc, Register::CR &cr);
-        void fabs(u8 frt, u8 frb, bool rc, Register::CR &cr);
-        void fneg(u8 frt, u8 frb, bool rc, Register::CR &cr);
-        void fnabs(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void fmr(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fabs(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fneg(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fnabs(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
 
         // Math
 
-        void fadd(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
-        void fadds(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
-        void fsub(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
-        void fsubs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
-        void fmul(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
-        void fmuls(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
-        void fdiv(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
-        void fdivs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr);
+        void fadd(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fadds(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fsub(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fsubs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fmul(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fmuls(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fdiv(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fdivs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
 
-        void fmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
-        void fmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
-        void fmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
-        void fmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
-        void fnmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
-        void fnmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
-        void fnmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
-        void fnmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
+        void fmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fnmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fnmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fnmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fnmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
 
         // Rounding and conversion
 
-        void fsrp(u8 frt, u8 frb, bool rc, Register::CR &cr);
-        void fctid(u8 frt, u8 frb, bool rc, Register::CR &cr);
-        void fdtidz(u8 frt, u8 frb, bool rc, Register::CR &cr);
-        void fcfid(u8 frt, u8 frb, bool rc, Register::CR &cr);
+        void frsp(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fctid(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fdtidz(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fcfid(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
 
         // Compare
 
-        void fcmpu(u8 bf, u8 fra, u8 frb, Register::CR &cr);
-        void fcmpo(u8 bf, u8 fra, u8 frb, Register::CR &cr);
+        void fcmpu(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fcmpo(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
 
         // FPSCR
 
-        void mffs(u8 frt, bool rc, Register::CR &cr);
-        void mcrfs(u8 bf, u8 bfa, Register::CR &cr);
-        void mtfsfi(u8 bf, u8 u, bool rc, Register::CR &cr);
-        void mtfsf(u8 flm, u8 frb, bool rc, Register::CR &cr);
-        void mtfsb0(u8 bt, bool rc, Register::CR &cr);
-        void mtfsb1(u8 bt, bool rc, Register::CR &cr);
+        void mffs(u8 frt, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void mcrfs(u8 bf, u8 bfa, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void mtfsfi(u8 bf, u8 u, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void mtfsf(u8 flm, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void mtfsb0(u8 bt, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void mtfsb1(u8 bt, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
 
         // Extended
 
-        void fsqrt(u8 frt, u8 frb, bool rc, Register::CR &cr);
-        void fsqrts(u8 frt, u8 frb, bool rc, Register::CR &cr);
-        void fre(u8 frt, u8 frb, bool rc, Register::CR &cr);
-        void fres(u8 frt, u8 frb, bool rc, Register::CR &cr);
-        void frsqrte(u8 frt, u8 frb, bool rc, Register::CR &cr);
-        void frsqrtes(u8 frt, u8 frb, bool rc, Register::CR &cr);
-        void fsel(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr);
+        void fsqrt(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fsqrts(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fre(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fres(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void frsqrte(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void frsqrtes(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fsel(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
 
     private:
         Register::FPSCR m_fpscr;
         Register::FPR m_fpr[32];
 
-        func_exception_cb m_exception_cb;
+        proc_exception_cb m_exception_cb;
+        proc_invalid_cb m_invalid_cb;
     };
 
 }  // namespace Toolbox::Interpreter
