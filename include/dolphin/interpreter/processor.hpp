@@ -50,6 +50,14 @@ namespace Toolbox::Interpreter {
         HINT_STREAM_DESCRIPT = 8,
     };
 
+    inline bool MemoryContainsVAddress(const Buffer &buffer, u32 address) {
+        return address >= 0x80000000 && address < 0x80000000 + buffer.size();
+    }
+
+    inline bool MemoryContainsPAddress(const Buffer &buffer, s32 address) {
+        return address >= 0 && address < buffer.size();
+    }
+
     inline bool IsRegValid(u8 reg) { return reg < 32; }
 
     class SystemProcessor {

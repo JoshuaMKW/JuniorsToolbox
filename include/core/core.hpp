@@ -31,10 +31,10 @@
 #define TOOLBOX_EXPAND_MACRO(x)    x
 #define TOOLBOX_STRINGIFY_MACRO(x) #x
 
-#define BIT(x)                       (u64)((u32)1 << (u8)(x))
-#define SIG_BIT(x, width)            (u64)((u32)1 << (u8)((width - 1) - (x)))
-#define GET_BIT(value, x)            (bool)(((value) & (BIT((x)))) >> (x))
-#define GET_SIG_BIT(value, x, width) (bool)(((value) & (SIG_BIT((x), (width)))) >> x)
+#define BIT(x)                       (u64)((u64)1 << (u8)(x))
+#define SIG_BIT(x, width)            (u64)((u64)1 << (u8)((width - 1) - (x)))
+#define GET_BIT(value, x)            (bool)(((value) & (BIT((x)))) >> (u8)(x))
+#define GET_SIG_BIT(value, x, width) (bool)(((value) & (SIG_BIT((x), (width)))) >> (u8)(x))
 #define SET_BIT(value, x, flag)                                                                    \
     {                                                                                              \
         (value) &= (BIT((x)));                                                                     \

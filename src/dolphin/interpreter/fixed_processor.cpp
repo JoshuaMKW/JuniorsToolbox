@@ -25,14 +25,6 @@ inline u32 MakeRotationMask(u32 mb, u32 me) {
 
 namespace Toolbox::Interpreter {
 
-    inline bool MemoryContainsVAddress(const Buffer &buffer, u32 address) {
-        return address >= 0x80000000 && address < 0x80000000 + buffer.size();
-    }
-
-    inline bool MemoryContainsPAddress(const Buffer &buffer, s32 address) {
-        return address >= 0 && address < buffer.size();
-    }
-
     // Memory
     void FixedPointProcessor::lbz(u8 rt, s16 d, u8 ra, Buffer &storage) {
         if (!IsRegValid(rt) || !IsRegValid(ra)) {
@@ -766,6 +758,33 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, stwbrx, "Invalid registers detected!"));
             return;
         }
+        if (ra == 0) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lswx,
+                                          "Store using source register 0 is invalid!"));
+            return;
+        }
+        if (rs <= ra) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lswx,
+                                          "Source register in range of string load is invalid!"));
+            return;
+        }
+        s32 destination = m_gpr[ra] - 0x80000000;
+        while (nb > 0) {
+            if (!MemoryContainsPAddress(storage, destination)) {
+                m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+                return;
+            }
+            if (nb < 4) {
+                memcpy(storage.buf<u8>() + destination, &m_gpr[rs++], nb);
+                destination += 4;
+                nb = 0;
+            } else {
+                storage.set<u32>(destination, m_gpr[rs++]);
+                destination += 4;
+                nb -= 4;
+            }
+            rs %= 32;
+        }
     }
 
     void FixedPointProcessor::stswx(u8 rs, u8 ra, u8 rb, Buffer &storage) {
@@ -774,21 +793,63 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, stwbrx, "Invalid registers detected!"));
             return;
         }
+        if (ra == 0) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lswx,
+                                          "Store using source register 0 is invalid!"));
+            return;
+        }
+        if (rs <= ra || rs <= rb) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lswx,
+                                          "Source register in range of string load is invalid!"));
+            return;
+        }
+        s32 destination = m_gpr[ra] - 0x80000000;
+        u8 nb           = XER_STR(m_xer);
+        while (nb > 0) {
+            if (!MemoryContainsPAddress(storage, destination)) {
+                m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+                return;
+            }
+            if (nb < 4) {
+                memcpy(storage.buf<u8>() + destination, &m_gpr[rs++], nb);
+                destination += 4;
+                nb = 0;
+            } else {
+                storage.set<u32>(destination, m_gpr[rs++]);
+                destination += 4;
+                nb -= 4;
+            }
+            rs %= 32;
+        }
     }
 
     // Math
 
     void FixedPointProcessor::addi(u8 rt, u8 ra, s16 si) {
+        if (!IsRegValid(rt) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, addi, "Invalid registers detected!"));
+            return;
+        }
         u64 result = ra == 0 ? si : m_gpr[ra] + si;
         m_gpr[rt]  = result & 0xFFFFFFFF;
     }
 
     void FixedPointProcessor::addis(u8 rt, u8 ra, s16 si) {
+        if (!IsRegValid(rt) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, addis, "Invalid registers detected!"));
+            return;
+        }
         u64 result = ra == 0 ? si : m_gpr[ra] + si;
         m_gpr[rt]  = (result << 16) & 0xFFFFFFFF;
     }
 
     void FixedPointProcessor::add(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, add, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[ra] + m_gpr[rb];
         m_gpr[rt]  = result & 0xFFFFFFFF;
         if (oe && result > 0xFFFFFFFF) {
@@ -801,15 +862,50 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::addic(u8 rt, u8 ra, s16 si, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, addic, "Invalid registers detected!"));
+            return;
+        }
         u64 result = ra == 0 ? si : m_gpr[ra] + si;
         m_gpr[rt]  = result & 0xFFFFFFFF;
         XER_SET_CA(m_xer, result > 0xFFFFFFFF);
     }
 
-    void FixedPointProcessor::subf(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::subfic(u8 rt, u8 ra, s16 si) {}
+    void FixedPointProcessor::subf(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, subf, "Invalid registers detected!"));
+            return;
+        }
+        u64 result = ~m_gpr[ra] + m_gpr[rb] + 1;
+        m_gpr[rt]  = result & 0xFFFFFFFF;
+        if (oe && result > 0xFFFFFFFF) {
+            XER_SET_OV(m_xer, true);
+            XER_SET_SO(m_xer, true);
+        }
+        if (rc) {
+            cr.cmp(0, (s32)m_gpr[rt], 0, m_xer);
+        }
+    }
+
+    void FixedPointProcessor::subfic(u8 rt, u8 ra, s16 si) {
+        if (!IsRegValid(rt) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, subfic, "Invalid registers detected!"));
+            return;
+        }
+        u64 result = ~m_gpr[ra] + (s32)si + 1;
+        m_gpr[rt]  = result & 0xFFFFFFFF;
+        XER_SET_CA(m_xer, result > 0xFFFFFFFF);
+    }
 
     void FixedPointProcessor::addc(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, addc, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[ra] + m_gpr[rb];
         m_gpr[rt]  = result & 0xFFFFFFFF;
         XER_SET_CA(m_xer, result > 0xFFFFFFFF);
@@ -822,9 +918,30 @@ namespace Toolbox::Interpreter {
         }
     }
 
-    void FixedPointProcessor::subfc(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {}
+    void FixedPointProcessor::subfc(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, subfc, "Invalid registers detected!"));
+            return;
+        }
+        u64 result = ~m_gpr[ra] + m_gpr[rb] + 1;
+        m_gpr[rt]  = result & 0xFFFFFFFF;
+        XER_SET_CA(m_xer, result > 0xFFFFFFFF);
+        if (XER_CA(m_xer) && oe) {
+            XER_SET_OV(m_xer, true);
+            XER_SET_SO(m_xer, true);
+        }
+        if (rc) {
+            cr.cmp(0, (s32)m_gpr[rt], 0, m_xer);
+        }
+    }
 
     void FixedPointProcessor::adde(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, adde, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[ra] + m_gpr[rb] + (u64)XER_CA(m_xer);
         m_gpr[rt]  = result & 0xFFFFFFFF;
         XER_SET_CA(m_xer, result > 0xFFFFFFFF);
@@ -836,9 +953,31 @@ namespace Toolbox::Interpreter {
             cr.cmp(0, (s32)m_gpr[rt], 0, m_xer);
         }
     }
-    void FixedPointProcessor::subfe(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {}
+
+    void FixedPointProcessor::subfe(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, subfe, "Invalid registers detected!"));
+            return;
+        }
+        u64 result = ~m_gpr[ra] + m_gpr[rb] + (u64)XER_CA(m_xer);
+        m_gpr[rt]  = result & 0xFFFFFFFF;
+        XER_SET_CA(m_xer, result > 0xFFFFFFFF);
+        if (XER_CA(m_xer) && oe) {
+            XER_SET_OV(m_xer, true);
+            XER_SET_SO(m_xer, true);
+        }
+        if (rc) {
+            cr.cmp(0, (s32)m_gpr[rt], 0, m_xer);
+        }
+    }
 
     void FixedPointProcessor::addme(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, addme, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[ra] + (u64)XER_CA(m_xer) + 0xFFFFFFFF;
         m_gpr[rt]  = result & 0xFFFFFFFF;
         XER_SET_CA(m_xer, result > 0xFFFFFFFF);
@@ -851,18 +990,84 @@ namespace Toolbox::Interpreter {
         }
     }
 
-    void FixedPointProcessor::subfme(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::addze(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::subfze(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr) {}
+    void FixedPointProcessor::subfme(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, subfme, "Invalid registers detected!"));
+            return;
+        }
+    }
 
-    void FixedPointProcessor::mulli(u8 rt, u8 ra, s16 si) {}
-    void FixedPointProcessor::mullw(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::mullhd(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::mullhdu(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::mullhw(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::mullhwu(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr) {}
+    void FixedPointProcessor::addze(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, addze, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::subfze(u8 rt, u8 ra, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, subfze, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::mulli(u8 rt, u8 ra, s16 si) {
+        if (!IsRegValid(rt) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mulli, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::mullw(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullw, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::mullhd(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhd, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::mullhdu(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhdu, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::mullhw(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, stwbrx, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::mullhwu(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
 
     void FixedPointProcessor::divw(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = (s32)m_gpr[ra] / (s32)m_gpr[rb];
         if (m_gpr[ra] == 0x80000000 && m_gpr[rb] == 0xFFFFFFFF) {
             result = 0x7FFFFFFF;
@@ -879,6 +1084,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::divwu(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {
+        if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = (u32)m_gpr[ra] / (u32)m_gpr[rb];
         if (m_gpr[ra] == 0x80000000 && m_gpr[rb] == 0xFFFFFFFF) {
             result = 0x7FFFFFFF;
@@ -897,6 +1107,11 @@ namespace Toolbox::Interpreter {
     // Compare
 
     void FixedPointProcessor::cmpi(u8 bf, bool l, u8 ra, s16 si, Register::CR &cr) {
+        if (!IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         // Double comparison unsupported (32-bit)
         if (l == 1) {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, cmpi,
@@ -907,6 +1122,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::cmp(u8 bf, bool l, u8 ra, u8 rb, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         // Double comparison unsupported (32-bit)
         if (l == 1) {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, cmp,
@@ -917,6 +1137,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::cmpli(u8 bf, bool l, u8 ra, u16 ui, Register::CR &cr) {
+        if (!IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         // Double comparison unsupported (32-bit)
         if (l == 1) {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, cmpli,
@@ -927,6 +1152,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::cmpl(u8 bf, bool l, u8 ra, u8 rb, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         // Double comparison unsupported (32-bit)
         if (l == 1) {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, cmpl,
@@ -946,33 +1176,63 @@ namespace Toolbox::Interpreter {
     // Logic
 
     void FixedPointProcessor::andi(u8 ra, u8 rs, u16 ui, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[rs] & ui;
         m_gpr[ra]  = result & 0xFFFFFFFF;
         cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
     }
 
     void FixedPointProcessor::andis(u8 ra, u8 rs, u16 ui, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[rs] & ((u64)ui << 16);
         m_gpr[ra]  = result & 0xFFFFFFFF;
         cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
     }
 
     void FixedPointProcessor::ori(u8 ra, u8 rs, u16 ui) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[rs] | ui;
         m_gpr[ra]  = result & 0xFFFFFFFF;
     }
 
     void FixedPointProcessor::oris(u8 ra, u8 rs, u16 ui) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[rs] | ((u64)ui << 16);
         m_gpr[ra]  = result & 0xFFFFFFFF;
     }
 
     void FixedPointProcessor::xori(u8 ra, u8 rs, u16 ui) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[rs] ^ ui;
         m_gpr[ra]  = result & 0xFFFFFFFF;
     }
 
     void FixedPointProcessor::and_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[rs] & m_gpr[rb];
         m_gpr[ra]  = result & 0xFFFFFFFF;
         if (rc) {
@@ -981,6 +1241,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::or_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[rs] | m_gpr[rb];
         m_gpr[ra]  = result & 0xFFFFFFFF;
         if (rc) {
@@ -989,6 +1254,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::xor_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[rs] ^ m_gpr[rb];
         m_gpr[ra]  = result & 0xFFFFFFFF;
         if (rc) {
@@ -997,6 +1267,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::nand_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = ~(m_gpr[rs] & m_gpr[rb]);
         m_gpr[ra]  = result & 0xFFFFFFFF;
         if (rc) {
@@ -1005,6 +1280,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::nor_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = ~(m_gpr[rs] | m_gpr[rb]);
         m_gpr[ra]  = result & 0xFFFFFFFF;
         if (rc) {
@@ -1013,6 +1293,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::eqv_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[rs] ^ m_gpr[rb];
         m_gpr[ra]  = ~(result)&0xFFFFFFFF;
         if (rc) {
@@ -1021,6 +1306,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::andc(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[rs] & ~m_gpr[rb];
         m_gpr[ra]  = result & 0xFFFFFFFF;
         if (rc) {
@@ -1028,6 +1318,11 @@ namespace Toolbox::Interpreter {
         }
     }
     void FixedPointProcessor::orc(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = m_gpr[rs] | ~m_gpr[rb];
         m_gpr[ra]  = result & 0xFFFFFFFF;
         if (rc) {
@@ -1036,6 +1331,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::extsb(u8 ra, u8 rs, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         m_gpr[ra] = std::bit_cast<u64, s64>((s64)m_gpr[rs]) & 0xFFFFFFFF;
         if (rc) {
             cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
@@ -1043,6 +1343,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::extsh(u8 ra, u8 rs, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         m_gpr[ra] = std::bit_cast<u64, s64>((s64)m_gpr[rs]) & 0xFFFFFFFF;
         if (rc) {
             cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
@@ -1050,6 +1355,11 @@ namespace Toolbox::Interpreter {
     }
 
     void FixedPointProcessor::cntlzw(u8 ra, u8 rs, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
         u64 result = 0;
         while (result < 32) {
             if ((m_gpr[rs] & SIG_BIT((u8)result, 32)) != 0) {
@@ -1063,25 +1373,111 @@ namespace Toolbox::Interpreter {
         }
     }
 
-    void FixedPointProcessor::popcntb(u8 ra, u8 rs) {}
+    void FixedPointProcessor::popcntb(u8 ra, u8 rs) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
 
     // Rotate | shift
 
-    void FixedPointProcessor::rldicl(u8 ra, u8 rs, u8 sh, u8 mb, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::rldicr(u8 ra, u8 rs, u8 sh, u8 me, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::rldic(u8 ra, u8 rs, u8 sh, u8 mb, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::rlwinm(u8 ra, u8 rs, u8 sh, u8 mb, u8 me, bool rc, Register::CR &cr) {
-    }
-    void FixedPointProcessor::rldcl(u8 ra, u8 rs, u8 rb, u8 mb, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::rldcr(u8 ra, u8 rs, u8 rb, u8 me, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::rlwnm(u8 ra, u8 rs, u8 rb, u8 mb, u8 me, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::rlwimi(u8 ra, u8 rs, u8 sh, u8 mb, u8 me, bool rc, Register::CR &cr) {
+    void FixedPointProcessor::rldicl(u8 ra, u8 rs, u8 sh, u8 mb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
     }
 
-    void FixedPointProcessor::slw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::srw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::srawi(u8 ra, u8 rs, u8 sh, bool rc, Register::CR &cr) {}
-    void FixedPointProcessor::sraw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {}
+    void FixedPointProcessor::rldicr(u8 ra, u8 rs, u8 sh, u8 me, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::rldic(u8 ra, u8 rs, u8 sh, u8 mb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::rlwinm(u8 ra, u8 rs, u8 sh, u8 mb, u8 me, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::rldcl(u8 ra, u8 rs, u8 rb, u8 mb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::rldcr(u8 ra, u8 rs, u8 rb, u8 me, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::rlwnm(u8 ra, u8 rs, u8 rb, u8 mb, u8 me, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::rlwimi(u8 ra, u8 rs, u8 sh, u8 mb, u8 me, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::slw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::srw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::srawi(u8 ra, u8 rs, u8 sh, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
+
+    void FixedPointProcessor::sraw(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {
+        if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, mullhwu, "Invalid registers detected!"));
+            return;
+        }
+    }
 
     // SPRs
 
