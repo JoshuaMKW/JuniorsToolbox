@@ -23,8 +23,6 @@ inline u32 MakeRotationMask(u32 mb, u32 me) {
     return mask;
 }
 
-inline bool IsRegValid(u8 reg) { return reg < 32; }
-
 namespace Toolbox::Interpreter {
 
     inline bool MemoryContainsVAddress(const Buffer &buffer, u32 address) {

@@ -50,6 +50,8 @@ namespace Toolbox::Interpreter {
         HINT_STREAM_DESCRIPT = 8,
     };
 
+    inline bool IsRegValid(u8 reg) { return reg < 32; }
+
     class SystemProcessor {
     public:
         friend class SystemDolphin;
