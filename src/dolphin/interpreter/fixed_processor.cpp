@@ -698,13 +698,29 @@ namespace Toolbox::Interpreter {
                                           "Store using source register 0 is invalid!"));
             return;
         }
+        if (rt <= ra) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lswi,
+                                          "Source register in range of string load is invalid!"));
+            return;
+        }
         s32 destination = m_gpr[ra] - 0x80000000;
         while (nb > 0) {
             if (!MemoryContainsPAddress(storage, destination)) {
                 m_exception_cb(ExceptionCause::EXCEPTION_DSI);
                 return;
             }
-            // TODO: finish implementation
+            if (nb < 4) {
+                u32 value = storage.get<u32>(destination);
+                value &= ~((0x100 << ((nb - 1) * 8)) - 1);
+                m_gpr[rt++] = value;
+                destination += 4;
+                nb = 0;
+            } else {
+                m_gpr[rt++] = storage.get<u32>(destination);
+                destination += 4;
+                nb -= 4;
+            }
+            rt %= 32;
         }
     }
 
@@ -719,7 +735,31 @@ namespace Toolbox::Interpreter {
                                           "Store using source register 0 is invalid!"));
             return;
         }
-
+        if (rt <= ra || rt <= rb) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lswx,
+                                          "Source register in range of string load is invalid!"));
+            return;
+        }
+        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        u8 nb           = XER_STR(m_xer);
+        while (nb > 0) {
+            if (!MemoryContainsPAddress(storage, destination)) {
+                m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+                return;
+            }
+            if (nb < 4) {
+                u32 value = storage.get<u32>(destination);
+                value &= ~((0x100 << ((nb - 1) * 8)) - 1);
+                m_gpr[rt++] = value;
+                destination += 4;
+                nb = 0;
+            } else {
+                m_gpr[rt++] = storage.get<u32>(destination);
+                destination += 4;
+                nb -= 4;
+            }
+            rt %= 32;
+        }
     }
 
     void FixedPointProcessor::stswi(u8 rs, u8 ra, u8 nb, Buffer &storage) {

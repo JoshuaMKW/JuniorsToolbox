@@ -390,15 +390,15 @@ namespace Toolbox::Interpreter::Register {
 
     typedef u32 XER;
 
-#define XER_SO(fpscr)  (bool)(((fpscr) >> 31) & 0b1)
-#define XER_OV(fpscr)  (bool)(((fpscr) >> 30) & 0b1)
-#define XER_CA(fpscr)  (bool)(((fpscr) >> 29) & 0b1)
-#define XER_STR(fpscr) (bool)((fpscr)&0b1111111)
+#define XER_SO(xer)  (bool)(((xer) >> 31) & 0b1)
+#define XER_OV(xer)  (bool)(((xer) >> 30) & 0b1)
+#define XER_CA(xer)  (bool)(((xer) >> 29) & 0b1)
+#define XER_STR(xer) (u8)((xer)&0b1111111)
 
-#define XER_SET_SO(fpscr, value)  ((fpscr) = ((fpscr) & ~(0b1 << 31)) | ((value) << 31))
-#define XER_SET_OV(fpscr, value)  ((fpscr) = ((fpscr) & ~(0b1 << 30)) | ((value) << 30))
-#define XER_SET_CA(fpscr, value)  ((fpscr) = ((fpscr) & ~(0b1 << 29)) | ((value) << 29))
-#define XER_SET_STR(fpscr, value) ((fpscr) = ((fpscr) & ~0b1111111) | ((value)&0b1111111))
+#define XER_SET_SO(xer, value)  ((xer) = ((xer) & ~(0b1 << 31)) | ((value) << 31))
+#define XER_SET_OV(xer, value)  ((xer) = ((xer) & ~(0b1 << 30)) | ((value) << 30))
+#define XER_SET_CA(xer, value)  ((xer) = ((xer) & ~(0b1 << 29)) | ((value) << 29))
+#define XER_SET_STR(xer, value) ((xer) = ((xer) & ~0b1111111) | ((value)&0b1111111))
 
     enum class CRCmp : u8 {
         NONE = 0,
