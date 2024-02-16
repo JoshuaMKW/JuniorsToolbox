@@ -284,11 +284,6 @@ namespace Toolbox::Interpreter {
         void mtmsr(u8 rs, Register::MSR &msr);
         void mfmsr(u8 rt, const Register::MSR &msr);
 
-        // Extended
-
-        void mtocrf(u8 fxm, u8 rs, Register::CR &cr);
-        void mfocrf(u8 fxm, u8 rt, const Register::CR &cr);
-
         // External control
 
         void eciwx(u8 rt, u8 ra, u8 rb, Buffer &storage);
