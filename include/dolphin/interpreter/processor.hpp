@@ -70,7 +70,6 @@ namespace Toolbox::Interpreter {
         void onInvalid(proc_invalid_cb cb) { m_invalid_cb = cb; }
 
     private:
-        void mftb(u8 rt, u16 tbr);
 
         // Storage control
 
@@ -89,6 +88,13 @@ namespace Toolbox::Interpreter {
 
         // Interrupt flow
 
+        void sc(u8 lev, Register::PC &pc, Register::SRR0 &srr0, Register::SRR1 &srr1,
+                Register::MSR &msr) {
+            srr0 = pc;
+            srr1 = msr & 0b10000111110000001111111101110011;
+            // TODO: assign values to msr, execute system call exception, etc
+            // https://fail0verflow.com/media/files/ppc_750cl.pdf
+        }
         void rfi() {}
 
         Register::PC m_pc;
@@ -118,9 +124,6 @@ namespace Toolbox::Interpreter {
         void bc(s32 target_addr, u8 bo, u8 bi, bool aa, bool lk, Register::PC &pc);
         void bclr(u8 bo, u8 bi, u8 bh, bool lk, Register::PC &pc);
         void bcctr(u8 bo, u8 bi, u8 bh, bool lk, Register::PC &pc);
-
-        void sc(u8 lev, Register::PC &pc, Register::SRR0 &srr0, Register::SRR1 &srr1,
-                Register::MSR &msr);
 
         void crand(u8 bt, u8 ba, u8 bb, Register::PC &pc);
         void crandc(u8 bt, u8 ba, u8 bb, Register::PC &pc);
@@ -220,8 +223,6 @@ namespace Toolbox::Interpreter {
 
         void mulli(u8 rt, u8 ra, s16 si);
         void mullw(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr);
-        void mullhd(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr);
-        void mullhdu(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr);
         void mullhw(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr);
         void mullhwu(u8 rt, u8 ra, u8 rb, bool rc, Register::CR &cr);
 
@@ -237,9 +238,7 @@ namespace Toolbox::Interpreter {
 
         // Trap
 
-        void tdi(u8 to, u8 ra, s16 si);
         void twi(u8 to, u8 ra, s16 si);
-        void td(u8 to, u8 ra, u8 rb);
         void tw(u8 to, u8 ra, u8 rb);
 
         // Logic
@@ -263,16 +262,9 @@ namespace Toolbox::Interpreter {
 
         void cntlzw(u8 ra, u8 rs, bool rc, Register::CR &cr);
 
-        void popcntb(u8 ra, u8 rs);
-
         // Rotate | shift
 
-        void rldicl(u8 ra, u8 rs, u8 sh, u8 mb, bool rc, Register::CR &cr);
-        void rldicr(u8 ra, u8 rs, u8 sh, u8 me, bool rc, Register::CR &cr);
-        void rldic(u8 ra, u8 rs, u8 sh, u8 mb, bool rc, Register::CR &cr);
         void rlwinm(u8 ra, u8 rs, u8 sh, u8 mb, u8 me, bool rc, Register::CR &cr);
-        void rldcl(u8 ra, u8 rs, u8 rb, u8 mb, bool rc, Register::CR &cr);
-        void rldcr(u8 ra, u8 rs, u8 rb, u8 me, bool rc, Register::CR &cr);
         void rlwnm(u8 ra, u8 rs, u8 rb, u8 mb, u8 me, bool rc, Register::CR &cr);
         void rlwimi(u8 ra, u8 rs, u8 sh, u8 mb, u8 me, bool rc, Register::CR &cr);
 
@@ -283,12 +275,14 @@ namespace Toolbox::Interpreter {
 
         // SPRs
 
+        void mcrxr(Register::CR &cr, u8 crf);
         void mtspr(Register::SPRType spr, u8 rs, Register::LR &lr, Register::CTR &ctr);
         void mfspr(Register::SPRType spr, u8 rt, const Register::LR &lr, const Register::CTR &ctr);
+        void mftb(u8 rt, s16 tbr, const Register::TB &tb);
         void mtcrf(u16 fxm, u8 rs, Register::CR &cr);
         void mfcr(u8 rt, const Register::CR &cr);
-        void mtmsrd(u8 rs, bool l, Register::MSR &msr);
-        void mfmsr(u8 rs, const Register::MSR &msr);
+        void mtmsr(u8 rs, Register::MSR &msr);
+        void mfmsr(u8 rt, const Register::MSR &msr);
 
         // Extended
 
@@ -344,61 +338,94 @@ namespace Toolbox::Interpreter {
 
         // Move
 
-        void fmr(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fabs(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fneg(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fnabs(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fmr(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                 Register::SRR1 &srr1);
+        void fabs(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1);
+        void fneg(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1);
+        void fnabs(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
 
         // Math
 
-        void fadd(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fadds(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fsub(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fsubs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fmul(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fmuls(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fdiv(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fdivs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fadd(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1);
+        void fadds(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
+        void fsub(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1);
+        void fsubs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
+        void fmul(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1);
+        void fmuls(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
+        void fdiv(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1);
+        void fdivs(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
 
-        void fmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fnmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fnmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fnmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fnmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
+        void fmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                    Register::SRR1 &srr1);
+        void fmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
+        void fmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                    Register::SRR1 &srr1);
+        void fnmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                    Register::SRR1 &srr1);
+        void fnmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                     Register::SRR1 &srr1);
+        void fnmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                    Register::SRR1 &srr1);
+        void fnmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                     Register::SRR1 &srr1);
 
         // Rounding and conversion
 
-        void frsp(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fctid(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fdtidz(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fcfid(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void frsp(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1);
+        void fctid(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
+        void fdtidz(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                    Register::SRR1 &srr1);
+        void fcfid(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
 
         // Compare
 
-        void fcmpu(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fcmpo(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fcmpu(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
+        void fcmpo(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
 
         // FPSCR
 
         void mffs(u8 frt, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
         void mcrfs(u8 bf, u8 bfa, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void mtfsfi(u8 bf, u8 u, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void mtfsf(u8 flm, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void mtfsfi(u8 bf, u8 u, bool rc, Register::CR &cr, Register::MSR &msr,
+                    Register::SRR1 &srr1);
+        void mtfsf(u8 flm, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
         void mtfsb0(u8 bt, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
         void mtfsb1(u8 bt, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
 
         // Extended
 
-        void fsqrt(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fsqrts(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fre(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fres(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void frsqrte(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void frsqrtes(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
-        void fsel(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1);
+        void fsqrt(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1);
+        void fsqrts(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                    Register::SRR1 &srr1);
+        void fres(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1);
+        void frsqrte(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                     Register::SRR1 &srr1);
+        void frsqrtes(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                      Register::SRR1 &srr1);
+        void fsel(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1);
 
     private:
         Register::FPSCR m_fpscr;

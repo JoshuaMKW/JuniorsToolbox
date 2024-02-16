@@ -155,13 +155,6 @@ namespace Toolbox::Interpreter {
         m_invalid_cb(PROC_INVALID_MSG(BranchProcessor, bcctr, "Invalid form!"));
     }
 
-    void BranchProcessor::sc(u8 lev, Register::PC &pc, Register::SRR0 &srr0, Register::SRR1 &srr1, Register::MSR &msr) {
-        srr0 = pc;
-        srr1 = msr & 0b10000111110000001111111101110011;
-        // TODO: assign values to msr, execute system call exception, etc
-        // https://fail0verflow.com/media/files/ppc_750cl.pdf
-    }
-
     void BranchProcessor::crand(u8 bt, u8 ba, u8 bb, Register::PC &pc) {
         bool result = GET_SIG_BIT(m_cr.m_crf, ba, 32) & GET_SIG_BIT(m_cr.m_crf, bb, 32);
         SET_SIG_BIT(m_cr.m_crf, bt, result, 32);

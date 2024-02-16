@@ -9,6 +9,4 @@
 
 namespace Toolbox::Interpreter {
 
-    void SystemProcessor::mftb(u8 rt, u16 tbr) {}
-
 }  // namespace Toolbox::Interpreter
