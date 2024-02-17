@@ -88,10 +88,9 @@ namespace Toolbox::Interpreter {
 
         // Interrupt flow
 
-        void sc(u8 lev, Register::PC &pc, Register::SRR0 &srr0, Register::SRR1 &srr1,
-                Register::MSR &msr) {
-            srr0 = pc;
-            srr1 = msr & 0b10000111110000001111111101110011;
+        void sc(u8 lev) {
+            m_srr0 = pc;
+            m_srr1 = m_msr & 0b10000111110000001111111101110011;
             // TODO: assign values to msr, execute system call exception, etc
             // https://fail0verflow.com/media/files/ppc_750cl.pdf
         }
@@ -122,17 +121,20 @@ namespace Toolbox::Interpreter {
     protected:
         void b(s32 target_addr, bool aa, bool lk, Register::PC &pc);
         void bc(s32 target_addr, u8 bo, u8 bi, bool aa, bool lk, Register::PC &pc);
-        void bclr(u8 bo, u8 bi, u8 bh, bool lk, Register::PC &pc);
-        void bcctr(u8 bo, u8 bi, u8 bh, bool lk, Register::PC &pc);
+        void bclr(u8 bo, u8 bi, bool lk, Register::PC &pc);
+        void bcctr(u8 bo, u8 bi, bool lk, Register::PC &pc);
 
-        void crand(u8 bt, u8 ba, u8 bb, Register::PC &pc);
-        void crandc(u8 bt, u8 ba, u8 bb, Register::PC &pc);
-        void creqv(u8 bt, u8 ba, u8 bb, Register::PC &pc);
-        void cror(u8 bt, u8 ba, u8 bb, Register::PC &pc);
-        void crorc(u8 bt, u8 ba, u8 bb, Register::PC &pc);
-        void crnand(u8 bt, u8 ba, u8 bb, Register::PC &pc);
-        void crnor(u8 bt, u8 ba, u8 bb, Register::PC &pc);
-        void crxor(u8 bt, u8 ba, u8 bb, Register::PC &pc);
+        void crand(u8 bt, u8 ba, u8 bb);
+        void crandc(u8 bt, u8 ba, u8 bb);
+        void creqv(u8 bt, u8 ba, u8 bb);
+        void cror(u8 bt, u8 ba, u8 bb);
+        void crorc(u8 bt, u8 ba, u8 bb);
+        void crnand(u8 bt, u8 ba, u8 bb);
+        void crnor(u8 bt, u8 ba, u8 bb);
+        void crxor(u8 bt, u8 ba, u8 bb);
+
+        void mcrf(u8 bt, u8 ba);
+        void mcrfs(u8 bt, u8 ba);
 
     private:
         Register::CR m_cr;
@@ -248,6 +250,7 @@ namespace Toolbox::Interpreter {
         void ori(u8 ra, u8 rs, u16 ui);
         void oris(u8 ra, u8 rs, u16 ui);
         void xori(u8 ra, u8 rs, u16 ui);
+        void xoris(u8 ra, u8 rs, u16 ui);
         void and_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
         void or_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
         void xor_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr);
@@ -309,27 +312,27 @@ namespace Toolbox::Interpreter {
     protected:
         // Memory
 
-        void lfs(u8 frt, s16 d, u8 ra);
-        void lfsu(u8 frt, s16 d, u8 ra);
-        void lfsx(u8 frt, u8 ra, u8 rb);
-        void lfsux(u8 frt, u8 ra, u8 rb);
+        void lfs(u8 frt, s16 d, u8 ra, Buffer &storage);
+        void lfsu(u8 frt, s16 d, u8 ra, Buffer &storage);
+        void lfsx(u8 frt, u8 ra, u8 rb, Buffer &storage);
+        void lfsux(u8 frt, u8 ra, u8 rb, Buffer &storage);
 
-        void lfd(u8 frt, s16 d, u8 ra);
-        void lfdu(u8 frt, s16 d, u8 ra);
-        void lfdx(u8 frt, u8 ra, u8 rb);
-        void lfdux(u8 frt, u8 ra, u8 rb);
+        void lfd(u8 frt, s16 d, u8 ra, Buffer &storage);
+        void lfdu(u8 frt, s16 d, u8 ra, Buffer &storage);
+        void lfdx(u8 frt, u8 ra, u8 rb, Buffer &storage);
+        void lfdux(u8 frt, u8 ra, u8 rb, Buffer &storage);
 
-        void stfs(u8 frs, s16 d, u8 ra);
-        void stfsu(u8 frs, s16 d, u8 ra);
-        void stfsx(u8 frs, u8 ra, u8 rb);
-        void stfsux(u8 frs, u8 ra, u8 rb);
+        void stfs(u8 frs, s16 d, u8 ra, Buffer &storage);
+        void stfsu(u8 frs, s16 d, u8 ra, Buffer &storage);
+        void stfsx(u8 frs, u8 ra, u8 rb, Buffer &storage);
+        void stfsux(u8 frs, u8 ra, u8 rb, Buffer &storage);
 
-        void stfd(u8 frs, s16 d, u8 ra);
-        void stfdu(u8 frs, s16 d, u8 ra);
-        void stfdx(u8 frs, u8 ra, u8 rb);
-        void stfdux(u8 frs, u8 ra, u8 rb);
+        void stfd(u8 frs, s16 d, u8 ra, Buffer &storage);
+        void stfdu(u8 frs, s16 d, u8 ra, Buffer &storage);
+        void stfdx(u8 frs, u8 ra, u8 rb, Buffer &storage);
+        void stfdux(u8 frs, u8 ra, u8 rb, Buffer &storage);
 
-        void stfiwx(u8 frs, u8 ra, u8 rb);
+        void stfiwx(u8 frs, u8 ra, u8 rb, Buffer &storage);
 
         // Move
 

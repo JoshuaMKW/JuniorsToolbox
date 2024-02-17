@@ -8,11 +8,11 @@
 
 namespace Toolbox::Interpreter {
 
-    using func_ret_cb = std::function<void(const Register::RegisterSnapshot &snapshot)>;
-    using func_exception_cb =
-        std::function<void(u32 bad_instr_ptr, const Register::RegisterSnapshot &snapshot)>;
-    using func_exception_cb =
-        std::function<void(u32 bad_instr_ptr, const Register::RegisterSnapshot &snapshot)>;
+    using func_ret_cb       = std::function<void(const Register::RegisterSnapshot &snapshot)>;
+    using func_exception_cb = std::function<void(u32 bad_instr_ptr, ExceptionCause cause,
+                                                 const Register::RegisterSnapshot &snapshot)>;
+    using func_invalid_cb   = std::function<void(u32 bad_instr_ptr, const std::string &reason,
+                                               const Register::RegisterSnapshot &snapshot)>;
 
     class SystemDolphin : public Threaded<void> {
     public:
@@ -22,6 +22,10 @@ namespace Toolbox::Interpreter {
             m_fixed_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
             m_float_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
             m_system_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+            m_branch_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+            m_fixed_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+            m_float_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+            m_system_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
         }
 
         void signalEvaluateFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv, u8 fpr_argc,
@@ -65,6 +69,11 @@ namespace Toolbox::Interpreter {
 
         void evaluateFunction();
         void evaluateInstruction();
+        void evaluatePairedSingleSubOp(u32 instr);
+        void evaluateControlFlowSubOp(u32 instr);
+        void evaluateFixedSubOp(u32 instr);
+        void evaluateFloatSingleSubOp(u32 instr);
+        void evaluateFloatSubOp(u32 instr);
 
         void internalReturnCB() {
             // If the LR matches the sentinel we know we've returned from
@@ -78,15 +87,25 @@ namespace Toolbox::Interpreter {
             }
         }
 
-        void internalExceptionCB() {
+        void internalExceptionCB(ExceptionCause cause) {
             Register::RegisterSnapshot snapshot;
             m_evaluating.store(false);
             m_eval_ready.store(false);
-            m_system_exception_cb(m_system_proc.m_pc, snapshot);
+            m_system_exception_cb(m_system_proc.m_pc, cause, snapshot);
+            m_eval_condition.notify_all();
+        }
+
+        void internalInvalidCB(const std::string &reason) {
+            Register::RegisterSnapshot snapshot;
+            m_evaluating.store(false);
+            m_eval_ready.store(false);
+            m_system_invalid_cb(m_system_proc.m_pc, reason, snapshot);
             m_eval_condition.notify_all();
         }
 
     private:
+        Buffer m_storage;
+
         BranchProcessor m_branch_proc;
         FixedPointProcessor m_fixed_proc;
         FloatingPointProcessor m_float_proc;
@@ -99,6 +118,7 @@ namespace Toolbox::Interpreter {
 
         func_ret_cb m_system_return_cb;
         func_exception_cb m_system_exception_cb;
+        func_invalid_cb m_system_invalid_cb;
     };
 
 }  // namespace Toolbox::Interpreter

@@ -1260,6 +1260,16 @@ namespace Toolbox::Interpreter {
         m_gpr[ra]  = result & 0xFFFFFFFF;
     }
 
+    void FixedPointProcessor::xoris(u8 ra, u8 rs, u16 ui) {
+        if (!IsRegValid(ra) || !IsRegValid(rs)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, xori, "Invalid registers detected!"));
+            return;
+        }
+        u64 result = m_gpr[rs] ^ ((u64)ui << 16);
+        m_gpr[ra]  = result & 0xFFFFFFFF;
+    }
+
     void FixedPointProcessor::and_(u8 ra, u8 rs, u8 rb, bool rc, Register::CR &cr) {
         if (!IsRegValid(ra) || !IsRegValid(rs) || !IsRegValid(rb)) {
             m_invalid_cb(

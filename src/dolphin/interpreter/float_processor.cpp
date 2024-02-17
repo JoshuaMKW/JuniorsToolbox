@@ -608,27 +608,27 @@ namespace Toolbox::Interpreter {
         }
     }
 
-    void FloatingPointProcessor::lfs(u8 frt, s16 d, u8 ra) {}
-    void FloatingPointProcessor::lfsu(u8 frt, s16 d, u8 ra) {}
-    void FloatingPointProcessor::lfsx(u8 frt, u8 ra, u8 rb) {}
-    void FloatingPointProcessor::lfsux(u8 frt, u8 ra, u8 rb) {}
+    void FloatingPointProcessor::lfs(u8 frt, s16 d, u8 ra, Buffer &storage) {}
+    void FloatingPointProcessor::lfsu(u8 frt, s16 d, u8 ra, Buffer &storage) {}
+    void FloatingPointProcessor::lfsx(u8 frt, u8 ra, u8 rb, Buffer &storage) {}
+    void FloatingPointProcessor::lfsux(u8 frt, u8 ra, u8 rb, Buffer &storage) {}
 
-    void FloatingPointProcessor::lfd(u8 frt, s16 d, u8 ra) {}
-    void FloatingPointProcessor::lfdu(u8 frt, s16 d, u8 ra) {}
-    void FloatingPointProcessor::lfdx(u8 frt, u8 ra, u8 rb) {}
-    void FloatingPointProcessor::lfdux(u8 frt, u8 ra, u8 rb) {}
+    void FloatingPointProcessor::lfd(u8 frt, s16 d, u8 ra, Buffer &storage) {}
+    void FloatingPointProcessor::lfdu(u8 frt, s16 d, u8 ra, Buffer &storage) {}
+    void FloatingPointProcessor::lfdx(u8 frt, u8 ra, u8 rb, Buffer &storage) {}
+    void FloatingPointProcessor::lfdux(u8 frt, u8 ra, u8 rb, Buffer &storage) {}
 
-    void FloatingPointProcessor::stfs(u8 frs, s16 d, u8 ra) {}
-    void FloatingPointProcessor::stfsu(u8 frs, s16 d, u8 ra) {}
-    void FloatingPointProcessor::stfsx(u8 frs, u8 ra, u8 rb) {}
-    void FloatingPointProcessor::stfsux(u8 frs, u8 ra, u8 rb) {}
+    void FloatingPointProcessor::stfs(u8 frs, s16 d, u8 ra, Buffer &storage) {}
+    void FloatingPointProcessor::stfsu(u8 frs, s16 d, u8 ra, Buffer &storage) {}
+    void FloatingPointProcessor::stfsx(u8 frs, u8 ra, u8 rb, Buffer &storage) {}
+    void FloatingPointProcessor::stfsux(u8 frs, u8 ra, u8 rb, Buffer &storage) {}
 
-    void FloatingPointProcessor::stfd(u8 frs, s16 d, u8 ra) {}
-    void FloatingPointProcessor::stfdu(u8 frs, s16 d, u8 ra) {}
-    void FloatingPointProcessor::stfdx(u8 frs, u8 ra, u8 rb) {}
-    void FloatingPointProcessor::stfdux(u8 frs, u8 ra, u8 rb) {}
+    void FloatingPointProcessor::stfd(u8 frs, s16 d, u8 ra, Buffer &storage) {}
+    void FloatingPointProcessor::stfdu(u8 frs, s16 d, u8 ra, Buffer &storage) {}
+    void FloatingPointProcessor::stfdx(u8 frs, u8 ra, u8 rb, Buffer &storage) {}
+    void FloatingPointProcessor::stfdux(u8 frs, u8 ra, u8 rb, Buffer &storage) {}
 
-    void FloatingPointProcessor::stfiwx(u8 frs, u8 ra, u8 rb) {}
+    void FloatingPointProcessor::stfiwx(u8 frs, u8 ra, u8 rb, Buffer &storage) {}
 
     // Move
 
@@ -673,7 +673,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
 
@@ -707,7 +707,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
 
@@ -741,7 +741,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
 
@@ -775,7 +775,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
 
@@ -793,7 +793,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
 
@@ -812,7 +812,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
     void FloatingPointProcessor::fmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
@@ -829,7 +829,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
 
@@ -848,7 +848,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
     void FloatingPointProcessor::fnmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
@@ -868,7 +868,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
     void FloatingPointProcessor::fnmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
@@ -889,7 +889,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
     void FloatingPointProcessor::fnmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
@@ -909,7 +909,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
     void FloatingPointProcessor::fnmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
@@ -930,7 +930,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
 
@@ -980,7 +980,7 @@ namespace Toolbox::Interpreter {
         const auto compute_result = [this, frt](double value) {
             const double result = DolphinLib::ApproximateReciprocal(value);
             m_fpr[frt].fill(result);
-            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(result));
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat((f32)result));
         };
 
         if (b == 0.0) {
@@ -1054,7 +1054,7 @@ namespace Toolbox::Interpreter {
             double result = DolphinLib::ApproximateReciprocalSquareRoot(value);
             result        = ForceSingle(m_fpscr, result);
             m_fpr[frt].setPS0(result);
-            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(result));
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat((f32)result));
         };
 
         if (b < 0.0) {
@@ -1099,7 +1099,7 @@ namespace Toolbox::Interpreter {
         if (rc) {
             SET_CR_FIELD(cr, 1,
                          (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | FPSCR_OX(m_fpscr));
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
 

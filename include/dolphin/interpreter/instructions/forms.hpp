@@ -485,6 +485,7 @@ namespace Toolbox::Interpreter::PPC {
 #define FORM_D(inst)     (s16)(((inst) >> 16) & 0xffff)
 #define FORM_SI(inst)    (s16)(((inst) >> 16) & 0xffff)
 #define FORM_UI(inst)    (u16)(((inst) >> 16) & 0xffff)
+#define FORM_LEV(inst)   (bool)(((inst) >> 1) & 1)
 
 #define FORM_MTFSFI_IMM(inst) (u8)(((inst) >> 12) & 0xf)
 #define FORM_FM(inst)         (u8)(((inst) >> 17) & 0xff)

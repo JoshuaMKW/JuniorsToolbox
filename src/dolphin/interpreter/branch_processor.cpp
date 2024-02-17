@@ -74,7 +74,7 @@ namespace Toolbox::Interpreter {
         m_invalid_cb(PROC_INVALID_MSG(BranchProcessor, b, "Invalid form!"));
     }
 
-    void BranchProcessor::bclr(u8 bo, u8 bi, u8 bh, bool lk, Register::PC &pc) {
+    void BranchProcessor::bclr(u8 bo, u8 bi, bool lk, Register::PC &pc) {
         bool cond_true = m_cr.is(bi / 4, Register::CRCmp(bi % 4));
 
         // bdnz && !cri
@@ -127,7 +127,7 @@ namespace Toolbox::Interpreter {
         m_invalid_cb(PROC_INVALID_MSG(BranchProcessor, bclr, "Invalid form!"));
     }
 
-    void BranchProcessor::bcctr(u8 bo, u8 bi, u8 bh, bool lk, Register::PC &pc) {
+    void BranchProcessor::bcctr(u8 bo, u8 bi, bool lk, Register::PC &pc) {
         bool cond_true = m_cr.is(bi / 4, Register::CRCmp(bi % 4));
 
         // CTR manip is invalid
@@ -155,44 +155,53 @@ namespace Toolbox::Interpreter {
         m_invalid_cb(PROC_INVALID_MSG(BranchProcessor, bcctr, "Invalid form!"));
     }
 
-    void BranchProcessor::crand(u8 bt, u8 ba, u8 bb, Register::PC &pc) {
+    void BranchProcessor::crand(u8 bt, u8 ba, u8 bb) {
         bool result = GET_SIG_BIT(m_cr.m_crf, ba, 32) & GET_SIG_BIT(m_cr.m_crf, bb, 32);
         SET_SIG_BIT(m_cr.m_crf, bt, result, 32);
     }
 
-    void BranchProcessor::crandc(u8 bt, u8 ba, u8 bb, Register::PC &pc) {
+    void BranchProcessor::crandc(u8 bt, u8 ba, u8 bb) {
         bool result = GET_SIG_BIT(m_cr.m_crf, ba, 32) & ~GET_SIG_BIT(m_cr.m_crf, bb, 32);
         SET_SIG_BIT(m_cr.m_crf, bt, result, 32);
     }
 
-    void BranchProcessor::creqv(u8 bt, u8 ba, u8 bb, Register::PC &pc) {
+    void BranchProcessor::creqv(u8 bt, u8 ba, u8 bb) {
         bool result = GET_SIG_BIT(m_cr.m_crf, ba, 32) ^ GET_SIG_BIT(m_cr.m_crf, bb, 32);
         SET_SIG_BIT(m_cr.m_crf, bt, ~result, 32);
     }
 
-    void BranchProcessor::cror(u8 bt, u8 ba, u8 bb, Register::PC &pc) {
+    void BranchProcessor::cror(u8 bt, u8 ba, u8 bb) {
         bool result = GET_SIG_BIT(m_cr.m_crf, ba, 32) | GET_SIG_BIT(m_cr.m_crf, bb, 32);
         SET_SIG_BIT(m_cr.m_crf, bt, result, 32);
     }
 
-    void BranchProcessor::crorc(u8 bt, u8 ba, u8 bb, Register::PC &pc) {
+    void BranchProcessor::crorc(u8 bt, u8 ba, u8 bb) {
         bool result = GET_SIG_BIT(m_cr.m_crf, ba, 32) | ~GET_SIG_BIT(m_cr.m_crf, bb, 32);
         SET_SIG_BIT(m_cr.m_crf, bt, result, 32);
     }
 
-    void BranchProcessor::crnand(u8 bt, u8 ba, u8 bb, Register::PC &pc) {
+    void BranchProcessor::crnand(u8 bt, u8 ba, u8 bb) {
         bool result = GET_SIG_BIT(m_cr.m_crf, ba, 32) & GET_SIG_BIT(m_cr.m_crf, bb, 32);
         SET_SIG_BIT(m_cr.m_crf, bt, ~result, 32);
     }
 
-    void BranchProcessor::crnor(u8 bt, u8 ba, u8 bb, Register::PC &pc) {
+    void BranchProcessor::crnor(u8 bt, u8 ba, u8 bb) {
         bool result = GET_SIG_BIT(m_cr.m_crf, ba, 32) | GET_SIG_BIT(m_cr.m_crf, bb, 32);
         SET_SIG_BIT(m_cr.m_crf, bt, ~result, 32);
     }
 
-    void BranchProcessor::crxor(u8 bt, u8 ba, u8 bb, Register::PC &pc) {
+    void BranchProcessor::crxor(u8 bt, u8 ba, u8 bb) {
         bool result = GET_SIG_BIT(m_cr.m_crf, ba, 32) ^ GET_SIG_BIT(m_cr.m_crf, bb, 32);
         SET_SIG_BIT(m_cr.m_crf, bt, result, 32);
     }
+
+    void BranchProcessor::mcrf(u8 bt, u8 ba) {
+        u8 shift_src = ((7 - ba) * 4);
+        u8 shift_dst = ((7 - bt) * 4);
+        u8 result    = (m_cr.m_crf >> shift_src) & 0b1111;
+        m_cr.m_crf = (m_cr.m_crf & ~(0b1111 << shift_dst)) | (result << shift_dst);
+    }
+
+    void BranchProcessor::mcrfs(u8 bt, u8 ba) {}
 
 }  // namespace Toolbox::Interpreter
