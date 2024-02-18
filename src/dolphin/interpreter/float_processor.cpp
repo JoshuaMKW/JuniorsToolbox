@@ -938,27 +938,27 @@ namespace Toolbox::Interpreter {
 
     void FloatingPointProcessor::frsp(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                                       Register::SRR1 &srr1) {}
-    void FloatingPointProcessor::fctid(u8 frt, u8 frb, bool rc, Register::CR &cr,
+    void FloatingPointProcessor::fctiw(u8 frt, u8 frb, bool rc, Register::CR &cr,
                                        Register::MSR &msr, Register::SRR1 &srr1) {}
-    void FloatingPointProcessor::fdtidz(u8 frt, u8 frb, bool rc, Register::CR &cr,
+    void FloatingPointProcessor::fctiwz(u8 frt, u8 frb, bool rc, Register::CR &cr,
                                         Register::MSR &msr, Register::SRR1 &srr1) {}
     void FloatingPointProcessor::fcfid(u8 frt, u8 frb, bool rc, Register::CR &cr,
                                        Register::MSR &msr, Register::SRR1 &srr1) {}
 
     // Compare
 
-    void FloatingPointProcessor::fcmpu(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
+    void FloatingPointProcessor::fcmpu(u8 crfd, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
                                        Register::SRR1 &srr1) {}
-    void FloatingPointProcessor::fcmpo(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
+    void FloatingPointProcessor::fcmpo(u8 crfd, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
                                        Register::SRR1 &srr1) {}
 
     // FPSCR
 
     void FloatingPointProcessor::mffs(u8 frt, bool rc, Register::CR &cr, Register::MSR &msr,
                                       Register::SRR1 &srr1) {}
-    void FloatingPointProcessor::mcrfs(u8 bf, u8 bfa, Register::CR &cr, Register::MSR &msr,
+    void FloatingPointProcessor::mcrfs(u8 crfd, u8 crfa, Register::CR &cr, Register::MSR &msr,
                                        Register::SRR1 &srr1) {}
-    void FloatingPointProcessor::mtfsfi(u8 bf, u8 u, bool rc, Register::CR &cr, Register::MSR &msr,
+    void FloatingPointProcessor::mtfsfi(u8 crfd, u8 u, bool rc, Register::CR &cr, Register::MSR &msr,
                                         Register::SRR1 &srr1) {}
     void FloatingPointProcessor::mtfsf(u8 flm, u8 frb, bool rc, Register::CR &cr,
                                        Register::MSR &msr, Register::SRR1 &srr1) {}

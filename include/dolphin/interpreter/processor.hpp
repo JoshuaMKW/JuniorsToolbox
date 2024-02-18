@@ -385,9 +385,9 @@ namespace Toolbox::Interpreter {
 
         void frsp(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                   Register::SRR1 &srr1);
-        void fctid(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+        void fctiw(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                    Register::SRR1 &srr1);
-        void fdtidz(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+        void fctiwz(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                     Register::SRR1 &srr1);
         void fcfid(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                    Register::SRR1 &srr1);
