@@ -248,218 +248,331 @@ namespace Toolbox::Interpreter {
         TableSubOpcode31 sub_op = (TableSubOpcode31)FORM_XO_9(inst);
         switch (sub_op) {
         case TableSubOpcode31::ADD:
-            break;
         case TableSubOpcode31::ADDO:
+            m_fixed_proc.add(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
+                             FORM_RC(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::ADDC:
-            break;
         case TableSubOpcode31::ADDCO:
+            m_fixed_proc.addc(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
+                              FORM_RC(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::ADDE:
-            break;
         case TableSubOpcode31::ADDEO:
+            m_fixed_proc.adde(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
+                              FORM_RC(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::ADDME:
-            break;
         case TableSubOpcode31::ADDMEO:
+            m_fixed_proc.addme(FORM_RS(inst), FORM_RA(inst), FORM_OE(inst), FORM_RC(inst),
+                               m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::ADDZE:
-            break;
         case TableSubOpcode31::ADDZEO:
+            m_fixed_proc.addze(FORM_RS(inst), FORM_RA(inst), FORM_OE(inst), FORM_RC(inst),
+                               m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::DIVW:
-            break;
         case TableSubOpcode31::DIVWO:
+            m_fixed_proc.divw(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
+                              FORM_RC(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::DIVWU:
-            break;
         case TableSubOpcode31::DIVWUO:
+            m_fixed_proc.divwu(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
+                               FORM_RC(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::MULHW:
+            m_fixed_proc.mullhw(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_RC(inst),
+                                m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::MULHWU:
+            m_fixed_proc.mullhwu(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_RC(inst),
+                                 m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::MULLW:
-            break;
         case TableSubOpcode31::MULLWO:
+            m_fixed_proc.mullw(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
+                               FORM_RC(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::NEG:
-            break;
         case TableSubOpcode31::NEGO:
             break;
         case TableSubOpcode31::SUBF:
-            break;
-        case TableSubOpcode31::SUBFOs:
+        case TableSubOpcode31::SUBFO:
+            m_fixed_proc.subf(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
+                              FORM_RC(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SUBFC:
-            break;
         case TableSubOpcode31::SUBFCO:
+            m_fixed_proc.subfc(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
+                               FORM_RC(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SUBFE:
-            break;
         case TableSubOpcode31::SUBFEO:
+            m_fixed_proc.subfe(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
+                               FORM_RC(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SUBFME:
-            break;
         case TableSubOpcode31::SUBFMEO:
+            m_fixed_proc.subfme(FORM_RS(inst), FORM_RA(inst), FORM_OE(inst), FORM_RC(inst),
+                                m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SUBFZE:
-            break;
         case TableSubOpcode31::SUBFZEO:
+            m_fixed_proc.subfze(FORM_RS(inst), FORM_RA(inst), FORM_OE(inst), FORM_RC(inst),
+                                m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::AND:
+            m_fixed_proc.and_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+                              m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::ANDC:
+            m_fixed_proc.andc(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+                              m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::OR:
+            m_fixed_proc.or_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+                             m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::NOR:
+            m_fixed_proc.nor_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+                              m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::XOR:
+            m_fixed_proc.xor_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+                              m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::ORC:
+            m_fixed_proc.orc(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+                             m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::NAND:
+            m_fixed_proc.nand_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+                               m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::EQV:
+            m_fixed_proc.eqv_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+                              m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::CMP:
+            m_fixed_proc.cmp(FORM_CRFD(inst), FORM_L(inst), FORM_RA(inst), FORM_RB(inst),
+                             m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::CMPL:
+            m_fixed_proc.cmpl(FORM_CRFD(inst), FORM_L(inst), FORM_RA(inst), FORM_RB(inst),
+                              m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::CNTLZW:
+            m_fixed_proc.cntlzw(FORM_RA(inst), FORM_RB(inst), FORM_RC(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::EXTSH:
+            m_fixed_proc.extsh(FORM_RA(inst), FORM_RB(inst), FORM_RC(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::EXTSB:
+            m_fixed_proc.extsb(FORM_RA(inst), FORM_RB(inst), FORM_RC(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SRW:
+            m_fixed_proc.srw(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+                             m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SRAW:
+            m_fixed_proc.sraw(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+                              m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SRAWI:
+            m_fixed_proc.srawi(FORM_RA(inst), FORM_RS(inst), FORM_SH(inst), FORM_RC(inst),
+                               m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SLW:
+            m_fixed_proc.slw(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+                             m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::DCBST:
+            m_system_proc.dcbst(FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
         case TableSubOpcode31::DCBF:
+            m_system_proc.dcbf(FORM_RA(inst), FORM_RB(inst), FORM_L(inst), m_storage);
             break;
         case TableSubOpcode31::DCBTST:
+            m_system_proc.dcbtst(FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
         case TableSubOpcode31::DCBT:
+            m_system_proc.dcbst(FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
         case TableSubOpcode31::DCBI:
+            m_system_proc.dcbi(FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
         case TableSubOpcode31::DCBA:
-            break;
         case TableSubOpcode31::DCBZ:
+            m_system_proc.dcbz(FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
         case TableSubOpcode31::LWZ:
+            m_fixed_proc.lwz(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::LWZU:
+            m_fixed_proc.lwzu(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::LHZ:
+            m_fixed_proc.lhz(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::LHZU:
+            m_fixed_proc.lhzu(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::LHA:
+            m_fixed_proc.lha(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::LHAU:
+            m_fixed_proc.lhau(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::LBZ:
+            m_fixed_proc.lbz(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::LBZU:
+            m_fixed_proc.lbzu(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
-        case TableSubOpcode31::LWBR:
+        case TableSubOpcode31::LWBRX:
+            m_fixed_proc.lwbrx(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::LHBR:
+        case TableSubOpcode31::LHBRX:
+            m_fixed_proc.lhbrx(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
         case TableSubOpcode31::STWCXD:
             break;
-        case TableSubOpcode31::LWAR:
+        case TableSubOpcode31::LWARX:
+            internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, lwarx,
+                                               "Attempted to evaluate unknown instruction!"));
             break;
-        case TableSubOpcode31::LSW:
+        case TableSubOpcode31::LSWX:
+            m_fixed_proc.lswx(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
         case TableSubOpcode31::LSWI:
+            m_fixed_proc.lswi(FORM_RD(inst), FORM_RA(inst), FORM_NB(inst), m_storage);
             break;
         case TableSubOpcode31::STW:
+            m_fixed_proc.stw(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::STWU:
+            m_fixed_proc.stwu(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::STH:
+            m_fixed_proc.sth(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::STHU:
+            m_fixed_proc.sthu(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::STB:
+            m_fixed_proc.stb(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::STBU:
+            m_fixed_proc.stbu(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
-        case TableSubOpcode31::STWBR:
+        case TableSubOpcode31::STWBRX:
+            m_fixed_proc.stwbrx(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::STHBR:
+        case TableSubOpcode31::STHBRX:
+            m_fixed_proc.sthbrx(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::STSW:
+        case TableSubOpcode31::STSWX:
+            m_fixed_proc.stswx(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
         case TableSubOpcode31::STSWI:
+            m_fixed_proc.stswi(FORM_RS(inst), FORM_RA(inst), FORM_NB(inst), m_storage);
             break;
         case TableSubOpcode31::LFS:
+            m_float_proc.lfs(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::LFSU:
+            m_float_proc.lfsu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::LFD:
+            m_float_proc.lfd(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::LFDU:
+            m_float_proc.lfdu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::STFS:
+            m_float_proc.stfs(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::STFSU:
+            m_float_proc.stfsu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::STFD:
+            m_float_proc.stfd(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case TableSubOpcode31::STFDU:
+            m_float_proc.stfdu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
-        case TableSubOpcode31::STFIW:
+        case TableSubOpcode31::STFIWX:
+            m_float_proc.stfiwx(FORM_FS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
         case TableSubOpcode31::MFCR:
+            m_fixed_proc.mfcr(FORM_RS(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::MFMSR:
+            m_fixed_proc.mfmsr(FORM_RS(inst), m_system_proc.m_msr);
             break;
         case TableSubOpcode31::MTCRF:
+            m_fixed_proc.mtcrf(FORM_CRM(inst), FORM_RS(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::MTMSR:
+            m_fixed_proc.mtmsr(FORM_RS(inst), m_system_proc.m_msr);
             break;
         case TableSubOpcode31::MTSR:
+            internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, mtsr,
+                                               "Attempted to evaluate unknown instruction!"));
             break;
         case TableSubOpcode31::MTSRIN:
+            internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, mtsrin,
+                                               "Attempted to evaluate unknown instruction!"));
             break;
         case TableSubOpcode31::MFSPR:
+            m_fixed_proc.mfspr((Register::SPRType)FORM_SPR(inst), FORM_RD(inst), m_branch_proc.m_lr,
+                               m_branch_proc.m_ctr);
             break;
         case TableSubOpcode31::MTSPR:
+            m_fixed_proc.mtspr((Register::SPRType)FORM_SPR(inst), FORM_RS(inst), m_branch_proc.m_lr,
+                               m_branch_proc.m_ctr);
             break;
         case TableSubOpcode31::MFTB:
+            m_fixed_proc.mftb(FORM_RD(inst), FORM_TBR(inst), m_system_proc.m_tb);
             break;
         case TableSubOpcode31::MCRXR:
+            m_fixed_proc.mcrxr(m_branch_proc.m_cr, FORM_CRFD(inst));
             break;
         case TableSubOpcode31::MFSR:
+            internalInvalidCB(
+                PROC_INVALID_MSG(SystemDolphin, mfsr "Attempted to evaluate unknown instruction!"));
             break;
         case TableSubOpcode31::MFSRIN:
+            internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, mfsrin,
+                                               "Attempted to evaluate unknown instruction!"));
             break;
         case TableSubOpcode31::TW:
+            m_fixed_proc.tw(FORM_TO(inst), FORM_RA(inst), FORM_RB(inst));
             break;
         case TableSubOpcode31::SYNC:
+            m_system_proc.sync((SyncType)FORM_I(inst));
             break;
         case TableSubOpcode31::ICBI:
+            m_system_proc.icbi(FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::ECIW:
+        case TableSubOpcode31::ECIWX:
+            m_fixed_proc.eciwx(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::ECOW:
+        case TableSubOpcode31::ECOWX:
+            m_fixed_proc.ecowx(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
         case TableSubOpcode31::EIEIO:
+            m_system_proc.eieio();
             break;
         case TableSubOpcode31::TLBIE:
+            internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, tlbie,
+                                               "Attempted to evaluate unknown instruction!"));
             break;
         case TableSubOpcode31::TLBSYNC:
+            internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, tlbsync,
+                                               "Attempted to evaluate unknown instruction!"));
             break;
         }
     }

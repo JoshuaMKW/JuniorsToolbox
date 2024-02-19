@@ -74,6 +74,7 @@ namespace Toolbox::Interpreter {
         // Storage control
 
         void icbi(u8 ra, u8 rb, Buffer &storage) {}
+        void dcbi(u8 ra, u8 rb, Buffer &storage) {}
         void dcbt(u8 ra, u8 rb, DataCacheHintType th, Buffer &storage) {}
         void dcbf(u8 ra, u8 rb, bool l, Buffer &storage) {}
         void dcbtst(u8 ra, u8 rb, Buffer &storage) {}
