@@ -48,7 +48,12 @@ namespace Toolbox::Interpreter {
             }
 
             m_eval_ready.store(true);
+            m_evaluating.store(true);
         }
+
+        void setStackPointer(u32 sp) { m_fixed_proc.m_gpr[1] = sp; }
+        void setGlobalsPointerR(u32 r2) { m_fixed_proc.m_gpr[2] = r2; }
+        void setGlobalsPointerRW(u32 r13) { m_fixed_proc.m_gpr[13] = r13; }
 
     protected:
         void tRun(void *param) override {

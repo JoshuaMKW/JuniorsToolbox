@@ -27,6 +27,10 @@ namespace Toolbox::Game {
     };
 
     void TaskCommunicator::tRun(void *param) {
+        m_game_interpreter.setGlobalsPointerR(0x80416BA0);
+        m_game_interpreter.setGlobalsPointerRW(0x804141C0);
+        m_game_interpreter.tStart(false, param);
+
         while (!m_kill_flag.load()) {
             AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
@@ -49,6 +53,7 @@ namespace Toolbox::Game {
             std::this_thread::sleep_for(std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
         }
 
+        m_game_interpreter.tJoin();
         m_kill_condition.notify_all();
     }
 
@@ -61,70 +66,41 @@ namespace Toolbox::Game {
         }
 
         // TODO: Have interpreter evaluate this
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
-        return submitTask(
-            [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object,
-                transact_complete_cb cb) {
-                // Early exit to avoid errors
-                if (!communicator.manager().isHooked()) {
-                    return false;
-                }
+        // Get TMarNameRefGen
+        if (!communicator.manager().isHooked()) {
+            return make_error<void>("TaskCommunicator", "Dolphin not connected");
+        }
 
-                u32 comm_state = communicator.read<u32>(0x80000298).value();
+        constexpr u32 application_addr = 0x803E9700;
+        u8 game_stage                  = communicator.read<u8>(application_addr + 0xE).value();
+        u8 game_scenario               = communicator.read<u8>(application_addr + 0xF).value();
 
-                // Check if already communicated
-                if ((comm_state & BIT(0))) {
-                    // If so, check for response
-                    ETask task = (ETask)communicator.read<u32>(0x800002E0).value();
-                    if (task == ETask::NONE) {
-                        communicator.write<u32>(0x80000298, comm_state & ~BIT(0));
-                        u32 response_buffer_address = communicator.read<u32>(0x800002E8).value();
-                        if (response_buffer_address != 0) {
-                            u32 obj_addr = communicator.read<u32>(response_buffer_address).value();
-                            m_actor_address_map[object->getUUID()] = obj_addr;
-                            if (cb)
-                                cb(obj_addr);
-                        } else {
-                            if (cb)
-                                cb(0);
-                        }
-                        return true;
-                    } else {
-                        return false;
-                    }
-                }
+        if (!isSceneLoaded(game_stage, game_scenario)) {
+            return make_error<void>("TaskCommunicator", "Scene not loaded");
+        }
 
-                u32 request_buffer_address = communicator.read<u32>(0x800002E4).value();
-                if (request_buffer_address == 0) {
-                    return true;
-                }
+        u32 request_buffer_address = communicator.read<u32>(0x800002E4).value();
+        if (request_buffer_address == 0) {
+            return make_error<void>("TaskCommunicator", "Request buffer address is null");
+        }
 
-                // Lock access
-                communicator.write<u32>(0x80000298, comm_state | BIT(0));
+        m_game_interpreter.setStackPointer(request_buffer_address + 0x200);
 
-                // Write cmd type
-                communicator.write<u32>(0x800002E0, (u32)ETask::GET_NAMEREF_PTR);
+        auto on_return_cb = [&](const Interpreter::Register::RegisterSnapshot &snapshot) {
+            complete_cb(snapshot.m_gpr[3]);
+        };
 
-                Buffer request_buffer;
-                request_buffer.alloc(0x10000);
-                request_buffer.initTo(0);
+        std::string_view actor_name = actor->getNameRef().name();
+        communicator.writeBytes(actor_name.data(), request_buffer_address, actor_name.size());
 
-                {
-                    char *internal_buf = request_buffer.buf<char>();
+        u32 namerefgen_addr = communicator.read<u32>(0x8040E408).value();
+        u32 rootref_addr    = communicator.read<u32>(namerefgen_addr + 0x4).value();
 
-                    NameRef nameref           = object->getNameRef();
-                    std::string shift_jis_ref = String::toGameEncoding(nameref.name()).value();
-
-                    strncpy_s(internal_buf, shift_jis_ref.size() + 1, shift_jis_ref.data(),
-                              shift_jis_ref.size() + 1);
-                }
-
-                communicator.writeBytes(request_buffer.buf<char>(), request_buffer_address,
-                                        request_buffer.size());
-
-                return false;
-            },
-            actor, complete_cb);
+        u32 argv[2] = {rootref_addr, request_buffer_address};
+        m_game_interpreter.signalEvaluateFunction(0x80198d0c, 2, argv, 0, nullptr, on_return_cb,
+                                                  nullptr);
     }
 
     bool TaskCommunicator::isSceneLoaded(u8 stage, u8 scenario) {

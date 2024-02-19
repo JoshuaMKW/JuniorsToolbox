@@ -139,17 +139,17 @@ namespace Toolbox::Interpreter {
 
         // bc !cri
         if ((bo & 0b11100) == 0b00100 && !cond_true) {
-            b(m_ctr, true, lk, pc);
+            b((s32)m_ctr, true, lk, pc);
         }
 
         // bc cri
         if ((bo & 0b11100) == 0b01100 && cond_true) {
-            b(m_ctr, true, lk, pc);
+            b((s32)m_ctr, true, lk, pc);
         }
 
         // b (call branch directly to save performance)
         if ((bo & 0b10100) == 0b10100) [[likely]] {
-            b(m_ctr, true, lk, pc);
+            b((s32)m_ctr, true, lk, pc);
         }
 
         m_invalid_cb(PROC_INVALID_MSG(BranchProcessor, bcctr, "Invalid form!"));

@@ -90,7 +90,7 @@ namespace Toolbox::Interpreter {
         // Interrupt flow
 
         void sc(u8 lev) {
-            m_srr0 = pc;
+            m_srr0 = m_pc;
             m_srr1 = m_msr & 0b10000111110000001111111101110011;
             // TODO: assign values to msr, execute system call exception, etc
             // https://fail0verflow.com/media/files/ppc_750cl.pdf
