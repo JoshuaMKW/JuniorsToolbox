@@ -51,6 +51,7 @@ namespace Toolbox::Interpreter {
             m_evaluating.store(true);
         }
 
+        void setMemoryBuffer(void *buf, size_t size) { m_storage.setBuf(buf, size); }
         void setStackPointer(u32 sp) { m_fixed_proc.m_gpr[1] = sp; }
         void setGlobalsPointerR(u32 r2) { m_fixed_proc.m_gpr[2] = r2; }
         void setGlobalsPointerRW(u32 r13) { m_fixed_proc.m_gpr[13] = r13; }
@@ -96,7 +97,7 @@ namespace Toolbox::Interpreter {
             Register::RegisterSnapshot snapshot;
             m_evaluating.store(false);
             m_eval_ready.store(false);
-            m_system_exception_cb(m_system_proc.m_pc, cause, snapshot);
+            m_system_exception_cb((u32)m_system_proc.m_pc, cause, snapshot);
             m_eval_condition.notify_all();
         }
 
@@ -104,7 +105,7 @@ namespace Toolbox::Interpreter {
             Register::RegisterSnapshot snapshot;
             m_evaluating.store(false);
             m_eval_ready.store(false);
-            m_system_invalid_cb(m_system_proc.m_pc, reason, snapshot);
+            m_system_invalid_cb((u32)m_system_proc.m_pc, reason, snapshot);
             m_eval_condition.notify_all();
         }
 

@@ -81,6 +81,9 @@ namespace Toolbox::Dolphin {
             return hook();
         }
 
+        void *getMemoryView() const { return isHooked() ? m_mem_view : nullptr; }
+        size_t getMemorySize() const { return isHooked() ? 0x1800000 : 0; }
+
         Result<void> readBytes(char *buf, u32 address, size_t size);
         Result<void> writeBytes(const char *buf, u32 address, size_t size);
 

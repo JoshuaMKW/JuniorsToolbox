@@ -72,7 +72,13 @@ namespace Toolbox {
         size_t size() const { return m_size; }
 
         template <typename T> T &as() { return get<T>(0); }
+
         template <typename T = void> T *buf() { return reinterpret_cast<T *>(m_buf); }
+        void setBuf(void *buf, size_t size) {
+            free();
+            m_buf  = buf;
+            m_size = size;
+        }
 
         template <typename T> T &get(size_t at) {
             TOOLBOX_CORE_ASSERT(m_buf);
@@ -110,7 +116,7 @@ namespace Toolbox {
         bool operator==(const Buffer &other) { return m_buf == other.m_buf; }
 
     private:
-        void *m_buf = nullptr;
+        void *m_buf   = nullptr;
         size_t m_size = 0;
     };
 

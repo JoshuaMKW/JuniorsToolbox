@@ -23,6 +23,9 @@ namespace Toolbox::Interpreter {
 
         u32 inst      = communicator.read<u32>(static_cast<u32>(m_system_proc.m_pc)).value();
         Opcode opcode = FORM_OPCD(inst);
+
+        Register::PC next_instruction = m_system_proc.m_pc + 4;
+
         switch (opcode) {
         case Opcode::OP_TWI:
             m_fixed_proc.twi(FORM_TO(inst), FORM_RA(inst), FORM_SI(inst));
@@ -56,14 +59,16 @@ namespace Toolbox::Interpreter {
             m_fixed_proc.addis(FORM_RS(inst), FORM_RA(inst), FORM_SI(inst));
             break;
         case Opcode::OP_BC:
+            next_instruction -= 4;
             m_branch_proc.bc(FORM_BD(inst), FORM_BO(inst), FORM_BI(inst), FORM_AA(inst),
-                             FORM_LK(inst), m_system_proc.m_pc);
+                             FORM_LK(inst), next_instruction);
             break;
         case Opcode::OP_SC:
             m_system_proc.sc(FORM_LEV(inst));
             break;
         case Opcode::OP_B:
-            m_branch_proc.b(FORM_LI(inst), FORM_AA(inst), FORM_LK(inst), m_system_proc.m_pc);
+            next_instruction -= 4;
+            m_branch_proc.b(FORM_LI(inst), FORM_AA(inst), FORM_LK(inst), next_instruction);
             break;
         case Opcode::OP_CONTROL_FLOW:
             evaluateControlFlowSubOp(inst);
@@ -184,6 +189,7 @@ namespace Toolbox::Interpreter {
                                                "Attempted to evaluate unknown instruction!"));
             break;
         }
+        m_system_proc.m_pc = next_instruction;
     }
 
     void SystemDolphin::evaluatePairedSingleSubOp(u32 inst) {

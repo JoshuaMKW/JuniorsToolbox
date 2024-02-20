@@ -11,13 +11,13 @@ namespace Toolbox::Interpreter {
 
     void BranchProcessor::b(s32 target_addr, bool aa, bool lk, Register::PC &pc) {
         if (lk) {
-            m_lr = (pc + 4) & 0xFFFFFFFF;
+            m_lr = (pc + 4) & 0xFFFFFFFC;
         }
 
         if (aa) {
-            pc = target_addr & 0xFFFFFFFF;
+            pc = target_addr & 0xFFFFFFFC;
         } else {
-            pc = (pc + target_addr) & 0xFFFFFFFF;
+            pc = (pc + target_addr) & 0xFFFFFFFC;
         }
     }
 

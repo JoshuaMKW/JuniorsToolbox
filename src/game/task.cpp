@@ -37,6 +37,9 @@ namespace Toolbox::Game {
             DolphinCommunicator &communicator =
                 MainApplication::instance().getDolphinCommunicator();
 
+            m_game_interpreter.setMemoryBuffer(communicator.manager().getMemoryView(),
+                                               communicator.manager().getMemorySize());
+
             // Dismiss tasks if disconnected to avoid errors
             if (communicator.manager().isHooked()) {
                 while (!m_task_queue.empty()) {
@@ -101,6 +104,7 @@ namespace Toolbox::Game {
         u32 argv[2] = {rootref_addr, request_buffer_address};
         m_game_interpreter.signalEvaluateFunction(0x80198d0c, 2, argv, 0, nullptr, on_return_cb,
                                                   nullptr);
+        return {};
     }
 
     bool TaskCommunicator::isSceneLoaded(u8 stage, u8 scenario) {

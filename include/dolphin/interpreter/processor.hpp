@@ -97,13 +97,13 @@ namespace Toolbox::Interpreter {
         }
         void rfi() {}
 
-        Register::PC m_pc;
-        Register::TB m_tb;
-        Register::MSR m_msr;
-        Register::DAR m_dar;
-        Register::DSISR m_dsisr;
-        Register::SRR0 m_srr0;
-        Register::SRR1 m_srr1;
+        Register::PC m_pc{};
+        Register::TB m_tb{};
+        Register::MSR m_msr{};
+        Register::DAR m_dar{};
+        Register::DSISR m_dsisr{};
+        Register::SRR0 m_srr0{};
+        Register::SRR1 m_srr1{};
 
         proc_exception_cb m_exception_cb;
         proc_invalid_cb m_invalid_cb;
@@ -138,9 +138,9 @@ namespace Toolbox::Interpreter {
         void mcrfs(u8 bt, u8 ba);
 
     private:
-        Register::CR m_cr;
-        Register::LR m_lr;
-        Register::CTR m_ctr;
+        Register::CR m_cr{};
+        Register::LR m_lr{};
+        Register::CTR m_ctr{};
 
         proc_ret_cb m_return_cb;
         proc_exception_cb m_exception_cb;
@@ -294,8 +294,8 @@ namespace Toolbox::Interpreter {
         void ecowx(u8 rs, u8 ra, u8 rb, Buffer &storage);
 
     private:
-        Register::XER m_xer;
-        Register::GPR m_gpr[32];
+        Register::XER m_xer{};
+        Register::GPR m_gpr[32]{};
 
         proc_exception_cb m_exception_cb;
         proc_invalid_cb m_invalid_cb;
@@ -427,8 +427,8 @@ namespace Toolbox::Interpreter {
                   Register::SRR1 &srr1);
 
     private:
-        Register::FPSCR m_fpscr;
-        Register::FPR m_fpr[32];
+        Register::FPSCR m_fpscr{};
+        Register::FPR m_fpr[32]{};
 
         proc_exception_cb m_exception_cb;
         proc_invalid_cb m_invalid_cb;
