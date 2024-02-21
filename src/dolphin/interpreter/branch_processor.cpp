@@ -9,6 +9,8 @@
 
 namespace Toolbox::Interpreter {
 
+    s32 s_depth = 0;
+
     void BranchProcessor::b(s32 target_addr, bool aa, bool lk, Register::PC &pc) {
         if (lk) {
             m_lr = (pc + 4) & 0xFFFFFFFC;
@@ -18,6 +20,15 @@ namespace Toolbox::Interpreter {
             pc = target_addr & 0xFFFFFFFC;
         } else {
             pc = (pc + target_addr) & 0xFFFFFFFC;
+        }
+
+        if (lk) {
+            s_depth++;
+            TOOLBOX_DEBUG_LOG_V("[Interpreter] Calling function at: 0x{:08X}, depth: {}", pc, s_depth);
+        }
+
+        if (pc < 0x80000000 || pc >= 0x81800000) {
+            std::cout << "Buhbuh\n";
         }
     }
 
@@ -105,8 +116,13 @@ namespace Toolbox::Interpreter {
         // bc !cri
         if ((bo & 0b11100) == 0b00100 && !cond_true) {
             b((s32)m_lr, true, lk, pc);
-            if (!lk)
+            if (!lk) {
+                s_depth--;
+                TOOLBOX_DEBUG_LOG_V(
+                    "[Interpreter] Returning from function called at: 0x{:08X}, depth: {}", pc - 4,
+                    s_depth);
                 m_return_cb();
+            }
             return;
         }
 
@@ -139,8 +155,11 @@ namespace Toolbox::Interpreter {
         // blr
         if ((bo & 0b10100) == 0b10100) [[likely]] {
             b((s32)m_lr, true, lk, pc);
-            if (!lk)
+            if (!lk) {
+                s_depth--;
+                TOOLBOX_DEBUG_LOG_V("[Interpreter] Returning from function called at: 0x{:08X}, depth: {}", pc - 4, s_depth);
                 m_return_cb();
+            }
             return;
         }
 

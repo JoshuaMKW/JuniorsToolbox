@@ -27,7 +27,7 @@ namespace Toolbox::Interpreter {
 
         Register::PC next_instruction = m_system_proc.m_pc + 4;
 
-        TOOLBOX_DEBUG_LOG_V("[Interpreter] PC: 0x{:08X}", m_system_proc.m_pc);
+        //TOOLBOX_DEBUG_LOG_V("[Interpreter] PC: 0x{:08X}", m_system_proc.m_pc);
 
         switch (opcode) {
         case Opcode::OP_TWI:
