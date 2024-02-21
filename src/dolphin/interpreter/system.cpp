@@ -57,14 +57,7 @@ namespace Toolbox::Interpreter {
     void SystemDolphin::evaluateInstruction() {
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
-        if (!communicator.manager().isHooked()) {
-            m_evaluating.store(false);
-            m_eval_ready.store(false);
-            m_eval_condition.notify_all();
-            return;
-        }
-
-        u32 inst      = communicator.read<u32>(static_cast<u32>(m_system_proc.m_pc)).value();
+        u32 inst      = std::byteswap<u32>(m_storage.get<u32>((s64)m_system_proc.m_pc - 0x80000000));
         Opcode opcode = FORM_OPCD(inst);
 
         Register::PC next_instruction = m_system_proc.m_pc + 4;
