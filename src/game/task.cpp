@@ -17,6 +17,30 @@ using namespace Toolbox;
 
 namespace Toolbox::Game {
 
+    static std::vector<std::string>
+    StringifySnapshot(const Interpreter::Register::RegisterSnapshot &snapshot) {
+        std::vector<std::string> result;
+        result.push_back(
+            std::format("-- PC: 0x{:08X} --------------------------------------------------------",
+                        snapshot.m_pc));
+        for (size_t i = 0; i < 8; ++i) {
+            result.push_back(
+                std::format("| r{:<2} = 0x{:08X}, r{:<2} = 0x{:08X}, r{:<2} = 0x{:08X}, r{:<2} = 0x{:08X} |", i,
+                            snapshot.m_gpr[i], i + 8, snapshot.m_gpr[i + 8], i + 16,
+                            snapshot.m_gpr[i + 16], i + 24, snapshot.m_gpr[i + 24]));
+        }
+        for (size_t i = 0; i < 8; ++i) {
+            result.push_back(std::format(
+                "| f{:<2} = {:.08f}, f{:<2} = {:.08f}, f{:<2} = {:.08f}, f{:<2} = {:.08f} |", i,
+                snapshot.m_fpr[i].ps0AsDouble(), i + 8, snapshot.m_fpr[i + 8].ps0AsDouble(), i + 16,
+                snapshot.m_fpr[i + 16].ps0AsDouble(), i + 24,
+                snapshot.m_fpr[i + 24].ps0AsDouble()));
+        }
+        result.push_back(
+            "--------------------------------------------------------------------------");
+        return result;
+    }
+
     enum class ETask {
         NONE,
         GET_NAMEREF_PTR,
@@ -29,6 +53,24 @@ namespace Toolbox::Game {
     void TaskCommunicator::tRun(void *param) {
         m_game_interpreter.setGlobalsPointerR(0x80416BA0);
         m_game_interpreter.setGlobalsPointerRW(0x804141C0);
+        m_game_interpreter.onException([](u32 bad_instr_ptr, Interpreter::ExceptionCause cause,
+                                          const Interpreter::Register::RegisterSnapshot &snapshot) {
+            TOOLBOX_ERROR_V("[Interpreter] {} at PC = 0x{:08X}:", magic_enum::enum_name(cause),
+                            bad_instr_ptr);
+            std::vector<std::string> exception_message = StringifySnapshot(snapshot);
+            for (auto &line : exception_message) {
+                TOOLBOX_ERROR_V("[Interpreter] {}", line);
+            }
+        });
+        m_game_interpreter.onInvalid([](u32 bad_instr_ptr, const std::string &cause,
+                                        const Interpreter::Register::RegisterSnapshot &snapshot) {
+            TOOLBOX_ERROR_V("[Interpreter] Invalid instruction at PC = {:08X} (Reason: {}):",
+                            bad_instr_ptr, cause);
+            std::vector<std::string> exception_message = StringifySnapshot(snapshot);
+            for (auto &line : exception_message) {
+                TOOLBOX_ERROR_V("[Interpreter] {}", line);
+            }
+        });
         m_game_interpreter.tStart(false, param);
 
         while (!m_kill_flag.load()) {
@@ -37,8 +79,8 @@ namespace Toolbox::Game {
             DolphinCommunicator &communicator =
                 MainApplication::instance().getDolphinCommunicator();
 
-            m_game_interpreter.setMemoryBuffer(communicator.manager().getMemoryView(),
-                                               communicator.manager().getMemorySize());
+            /*m_game_interpreter.setMemoryBuffer(communicator.manager().getMemoryView(),
+                                               communicator.manager().getMemorySize());*/
 
             // Dismiss tasks if disconnected to avoid errors
             if (communicator.manager().isHooked()) {
@@ -91,8 +133,12 @@ namespace Toolbox::Game {
 
         m_game_interpreter.setStackPointer(request_buffer_address + 0x200);
 
-        auto on_return_cb = [&](const Interpreter::Register::RegisterSnapshot &snapshot) {
-            complete_cb(snapshot.m_gpr[3]);
+        auto on_return_cb = [this, actor,
+                             complete_cb](const Interpreter::Register::RegisterSnapshot &snapshot) {
+            complete_cb((u32)snapshot.m_gpr[3]);
+            if (snapshot.m_gpr[3] != 0) {
+                this->m_actor_address_map[actor->getUUID()] = (u32)snapshot.m_gpr[3];
+            }
         };
 
         std::string_view actor_name = actor->getNameRef().name();
@@ -102,8 +148,7 @@ namespace Toolbox::Game {
         u32 rootref_addr    = communicator.read<u32>(namerefgen_addr + 0x4).value();
 
         u32 argv[2] = {rootref_addr, request_buffer_address};
-        m_game_interpreter.signalEvaluateFunction(0x80198d0c, 2, argv, 0, nullptr, on_return_cb,
-                                                  nullptr);
+        m_game_interpreter.signalEvaluateFunction(0x80198d0c, 2, argv, 0, nullptr, on_return_cb);
         return {};
     }
 

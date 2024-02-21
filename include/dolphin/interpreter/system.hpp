@@ -26,30 +26,11 @@ namespace Toolbox::Interpreter {
             m_fixed_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
             m_float_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
             m_system_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+            m_storage.alloc(0x1800000);
         }
 
         void signalEvaluateFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv, u8 fpr_argc,
-                                    f64 *fpr_argv, func_ret_cb on_return,
-                                    func_exception_cb on_exception) {
-            if (m_evaluating.load()) {
-                std::unique_lock<std::mutex> lk(m_eval_mutex);
-                m_eval_condition.wait(lk);
-            }
-
-            m_system_proc.m_pc = function_ptr;
-            m_branch_proc.m_lr = 0xDEADBEEF;  // Sentinel for return detection
-
-            for (u8 gpr_arg = 0; gpr_arg < gpr_argc; ++gpr_arg) {
-                m_fixed_proc.m_gpr[gpr_arg + 3] = gpr_argv[gpr_arg];
-            }
-
-            for (u8 fpr_arg = 0; fpr_arg < fpr_argc; ++fpr_arg) {
-                m_float_proc.m_fpr[fpr_arg + 3].fill(fpr_argv[fpr_arg]);
-            }
-
-            m_eval_ready.store(true);
-            m_evaluating.store(true);
-        }
+                                    f64 *fpr_argv, func_ret_cb on_return);
 
         void setMemoryBuffer(void *buf, size_t size) { m_storage.setBuf(buf, size); }
         void setStackPointer(u32 sp) { m_fixed_proc.m_gpr[1] = sp; }
@@ -89,16 +70,13 @@ namespace Toolbox::Interpreter {
             // If the LR matches the sentinel we know we've returned from
             // the function rather than a child function
             if (m_branch_proc.m_lr == 0xDEADBEEF) {
-                Register::RegisterSnapshot snapshot;
-                m_evaluating.store(false);
-                m_eval_ready.store(false);
+                Register::RegisterSnapshot snapshot = createSnapshot();
                 m_system_return_cb(snapshot);
-                m_eval_condition.notify_all();
             }
         }
 
         void internalExceptionCB(ExceptionCause cause) {
-            Register::RegisterSnapshot snapshot;
+            Register::RegisterSnapshot snapshot = createSnapshot();
             m_evaluating.store(false);
             m_eval_ready.store(false);
             m_system_exception_cb((u32)m_system_proc.m_pc, cause, snapshot);
@@ -106,11 +84,33 @@ namespace Toolbox::Interpreter {
         }
 
         void internalInvalidCB(const std::string &reason) {
-            Register::RegisterSnapshot snapshot;
+            Register::RegisterSnapshot snapshot = createSnapshot();
             m_evaluating.store(false);
             m_eval_ready.store(false);
             m_system_invalid_cb((u32)m_system_proc.m_pc, reason, snapshot);
             m_eval_condition.notify_all();
+        }
+
+        Register::RegisterSnapshot createSnapshot() const {
+            Register::RegisterSnapshot snapshot;
+            snapshot.m_cr  = m_branch_proc.m_cr;
+            snapshot.m_ctr = m_branch_proc.m_ctr;
+            snapshot.m_lr  = m_branch_proc.m_lr;
+
+            snapshot.m_pc    = m_system_proc.m_pc;
+            snapshot.m_dar   = m_system_proc.m_dar;
+            snapshot.m_dsisr = m_system_proc.m_dsisr;
+            snapshot.m_msr   = m_system_proc.m_msr;
+            snapshot.m_srr0  = m_system_proc.m_srr0;
+            snapshot.m_srr1  = m_system_proc.m_srr1;
+            snapshot.m_tb    = m_system_proc.m_tb;
+
+            std::memcpy(snapshot.m_gpr, m_fixed_proc.m_gpr, sizeof(Register::GPR) * 32);
+            snapshot.m_xer = m_fixed_proc.m_xer;
+
+            std::memcpy(snapshot.m_fpr, m_float_proc.m_fpr, sizeof(Register::FPR) * 32);
+            snapshot.m_fpscr = m_float_proc.m_fpscr;
+            return snapshot;
         }
 
     private:

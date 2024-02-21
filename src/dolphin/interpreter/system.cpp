@@ -9,16 +9,58 @@ using namespace Toolbox::Dolphin;
 
 namespace Toolbox::Interpreter {
 
+    void SystemDolphin::signalEvaluateFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv,
+                                               u8 fpr_argc, f64 *fpr_argv, func_ret_cb on_return) {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+        if (!communicator.manager().isHooked()) {
+            return;
+        }
+
+        if (m_evaluating.load()) {
+            std::unique_lock<std::mutex> lk(m_eval_mutex);
+            m_eval_condition.wait(lk);
+        }
+
+        m_system_proc.m_pc = function_ptr;
+        m_branch_proc.m_lr = 0xDEADBEEF;  // Sentinel for return detection
+
+        for (u8 gpr_arg = 0; gpr_arg < gpr_argc; ++gpr_arg) {
+            m_fixed_proc.m_gpr[gpr_arg + 3] = gpr_argv[gpr_arg];
+        }
+
+        for (u8 fpr_arg = 0; fpr_arg < fpr_argc; ++fpr_arg) {
+            m_float_proc.m_fpr[fpr_arg + 3].fill(fpr_argv[fpr_arg]);
+        }
+
+        onReturn(on_return);
+
+        // Copy bytes so we only have to check hook status once
+        m_storage.resize(communicator.manager().getMemorySize());
+        memcpy(m_storage.buf<void>(), communicator.manager().getMemoryView(),
+               communicator.manager().getMemorySize());
+
+        m_eval_ready.store(true);
+        m_evaluating.store(true);
+    }
+
     void SystemDolphin::evaluateFunction() {
         while (m_evaluating.load()) {
             evaluateInstruction();
+            if (m_system_proc.m_pc == (0xdeadbeef & ~0b11)) {
+                m_evaluating.store(false);
+                m_eval_ready.store(false);
+                m_eval_condition.notify_all();
+            }
         }
     }
 
     void SystemDolphin::evaluateInstruction() {
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
         if (!communicator.manager().isHooked()) {
             m_evaluating.store(false);
+            m_eval_ready.store(false);
+            m_eval_condition.notify_all();
             return;
         }
 
@@ -26,8 +68,6 @@ namespace Toolbox::Interpreter {
         Opcode opcode = FORM_OPCD(inst);
 
         Register::PC next_instruction = m_system_proc.m_pc + 4;
-
-        //TOOLBOX_DEBUG_LOG_V("[Interpreter] PC: 0x{:08X}", m_system_proc.m_pc);
 
         switch (opcode) {
         case Opcode::OP_TWI:
@@ -422,29 +462,29 @@ namespace Toolbox::Interpreter {
         case TableSubOpcode31::DCBZ:
             m_system_proc.dcbz(FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::LWZ:
-            m_fixed_proc.lwz(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::LWZX:
+            m_fixed_proc.lwzx(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::LWZU:
-            m_fixed_proc.lwzu(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::LWZUX:
+            m_fixed_proc.lwzux(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::LHZ:
-            m_fixed_proc.lhz(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::LHZX:
+            m_fixed_proc.lhzx(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::LHZU:
-            m_fixed_proc.lhzu(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::LHZUX:
+            m_fixed_proc.lhzux(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::LHA:
-            m_fixed_proc.lha(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::LHAX:
+            m_fixed_proc.lhax(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::LHAU:
-            m_fixed_proc.lhau(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::LHAUX:
+            m_fixed_proc.lhaux(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::LBZ:
-            m_fixed_proc.lbz(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::LBZX:
+            m_fixed_proc.lbzx(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::LBZU:
-            m_fixed_proc.lbzu(FORM_RD(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::LBZUX:
+            m_fixed_proc.lbzux(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
         case TableSubOpcode31::LWBRX:
             m_fixed_proc.lwbrx(FORM_RD(inst), FORM_RA(inst), FORM_RB(inst), m_storage);

@@ -78,7 +78,8 @@ namespace Toolbox::UI {
 
     static std::string getNodeUID(RefPtr<Toolbox::Object::ISceneObject> node) {
         std::string node_name =
-            std::format("{} ({}) [{:08X}]###{}", node->type(), node->getNameRef().name(), node->getGamePtr(), node->getUUID());
+            std::format("{} ({}) [{:08X}]###{}", node->type(), node->getNameRef().name(),
+                        node->getGamePtr(), node->getUUID());
         return node_name;
     }
 
@@ -777,8 +778,16 @@ namespace Toolbox::UI {
 
     static void recursiveAssignActorPtrs(Game::TaskCommunicator &communicator,
                                          RefPtr<ISceneObject> actor, u32 param) {
-        communicator.taskFindActorPtr(actor,
-                                      [actor](u32 actor_ptr) { actor->setGamePtr(actor_ptr); });
+        communicator.taskFindActorPtr(actor, [actor](u32 actor_ptr) {
+            actor->setGamePtr(actor_ptr);
+            if (actor_ptr == 0) {
+                TOOLBOX_WARN_V("[Scene] Failed to find ptr for object \"{}\"",
+                               actor->getNameRef().name());
+            } else {
+                TOOLBOX_INFO_V("[Scene] Found ptr for object \"{}\" at 0x{:08X}",
+                               actor->getNameRef().name(), actor_ptr);
+            }
+        });
         if (actor->isGroupObject()) {
             auto root_children = actor->getChildren().value();
             for (auto &child : root_children) {

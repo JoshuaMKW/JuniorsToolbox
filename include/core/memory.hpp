@@ -64,6 +64,9 @@ namespace Toolbox {
         }
 
         void resize(size_t size) {
+            if (m_buf && size == m_size) {
+                return;
+            }
             void *new_buf = new u8[size];
             if (m_buf && m_size > 0) {
                 memcpy(new_buf, m_buf, std::min(size, m_size));

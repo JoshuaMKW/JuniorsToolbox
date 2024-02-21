@@ -487,6 +487,7 @@ namespace Toolbox::Interpreter::Register {
     typedef u64 SRR1;
 
     struct RegisterSnapshot {
+        PC m_pc;
         GPR m_gpr[32];
         FPR m_fpr[32];
         CR m_cr;
