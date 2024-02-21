@@ -3,6 +3,7 @@
 #include "dolphin/process.hpp"
 
 #include "core/application.hpp"
+#include "core/log.hpp"
 
 using namespace Toolbox::Dolphin;
 
@@ -25,6 +26,8 @@ namespace Toolbox::Interpreter {
         Opcode opcode = FORM_OPCD(inst);
 
         Register::PC next_instruction = m_system_proc.m_pc + 4;
+
+        TOOLBOX_DEBUG_LOG_V("[Interpreter] PC: 0x{:08X}", m_system_proc.m_pc);
 
         switch (opcode) {
         case Opcode::OP_TWI:
@@ -71,7 +74,7 @@ namespace Toolbox::Interpreter {
             m_branch_proc.b(FORM_LI(inst), FORM_AA(inst), FORM_LK(inst), next_instruction);
             break;
         case Opcode::OP_CONTROL_FLOW:
-            evaluateControlFlowSubOp(inst);
+            next_instruction = evaluateControlFlowSubOp(inst);
             break;
         case Opcode::OP_RLWIMI:
             m_fixed_proc.rlwimi(FORM_RA(inst), FORM_RS(inst), FORM_SH(inst), FORM_MB(inst),
@@ -104,7 +107,7 @@ namespace Toolbox::Interpreter {
             m_fixed_proc.andis(FORM_RA(inst), FORM_RS(inst), FORM_UI(inst), m_branch_proc.m_cr);
             break;
         case Opcode::OP_FIXED:
-            evaluateFixedSubOp(inst);
+            next_instruction = evaluateFixedSubOp(inst);
             break;
         case Opcode::OP_LWZ:
             m_fixed_proc.lwz(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
@@ -179,10 +182,10 @@ namespace Toolbox::Interpreter {
             m_float_proc.stfdu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case Opcode::OP_FS_MATH:
-            evaluateFloatSingleSubOp(inst);
+            next_instruction = evaluateFloatSingleSubOp(inst);
             break;
         case Opcode::OP_FLOAT:
-            evaluateFloatSubOp(inst);
+            next_instruction = evaluateFloatSubOp(inst);
             break;
         default:
             internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, unknown,
@@ -192,7 +195,7 @@ namespace Toolbox::Interpreter {
         m_system_proc.m_pc = next_instruction;
     }
 
-    void SystemDolphin::evaluatePairedSingleSubOp(u32 inst) {
+    u32 SystemDolphin::evaluatePairedSingleSubOp(u32 inst) {
         TableSubOpcode4 sub_op = (TableSubOpcode4)FORM_XO_5(inst);
         switch (sub_op) {
         default:
@@ -200,16 +203,20 @@ namespace Toolbox::Interpreter {
                                                "Attempted to evaluate unknown instruction!"));
             break;
         }
+        return m_system_proc.m_pc + 4;
     }
 
-    void SystemDolphin::evaluateControlFlowSubOp(u32 inst) {
+    u32 SystemDolphin::evaluateControlFlowSubOp(u32 inst) {
+        Register::PC next_instruction = m_system_proc.m_pc + 4;
+
         TableSubOpcode19 sub_op = (TableSubOpcode19)FORM_XO_9(inst);
         switch (sub_op) {
         case TableSubOpcode19::MCRF:
             m_branch_proc.mcrf(FORM_CRBD(inst), FORM_CRBA(inst));
             break;
         case TableSubOpcode19::BCLR:
-            m_branch_proc.bclr(FORM_BO(inst), FORM_BI(inst), FORM_LK(inst), m_system_proc.m_pc);
+            next_instruction -= 4;
+            m_branch_proc.bclr(FORM_BO(inst), FORM_BI(inst), FORM_LK(inst), next_instruction);
             break;
         case TableSubOpcode19::CRNOR:
             m_branch_proc.crnor(FORM_CRBD(inst), FORM_CRBA(inst), FORM_CRBB(inst));
@@ -248,9 +255,11 @@ namespace Toolbox::Interpreter {
                                                "Attempted to evaluate unknown instruction!"));
             break;
         }
+
+        return next_instruction;
     }
 
-    void SystemDolphin::evaluateFixedSubOp(u32 inst) {
+    u32 SystemDolphin::evaluateFixedSubOp(u32 inst) {
         TableSubOpcode31 sub_op = (TableSubOpcode31)FORM_XO_9(inst);
         switch (sub_op) {
         case TableSubOpcode31::ADD:
@@ -581,9 +590,10 @@ namespace Toolbox::Interpreter {
                                                "Attempted to evaluate unknown instruction!"));
             break;
         }
+        return m_system_proc.m_pc + 4;
     }
 
-    void SystemDolphin::evaluateFloatSingleSubOp(u32 inst) {
+    u32 SystemDolphin::evaluateFloatSingleSubOp(u32 inst) {
         TableSubOpcode59 sub_op = (TableSubOpcode59)FORM_XO_5(inst);
         switch (sub_op) {
         case TableSubOpcode59::FDIVS:
@@ -631,9 +641,10 @@ namespace Toolbox::Interpreter {
                                                "Attempted to evaluate unknown instruction!"));
             break;
         }
+        return m_system_proc.m_pc + 4;
     }
 
-    void SystemDolphin::evaluateFloatSubOp(u32 inst) {
+    u32 SystemDolphin::evaluateFloatSubOp(u32 inst) {
         TableSubOpcode63 sub_op = (TableSubOpcode63)FORM_XO_5(inst);
         switch (sub_op) {
         case TableSubOpcode63::FCMPU:
@@ -736,6 +747,7 @@ namespace Toolbox::Interpreter {
                                                "Attempted to evaluate unknown instruction!"));
             break;
         }
+        return m_system_proc.m_pc + 4;
     }
 
 }  // namespace Toolbox::Interpreter

@@ -383,8 +383,12 @@ namespace Toolbox {
                 } else {
                     auto sys_path   = std::filesystem::path(path) / "sys";
                     auto files_path = std::filesystem::path(path) / "files";
-                    if (Toolbox::is_directory(sys_path).value() &&
-                        Toolbox::is_directory(files_path).value()) {
+
+                    auto sys_result   = Toolbox::is_directory(sys_path);
+                    auto files_result = Toolbox::is_directory(files_path);
+
+                    if ((sys_result && sys_result.value()) &&
+                        (files_result && files_result.value())) {
                         // TODO: Open project folder view
                         m_project_root = path;
                         TOOLBOX_INFO_V("Project root: {}", m_project_root.string());

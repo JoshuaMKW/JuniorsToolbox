@@ -30,6 +30,7 @@ namespace Toolbox::Interpreter {
             if (m_ctr != 0 && !cond_true) {
                 b(target_addr, aa, lk, pc);
             }
+            return;
         }
 
         // bdz && !cri
@@ -38,11 +39,13 @@ namespace Toolbox::Interpreter {
             if (m_ctr == 0 && !cond_true) {
                 b(target_addr, aa, lk, pc);
             }
+            return;
         }
 
         // bc !cri
         if ((bo & 0b11100) == 0b00100 && !cond_true) {
             b(target_addr, aa, lk, pc);
+            return;
         }
 
         // bdnz && cri
@@ -51,6 +54,7 @@ namespace Toolbox::Interpreter {
             if (m_ctr != 0 && cond_true) {
                 b(target_addr, aa, lk, pc);
             }
+            return;
         }
 
         // bdz && cri
@@ -59,19 +63,22 @@ namespace Toolbox::Interpreter {
             if (m_ctr == 0 && cond_true) {
                 b(target_addr, aa, lk, pc);
             }
+            return;
         }
 
         // bc cri
         if ((bo & 0b11100) == 0b01100 && cond_true) {
             b(target_addr, aa, lk, pc);
+            return;
         }
 
         // b (call branch directly to save performance)
         if ((bo & 0b10100) == 0b10100) [[likely]] {
             b(target_addr, aa, lk, pc);
+            return;
         }
 
-        m_invalid_cb(PROC_INVALID_MSG(BranchProcessor, b, "Invalid form!"));
+        pc += 4;
     }
 
     void BranchProcessor::bclr(u8 bo, u8 bi, bool lk, Register::PC &pc) {
@@ -83,6 +90,7 @@ namespace Toolbox::Interpreter {
             if (m_ctr != 0 && !cond_true) {
                 b((s32)m_lr, true, lk, pc);
             }
+            return;
         }
 
         // bdz && !cri
@@ -91,11 +99,15 @@ namespace Toolbox::Interpreter {
             if (m_ctr == 0 && !cond_true) {
                 b((s32)m_lr, true, lk, pc);
             }
+            return;
         }
 
         // bc !cri
         if ((bo & 0b11100) == 0b00100 && !cond_true) {
             b((s32)m_lr, true, lk, pc);
+            if (!lk)
+                m_return_cb();
+            return;
         }
 
         // bdnz && cri
@@ -104,6 +116,7 @@ namespace Toolbox::Interpreter {
             if (m_ctr != 0 && cond_true) {
                 b((s32)m_lr, true, lk, pc);
             }
+            return;
         }
 
         // bdz && cri
@@ -112,19 +125,26 @@ namespace Toolbox::Interpreter {
             if (m_ctr == 0 && cond_true) {
                 b((s32)m_lr, true, lk, pc);
             }
+            return;
         }
 
         // bc cri
         if ((bo & 0b11100) == 0b01100 && cond_true) {
             b((s32)m_lr, true, lk, pc);
+            if (!lk)
+                m_return_cb();
+            return;
         }
 
         // blr
         if ((bo & 0b10100) == 0b10100) [[likely]] {
             b((s32)m_lr, true, lk, pc);
+            if (!lk)
+                m_return_cb();
+            return;
         }
 
-        m_invalid_cb(PROC_INVALID_MSG(BranchProcessor, bclr, "Invalid form!"));
+        pc += 4;
     }
 
     void BranchProcessor::bcctr(u8 bo, u8 bi, bool lk, Register::PC &pc) {
@@ -140,19 +160,22 @@ namespace Toolbox::Interpreter {
         // bc !cri
         if ((bo & 0b11100) == 0b00100 && !cond_true) {
             b((s32)m_ctr, true, lk, pc);
+            return;
         }
 
         // bc cri
         if ((bo & 0b11100) == 0b01100 && cond_true) {
             b((s32)m_ctr, true, lk, pc);
+            return;
         }
 
         // b (call branch directly to save performance)
         if ((bo & 0b10100) == 0b10100) [[likely]] {
             b((s32)m_ctr, true, lk, pc);
+            return;
         }
 
-        m_invalid_cb(PROC_INVALID_MSG(BranchProcessor, bcctr, "Invalid form!"));
+        pc += 4;
     }
 
     void BranchProcessor::crand(u8 bt, u8 ba, u8 bb) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bit>
 #include <magic_enum.hpp>
 
 #include "core/core.hpp"
@@ -115,7 +116,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = storage.get<u16>(destination);
+        m_gpr[rt] = std::byteswap<u16>(storage.get<u16>(destination));
     }
 
     void FixedPointProcessor::lhzu(u8 rt, s16 d, u8 ra, Buffer &storage) {
@@ -129,7 +130,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = storage.get<u16>(destination);
+        m_gpr[rt] = std::byteswap<u16>(storage.get<u16>(destination));
         m_gpr[ra] += d;
     }
 
@@ -154,7 +155,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = storage.get<u16>(destination);
+        m_gpr[rt] = std::byteswap<u16>(storage.get<u16>(destination));
     }
 
     void FixedPointProcessor::lhzux(u8 rt, u8 ra, u8 rb, Buffer &storage) {
@@ -178,7 +179,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = storage.get<u16>(destination);
+        m_gpr[rt] = std::byteswap<u16>(storage.get<u16>(destination));
         m_gpr[ra] += m_gpr[rb];
     }
 
@@ -192,7 +193,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = storage.get<s16>(destination);
+        m_gpr[rt] = storage.get<bs16>(destination);
     }
 
     void FixedPointProcessor::lhau(u8 rt, s16 d, u8 ra, Buffer &storage) {
@@ -206,7 +207,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = storage.get<s16>(destination);
+        m_gpr[rt] = storage.get<bs16>(destination);
         m_gpr[ra] += d;
     }
 
@@ -221,7 +222,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = storage.get<s16>(destination);
+        m_gpr[rt] = storage.get<bs16>(destination);
     }
 
     void FixedPointProcessor::lhaux(u8 rt, u8 ra, u8 rb, Buffer &storage) {
@@ -235,7 +236,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = storage.get<s16>(destination);
+        m_gpr[rt] = storage.get<bs16>(destination);
         m_gpr[ra] += m_gpr[rb];
     }
 
@@ -249,7 +250,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = storage.get<u32>(destination);
+        m_gpr[rt] = std::byteswap<u32>(storage.get<u32>(destination));
     }
 
     void FixedPointProcessor::lwzu(u8 rt, s16 d, u8 ra, Buffer &storage) {
@@ -263,7 +264,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = storage.get<u32>(destination);
+        m_gpr[rt] = std::byteswap<u32>(storage.get<u32>(destination));
         m_gpr[ra] += d;
     }
 
@@ -288,7 +289,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = storage.get<u32>(destination);
+        m_gpr[rt] = std::byteswap<u32>(storage.get<u32>(destination));
     }
 
     void FixedPointProcessor::lwzux(u8 rt, u8 ra, u8 rb, Buffer &storage) {
@@ -312,7 +313,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = storage.get<u32>(destination);
+        m_gpr[rt] = std::byteswap<u32>(storage.get<u32>(destination));
         m_gpr[ra] += m_gpr[rb];
     }
 
@@ -403,7 +404,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u16>(destination, m_gpr[rs]);
+        storage.set<bu16>(destination, m_gpr[rs]);
     }
 
     void FixedPointProcessor::sthu(u8 rs, s16 d, u8 ra, Buffer &storage) {
@@ -417,7 +418,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u16>(destination, m_gpr[rs]);
+        storage.set<bu16>(destination, m_gpr[rs]);
         m_gpr[ra] += d;
     }
 
@@ -442,7 +443,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u16>(destination, m_gpr[rs]);
+        storage.set<bu16>(destination, m_gpr[rs]);
     }
 
     void FixedPointProcessor::sthux(u8 rs, u8 ra, u8 rb, Buffer &storage) {
@@ -466,7 +467,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u16>(destination, m_gpr[rs]);
+        storage.set<bu16>(destination, m_gpr[rs]);
         m_gpr[ra] += m_gpr[rb];
     }
 
@@ -480,7 +481,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u32>(destination, m_gpr[rs]);
+        storage.set<bu32>(destination, m_gpr[rs]);
     }
 
     void FixedPointProcessor::stwu(u8 rs, s16 d, u8 ra, Buffer &storage) {
@@ -494,7 +495,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u32>(destination, m_gpr[rs]);
+        storage.set<bu32>(destination, m_gpr[rs]);
         m_gpr[ra] += d;
     }
 
@@ -519,7 +520,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u32>(destination, m_gpr[rs]);
+        storage.set<bu32>(destination, m_gpr[rs]);
     }
 
     void FixedPointProcessor::stwux(u8 rs, u8 ra, u8 rb, Buffer &storage) {
@@ -543,7 +544,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u32>(destination, m_gpr[rs]);
+        storage.set<bu32>(destination, m_gpr[rs]);
         m_gpr[ra] += m_gpr[rb];
     }
 
@@ -568,7 +569,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = std::byteswap(storage.get<u16>(destination));
+        m_gpr[rt] = storage.get<u16>(destination);
     }
     void FixedPointProcessor::lwbrx(u8 rt, u8 ra, u8 rb, Buffer &storage) {
         if (!IsRegValid(rt) || !IsRegValid(ra) || !IsRegValid(rb)) {
@@ -591,7 +592,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_gpr[rt] = std::byteswap(storage.get<u32>(destination));
+        m_gpr[rt] = storage.get<u32>(destination);
     }
 
     void FixedPointProcessor::sthbrx(u8 rs, u8 ra, u8 rb, Buffer &storage) {
@@ -605,7 +606,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u16>(destination, std::byteswap<u16>(m_gpr[rs]));
+        storage.set<u16>(destination, m_gpr[rs]);
     }
     void FixedPointProcessor::stwbrx(u8 rs, u8 ra, u8 rb, Buffer &storage) {
         if (!IsRegValid(rs) || !IsRegValid(ra) || !IsRegValid(rb)) {
@@ -618,7 +619,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u32>(destination, std::byteswap<u32>(m_gpr[rs]));
+        storage.set<u32>(destination, m_gpr[rs]);
     }
 
     void FixedPointProcessor::lmw(u8 rt, s16 d, u8 ra, Buffer &storage) {
@@ -645,7 +646,7 @@ namespace Toolbox::Interpreter {
                 m_exception_cb(ExceptionCause::EXCEPTION_DSI);
                 return;
             }
-            m_gpr[rt++] = storage.get<u32>(destination);
+            m_gpr[rt++ % 32] = std::byteswap<u32>(storage.get<u32>(destination));
             destination += 4;
         }
     }
@@ -674,7 +675,7 @@ namespace Toolbox::Interpreter {
                 m_exception_cb(ExceptionCause::EXCEPTION_DSI);
                 return;
             }
-            storage.set<u32>(destination, m_gpr[rs++]);
+            storage.set<bu32>(destination, m_gpr[rs++ % 32]);
             destination += 4;
         }
     }
@@ -702,13 +703,13 @@ namespace Toolbox::Interpreter {
                 return;
             }
             if (nb < 4) {
-                u32 value = storage.get<u32>(destination);
+                u32 value = std::byteswap<u32>(storage.get<u32>(destination));
                 value &= ~((0x100 << ((nb - 1) * 8)) - 1);
-                m_gpr[rt++] = value;
+                m_gpr[rt++ % 32] = value;
                 destination += 4;
                 nb = 0;
             } else {
-                m_gpr[rt++] = storage.get<u32>(destination);
+                m_gpr[rt++ % 32] = std::byteswap<u32>(storage.get<u32>(destination));
                 destination += 4;
                 nb -= 4;
             }
@@ -740,13 +741,13 @@ namespace Toolbox::Interpreter {
                 return;
             }
             if (nb < 4) {
-                u32 value = storage.get<u32>(destination);
+                u32 value = std::byteswap<u32>(storage.get<u32>(destination));
                 value &= ~((0x100 << ((nb - 1) * 8)) - 1);
-                m_gpr[rt++] = value;
+                m_gpr[rt++ % 32] = value;
                 destination += 4;
                 nb = 0;
             } else {
-                m_gpr[rt++] = storage.get<u32>(destination);
+                m_gpr[rt++ % 32] = std::byteswap<u32>(storage.get<u32>(destination));
                 destination += 4;
                 nb -= 4;
             }
@@ -757,16 +758,16 @@ namespace Toolbox::Interpreter {
     void FixedPointProcessor::stswi(u8 rs, u8 ra, u8 nb, Buffer &storage) {
         if (!IsRegValid(rs) || !IsRegValid(ra)) {
             m_invalid_cb(
-                PROC_INVALID_MSG(FixedPointProcessor, stwbrx, "Invalid registers detected!"));
+                PROC_INVALID_MSG(FixedPointProcessor, stswi, "Invalid registers detected!"));
             return;
         }
         if (ra == 0) {
-            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lswx,
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, stswi,
                                           "Store using source register 0 is invalid!"));
             return;
         }
         if (rs <= ra) {
-            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lswx,
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, stswi,
                                           "Source register in range of string load is invalid!"));
             return;
         }
@@ -777,11 +778,11 @@ namespace Toolbox::Interpreter {
                 return;
             }
             if (nb < 4) {
-                memcpy(storage.buf<u8>() + destination, &m_gpr[rs++], nb);
+                memcpy(storage.buf<u8>() + destination, &m_gpr[rs++ % 32], nb);
                 destination += 4;
                 nb = 0;
             } else {
-                storage.set<u32>(destination, m_gpr[rs++]);
+                storage.set<bu32>(destination, m_gpr[rs++ % 32]);
                 destination += 4;
                 nb -= 4;
             }
@@ -792,16 +793,16 @@ namespace Toolbox::Interpreter {
     void FixedPointProcessor::stswx(u8 rs, u8 ra, u8 rb, Buffer &storage) {
         if (!IsRegValid(rs) || !IsRegValid(ra) || !IsRegValid(rb)) {
             m_invalid_cb(
-                PROC_INVALID_MSG(FixedPointProcessor, stwbrx, "Invalid registers detected!"));
+                PROC_INVALID_MSG(FixedPointProcessor, stswx, "Invalid registers detected!"));
             return;
         }
         if (ra == 0) {
-            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lswx,
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, stswx,
                                           "Store using source register 0 is invalid!"));
             return;
         }
         if (rs <= ra || rs <= rb) {
-            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lswx,
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, stswx,
                                           "Source register in range of string load is invalid!"));
             return;
         }
@@ -813,11 +814,11 @@ namespace Toolbox::Interpreter {
                 return;
             }
             if (nb < 4) {
-                memcpy(storage.buf<u8>() + destination, &m_gpr[rs++], nb);
+                memcpy(storage.buf<u8>() + destination, &m_gpr[rs++ % 32], nb);
                 destination += 4;
                 nb = 0;
             } else {
-                storage.set<u32>(destination, m_gpr[rs++]);
+                storage.set<bu32>(destination, m_gpr[rs++ % 32]);
                 destination += 4;
                 nb -= 4;
             }

@@ -56,6 +56,10 @@ namespace Toolbox::Interpreter {
         void setGlobalsPointerR(u32 r2) { m_fixed_proc.m_gpr[2] = r2; }
         void setGlobalsPointerRW(u32 r13) { m_fixed_proc.m_gpr[13] = r13; }
 
+        void onReturn(func_ret_cb cb) { m_system_return_cb = cb; }
+        void onException(func_exception_cb cb) { m_system_exception_cb = cb; }
+        void onInvalid(func_invalid_cb cb) { m_system_invalid_cb = cb; }
+
     protected:
         void tRun(void *param) override {
             (void)param;
@@ -75,11 +79,11 @@ namespace Toolbox::Interpreter {
 
         void evaluateFunction();
         void evaluateInstruction();
-        void evaluatePairedSingleSubOp(u32 instr);
-        void evaluateControlFlowSubOp(u32 instr);
-        void evaluateFixedSubOp(u32 instr);
-        void evaluateFloatSingleSubOp(u32 instr);
-        void evaluateFloatSubOp(u32 instr);
+        u32 evaluatePairedSingleSubOp(u32 instr);
+        u32 evaluateControlFlowSubOp(u32 instr);
+        u32 evaluateFixedSubOp(u32 instr);
+        u32 evaluateFloatSingleSubOp(u32 instr);
+        u32 evaluateFloatSubOp(u32 instr);
 
         void internalReturnCB() {
             // If the LR matches the sentinel we know we've returned from
@@ -122,9 +126,11 @@ namespace Toolbox::Interpreter {
         std::atomic<bool> m_evaluating;
         std::condition_variable m_eval_condition;
 
-        func_ret_cb m_system_return_cb;
-        func_exception_cb m_system_exception_cb;
-        func_invalid_cb m_system_invalid_cb;
+        func_ret_cb m_system_return_cb          = [](const Register::RegisterSnapshot &) {};
+        func_exception_cb m_system_exception_cb = [](u32, ExceptionCause,
+                                                     const Register::RegisterSnapshot &) {};
+        func_invalid_cb m_system_invalid_cb     = [](u32, const std::string &,
+                                                 const Register::RegisterSnapshot &) {};
     };
 
 }  // namespace Toolbox::Interpreter
