@@ -9,7 +9,7 @@ enum class Opcode : Toolbox::u8 {
     OP_MULLI         = 7,
     OP_SUBFIC        = 8,
     OP_CMPLI         = 10,
-    OP_CMPL          = 11,
+    OP_CMPI          = 11,
     OP_ADDIC         = 12,
     OP_ADDIC_RC      = 13,
     OP_ADDI          = 14,

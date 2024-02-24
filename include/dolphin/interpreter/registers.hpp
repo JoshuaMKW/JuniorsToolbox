@@ -409,77 +409,82 @@ namespace Toolbox::Interpreter::Register {
     };
     TOOLBOX_BITWISE_ENUM(CRCmp)
 
+#define SET_CR_FIELD(cr, field, value)                                                             \
+    ((cr).m_crf = ((cr).m_crf & ~(0b1111 << ((7 - (field)) * 4))) |                                \
+                  (((value)&0b1111) << ((7 - (field)) * 4)))
+
+#define SET_CRF_FIELD(crf, field, value)                                                           \
+    ((crf) = ((crf) & ~(0b1111 << ((7 - (field)) * 4))) | (((value)&0b1111) << ((7 - (field)) * 4)))
+
     struct CR {
         u32 m_crf;
 
         void cmp(u8 crf, s32 ra, s32 rb, const XER &xer) {
             if (ra < rb) {
-                m_crf = (u8)(CRCmp::LT | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE))
-                        << ((7 - crf) * 4);
+                SET_CRF_FIELD(m_crf, crf,
+                              (u8)(CRCmp::LT | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE)));
                 return;
             }
 
             if (ra > rb) {
-                m_crf = (u8)(CRCmp::GT | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE))
-                        << ((7 - crf) * 4);
+                SET_CRF_FIELD(m_crf, crf,
+                              (u8)(CRCmp::GT | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE)));
                 return;
             }
 
-            m_crf = (u8)(CRCmp::EQ | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE)) << ((7 - crf) * 4);
+            SET_CRF_FIELD(m_crf, crf, (u8)(CRCmp::EQ | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE)));
             return;
         }
 
         void cmp(u8 crf, u32 ra, u32 rb, const XER &xer) {
             if (ra < rb) {
-                m_crf = (u8)(CRCmp::LT | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE))
-                        << ((7 - crf) * 4);
+                SET_CRF_FIELD(m_crf, crf,
+                              (u8)(CRCmp::LT | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE)));
                 return;
             }
 
             if (ra > rb) {
-                m_crf = (u8)(CRCmp::GT | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE))
-                        << ((7 - crf) * 4);
+                SET_CRF_FIELD(m_crf, crf,
+                              (u8)(CRCmp::GT | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE)));
                 return;
             }
 
-            m_crf = (u8)(CRCmp::EQ | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE)) << ((7 - crf) * 4);
+            SET_CRF_FIELD(m_crf, crf, (u8)(CRCmp::EQ | (XER_SO(xer) ? CRCmp::SO : CRCmp::NONE)));
             return;
         }
 
         void cmp(u8 crf, f32 fa, f32 fb) {
             if (fa < fb) {
-                m_crf = (u8)(CRCmp::LT);
+                SET_CRF_FIELD(m_crf, crf, (u8)(CRCmp::LT));
                 return;
             }
 
             if (fa > fb) {
-                m_crf = (u8)(CRCmp::GT);
+                SET_CRF_FIELD(m_crf, crf, (u8)(CRCmp::GT));
                 return;
             }
 
-            m_crf = (u8)(CRCmp::EQ);
+            SET_CRF_FIELD(m_crf, crf, (u8)(CRCmp::EQ));
             return;
         }
 
         void cmp(u8 crf, f64 fa, f64 fb) {
             if (fa < fb) {
-                m_crf = (u8)(CRCmp::LT);
+                SET_CRF_FIELD(m_crf, crf, (u8)(CRCmp::LT));
                 return;
             }
 
             if (fa > fb) {
-                m_crf = (u8)(CRCmp::GT);
+                SET_CRF_FIELD(m_crf, crf, (u8)(CRCmp::GT));
                 return;
             }
 
-            m_crf = (u8)(CRCmp::EQ);
+            SET_CRF_FIELD(m_crf, crf, (u8)(CRCmp::EQ));
             return;
         }
 
         bool is(u8 crf, CRCmp cmp) const { return (bool)((m_crf >> ((7 - crf) * 4)) & (u8)cmp); }
     };
-
-    #define SET_CR_FIELD(cr, field, value) ((cr).m_crf = ((cr).m_crf & ~(0b1111 << ((7 - (field)) * 4))) | (((value) & 0b1111) << ((7 - (field)) * 4)))
 
     typedef u64 LR;
     typedef u64 CTR;

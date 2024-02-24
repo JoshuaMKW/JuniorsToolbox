@@ -24,10 +24,10 @@ namespace Toolbox::Game {
             std::format("-- PC: 0x{:08X} --------------------------------------------------------",
                         snapshot.m_pc));
         for (size_t i = 0; i < 8; ++i) {
-            result.push_back(
-                std::format("| r{:<2} = 0x{:08X}, r{:<2} = 0x{:08X}, r{:<2} = 0x{:08X}, r{:<2} = 0x{:08X} |", i,
-                            snapshot.m_gpr[i], i + 8, snapshot.m_gpr[i + 8], i + 16,
-                            snapshot.m_gpr[i + 16], i + 24, snapshot.m_gpr[i + 24]));
+            result.push_back(std::format(
+                "| r{:<2} = 0x{:08X}, r{:<2} = 0x{:08X}, r{:<2} = 0x{:08X}, r{:<2} = 0x{:08X} |", i,
+                snapshot.m_gpr[i], i + 8, snapshot.m_gpr[i + 8], i + 16, snapshot.m_gpr[i + 16],
+                i + 24, snapshot.m_gpr[i + 24]));
         }
         for (size_t i = 0; i < 8; ++i) {
             result.push_back(std::format(
@@ -102,54 +102,43 @@ namespace Toolbox::Game {
         m_kill_condition.notify_all();
     }
 
-    Result<void> TaskCommunicator::taskFindActorPtr(RefPtr<ISceneObject> actor,
-                                                    transact_complete_cb complete_cb) {
+    u32 TaskCommunicator::getActorPtr(RefPtr<ISceneObject> actor) {
         if (m_actor_address_map.contains(actor->getUUID())) {
-            if (complete_cb)
-                complete_cb(m_actor_address_map[actor->getUUID()]);
-            return {};
+            return m_actor_address_map[actor->getUUID()];
         }
 
-        // TODO: Have interpreter evaluate this
-        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+        auto dolphin_interpreter = createInterpreter();
 
-        // Get TMarNameRefGen
-        if (!communicator.manager().isHooked()) {
-            return make_error<void>("TaskCommunicator", "Dolphin not connected");
+        auto result = String::toGameEncoding(actor->getNameRef().name());
+        if (!result) {
+            return 0;
         }
 
-        constexpr u32 application_addr = 0x803E9700;
-        u8 game_stage                  = communicator.read<u8>(application_addr + 0xE).value();
-        u8 game_scenario               = communicator.read<u8>(application_addr + 0xF).value();
-
-        if (!isSceneLoaded(game_stage, game_scenario)) {
-            return make_error<void>("TaskCommunicator", "Scene not loaded");
-        }
-
-        u32 request_buffer_address = communicator.read<u32>(0x800002E4).value();
+        u32 request_buffer_address = dolphin_interpreter->read<u32>(0x800002E4);
         if (request_buffer_address == 0) {
-            return make_error<void>("TaskCommunicator", "Request buffer address is null");
+            return 0;
         }
 
-        m_game_interpreter.setStackPointer(request_buffer_address + 0x200);
+        Buffer &interpreter_buf = dolphin_interpreter->getMemoryBuffer();
 
-        auto on_return_cb = [this, actor,
-                             complete_cb](const Interpreter::Register::RegisterSnapshot &snapshot) {
-            complete_cb((u32)snapshot.m_gpr[3]);
-            if (snapshot.m_gpr[3] != 0) {
-                this->m_actor_address_map[actor->getUUID()] = (u32)snapshot.m_gpr[3];
-            }
-        };
+        std::memset(interpreter_buf.buf<u8>() + (request_buffer_address - 0x80000000), '\0',
+                    0x10000);
 
-        std::string_view actor_name = actor->getNameRef().name();
-        communicator.writeBytes(actor_name.data(), request_buffer_address, actor_name.size());
+        std::string actor_name = result.value();
+        std::strncpy(interpreter_buf.buf<char>() + (request_buffer_address - 0x80000000),
+                     actor_name.c_str(), actor_name.size());
 
-        u32 namerefgen_addr = communicator.read<u32>(0x8040E408).value();
-        u32 rootref_addr    = communicator.read<u32>(namerefgen_addr + 0x4).value();
+        u32 namerefgen_addr = dolphin_interpreter->read<u32>(0x8040E408);
+        u32 rootref_addr    = dolphin_interpreter->read<u32>(namerefgen_addr + 0x4);
 
-        u32 argv[2] = {rootref_addr, request_buffer_address};
-        m_game_interpreter.signalEvaluateFunction(0x80198d0c, 2, argv, 0, nullptr, on_return_cb);
-        return {};
+        u32 argv[2]   = {rootref_addr, request_buffer_address};
+        auto snapshot = dolphin_interpreter->evalFunction(0x80198d0c, 2, argv, 0, nullptr);
+
+        if (snapshot.m_gpr[3] != 0) {
+            this->m_actor_address_map[actor->getUUID()] = (u32)snapshot.m_gpr[3];
+        }
+
+        return snapshot.m_gpr[3];
     }
 
     bool TaskCommunicator::isSceneLoaded(u8 stage, u8 scenario) {
@@ -490,6 +479,44 @@ namespace Toolbox::Game {
 
         return communicator.manager().captureXFBAsTexture(width, height, xfb_address, xfb_width,
                                                           xfb_height);
+    }
+
+    ScopePtr<Interpreter::SystemDolphin> TaskCommunicator::createInterpreter() {
+
+        // TODO: Have interpreter evaluate this
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        // Get TMarNameRefGen
+        if (!communicator.manager().isHooked()) {
+            return nullptr;
+        }
+
+        constexpr u32 application_addr = 0x803E9700;
+        u8 game_stage                  = communicator.read<u8>(application_addr + 0xE).value();
+        u8 game_scenario               = communicator.read<u8>(application_addr + 0xF).value();
+
+        if (!isSceneLoaded(game_stage, game_scenario)) {
+            return nullptr;
+        }
+
+        u32 request_buffer_address = communicator.read<u32>(0x800002E4).value();
+        if (request_buffer_address == 0) {
+            return nullptr;
+        }
+
+        auto dolphin_interpreter = Toolbox::make_scoped<Interpreter::SystemDolphin>();
+
+        // Arbitrary based on BSMS allocation
+        dolphin_interpreter->setStackPointer(request_buffer_address + 0xE000);
+        dolphin_interpreter->setGlobalsPointerR(0x80416BA0);
+        dolphin_interpreter->setGlobalsPointerRW(0x804141C0);
+
+        // Copy bytes so we only have to check hook status once
+        // m_storage.resize(communicator.manager().getMemorySize());
+        dolphin_interpreter->applyMemory(communicator.manager().getMemoryView(),
+                                         communicator.manager().getMemorySize());
+
+        return dolphin_interpreter;
     }
 
 }  // namespace Toolbox::Game

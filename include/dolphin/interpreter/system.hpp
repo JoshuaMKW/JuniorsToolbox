@@ -29,9 +29,12 @@ namespace Toolbox::Interpreter {
             m_storage.alloc(0x1800000);
         }
 
-        void signalEvaluateFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv, u8 fpr_argc,
-                                    f64 *fpr_argv, func_ret_cb on_return);
+        Register::RegisterSnapshot evalFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv,
+                                                u8 fpr_argc, f64 *fpr_argv);
+        void evalFunctionAsync(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv, u8 fpr_argc,
+                               f64 *fpr_argv, func_ret_cb on_return);
 
+        Buffer &getMemoryBuffer() { return m_storage; }
         void setMemoryBuffer(void *buf, size_t size) { m_storage.setBuf(buf, size); }
         void setStackPointer(u32 sp) { m_fixed_proc.m_gpr[1] = sp; }
         void setGlobalsPointerR(u32 r2) { m_fixed_proc.m_gpr[2] = r2; }
@@ -40,6 +43,32 @@ namespace Toolbox::Interpreter {
         void onReturn(func_ret_cb cb) { m_system_return_cb = cb; }
         void onException(func_exception_cb cb) { m_system_exception_cb = cb; }
         void onInvalid(func_invalid_cb cb) { m_system_invalid_cb = cb; }
+
+        void applyMemory(const void *buf, size_t size) {
+            std::memcpy(m_storage.buf<void>(), buf, size);
+        }
+
+        template <typename T> T read(u32 address) {
+            T data;
+            readBytes(reinterpret_cast<char *>(&data), address, sizeof(T));
+            return *endian_swapped_t<T>(data);
+        }
+
+        template <typename T> void write(u32 address, const T &value) {
+            T swapped_v = *endian_swapped_t<T>(value);
+            writeBytes(reinterpret_cast<const char *>(std::addressof(swapped_v)), address,
+                       sizeof(T));
+        }
+
+        void readBytes(char *buf, u32 address, size_t size) {
+            const char *true_address = m_storage.buf<const char>() + (address & 0x7FFFFFFF);
+            memcpy(buf, true_address, size);
+        }
+
+        void writeBytes(const char *buf, u32 address, size_t size) {
+            char *true_address = m_storage.buf<char>() + (address & 0x7FFFFFFF);
+            memcpy(true_address, buf, size);
+        }
 
     protected:
         void tRun(void *param) override {

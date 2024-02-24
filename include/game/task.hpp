@@ -27,11 +27,10 @@ namespace Toolbox::Game {
 
         bool isSceneLoaded(u8 stage, u8 scenario);
 
+        u32 getActorPtr(RefPtr<ISceneObject> actor);
+
         Result<void> taskLoadScene(u8 stage, u8 scenario,
                                    transact_complete_cb complete_cb = nullptr);
-
-        Result<void> taskFindActorPtr(RefPtr<ISceneObject> actor,
-                                      transact_complete_cb complete_cb = nullptr);
 
         Result<void> taskAddSceneObject(RefPtr<ISceneObject> object,
                                         RefPtr<GroupSceneObject> parent,
@@ -60,6 +59,8 @@ namespace Toolbox::Game {
         Result<void> setMarioToCameraTransform(const Transform &camera_transform);
 
         u32 captureXFBAsTexture(int width, int height);
+
+        ScopePtr<Interpreter::SystemDolphin> createInterpreter();
 
     protected:
         template <typename _Callable, typename... _Args>

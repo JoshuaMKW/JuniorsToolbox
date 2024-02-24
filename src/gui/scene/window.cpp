@@ -2,10 +2,14 @@
 #define _USE_MATH_DEFINES
 #endif
 
+#include <algorithm>
 #include <cmath>
+#include <execution>
+#include <vector>
 
 #include "core/application.hpp"
 #include "core/log.hpp"
+#include "core/timing.hpp"
 
 #include "gui/IconsForkAwesome.h"
 #include "gui/font.hpp"
@@ -477,10 +481,8 @@ namespace Toolbox::UI {
             if (is_filtered_out) {
                 auto objects = std::static_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
                                    ->getChildren();
-                if (objects.has_value()) {
-                    for (auto object : objects.value()) {
-                        renderTree(object);
-                    }
+                for (auto &object : objects) {
+                    renderTree(object);
                 }
             } else {
                 if (node_visibility) {
@@ -526,10 +528,8 @@ namespace Toolbox::UI {
                 if (node_open) {
                     auto objects = std::static_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
                                        ->getChildren();
-                    if (objects.has_value()) {
-                        for (auto object : objects.value()) {
-                            renderTree(object);
-                        }
+                    for (auto &object : objects) {
+                        renderTree(object);
                     }
                     ImGui::TreePop();
                 }
@@ -776,32 +776,36 @@ namespace Toolbox::UI {
         return is_updated;
     }
 
-    static void recursiveAssignActorPtrs(Game::TaskCommunicator &communicator,
-                                         RefPtr<ISceneObject> actor, u32 param) {
-        communicator.taskFindActorPtr(actor, [actor](u32 actor_ptr) {
-            actor->setGamePtr(actor_ptr);
-            if (actor_ptr == 0) {
-                TOOLBOX_WARN_V("[Scene] Failed to find ptr for object \"{}\"",
-                               actor->getNameRef().name());
-            } else {
-                TOOLBOX_INFO_V("[Scene] Found ptr for object \"{}\" at 0x{:08X}",
-                               actor->getNameRef().name(), actor_ptr);
-            }
-        });
-        if (actor->isGroupObject()) {
-            auto root_children = actor->getChildren().value();
-            for (auto &child : root_children) {
-                recursiveAssignActorPtrs(communicator, child, param);
-            }
+    static void recursiveFlattenActorTree(RefPtr<ISceneObject> actor,
+                                          std::vector<RefPtr<ISceneObject>> &out) {
+        out.push_back(actor);
+        for (auto &child : actor->getChildren()) {
+            recursiveFlattenActorTree(child, out);
         }
     }
 
+    static void recursiveAssignActorPtrs(Game::TaskCommunicator &communicator,
+                                         std::vector<RefPtr<ISceneObject>> objects) {
+        std::for_each(std::execution::par, objects.begin(), objects.end(),
+                      [&communicator](RefPtr<ISceneObject> object) {
+                          u32 actor_ptr = communicator.getActorPtr(object);
+                          object->setGamePtr(actor_ptr);
+                          if (actor_ptr == 0) {
+                              TOOLBOX_WARN_V("[Scene] Failed to find ptr for object \"{}\"",
+                                             object->getNameRef().name());
+                          } else {
+                              TOOLBOX_INFO_V("[Scene] Found ptr for object \"{}\" at 0x{:08X}",
+                                             object->getNameRef().name(), actor_ptr);
+                          }
+                      });
+    }
+
     void SceneWindow::reassignAllActorPtrs(u32 param) {
-        RefPtr<GroupSceneObject> root = m_current_scene->getObjHierarchy().getRoot();
-        auto root_children            = root->getChildren().value();
-        for (auto &child : root_children) {
-            recursiveAssignActorPtrs(m_communicator, child, param);
-        }
+        RefPtr<ISceneObject> root = m_current_scene->getObjHierarchy().getRoot();
+        std::vector<RefPtr<ISceneObject>> objects;
+        recursiveFlattenActorTree(root, objects);
+        double timing = Timing::measure(recursiveAssignActorPtrs, m_communicator, objects);
+        TOOLBOX_INFO_V("[SCENE] Acquired all actor ptrs in {} seconds", timing);
     }
 
     void SceneWindow::renderRailEditor() {
@@ -1167,7 +1171,7 @@ namespace Toolbox::UI {
                     return;
                 }
                 std::vector<std::string> sibling_names;
-                auto children = std::move(this_parent->getChildren().value());
+                auto children = this_parent->getChildren();
                 for (auto &child : children) {
                     sibling_names.push_back(std::string(child->getNameRef().name()));
                 }
@@ -1250,7 +1254,7 @@ namespace Toolbox::UI {
                     return;
                 }
                 std::vector<std::string> sibling_names;
-                auto children = std::move(this_parent->getChildren().value());
+                auto children = this_parent->getChildren();
                 for (auto &child : children) {
                     sibling_names.push_back(std::string(child->getNameRef().name()));
                 }
@@ -1397,7 +1401,7 @@ namespace Toolbox::UI {
                     return;
                 }
                 std::vector<std::string> sibling_names;
-                auto children = std::move(this_parent->getChildren().value());
+                auto children = this_parent->getChildren();
                 for (auto &child : children) {
                     sibling_names.push_back(std::string(child->getNameRef().name()));
                 }
@@ -1465,7 +1469,7 @@ namespace Toolbox::UI {
                         return;
                     }
                     std::vector<std::string> sibling_names;
-                    auto children = std::move(this_parent->getChildren().value());
+                    auto children = this_parent->getChildren();
                     for (auto &child : children) {
                         sibling_names.push_back(std::string(child->getNameRef().name()));
                     }

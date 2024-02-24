@@ -9,13 +9,33 @@ using namespace Toolbox::Dolphin;
 
 namespace Toolbox::Interpreter {
 
-    void SystemDolphin::signalEvaluateFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv,
-                                               u8 fpr_argc, f64 *fpr_argv, func_ret_cb on_return) {
-        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
-        if (!communicator.manager().isHooked()) {
-            return;
+    Register::RegisterSnapshot SystemDolphin::evalFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv, u8 fpr_argc,
+                                     f64 *fpr_argv) {
+        if (m_evaluating.load()) {
+            std::unique_lock<std::mutex> lk(m_eval_mutex);
+            m_eval_condition.wait(lk);
         }
 
+        m_system_proc.m_pc = function_ptr;
+        m_branch_proc.m_lr = 0xDEADBEEF;  // Sentinel for return detection
+
+        for (u8 gpr_arg = 0; gpr_arg < gpr_argc; ++gpr_arg) {
+            m_fixed_proc.m_gpr[gpr_arg + 3] = gpr_argv[gpr_arg];
+        }
+
+        for (u8 fpr_arg = 0; fpr_arg < fpr_argc; ++fpr_arg) {
+            m_float_proc.m_fpr[fpr_arg + 3].fill(fpr_argv[fpr_arg]);
+        }
+
+        m_evaluating.store(true);
+
+        evaluateFunction();
+
+        return createSnapshot();
+    }
+
+    void SystemDolphin::evalFunctionAsync(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv,
+                                               u8 fpr_argc, f64 *fpr_argv, func_ret_cb on_return) {
         if (m_evaluating.load()) {
             std::unique_lock<std::mutex> lk(m_eval_mutex);
             m_eval_condition.wait(lk);
@@ -34,30 +54,26 @@ namespace Toolbox::Interpreter {
 
         onReturn(on_return);
 
-        // Copy bytes so we only have to check hook status once
-        m_storage.resize(communicator.manager().getMemorySize());
-        memcpy(m_storage.buf<void>(), communicator.manager().getMemoryView(),
-               communicator.manager().getMemorySize());
-
         m_eval_ready.store(true);
         m_evaluating.store(true);
     }
 
     void SystemDolphin::evaluateFunction() {
         while (m_evaluating.load()) {
-            evaluateInstruction();
             if (m_system_proc.m_pc == (0xdeadbeef & ~0b11)) {
                 m_evaluating.store(false);
                 m_eval_ready.store(false);
                 m_eval_condition.notify_all();
+                break;
             }
+            evaluateInstruction();
         }
     }
 
     void SystemDolphin::evaluateInstruction() {
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
-        u32 inst      = std::byteswap<u32>(m_storage.get<u32>((s64)m_system_proc.m_pc - 0x80000000));
+        u32 inst = std::byteswap<u32>(m_storage.get<u32>((s64)m_system_proc.m_pc - 0x80000000));
         Opcode opcode = FORM_OPCD(inst);
 
         Register::PC next_instruction = m_system_proc.m_pc + 4;
@@ -79,13 +95,13 @@ namespace Toolbox::Interpreter {
             m_fixed_proc.cmpli(FORM_CRFD(inst), FORM_L(inst), FORM_RA(inst), FORM_UI(inst),
                                m_branch_proc.m_cr);
             break;
-        case Opcode::OP_CMPL:
-            m_fixed_proc.cmpli(FORM_CRFD(inst), FORM_L(inst), FORM_RA(inst), FORM_RB(inst),
-                               m_branch_proc.m_cr);
+        case Opcode::OP_CMPI:
+            m_fixed_proc.cmpi(FORM_CRFD(inst), FORM_L(inst), FORM_RA(inst), FORM_SI(inst),
+                              m_branch_proc.m_cr);
             break;
         case Opcode::OP_ADDIC:
         case Opcode::OP_ADDIC_RC:
-            m_fixed_proc.addic(FORM_RS(inst), FORM_RA(inst), FORM_SI(inst), FORM_RC(inst),
+            m_fixed_proc.addic(FORM_RS(inst), FORM_RA(inst), FORM_SI(inst), FORM_Rc(inst),
                                m_branch_proc.m_cr);
             break;
         case Opcode::OP_ADDI:
@@ -111,15 +127,15 @@ namespace Toolbox::Interpreter {
             break;
         case Opcode::OP_RLWIMI:
             m_fixed_proc.rlwimi(FORM_RA(inst), FORM_RS(inst), FORM_SH(inst), FORM_MB(inst),
-                                FORM_ME(inst), FORM_RC(inst), m_branch_proc.m_cr);
+                                FORM_ME(inst), FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case Opcode::OP_RLWINM:
             m_fixed_proc.rlwinm(FORM_RA(inst), FORM_RS(inst), FORM_SH(inst), FORM_MB(inst),
-                                FORM_ME(inst), FORM_RC(inst), m_branch_proc.m_cr);
+                                FORM_ME(inst), FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case Opcode::OP_RLWNM:
             m_fixed_proc.rlwnm(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_MB(inst),
-                               FORM_ME(inst), FORM_RC(inst), m_branch_proc.m_cr);
+                               FORM_ME(inst), FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case Opcode::OP_ORI:
             m_fixed_proc.ori(FORM_RA(inst), FORM_RS(inst), FORM_UI(inst));
@@ -298,50 +314,50 @@ namespace Toolbox::Interpreter {
         case TableSubOpcode31::ADD:
         case TableSubOpcode31::ADDO:
             m_fixed_proc.add(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
-                             FORM_RC(inst), m_branch_proc.m_cr);
+                             FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::ADDC:
         case TableSubOpcode31::ADDCO:
             m_fixed_proc.addc(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
-                              FORM_RC(inst), m_branch_proc.m_cr);
+                              FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::ADDE:
         case TableSubOpcode31::ADDEO:
             m_fixed_proc.adde(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
-                              FORM_RC(inst), m_branch_proc.m_cr);
+                              FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::ADDME:
         case TableSubOpcode31::ADDMEO:
-            m_fixed_proc.addme(FORM_RS(inst), FORM_RA(inst), FORM_OE(inst), FORM_RC(inst),
+            m_fixed_proc.addme(FORM_RS(inst), FORM_RA(inst), FORM_OE(inst), FORM_Rc(inst),
                                m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::ADDZE:
         case TableSubOpcode31::ADDZEO:
-            m_fixed_proc.addze(FORM_RS(inst), FORM_RA(inst), FORM_OE(inst), FORM_RC(inst),
+            m_fixed_proc.addze(FORM_RS(inst), FORM_RA(inst), FORM_OE(inst), FORM_Rc(inst),
                                m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::DIVW:
         case TableSubOpcode31::DIVWO:
             m_fixed_proc.divw(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
-                              FORM_RC(inst), m_branch_proc.m_cr);
+                              FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::DIVWU:
         case TableSubOpcode31::DIVWUO:
             m_fixed_proc.divwu(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
-                               FORM_RC(inst), m_branch_proc.m_cr);
+                               FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::MULHW:
-            m_fixed_proc.mullhw(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.mullhw(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_Rc(inst),
                                 m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::MULHWU:
-            m_fixed_proc.mullhwu(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.mullhwu(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_Rc(inst),
                                  m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::MULLW:
         case TableSubOpcode31::MULLWO:
             m_fixed_proc.mullw(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
-                               FORM_RC(inst), m_branch_proc.m_cr);
+                               FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::NEG:
         case TableSubOpcode31::NEGO:
@@ -349,58 +365,58 @@ namespace Toolbox::Interpreter {
         case TableSubOpcode31::SUBF:
         case TableSubOpcode31::SUBFO:
             m_fixed_proc.subf(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
-                              FORM_RC(inst), m_branch_proc.m_cr);
+                              FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SUBFC:
         case TableSubOpcode31::SUBFCO:
             m_fixed_proc.subfc(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
-                               FORM_RC(inst), m_branch_proc.m_cr);
+                               FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SUBFE:
         case TableSubOpcode31::SUBFEO:
             m_fixed_proc.subfe(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), FORM_OE(inst),
-                               FORM_RC(inst), m_branch_proc.m_cr);
+                               FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SUBFME:
         case TableSubOpcode31::SUBFMEO:
-            m_fixed_proc.subfme(FORM_RS(inst), FORM_RA(inst), FORM_OE(inst), FORM_RC(inst),
+            m_fixed_proc.subfme(FORM_RS(inst), FORM_RA(inst), FORM_OE(inst), FORM_Rc(inst),
                                 m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SUBFZE:
         case TableSubOpcode31::SUBFZEO:
-            m_fixed_proc.subfze(FORM_RS(inst), FORM_RA(inst), FORM_OE(inst), FORM_RC(inst),
+            m_fixed_proc.subfze(FORM_RS(inst), FORM_RA(inst), FORM_OE(inst), FORM_Rc(inst),
                                 m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::AND:
-            m_fixed_proc.and_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.and_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::ANDC:
-            m_fixed_proc.andc(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.andc(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::OR:
-            m_fixed_proc.or_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.or_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_Rc(inst),
                              m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::NOR:
-            m_fixed_proc.nor_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.nor_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::XOR:
-            m_fixed_proc.xor_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.xor_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::ORC:
-            m_fixed_proc.orc(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.orc(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_Rc(inst),
                              m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::NAND:
-            m_fixed_proc.nand_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.nand_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_Rc(inst),
                                m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::EQV:
-            m_fixed_proc.eqv_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.eqv_(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::CMP:
@@ -412,28 +428,28 @@ namespace Toolbox::Interpreter {
                               m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::CNTLZW:
-            m_fixed_proc.cntlzw(FORM_RA(inst), FORM_RB(inst), FORM_RC(inst), m_branch_proc.m_cr);
+            m_fixed_proc.cntlzw(FORM_RA(inst), FORM_RB(inst), FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::EXTSH:
-            m_fixed_proc.extsh(FORM_RA(inst), FORM_RB(inst), FORM_RC(inst), m_branch_proc.m_cr);
+            m_fixed_proc.extsh(FORM_RA(inst), FORM_RB(inst), FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::EXTSB:
-            m_fixed_proc.extsb(FORM_RA(inst), FORM_RB(inst), FORM_RC(inst), m_branch_proc.m_cr);
+            m_fixed_proc.extsb(FORM_RA(inst), FORM_RB(inst), FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SRW:
-            m_fixed_proc.srw(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.srw(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_Rc(inst),
                              m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SRAW:
-            m_fixed_proc.sraw(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.sraw(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SRAWI:
-            m_fixed_proc.srawi(FORM_RA(inst), FORM_RS(inst), FORM_SH(inst), FORM_RC(inst),
+            m_fixed_proc.srawi(FORM_RA(inst), FORM_RS(inst), FORM_SH(inst), FORM_Rc(inst),
                                m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SLW:
-            m_fixed_proc.slw(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_RC(inst),
+            m_fixed_proc.slw(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_Rc(inst),
                              m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::DCBST:
@@ -630,43 +646,43 @@ namespace Toolbox::Interpreter {
         TableSubOpcode59 sub_op = (TableSubOpcode59)FORM_XO_5(inst);
         switch (sub_op) {
         case TableSubOpcode59::FDIVS:
-            m_float_proc.fdivs(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+            m_float_proc.fdivs(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_Rc(inst),
                                m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode59::FSUBS:
-            m_float_proc.fsubs(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+            m_float_proc.fsubs(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_Rc(inst),
                                m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode59::FADDS:
-            m_float_proc.fadds(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+            m_float_proc.fadds(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_Rc(inst),
                                m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode59::FRES:
-            m_float_proc.fres(FORM_FS(inst), FORM_FA(inst), FORM_RC(inst), m_branch_proc.m_cr,
+            m_float_proc.fres(FORM_FS(inst), FORM_FA(inst), FORM_Rc(inst), m_branch_proc.m_cr,
                               m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode59::FMULS:
-            m_float_proc.fmuls(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+            m_float_proc.fmuls(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_Rc(inst),
                                m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode59::FMSUBS:
             m_float_proc.fmsubs(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
-                                FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                FORM_Rc(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
                                 m_system_proc.m_srr1);
             break;
         case TableSubOpcode59::FMADDS:
             m_float_proc.fmadds(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
-                                FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                FORM_Rc(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
                                 m_system_proc.m_srr1);
             break;
         case TableSubOpcode59::FNMSUBS:
             m_float_proc.fnmsubs(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
-                                 FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                 FORM_Rc(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
                                  m_system_proc.m_srr1);
             break;
         case TableSubOpcode59::FNMADDS:
             m_float_proc.fnmadds(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
-                                 FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                 FORM_Rc(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
                                  m_system_proc.m_srr1);
             break;
         default:
@@ -685,55 +701,55 @@ namespace Toolbox::Interpreter {
                                m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FRSP:
-            m_float_proc.frsp(FORM_FS(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+            m_float_proc.frsp(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
                               m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FCTIW:
-            m_float_proc.fctiw(FORM_FS(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+            m_float_proc.fctiw(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
                                m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FCTIWZ:
-            m_float_proc.fctiwz(FORM_FS(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+            m_float_proc.fctiwz(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
                                 m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FDIV:
-            m_float_proc.fdiv(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+            m_float_proc.fdiv(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FSUB:
-            m_float_proc.fsub(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+            m_float_proc.fsub(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FADD:
-            m_float_proc.fadd(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+            m_float_proc.fadd(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FRES:
-            m_float_proc.fres(FORM_FS(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+            m_float_proc.fres(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
                               m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FMUL:
-            m_float_proc.fmul(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+            m_float_proc.fmul(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FMSUB:
             m_float_proc.fmsub(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
-                               FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                               FORM_Rc(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
                                m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FMADD:
             m_float_proc.fmadd(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
-                               FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                               FORM_Rc(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
                                m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FNMSUB:
             m_float_proc.fnmsub(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
-                                FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                FORM_Rc(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
                                 m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FNMADD:
             m_float_proc.fnmadd(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
-                                FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                FORM_Rc(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
                                 m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FCMPO:
@@ -741,11 +757,11 @@ namespace Toolbox::Interpreter {
                                m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::MTFSB1:
-            m_float_proc.mtfsb1(FORM_CRBD(inst), FORM_RC(inst), m_branch_proc.m_cr,
+            m_float_proc.mtfsb1(FORM_CRBD(inst), FORM_Rc(inst), m_branch_proc.m_cr,
                                 m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FNEG:
-            m_float_proc.fneg(FORM_FS(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+            m_float_proc.fneg(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
                               m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::MCRFS:
@@ -753,25 +769,25 @@ namespace Toolbox::Interpreter {
                                m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::MTFSB0:
-            m_float_proc.mtfsb0(FORM_CRBD(inst), FORM_RC(inst), m_branch_proc.m_cr,
+            m_float_proc.mtfsb0(FORM_CRBD(inst), FORM_Rc(inst), m_branch_proc.m_cr,
                                 m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FMR:
-            m_float_proc.fmr(FORM_CRFD(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+            m_float_proc.fmr(FORM_CRFD(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
                              m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::MTFSFI:
             break;
         case TableSubOpcode63::FNABS:
-            m_float_proc.fnabs(FORM_CRFD(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+            m_float_proc.fnabs(FORM_CRFD(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
                                m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FABS:
-            m_float_proc.fabs(FORM_CRFD(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+            m_float_proc.fabs(FORM_CRFD(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
                               m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::MFFS:
-            m_float_proc.mffs(FORM_FS(inst), FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+            m_float_proc.mffs(FORM_FS(inst), FORM_Rc(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
                               m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::MTFS:

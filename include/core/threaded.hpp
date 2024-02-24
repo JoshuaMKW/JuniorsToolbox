@@ -42,7 +42,7 @@ namespace Toolbox {
 
         // Call this from the main thread
         void tKill(bool wait) {
-            if (tIsKilled()) {
+            if (_m_killed || !_m_started) {
                 return;
             }
 

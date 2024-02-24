@@ -11,8 +11,10 @@ namespace Toolbox::Log {
             else
                 std::cout << message << std::endl;
         }
+        m_write_mutex.lock();
         m_messages.emplace_back(level, message, m_indentation);
         m_log_callback(m_messages.back());
+        m_write_mutex.unlock();
     }
 
 }  // namespace Toolbox
