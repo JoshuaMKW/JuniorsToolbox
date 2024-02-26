@@ -51,28 +51,6 @@ namespace Toolbox::Game {
     };
 
     void TaskCommunicator::tRun(void *param) {
-        m_game_interpreter.setGlobalsPointerR(0x80416BA0);
-        m_game_interpreter.setGlobalsPointerRW(0x804141C0);
-        m_game_interpreter.onException([](u32 bad_instr_ptr, Interpreter::ExceptionCause cause,
-                                          const Interpreter::Register::RegisterSnapshot &snapshot) {
-            TOOLBOX_ERROR_V("[Interpreter] {} at PC = 0x{:08X}:", magic_enum::enum_name(cause),
-                            bad_instr_ptr);
-            std::vector<std::string> exception_message = StringifySnapshot(snapshot);
-            for (auto &line : exception_message) {
-                TOOLBOX_ERROR_V("[Interpreter] {}", line);
-            }
-        });
-        m_game_interpreter.onInvalid([](u32 bad_instr_ptr, const std::string &cause,
-                                        const Interpreter::Register::RegisterSnapshot &snapshot) {
-            TOOLBOX_ERROR_V("[Interpreter] Invalid instruction at PC = {:08X} (Reason: {}):",
-                            bad_instr_ptr, cause);
-            std::vector<std::string> exception_message = StringifySnapshot(snapshot);
-            for (auto &line : exception_message) {
-                TOOLBOX_ERROR_V("[Interpreter] {}", line);
-            }
-        });
-        m_game_interpreter.tStart(false, param);
-
         while (!m_kill_flag.load()) {
             AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
@@ -83,37 +61,24 @@ namespace Toolbox::Game {
                                                communicator.manager().getMemorySize());*/
 
             // Dismiss tasks if disconnected to avoid errors
-            if (communicator.manager().isHooked()) {
-                while (!m_task_queue.empty()) {
-                    std::unique_lock<std::mutex> lk(m_mutex);
-                    std::function<bool(DolphinCommunicator &)> task = m_task_queue.front();
-                    if (task(communicator)) {
-                        m_task_queue.pop();
-                    }
-                    std::this_thread::sleep_for(
-                        std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
+            while (!m_task_queue.empty()) {
+                std::unique_lock<std::mutex> lk(m_mutex);
+                std::function<bool(DolphinCommunicator &)> task = m_task_queue.front();
+                if (task(communicator)) {
+                    m_task_queue.pop();
                 }
+                std::this_thread::sleep_for(
+                    std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
         }
 
-        m_game_interpreter.tJoin();
         m_kill_condition.notify_all();
     }
 
     u32 TaskCommunicator::getActorPtr(RefPtr<ISceneObject> actor) {
-        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
-
-        if (!communicator.manager().isHooked()) {
-            return 0;
-        }
-
-        constexpr u32 application_addr = 0x803E9700;
-        u8 game_stage                  = communicator.read<u8>(application_addr + 0xE).value();
-        u8 game_scenario               = communicator.read<u8>(application_addr + 0xF).value();
-
-        if (!isSceneLoaded(game_stage, game_scenario)) {
+        if (!isSceneLoaded()) {
             return 0;
         }
 
@@ -131,8 +96,7 @@ namespace Toolbox::Game {
 
         Buffer &interpreter_buf = dolphin_interpreter->getMemoryBuffer();
 
-        std::memset(interpreter_buf.buf<u8>() + (request_buffer_address - 0x80000000), '\0',
-                    0x200);
+        std::memset(interpreter_buf.buf<u8>() + (request_buffer_address - 0x80000000), '\0', 0x200);
 
         std::string actor_name = result.value();
         std::strncpy(interpreter_buf.buf<char>() + (request_buffer_address - 0x80000000),
@@ -142,9 +106,35 @@ namespace Toolbox::Game {
         u32 rootref_addr    = dolphin_interpreter->read<u32>(namerefgen_addr + 0x4);
 
         u32 argv[2]   = {rootref_addr, request_buffer_address};
-        auto snapshot = dolphin_interpreter->evalFunction(0x80198d0c, 2, argv, 0, nullptr);
+        auto snapshot = dolphin_interpreter->evaluateFunction(0x80198d0c, 2, argv, 0, nullptr);
 
         return snapshot.m_gpr[3];
+    }
+
+    bool TaskCommunicator::isSceneLoaded() {
+        constexpr u8 c_mar_director_id = 5;
+        constexpr u32 application_addr = 0x803E9700;
+
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        // Early exit to avoid errors
+        if (!communicator.manager().isHooked()) {
+            return false;
+        }
+
+        // The mar director ain't directing
+        if (communicator.read<u8>(application_addr + 0x8).value() != c_mar_director_id) {
+            return false;
+        }
+
+        u32 mar_director_address = communicator.read<u32>(application_addr + 0x4).value();
+
+        u16 mar_director_frames = communicator.read<u32>(mar_director_address + 0x5C).value();
+        if (mar_director_frames == 0) {
+            return false;
+        }
+
+        return true;
     }
 
     bool TaskCommunicator::isSceneLoaded(u8 stage, u8 scenario) {
@@ -193,8 +183,8 @@ namespace Toolbox::Game {
             return false;
         }
 
-        u16 mar_director_state = communicator.read<u32>(mar_director_address + 0x5C).value();
-        if (mar_director_state == 0) {
+        u16 mar_director_frames = communicator.read<u32>(mar_director_address + 0x5C).value();
+        if (mar_director_frames == 0) {
             return false;
         }
 
@@ -502,6 +492,26 @@ namespace Toolbox::Game {
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         auto dolphin_interpreter = Toolbox::make_scoped<Interpreter::SystemDolphin>();
+
+        dolphin_interpreter->onException(
+            [](u32 bad_instr_ptr, Interpreter::ExceptionCause cause,
+               const Interpreter::Register::RegisterSnapshot &snapshot) {
+                TOOLBOX_ERROR_V("[Interpreter] {} at PC = 0x{:08X}:", magic_enum::enum_name(cause),
+                                bad_instr_ptr);
+                std::vector<std::string> exception_message = StringifySnapshot(snapshot);
+                for (auto &line : exception_message) {
+                    TOOLBOX_ERROR_V("[Interpreter] {}", line);
+                }
+            });
+        dolphin_interpreter->onInvalid([](u32 bad_instr_ptr, const std::string &cause,
+                                          const Interpreter::Register::RegisterSnapshot &snapshot) {
+            TOOLBOX_ERROR_V("[Interpreter] Invalid instruction at PC = {:08X} (Reason: {}):",
+                            bad_instr_ptr, cause);
+            std::vector<std::string> exception_message = StringifySnapshot(snapshot);
+            for (auto &line : exception_message) {
+                TOOLBOX_ERROR_V("[Interpreter] {}", line);
+            }
+        });
 
         // Arbitrary based on BSMS allocation
         // TODO: Region unlock using game magic

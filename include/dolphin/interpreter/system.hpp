@@ -14,7 +14,7 @@ namespace Toolbox::Interpreter {
     using func_invalid_cb   = std::function<void(u32 bad_instr_ptr, const std::string &reason,
                                                const Register::RegisterSnapshot &snapshot)>;
 
-    class SystemDolphin : public Threaded<void> {
+    class SystemDolphin {
     public:
         SystemDolphin() {
             m_branch_proc.onReturn(TOOLBOX_BIND_EVENT_FN(internalReturnCB));
@@ -29,10 +29,8 @@ namespace Toolbox::Interpreter {
             m_storage.alloc(0x1800000);
         }
 
-        Register::RegisterSnapshot evalFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv,
-                                                u8 fpr_argc, f64 *fpr_argv);
-        void evalFunctionAsync(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv, u8 fpr_argc,
-                               f64 *fpr_argv, func_ret_cb on_return);
+        Register::RegisterSnapshot evaluateFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv,
+                                                    u8 fpr_argc, f64 *fpr_argv);
 
         Buffer &getMemoryBuffer() { return m_storage; }
         void setMemoryBuffer(void *buf, size_t size) { m_storage.setBuf(buf, size); }
@@ -48,18 +46,25 @@ namespace Toolbox::Interpreter {
             std::memcpy(m_storage.buf<void>(), buf, size);
         }
 
-        template <typename T> T read(u32 address) {
+        template <typename T> T read(u32 address) const {
             T data;
             readBytes(reinterpret_cast<char *>(&data), address, sizeof(T));
-            return *endian_swapped_t<T>(data);
+            return std::byteswap<T>(data);
         }
+
         template <typename T> void write(u32 address, const T &value) {
-            T swapped_v = *endian_swapped_t<T>(value);
+            T swapped_v = std::byteswap<T>(value);
             writeBytes(reinterpret_cast<const char *>(std::addressof(swapped_v)), address,
                        sizeof(T));
         }
 
-        void readBytes(char *buf, u32 address, size_t size) {
+        template <typename T> void write(u32 address, T &&value) {
+            T swapped_v = std::byteswap<T>(value);
+            writeBytes(reinterpret_cast<const char *>(std::addressof(swapped_v)), address,
+                       sizeof(T));
+        }
+
+        void readBytes(char *buf, u32 address, size_t size) const {
             const char *true_address = m_storage.buf<const char>() + (address & 0x7FFFFFFF);
             memcpy(buf, true_address, size);
         }
@@ -70,23 +75,7 @@ namespace Toolbox::Interpreter {
         }
 
     protected:
-        void tRun(void *param) override {
-            (void)param;
-
-            while (!tIsKilled()) {
-                AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-
-                if (!m_eval_ready.load()) {
-                    std::this_thread::sleep_for(
-                        std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
-                    continue;
-                }
-
-                evaluateFunction();
-            }
-        }
-
-        void evaluateFunction();
+        void evalLoop();
         void evaluateInstruction();
         u32 evaluatePairedSingleSubOp(u32 instr);
         u32 evaluateControlFlowSubOp(u32 instr);
@@ -105,18 +94,14 @@ namespace Toolbox::Interpreter {
 
         void internalExceptionCB(ExceptionCause cause) {
             Register::RegisterSnapshot snapshot = createSnapshot();
-            m_evaluating.store(false);
-            m_eval_ready.store(false);
+            m_evaluating                        = false;
             m_system_exception_cb((u32)m_system_proc.m_pc, cause, snapshot);
-            m_eval_condition.notify_all();
         }
 
         void internalInvalidCB(const std::string &reason) {
             Register::RegisterSnapshot snapshot = createSnapshot();
-            m_evaluating.store(false);
-            m_eval_ready.store(false);
+            m_evaluating                        = false;
             m_system_invalid_cb((u32)m_system_proc.m_pc, reason, snapshot);
-            m_eval_condition.notify_all();
         }
 
         Register::RegisterSnapshot createSnapshot() const {
@@ -150,9 +135,7 @@ namespace Toolbox::Interpreter {
         SystemProcessor m_system_proc;
 
         std::mutex m_eval_mutex;
-        std::atomic<bool> m_eval_ready;
-        std::atomic<bool> m_evaluating;
-        std::condition_variable m_eval_condition;
+        bool m_evaluating;
 
         func_ret_cb m_system_return_cb          = [](const Register::RegisterSnapshot &) {};
         func_exception_cb m_system_exception_cb = [](u32, ExceptionCause,

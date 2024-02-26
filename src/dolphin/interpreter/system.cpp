@@ -9,13 +9,9 @@ using namespace Toolbox::Dolphin;
 
 namespace Toolbox::Interpreter {
 
-    Register::RegisterSnapshot SystemDolphin::evalFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv, u8 fpr_argc,
+    Register::RegisterSnapshot SystemDolphin::evaluateFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv, u8 fpr_argc,
                                      f64 *fpr_argv) {
-        if (m_evaluating.load()) {
-            std::unique_lock<std::mutex> lk(m_eval_mutex);
-            m_eval_condition.wait(lk);
-        }
-
+        std::scoped_lock<std::mutex> lock(m_eval_mutex);
         m_system_proc.m_pc = function_ptr;
         m_branch_proc.m_lr = 0xDEADBEEF;  // Sentinel for return detection
 
@@ -27,43 +23,17 @@ namespace Toolbox::Interpreter {
             m_float_proc.m_fpr[fpr_arg + 3].fill(fpr_argv[fpr_arg]);
         }
 
-        m_evaluating.store(true);
+        m_evaluating = true;
 
-        evaluateFunction();
+        evalLoop();
 
         return createSnapshot();
     }
 
-    void SystemDolphin::evalFunctionAsync(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv,
-                                               u8 fpr_argc, f64 *fpr_argv, func_ret_cb on_return) {
-        if (m_evaluating.load()) {
-            std::unique_lock<std::mutex> lk(m_eval_mutex);
-            m_eval_condition.wait(lk);
-        }
-
-        m_system_proc.m_pc = function_ptr;
-        m_branch_proc.m_lr = 0xDEADBEEF;  // Sentinel for return detection
-
-        for (u8 gpr_arg = 0; gpr_arg < gpr_argc; ++gpr_arg) {
-            m_fixed_proc.m_gpr[gpr_arg + 3] = gpr_argv[gpr_arg];
-        }
-
-        for (u8 fpr_arg = 0; fpr_arg < fpr_argc; ++fpr_arg) {
-            m_float_proc.m_fpr[fpr_arg + 3].fill(fpr_argv[fpr_arg]);
-        }
-
-        onReturn(on_return);
-
-        m_eval_ready.store(true);
-        m_evaluating.store(true);
-    }
-
-    void SystemDolphin::evaluateFunction() {
-        while (m_evaluating.load()) {
+    void SystemDolphin::evalLoop() {
+        while (m_evaluating) {
             if (m_system_proc.m_pc == (0xdeadbeef & ~0b11)) {
-                m_evaluating.store(false);
-                m_eval_ready.store(false);
-                m_eval_condition.notify_all();
+                m_evaluating = false;
                 break;
             }
             evaluateInstruction();
@@ -73,7 +43,7 @@ namespace Toolbox::Interpreter {
     void SystemDolphin::evaluateInstruction() {
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
-        u32 inst = std::byteswap<u32>(m_storage.get<u32>((s64)m_system_proc.m_pc - 0x80000000));
+        u32 inst = read<u32>(m_system_proc.m_pc);
         Opcode opcode = FORM_OPCD(inst);
 
         Register::PC next_instruction = m_system_proc.m_pc + 4;

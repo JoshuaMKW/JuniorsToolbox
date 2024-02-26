@@ -81,6 +81,8 @@ namespace Toolbox {
         template <typename T> T &as() { return get<T>(0); }
 
         template <typename T = void> T *buf() { return reinterpret_cast<T *>(m_buf); }
+        template <typename T = void> const T *buf() const { return reinterpret_cast<T *>(m_buf); }
+
         void setBuf(void *buf, size_t size) {
             if (m_buf != buf) {
                 free();

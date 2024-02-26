@@ -25,6 +25,7 @@ namespace Toolbox::Game {
 
         // API
 
+        bool isSceneLoaded();
         bool isSceneLoaded(u8 stage, u8 scenario);
 
         u32 getActorPtr(RefPtr<ISceneObject> actor);

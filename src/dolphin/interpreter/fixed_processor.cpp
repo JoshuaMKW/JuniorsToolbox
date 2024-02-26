@@ -34,7 +34,7 @@ namespace Toolbox::Interpreter {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lbz, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -48,7 +48,7 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, lbzu, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -73,7 +73,7 @@ namespace Toolbox::Interpreter {
                                           "Indexed load using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -97,7 +97,7 @@ namespace Toolbox::Interpreter {
                                           "Indexed load using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -111,7 +111,7 @@ namespace Toolbox::Interpreter {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lhz, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -125,7 +125,7 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, lhzu, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -150,7 +150,7 @@ namespace Toolbox::Interpreter {
                                           "Indexed load using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -174,7 +174,7 @@ namespace Toolbox::Interpreter {
                                           "Indexed load using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -188,7 +188,7 @@ namespace Toolbox::Interpreter {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lha, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -202,7 +202,7 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, lhau, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -217,7 +217,7 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, lhax, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -231,7 +231,7 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, lhaux, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -245,7 +245,7 @@ namespace Toolbox::Interpreter {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lwz, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -259,7 +259,7 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, lwzu, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -284,7 +284,7 @@ namespace Toolbox::Interpreter {
                                           "Indexed load using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -308,7 +308,7 @@ namespace Toolbox::Interpreter {
                                           "Indexed load using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -322,12 +322,12 @@ namespace Toolbox::Interpreter {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, stb, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u8>(destination, m_gpr[rs]);
+        storage.set<u8>(destination, static_cast<u8>(m_gpr[rs]));
     }
 
     void FixedPointProcessor::stbu(u8 rs, s16 d, u8 ra, Buffer &storage) {
@@ -336,12 +336,12 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, stbu, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u8>(destination, m_gpr[rs]);
+        storage.set<u8>(destination, static_cast<u8>(m_gpr[rs]));
         m_gpr[ra] += d;
     }
 
@@ -361,12 +361,12 @@ namespace Toolbox::Interpreter {
                                           "Indexed store using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u8>(destination, m_gpr[rs]);
+        storage.set<u8>(destination, static_cast<u8>(m_gpr[rs]));
     }
 
     void FixedPointProcessor::stbux(u8 rs, u8 ra, u8 rb, Buffer &storage) {
@@ -385,12 +385,12 @@ namespace Toolbox::Interpreter {
                                           "Indexed store using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u8>(destination, m_gpr[rs]);
+        storage.set<u8>(destination, static_cast<u8>(m_gpr[rs]));
         m_gpr[ra] += m_gpr[rb];
     }
 
@@ -399,12 +399,12 @@ namespace Toolbox::Interpreter {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, sth, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<bu16>(destination, m_gpr[rs]);
+        storage.set<bu16>(destination, static_cast<u16>(m_gpr[rs]));
     }
 
     void FixedPointProcessor::sthu(u8 rs, s16 d, u8 ra, Buffer &storage) {
@@ -413,12 +413,12 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, sthu, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<bu16>(destination, m_gpr[rs]);
+        storage.set<bu16>(destination, static_cast<u16>(m_gpr[rs]));
         m_gpr[ra] += d;
     }
 
@@ -438,12 +438,12 @@ namespace Toolbox::Interpreter {
                                           "Indexed store using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<bu16>(destination, m_gpr[rs]);
+        storage.set<bu16>(destination, static_cast<u16>(m_gpr[rs]));
     }
 
     void FixedPointProcessor::sthux(u8 rs, u8 ra, u8 rb, Buffer &storage) {
@@ -462,12 +462,12 @@ namespace Toolbox::Interpreter {
                                           "Indexed store using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<bu16>(destination, m_gpr[rs]);
+        storage.set<bu16>(destination, static_cast<u16>(m_gpr[rs]));
         m_gpr[ra] += m_gpr[rb];
     }
 
@@ -476,12 +476,12 @@ namespace Toolbox::Interpreter {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, stw, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<bu32>(destination, m_gpr[rs]);
+        storage.set<bu32>(destination, static_cast<u32>(m_gpr[rs]));
     }
 
     void FixedPointProcessor::stwu(u8 rs, s16 d, u8 ra, Buffer &storage) {
@@ -490,12 +490,12 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, stwu, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<bu32>(destination, m_gpr[rs]);
+        storage.set<bu32>(destination, static_cast<u32>(m_gpr[rs]));
         m_gpr[ra] += d;
     }
 
@@ -515,12 +515,12 @@ namespace Toolbox::Interpreter {
                                           "Indexed store using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<bu32>(destination, m_gpr[rs]);
+        storage.set<bu32>(destination, static_cast<u32>(m_gpr[rs]));
     }
 
     void FixedPointProcessor::stwux(u8 rs, u8 ra, u8 rb, Buffer &storage) {
@@ -539,12 +539,12 @@ namespace Toolbox::Interpreter {
                                           "Indexed store using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<bu32>(destination, m_gpr[rs]);
+        storage.set<bu32>(destination, static_cast<u32>(m_gpr[rs]));
         m_gpr[ra] += m_gpr[rb];
     }
 
@@ -564,7 +564,7 @@ namespace Toolbox::Interpreter {
                                           "Indexed load using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -587,7 +587,7 @@ namespace Toolbox::Interpreter {
                                           "Indexed load using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
@@ -601,12 +601,12 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, sthbrx, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u16>(destination, m_gpr[rs]);
+        storage.set<u16>(destination, static_cast<u16>(m_gpr[rs]));
     }
     void FixedPointProcessor::stwbrx(u8 rs, u8 ra, u8 rb, Buffer &storage) {
         if (!IsRegValid(rs) || !IsRegValid(ra) || !IsRegValid(rb)) {
@@ -614,12 +614,12 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, stwbrx, "Invalid registers detected!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         if (!MemoryContainsPAddress(storage, destination)) {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u32>(destination, m_gpr[rs]);
+        storage.set<u32>(destination, static_cast<u32>(m_gpr[rs]));
     }
 
     void FixedPointProcessor::lmw(u8 rt, s16 d, u8 ra, Buffer &storage) {
@@ -637,7 +637,7 @@ namespace Toolbox::Interpreter {
                                           "Load using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if ((destination & 0b11) != 0) {
             m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
         }
@@ -666,7 +666,7 @@ namespace Toolbox::Interpreter {
                                           "Store using source register 0 is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + d - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + d - 0x80000000);
         if ((destination & 0b11) != 0) {
             m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
         }
@@ -675,7 +675,7 @@ namespace Toolbox::Interpreter {
                 m_exception_cb(ExceptionCause::EXCEPTION_DSI);
                 return;
             }
-            storage.set<bu32>(destination, m_gpr[rs++ % 32]);
+            storage.set<bu32>(destination, static_cast<u32>(m_gpr[rs++ % 32]));
             destination += 4;
         }
     }
@@ -696,7 +696,7 @@ namespace Toolbox::Interpreter {
                                           "Source register in range of string load is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] - 0x80000000);
         while (nb > 0) {
             if (!MemoryContainsPAddress(storage, destination)) {
                 m_exception_cb(ExceptionCause::EXCEPTION_DSI);
@@ -733,7 +733,7 @@ namespace Toolbox::Interpreter {
                                           "Source register in range of string load is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] + m_gpr[rb] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] + m_gpr[rb] - 0x80000000);
         u8 nb           = XER_STR(m_xer);
         while (nb > 0) {
             if (!MemoryContainsPAddress(storage, destination)) {
@@ -771,7 +771,7 @@ namespace Toolbox::Interpreter {
                                           "Source register in range of string load is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] - 0x80000000);
         while (nb > 0) {
             if (!MemoryContainsPAddress(storage, destination)) {
                 m_exception_cb(ExceptionCause::EXCEPTION_DSI);
@@ -782,7 +782,7 @@ namespace Toolbox::Interpreter {
                 destination += 4;
                 nb = 0;
             } else {
-                storage.set<bu32>(destination, m_gpr[rs++ % 32]);
+                storage.set<bu32>(destination, static_cast<u32>(m_gpr[rs++ % 32]));
                 destination += 4;
                 nb -= 4;
             }
@@ -806,7 +806,7 @@ namespace Toolbox::Interpreter {
                                           "Source register in range of string load is invalid!"));
             return;
         }
-        s32 destination = m_gpr[ra] - 0x80000000;
+        s32 destination = static_cast<s32>(m_gpr[ra] - 0x80000000);
         u8 nb           = XER_STR(m_xer);
         while (nb > 0) {
             if (!MemoryContainsPAddress(storage, destination)) {
@@ -818,7 +818,7 @@ namespace Toolbox::Interpreter {
                 destination += 4;
                 nb = 0;
             } else {
-                storage.set<bu32>(destination, m_gpr[rs++ % 32]);
+                storage.set<bu32>(destination, static_cast<u32>(m_gpr[rs++ % 32]));
                 destination += 4;
                 nb -= 4;
             }
@@ -1378,7 +1378,8 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, extsb, "Invalid registers detected!"));
             return;
         }
-        m_gpr[ra] = std::bit_cast<u64, s64>((s64)m_gpr[rs]) & 0xFFFFFFFF;
+        m_gpr[ra] =
+            static_cast<Register::GPR>(std::bit_cast<u64, s64>((s64)m_gpr[rs]) & 0xFFFFFFFF);
         if (rc) {
             cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
         }
@@ -1390,7 +1391,8 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, extsh, "Invalid registers detected!"));
             return;
         }
-        m_gpr[ra] = std::bit_cast<u64, s64>((s64)m_gpr[rs]) & 0xFFFFFFFF;
+        m_gpr[ra] =
+            static_cast<Register::GPR>(std::bit_cast<u64, s64>((s64)m_gpr[rs]) & 0xFFFFFFFF);
         if (rc) {
             cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
         }
@@ -1449,8 +1451,9 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, rlwimi, "Invalid registers detected!"));
             return;
         }
-        u32 mask  = MakeRotationMask(mb, me);
-        m_gpr[ra] = (m_gpr[ra] & ~mask) | (std::rotl(m_gpr[rs], sh & 0x1F) & mask);
+        u64 mask  = static_cast<u64>(MakeRotationMask(mb, me));
+        m_gpr[ra] = static_cast<Register::GPR>((m_gpr[ra] & ~mask) |
+                                               (std::rotl(m_gpr[rs], sh & 0x1F) & mask));
         if (rc) {
             cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
         }
@@ -1461,7 +1464,7 @@ namespace Toolbox::Interpreter {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, slw, "Invalid registers detected!"));
             return;
         }
-        u32 amount = m_gpr[rb];
+        u32 amount = static_cast<u32>(m_gpr[rb]);
         m_gpr[ra]  = (amount & 0x20) ? 0 : m_gpr[rs] << (amount & 0x1F);
         if (rc) {
             cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
@@ -1473,7 +1476,7 @@ namespace Toolbox::Interpreter {
             m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, srw, "Invalid registers detected!"));
             return;
         }
-        u32 amount = m_gpr[rb];
+        u32 amount = static_cast<u32>(m_gpr[rb]);
         m_gpr[ra]  = (amount & 0x20) ? 0 : m_gpr[rs] >> (amount & 0x1F);
         if (rc) {
             cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
@@ -1489,7 +1492,7 @@ namespace Toolbox::Interpreter {
         u32 amount    = sh;
         const s32 rrs = s32(m_gpr[rs]);
 
-        m_gpr[ra] = u32(rrs >> amount);
+        m_gpr[ra] = static_cast<Register::GPR>(rrs >> amount);
         XER_SET_CA(m_xer, rrs < 0 && amount > 0 && (u32(rrs) << (32 - amount)) != 0);
     }
 
@@ -1499,7 +1502,7 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, sraw, "Invalid registers detected!"));
             return;
         }
-        u32 amount = m_gpr[rb];
+        u32 amount = static_cast<u32>(m_gpr[rb]);
 
         if ((rb & 0x20) != 0) {
             if ((m_gpr[rs] & 0x80000000) != 0) {
@@ -1542,13 +1545,13 @@ namespace Toolbox::Interpreter {
         using namespace Register;
         switch (spr) {
         case SPRType::SPR_XER:
-            m_xer = m_gpr[rs];
+            m_xer = static_cast<Register::XER>(m_gpr[rs]);
             break;
         case SPRType::SPR_LR:
-            lr = m_gpr[rs];
+            lr = static_cast<Register::LR>(m_gpr[rs]);
             break;
         case SPRType::SPR_CTR:
-            ctr = m_gpr[rs];
+            ctr = static_cast<Register::CTR>(m_gpr[rs]);
             break;
         default:
             TOOLBOX_ERROR_V("SPR Type {} unimplemented", magic_enum::enum_name(spr));
@@ -1625,7 +1628,7 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, mfcr, "Invalid registers detected!"));
             return;
         }
-        m_gpr[rt] = cr.m_crf;
+        m_gpr[rt] = static_cast<Register::GPR>(cr.m_crf);
     }
 
     void FixedPointProcessor::mtmsr(u8 rs, Register::MSR &msr) {
@@ -1634,7 +1637,7 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, mtmsr, "Invalid registers detected!"));
             return;
         }
-        msr = m_gpr[rs];
+        msr = static_cast<Register::MSR>(m_gpr[rs]);
     }
 
     void FixedPointProcessor::mfmsr(u8 rt, const Register::MSR &msr) {
@@ -1643,7 +1646,7 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, mfmsr, "Invalid registers detected!"));
             return;
         }
-        m_gpr[rt] = msr;
+        m_gpr[rt] = static_cast<Register::GPR>(msr);
     }
 
     // External control
