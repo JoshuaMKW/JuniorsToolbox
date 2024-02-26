@@ -53,7 +53,6 @@ namespace Toolbox::Interpreter {
             readBytes(reinterpret_cast<char *>(&data), address, sizeof(T));
             return *endian_swapped_t<T>(data);
         }
-
         template <typename T> void write(u32 address, const T &value) {
             T swapped_v = *endian_swapped_t<T>(value);
             writeBytes(reinterpret_cast<const char *>(std::addressof(swapped_v)), address,

@@ -103,26 +103,36 @@ namespace Toolbox::Game {
     }
 
     u32 TaskCommunicator::getActorPtr(RefPtr<ISceneObject> actor) {
-        if (m_actor_address_map.contains(actor->getUUID())) {
-            return m_actor_address_map[actor->getUUID()];
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        if (!communicator.manager().isHooked()) {
+            return 0;
         }
 
-        auto dolphin_interpreter = createInterpreter();
+        constexpr u32 application_addr = 0x803E9700;
+        u8 game_stage                  = communicator.read<u8>(application_addr + 0xE).value();
+        u8 game_scenario               = communicator.read<u8>(application_addr + 0xF).value();
+
+        if (!isSceneLoaded(game_stage, game_scenario)) {
+            return 0;
+        }
+
+        auto dolphin_interpreter = createInterpreterUnchecked();
+        if (!dolphin_interpreter) {
+            return 0;
+        }
 
         auto result = String::toGameEncoding(actor->getNameRef().name());
         if (!result) {
             return 0;
         }
 
-        u32 request_buffer_address = dolphin_interpreter->read<u32>(0x800002E4);
-        if (request_buffer_address == 0) {
-            return 0;
-        }
+        constexpr u32 request_buffer_address = 0x80000FA0;
 
         Buffer &interpreter_buf = dolphin_interpreter->getMemoryBuffer();
 
         std::memset(interpreter_buf.buf<u8>() + (request_buffer_address - 0x80000000), '\0',
-                    0x10000);
+                    0x200);
 
         std::string actor_name = result.value();
         std::strncpy(interpreter_buf.buf<char>() + (request_buffer_address - 0x80000000),
@@ -133,10 +143,6 @@ namespace Toolbox::Game {
 
         u32 argv[2]   = {rootref_addr, request_buffer_address};
         auto snapshot = dolphin_interpreter->evalFunction(0x80198d0c, 2, argv, 0, nullptr);
-
-        if (snapshot.m_gpr[3] != 0) {
-            this->m_actor_address_map[actor->getUUID()] = (u32)snapshot.m_gpr[3];
-        }
 
         return snapshot.m_gpr[3];
     }
@@ -168,7 +174,7 @@ namespace Toolbox::Game {
         u8 game_scenario = game_scenario_result.value();
 
         // The game stage is not what we want, tell the game to reload is possible
-        if (game_stage != stage || game_scenario != game_scenario) {
+        if (game_stage != stage || game_scenario != scenario) {
             return false;
         }
 
@@ -187,7 +193,7 @@ namespace Toolbox::Game {
             return false;
         }
 
-        u16 mar_director_state = communicator.read<u16>(mar_director_address + 0x4C).value();
+        u16 mar_director_state = communicator.read<u32>(mar_director_address + 0x5C).value();
         if (mar_director_state == 0) {
             return false;
         }
@@ -482,32 +488,24 @@ namespace Toolbox::Game {
     }
 
     ScopePtr<Interpreter::SystemDolphin> TaskCommunicator::createInterpreter() {
-
-        // TODO: Have interpreter evaluate this
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
-        // Get TMarNameRefGen
         if (!communicator.manager().isHooked()) {
+            TOOLBOX_ERROR("(TASK) Dolphin is not hooked!");
             return nullptr;
         }
 
-        constexpr u32 application_addr = 0x803E9700;
-        u8 game_stage                  = communicator.read<u8>(application_addr + 0xE).value();
-        u8 game_scenario               = communicator.read<u8>(application_addr + 0xF).value();
+        return createInterpreterUnchecked();
+    }
 
-        if (!isSceneLoaded(game_stage, game_scenario)) {
-            return nullptr;
-        }
-
-        u32 request_buffer_address = communicator.read<u32>(0x800002E4).value();
-        if (request_buffer_address == 0) {
-            return nullptr;
-        }
+    ScopePtr<Interpreter::SystemDolphin> TaskCommunicator::createInterpreterUnchecked() {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         auto dolphin_interpreter = Toolbox::make_scoped<Interpreter::SystemDolphin>();
 
         // Arbitrary based on BSMS allocation
-        dolphin_interpreter->setStackPointer(request_buffer_address + 0xE000);
+        // TODO: Region unlock using game magic
+        dolphin_interpreter->setStackPointer(0x804277E8);
         dolphin_interpreter->setGlobalsPointerR(0x80416BA0);
         dolphin_interpreter->setGlobalsPointerRW(0x804141C0);
 

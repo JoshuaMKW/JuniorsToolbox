@@ -61,6 +61,7 @@ namespace Toolbox::Game {
         u32 captureXFBAsTexture(int width, int height);
 
         ScopePtr<Interpreter::SystemDolphin> createInterpreter();
+        ScopePtr<Interpreter::SystemDolphin> createInterpreterUnchecked();
 
     protected:
         template <typename _Callable, typename... _Args>
@@ -85,6 +86,8 @@ namespace Toolbox::Game {
 
         std::mutex m_mutex;
         std::thread m_thread;
+
+        std::mutex m_interpreter_mutex;
 
         std::atomic<bool> m_hook_flag;
 
