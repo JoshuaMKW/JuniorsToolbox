@@ -55,7 +55,8 @@ namespace Toolbox::Interpreter {
     }
 
     inline bool MemoryContainsPAddress(const Buffer &buffer, s32 address) {
-        return address >= 0 && address < buffer.size();
+        //return address >= 0 && address < buffer.size();
+        return true;
     }
 
     inline bool IsRegValid(u8 reg) { return reg < 32; }

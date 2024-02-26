@@ -47,7 +47,12 @@ namespace Toolbox {
             }
 
             _m_kill_flag.store(true);
-            if (_m_detached && wait) {
+
+            if (!wait) {
+                return;
+            }
+
+            if (_m_detached) {
                 std::unique_lock<std::mutex> lk(_m_mutex);
                 _m_kill_condition.wait(lk);
             } else {
