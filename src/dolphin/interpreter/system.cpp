@@ -8,8 +8,35 @@
 using namespace Toolbox::Dolphin;
 
 namespace Toolbox::Interpreter {
+    SystemDolphin::SystemDolphin() : m_evaluating(false) {
+        m_branch_proc.onReturn(TOOLBOX_BIND_EVENT_FN(internalReturnCB));
+        m_branch_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+        m_fixed_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+        m_float_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+        m_system_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+        m_branch_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+        m_fixed_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+        m_float_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+        m_system_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+        m_storage.alloc(0x1800000);
+    }
 
-    Register::RegisterSnapshot SystemDolphin::evaluateFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv, u8 fpr_argc,
+    SystemDolphin::SystemDolphin(const Dolphin::DolphinCommunicator &communicator) {
+        m_branch_proc.onReturn(TOOLBOX_BIND_EVENT_FN(internalReturnCB));
+        m_branch_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+        m_fixed_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+        m_float_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+        m_system_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+        m_branch_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+        m_fixed_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+        m_float_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+        m_system_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+        m_storage.setBuf(communicator.manager().getMemoryView(),
+                         communicator.manager().getMemorySize());
+    }
+
+    Register::RegisterSnapshot SystemDolphin::evaluateFunction(u32 function_ptr, u8 gpr_argc,
+                                                               u32 *gpr_argv, u8 fpr_argc,
                                      f64 *fpr_argv) {
         std::scoped_lock<std::mutex> lock(m_eval_mutex);
         m_system_proc.m_pc = function_ptr;

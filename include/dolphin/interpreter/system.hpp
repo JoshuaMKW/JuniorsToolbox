@@ -3,6 +3,7 @@
 #include "core/threaded.hpp"
 #include "gui/settings.hpp"
 #include "instructions/forms.hpp"
+#include "dolphin/process.hpp"
 #include "processor.hpp"
 #include "registers.hpp"
 
@@ -16,18 +17,10 @@ namespace Toolbox::Interpreter {
 
     class SystemDolphin {
     public:
-        SystemDolphin() {
-            m_branch_proc.onReturn(TOOLBOX_BIND_EVENT_FN(internalReturnCB));
-            m_branch_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
-            m_fixed_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
-            m_float_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
-            m_system_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
-            m_branch_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
-            m_fixed_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
-            m_float_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
-            m_system_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
-            m_storage.alloc(0x1800000);
-        }
+        SystemDolphin();
+
+        // Use this when you want to evaluate directly upon Dolphin's memory
+        explicit SystemDolphin(const Dolphin::DolphinCommunicator &);
 
         Register::RegisterSnapshot evaluateFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv,
                                                     u8 fpr_argc, f64 *fpr_argv);
