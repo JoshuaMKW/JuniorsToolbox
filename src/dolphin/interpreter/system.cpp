@@ -252,6 +252,74 @@ namespace Toolbox::Interpreter {
     u32 SystemDolphin::evaluatePairedSingleSubOp(u32 inst) {
         TableSubOpcode4 sub_op = (TableSubOpcode4)FORM_XO_5(inst);
         switch (sub_op) {
+        case TableSubOpcode4::PS_CMPU0:
+            break;
+        case TableSubOpcode4::PSQ_L:
+            break;
+        case TableSubOpcode4::PSQ_ST:
+            break;
+        case TableSubOpcode4::PS_SUM0:
+            break;
+        case TableSubOpcode4::PS_SUM1:
+            break;
+        case TableSubOpcode4::PS_MULS0:
+            break;
+        case TableSubOpcode4::PS_MULS1:
+            break;
+        case TableSubOpcode4::PS_MADDS0:
+            break;
+        case TableSubOpcode4::PS_MADDS1:
+            break;
+        case TableSubOpcode4::PS_DIV:
+            break;
+        case TableSubOpcode4::PS_SUB:
+            break;
+        case TableSubOpcode4::PS_ADD:
+            break;
+        case TableSubOpcode4::PS_SEL:
+            break;
+        case TableSubOpcode4::PS_RES:
+            break;
+        case TableSubOpcode4::PS_MUL:
+            break;
+        case TableSubOpcode4::PS_RSQRTE:
+            break;
+        case TableSubOpcode4::PS_MSUB:
+            break;
+        case TableSubOpcode4::PS_MADD:
+            break;
+        case TableSubOpcode4::PS_NMSUB:
+            break;
+        case TableSubOpcode4::PS_NMADD:
+            break;
+        case TableSubOpcode4::PS_CMPO0:
+            break;
+        case TableSubOpcode4::PSQ_LU:
+            break;
+        case TableSubOpcode4::PSQ_STU:
+            break;
+        case TableSubOpcode4::PS_NEG:
+            break;
+        case TableSubOpcode4::PS_CMPU1:
+            break;
+        case TableSubOpcode4::PS_MR:
+            break;
+        case TableSubOpcode4::PS_CMPO1:
+            break;
+        case TableSubOpcode4::PS_NABS:
+            break;
+        case TableSubOpcode4::PS_ABS:
+            break;
+        case TableSubOpcode4::PS_MERGE00:
+            break;
+        case TableSubOpcode4::PS_MERGE01:
+            break;
+        case TableSubOpcode4::PS_MERGE10:
+            break;
+        case TableSubOpcode4::PS_MERGE11:
+            break;
+        case TableSubOpcode4::DCBZ_L:
+            break;
         default:
             internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, unknown,
                                                "Attempted to evaluate unknown instruction!"));

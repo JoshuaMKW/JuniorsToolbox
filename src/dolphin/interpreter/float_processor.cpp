@@ -1735,4 +1735,76 @@ namespace Toolbox::Interpreter {
         }
     }
 
+    // *** PAIRED SINGLE *** //
+
+    void ps_l(u8 frt, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage) {}
+    void ps_lu(u8 frt, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage) {}
+    void ps_st(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage) {}
+    void ps_stu(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage) {}
+
+    void ps_cmpo0(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1) {}
+    void ps_cmpu0(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1) {}
+    void ps_cmpo1(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1) {}
+    void ps_cmpu1(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1) {}
+
+    void ps_mr(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1) {}
+    void ps_abs(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                Register::SRR1 &srr1) {}
+    void ps_neg(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                Register::SRR1 &srr1) {}
+    void ps_nabs(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                 Register::SRR1 &srr1) {}
+
+    void ps_add(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                Register::SRR1 &srr1) {}
+    void ps_sub(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                Register::SRR1 &srr1) {}
+    void ps_mul(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                Register::SRR1 &srr1) {}
+    void ps_muls0(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1) {}
+    void ps_muls1(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1) {}
+    void ps_div(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                Register::SRR1 &srr1) {}
+
+    void ps_msub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                 Register::SRR1 &srr1) {}
+    void ps_madds0(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1) {}
+    void ps_madds1(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1) {}
+    void ps_madd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                 Register::SRR1 &srr1) {}
+    void ps_nmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1) {}
+    void ps_nmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                  Register::SRR1 &srr1) {}
+
+    void ps_sum0(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                 Register::SRR1 &srr1) {}
+
+    void ps_sum1(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                 Register::SRR1 &srr1) {}
+
+    void ps_res(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                Register::SRR1 &srr1) {}
+    void ps_rsqrte(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                   Register::SRR1 &srr1) {}
+    void ps_sel(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                Register::SRR1 &srr1) {}
+
+    void ps_merge00(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                    Register::SRR1 &srr1) {}
+    void ps_merge01(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                    Register::SRR1 &srr1) {}
+    void ps_merge10(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                    Register::SRR1 &srr1) {}
+    void ps_merge11(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                    Register::SRR1 &srr1) {}
+
 }  // namespace Toolbox::Interpreter
