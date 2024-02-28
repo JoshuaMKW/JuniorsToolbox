@@ -608,38 +608,483 @@ namespace Toolbox::Interpreter {
         }
     }
 
-    void FloatingPointProcessor::lfs(u8 frt, s16 d, u8 ra, Buffer &storage) {}
-    void FloatingPointProcessor::lfsu(u8 frt, s16 d, u8 ra, Buffer &storage) {}
-    void FloatingPointProcessor::lfsx(u8 frt, u8 ra, u8 rb, Buffer &storage) {}
-    void FloatingPointProcessor::lfsux(u8 frt, u8 ra, u8 rb, Buffer &storage) {}
+    namespace {
+        // Apply current rounding mode
+        enum class RoundingMode {
+            Nearest                 = 0b00,
+            TowardsZero             = 0b01,
+            TowardsPositiveInfinity = 0b10,
+            TowardsNegativeInfinity = 0b11
+        };
 
-    void FloatingPointProcessor::lfd(u8 frt, s16 d, u8 ra, Buffer &storage) {}
-    void FloatingPointProcessor::lfdu(u8 frt, s16 d, u8 ra, Buffer &storage) {}
-    void FloatingPointProcessor::lfdx(u8 frt, u8 ra, u8 rb, Buffer &storage) {}
-    void FloatingPointProcessor::lfdux(u8 frt, u8 ra, u8 rb, Buffer &storage) {}
+        void SetFI(Register::FPSCR &fpscr, Register::MSR &msr, Register::SRR1 &srr1, u32 fi) {
+            if (fi != 0) {
+                SetFPException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_XX);
+            }
+            FPSCR_SET_FI(fpscr, fi);
+        }
 
-    void FloatingPointProcessor::stfs(u8 frs, s16 d, u8 ra, Buffer &storage) {}
-    void FloatingPointProcessor::stfsu(u8 frs, s16 d, u8 ra, Buffer &storage) {}
-    void FloatingPointProcessor::stfsx(u8 frs, u8 ra, u8 rb, Buffer &storage) {}
-    void FloatingPointProcessor::stfsux(u8 frs, u8 ra, u8 rb, Buffer &storage) {}
+        // Note that the convert to integer operation is defined
+        // in Appendix C.4.2 in PowerPC Microprocessor Family:
+        // The Programming Environments Manual for 32 and 64-bit Microprocessors
+        void ConvertToInteger(u8 frt, u8 frb, bool rc, Register::FPR fpr[32],
+                              Register::FPSCR &fpscr, Register::MSR &msr, Register::SRR1 &srr1,
+                              Register::CR &cr, RoundingMode rounding_mode) {
+            const double b = fpr[frb].ps0AsDouble();
+            u32 value;
+            bool exception_occurred = false;
 
-    void FloatingPointProcessor::stfd(u8 frs, s16 d, u8 ra, Buffer &storage) {}
-    void FloatingPointProcessor::stfdu(u8 frs, s16 d, u8 ra, Buffer &storage) {}
-    void FloatingPointProcessor::stfdx(u8 frs, u8 ra, u8 rb, Buffer &storage) {}
-    void FloatingPointProcessor::stfdux(u8 frs, u8 ra, u8 rb, Buffer &storage) {}
+            if (std::isnan(b)) {
+                if (DolphinLib::IsSNAN(b))
+                    SetFPException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
 
-    void FloatingPointProcessor::stfiwx(u8 frs, u8 ra, u8 rb, Buffer &storage) {}
+                value = 0x80000000;
+                SetFPException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXCVI);
+                exception_occurred = true;
+            } else if (b > static_cast<double>(0x7fffffff)) {
+                // Positive large operand or +inf
+                value = 0x7fffffff;
+                SetFPException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXCVI);
+                exception_occurred = true;
+            } else if (b < -static_cast<double>(0x80000000)) {
+                // Negative large operand or -inf
+                value = 0x80000000;
+                SetFPException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXCVI);
+                exception_occurred = true;
+            } else {
+                s32 i = 0;
+                switch (rounding_mode) {
+                case RoundingMode::Nearest: {
+                    const double t = b + 0.5;
+                    i              = static_cast<s32>(t);
+
+                    // Ties to even
+                    if (t - i < 0 || (t - i == 0 && (i & 1))) {
+                        i--;
+                    }
+                    break;
+                }
+                case RoundingMode::TowardsZero:
+                    i = static_cast<s32>(b);
+                    break;
+                case RoundingMode::TowardsPositiveInfinity:
+                    i = static_cast<s32>(b);
+                    if (b - i > 0) {
+                        i++;
+                    }
+                    break;
+                case RoundingMode::TowardsNegativeInfinity:
+                    i = static_cast<s32>(b);
+                    if (b - i < 0) {
+                        i--;
+                    }
+                    break;
+                }
+                value           = static_cast<u32>(i);
+                const double di = i;
+                if (di == b) {
+                    FPSCR_SET_FI(fpscr, false);
+                    FPSCR_SET_FR(fpscr, false);
+                } else {
+                    // Also sets FPSCR[XX]
+                    SetFI(fpscr, msr, srr1, 1);
+                    FPSCR_SET_FR(fpscr, fabs(di) > fabs(b));
+                }
+            }
+
+            if (exception_occurred) {
+                FPSCR_SET_FI(fpscr, false);
+                FPSCR_SET_FR(fpscr, false);
+            }
+
+            if (!exception_occurred || FPSCR_VE(fpscr) == 0) {
+                // Based on HW tests
+                // FPRF is not affected
+                u64 result = 0xfff8000000000000ull | value;
+                if (value == 0 && std::signbit(b))
+                    result |= 0x100000000ull;
+
+                fpr[frt].setPS0(result);
+            }
+
+            if (rc) {
+                SET_CR_FIELD(cr, 1,
+                             (FPSCR_FX(fpscr) << 3) | (FPSCR_FEX(fpscr) << 2) |
+                                 (FPSCR_VX(fpscr) << 1) | (int)FPSCR_OX(fpscr));
+            }
+        }
+    }  // Anonymous namespace
+
+    void FloatingPointProcessor::lfs(u8 frt, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra)) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfs, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + d - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_fpr[frt].fill(ConvertToDouble(std::byteswap(storage.get<u32>(destination))));
+    }
+
+    void FloatingPointProcessor::lfsu(u8 frt, s16 d, u8 ra, Register::GPR gpr[32],
+                                      Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra)) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfsu, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + d - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_fpr[frt].fill(ConvertToDouble(std::byteswap(storage.get<u32>(destination))));
+        gpr[ra] += d;
+    }
+
+    void FloatingPointProcessor::lfsx(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
+                                      Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfsx, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_fpr[frt].fill(ConvertToDouble(std::byteswap(storage.get<u32>(destination))));
+    }
+
+    void FloatingPointProcessor::lfsux(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
+                                       Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfsux, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_fpr[frt].fill(ConvertToDouble(std::byteswap(storage.get<u32>(destination))));
+        gpr[ra] += gpr[rb];
+    }
+
+    void FloatingPointProcessor::lfd(u8 frt, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra)) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfd, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + d - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_fpr[frt].setPS0(storage.get<u64>(destination));
+    }
+
+    void FloatingPointProcessor::lfdu(u8 frt, s16 d, u8 ra, Register::GPR gpr[32],
+                                      Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra)) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfdu, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + d - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_fpr[frt].setPS0(storage.get<u64>(destination));
+        gpr[ra] += d;
+    }
+
+    void FloatingPointProcessor::lfdx(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
+                                      Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfdx, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_fpr[frt].setPS0(storage.get<u64>(destination));
+    }
+
+    void FloatingPointProcessor::lfdux(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
+                                       Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfdux, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_fpr[frt].setPS0(storage.get<u64>(destination));
+        gpr[ra] += gpr[rb];
+    }
+
+    void FloatingPointProcessor::stfs(u8 frs, s16 d, u8 ra, Register::GPR gpr[32],
+                                      Buffer &storage) {
+        if (!IsRegValid(frs) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, stfs, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + d - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u32>(destination, ConvertToSingle(m_fpr[frs].ps0AsU64()));
+    }
+
+    void FloatingPointProcessor::stfsu(u8 frs, s16 d, u8 ra, Register::GPR gpr[32],
+                                       Buffer &storage) {
+        if (!IsRegValid(frs) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, stfsu, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + d - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u32>(destination, ConvertToSingle(m_fpr[frs].ps0AsU64()));
+        gpr[ra] += d;
+    }
+
+    void FloatingPointProcessor::stfsx(u8 frs, u8 ra, u8 rb, Register::GPR gpr[32],
+                                       Buffer &storage) {
+        if (!IsRegValid(frs) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, stfsx, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u32>(destination, ConvertToSingle(m_fpr[frs].ps0AsU64()));
+    }
+
+    void FloatingPointProcessor::stfsux(u8 frs, u8 ra, u8 rb, Register::GPR gpr[32],
+                                        Buffer &storage) {
+        if (!IsRegValid(frs) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, stfsux, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u32>(destination, ConvertToSingle(m_fpr[frs].ps0AsU64()));
+        gpr[ra] += gpr[rb];
+    }
+
+    void FloatingPointProcessor::stfd(u8 frs, s16 d, u8 ra, Register::GPR gpr[32],
+                                      Buffer &storage) {
+        if (!IsRegValid(frs) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, stfsux, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + d - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u64>(destination, m_fpr[frs].ps0AsU64());
+    }
+
+    void FloatingPointProcessor::stfdu(u8 frs, s16 d, u8 ra, Register::GPR gpr[32],
+                                       Buffer &storage) {
+        if (!IsRegValid(frs) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, stfsux, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + d - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u64>(destination, m_fpr[frs].ps0AsU64());
+        gpr[ra] += d;
+    }
+
+    void FloatingPointProcessor::stfdx(u8 frs, u8 ra, u8 rb, Register::GPR gpr[32],
+                                       Buffer &storage) {
+        if (!IsRegValid(frs) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, stfsux, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u64>(destination, m_fpr[frs].ps0AsU64());
+    }
+
+    void FloatingPointProcessor::stfdux(u8 frs, u8 ra, u8 rb, Register::GPR gpr[32],
+                                        Buffer &storage) {
+        if (!IsRegValid(frs) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, stfsux, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u64>(destination, m_fpr[frs].ps0AsU64());
+        gpr[ra] += gpr[rb];
+    }
+
+    void FloatingPointProcessor::stfiwx(u8 frs, u8 ra, u8 rb, Register::GPR gpr[32],
+                                        Buffer &storage) {
+        if (!IsRegValid(frs) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, stfsux, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        storage.set<u32>(destination, m_fpr[frs].ps0AsU32());
+    }
 
     // Move
 
     void FloatingPointProcessor::fmr(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                                     Register::SRR1 &srr1) {}
+                                     Register::SRR1 &srr1) {
+        m_fpr[frt].setPS0(m_fpr[frb].ps0AsU64());
+
+        // This is a binary instruction. Does not alter FPSCR
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
     void FloatingPointProcessor::fabs(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                                      Register::SRR1 &srr1) {}
+                                      Register::SRR1 &srr1) {
+        m_fpr[frt].setPS0(std::fabs(m_fpr[frb].ps0AsDouble()));
+
+        // This is a binary instruction. Does not alter FPSCR
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
     void FloatingPointProcessor::fneg(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                                      Register::SRR1 &srr1) {}
+                                      Register::SRR1 &srr1) {
+        m_fpr[frt].setPS0(m_fpr[frb].ps0AsU64() ^ (UINT64_C(1) << 63));
+
+        // This is a binary instruction. Does not alter FPSCR
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
     void FloatingPointProcessor::fnabs(u8 frt, u8 frb, bool rc, Register::CR &cr,
-                                       Register::MSR &msr, Register::SRR1 &srr1) {}
+                                       Register::MSR &msr, Register::SRR1 &srr1) {
+        m_fpr[frt].setPS0(m_fpr[frb].ps0AsU64() | (UINT64_C(1) << 63));
+
+        // This is a binary instruction. Does not alter FPSCR
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
 
     // Math
 
@@ -655,7 +1100,9 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            cr.cmp(1, m_fpr[frt].ps0AsDouble(), 0);
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
 
@@ -689,7 +1136,9 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            cr.cmp(1, m_fpr[frt].ps0AsDouble(), 0);
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
 
@@ -723,7 +1172,9 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            cr.cmp(1, m_fpr[frt].ps0AsDouble(), 0);
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
 
@@ -757,7 +1208,9 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            cr.cmp(1, m_fpr[frt].ps0AsDouble(), 0);
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
         }
     }
 
@@ -937,42 +1390,221 @@ namespace Toolbox::Interpreter {
     // Rounding and conversion
 
     void FloatingPointProcessor::frsp(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                                      Register::SRR1 &srr1) {}
+                                      Register::SRR1 &srr1) {
+        const double b      = m_fpr[frb].ps0AsDouble();
+        const float rounded = ForceSingle(m_fpscr, b);
+
+        if (std::isnan(b)) {
+            const bool is_snan = DolphinLib::IsSNAN(b);
+
+            if (is_snan)
+                SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+
+            if (!is_snan || FPSCR_VE(m_fpscr) == 0) {
+                m_fpr[frt].fill(rounded);
+                FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(rounded));
+            }
+
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+        } else {
+            SetFI(m_fpscr, msr, srr1, b != rounded);
+            FPSCR_SET_FR(m_fpscr, std::fabs(rounded) > std::fabs(b));
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(rounded));
+            m_fpr[frt].fill(rounded);
+        }
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
     void FloatingPointProcessor::fctiw(u8 frt, u8 frb, bool rc, Register::CR &cr,
-                                       Register::MSR &msr, Register::SRR1 &srr1) {}
+                                       Register::MSR &msr, Register::SRR1 &srr1) {
+        ConvertToInteger(frt, frb, rc, m_fpr, m_fpscr, msr, srr1, cr,
+                         static_cast<RoundingMode>(FPSCR_RN(m_fpscr)));
+    }
+
     void FloatingPointProcessor::fctiwz(u8 frt, u8 frb, bool rc, Register::CR &cr,
-                                        Register::MSR &msr, Register::SRR1 &srr1) {}
-    void FloatingPointProcessor::fcfid(u8 frt, u8 frb, bool rc, Register::CR &cr,
-                                       Register::MSR &msr, Register::SRR1 &srr1) {}
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        ConvertToInteger(frt, frb, rc, m_fpr, m_fpscr, msr, srr1, cr, RoundingMode::TowardsZero);
+    }
 
     // Compare
 
-    void FloatingPointProcessor::fcmpu(u8 crfd, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
-                                       Register::SRR1 &srr1) {}
-    void FloatingPointProcessor::fcmpo(u8 crfd, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
-                                       Register::SRR1 &srr1) {}
+    inline void Helper_FloatCompareOrdered(double fa, double fb, u8 crfd, Register::FPSCR &fpscr,
+                                           Register::MSR &msr, Register::SRR1 &srr1,
+                                           Register::CR &cr) {
+        FPSCRCmp compare_result;
+
+        if (std::isnan(fa) || std::isnan(fb)) {
+            compare_result = FPSCRCmp::FU;
+            if (DolphinLib::IsSNAN(fa) || DolphinLib::IsSNAN(fb)) {
+                SetFPException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+                if (FPSCR_VE(fpscr) == 0) {
+                    SetFPException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXVC);
+                }
+            } else  // QNaN
+            {
+                SetFPException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXVC);
+            }
+        } else if (fa < fb) {
+            compare_result = FPSCRCmp::FL;
+        } else if (fa > fb) {
+            compare_result = FPSCRCmp::FG;
+        } else  // Equals
+        {
+            compare_result = FPSCRCmp::FE;
+        }
+
+        const u32 compare_value = static_cast<u32>(compare_result);
+
+        // Clear and set the FPCC bits accordingly.
+        FPSCR_SET_FPRT(fpscr, (static_cast<u8>(FPSCR_FPRT(fpscr)) & ~FPCC_MASK) | compare_value);
+
+        SET_CRF_FIELD(cr.m_crf, crfd, compare_value);
+    }
+
+    inline void Helper_FloatCompareUnordered(double fa, double fb, u8 crfd, Register::FPSCR &fpscr,
+                                             Register::MSR &msr, Register::SRR1 &srr1,
+                                             Register::CR &cr) {
+        FPSCRCmp compare_result;
+
+        if (std::isnan(fa) || std::isnan(fb)) {
+            compare_result = FPSCRCmp::FU;
+            if (DolphinLib::IsSNAN(fa) || DolphinLib::IsSNAN(fb)) {
+                SetFPException(fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+            }
+        } else if (fa < fb) {
+            compare_result = FPSCRCmp::FL;
+        } else if (fa > fb) {
+            compare_result = FPSCRCmp::FG;
+        } else  // Equals
+        {
+            compare_result = FPSCRCmp::FE;
+        }
+
+        const u32 compare_value = static_cast<u32>(compare_result);
+
+        // Clear and set the FPCC bits accordingly.
+        FPSCR_SET_FPRT(fpscr, (static_cast<u8>(FPSCR_FPRT(fpscr)) & ~FPCC_MASK) | compare_value);
+
+        SET_CRF_FIELD(cr.m_crf, crfd, compare_value);
+    }
+
+    void FloatingPointProcessor::fcmpu(u8 crfd, u8 fra, u8 frb, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {
+        const Register::FPR &a = m_fpr[fra];
+        const Register::FPR &b = m_fpr[frb];
+        Helper_FloatCompareUnordered(a.ps0AsDouble(), b.ps0AsDouble(), crfd, m_fpscr, msr, srr1,
+                                     cr);
+    }
+
+    void FloatingPointProcessor::fcmpo(u8 crfd, u8 fra, u8 frb, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {
+        const Register::FPR &a = m_fpr[fra];
+        const Register::FPR &b = m_fpr[frb];
+        Helper_FloatCompareOrdered(a.ps0AsDouble(), b.ps0AsDouble(), crfd, m_fpscr, msr, srr1, cr);
+    }
 
     // FPSCR
 
     void FloatingPointProcessor::mffs(u8 frt, bool rc, Register::CR &cr, Register::MSR &msr,
-                                      Register::SRR1 &srr1) {}
+                                      Register::SRR1 &srr1) {
+        m_fpr[frt].setPS0(UINT64_C(0xFFF8000000000000) | m_fpscr);
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
     void FloatingPointProcessor::mcrfs(u8 crfd, u8 crfa, Register::CR &cr, Register::MSR &msr,
-                                       Register::SRR1 &srr1) {}
-    void FloatingPointProcessor::mtfsfi(u8 crfd, u8 u, bool rc, Register::CR &cr, Register::MSR &msr,
-                                        Register::SRR1 &srr1) {}
-    void FloatingPointProcessor::mtfsf(u8 flm, u8 frb, bool rc, Register::CR &cr,
-                                       Register::MSR &msr, Register::SRR1 &srr1) {}
+                                       Register::SRR1 &srr1) {
+        const u32 shift   = 4 * (7 - crfa);
+        const u32 fpflags = (m_fpscr >> shift) & 0xF;
+
+        // If any exception bits were read, clear them
+        m_fpscr &= ~((0xF << shift) &
+                     (FPSCRExceptionFlag::FPSCR_EX_FX | FPSCRExceptionFlag::FPSCR_EX_ANY_X));
+        UpdateFPExceptionSummary(m_fpscr, msr, srr1);
+
+        SET_CRF_FIELD(cr.m_crf, crfd, fpflags);
+    }
+
+    void FloatingPointProcessor::mtfsfi(u8 crfd, u8 imm, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        const u32 pre_shifted_mask = 0xF0000000;
+        const u32 mask             = (pre_shifted_mask >> (4 * crfd));
+
+        m_fpscr = (m_fpscr & ~mask) | (imm >> (4 * crfd));
+
+        UpdateFPExceptionSummary(m_fpscr, msr, srr1);
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::mtfsf(u8 fm, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+                                       Register::SRR1 &srr1) {
+        u32 m = 0;
+        for (u32 i = 0; i < 8; i++) {
+            if ((fm & (1U << i)) != 0)
+                m |= (0xFU << (i * 4));
+        }
+
+        m_fpscr = (m_fpscr & ~m) | (static_cast<u32>(m_fpr[frb].ps0AsU64()) & m);
+
+        UpdateFPExceptionSummary(m_fpscr, msr, srr1);
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
     void FloatingPointProcessor::mtfsb0(u8 bt, bool rc, Register::CR &cr, Register::MSR &msr,
-                                        Register::SRR1 &srr1) {}
+                                        Register::SRR1 &srr1) {
+        u32 b = 0x80000000 >> bt;
+
+        m_fpscr &= ~b;
+
+        UpdateFPExceptionSummary(m_fpscr, msr, srr1);
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
     void FloatingPointProcessor::mtfsb1(u8 bt, bool rc, Register::CR &cr, Register::MSR &msr,
-                                        Register::SRR1 &srr1) {}
+                                        Register::SRR1 &srr1) {
+        const u32 b = 0x80000000 >> bt;
+
+        if ((b & FPSCRExceptionFlag::FPSCR_EX_ANY_X) != 0)
+            SetFPException(m_fpscr, msr, srr1, b);
+        else
+            m_fpscr |= b;
+
+        UpdateFPExceptionSummary(m_fpscr, msr, srr1);
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
 
     // Extended
 
-    void FloatingPointProcessor::fsqrt(u8 frt, u8 frb, bool rc, Register::CR &cr,
-                                       Register::MSR &msr, Register::SRR1 &srr1) {}
-    void FloatingPointProcessor::fsqrts(u8 frt, u8 frb, bool rc, Register::CR &cr,
-                                        Register::MSR &msr, Register::SRR1 &srr1) {}
     void FloatingPointProcessor::fres(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                                       Register::SRR1 &srr1) {
         const double b = m_fpr[frb].ps0AsDouble();

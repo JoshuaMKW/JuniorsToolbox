@@ -313,27 +313,27 @@ namespace Toolbox::Interpreter {
     protected:
         // Memory
 
-        void lfs(u8 frt, s16 d, u8 ra, Buffer &storage);
-        void lfsu(u8 frt, s16 d, u8 ra, Buffer &storage);
-        void lfsx(u8 frt, u8 ra, u8 rb, Buffer &storage);
-        void lfsux(u8 frt, u8 ra, u8 rb, Buffer &storage);
+        void lfs(u8 frt, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage);
+        void lfsu(u8 frt, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage);
+        void lfsx(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage);
+        void lfsux(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage);
 
-        void lfd(u8 frt, s16 d, u8 ra, Buffer &storage);
-        void lfdu(u8 frt, s16 d, u8 ra, Buffer &storage);
-        void lfdx(u8 frt, u8 ra, u8 rb, Buffer &storage);
-        void lfdux(u8 frt, u8 ra, u8 rb, Buffer &storage);
+        void lfd(u8 frt, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage);
+        void lfdu(u8 frt, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage);
+        void lfdx(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage);
+        void lfdux(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage);
 
-        void stfs(u8 frs, s16 d, u8 ra, Buffer &storage);
-        void stfsu(u8 frs, s16 d, u8 ra, Buffer &storage);
-        void stfsx(u8 frs, u8 ra, u8 rb, Buffer &storage);
-        void stfsux(u8 frs, u8 ra, u8 rb, Buffer &storage);
+        void stfs(u8 frs, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage);
+        void stfsu(u8 frs, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage);
+        void stfsx(u8 frs, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage);
+        void stfsux(u8 frs, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage);
 
-        void stfd(u8 frs, s16 d, u8 ra, Buffer &storage);
-        void stfdu(u8 frs, s16 d, u8 ra, Buffer &storage);
-        void stfdx(u8 frs, u8 ra, u8 rb, Buffer &storage);
-        void stfdux(u8 frs, u8 ra, u8 rb, Buffer &storage);
+        void stfd(u8 frs, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage);
+        void stfdu(u8 frs, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage);
+        void stfdx(u8 frs, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage);
+        void stfdux(u8 frs, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage);
 
-        void stfiwx(u8 frs, u8 ra, u8 rb, Buffer &storage);
+        void stfiwx(u8 frs, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage);
 
         // Move
 
@@ -390,8 +390,6 @@ namespace Toolbox::Interpreter {
                    Register::SRR1 &srr1);
         void fctiwz(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                     Register::SRR1 &srr1);
-        void fcfid(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                   Register::SRR1 &srr1);
 
         // Compare
 
@@ -413,10 +411,6 @@ namespace Toolbox::Interpreter {
 
         // Extended
 
-        void fsqrt(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                   Register::SRR1 &srr1);
-        void fsqrts(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                    Register::SRR1 &srr1);
         void fres(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                   Register::SRR1 &srr1);
         void frsqrte(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,

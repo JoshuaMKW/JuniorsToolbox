@@ -37,7 +37,7 @@ namespace Toolbox::Interpreter {
 
     Register::RegisterSnapshot SystemDolphin::evaluateFunction(u32 function_ptr, u8 gpr_argc,
                                                                u32 *gpr_argv, u8 fpr_argc,
-                                     f64 *fpr_argv) {
+                                                               f64 *fpr_argv) {
         std::scoped_lock<std::mutex> lock(m_eval_mutex);
         m_system_proc.m_pc = function_ptr;
         m_branch_proc.m_lr = 0xDEADBEEF;  // Sentinel for return detection
@@ -70,7 +70,7 @@ namespace Toolbox::Interpreter {
     void SystemDolphin::evaluateInstruction() {
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
-        u32 inst = read<u32>(m_system_proc.m_pc);
+        u32 inst      = read<u32>(m_system_proc.m_pc);
         Opcode opcode = FORM_OPCD(inst);
 
         Register::PC next_instruction = m_system_proc.m_pc + 4;
@@ -204,28 +204,36 @@ namespace Toolbox::Interpreter {
             m_fixed_proc.stmw(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
             break;
         case Opcode::OP_LFS:
-            m_float_proc.lfs(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+            m_float_proc.lfs(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_fixed_proc.m_gpr,
+                             m_storage);
             break;
         case Opcode::OP_LFSU:
-            m_float_proc.lfsu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+            m_float_proc.lfsu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_fixed_proc.m_gpr,
+                              m_storage);
             break;
         case Opcode::OP_LFD:
-            m_float_proc.lfd(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+            m_float_proc.lfd(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_fixed_proc.m_gpr,
+                             m_storage);
             break;
         case Opcode::OP_LFDU:
-            m_float_proc.lfdu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+            m_float_proc.lfdu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_fixed_proc.m_gpr,
+                              m_storage);
             break;
         case Opcode::OP_STFS:
-            m_float_proc.stfs(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+            m_float_proc.stfs(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_fixed_proc.m_gpr,
+                              m_storage);
             break;
         case Opcode::OP_STFSU:
-            m_float_proc.stfsu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+            m_float_proc.stfsu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_fixed_proc.m_gpr,
+                               m_storage);
             break;
         case Opcode::OP_STFD:
-            m_float_proc.stfd(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+            m_float_proc.stfd(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_fixed_proc.m_gpr,
+                              m_storage);
             break;
         case Opcode::OP_STFDU:
-            m_float_proc.stfdu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+            m_float_proc.stfdu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_fixed_proc.m_gpr,
+                               m_storage);
             break;
         case Opcode::OP_FS_MATH:
             next_instruction = evaluateFloatSingleSubOp(inst);
@@ -540,32 +548,41 @@ namespace Toolbox::Interpreter {
         case TableSubOpcode31::STSWI:
             m_fixed_proc.stswi(FORM_RS(inst), FORM_RA(inst), FORM_NB(inst), m_storage);
             break;
-        case TableSubOpcode31::LFS:
-            m_float_proc.lfs(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::LFSX:
+            m_float_proc.lfsx(FORM_FS(inst), FORM_RA(inst), FORM_RB(inst), m_fixed_proc.m_gpr,
+                              m_storage);
             break;
-        case TableSubOpcode31::LFSU:
-            m_float_proc.lfsu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::LFSUX:
+            m_float_proc.lfsux(FORM_FS(inst), FORM_RA(inst), FORM_RB(inst), m_fixed_proc.m_gpr,
+                               m_storage);
             break;
-        case TableSubOpcode31::LFD:
-            m_float_proc.lfd(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::LFDX:
+            m_float_proc.lfdx(FORM_FS(inst), FORM_RA(inst), FORM_RB(inst), m_fixed_proc.m_gpr,
+                              m_storage);
             break;
-        case TableSubOpcode31::LFDU:
-            m_float_proc.lfdu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::LFDUX:
+            m_float_proc.lfdux(FORM_FS(inst), FORM_RA(inst), FORM_RB(inst), m_fixed_proc.m_gpr,
+                               m_storage);
             break;
-        case TableSubOpcode31::STFS:
-            m_float_proc.stfs(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::STFSX:
+            m_float_proc.stfsx(FORM_FS(inst), FORM_RA(inst), FORM_RB(inst), m_fixed_proc.m_gpr,
+                               m_storage);
             break;
-        case TableSubOpcode31::STFSU:
-            m_float_proc.stfsu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::STFSUX:
+            m_float_proc.stfsux(FORM_FS(inst), FORM_RA(inst), FORM_RB(inst), m_fixed_proc.m_gpr,
+                                m_storage);
             break;
-        case TableSubOpcode31::STFD:
-            m_float_proc.stfd(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::STFDX:
+            m_float_proc.stfdx(FORM_FS(inst), FORM_RA(inst), FORM_RB(inst), m_fixed_proc.m_gpr,
+                               m_storage);
             break;
-        case TableSubOpcode31::STFDU:
-            m_float_proc.stfdu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::STFDUX:
+            m_float_proc.stfdux(FORM_FS(inst), FORM_RA(inst), FORM_RB(inst), m_fixed_proc.m_gpr,
+                                m_storage);
             break;
         case TableSubOpcode31::STFIWX:
-            m_float_proc.stfiwx(FORM_FS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
+            m_float_proc.stfiwx(FORM_FS(inst), FORM_RA(inst), FORM_RB(inst), m_fixed_proc.m_gpr,
+                                m_storage);
             break;
         case TableSubOpcode31::MFCR:
             m_fixed_proc.mfcr(FORM_RS(inst), m_branch_proc.m_cr);
