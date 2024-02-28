@@ -12,6 +12,14 @@ namespace Toolbox {
         return std::make_shared<T>(std::forward<Args>(args)...);
     }
 
+    template <typename T, typename F> RefPtr<T> ref_cast(const RefPtr<F> &ref) {
+        return std::reinterpret_pointer_cast<T, F>(ref);
+    }
+
+    template <typename T, typename F> RefPtr<T> ref_cast(RefPtr<F> &&ref) {
+        return std::reinterpret_pointer_cast<T, F>(ref);
+    }
+
     template <typename T> using ScopePtr = std::unique_ptr<T>;
     template <typename T, typename... Args> ScopePtr<T> make_scoped(Args &&...args) {
         return std::make_unique<T>(std::forward<Args>(args)...);

@@ -46,18 +46,17 @@ namespace Toolbox::Game {
 
         Result<void> updateSceneObjectParameter(const QualifiedName &member_name,
                                                 size_t member_game_offset,
-                                                RefPtr<ISceneObject> object,
-                                                RefPtr<GroupSceneObject> parent);
+                                                RefPtr<ISceneObject> object);
 
-        Result<void> setObjectTransformToMario(RefPtr<PhysicalSceneObject> object,
-                                               RefPtr<GroupSceneObject> parent);
+        Result<void> setObjectTransformToMario(RefPtr<PhysicalSceneObject> object);
 
-        Result<void> setObjectTransformToCamera(RefPtr<PhysicalSceneObject> object,
-                                                RefPtr<GroupSceneObject> parent);
+        Result<void> setObjectTransformToCamera(RefPtr<PhysicalSceneObject> object);
 
         Result<void> setCameraTransformToGameCamera(Transform &camera_transform);
 
         Result<void> setMarioToCameraTransform(const Transform &camera_transform);
+
+        Result<void> setObjectTransform(RefPtr<PhysicalSceneObject> object, const Transform &transform);
 
         u32 captureXFBAsTexture(int width, int height);
 

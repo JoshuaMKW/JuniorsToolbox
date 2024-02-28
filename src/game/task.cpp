@@ -438,18 +438,15 @@ namespace Toolbox::Game {
 
     Result<void> TaskCommunicator::updateSceneObjectParameter(const QualifiedName &member_name,
                                                               size_t member_game_offset,
-                                                              RefPtr<ISceneObject> object,
-                                                              RefPtr<GroupSceneObject> parent) {
+                                                              RefPtr<ISceneObject> object) {
         return Result<void>();
     }
 
-    Result<void> TaskCommunicator::setObjectTransformToMario(RefPtr<PhysicalSceneObject> object,
-                                                             RefPtr<GroupSceneObject> parent) {
+    Result<void> TaskCommunicator::setObjectTransformToMario(RefPtr<PhysicalSceneObject> object) {
         return Result<void>();
     }
 
-    Result<void> TaskCommunicator::setObjectTransformToCamera(RefPtr<PhysicalSceneObject> object,
-                                                              RefPtr<GroupSceneObject> parent) {
+    Result<void> TaskCommunicator::setObjectTransformToCamera(RefPtr<PhysicalSceneObject> object) {
         return Result<void>();
     }
 
@@ -459,6 +456,38 @@ namespace Toolbox::Game {
 
     Result<void> TaskCommunicator::setMarioToCameraTransform(const Transform &camera_transform) {
         return Result<void>();
+    }
+
+    Result<void> TaskCommunicator::setObjectTransform(RefPtr<PhysicalSceneObject> object, const Transform &transform) {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        // This also checks for connected Dolphin
+        if (!isSceneLoaded()) {
+            return make_error<void>("Task", "Failed to set object transform in scene!");
+        }
+
+        u32 ptr = object->getGamePtr();
+        if (ptr == 0) {
+            TOOLBOX_INFO_V(
+                "(Task) Pointer for object \"{}\" was null, attempting to find pointer...", object->getNameRef().name());
+            object->setGamePtr(getActorPtr(object));
+            if (ptr == 0) {
+                return make_error<void>("Task", "Failed to object ptr in scene!");
+            }
+            TOOLBOX_INFO_V("(Task) Pointer for object \"{}\" was found successfully!", object->getNameRef().name());
+        }
+
+        communicator.write<f32>(ptr + 0x10, transform.m_translation.x);
+        communicator.write<f32>(ptr + 0x14, transform.m_translation.y);
+        communicator.write<f32>(ptr + 0x18, transform.m_translation.z);
+        communicator.write<f32>(ptr + 0x24, transform.m_scale.x);
+        communicator.write<f32>(ptr + 0x28, transform.m_scale.y);
+        communicator.write<f32>(ptr + 0x2C, transform.m_scale.z);
+        communicator.write<f32>(ptr + 0x30, transform.m_rotation.x);
+        communicator.write<f32>(ptr + 0x34, transform.m_rotation.y);
+        communicator.write<f32>(ptr + 0x38, transform.m_rotation.z);
+
+        return {};
     }
 
     u32 TaskCommunicator::captureXFBAsTexture(int width, int height) {

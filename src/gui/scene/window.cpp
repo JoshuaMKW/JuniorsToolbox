@@ -372,7 +372,9 @@ namespace Toolbox::UI {
         // obj_transform.m_translation = obj_old_transform.m_translation + (translation -
         // obj_old_bb.m_center);
 
+        RefPtr<PhysicalSceneObject> object = ref_cast<PhysicalSceneObject>(m_hierarchy_selected_nodes[0].m_selected);
         m_hierarchy_selected_nodes[0].m_selected->setTransform(obj_transform);
+        m_communicator.setObjectTransform(object, obj_transform);
 
         m_update_render_objs = true;
         return true;
