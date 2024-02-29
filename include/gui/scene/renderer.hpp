@@ -38,7 +38,7 @@ namespace Toolbox::UI {
         void getCameraTranslation(glm::vec3 &translation) { m_camera.getPos(translation); }
         void setCameraOrientation(const glm::vec3 &up, const glm::vec3 &translation,
                                   const glm::vec3 &look_at) {
-            m_camera.setOrientAndPosition(up, translation, look_at);
+            m_camera.setOrientAndPosition(up, look_at, translation);
             m_camera.updateCamera();
         }
 

@@ -617,7 +617,9 @@ namespace Toolbox::UI {
                     ud_delta *= 10;
                 }
 
-                ud_delta += Input::GetMouseScrollDelta() * 10.0f;
+                if (m_is_window_hovered) {
+                    ud_delta += Input::GetMouseScrollDelta() * 10.0f;
+                }
 
                 lr_delta *= settings.m_camera_speed * delta_time * 500.0f;
                 ud_delta *= settings.m_camera_speed * delta_time * 500.0f;

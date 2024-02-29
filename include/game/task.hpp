@@ -9,8 +9,9 @@
 #include "core/error.hpp"
 #include "core/memory.hpp"
 #include "core/types.hpp"
-#include "dolphin/process.hpp"
 #include "dolphin/interpreter/system.hpp"
+#include "dolphin/process.hpp"
+#include "gui/scene/camera.hpp"
 #include "objlib/object.hpp"
 
 using namespace Toolbox;
@@ -49,14 +50,14 @@ namespace Toolbox::Game {
                                                 RefPtr<ISceneObject> object);
 
         Result<void> setObjectTransformToMario(RefPtr<PhysicalSceneObject> object);
+        Result<void> setObjectTranslationToMario(RefPtr<PhysicalSceneObject> object);
 
-        Result<void> setObjectTransformToCamera(RefPtr<PhysicalSceneObject> object);
-
-        Result<void> setCameraTransformToGameCamera(Transform &camera_transform);
+        Result<void> setCameraTransformToGameCamera(Camera &camera);
 
         Result<void> setMarioToCameraTransform(const Transform &camera_transform);
 
-        Result<void> setObjectTransform(RefPtr<PhysicalSceneObject> object, const Transform &transform);
+        Result<void> setObjectTransform(RefPtr<PhysicalSceneObject> object,
+                                        const Transform &transform);
 
         u32 captureXFBAsTexture(int width, int height);
 
@@ -75,6 +76,14 @@ namespace Toolbox::Game {
         }
 
         void tRun(void *param) override;
+
+        constexpr f32 convertAngleS16ToFloat(s16 angle) {
+            return static_cast<f32>(angle) / 182.04445f;
+        }
+
+        constexpr s16 convertAngleFloatToS16(f32 angle) {
+            return static_cast<s16>(angle * 182.04445f);
+        }
 
     private:
         Interpreter::SystemDolphin m_game_interpreter;

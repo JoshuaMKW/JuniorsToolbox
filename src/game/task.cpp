@@ -433,7 +433,53 @@ namespace Toolbox::Game {
 
     Result<void> TaskCommunicator::taskPlayCameraDemo(std::string_view demo_name,
                                                       transact_complete_cb complete_cb) {
-        return Result<void>();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        if (!isSceneLoaded()) {
+            return make_error<void>("Task",
+                                    std::format("Failed to play camera demo \"{}\"!", demo_name));
+        }
+
+        u32 mar_director_address = communicator.read<u32>(0x803E9704).value();
+
+        u8 cam_index = communicator.read<u8>(mar_director_address + 0x24C).value();
+        u8 cam_max   = communicator.read<u8>(mar_director_address + 0x24D).value();
+        if (((cam_index - cam_max) & 7) >= 7) {
+            return make_error<void>("Task",
+                                    std::format("Failed to play camera demo \"{}\"!", demo_name));
+        }
+
+        {
+            u16 mar_director_state = communicator.read<u16>(mar_director_address + 0x4C).value();
+            mar_director_state |= 0x40;
+            communicator.write<u16>(mar_director_address + 0x4C, mar_director_state);
+        }
+
+        {
+            constexpr u32 request_buffer_address = 0x80000FA0;
+            constexpr u32 name_address           = request_buffer_address - 0x80000000;
+
+            std::memset(static_cast<char *>(communicator.manager().getMemoryView()) + name_address,
+                        '\0', 0x200);
+
+            std::strncpy(static_cast<char *>(communicator.manager().getMemoryView()) + name_address,
+                         demo_name.data(), demo_name.size());
+
+            s32 offset = static_cast<s32>(cam_index * 0x24);
+            communicator.write<u32>(mar_director_address + offset + 0x12C, name_address);
+            communicator.write<u32>(mar_director_address + offset + 0x130, 0);
+            communicator.write<s32>(mar_director_address + offset + 0x134, -1);
+            communicator.write<f32>(mar_director_address + offset + 0x138, 0.0f);
+            communicator.write<bool>(mar_director_address + offset + 0x13C, true);
+            communicator.write<u32>(mar_director_address + offset + 0x140, 0);
+            communicator.write<u32>(mar_director_address + offset + 0x144, 0);
+            communicator.write<u32>(mar_director_address + offset + 0x148, 0);
+            communicator.write<u16>(mar_director_address + offset + 0x14C, 0);
+        }
+
+        communicator.write<u8>(mar_director_address + 0x24C, (cam_index + 1) & 7);
+
+        return {};
     }
 
     Result<void> TaskCommunicator::updateSceneObjectParameter(const QualifiedName &member_name,
@@ -443,22 +489,131 @@ namespace Toolbox::Game {
     }
 
     Result<void> TaskCommunicator::setObjectTransformToMario(RefPtr<PhysicalSceneObject> object) {
-        return Result<void>();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        auto transform_result = object->getMember("Transform");
+        if (!transform_result) {
+            return make_error<void>("Task", transform_result.error().m_message);
+        }
+
+        // This also checks for connected Dolphin
+        if (!isSceneLoaded()) {
+            return make_error<void>("Task", "Failed to set object transform in scene!");
+        }
+
+        u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
+
+        glm::vec3 translation = {
+            communicator.read<f32>(mario_ptr + 0x10).value(),
+            communicator.read<f32>(mario_ptr + 0x14).value(),
+            communicator.read<f32>(mario_ptr + 0x18).value(),
+        };
+
+        glm::vec3 rotation = {
+            communicator.read<f32>(mario_ptr + 0x30).value(),
+            communicator.read<f32>(mario_ptr + 0x34).value(),
+            communicator.read<f32>(mario_ptr + 0x38).value(),
+        };
+
+        RefPtr<MetaMember> transform_member = transform_result.value();
+        Transform transform                 = getMetaValue<Transform>(transform_member, 0).value();
+        transform.m_translation             = translation;
+        transform.m_rotation                = rotation;
+        setMetaValue(transform_member, 0, transform);
+
+        setObjectTransform(object, transform);
+
+        return {};
     }
 
-    Result<void> TaskCommunicator::setObjectTransformToCamera(RefPtr<PhysicalSceneObject> object) {
-        return Result<void>();
+    Result<void> TaskCommunicator::setObjectTranslationToMario(RefPtr<PhysicalSceneObject> object) {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        auto transform_result = object->getMember("Transform");
+        if (!transform_result) {
+            return make_error<void>("Task", transform_result.error().m_message);
+        }
+
+        // This also checks for connected Dolphin
+        if (!isSceneLoaded()) {
+            return make_error<void>("Task", "Failed to set object transform in scene!");
+        }
+
+        u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
+
+        glm::vec3 translation = {
+            communicator.read<f32>(mario_ptr + 0x10).value(),
+            communicator.read<f32>(mario_ptr + 0x14).value(),
+            communicator.read<f32>(mario_ptr + 0x18).value(),
+        };
+
+        RefPtr<MetaMember> transform_member = transform_result.value();
+        Transform transform                 = getMetaValue<Transform>(transform_member, 0).value();
+        transform.m_translation             = translation;
+        setMetaValue(transform_member, 0, transform);
+
+        setObjectTransform(object, transform);
+
+        return {};
     }
 
-    Result<void> TaskCommunicator::setCameraTransformToGameCamera(Transform &camera_transform) {
-        return Result<void>();
+    Result<void> TaskCommunicator::setCameraTransformToGameCamera(Camera &camera) {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        // This also checks for connected Dolphin
+        if (!isSceneLoaded()) {
+            return make_error<void>("Task", "Failed to set object transform in scene!");
+        }
+
+        u32 camera_ptr = communicator.read<u32>(0x8040D0A8).value();
+
+        glm::vec3 translation = {
+            communicator.read<f32>(camera_ptr + 0x10).value(),
+            communicator.read<f32>(camera_ptr + 0x14).value(),
+            communicator.read<f32>(camera_ptr + 0x18).value(),
+        };
+
+        glm::vec3 up_vec = {
+            communicator.read<f32>(camera_ptr + 0x30).value(),
+            communicator.read<f32>(camera_ptr + 0x34).value(),
+            communicator.read<f32>(camera_ptr + 0x38).value(),
+        };
+
+        glm::vec3 target_pos = {
+            communicator.read<f32>(camera_ptr + 0x3C).value(),
+            communicator.read<f32>(camera_ptr + 0x40).value(),
+            communicator.read<f32>(camera_ptr + 0x44).value(),
+        };
+
+        f32 fovy   = communicator.read<f32>(camera_ptr + 0x48).value();
+        f32 aspect = communicator.read<f32>(camera_ptr + 0x4C).value();
+
+        camera.setOrientAndPosition(up_vec, target_pos, translation);
     }
 
     Result<void> TaskCommunicator::setMarioToCameraTransform(const Transform &camera_transform) {
-        return Result<void>();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        // This also checks for connected Dolphin
+        if (!isSceneLoaded()) {
+            return make_error<void>("Task", "Failed to set object transform in scene!");
+        }
+
+        u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
+
+        communicator.write<f32>(mario_ptr + 0x10, camera_transform.m_translation.x);
+        communicator.write<f32>(mario_ptr + 0x14, camera_transform.m_translation.y);
+        communicator.write<f32>(mario_ptr + 0x18, camera_transform.m_translation.z);
+        communicator.write<f32>(mario_ptr + 0x34, camera_transform.m_rotation.y);
+
+        s16 signed_angle = convertAngleFloatToS16(camera_transform.m_rotation.y);
+        communicator.write<s16>(mario_ptr + 0x96, signed_angle);
+
+        return {};
     }
 
-    Result<void> TaskCommunicator::setObjectTransform(RefPtr<PhysicalSceneObject> object, const Transform &transform) {
+    Result<void> TaskCommunicator::setObjectTransform(RefPtr<PhysicalSceneObject> object,
+                                                      const Transform &transform) {
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         // This also checks for connected Dolphin
@@ -469,12 +624,15 @@ namespace Toolbox::Game {
         u32 ptr = object->getGamePtr();
         if (ptr == 0) {
             TOOLBOX_INFO_V(
-                "(Task) Pointer for object \"{}\" was null, attempting to find pointer...", object->getNameRef().name());
-            object->setGamePtr(getActorPtr(object));
-            if (ptr == 0) {
+                "(Task) Pointer for object \"{}\" was null, attempting to find pointer...",
+                object->getNameRef().name());
+            u32 new_ptr = getActorPtr(object);
+            object->setGamePtr(new_ptr);
+            if (new_ptr == 0) {
                 return make_error<void>("Task", "Failed to object ptr in scene!");
             }
-            TOOLBOX_INFO_V("(Task) Pointer for object \"{}\" was found successfully!", object->getNameRef().name());
+            TOOLBOX_INFO_V("(Task) Pointer for object \"{}\" was found successfully!",
+                           object->getNameRef().name());
         }
 
         communicator.write<f32>(ptr + 0x10, transform.m_translation.x);
@@ -486,6 +644,19 @@ namespace Toolbox::Game {
         communicator.write<f32>(ptr + 0x30, transform.m_rotation.x);
         communicator.write<f32>(ptr + 0x34, transform.m_rotation.y);
         communicator.write<f32>(ptr + 0x38, transform.m_rotation.z);
+
+        std::string_view type = object->type();
+        if (type.starts_with("NPC")) {
+            communicator.write<f32>(ptr + 0xAC, 0.0f);
+            communicator.write<f32>(ptr + 0xB0, 0.0f);
+            communicator.write<f32>(ptr + 0xB4, 0.0f);
+        }
+
+        if (type.ends_with("Fruit")) {
+            communicator.write<f32>(ptr + 0xAC, 0.0f);
+            communicator.write<f32>(ptr + 0xB0, 0.0f);
+            communicator.write<f32>(ptr + 0xB4, 0.0f);
+        }
 
         return {};
     }
