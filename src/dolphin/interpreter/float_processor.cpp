@@ -243,6 +243,18 @@ namespace Toolbox::Interpreter {
 
     // Pulled FP stuff from the Dolphin Emulator Project, thanks :)
 
+    // quantize types
+    enum EQuantizeType : u32 {
+        QUANTIZE_FLOAT    = 0,
+        QUANTIZE_INVALID1 = 1,
+        QUANTIZE_INVALID2 = 2,
+        QUANTIZE_INVALID3 = 3,
+        QUANTIZE_U8       = 4,
+        QUANTIZE_U16      = 5,
+        QUANTIZE_S8       = 6,
+        QUANTIZE_S16      = 7,
+    };
+
     using namespace Register;
 
     constexpr f64 PPC_NAN = std::numeric_limits<f64>::quiet_NaN();
@@ -735,7 +747,8 @@ namespace Toolbox::Interpreter {
     void FloatingPointProcessor::lfsu(u8 frt, s16 d, u8 ra, Register::GPR gpr[32],
                                       Buffer &storage) {
         if (!IsRegValid(frt) || !IsRegValid(ra)) {
-            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfsu, "Invalid registers detected!"));
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, lfsu, "Invalid registers detected!"));
             return;
         }
         s32 destination = static_cast<s32>(gpr[ra] + d - 0x80000000) & 0x7FFFFFFF;
@@ -754,7 +767,8 @@ namespace Toolbox::Interpreter {
     void FloatingPointProcessor::lfsx(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
                                       Buffer &storage) {
         if (!IsRegValid(frt) || !IsRegValid(ra) || !IsRegValid(rb)) {
-            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfsx, "Invalid registers detected!"));
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, lfsx, "Invalid registers detected!"));
             return;
         }
         s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
@@ -772,7 +786,8 @@ namespace Toolbox::Interpreter {
     void FloatingPointProcessor::lfsux(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
                                        Buffer &storage) {
         if (!IsRegValid(frt) || !IsRegValid(ra) || !IsRegValid(rb)) {
-            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfsux, "Invalid registers detected!"));
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, lfsux, "Invalid registers detected!"));
             return;
         }
         s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
@@ -808,7 +823,8 @@ namespace Toolbox::Interpreter {
     void FloatingPointProcessor::lfdu(u8 frt, s16 d, u8 ra, Register::GPR gpr[32],
                                       Buffer &storage) {
         if (!IsRegValid(frt) || !IsRegValid(ra)) {
-            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfdu, "Invalid registers detected!"));
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, lfdu, "Invalid registers detected!"));
             return;
         }
         s32 destination = static_cast<s32>(gpr[ra] + d - 0x80000000) & 0x7FFFFFFF;
@@ -827,7 +843,8 @@ namespace Toolbox::Interpreter {
     void FloatingPointProcessor::lfdx(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
                                       Buffer &storage) {
         if (!IsRegValid(frt) || !IsRegValid(ra) || !IsRegValid(rb)) {
-            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfdx, "Invalid registers detected!"));
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, lfdx, "Invalid registers detected!"));
             return;
         }
         s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
@@ -845,7 +862,8 @@ namespace Toolbox::Interpreter {
     void FloatingPointProcessor::lfdux(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
                                        Buffer &storage) {
         if (!IsRegValid(frt) || !IsRegValid(ra) || !IsRegValid(rb)) {
-            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfdux, "Invalid registers detected!"));
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, lfdux, "Invalid registers detected!"));
             return;
         }
         s32 destination = static_cast<s32>(gpr[ra] + gpr[rb] - 0x80000000) & 0x7FFFFFFF;
@@ -1737,74 +1755,661 @@ namespace Toolbox::Interpreter {
 
     // *** PAIRED SINGLE *** //
 
-    void ps_l(u8 frt, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage) {}
-    void ps_lu(u8 frt, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage) {}
-    void ps_st(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage) {}
-    void ps_stu(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage) {}
+    
 
-    void ps_cmpo0(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
-                  Register::SRR1 &srr1) {}
-    void ps_cmpu0(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
-                  Register::SRR1 &srr1) {}
-    void ps_cmpo1(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
-                  Register::SRR1 &srr1) {}
-    void ps_cmpu1(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
-                  Register::SRR1 &srr1) {}
+// dequantize table
+    const float m_dequantizeTable[] = {
+        1.0 / (1ULL << 0),  1.0 / (1ULL << 1),  1.0 / (1ULL << 2),  1.0 / (1ULL << 3),
+        1.0 / (1ULL << 4),  1.0 / (1ULL << 5),  1.0 / (1ULL << 6),  1.0 / (1ULL << 7),
+        1.0 / (1ULL << 8),  1.0 / (1ULL << 9),  1.0 / (1ULL << 10), 1.0 / (1ULL << 11),
+        1.0 / (1ULL << 12), 1.0 / (1ULL << 13), 1.0 / (1ULL << 14), 1.0 / (1ULL << 15),
+        1.0 / (1ULL << 16), 1.0 / (1ULL << 17), 1.0 / (1ULL << 18), 1.0 / (1ULL << 19),
+        1.0 / (1ULL << 20), 1.0 / (1ULL << 21), 1.0 / (1ULL << 22), 1.0 / (1ULL << 23),
+        1.0 / (1ULL << 24), 1.0 / (1ULL << 25), 1.0 / (1ULL << 26), 1.0 / (1ULL << 27),
+        1.0 / (1ULL << 28), 1.0 / (1ULL << 29), 1.0 / (1ULL << 30), 1.0 / (1ULL << 31),
+        (1ULL << 32),       (1ULL << 31),       (1ULL << 30),       (1ULL << 29),
+        (1ULL << 28),       (1ULL << 27),       (1ULL << 26),       (1ULL << 25),
+        (1ULL << 24),       (1ULL << 23),       (1ULL << 22),       (1ULL << 21),
+        (1ULL << 20),       (1ULL << 19),       (1ULL << 18),       (1ULL << 17),
+        (1ULL << 16),       (1ULL << 15),       (1ULL << 14),       (1ULL << 13),
+        (1ULL << 12),       (1ULL << 11),       (1ULL << 10),       (1ULL << 9),
+        (1ULL << 8),        (1ULL << 7),        (1ULL << 6),        (1ULL << 5),
+        (1ULL << 4),        (1ULL << 3),        (1ULL << 2),        (1ULL << 1),
+    };
 
-    void ps_mr(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr, Register::SRR1 &srr1) {}
-    void ps_abs(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                Register::SRR1 &srr1) {}
-    void ps_neg(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                Register::SRR1 &srr1) {}
-    void ps_nabs(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                 Register::SRR1 &srr1) {}
+    // quantize table
+    const float m_quantizeTable[] = {
+        (1ULL << 0),        (1ULL << 1),        (1ULL << 2),        (1ULL << 3),
+        (1ULL << 4),        (1ULL << 5),        (1ULL << 6),        (1ULL << 7),
+        (1ULL << 8),        (1ULL << 9),        (1ULL << 10),       (1ULL << 11),
+        (1ULL << 12),       (1ULL << 13),       (1ULL << 14),       (1ULL << 15),
+        (1ULL << 16),       (1ULL << 17),       (1ULL << 18),       (1ULL << 19),
+        (1ULL << 20),       (1ULL << 21),       (1ULL << 22),       (1ULL << 23),
+        (1ULL << 24),       (1ULL << 25),       (1ULL << 26),       (1ULL << 27),
+        (1ULL << 28),       (1ULL << 29),       (1ULL << 30),       (1ULL << 31),
+        1.0 / (1ULL << 32), 1.0 / (1ULL << 31), 1.0 / (1ULL << 30), 1.0 / (1ULL << 29),
+        1.0 / (1ULL << 28), 1.0 / (1ULL << 27), 1.0 / (1ULL << 26), 1.0 / (1ULL << 25),
+        1.0 / (1ULL << 24), 1.0 / (1ULL << 23), 1.0 / (1ULL << 22), 1.0 / (1ULL << 21),
+        1.0 / (1ULL << 20), 1.0 / (1ULL << 19), 1.0 / (1ULL << 18), 1.0 / (1ULL << 17),
+        1.0 / (1ULL << 16), 1.0 / (1ULL << 15), 1.0 / (1ULL << 14), 1.0 / (1ULL << 13),
+        1.0 / (1ULL << 12), 1.0 / (1ULL << 11), 1.0 / (1ULL << 10), 1.0 / (1ULL << 9),
+        1.0 / (1ULL << 8),  1.0 / (1ULL << 7),  1.0 / (1ULL << 6),  1.0 / (1ULL << 5),
+        1.0 / (1ULL << 4),  1.0 / (1ULL << 3),  1.0 / (1ULL << 2),  1.0 / (1ULL << 1),
+    };
 
-    void ps_add(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                Register::SRR1 &srr1) {}
-    void ps_sub(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                Register::SRR1 &srr1) {}
-    void ps_mul(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                Register::SRR1 &srr1) {}
-    void ps_muls0(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                  Register::SRR1 &srr1) {}
-    void ps_muls1(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                  Register::SRR1 &srr1) {}
-    void ps_div(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                Register::SRR1 &srr1) {}
+    template <typename SType> SType ScaleAndClamp(double ps, u32 st_scale) {
+        const float conv_ps = float(ps) * m_quantizeTable[st_scale];
+        constexpr float min = float(std::numeric_limits<SType>::min());
+        constexpr float max = float(std::numeric_limits<SType>::max());
 
-    void ps_msub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                 Register::SRR1 &srr1) {}
-    void ps_madds0(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                   Register::SRR1 &srr1) {}
-    void ps_madds1(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                   Register::SRR1 &srr1) {}
-    void ps_madd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                 Register::SRR1 &srr1) {}
-    void ps_nmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                  Register::SRR1 &srr1) {}
-    void ps_nmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                  Register::SRR1 &srr1) {}
+        return SType(std::clamp(conv_ps, min, max));
+    }
 
-    void ps_sum0(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                 Register::SRR1 &srr1) {}
+    template <typename T> static T ReadUnpaired(Buffer &storage, u32 addr);
 
-    void ps_sum1(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                 Register::SRR1 &srr1) {}
+    template <> u8 ReadUnpaired<u8>(Buffer &storage, u32 addr) { return storage.get<u8>(addr - 0x80000000); }
 
-    void ps_res(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                Register::SRR1 &srr1) {}
-    void ps_rsqrte(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                   Register::SRR1 &srr1) {}
-    void ps_sel(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                Register::SRR1 &srr1) {}
+    template <> u16 ReadUnpaired<u16>(Buffer &storage, u32 addr) {
+        return storage.get<u16>(addr - 0x80000000);
+    }
 
-    void ps_merge00(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                    Register::SRR1 &srr1) {}
-    void ps_merge01(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                    Register::SRR1 &srr1) {}
-    void ps_merge10(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                    Register::SRR1 &srr1) {}
-    void ps_merge11(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
-                    Register::SRR1 &srr1) {}
+    template <> u32 ReadUnpaired<u32>(Buffer &storage, u32 addr) {
+        return storage.get<u32>(addr - 0x80000000);
+    }
+
+    template <typename T> static std::pair<T, T> ReadPair(Buffer &storage, u32 addr);
+
+    template <> std::pair<u8, u8> ReadPair<u8>(Buffer &storage, u32 addr) {
+        const u16 val = storage.get<u16>(addr - 0x80000000);
+        return {u8(val >> 8), u8(val)};
+    }
+
+    template <> std::pair<u16, u16> ReadPair<u16>(Buffer &storage, u32 addr) {
+        const u32 val = storage.get<u32>(addr - 0x80000000);
+        return {u16(val >> 16), u16(val)};
+    }
+
+    template <> std::pair<u32, u32> ReadPair<u32>(Buffer &storage, u32 addr) {
+        const u64 val = storage.get<u64>(addr - 0x80000000);
+        return {u32(val >> 32), u32(val)};
+    }
+
+    template <typename T> static void WriteUnpaired(Buffer &storage, T val, u32 addr);
+
+    template <> void WriteUnpaired<u8>(Buffer &storage, u8 val, u32 addr) {
+        storage.set<u8>(addr - 0x80000000, val);
+    }
+
+    template <> void WriteUnpaired<u16>(Buffer &storage, u16 val, u32 addr) {
+        storage.set<u16>(addr - 0x80000000, val);
+    }
+
+    template <> void WriteUnpaired<u32>(Buffer &storage, u32 val, u32 addr) {
+        storage.set<u32>(addr - 0x80000000, val);
+    }
+
+    template <typename T> static void WritePair(Buffer &storage, T val1, T val2, u32 addr);
+
+    template <> void WritePair<u8>(Buffer &storage, u8 val1, u8 val2, u32 addr) {
+        storage.set<u16>(addr - 0x80000000, (u16{val1} << 8) | u16{val2});
+    }
+
+    template <> void WritePair<u16>(Buffer &storage, u16 val1, u16 val2, u32 addr) {
+        storage.set<u32>(addr - 0x80000000, (u32{val1} << 16) | u32{val2});
+    }
+
+    template <> void WritePair<u32>(Buffer &storage, u32 val1, u32 val2, u32 addr) {
+        storage.set<u64>(addr - 0x80000000, (u64{val1} << 32) | u64{val2});
+    }
+
+    template <typename T>
+    void QuantizeAndStore(Buffer &storage, double ps0, double ps1, u32 addr, u32 instW,
+                          u32 st_scale) {
+        using U = std::make_unsigned_t<T>;
+
+        const U conv_ps0 = U(ScaleAndClamp<T>(ps0, st_scale));
+        if (instW) {
+            WriteUnpaired<U>(mmu, conv_ps0, addr);
+        } else {
+            const U conv_ps1 = U(ScaleAndClamp<T>(ps1, st_scale));
+            WritePair<U>(mmu, conv_ps0, conv_ps1, addr);
+        }
+    }
+
+    static void Helper_Quantize(Buffer &storage, u32 addr, u32 instI, u32 instRS, u32 instW,
+                                FPR fpr[32]) {
+        // TODO: Get actual type and scale from qprs
+        const EQuantizeType st_type = EQuantizeType::QUANTIZE_FLOAT;
+        const u32 st_scale          = 1;
+
+        const double ps0 = fpr[instRS].ps0AsDouble();
+        const double ps1 = fpr[instRS].ps1AsDouble();
+
+        switch (st_type) {
+        case QUANTIZE_FLOAT: {
+            const u64 integral_ps0 = std::bit_cast<u64>(ps0);
+            const u32 conv_ps0     = ConvertToSingleFTZ(integral_ps0);
+
+            if (instW != 0) {
+                WriteUnpaired<u32>(storage, conv_ps0, addr);
+            } else {
+                const u64 integral_ps1 = std::bit_cast<u64>(ps1);
+                const u32 conv_ps1     = ConvertToSingleFTZ(integral_ps1);
+
+                WritePair<u32>(storage, conv_ps0, conv_ps1, addr);
+            }
+            break;
+        }
+
+        case QUANTIZE_U8:
+            QuantizeAndStore<u8>(storage, ps0, ps1, addr, instW, st_scale);
+            break;
+
+        case QUANTIZE_U16:
+            QuantizeAndStore<u16>(storage, ps0, ps1, addr, instW, st_scale);
+            break;
+
+        case QUANTIZE_S8:
+            QuantizeAndStore<s8>(storage, ps0, ps1, addr, instW, st_scale);
+            break;
+
+        case QUANTIZE_S16:
+            QuantizeAndStore<s16>(storage, ps0, ps1, addr, instW, st_scale);
+            break;
+
+        case QUANTIZE_INVALID1:
+        case QUANTIZE_INVALID2:
+        case QUANTIZE_INVALID3:
+            TOOLBOX_ERROR("(PS dequantize) unknown type to read");
+            break;
+        }
+    }
+
+    template <typename T>
+    std::pair<double, double> LoadAndDequantize(Buffer &storage, u32 addr, u32 instW,
+                                                u32 ld_scale) {
+        using U = std::make_unsigned_t<T>;
+
+        float ps0, ps1;
+        if (instW != 0) {
+            const U value = ReadUnpaired<U>(mmu, addr);
+            ps0           = float(T(value)) * m_dequantizeTable[ld_scale];
+            ps1           = 1.0f;
+        } else {
+            const auto [first, second] = ReadPair<U>(mmu, addr);
+            ps0                        = float(T(first)) * m_dequantizeTable[ld_scale];
+            ps1                        = float(T(second)) * m_dequantizeTable[ld_scale];
+        }
+        // ps0 and ps1 always contain finite and normal numbers. So we can just cast them to double
+        return {static_cast<double>(ps0), static_cast<double>(ps1)};
+    }
+
+    static void Helper_Dequantize(Buffer &storage, u32 addr, u32 instI, u32 instRD, u32 instW,
+                                  FPR fpr[32]) {
+        if (!MemoryContainsVAddress(storage, addr)) {
+            //m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+
+        // TODO: Get actual type and scale from qprs
+        const EQuantizeType ld_type = EQuantizeType::QUANTIZE_FLOAT;
+        const u32 ld_scale          = 1;
+
+        double ps0 = 0.0;
+        double ps1 = 0.0;
+
+        switch (ld_type) {
+        case QUANTIZE_FLOAT:
+            if (instW != 0) {
+                const u32 value = ReadUnpaired<u32>(storage, addr);
+                ps0             = std::bit_cast<double>(ConvertToDouble(value));
+                ps1             = 1.0;
+            } else {
+                const auto [first, second] = ReadPair<u32>(storage, addr);
+                ps0                        = std::bit_cast<double>(ConvertToDouble(first));
+                ps1                        = std::bit_cast<double>(ConvertToDouble(second));
+            }
+            break;
+
+        case QUANTIZE_U8:
+            std::tie(ps0, ps1) = LoadAndDequantize<u8>(storage, addr, instW, ld_scale);
+            break;
+
+        case QUANTIZE_U16:
+            std::tie(ps0, ps1) = LoadAndDequantize<u16>(storage, addr, instW, ld_scale);
+            break;
+
+        case QUANTIZE_S8:
+            std::tie(ps0, ps1) = LoadAndDequantize<s8>(storage, addr, instW, ld_scale);
+            break;
+
+        case QUANTIZE_S16:
+            std::tie(ps0, ps1) = LoadAndDequantize<s16>(storage, addr, instW, ld_scale);
+            break;
+
+        case QUANTIZE_INVALID1:
+        case QUANTIZE_INVALID2:
+        case QUANTIZE_INVALID3:
+            TOOLBOX_ERROR("(PS dequantize) unknown type to read");
+            ps0 = 0.0;
+            ps1 = 0.0;
+            break;
+        }
+
+        fpr[instRD].setBoth(ps0, ps1);
+    }
+
+    void FloatingPointProcessor::ps_l(u8 frt, s16 d, u8 ra, Register::GPR gpr[32],
+                                      Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra)) {
+            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfs, "Invalid registers detected!"));
+            return;
+        }
+        s32 destination = static_cast<s32>(gpr[ra] + d - 0x80000000) & 0x7FFFFFFF;
+        if ((destination & 0b11)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
+            return;
+        }
+        if (!MemoryContainsPAddress(storage, destination)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
+        m_fpr[frt].setPS0(ConvertToDouble(std::byteswap(storage.get<u32>(destination))));
+        m_fpr[frt].setPS1(ConvertToDouble(std::byteswap(storage.get<u32>(destination + 4))));
+    }
+
+    void FloatingPointProcessor::ps_lu(u8 frt, s16 d, u8 ra, Register::GPR gpr[32],
+                                       Buffer &storage) {}
+
+    void FloatingPointProcessor::ps_st(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
+                                       Buffer &storage) {}
+
+    void FloatingPointProcessor::ps_stu(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
+                                        Buffer &storage) {}
+
+    void FloatingPointProcessor::ps_cmpo0(u8 bf, u8 fra, u8 frb, Register::CR &cr,
+                                          Register::MSR &msr, Register::SRR1 &srr1) {}
+
+    void FloatingPointProcessor::ps_cmpu0(u8 bf, u8 fra, u8 frb, Register::CR &cr,
+                                          Register::MSR &msr, Register::SRR1 &srr1) {}
+
+    void FloatingPointProcessor::ps_cmpo1(u8 bf, u8 fra, u8 frb, Register::CR &cr,
+                                          Register::MSR &msr, Register::SRR1 &srr1) {}
+
+    void FloatingPointProcessor::ps_cmpu1(u8 bf, u8 fra, u8 frb, Register::CR &cr,
+                                          Register::MSR &msr, Register::SRR1 &srr1) {}
+
+    void FloatingPointProcessor::ps_mr(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                       Register::MSR &msr, Register::SRR1 &srr1) {}
+
+    void FloatingPointProcessor::ps_abs(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {}
+
+    void FloatingPointProcessor::ps_neg(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {}
+
+    void FloatingPointProcessor::ps_nabs(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                         Register::MSR &msr, Register::SRR1 &srr1) {}
+
+    void FloatingPointProcessor::ps_add(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        const float ps0 = ForceSingle(
+            m_fpscr,
+            NI_add(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble()).value);
+        const float ps1 = ForceSingle(
+            m_fpscr,
+            NI_add(m_fpscr, msr, srr1, m_fpr[fra].ps1AsDouble(), m_fpr[frb].ps1AsDouble()).value);
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_sub(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        const float ps0 = ForceSingle(
+            m_fpscr,
+            NI_sub(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble()).value);
+        const float ps1 = ForceSingle(
+            m_fpscr,
+            NI_sub(m_fpscr, msr, srr1, m_fpr[fra].ps1AsDouble(), m_fpr[frb].ps1AsDouble()).value);
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_mul(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        const float ps0 = ForceSingle(m_fpscr, NI_mul(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                                                      Force25Bit(m_fpr[frb].ps0AsDouble()))
+                                                   .value);
+        const float ps1 = ForceSingle(m_fpscr, NI_mul(m_fpscr, msr, srr1, m_fpr[fra].ps1AsDouble(),
+                                                      Force25Bit(m_fpr[frb].ps1AsDouble()))
+                                                   .value);
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_muls0(u8 frt, u8 fra, u8 frc, bool rc, Register::CR &cr,
+                                          Register::MSR &msr, Register::SRR1 &srr1) {
+        const float ps0 = ForceSingle(m_fpscr, NI_mul(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                                                      Force25Bit(m_fpr[frc].ps0AsDouble()))
+                                                   .value);
+        const float ps1 = ForceSingle(m_fpscr, NI_mul(m_fpscr, msr, srr1, m_fpr[fra].ps1AsDouble(),
+                                                      Force25Bit(m_fpr[frc].ps0AsDouble()))
+                                                   .value);
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_muls1(u8 frt, u8 fra, u8 frc, bool rc, Register::CR &cr,
+                                          Register::MSR &msr, Register::SRR1 &srr1) {
+        const float ps0 = ForceSingle(m_fpscr, NI_mul(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                                                      Force25Bit(m_fpr[frc].ps1AsDouble()))
+                                                   .value);
+        const float ps1 = ForceSingle(m_fpscr, NI_mul(m_fpscr, msr, srr1, m_fpr[fra].ps1AsDouble(),
+                                                      Force25Bit(m_fpr[frc].ps1AsDouble()))
+                                                   .value);
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_div(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        const float ps0 = ForceSingle(
+            m_fpscr,
+            NI_div(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble()).value);
+        const float ps1 = ForceSingle(
+            m_fpscr,
+            NI_div(m_fpscr, msr, srr1, m_fpr[fra].ps1AsDouble(), m_fpr[frb].ps1AsDouble()).value);
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_msub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                         Register::MSR &msr, Register::SRR1 &srr1) {
+        const float ps0 = ForceSingle(m_fpscr, NI_msub(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                                                       Force25Bit(m_fpr[frc].ps0AsDouble()),
+                                                       m_fpr[frb].ps0AsDouble())
+                                                   .value);
+        const float ps1 = ForceSingle(m_fpscr, NI_msub(m_fpscr, msr, srr1, m_fpr[fra].ps1AsDouble(),
+                                                       Force25Bit(m_fpr[frc].ps1AsDouble()),
+                                                       m_fpr[frb].ps1AsDouble())
+                                                   .value);
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_madds0(u8 frt, u8 fra, u8 frc, u8 frb, bool rc,
+                                           Register::CR &cr, Register::MSR &msr,
+                                           Register::SRR1 &srr1) {
+        const float ps0 = ForceSingle(m_fpscr, NI_madd(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                                                       Force25Bit(m_fpr[frc].ps0AsDouble()),
+                                                       m_fpr[frb].ps0AsDouble())
+                                                   .value);
+        const float ps1 = ForceSingle(m_fpscr, NI_madd(m_fpscr, msr, srr1, m_fpr[fra].ps1AsDouble(),
+                                                       Force25Bit(m_fpr[frc].ps0AsDouble()),
+                                                       m_fpr[frb].ps1AsDouble())
+                                                   .value);
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_madds1(u8 frt, u8 fra, u8 frc, u8 frb, bool rc,
+                                           Register::CR &cr, Register::MSR &msr,
+                                           Register::SRR1 &srr1) {
+        const float ps0 = ForceSingle(m_fpscr, NI_madd(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                                                       Force25Bit(m_fpr[frc].ps1AsDouble()),
+                                                       m_fpr[frb].ps0AsDouble())
+                                                   .value);
+        const float ps1 = ForceSingle(m_fpscr, NI_madd(m_fpscr, msr, srr1, m_fpr[fra].ps1AsDouble(),
+                                                       Force25Bit(m_fpr[frc].ps1AsDouble()),
+                                                       m_fpr[frb].ps1AsDouble())
+                                                   .value);
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_madd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                         Register::MSR &msr, Register::SRR1 &srr1) {
+        const float ps0 = ForceSingle(m_fpscr, NI_madd(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                                                       Force25Bit(m_fpr[frc].ps0AsDouble()),
+                                                       m_fpr[frb].ps0AsDouble())
+                                                   .value);
+        const float ps1 = ForceSingle(m_fpscr, NI_madd(m_fpscr, msr, srr1, m_fpr[fra].ps1AsDouble(),
+                                                       Force25Bit(m_fpr[frc].ps1AsDouble()),
+                                                       m_fpr[frb].ps1AsDouble())
+                                                   .value);
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_nmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                          Register::MSR &msr, Register::SRR1 &srr1) {
+        const float tmp0 = ForceSingle(
+            m_fpscr, NI_msub(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                             Force25Bit(m_fpr[frc].ps0AsDouble()), m_fpr[frb].ps0AsDouble())
+                         .value);
+        const float tmp1 = ForceSingle(
+            m_fpscr, NI_msub(m_fpscr, msr, srr1, m_fpr[fra].ps1AsDouble(),
+                             Force25Bit(m_fpr[frc].ps1AsDouble()), m_fpr[frb].ps1AsDouble())
+                         .value);
+
+        const float ps0 = std::isnan(tmp0) ? tmp0 : -tmp0;
+        const float ps1 = std::isnan(tmp1) ? tmp1 : -tmp1;
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_nmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                          Register::MSR &msr, Register::SRR1 &srr1) {
+        const float tmp0 = ForceSingle(
+            m_fpscr, NI_madd(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(),
+                             Force25Bit(m_fpr[frc].ps0AsDouble()), m_fpr[frb].ps0AsDouble())
+                         .value);
+        const float tmp1 = ForceSingle(
+            m_fpscr, NI_madd(m_fpscr, msr, srr1, m_fpr[fra].ps1AsDouble(),
+                             Force25Bit(m_fpr[frc].ps1AsDouble()), m_fpr[frb].ps1AsDouble())
+                         .value);
+
+        const float ps0 = std::isnan(tmp0) ? tmp0 : -tmp0;
+        const float ps1 = std::isnan(tmp1) ? tmp1 : -tmp1;
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_sum0(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                         Register::MSR &msr, Register::SRR1 &srr1) {
+        const float ps0 = ForceSingle(
+            m_fpscr,
+            NI_add(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps1AsDouble()).value);
+        const float ps1 = ForceSingle(m_fpscr, m_fpr[frc].ps1AsDouble());
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_sum1(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                         Register::MSR &msr, Register::SRR1 &srr1) {
+        const float ps0 = ForceSingle(m_fpscr, m_fpr[frc].ps1AsDouble());
+        const float ps1 = ForceSingle(
+            m_fpscr,
+            NI_add(m_fpscr, msr, srr1, m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps1AsDouble()).value);
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_res(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {}
+
+    void FloatingPointProcessor::ps_rsqrte(u8 frt, u8 frb, bool rc, Register::CR &cr,
+                                           Register::MSR &msr, Register::SRR1 &srr1) {}
+
+    void FloatingPointProcessor::ps_sel(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        const auto &a = m_fpr[fra];
+        const auto &b = m_fpr[frb];
+        const auto &c = m_fpr[frc];
+
+        m_fpr[frt].setBoth((a.ps0AsDouble() >= -0.0) ? c.ps0AsDouble() : b.ps0AsDouble(),
+                           (a.ps1AsDouble() >= -0.0) ? c.ps1AsDouble() : b.ps1AsDouble());
+
+        // This is a binary instruction. Does not alter FPSCR
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_merge00(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                            Register::MSR &msr, Register::SRR1 &srr1) {
+        const auto &a = m_fpr[fra];
+        const auto &b = m_fpr[frb];
+
+        m_fpr[frt].setBoth(a.ps0AsDouble(), b.ps0AsDouble());
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_merge01(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                            Register::MSR &msr, Register::SRR1 &srr1) {
+        const auto &a = m_fpr[fra];
+        const auto &b = m_fpr[frb];
+
+        m_fpr[frt].setBoth(a.ps0AsDouble(), b.ps1AsDouble());
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_merge10(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                            Register::MSR &msr, Register::SRR1 &srr1) {
+        const auto &a = m_fpr[fra];
+        const auto &b = m_fpr[frb];
+
+        m_fpr[frt].setBoth(a.ps1AsDouble(), b.ps0AsDouble());
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
+
+    void FloatingPointProcessor::ps_merge11(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
+                                            Register::MSR &msr, Register::SRR1 &srr1) {
+        const auto &a = m_fpr[fra];
+        const auto &b = m_fpr[frb];
+
+        m_fpr[frt].setBoth(a.ps1AsDouble(), b.ps1AsDouble());
+
+        if (rc) {
+            SET_CR_FIELD(cr, 1,
+                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
+                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+        }
+    }
 
 }  // namespace Toolbox::Interpreter

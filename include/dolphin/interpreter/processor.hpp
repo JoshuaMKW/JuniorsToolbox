@@ -454,9 +454,9 @@ namespace Toolbox::Interpreter {
                     Register::SRR1 &srr1);
         void ps_mul(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                     Register::SRR1 &srr1);
-        void ps_muls0(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+        void ps_muls0(u8 frt, u8 fra, u8 frc, bool rc, Register::CR &cr, Register::MSR &msr,
                       Register::SRR1 &srr1);
-        void ps_muls1(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+        void ps_muls1(u8 frt, u8 fra, u8 frc, bool rc, Register::CR &cr, Register::MSR &msr,
                       Register::SRR1 &srr1);
         void ps_div(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                     Register::SRR1 &srr1);
@@ -474,10 +474,10 @@ namespace Toolbox::Interpreter {
         void ps_nmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                       Register::SRR1 &srr1);
 
-        void ps_sum0(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+        void ps_sum0(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                      Register::SRR1 &srr1);
 
-        void ps_sum1(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
+        void ps_sum1(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
                      Register::SRR1 &srr1);
 
         void ps_res(u8 frt, u8 frb, bool rc, Register::CR &cr, Register::MSR &msr,
