@@ -53,6 +53,8 @@ namespace Toolbox::UI {
         void renderRailEditor();
         void renderScene(f32 delta_time);
         void renderDolphin(f32 delta_time);
+        void renderPlaybackButtons(f32 delta_time);
+        void renderScenePeripherals(f32 delta_time);
         void renderHierarchyContextMenu(std::string str_id,
                                         SelectionNodeInfo<Object::ISceneObject> &info);
         void renderRailContextMenu(std::string str_id, SelectionNodeInfo<Rail::Rail> &info);
@@ -184,11 +186,13 @@ namespace Toolbox::UI {
 
         std::string m_selected_add_zone{""};
 
-        bool m_options_open{false};
+        bool m_options_open = false;
 
-        bool m_is_save_default_ready{false};
-        bool m_is_save_as_dialog_open{false};
-        bool m_is_verify_open{false};
+        bool m_is_save_default_ready = false;
+        bool m_is_save_as_dialog_open = false;
+        bool m_is_verify_open = false;
+
+        bool m_is_game_edit_mode = false;
 
         Game::TaskCommunicator m_communicator;
         u32 m_dolphin_texture_id;

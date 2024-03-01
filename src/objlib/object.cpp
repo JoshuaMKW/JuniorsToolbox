@@ -130,9 +130,9 @@ namespace Toolbox::Object {
     }
 
     Result<void, ObjectError> VirtualSceneObject::performScene(float, bool,
-                                                                      std::vector<RenderInfo> &,
-                                                                      ResourceCache &,
-                                                                      std::vector<J3DLight> &) {
+                                                               std::vector<RenderInfo> &,
+                                                               ResourceCache &,
+                                                               std::vector<J3DLight> &) {
         return {};
     }
 
@@ -285,8 +285,8 @@ namespace Toolbox::Object {
         return insertChild(m_children.size(), std::move(child));
     }
 
-    Result<void, ObjectGroupError>
-    GroupSceneObject::insertChild(size_t index, RefPtr<ISceneObject> child) {
+    Result<void, ObjectGroupError> GroupSceneObject::insertChild(size_t index,
+                                                                 RefPtr<ISceneObject> child) {
         if (index > m_children.size()) {
             ObjectGroupError err = {std::format("Insertion index {} is out of bounds (end: {})",
                                                 index, m_children.size()),
@@ -313,8 +313,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    Result<void, ObjectGroupError>
-    GroupSceneObject::removeChild(RefPtr<ISceneObject> child) {
+    Result<void, ObjectGroupError> GroupSceneObject::removeChild(RefPtr<ISceneObject> child) {
         auto it = std::find_if(m_children.begin(), m_children.end(),
                                [child](const auto &ptr) { return ptr == child; });
         if (it == m_children.end()) {
@@ -353,10 +352,7 @@ namespace Toolbox::Object {
         return it->get()->removeChild(QualifiedName(name.begin() + 1, name.end()));
     }
 
-    Result<std::vector<RefPtr<ISceneObject>>, ObjectGroupError>
-    GroupSceneObject::getChildren() {
-        return m_children;
-    }
+    std::vector<RefPtr<ISceneObject>> GroupSceneObject::getChildren() { return m_children; }
 
     std::optional<RefPtr<ISceneObject>> GroupSceneObject::getChild(const QualifiedName &name) {
         auto scope = name[0];
@@ -369,9 +365,10 @@ namespace Toolbox::Object {
         return it->get()->getChild(QualifiedName(name.begin() + 1, name.end()));
     }
 
-    Result<void, ObjectError> GroupSceneObject::performScene(
-        float delta_time, bool animate, std::vector<RenderInfo> &renderables,
-        ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) {
+    Result<void, ObjectError> GroupSceneObject::performScene(float delta_time, bool animate,
+                                                             std::vector<RenderInfo> &renderables,
+                                                             ResourceCache &resource_cache,
+                                                             std::vector<J3DLight> &scene_lights) {
         if (!getIsPerforming()) {
             return {};
         }

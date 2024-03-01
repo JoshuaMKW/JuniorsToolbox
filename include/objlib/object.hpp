@@ -91,25 +91,21 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual bool hasMember(const QualifiedName &name) const                   = 0;
         [[nodiscard]] virtual MetaStruct::GetMemberT getMember(const QualifiedName &name) const = 0;
-        [[nodiscard]] virtual std::vector<RefPtr<MetaMember>> getMembers() const       = 0;
+        [[nodiscard]] virtual std::vector<RefPtr<MetaMember>> getMembers() const                = 0;
         [[nodiscard]] virtual size_t getMemberOffset(const QualifiedName &name,
                                                      int index) const                           = 0;
         [[nodiscard]] virtual size_t getMemberSize(const QualifiedName &name, int index) const  = 0;
 
-        virtual Result<void, ObjectGroupError>
-        addChild(RefPtr<ISceneObject> child) = 0;
-        virtual Result<void, ObjectGroupError>
-        insertChild(size_t index, RefPtr<ISceneObject> child) = 0;
-        virtual Result<void, ObjectGroupError>
-        removeChild(RefPtr<ISceneObject> name)                                      = 0;
-        virtual Result<void, ObjectGroupError> removeChild(const QualifiedName &name) = 0;
-        [[nodiscard]] virtual Result<std::vector<RefPtr<ISceneObject>>,
-                                            ObjectGroupError>
-        getChildren() = 0;
+        virtual Result<void, ObjectGroupError> addChild(RefPtr<ISceneObject> child)    = 0;
+        virtual Result<void, ObjectGroupError> insertChild(size_t index,
+                                                           RefPtr<ISceneObject> child) = 0;
+        virtual Result<void, ObjectGroupError> removeChild(RefPtr<ISceneObject> name)  = 0;
+        virtual Result<void, ObjectGroupError> removeChild(const QualifiedName &name)  = 0;
+        [[nodiscard]] virtual std::vector<RefPtr<ISceneObject>> getChildren()          = 0;
         [[nodiscard]] virtual std::optional<RefPtr<ISceneObject>>
         getChild(const QualifiedName &name) = 0;
 
-        [[nodiscard]] virtual std::optional<Transform> getTransform() const             = 0;
+        [[nodiscard]] virtual std::optional<Transform> getTransform() const      = 0;
         virtual Result<void, MetaError> setTransform(const Transform &transform) = 0;
 
         [[nodiscard]] virtual std::optional<BoundingBox> getBoundingBox() const = 0;
@@ -125,9 +121,10 @@ namespace Toolbox::Object {
         [[nodiscard]] virtual bool getIsPerforming() const = 0;
         virtual void setIsPerforming(bool performing)      = 0;
 
-        virtual Result<void, ObjectError>
-        performScene(float delta_time, bool animate, std::vector<RenderInfo> &renderables,
-                     ResourceCache &resource_cache, std::vector<J3DLight> &scene_lights) = 0;
+        virtual Result<void, ObjectError> performScene(float delta_time, bool animate,
+                                                       std::vector<RenderInfo> &renderables,
+                                                       ResourceCache &resource_cache,
+                                                       std::vector<J3DLight> &scene_lights) = 0;
 
         virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
 
@@ -139,8 +136,7 @@ namespace Toolbox::Object {
     public:
         [[nodiscard]] QualifiedName getQualifiedName() const;
 
-        [[nodiscard]] std::optional<RefPtr<ISceneObject>>
-        getChild(const std::string &name) {
+        [[nodiscard]] std::optional<RefPtr<ISceneObject>> getChild(const std::string &name) {
             return getChild(QualifiedName(name));
         }
 
@@ -151,7 +147,7 @@ namespace Toolbox::Object {
         bool startAnimation(AnimationType type);
         bool stopAnimation(AnimationType type);
 
-        virtual u32 getGamePtr() const = 0;
+        virtual u32 getGamePtr() const   = 0;
         virtual void setGamePtr(u32 ptr) = 0;
 
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
@@ -234,22 +230,20 @@ namespace Toolbox::Object {
         size_t getMemberOffset(const QualifiedName &name, int index) const override;
         size_t getMemberSize(const QualifiedName &name, int index) const override;
 
-        Result<void, ObjectGroupError>
-        addChild(RefPtr<ISceneObject> child) override {
+        Result<void, ObjectGroupError> addChild(RefPtr<ISceneObject> child) override {
             ObjectGroupError err = {"Cannot add child to a non-group object.",
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
         }
 
-        Result<void, ObjectGroupError>
-        insertChild(size_t index, RefPtr<ISceneObject> child) override {
+        Result<void, ObjectGroupError> insertChild(size_t index,
+                                                   RefPtr<ISceneObject> child) override {
             ObjectGroupError err = {"Cannot add child to a non-group object.",
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
         }
 
-        Result<void, ObjectGroupError>
-        removeChild(RefPtr<ISceneObject> object) override {
+        Result<void, ObjectGroupError> removeChild(RefPtr<ISceneObject> object) override {
             ObjectGroupError err = {"Cannot remove a child from a non-group object.",
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
@@ -261,21 +255,14 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        [[nodiscard]] Result<std::vector<RefPtr<ISceneObject>>, ObjectGroupError>
-        getChildren() override {
-            ObjectGroupError err = {"Cannot get the children of a non-group object.",
-                                    std::stacktrace::current(), this};
-            return std::unexpected(err);
-        }
+        [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override { return {}; }
         [[nodiscard]] std::optional<RefPtr<ISceneObject>>
         getChild(const QualifiedName &name) override {
             return {};
         }
 
         [[nodiscard]] std::optional<Transform> getTransform() const override { return {}; }
-        Result<void, MetaError> setTransform(const Transform &transform) override {
-            return {};
-        }
+        Result<void, MetaError> setTransform(const Transform &transform) override { return {}; }
 
         [[nodiscard]] std::optional<BoundingBox> getBoundingBox() const override { return {}; }
 
@@ -295,8 +282,8 @@ namespace Toolbox::Object {
         void setIsPerforming(bool performing) {}
 
         Result<void, ObjectError> performScene(float delta_time, bool animate,
-                                                      std::vector<RenderInfo> &renderables,
-                                                      ResourceCache &resource_cache,
+                                               std::vector<RenderInfo> &renderables,
+                                               ResourceCache &resource_cache,
                                                std::vector<J3DLight> &scene_lights) override;
 
         u32 getGamePtr() const override { return m_game_ptr; }
@@ -359,17 +346,14 @@ namespace Toolbox::Object {
         friend class ObjectFactory;
 
         GroupSceneObject() : VirtualSceneObject() {
-            m_group_size =
-                make_referable<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
+            m_group_size = make_referable<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
         }
         GroupSceneObject(const Template &template_) : VirtualSceneObject(template_) {
-            m_group_size =
-                make_referable<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
+            m_group_size = make_referable<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
         }
         GroupSceneObject(const Template &template_, std::string_view wizard_name)
             : VirtualSceneObject(template_, wizard_name) {
-            m_group_size =
-                make_referable<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
+            m_group_size = make_referable<MetaMember>("GroupSize", MetaValue(static_cast<u32>(0)));
         }
         GroupSceneObject(const Template &template_, Deserializer &in)
             : GroupSceneObject(template_) {
@@ -395,15 +379,12 @@ namespace Toolbox::Object {
         [[nodiscard]] std::span<u8> getData() const override;
         [[nodiscard]] size_t getDataSize() const override;
 
-        Result<void, ObjectGroupError>
-        addChild(RefPtr<ISceneObject> child) override;
-        Result<void, ObjectGroupError>
-        insertChild(size_t index, RefPtr<ISceneObject> child) override;
-        Result<void, ObjectGroupError>
-        removeChild(RefPtr<ISceneObject> child) override;
+        Result<void, ObjectGroupError> addChild(RefPtr<ISceneObject> child) override;
+        Result<void, ObjectGroupError> insertChild(size_t index,
+                                                   RefPtr<ISceneObject> child) override;
+        Result<void, ObjectGroupError> removeChild(RefPtr<ISceneObject> child) override;
         Result<void, ObjectGroupError> removeChild(const QualifiedName &name) override;
-        [[nodiscard]] Result<std::vector<RefPtr<ISceneObject>>, ObjectGroupError>
-        getChildren() override;
+        [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override;
         [[nodiscard]] std::optional<RefPtr<ISceneObject>>
         getChild(const QualifiedName &name) override;
 
@@ -412,9 +393,9 @@ namespace Toolbox::Object {
         void setIsPerforming(bool performing) { m_is_performing = performing; }
 
         Result<void, ObjectError> performScene(float delta_time, bool animate,
-                                                      std::vector<RenderInfo> &renderables,
-                                                      ResourceCache &resource_cache,
-                                                      std::vector<J3DLight> &scene_lights) override;
+                                               std::vector<RenderInfo> &renderables,
+                                               ResourceCache &resource_cache,
+                                               std::vector<J3DLight> &scene_lights) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
@@ -463,7 +444,7 @@ namespace Toolbox::Object {
         RefPtr<MetaMember> m_group_size;
         mutable std::vector<u8> m_data;
         std::vector<RefPtr<ISceneObject>> m_children = {};
-        bool m_is_performing                                  = true;
+        bool m_is_performing                         = true;
     };
 
     class PhysicalSceneObject : public ISceneObject {
@@ -553,22 +534,20 @@ namespace Toolbox::Object {
         size_t getMemberOffset(const QualifiedName &name, int index) const override;
         size_t getMemberSize(const QualifiedName &name, int index) const override;
 
-        Result<void, ObjectGroupError>
-        addChild(RefPtr<ISceneObject> child) override {
+        Result<void, ObjectGroupError> addChild(RefPtr<ISceneObject> child) override {
             ObjectGroupError err = {"Cannot add child to a non-group object.",
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
         }
 
-        Result<void, ObjectGroupError>
-        insertChild(size_t index, RefPtr<ISceneObject> child) override {
+        Result<void, ObjectGroupError> insertChild(size_t index,
+                                                   RefPtr<ISceneObject> child) override {
             ObjectGroupError err = {"Cannot add child to a non-group object.",
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
         }
 
-        Result<void, ObjectGroupError>
-        removeChild(RefPtr<ISceneObject> object) override {
+        Result<void, ObjectGroupError> removeChild(RefPtr<ISceneObject> object) override {
             ObjectGroupError err = {"Cannot remove a child from a non-group object.",
                                     std::stacktrace::current(), this};
             return std::unexpected(err);
@@ -580,12 +559,7 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        Result<std::vector<RefPtr<ISceneObject>>, ObjectGroupError>
-        getChildren() override {
-            ObjectGroupError err = {"Cannot get the children of a non-group object.",
-                                    std::stacktrace::current(), this};
-            return std::unexpected(err);
-        }
+        std::vector<RefPtr<ISceneObject>> getChildren() override { return {}; }
         [[nodiscard]] std::optional<RefPtr<ISceneObject>>
         getChild(const QualifiedName &name) override {
             return {};
@@ -654,8 +628,8 @@ namespace Toolbox::Object {
         void setIsPerforming(bool performing) { m_is_performing = performing; }
 
         Result<void, ObjectError> performScene(float delta_time, bool animate,
-                                                      std::vector<RenderInfo> &renderables,
-                                                      ResourceCache &resource_cache,
+                                               std::vector<RenderInfo> &renderables,
+                                               ResourceCache &resource_cache,
                                                std::vector<J3DLight> &scene_lights) override;
 
         u32 getGamePtr() const override { return m_game_ptr; }
@@ -671,8 +645,8 @@ namespace Toolbox::Object {
         void applyWizard(const TemplateWizard &wizard);
 
         Result<void, FSError> loadRenderData(const std::filesystem::path &asset_path,
-                                                    const TemplateRenderInfo &info,
-                                                    ResourceCache &resource_cache);
+                                             const TemplateRenderInfo &info,
+                                             ResourceCache &resource_cache);
 
     public:
         // Inherited via ISerializable

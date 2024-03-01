@@ -20,11 +20,13 @@ namespace Toolbox::UI {
 
     template <typename _DataT> class ContextMenu {
     public:
-        using operator_t = std::function<void(_DataT)>;
+        using operator_t  = std::function<void(_DataT)>;
+        using condition_t = std::function<bool()>;
 
         struct ContextOp {
             std::string m_name;
             std::vector<int> m_keybind;
+            condition_t m_condition;
             operator_t m_op;
             bool m_keybind_used = false;
         };
@@ -34,6 +36,12 @@ namespace Toolbox::UI {
 
         void addOption(std::string_view label, std::vector<int> keybind, operator_t op);
         void addOption(std::string_view label, std::initializer_list<int> keybind, operator_t op);
+
+        void addOption(std::string_view label, std::vector<int> keybind, condition_t condition,
+                       operator_t op);
+        void addOption(std::string_view label, std::initializer_list<int> keybind,
+                       condition_t condition, operator_t op);
+
         void addDivider();
 
         void render(std::optional<std::string> label, _DataT ctx);
@@ -49,14 +57,41 @@ namespace Toolbox::UI {
     template <typename _DataT>
     inline void ContextMenu<_DataT>::addOption(std::string_view name, std::vector<int> keybind,
                                                operator_t op) {
-        ContextOp option = {.m_name = std::string(name), .m_keybind = keybind, .m_op = op};
+        ContextOp option = {.m_name      = std::string(name),
+                            .m_keybind   = keybind,
+                            .m_condition = []() { return true; },
+                            .m_op        = op};
         m_options.push_back(option);
     }
 
     template <typename _DataT>
     inline void ContextMenu<_DataT>::addOption(std::string_view name,
                                                std::initializer_list<int> keybind, operator_t op) {
-        ContextOp option = {.m_name = std::string(name), .m_keybind = keybind, .m_op = op};
+        ContextOp option = {.m_name      = std::string(name),
+                            .m_keybind   = keybind,
+                            .m_condition = []() { return true; },
+                            .m_op        = op};
+        m_options.push_back(option);
+    }
+
+    template <typename _DataT>
+    inline void ContextMenu<_DataT>::addOption(std::string_view name, std::vector<int> keybind,
+                                               condition_t condition, operator_t op) {
+        ContextOp option = {.m_name      = std::string(name),
+                            .m_keybind   = keybind,
+                            .m_condition = condition,
+                            .m_op        = op};
+        m_options.push_back(option);
+    }
+
+    template <typename _DataT>
+    inline void ContextMenu<_DataT>::addOption(std::string_view name,
+                                               std::initializer_list<int> keybind,
+                                               condition_t condition, operator_t op) {
+        ContextOp option = {.m_name      = std::string(name),
+                            .m_keybind   = keybind,
+                            .m_condition = condition,
+                            .m_op        = op};
         m_options.push_back(option);
     }
 
@@ -73,6 +108,10 @@ namespace Toolbox::UI {
 
         for (size_t i = 0; i < m_options.size(); ++i) {
             ContextOp &option = m_options.at(i);
+            if (!option.m_condition()) {
+                continue;
+            }
+
             if (m_dividers.find(i) != m_dividers.end()) {
                 ImGui::Separator();
             }

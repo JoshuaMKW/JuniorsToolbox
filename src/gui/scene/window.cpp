@@ -2,10 +2,14 @@
 #define _USE_MATH_DEFINES
 #endif
 
+#include <algorithm>
 #include <cmath>
+#include <execution>
+#include <vector>
 
 #include "core/application.hpp"
 #include "core/log.hpp"
+#include "core/timing.hpp"
 
 #include "gui/IconsForkAwesome.h"
 #include "gui/font.hpp"
@@ -76,9 +80,12 @@ namespace Toolbox::UI {
     }
     */
 
+    static std::unordered_set<std::string> s_game_blacklist = {"Map", "Sky"};
+
     static std::string getNodeUID(RefPtr<Toolbox::Object::ISceneObject> node) {
         std::string node_name =
-            std::format("{} ({}) [{:08X}]###{}", node->type(), node->getNameRef().name(), node->getGamePtr(), node->getUUID());
+            std::format("{} ({}) [{:08X}]###{}", node->type(), node->getNameRef().name(),
+                        node->getGamePtr(), node->getUUID());
         return node_name;
     }
 
@@ -93,12 +100,12 @@ namespace Toolbox::UI {
         return node_name;
     }
 
-    SceneWindow::~SceneWindow() { m_communicator.kill(); }
+    SceneWindow::~SceneWindow() = default;
 
     SceneWindow::SceneWindow() : DockWindow() {
         m_properties_render_handler = renderEmptyProperties;
 
-        m_communicator.start();
+        m_communicator.tStart(true, nullptr);
 
         buildContextMenuVirtualObj();
         buildContextMenuGroupObj();
@@ -177,6 +184,10 @@ namespace Toolbox::UI {
 
     bool SceneWindow::update(f32 delta_time) {
         bool inputState = m_renderer.inputUpdate(delta_time);
+
+        if (Input::GetKeyDown(GLFW_KEY_E)) {
+            m_is_game_edit_mode ^= true;
+        }
 
         std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
         for (auto &rail : m_current_scene->getRailData().rails()) {
@@ -343,31 +354,36 @@ namespace Toolbox::UI {
     }
 
     bool SceneWindow::postUpdate(f32 delta_time) {
-        if (!m_renderer.isGizmoManipulated()) {
-            return true;
+        if (m_renderer.isGizmoManipulated() && m_hierarchy_selected_nodes.size() > 0) {
+            glm::mat4x4 gizmo_transform = m_renderer.getGizmoTransform();
+            Transform obj_transform;
+
+            ImGuizmo::DecomposeMatrixToComponents(
+                glm::value_ptr(gizmo_transform), glm::value_ptr(obj_transform.m_translation),
+                glm::value_ptr(obj_transform.m_rotation), glm::value_ptr(obj_transform.m_scale));
+
+            // RefPtr<ISceneObject> obj = m_hierarchy_selected_nodes[0].m_selected;
+            // BoundingBox obj_old_bb            = obj->getBoundingBox().value();
+            // Transform obj_old_transform       = obj->getTransform().value();
+
+            //// Since the translation is for the gizmo, offset it back to the actual transform
+            // obj_transform.m_translation = obj_old_transform.m_translation + (translation -
+            // obj_old_bb.m_center);
+
+            RefPtr<PhysicalSceneObject> object =
+                ref_cast<PhysicalSceneObject>(m_hierarchy_selected_nodes[0].m_selected);
+            m_hierarchy_selected_nodes[0].m_selected->setTransform(obj_transform);
         }
 
-        // TODO: update all selected objects based on Gizmo
-        if (m_hierarchy_selected_nodes.size() == 0) {
-            return true;
+        if (m_is_game_edit_mode) {
+            for (auto &renderable : m_renderables) {
+                if (s_game_blacklist.contains(renderable.m_object->type())) {
+                    continue;
+                }
+                m_communicator.setObjectTransform(
+                    ref_cast<PhysicalSceneObject>(renderable.m_object), renderable.m_transform);
+            }
         }
-
-        glm::mat4x4 gizmo_transform = m_renderer.getGizmoTransform();
-        Transform obj_transform;
-
-        ImGuizmo::DecomposeMatrixToComponents(
-            glm::value_ptr(gizmo_transform), glm::value_ptr(obj_transform.m_translation),
-            glm::value_ptr(obj_transform.m_rotation), glm::value_ptr(obj_transform.m_scale));
-
-        // RefPtr<ISceneObject> obj = m_hierarchy_selected_nodes[0].m_selected;
-        // BoundingBox obj_old_bb            = obj->getBoundingBox().value();
-        // Transform obj_old_transform       = obj->getTransform().value();
-
-        //// Since the translation is for the gizmo, offset it back to the actual transform
-        // obj_transform.m_translation = obj_old_transform.m_translation + (translation -
-        // obj_old_bb.m_center);
-
-        m_hierarchy_selected_nodes[0].m_selected->setTransform(obj_transform);
 
         m_update_render_objs = true;
         return true;
@@ -476,10 +492,8 @@ namespace Toolbox::UI {
             if (is_filtered_out) {
                 auto objects = std::static_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
                                    ->getChildren();
-                if (objects.has_value()) {
-                    for (auto object : objects.value()) {
-                        renderTree(object);
-                    }
+                for (auto &object : objects) {
+                    renderTree(object);
                 }
             } else {
                 if (node_visibility) {
@@ -525,10 +539,8 @@ namespace Toolbox::UI {
                 if (node_open) {
                     auto objects = std::static_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
                                        ->getChildren();
-                    if (objects.has_value()) {
-                        for (auto object : objects.value()) {
-                            renderTree(object);
-                        }
+                    for (auto &object : objects) {
+                        renderTree(object);
                     }
                     ImGui::TreePop();
                 }
@@ -775,24 +787,36 @@ namespace Toolbox::UI {
         return is_updated;
     }
 
-    static void recursiveAssignActorPtrs(Game::TaskCommunicator &communicator,
-                                         RefPtr<ISceneObject> actor, u32 param) {
-        communicator.taskFindActorPtr(actor,
-                                      [actor](u32 actor_ptr) { actor->setGamePtr(actor_ptr); });
-        if (actor->isGroupObject()) {
-            auto root_children = actor->getChildren().value();
-            for (auto &child : root_children) {
-                recursiveAssignActorPtrs(communicator, child, param);
-            }
+    static void recursiveFlattenActorTree(RefPtr<ISceneObject> actor,
+                                          std::vector<RefPtr<ISceneObject>> &out) {
+        out.push_back(actor);
+        for (auto &child : actor->getChildren()) {
+            recursiveFlattenActorTree(child, out);
         }
     }
 
+    static void recursiveAssignActorPtrs(Game::TaskCommunicator &communicator,
+                                         std::vector<RefPtr<ISceneObject>> objects) {
+        std::for_each(std::execution::par, objects.begin(), objects.end(),
+                      [&communicator](RefPtr<ISceneObject> object) {
+                          u32 actor_ptr = communicator.getActorPtr(object);
+                          object->setGamePtr(actor_ptr);
+                          if (actor_ptr == 0) {
+                              TOOLBOX_WARN_V("[Scene] Failed to find ptr for object \"{}\"",
+                                             object->getNameRef().name());
+                          } else {
+                              TOOLBOX_INFO_V("[Scene] Found ptr for object \"{}\" at 0x{:08X}",
+                                             object->getNameRef().name(), actor_ptr);
+                          }
+                      });
+    }
+
     void SceneWindow::reassignAllActorPtrs(u32 param) {
-        RefPtr<GroupSceneObject> root = m_current_scene->getObjHierarchy().getRoot();
-        auto root_children            = root->getChildren().value();
-        for (auto &child : root_children) {
-            recursiveAssignActorPtrs(m_communicator, child, param);
-        }
+        RefPtr<ISceneObject> root = m_current_scene->getObjHierarchy().getRoot();
+        std::vector<RefPtr<ISceneObject>> objects;
+        recursiveFlattenActorTree(root, objects);
+        double timing = Timing::measure(recursiveAssignActorPtrs, m_communicator, objects);
+        TOOLBOX_INFO_V("[SCENE] Acquired all actor ptrs in {} seconds", timing);
     }
 
     void SceneWindow::renderRailEditor() {
@@ -939,7 +963,7 @@ namespace Toolbox::UI {
 
         // perhaps find a way to limit this so it only happens when we need to re-render?
         if (m_current_scene != nullptr) {
-            if (m_update_render_objs) {
+            if (m_update_render_objs || !settings.m_is_rendering_simple) {
                 m_renderables.clear();
                 auto perform_result = m_current_scene->getObjHierarchy().getRoot()->performScene(
                     delta_time, !settings.m_is_rendering_simple, m_renderables, m_resource_cache,
@@ -949,11 +973,6 @@ namespace Toolbox::UI {
                     logObjectError(error);
                 }
                 m_update_render_objs = false;
-                m_renderer.markDirty();
-            } else if (!settings.m_is_rendering_simple) {
-                for (auto &renderable : m_renderables) {
-                    renderable.m_model->UpdateAnimations(delta_time);
-                }
                 m_renderer.markDirty();
             }
         }
@@ -975,74 +994,93 @@ namespace Toolbox::UI {
 
             m_renderer.render(m_renderables, delta_time);
 
-            float window_bar_height =
-                ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
-            ImGui::SetCursorPos({0, window_bar_height + 10});
-
-            const ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
-            const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
-
-            const ImVec2 window_size = ImGui::GetWindowSize();
-            ImVec2 cmd_button_size   = ImGui::CalcTextSize(ICON_FK_UNDO) + frame_padding;
-            cmd_button_size.x        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.5f;
-            cmd_button_size.y        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.f;
-
-            bool is_dolphin_running = DolphinHookManager::instance().isProcessRunning();
-            if (is_dolphin_running) {
-                ImGui::BeginDisabled();
-            }
-
-            ImGui::PushStyleColor(ImGuiCol_Button, {0.1f, 0.35f, 0.1f, 0.9f});
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.2f, 0.7f, 0.2f, 0.9f});
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.7f, 0.2f, 1.0f});
-
-            ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
-            if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
-                DolphinHookManager::instance().startProcess();
-                m_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
-            }
-
-            ImGui::PopStyleColor(3);
-
-            if (is_dolphin_running) {
-                ImGui::EndDisabled();
-            }
-
-            ImGui::SameLine();
-
-            ImGui::PushStyleColor(ImGuiCol_Button, {0.35f, 0.1f, 0.1f, 0.9f});
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.7f, 0.2f, 0.2f, 0.9f});
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.7f, 0.2f, 0.2f, 1.0f});
-
-            if (!is_dolphin_running) {
-                ImGui::BeginDisabled();
-            }
-
-            ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 + cmd_button_size.x);
-            if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size)) {
-                DolphinHookManager::instance().stopProcess();
-            }
-
-            ImGui::PopStyleColor(3);
-
-            ImGui::SameLine();
-
-            ImGui::PushStyleColor(ImGuiCol_Button, {0.1f, 0.2f, 0.4f, 0.9f});
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.2f, 0.4f, 0.8f, 0.9f});
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.4f, 0.8f, 1.0f});
-
-            ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
-            if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size)) {
-                m_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
-            }
-
-            ImGui::PopStyleColor(3);
-
-            if (!is_dolphin_running) {
-                ImGui::EndDisabled();
-            }
+            renderScenePeripherals(delta_time);
+            renderPlaybackButtons(delta_time);
         }
         ImGui::End();
+    }
+
+    void SceneWindow::renderPlaybackButtons(f32 delta_time) {
+        float window_bar_height =
+            ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
+        ImGui::SetCursorPos({0, window_bar_height + 10});
+
+        const ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
+        const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
+
+        const ImVec2 window_size = ImGui::GetWindowSize();
+        ImVec2 cmd_button_size   = ImGui::CalcTextSize(ICON_FK_UNDO) + frame_padding;
+        cmd_button_size.x        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.5f;
+        cmd_button_size.y        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.f;
+
+        bool is_dolphin_running = DolphinHookManager::instance().isProcessRunning();
+        if (is_dolphin_running) {
+            ImGui::BeginDisabled();
+        }
+
+        ImGui::PushStyleColor(ImGuiCol_Button, {0.1f, 0.35f, 0.1f, 0.9f});
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.2f, 0.7f, 0.2f, 0.9f});
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.7f, 0.2f, 1.0f});
+
+        ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
+        if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
+            DolphinHookManager::instance().startProcess();
+            m_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        }
+
+        ImGui::PopStyleColor(3);
+
+        if (is_dolphin_running) {
+            ImGui::EndDisabled();
+        }
+
+        ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, {0.35f, 0.1f, 0.1f, 0.9f});
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.7f, 0.2f, 0.2f, 0.9f});
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.7f, 0.2f, 0.2f, 1.0f});
+
+        if (!is_dolphin_running) {
+            ImGui::BeginDisabled();
+        }
+
+        ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 + cmd_button_size.x);
+        if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size)) {
+            DolphinHookManager::instance().stopProcess();
+        }
+
+        ImGui::PopStyleColor(3);
+
+        ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, {0.1f, 0.2f, 0.4f, 0.9f});
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.2f, 0.4f, 0.8f, 0.9f});
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.4f, 0.8f, 1.0f});
+
+        ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
+        if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size)) {
+            m_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        }
+
+        ImGui::PopStyleColor(3);
+
+        if (!is_dolphin_running) {
+            ImGui::EndDisabled();
+        }
+    }
+
+    void SceneWindow::renderScenePeripherals(f32 delta_time) {
+        float window_bar_height =
+            ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
+        ImGui::SetCursorPos({0, window_bar_height + 10});
+
+        const ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
+        const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
+
+        ImGui::SetCursorPosX(window_padding.x);
+        if (ImGui::Button(m_is_game_edit_mode ? "Game: Edit Mode" : "Game: View Mode")) {
+            m_is_game_edit_mode ^= true;
+        }
     }
 
     void SceneWindow::renderDolphin(f32 delta_time) {
@@ -1071,6 +1109,8 @@ namespace Toolbox::UI {
                         (ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight())};
                 ImGui::Image((ImTextureID)m_dolphin_texture_id, render_size);
             }
+
+            renderPlaybackButtons(delta_time);
         }
         ImGui::End();
     }  // namespace Toolbox::UI
@@ -1158,7 +1198,7 @@ namespace Toolbox::UI {
                     return;
                 }
                 std::vector<std::string> sibling_names;
-                auto children = std::move(this_parent->getChildren().value());
+                auto children = this_parent->getChildren();
                 for (auto &child : children) {
                     sibling_names.push_back(std::string(child->getNameRef().name()));
                 }
@@ -1241,7 +1281,7 @@ namespace Toolbox::UI {
                     return;
                 }
                 std::vector<std::string> sibling_names;
-                auto children = std::move(this_parent->getChildren().value());
+                auto children = this_parent->getChildren();
                 for (auto &child : children) {
                     sibling_names.push_back(std::string(child->getNameRef().name()));
                 }
@@ -1388,7 +1428,7 @@ namespace Toolbox::UI {
                     return;
                 }
                 std::vector<std::string> sibling_names;
-                auto children = std::move(this_parent->getChildren().value());
+                auto children = this_parent->getChildren();
                 for (auto &child : children) {
                     sibling_names.push_back(std::string(child->getNameRef().name()));
                 }
@@ -1426,6 +1466,28 @@ namespace Toolbox::UI {
                 m_update_render_objs = true;
                 return;
             });
+
+        m_hierarchy_physical_node_menu.addDivider();
+
+        m_hierarchy_physical_node_menu.addOption(
+            "Set to Player", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_LEFT_ALT, GLFW_KEY_P},
+            [this]() { return m_communicator.isSceneLoaded(); },
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_communicator.setObjectTransformToMario(
+                    ref_cast<PhysicalSceneObject>(info.m_selected));
+                m_update_render_objs = true;
+                return;
+            });
+
+        m_hierarchy_physical_node_menu.addOption(
+            "Set to Player Pos", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_LEFT_ALT, GLFW_KEY_P},
+            [this]() { return m_communicator.isSceneLoaded(); },
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_communicator.setObjectTranslationToMario(
+                    ref_cast<PhysicalSceneObject>(info.m_selected));
+                m_update_render_objs = true;
+                return;
+            });
     }
 
     void SceneWindow::buildContextMenuMultiObj() {
@@ -1456,7 +1518,7 @@ namespace Toolbox::UI {
                         return;
                     }
                     std::vector<std::string> sibling_names;
-                    auto children = std::move(this_parent->getChildren().value());
+                    auto children = this_parent->getChildren();
                     for (auto &child : children) {
                         sibling_names.push_back(std::string(child->getNameRef().name()));
                     }

@@ -11,11 +11,19 @@
 #include "dolphin/hook.hpp"
 
 #include "gui/logging/errors.hpp"
+#include "gui/settings.hpp"
 
 using namespace Toolbox;
 using namespace Toolbox::UI;
 
 namespace Toolbox::Dolphin {
+
+    inline std::chrono::milliseconds GetSleepDuration(f32 framerate) {
+        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+        return std::min(
+            std::chrono::milliseconds(settings.m_dolphin_refresh_rate),
+            std::chrono::milliseconds(static_cast<u32>(1000 / framerate)));
+    }
 
     class DolphinCommunicator {
     public:
@@ -68,7 +76,7 @@ namespace Toolbox::Dolphin {
             return DolphinHookManager::instance().readBytes(buf, address, size);
         }
 
-        Result<void> writeBytes(const char* buf, u32 address, size_t size) {
+        Result<void> writeBytes(const char *buf, u32 address, size_t size) {
             return DolphinHookManager::instance().writeBytes(buf, address, size);
         }
 

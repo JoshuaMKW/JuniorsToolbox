@@ -111,9 +111,7 @@ namespace Toolbox::Dolphin {
             "-e {}/sys/main.dol -d -c -a HLE", application.getProjectRoot().string());
 
         auto process_result = Platform::CreateExProcess(
-            settings.m_dolphin_path,
-            "-e C:/Users/Kyler-Josh/Dropbox/Master_Builds/Eclipse_Master/sys/main.dol -d -c -a "
-            "HLE");
+            settings.m_dolphin_path, dolphin_args);
         if (!process_result) {
             return std::unexpected(process_result.error());
         }

@@ -5,6 +5,8 @@
 #include <mutex>
 #include <thread>
 
+#include <imgui.h>
+
 #include "core/core.hpp"
 #include "core/types.hpp"
 

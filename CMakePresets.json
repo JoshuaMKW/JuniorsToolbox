@@ -32,6 +32,14 @@
       }
     },
     {
+      "name": "x64-release-deb",
+      "displayName": "x64 ReleaseDeb",
+      "inherits": "x64-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
       "name": "x64-release",
       "displayName": "x64 Release",
       "inherits": "x64-debug",
