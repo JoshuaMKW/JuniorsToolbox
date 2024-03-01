@@ -10,6 +10,7 @@
 // Copyright 2018 Dolphin Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <algorithm>
 #include <array>
 #include <limits>
 
@@ -1869,10 +1870,10 @@ namespace Toolbox::Interpreter {
 
         const U conv_ps0 = U(ScaleAndClamp<T>(ps0, st_scale));
         if (instW) {
-            WriteUnpaired<U>(mmu, conv_ps0, addr);
+            WriteUnpaired<U>(storage, conv_ps0, addr);
         } else {
             const U conv_ps1 = U(ScaleAndClamp<T>(ps1, st_scale));
-            WritePair<U>(mmu, conv_ps0, conv_ps1, addr);
+            WritePair<U>(storage, conv_ps0, conv_ps1, addr);
         }
     }
 
@@ -1932,11 +1933,11 @@ namespace Toolbox::Interpreter {
 
         float ps0, ps1;
         if (instW != 0) {
-            const U value = ReadUnpaired<U>(mmu, addr);
+            const U value = ReadUnpaired<U>(storage, addr);
             ps0           = float(T(value)) * m_dequantizeTable[ld_scale];
             ps1           = 1.0f;
         } else {
-            const auto [first, second] = ReadPair<U>(mmu, addr);
+            const auto [first, second] = ReadPair<U>(storage, addr);
             ps0                        = float(T(first)) * m_dequantizeTable[ld_scale];
             ps1                        = float(T(second)) * m_dequantizeTable[ld_scale];
         }

@@ -70,11 +70,11 @@ namespace Toolbox::Interpreter {
     protected:
         void evalLoop();
         void evaluateInstruction();
-        u32 evaluatePairedSingleSubOp(u32 instr);
-        u32 evaluateControlFlowSubOp(u32 instr);
-        u32 evaluateFixedSubOp(u32 instr);
-        u32 evaluateFloatSingleSubOp(u32 instr);
-        u32 evaluateFloatSubOp(u32 instr);
+        Register::PC evaluatePairedSingleSubOp(u32 instr);
+        Register::PC evaluateControlFlowSubOp(u32 instr);
+        Register::PC evaluateFixedSubOp(u32 instr);
+        Register::PC evaluateFloatSingleSubOp(u32 instr);
+        Register::PC evaluateFloatSubOp(u32 instr);
 
         void internalReturnCB() {
             // If the LR matches the sentinel we know we've returned from

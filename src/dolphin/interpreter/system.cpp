@@ -249,7 +249,7 @@ namespace Toolbox::Interpreter {
         m_system_proc.m_pc = next_instruction;
     }
 
-    u32 SystemDolphin::evaluatePairedSingleSubOp(u32 inst) {
+    Register::PC SystemDolphin::evaluatePairedSingleSubOp(u32 inst) {
         TableSubOpcode4 sub_op = (TableSubOpcode4)FORM_XO_5(inst);
         switch (sub_op) {
         case TableSubOpcode4::PS_CMPU0:
@@ -328,7 +328,7 @@ namespace Toolbox::Interpreter {
         return m_system_proc.m_pc + 4;
     }
 
-    u32 SystemDolphin::evaluateControlFlowSubOp(u32 inst) {
+    Register::PC SystemDolphin::evaluateControlFlowSubOp(u32 inst) {
         Register::PC next_instruction = m_system_proc.m_pc + 4;
 
         TableSubOpcode19 sub_op = (TableSubOpcode19)FORM_XO_9(inst);
@@ -381,7 +381,7 @@ namespace Toolbox::Interpreter {
         return next_instruction;
     }
 
-    u32 SystemDolphin::evaluateFixedSubOp(u32 inst) {
+    Register::PC SystemDolphin::evaluateFixedSubOp(u32 inst) {
         TableSubOpcode31 sub_op = (TableSubOpcode31)FORM_XO_9(inst);
         switch (sub_op) {
         case TableSubOpcode31::ADD:
@@ -724,7 +724,7 @@ namespace Toolbox::Interpreter {
         return m_system_proc.m_pc + 4;
     }
 
-    u32 SystemDolphin::evaluateFloatSingleSubOp(u32 inst) {
+    Register::PC SystemDolphin::evaluateFloatSingleSubOp(u32 inst) {
         TableSubOpcode59 sub_op = (TableSubOpcode59)FORM_XO_5(inst);
         switch (sub_op) {
         case TableSubOpcode59::FDIVS:
@@ -775,7 +775,7 @@ namespace Toolbox::Interpreter {
         return m_system_proc.m_pc + 4;
     }
 
-    u32 SystemDolphin::evaluateFloatSubOp(u32 inst) {
+    Register::PC SystemDolphin::evaluateFloatSubOp(u32 inst) {
         TableSubOpcode63 sub_op = (TableSubOpcode63)FORM_XO_5(inst);
         switch (sub_op) {
         case TableSubOpcode63::FCMPU:
