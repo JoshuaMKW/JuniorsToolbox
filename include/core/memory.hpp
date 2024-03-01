@@ -30,18 +30,13 @@ namespace Toolbox {
         using byte_t = u8;
 
         Buffer() = default;
-        Buffer(const Buffer &other) {
-            m_buf  = new u8[other.m_size];
-            m_size = other.m_size;
-            m_owns_buf = true;
-            memcpy(m_buf, other.m_buf, other.m_size);
-        }
+        Buffer(const Buffer &other) { other.copyTo(*this); }
         Buffer(Buffer &&other) noexcept {
-            m_buf        = std::move(other.m_buf);
-            m_size       = other.m_size;
-            m_owns_buf   = other.m_owns_buf;
-            other.m_buf  = nullptr;
-            other.m_size = 0;
+            m_buf            = std::move(other.m_buf);
+            m_size           = other.m_size;
+            m_owns_buf       = other.m_owns_buf;
+            other.m_buf      = nullptr;
+            other.m_size     = 0;
             other.m_owns_buf = false;
         }
         ~Buffer() { free(); }
@@ -55,6 +50,13 @@ namespace Toolbox {
                 m_size = size;
             m_owns_buf = true;
             return m_buf != nullptr;
+        }
+
+        bool copyTo(Buffer &other) const {
+            if (!other.alloc(m_size))
+                return false;
+            memcpy(other.m_buf, m_buf, m_size);
+            return true;
         }
 
         bool initTo(char fill) {
@@ -94,7 +96,7 @@ namespace Toolbox {
         void setBuf(void *buf, size_t size) {
             if (m_buf != buf) {
                 free();
-                m_buf = buf;
+                m_buf      = buf;
                 m_owns_buf = false;
             }
             m_size = size;
@@ -133,11 +135,21 @@ namespace Toolbox {
             return ((byte_t *)m_buf)[index];
         }
 
+        Buffer &operator=(Buffer &&other) noexcept {
+            m_buf            = std::move(other.m_buf);
+            m_size           = other.m_size;
+            m_owns_buf       = other.m_owns_buf;
+            other.m_buf      = nullptr;
+            other.m_size     = 0;
+            other.m_owns_buf = false;
+            return *this;
+        }
+
         bool operator==(const Buffer &other) { return m_buf == other.m_buf; }
 
     private:
-        void *m_buf   = nullptr;
-        size_t m_size = 0;
+        void *m_buf     = nullptr;
+        size_t m_size   = 0;
         bool m_owns_buf = true;
     };
 

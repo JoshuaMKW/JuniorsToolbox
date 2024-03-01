@@ -22,6 +22,14 @@ namespace Toolbox::Interpreter {
         // Use this when you want to evaluate directly upon Dolphin's memory
         explicit SystemDolphin(const Dolphin::DolphinCommunicator &);
 
+        SystemDolphin(const SystemDolphin &);
+        SystemDolphin(SystemDolphin &&) noexcept;
+
+        static SystemDolphin CreateDetached();
+
+        SystemDolphin &operator=(SystemDolphin &&other) noexcept;
+
+    public:
         Register::RegisterSnapshot evaluateFunction(u32 function_ptr, u8 gpr_argc, u32 *gpr_argv,
                                                     u8 fpr_argc, f64 *fpr_argv);
 
@@ -36,6 +44,9 @@ namespace Toolbox::Interpreter {
         void onInvalid(func_invalid_cb cb) { m_system_invalid_cb = cb; }
 
         void applyMemory(const void *buf, size_t size) {
+            if (!m_storage) {
+                m_storage.alloc(size);
+            }
             std::memcpy(m_storage.buf<void>(), buf, size);
         }
 

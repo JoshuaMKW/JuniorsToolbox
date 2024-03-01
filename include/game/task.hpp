@@ -13,6 +13,7 @@
 #include "dolphin/process.hpp"
 #include "gui/scene/camera.hpp"
 #include "objlib/object.hpp"
+using namespace Toolbox::Dolphin;
 
 using namespace Toolbox;
 
@@ -84,6 +85,10 @@ namespace Toolbox::Game {
         constexpr s16 convertAngleFloatToS16(f32 angle) {
             return static_cast<s16>(angle * 182.04445f);
         }
+
+        void listForEach(u32 list_ptr, std::function<void(DolphinCommunicator &, u32, u32)> fn);
+        void vectorForEach(u32 list_ptr, size_t item_size,
+                           std::function<void(DolphinCommunicator &, u32)> fn);
 
     private:
         Interpreter::SystemDolphin m_game_interpreter;

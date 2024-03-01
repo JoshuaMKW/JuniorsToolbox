@@ -1470,7 +1470,7 @@ namespace Toolbox::UI {
         m_hierarchy_physical_node_menu.addDivider();
 
         m_hierarchy_physical_node_menu.addOption(
-            "Set to Player", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_LEFT_ALT, GLFW_KEY_P},
+            "Copy Player Transform", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_LEFT_ALT, GLFW_KEY_P},
             [this]() { return m_communicator.isSceneLoaded(); },
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_communicator.setObjectTransformToMario(
@@ -1480,7 +1480,7 @@ namespace Toolbox::UI {
             });
 
         m_hierarchy_physical_node_menu.addOption(
-            "Set to Player Pos", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_LEFT_ALT, GLFW_KEY_P},
+            "Copy Player Position", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_LEFT_ALT, GLFW_KEY_P},
             [this]() { return m_communicator.isSceneLoaded(); },
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_communicator.setObjectTranslationToMario(

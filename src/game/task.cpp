@@ -57,8 +57,7 @@ namespace Toolbox::Game {
             DolphinCommunicator &communicator =
                 MainApplication::instance().getDolphinCommunicator();
 
-            /*m_game_interpreter.setMemoryBuffer(communicator.manager().getMemoryView(),
-                                               communicator.manager().getMemorySize());*/
+            m_game_interpreter = Interpreter::SystemDolphin(communicator);
 
             // Dismiss tasks if disconnected to avoid errors
             while (!m_task_queue.empty()) {
@@ -77,7 +76,35 @@ namespace Toolbox::Game {
         m_kill_condition.notify_all();
     }
 
+    void TaskCommunicator::listForEach(u32 list_ptr,
+                                       std::function<void(DolphinCommunicator &, u32, u32)> fn) {
+        TOOLBOX_ASSERT(fn, "Must provide a callback to listForEach!");
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+        u32 list_it                       = communicator.read<u32>(list_ptr + 0x8).value();
+        u32 list_end                      = list_ptr + 0x8;
+        while (list_it && list_it != list_end) {
+            u32 item_ptr = communicator.read<u32>(list_it + 0x8).value();
+            fn(communicator, list_it, item_ptr);
+            list_it = communicator.read<u32>(list_it).value();
+        }
+    }
+
+    void TaskCommunicator::vectorForEach(u32 vector_ptr, size_t item_size,
+                                         std::function<void(DolphinCommunicator &, u32)> fn) {
+        TOOLBOX_ASSERT(fn, "Must provide a callback to vectorForEach!");
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+        u32 vector_it                     = communicator.read<u32>(vector_ptr + 0x4).value();
+        u32 vector_end                    = communicator.read<u32>(vector_ptr + 0x8).value();
+        while (vector_it != vector_end) {
+            fn(communicator, vector_it);
+            vector_it += item_size;
+        }
+    }
+
     u32 TaskCommunicator::getActorPtr(RefPtr<ISceneObject> actor) {
+        if (u32 actor_ptr = actor->getGamePtr())
+            return actor_ptr;
+
         if (!isSceneLoaded()) {
             return 0;
         }
@@ -281,154 +308,102 @@ namespace Toolbox::Game {
     Result<void> TaskCommunicator::taskAddSceneObject(RefPtr<ISceneObject> object,
                                                       RefPtr<GroupSceneObject> parent,
                                                       transact_complete_cb complete_cb) {
-        return submitTask(
-            [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object,
-                RefPtr<GroupSceneObject> parent, transact_complete_cb cb) {
-                // Early exit to avoid errors
-                if (!communicator.manager().isHooked()) {
-                    return false;
-                }
+        u32 parent_ptr = getActorPtr(parent);
+        if (parent_ptr == 0) {
+            return make_error<void>(
+                "Task", "Failed to add object to game scene since parent isn't in game scene!");
+        }
 
-                u32 comm_state = communicator.read<u32>(0x80000298).value();
+        if (parent->type() != "IdxGroup") {
+            return make_error<void>(
+                "Task", "Failed to add object to game scene since parent isn't IdxGroup!");
+        }
 
-                // Check if already communicated
-                if ((comm_state & BIT(30))) {
-                    // If so, check for response
-                    ETask task = (ETask)communicator.read<u32>(0x800002E0).value();
-                    if (task == ETask::NONE) {
-                        communicator.write<u32>(0x80000298, comm_state & ~BIT(30));
+        listForEach(parent_ptr + 0x10, [&](DolphinCommunicator &communicator, u32 iter_ptr, u32 item_ptr) {
 
-                        u32 response_buffer_address = communicator.read<u32>(0x800002E8).value();
-                        if (response_buffer_address != 0) {
-                            u32 obj_addr = communicator.read<u32>(response_buffer_address).value();
-                            m_actor_address_map[object->getUUID()] = obj_addr;
-                            if (cb)
-                                cb(obj_addr);
-                        } else {
-                            if (cb)
-                                cb(0);
-                        }
+        });
 
-                        return true;
-                    } else {
-                        return false;
-                    }
-                }
-
-                u32 request_buffer_address = communicator.read<u32>(0x800002E4).value();
-                if (request_buffer_address == 0) {
-                    return true;
-                }
-
-                // Lock access
-                communicator.write<u32>(0x80000298, comm_state | BIT(30));
-
-                // Write cmd type
-                communicator.write<u32>(0x800002E0, (u32)ETask::CREATE_NAMEREF);
-
-                Buffer request_buffer;
-                request_buffer.alloc(0x10000);
-                request_buffer.initTo(0);
-
-                {
-                    char *internal_buf = request_buffer.buf<char>();
-
-                    std::string _type = parent->type();
-                    strncpy_s(internal_buf, _type.size() + 1, _type.c_str(), _type.size() + 1);
-
-                    NameRef nameref           = parent->getNameRef();
-                    std::string shift_jis_ref = String::toGameEncoding(nameref.name()).value();
-
-                    strncpy_s(internal_buf + 0x80, shift_jis_ref.size() + 1, shift_jis_ref.data(),
-                              shift_jis_ref.size() + 1);
-
-                    std::span<u8> obj_data = object->getData();
-                    memcpy_s(internal_buf + 0x200, obj_data.size() + 1, obj_data.data(),
-                             obj_data.size() + 1);
-                }
-
-                communicator.writeBytes(request_buffer.buf<char>(), request_buffer_address,
-                                        request_buffer.size());
-
-                return false;
-            },
-            object, parent, complete_cb);
+        return {};
     }
 
     Result<void> TaskCommunicator::taskRemoveSceneObject(RefPtr<ISceneObject> object,
                                                          RefPtr<GroupSceneObject> parent,
                                                          transact_complete_cb complete_cb) {
-        return submitTask(
-            [&](Dolphin::DolphinCommunicator &communicator, RefPtr<ISceneObject> object,
-                RefPtr<GroupSceneObject> parent, transact_complete_cb cb) {
-                // Early exit to avoid errors
-                if (!communicator.manager().isHooked()) {
-                    return false;
+        if (!isSceneLoaded())
+            return make_error<void>(
+                "Task", "Failed to remove object from game scene (Scene isn't loaded)!");
+
+        u32 obj_ptr = getActorPtr(object);
+        if (obj_ptr == 0) {
+            return {};
+        }
+
+        u32 parent_ptr = getActorPtr(parent);
+        if (parent_ptr == 0) {
+            return make_error<void>(
+                "Task", "Failed to remove object from game scene (Parent doesn't exist)!");
+        }
+
+        if (parent->type() != "IdxGroup") {
+            return make_error<void>(
+                "Task", "Failed to remove object from game scene (Parent isn't IdxGroup)!");
+        }
+
+        auto obj_game_key_result = String::toGameEncoding(object->getNameRef().name());
+        if (!obj_game_key_result) {
+            return make_error<void>(
+                "Task", "Failed to remove object from game scene (Failed to encode object name)!");
+        }
+
+        std::string obj_game_key = obj_game_key_result.value();
+
+        // Remove the object from the parent list
+        listForEach(parent_ptr + 0x10, [&](DolphinCommunicator &communicator, u32 iter_ptr,
+                                           u32 item_ptr) {
+            u32 item_key_ptr = communicator.read<u32>(item_ptr + 4).value();
+            if (item_key_ptr == 0) {
+                return;
+            }
+
+            const char *item_key =
+                static_cast<const char *>(communicator.manager().getMemoryView()) + item_key_ptr - 0x80000000;
+            if (obj_game_key == item_key) {
+                u32 next_ptr = communicator.read<u32>(iter_ptr).value();
+                u32 prev_ptr = communicator.read<u32>(iter_ptr + 0x4).value();
+
+                communicator.write<u32>(prev_ptr, next_ptr);
+                communicator.write<u32>(next_ptr + 0x4, prev_ptr);
+
+                u32 list_size = communicator.read<u32>(parent_ptr + 0x14).value();
+                communicator.write<u32>(parent_ptr + 0x14, list_size - 1);
+            }
+        });
+
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        u32 conductor_ptr = communicator.read<u32>(0x8040D110).value();
+
+        // Remove the object from the conducting behavior list
+        listForEach(conductor_ptr + 0x10, [&](DolphinCommunicator &communicator, u32 iter_ptr,
+                                              u32 item_ptr) {
+            u32 obj_count     = communicator.read<u32>(item_ptr + 0x14).value();
+            u32 obj_array_ptr = communicator.read<u32>(item_ptr + 0x18).value();
+            for (size_t i = 0; i < obj_count; ++i) {
+                u32 elem_array_at = obj_array_ptr + i * sizeof(u32);
+                u32 elem_ptr      = communicator.read<u32>(elem_array_at).value();
+                if (elem_ptr == obj_ptr) {
+                    // This moves the future elements on top of the deleted one
+                    char *buf = static_cast<char *>(communicator.manager().getMemoryView());
+                    std::memmove(buf + elem_array_at - 0x80000000, buf + elem_array_at + 4 - 0x80000000, (obj_count - i) * 4);
+                    communicator.write<u32>(item_ptr + 0x14, --obj_count);
+                    break;
                 }
+            }
+        });
 
-                u32 comm_state = communicator.read<u32>(0x80000298).value();
+        // TODO: Call delete on object pointer using game interpreter
 
-                // Check if already communicated
-                if ((comm_state & BIT(29))) {
-                    // If so, check for response
-                    ETask task = (ETask)communicator.read<u32>(0x800002E0).value();
-                    if (task == ETask::NONE) {
-                        m_actor_address_map.erase(object->getUUID());
-                        communicator.write<u32>(0x80000298, comm_state & ~BIT(29));
-                        if (cb)
-                            cb(communicator.read<u32>(0x800002E8).value());
-                        return true;
-                    } else {
-                        return false;
-                    }
-                }
-
-                u32 request_buffer_address = communicator.read<u32>(0x800002E4).value();
-                if (request_buffer_address == 0) {
-                    return true;
-                }
-
-                // Lock access
-                communicator.write<u32>(0x80000298, comm_state | BIT(29));
-
-                // Write cmd type
-                communicator.write<u32>(0x800002E0, (u32)ETask::DELETE_NAMEREF);
-
-                Buffer request_buffer;
-                request_buffer.alloc(0x10000);
-                request_buffer.initTo(0);
-
-                {
-                    char *internal_buf = request_buffer.buf<char>();
-
-                    std::string _type = parent->type();
-                    strncpy_s(internal_buf, _type.size() + 1, _type.c_str(), _type.size() + 1);
-
-                    {
-                        NameRef parent_nameref = parent->getNameRef();
-                        std::string shift_jis_ref =
-                            String::toGameEncoding(parent_nameref.name()).value();
-
-                        strncpy_s(internal_buf + 0x80, shift_jis_ref.size() + 1,
-                                  shift_jis_ref.data(), shift_jis_ref.size() + 1);
-                    }
-
-                    {
-                        NameRef this_nameref = object->getNameRef();
-                        std::string shift_jis_ref =
-                            String::toGameEncoding(this_nameref.name()).value();
-
-                        strncpy_s(internal_buf + 0x200, shift_jis_ref.size() + 1,
-                                  shift_jis_ref.data(), shift_jis_ref.size() + 1);
-                    }
-                }
-
-                communicator.writeBytes(request_buffer.buf<char>(), request_buffer_address,
-                                        request_buffer.size());
-
-                return false;
-            },
-            object, parent, complete_cb);
+        return {};
     }
 
     Result<void> TaskCommunicator::taskPlayCameraDemo(std::string_view demo_name,
@@ -589,6 +564,7 @@ namespace Toolbox::Game {
         f32 aspect = communicator.read<f32>(camera_ptr + 0x4C).value();
 
         camera.setOrientAndPosition(up_vec, target_pos, translation);
+        return {};
     }
 
     Result<void> TaskCommunicator::setMarioToCameraTransform(const Transform &camera_transform) {

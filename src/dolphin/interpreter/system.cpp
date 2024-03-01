@@ -8,6 +8,28 @@
 using namespace Toolbox::Dolphin;
 
 namespace Toolbox::Interpreter {
+    SystemDolphin SystemDolphin::CreateDetached() {
+        SystemDolphin &&interpreter = SystemDolphin();
+        interpreter.m_storage.alloc(0x1800000);
+        return interpreter;
+    }
+
+    SystemDolphin &SystemDolphin::operator=(SystemDolphin &&other) noexcept {
+        m_storage             = std::move(other.m_storage);
+        m_branch_proc         = std::move(other.m_branch_proc);
+        m_fixed_proc          = std::move(other.m_fixed_proc);
+        m_float_proc          = std::move(other.m_float_proc);
+        m_system_proc         = std::move(other.m_system_proc);
+        m_branch_proc         = std::move(other.m_branch_proc);
+        m_system_return_cb    = std::move(other.m_system_return_cb);
+        m_system_exception_cb = std::move(other.m_system_exception_cb);
+        m_system_invalid_cb   = std::move(other.m_system_invalid_cb);
+
+        m_evaluating = false;
+
+        return *this;
+    }
+
     SystemDolphin::SystemDolphin() : m_evaluating(false) {
         m_branch_proc.onReturn(TOOLBOX_BIND_EVENT_FN(internalReturnCB));
         m_branch_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
@@ -18,10 +40,10 @@ namespace Toolbox::Interpreter {
         m_fixed_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
         m_float_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
         m_system_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
-        m_storage.alloc(0x1800000);
     }
 
-    SystemDolphin::SystemDolphin(const Dolphin::DolphinCommunicator &communicator) {
+    SystemDolphin::SystemDolphin(const Dolphin::DolphinCommunicator &communicator)
+        : m_evaluating(false) {
         m_branch_proc.onReturn(TOOLBOX_BIND_EVENT_FN(internalReturnCB));
         m_branch_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
         m_fixed_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
@@ -34,6 +56,22 @@ namespace Toolbox::Interpreter {
         m_storage.setBuf(communicator.manager().getMemoryView(),
                          communicator.manager().getMemorySize());
     }
+
+    SystemDolphin::SystemDolphin(const SystemDolphin &other)
+        : m_storage(other.m_storage), m_branch_proc(other.m_branch_proc),
+          m_fixed_proc(other.m_fixed_proc), m_float_proc(other.m_float_proc),
+          m_system_proc(other.m_system_proc), m_evaluating(false),
+          m_system_return_cb(other.m_system_return_cb),
+          m_system_exception_cb(other.m_system_exception_cb),
+          m_system_invalid_cb(other.m_system_invalid_cb) {}
+
+    SystemDolphin::SystemDolphin(SystemDolphin &&other) noexcept
+        : m_storage(other.m_storage), m_branch_proc(other.m_branch_proc),
+          m_fixed_proc(other.m_fixed_proc), m_float_proc(other.m_float_proc),
+          m_system_proc(other.m_system_proc), m_evaluating(false),
+          m_system_return_cb(other.m_system_return_cb),
+          m_system_exception_cb(other.m_system_exception_cb),
+          m_system_invalid_cb(other.m_system_invalid_cb) {}
 
     Register::RegisterSnapshot SystemDolphin::evaluateFunction(u32 function_ptr, u8 gpr_argc,
                                                                u32 *gpr_argv, u8 fpr_argc,
