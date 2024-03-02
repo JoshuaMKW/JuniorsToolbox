@@ -244,17 +244,11 @@ namespace Toolbox::Interpreter {
 
     // Pulled FP stuff from the Dolphin Emulator Project, thanks :)
 
-    // quantize types
-    enum EQuantizeType : u32 {
-        QUANTIZE_FLOAT    = 0,
-        QUANTIZE_INVALID1 = 1,
-        QUANTIZE_INVALID2 = 2,
-        QUANTIZE_INVALID3 = 3,
-        QUANTIZE_U8       = 4,
-        QUANTIZE_U16      = 5,
-        QUANTIZE_S8       = 6,
-        QUANTIZE_S16      = 7,
-    };
+    static inline void UpdateCR1(Register::CR &cr, Register::FPSCR &fpscr) {
+        SET_CR_FIELD(cr, 1,
+                     (FPSCR_FX(fpscr) << 3) | (FPSCR_FEX(fpscr) << 2) | (FPSCR_VX(fpscr) << 1) |
+                         (int)FPSCR_OX(fpscr));
+    }
 
     using namespace Register;
 
@@ -818,7 +812,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_fpr[frt].setPS0(storage.get<u64>(destination));
+        m_fpr[frt].setPS0(std::byteswap(storage.get<u64>(destination)));
     }
 
     void FloatingPointProcessor::lfdu(u8 frt, s16 d, u8 ra, Register::GPR gpr[32],
@@ -837,7 +831,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_fpr[frt].setPS0(storage.get<u64>(destination));
+        m_fpr[frt].setPS0(std::byteswap(storage.get<u64>(destination)));
         gpr[ra] += d;
     }
 
@@ -857,7 +851,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_fpr[frt].setPS0(storage.get<u64>(destination));
+        m_fpr[frt].setPS0(std::byteswap(storage.get<u64>(destination)));
     }
 
     void FloatingPointProcessor::lfdux(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
@@ -876,7 +870,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        m_fpr[frt].setPS0(storage.get<u64>(destination));
+        m_fpr[frt].setPS0(std::byteswap(storage.get<u64>(destination)));
         gpr[ra] += gpr[rb];
     }
 
@@ -896,7 +890,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u32>(destination, ConvertToSingle(m_fpr[frs].ps0AsU64()));
+        storage.set<u32>(destination, std::byteswap(ConvertToSingle(m_fpr[frs].ps0AsU64())));
     }
 
     void FloatingPointProcessor::stfsu(u8 frs, s16 d, u8 ra, Register::GPR gpr[32],
@@ -915,7 +909,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u32>(destination, ConvertToSingle(m_fpr[frs].ps0AsU64()));
+        storage.set<u32>(destination, std::byteswap(ConvertToSingle(m_fpr[frs].ps0AsU64())));
         gpr[ra] += d;
     }
 
@@ -935,7 +929,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u32>(destination, ConvertToSingle(m_fpr[frs].ps0AsU64()));
+        storage.set<u32>(destination, std::byteswap(ConvertToSingle(m_fpr[frs].ps0AsU64())));
     }
 
     void FloatingPointProcessor::stfsux(u8 frs, u8 ra, u8 rb, Register::GPR gpr[32],
@@ -954,7 +948,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u32>(destination, ConvertToSingle(m_fpr[frs].ps0AsU64()));
+        storage.set<u32>(destination, std::byteswap(ConvertToSingle(m_fpr[frs].ps0AsU64())));
         gpr[ra] += gpr[rb];
     }
 
@@ -1063,9 +1057,7 @@ namespace Toolbox::Interpreter {
 
         // This is a binary instruction. Does not alter FPSCR
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1075,9 +1067,7 @@ namespace Toolbox::Interpreter {
 
         // This is a binary instruction. Does not alter FPSCR
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1087,9 +1077,7 @@ namespace Toolbox::Interpreter {
 
         // This is a binary instruction. Does not alter FPSCR
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1099,9 +1087,7 @@ namespace Toolbox::Interpreter {
 
         // This is a binary instruction. Does not alter FPSCR
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1119,9 +1105,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1137,9 +1121,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1155,9 +1137,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1173,9 +1153,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1191,9 +1169,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1209,9 +1185,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1227,9 +1201,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1245,9 +1217,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1263,9 +1233,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1282,9 +1250,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
     void FloatingPointProcessor::fmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
@@ -1299,9 +1265,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1318,9 +1282,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
     void FloatingPointProcessor::fnmadd(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
@@ -1338,9 +1300,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
     void FloatingPointProcessor::fnmadds(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
@@ -1359,9 +1319,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
     void FloatingPointProcessor::fnmsub(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
@@ -1379,9 +1337,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
     void FloatingPointProcessor::fnmsubs(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
@@ -1400,9 +1356,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1434,9 +1388,7 @@ namespace Toolbox::Interpreter {
         }
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1535,9 +1487,7 @@ namespace Toolbox::Interpreter {
         m_fpr[frt].setPS0(UINT64_C(0xFFF8000000000000) | m_fpscr);
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1564,9 +1514,7 @@ namespace Toolbox::Interpreter {
         UpdateFPExceptionSummary(m_fpscr, msr, srr1);
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1583,9 +1531,7 @@ namespace Toolbox::Interpreter {
         UpdateFPExceptionSummary(m_fpscr, msr, srr1);
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1598,9 +1544,7 @@ namespace Toolbox::Interpreter {
         UpdateFPExceptionSummary(m_fpscr, msr, srr1);
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1616,9 +1560,7 @@ namespace Toolbox::Interpreter {
         UpdateFPExceptionSummary(m_fpscr, msr, srr1);
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -1748,17 +1690,13 @@ namespace Toolbox::Interpreter {
 
         // This is a binary instruction. Does not alter FPSCR
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
     // *** PAIRED SINGLE *** //
 
-    
-
-// dequantize table
+    // dequantize table
     const float m_dequantizeTable[] = {
         1.0 / (1ULL << 0),  1.0 / (1ULL << 1),  1.0 / (1ULL << 2),  1.0 / (1ULL << 3),
         1.0 / (1ULL << 4),  1.0 / (1ULL << 5),  1.0 / (1ULL << 6),  1.0 / (1ULL << 7),
@@ -1808,7 +1746,9 @@ namespace Toolbox::Interpreter {
 
     template <typename T> static T ReadUnpaired(Buffer &storage, u32 addr);
 
-    template <> u8 ReadUnpaired<u8>(Buffer &storage, u32 addr) { return storage.get<u8>(addr - 0x80000000); }
+    template <> u8 ReadUnpaired<u8>(Buffer &storage, u32 addr) {
+        return storage.get<u8>(addr - 0x80000000);
+    }
 
     template <> u16 ReadUnpaired<u16>(Buffer &storage, u32 addr) {
         return storage.get<u16>(addr - 0x80000000);
@@ -1821,17 +1761,17 @@ namespace Toolbox::Interpreter {
     template <typename T> static std::pair<T, T> ReadPair(Buffer &storage, u32 addr);
 
     template <> std::pair<u8, u8> ReadPair<u8>(Buffer &storage, u32 addr) {
-        const u16 val = storage.get<u16>(addr - 0x80000000);
+        const u16 val = std::byteswap(storage.get<u16>(addr - 0x80000000));
         return {u8(val >> 8), u8(val)};
     }
 
     template <> std::pair<u16, u16> ReadPair<u16>(Buffer &storage, u32 addr) {
-        const u32 val = storage.get<u32>(addr - 0x80000000);
+        const u32 val = std::byteswap(storage.get<u32>(addr - 0x80000000));
         return {u16(val >> 16), u16(val)};
     }
 
     template <> std::pair<u32, u32> ReadPair<u32>(Buffer &storage, u32 addr) {
-        const u64 val = storage.get<u64>(addr - 0x80000000);
+        const u64 val = std::byteswap(storage.get<u64>(addr - 0x80000000));
         return {u32(val >> 32), u32(val)};
     }
 
@@ -1842,25 +1782,25 @@ namespace Toolbox::Interpreter {
     }
 
     template <> void WriteUnpaired<u16>(Buffer &storage, u16 val, u32 addr) {
-        storage.set<u16>(addr - 0x80000000, val);
+        storage.set<u16>(addr - 0x80000000, std::byteswap(val));
     }
 
     template <> void WriteUnpaired<u32>(Buffer &storage, u32 val, u32 addr) {
-        storage.set<u32>(addr - 0x80000000, val);
+        storage.set<u32>(addr - 0x80000000, std::byteswap(val));
     }
 
     template <typename T> static void WritePair(Buffer &storage, T val1, T val2, u32 addr);
 
     template <> void WritePair<u8>(Buffer &storage, u8 val1, u8 val2, u32 addr) {
-        storage.set<u16>(addr - 0x80000000, (u16{val1} << 8) | u16{val2});
+        storage.set<u16>(addr - 0x80000000, std::byteswap((u16{val1} << 8) | u16{val2}));
     }
 
     template <> void WritePair<u16>(Buffer &storage, u16 val1, u16 val2, u32 addr) {
-        storage.set<u32>(addr - 0x80000000, (u32{val1} << 16) | u32{val2});
+        storage.set<u32>(addr - 0x80000000, std::byteswap((u32{val1} << 16) | u32{val2}));
     }
 
     template <> void WritePair<u32>(Buffer &storage, u32 val1, u32 val2, u32 addr) {
-        storage.set<u64>(addr - 0x80000000, (u64{val1} << 32) | u64{val2});
+        storage.set<u64>(addr - 0x80000000, std::byteswap((u64{val1} << 32) | u64{val2}));
     }
 
     template <typename T>
@@ -1877,14 +1817,19 @@ namespace Toolbox::Interpreter {
         }
     }
 
-    static void Helper_Quantize(Buffer &storage, u32 addr, u32 instI, u32 instRS, u32 instW,
-                                FPR fpr[32]) {
-        // TODO: Get actual type and scale from qprs
-        const EQuantizeType st_type = EQuantizeType::QUANTIZE_FLOAT;
-        const u32 st_scale          = 1;
+    void FloatingPointProcessor::helperQuantize(Buffer &storage, u32 addr, u32 instI, u32 instRS,
+                                                u32 instW) {
+        if (!MemoryContainsVAddress(storage, addr)) {
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            return;
+        }
 
-        const double ps0 = fpr[instRS].ps0AsDouble();
-        const double ps1 = fpr[instRS].ps1AsDouble();
+        // TODO: Get actual type and scale from qprs
+        const QuantizeType st_type = GQR_ST_TYPE(m_gqr[instI]);
+        const u32 st_scale         = GQR_ST_SCALE(m_gqr[instI]);
+
+        const double ps0 = m_fpr[instRS].ps0AsDouble();
+        const double ps1 = m_fpr[instRS].ps1AsDouble();
 
         switch (st_type) {
         case QUANTIZE_FLOAT: {
@@ -1945,16 +1890,16 @@ namespace Toolbox::Interpreter {
         return {static_cast<double>(ps0), static_cast<double>(ps1)};
     }
 
-    static void Helper_Dequantize(Buffer &storage, u32 addr, u32 instI, u32 instRD, u32 instW,
-                                  FPR fpr[32]) {
+    void FloatingPointProcessor::helperDequantize(Buffer &storage, u32 addr, u32 instI, u32 instRD,
+                                                  u32 instW) {
         if (!MemoryContainsVAddress(storage, addr)) {
-            //m_exception_cb(ExceptionCause::EXCEPTION_DSI);
+            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
 
         // TODO: Get actual type and scale from qprs
-        const EQuantizeType ld_type = EQuantizeType::QUANTIZE_FLOAT;
-        const u32 ld_scale          = 1;
+        const QuantizeType ld_type = GQR_LD_TYPE(m_gqr[instI]);
+        const u32 ld_scale         = GQR_LD_SCALE(m_gqr[instI]);
 
         double ps0 = 0.0;
         double ps1 = 0.0;
@@ -1963,15 +1908,14 @@ namespace Toolbox::Interpreter {
         case QUANTIZE_FLOAT:
             if (instW != 0) {
                 const u32 value = ReadUnpaired<u32>(storage, addr);
-                ps0             = std::bit_cast<double>(ConvertToDouble(value));
+                ps0             = std::bit_cast<double>(std::byteswap(ConvertToDouble(value)));
                 ps1             = 1.0;
             } else {
                 const auto [first, second] = ReadPair<u32>(storage, addr);
-                ps0                        = std::bit_cast<double>(ConvertToDouble(first));
-                ps1                        = std::bit_cast<double>(ConvertToDouble(second));
+                ps0 = std::bit_cast<double>(std::byteswap(ConvertToDouble(first)));
+                ps1 = std::bit_cast<double>(std::byteswap(ConvertToDouble(second)));
             }
             break;
-
         case QUANTIZE_U8:
             std::tie(ps0, ps1) = LoadAndDequantize<u8>(storage, addr, instW, ld_scale);
             break;
@@ -1997,60 +1941,166 @@ namespace Toolbox::Interpreter {
             break;
         }
 
-        fpr[instRD].setBoth(ps0, ps1);
+        m_fpr[instRD].setBoth(ps0, ps1);
     }
 
-    void FloatingPointProcessor::ps_l(u8 frt, s16 d, u8 ra, Register::GPR gpr[32],
+    void FloatingPointProcessor::ps_l(u8 frt, s16 d, u8 i, u8 ra, u8 w, Register::GPR gpr[32],
                                       Buffer &storage) {
         if (!IsRegValid(frt) || !IsRegValid(ra)) {
-            m_invalid_cb(PROC_INVALID_MSG(FixedPointProcessor, lfs, "Invalid registers detected!"));
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, ps_l, "Invalid registers detected!"));
             return;
         }
-        s32 destination = static_cast<s32>(gpr[ra] + d - 0x80000000) & 0x7FFFFFFF;
-        if ((destination & 0b11)) {
-            m_exception_cb(ExceptionCause::EXCEPTION_ALIGNMENT);
-            return;
-        }
-        if (!MemoryContainsPAddress(storage, destination)) {
-            m_exception_cb(ExceptionCause::EXCEPTION_DSI);
-            return;
-        }
-        m_fpr[frt].setPS0(ConvertToDouble(std::byteswap(storage.get<u32>(destination))));
-        m_fpr[frt].setPS1(ConvertToDouble(std::byteswap(storage.get<u32>(destination + 4))));
+        u32 destination = static_cast<s32>(gpr[ra] + d);
+        helperDequantize(storage, destination, i, frt, w);
     }
 
-    void FloatingPointProcessor::ps_lu(u8 frt, s16 d, u8 ra, Register::GPR gpr[32],
-                                       Buffer &storage) {}
+    void FloatingPointProcessor::ps_lu(u8 frt, s16 d, u8 i, u8 ra, u8 w, Register::GPR gpr[32],
+                                       Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, ps_lu, "Invalid registers detected!"));
+            return;
+        }
+        u32 destination = static_cast<s32>(gpr[ra] + d);
+        helperDequantize(storage, destination, i, frt, w);
+        gpr[ra] += d;
+    }
 
-    void FloatingPointProcessor::ps_st(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
-                                       Buffer &storage) {}
+    void FloatingPointProcessor::ps_lx(u8 frt, u8 ix, u8 ra, u8 rb, u8 wx, Register::GPR gpr[32],
+                                       Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, ps_lx, "Invalid registers detected!"));
+            return;
+        }
+        u32 destination = static_cast<s32>(gpr[ra] + gpr[rb]);
+        helperQuantize(storage, destination, ix, frt, wx);
+    }
 
-    void FloatingPointProcessor::ps_stu(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32],
-                                        Buffer &storage) {}
+    void FloatingPointProcessor::ps_lux(u8 frt, u8 ix, u8 ra, u8 rb, u8 wx, Register::GPR gpr[32],
+                                        Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, ps_lux, "Invalid registers detected!"));
+            return;
+        }
+        u32 destination = static_cast<s32>(gpr[ra] + gpr[rb]);
+        helperQuantize(storage, destination, ix, frt, wx);
+        gpr[ra] += gpr[rb];
+    }
+
+    void FloatingPointProcessor::ps_st(u8 frt, s16 d, u8 i, u8 ra, u8 w, Register::GPR gpr[32],
+                                       Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, ps_st, "Invalid registers detected!"));
+            return;
+        }
+        u32 destination = static_cast<s32>(gpr[ra] + d);
+        helperQuantize(storage, destination, i, frt, w);
+    }
+
+    void FloatingPointProcessor::ps_stu(u8 frt, s16 d, u8 i, u8 ra, u8 w, Register::GPR gpr[32],
+                                        Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, ps_stu, "Invalid registers detected!"));
+            return;
+        }
+        u32 destination = static_cast<s32>(gpr[ra] + d);
+        helperQuantize(storage, destination, i, frt, w);
+        gpr[ra] += d;
+    }
+
+    void FloatingPointProcessor::ps_stx(u8 frt, u8 ix, u8 ra, u8 rb, u8 wx, Register::GPR gpr[32],
+                                        Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, ps_stx, "Invalid registers detected!"));
+            return;
+        }
+        u32 destination = static_cast<s32>(gpr[ra] + gpr[rb]);
+        helperQuantize(storage, destination, ix, frt, wx);
+    }
+
+    void FloatingPointProcessor::ps_stux(u8 frt, u8 ix, u8 ra, u8 rb, u8 wx, Register::GPR gpr[32],
+                                         Buffer &storage) {
+        if (!IsRegValid(frt) || !IsRegValid(ra) || !IsRegValid(rb)) {
+            m_invalid_cb(
+                PROC_INVALID_MSG(FixedPointProcessor, ps_stux, "Invalid registers detected!"));
+            return;
+        }
+        u32 destination = static_cast<s32>(gpr[ra] + gpr[rb]);
+        helperQuantize(storage, destination, ix, frt, wx);
+        gpr[ra] += gpr[rb];
+    }
 
     void FloatingPointProcessor::ps_cmpo0(u8 bf, u8 fra, u8 frb, Register::CR &cr,
-                                          Register::MSR &msr, Register::SRR1 &srr1) {}
+                                          Register::MSR &msr, Register::SRR1 &srr1) {
+        Helper_FloatCompareOrdered(m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble(), bf, m_fpscr,
+                                   msr, srr1, cr);
+    }
 
     void FloatingPointProcessor::ps_cmpu0(u8 bf, u8 fra, u8 frb, Register::CR &cr,
-                                          Register::MSR &msr, Register::SRR1 &srr1) {}
+                                          Register::MSR &msr, Register::SRR1 &srr1) {
+        Helper_FloatCompareUnordered(m_fpr[fra].ps0AsDouble(), m_fpr[frb].ps0AsDouble(), bf,
+                                     m_fpscr, msr, srr1, cr);
+    }
 
     void FloatingPointProcessor::ps_cmpo1(u8 bf, u8 fra, u8 frb, Register::CR &cr,
-                                          Register::MSR &msr, Register::SRR1 &srr1) {}
+                                          Register::MSR &msr, Register::SRR1 &srr1) {
+        Helper_FloatCompareOrdered(m_fpr[fra].ps1AsDouble(), m_fpr[frb].ps1AsDouble(), bf, m_fpscr,
+                                   msr, srr1, cr);
+    }
 
     void FloatingPointProcessor::ps_cmpu1(u8 bf, u8 fra, u8 frb, Register::CR &cr,
-                                          Register::MSR &msr, Register::SRR1 &srr1) {}
+                                          Register::MSR &msr, Register::SRR1 &srr1) {
+        Helper_FloatCompareUnordered(m_fpr[fra].ps1AsDouble(), m_fpr[frb].ps1AsDouble(), bf,
+                                     m_fpscr, msr, srr1, cr);
+    }
 
     void FloatingPointProcessor::ps_mr(u8 frt, u8 frb, bool rc, Register::CR &cr,
-                                       Register::MSR &msr, Register::SRR1 &srr1) {}
+                                       Register::MSR &msr, Register::SRR1 &srr1) {
+        m_fpr[frt] = m_fpr[frb];
+
+        if (rc) {
+            UpdateCR1(cr, m_fpscr);
+        }
+    }
 
     void FloatingPointProcessor::ps_abs(u8 frt, u8 frb, bool rc, Register::CR &cr,
-                                        Register::MSR &msr, Register::SRR1 &srr1) {}
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        m_fpr[frt].setBoth(m_fpr[frb].ps0AsU64() & ~(UINT64_C(1) << 63),
+                           m_fpr[frb].ps1AsU64() & ~(UINT64_C(1) << 63));
+
+        // This is a binary instruction. Does not alter FPSCR
+        if (rc) {
+            UpdateCR1(cr, m_fpscr);
+        }
+    }
 
     void FloatingPointProcessor::ps_neg(u8 frt, u8 frb, bool rc, Register::CR &cr,
-                                        Register::MSR &msr, Register::SRR1 &srr1) {}
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        m_fpr[frt].setBoth(m_fpr[frb].ps0AsU64() ^ (UINT64_C(1) << 63),
+                           m_fpr[frb].ps1AsU64() ^ (UINT64_C(1) << 63));
+
+        // This is a binary instruction. Does not alter FPSCR
+        if (rc) {
+            UpdateCR1(cr, m_fpscr);
+        }
+    }
 
     void FloatingPointProcessor::ps_nabs(u8 frt, u8 frb, bool rc, Register::CR &cr,
-                                         Register::MSR &msr, Register::SRR1 &srr1) {}
+                                         Register::MSR &msr, Register::SRR1 &srr1) {
+        m_fpr[frt].setBoth(m_fpr[frb].ps0AsU64() | (UINT64_C(1) << 63),
+                           m_fpr[frb].ps1AsU64() | (UINT64_C(1) << 63));
+
+        // This is a binary instruction. Does not alter FPSCR
+        if (rc) {
+            UpdateCR1(cr, m_fpscr);
+        }
+    }
 
     void FloatingPointProcessor::ps_add(u8 frt, u8 fra, u8 frb, bool rc, Register::CR &cr,
                                         Register::MSR &msr, Register::SRR1 &srr1) {
@@ -2065,9 +2115,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2084,9 +2132,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2103,9 +2149,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2122,9 +2166,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2141,9 +2183,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2160,9 +2200,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2181,9 +2219,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2203,9 +2239,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2225,9 +2259,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2246,9 +2278,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2270,9 +2300,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2294,9 +2322,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2311,9 +2337,7 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2328,17 +2352,89 @@ namespace Toolbox::Interpreter {
         FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
     void FloatingPointProcessor::ps_res(u8 frt, u8 frb, bool rc, Register::CR &cr,
-                                        Register::MSR &msr, Register::SRR1 &srr1) {}
+                                        Register::MSR &msr, Register::SRR1 &srr1) {
+        const double a = m_fpr[frb].ps0AsDouble();
+        const double b = m_fpr[frb].ps1AsDouble();
+
+        const auto compute_result = [this, frt](double value) {
+            const double result = DolphinLib::ApproximateReciprocal(value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat((f32)result));
+        };
+
+        if (a == 0.0 || b == 0.0) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_ZX);
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+        }
+
+        if (std::isnan(a) || std::isinf(a) || std::isnan(b) || std::isnan(b)) {
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+        }
+
+        if (DolphinLib::IsSNAN(a) || DolphinLib::IsSNAN(b)) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+        }
+
+        const double ps0 = DolphinLib::ApproximateReciprocal(a);
+        const double ps1 = DolphinLib::ApproximateReciprocal(b);
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            UpdateCR1(cr, m_fpscr);
+        }
+    }
 
     void FloatingPointProcessor::ps_rsqrte(u8 frt, u8 frb, bool rc, Register::CR &cr,
-                                           Register::MSR &msr, Register::SRR1 &srr1) {}
+                                           Register::MSR &msr, Register::SRR1 &srr1) {
+        const double a = m_fpr[frb].ps0AsDouble();
+        const double b = m_fpr[frb].ps1AsDouble();
+
+        const auto compute_result = [this, frt](double value) {
+            const double result = DolphinLib::ApproximateReciprocal(value);
+            m_fpr[frt].fill(result);
+            FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat((f32)result));
+        };
+
+        if (a == 0.0 || b == 0.0) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_ZX);
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+        }
+
+        if (a < 0.0 || b < 0.0) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSQRT);
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+        }
+
+        if (std::isnan(a) || std::isinf(a) || std::isnan(b) || std::isnan(b)) {
+            FPSCR_SET_FI(m_fpscr, false);
+            FPSCR_SET_FR(m_fpscr, false);
+        }
+
+        if (DolphinLib::IsSNAN(a) || DolphinLib::IsSNAN(b)) {
+            SetFPException(m_fpscr, msr, srr1, FPSCRExceptionFlag::FPSCR_EX_VXSNAN);
+        }
+
+        const double ps0 = ForceSingle(m_fpscr, DolphinLib::ApproximateReciprocalSquareRoot(a));
+        const double ps1 = ForceSingle(m_fpscr, DolphinLib::ApproximateReciprocalSquareRoot(b));
+
+        m_fpr[frt].setBoth(ps0, ps1);
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+
+        if (rc) {
+            UpdateCR1(cr, m_fpscr);
+        }
+    }
 
     void FloatingPointProcessor::ps_sel(u8 frt, u8 fra, u8 frc, u8 frb, bool rc, Register::CR &cr,
                                         Register::MSR &msr, Register::SRR1 &srr1) {
@@ -2351,9 +2447,7 @@ namespace Toolbox::Interpreter {
 
         // This is a binary instruction. Does not alter FPSCR
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2365,9 +2459,7 @@ namespace Toolbox::Interpreter {
         m_fpr[frt].setBoth(a.ps0AsDouble(), b.ps0AsDouble());
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2379,9 +2471,7 @@ namespace Toolbox::Interpreter {
         m_fpr[frt].setBoth(a.ps0AsDouble(), b.ps1AsDouble());
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2393,9 +2483,7 @@ namespace Toolbox::Interpreter {
         m_fpr[frt].setBoth(a.ps1AsDouble(), b.ps0AsDouble());
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 
@@ -2407,9 +2495,7 @@ namespace Toolbox::Interpreter {
         m_fpr[frt].setBoth(a.ps1AsDouble(), b.ps1AsDouble());
 
         if (rc) {
-            SET_CR_FIELD(cr, 1,
-                         (FPSCR_FX(m_fpscr) << 3) | (FPSCR_FEX(m_fpscr) << 2) |
-                             (FPSCR_VX(m_fpscr) << 1) | (int)FPSCR_OX(m_fpscr));
+            UpdateCR1(cr, m_fpscr);
         }
     }
 

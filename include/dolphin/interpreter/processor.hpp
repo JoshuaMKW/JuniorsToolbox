@@ -64,7 +64,11 @@ namespace Toolbox::Interpreter {
     public:
         friend class SystemDolphin;
 
-        SystemProcessor() = default;
+        SystemProcessor()                        = default;
+        SystemProcessor(const SystemProcessor &) = default;
+        SystemProcessor(SystemProcessor &&)      = default;
+
+        SystemProcessor &operator=(SystemProcessor &&) = default;
 
         void onException(proc_exception_cb cb) { m_exception_cb = cb; }
         void onInvalid(proc_invalid_cb cb) { m_invalid_cb = cb; }
@@ -97,6 +101,7 @@ namespace Toolbox::Interpreter {
         void rfi() {}
 
         Register::PC m_pc{};
+        Register::PC m_last_pc{};
         Register::TB m_tb{};
         Register::MSR m_msr{};
         Register::DAR m_dar{};
@@ -112,7 +117,11 @@ namespace Toolbox::Interpreter {
     public:
         friend class SystemDolphin;
 
-        BranchProcessor() = default;
+        BranchProcessor()                        = default;
+        BranchProcessor(const BranchProcessor &) = default;
+        BranchProcessor(BranchProcessor &&)      = default;
+
+        BranchProcessor &operator=(BranchProcessor &&) = default;
 
         void onReturn(proc_ret_cb cb) { m_return_cb = cb; }
         void onException(proc_exception_cb cb) { m_exception_cb = cb; }
@@ -150,7 +159,11 @@ namespace Toolbox::Interpreter {
     public:
         friend class SystemDolphin;
 
-        FixedPointProcessor() = default;
+        FixedPointProcessor()                            = default;
+        FixedPointProcessor(const FixedPointProcessor &) = default;
+        FixedPointProcessor(FixedPointProcessor &&)      = default;
+
+        FixedPointProcessor &operator=(FixedPointProcessor &&) = default;
 
         void onException(proc_exception_cb cb) { m_exception_cb = cb; }
         void onInvalid(proc_invalid_cb cb) { m_invalid_cb = cb; }
@@ -304,7 +317,11 @@ namespace Toolbox::Interpreter {
     public:
         friend class SystemDolphin;
 
-        FloatingPointProcessor() = default;
+        FloatingPointProcessor()                               = default;
+        FloatingPointProcessor(const FloatingPointProcessor &) = default;
+        FloatingPointProcessor(FloatingPointProcessor &&)      = default;
+
+        FloatingPointProcessor &operator=(FloatingPointProcessor &&) = default;
 
         void onException(proc_exception_cb cb) { m_exception_cb = cb; }
         void onInvalid(proc_invalid_cb cb) { m_invalid_cb = cb; }
@@ -421,10 +438,17 @@ namespace Toolbox::Interpreter {
 
         // Paired-Single
 
-        void ps_l(u8 frt, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage);
-        void ps_lu(u8 frt, s16 d, u8 ra, Register::GPR gpr[32], Buffer &storage);
-        void ps_st(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage);
-        void ps_stu(u8 frt, u8 ra, u8 rb, Register::GPR gpr[32], Buffer &storage);
+        void helperQuantize(Buffer &storage, u32 addr, u32 instI, u32 instRS, u32 instW);
+        void helperDequantize(Buffer &storage, u32 addr, u32 instI, u32 instRD, u32 instW);
+
+        void ps_l(u8 frt, s16 d, u8 i, u8 ra, u8 w, Register::GPR gpr[32], Buffer &storage);
+        void ps_lu(u8 frt, s16 d, u8 i, u8 ra, u8 w, Register::GPR gpr[32], Buffer &storage);
+        void ps_lx(u8 frt, u8 ix, u8 ra, u8 rb, u8 wx, Register::GPR gpr[32], Buffer &storage);
+        void ps_lux(u8 frt, u8 ix, u8 ra, u8 rb, u8 wx, Register::GPR gpr[32], Buffer &storage);
+        void ps_st(u8 frt, s16 d, u8 i, u8 ra, u8 w, Register::GPR gpr[32], Buffer &storage);
+        void ps_stu(u8 frt, s16 d, u8 i, u8 ra, u8 w, Register::GPR gpr[32], Buffer &storage);
+        void ps_stx(u8 frt, u8 ix, u8 ra, u8 rb, u8 wx, Register::GPR gpr[32], Buffer &storage);
+        void ps_stux(u8 frt, u8 ix, u8 ra, u8 rb, u8 wx, Register::GPR gpr[32], Buffer &storage);
 
         void ps_cmpo0(u8 bf, u8 fra, u8 frb, Register::CR &cr, Register::MSR &msr,
                       Register::SRR1 &srr1);
@@ -499,6 +523,7 @@ namespace Toolbox::Interpreter {
     private:
         Register::FPSCR m_fpscr{};
         Register::FPR m_fpr[32]{};
+        Register::GQR m_gqr[8]{};
 
         proc_exception_cb m_exception_cb;
         proc_invalid_cb m_invalid_cb;

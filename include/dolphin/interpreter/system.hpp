@@ -1,9 +1,9 @@
 #pragma once
 
 #include "core/threaded.hpp"
+#include "dolphin/process.hpp"
 #include "gui/settings.hpp"
 #include "instructions/forms.hpp"
-#include "dolphin/process.hpp"
 #include "processor.hpp"
 #include "registers.hpp"
 
@@ -34,7 +34,17 @@ namespace Toolbox::Interpreter {
                                                     u8 fpr_argc, f64 *fpr_argv);
 
         Buffer &getMemoryBuffer() { return m_storage; }
-        void setMemoryBuffer(void *buf, size_t size) { m_storage.setBuf(buf, size); }
+        void setMemoryBuffer(void *buf, size_t size) {
+            if (m_storage.buf<void>() == buf)
+                return;
+            m_storage.setBuf(buf, size);
+            m_evaluating = false;
+        }
+
+        bool isStackPointerValid() const {
+            return m_fixed_proc.m_gpr[1] >= 0x80000000 && m_fixed_proc.m_gpr[1] < 0x81800000;
+        }
+
         void setStackPointer(u32 sp) { m_fixed_proc.m_gpr[1] = sp; }
         void setGlobalsPointerR(u32 r2) { m_fixed_proc.m_gpr[2] = r2; }
         void setGlobalsPointerRW(u32 r13) { m_fixed_proc.m_gpr[13] = r13; }
@@ -115,6 +125,7 @@ namespace Toolbox::Interpreter {
             snapshot.m_lr  = m_branch_proc.m_lr;
 
             snapshot.m_pc    = m_system_proc.m_pc;
+            snapshot.m_last_pc    = m_system_proc.m_last_pc;
             snapshot.m_dar   = m_system_proc.m_dar;
             snapshot.m_dsisr = m_system_proc.m_dsisr;
             snapshot.m_msr   = m_system_proc.m_msr;
@@ -128,6 +139,18 @@ namespace Toolbox::Interpreter {
             std::memcpy(snapshot.m_fpr, m_float_proc.m_fpr, sizeof(Register::FPR) * 32);
             snapshot.m_fpscr = m_float_proc.m_fpscr;
             return snapshot;
+        }
+
+        void bindCallbacks() {
+            m_branch_proc.onReturn(TOOLBOX_BIND_EVENT_FN(internalReturnCB));
+            m_branch_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+            m_fixed_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+            m_float_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+            m_system_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
+            m_branch_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+            m_fixed_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+            m_float_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+            m_system_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
         }
 
     private:

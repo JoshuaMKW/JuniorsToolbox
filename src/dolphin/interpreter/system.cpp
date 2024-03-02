@@ -20,39 +20,23 @@ namespace Toolbox::Interpreter {
         m_fixed_proc          = std::move(other.m_fixed_proc);
         m_float_proc          = std::move(other.m_float_proc);
         m_system_proc         = std::move(other.m_system_proc);
-        m_branch_proc         = std::move(other.m_branch_proc);
         m_system_return_cb    = std::move(other.m_system_return_cb);
         m_system_exception_cb = std::move(other.m_system_exception_cb);
         m_system_invalid_cb   = std::move(other.m_system_invalid_cb);
+
+        // Rebind to keep this from being other
+        bindCallbacks();
 
         m_evaluating = false;
 
         return *this;
     }
 
-    SystemDolphin::SystemDolphin() : m_evaluating(false) {
-        m_branch_proc.onReturn(TOOLBOX_BIND_EVENT_FN(internalReturnCB));
-        m_branch_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
-        m_fixed_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
-        m_float_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
-        m_system_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
-        m_branch_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
-        m_fixed_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
-        m_float_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
-        m_system_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
-    }
+    SystemDolphin::SystemDolphin() : m_evaluating(false) { bindCallbacks(); }
 
     SystemDolphin::SystemDolphin(const Dolphin::DolphinCommunicator &communicator)
         : m_evaluating(false) {
-        m_branch_proc.onReturn(TOOLBOX_BIND_EVENT_FN(internalReturnCB));
-        m_branch_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
-        m_fixed_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
-        m_float_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
-        m_system_proc.onException(TOOLBOX_BIND_EVENT_FN(internalExceptionCB));
-        m_branch_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
-        m_fixed_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
-        m_float_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
-        m_system_proc.onInvalid(TOOLBOX_BIND_EVENT_FN(internalInvalidCB));
+        bindCallbacks();
         m_storage.setBuf(communicator.manager().getMemoryView(),
                          communicator.manager().getMemorySize());
     }
@@ -63,7 +47,9 @@ namespace Toolbox::Interpreter {
           m_system_proc(other.m_system_proc), m_evaluating(false),
           m_system_return_cb(other.m_system_return_cb),
           m_system_exception_cb(other.m_system_exception_cb),
-          m_system_invalid_cb(other.m_system_invalid_cb) {}
+          m_system_invalid_cb(other.m_system_invalid_cb) {
+        bindCallbacks();
+    }
 
     SystemDolphin::SystemDolphin(SystemDolphin &&other) noexcept
         : m_storage(other.m_storage), m_branch_proc(other.m_branch_proc),
@@ -71,7 +57,9 @@ namespace Toolbox::Interpreter {
           m_system_proc(other.m_system_proc), m_evaluating(false),
           m_system_return_cb(other.m_system_return_cb),
           m_system_exception_cb(other.m_system_exception_cb),
-          m_system_invalid_cb(other.m_system_invalid_cb) {}
+          m_system_invalid_cb(other.m_system_invalid_cb) {
+        bindCallbacks();
+    }
 
     Register::RegisterSnapshot SystemDolphin::evaluateFunction(u32 function_ptr, u8 gpr_argc,
                                                                u32 *gpr_argv, u8 fpr_argc,
@@ -273,8 +261,24 @@ namespace Toolbox::Interpreter {
             m_float_proc.stfdu(FORM_FS(inst), FORM_D(inst), FORM_RA(inst), m_fixed_proc.m_gpr,
                                m_storage);
             break;
+        case Opcode::OP_PSQ_L:
+            m_float_proc.ps_l(FORM_FS(inst), FORM_D(inst), FORM_I(inst), FORM_RA(inst),
+                              FORM_W(inst), m_fixed_proc.m_gpr, m_storage);
+            break;
+        case Opcode::OP_PSQ_LU:
+            m_float_proc.ps_lu(FORM_FS(inst), FORM_D(inst), FORM_I(inst), FORM_RA(inst),
+                               FORM_W(inst), m_fixed_proc.m_gpr, m_storage);
+            break;
         case Opcode::OP_FS_MATH:
             next_instruction = evaluateFloatSingleSubOp(inst);
+            break;
+        case Opcode::OP_PSQ_ST:
+            m_float_proc.ps_st(FORM_FS(inst), FORM_D(inst), FORM_I(inst), FORM_RA(inst),
+                               FORM_W(inst), m_fixed_proc.m_gpr, m_storage);
+            break;
+        case Opcode::OP_PSQ_STU:
+            m_float_proc.ps_stu(FORM_FS(inst), FORM_D(inst), FORM_I(inst), FORM_RA(inst),
+                                FORM_W(inst), m_fixed_proc.m_gpr, m_storage);
             break;
         case Opcode::OP_FLOAT:
             next_instruction = evaluateFloatSubOp(inst);
@@ -284,83 +288,179 @@ namespace Toolbox::Interpreter {
                                                "Attempted to evaluate unknown instruction!"));
             break;
         }
-        m_system_proc.m_pc = next_instruction;
+
+        m_system_proc.m_last_pc = m_system_proc.m_pc;
+        m_system_proc.m_pc      = next_instruction;
     }
 
     Register::PC SystemDolphin::evaluatePairedSingleSubOp(u32 inst) {
-        TableSubOpcode4 sub_op = (TableSubOpcode4)FORM_XO_5(inst);
-        switch (sub_op) {
-        case TableSubOpcode4::PS_CMPU0:
+        // Some ps instructions use 5 bits and others use 10.
+        TableSubOpcode4 sub_op_5  = (TableSubOpcode4)FORM_XO_5(inst);
+        TableSubOpcode4 sub_op_10 = (TableSubOpcode4)FORM_XO_10(inst);
+
+        switch (sub_op_5) {
+        case TableSubOpcode4::PSQ_LX:
+            m_float_proc.ps_lx(FORM_FS(inst), FORM_IX(inst), FORM_RA(inst), FORM_RB(inst),
+                               FORM_WX(inst), m_fixed_proc.m_gpr, m_storage);
             break;
-        case TableSubOpcode4::PSQ_L:
-            break;
-        case TableSubOpcode4::PSQ_ST:
+        case TableSubOpcode4::PSQ_STX:
+            m_float_proc.ps_stx(FORM_FS(inst), FORM_IX(inst), FORM_RA(inst), FORM_RB(inst),
+                                FORM_WX(inst), m_fixed_proc.m_gpr, m_storage);
             break;
         case TableSubOpcode4::PS_SUM0:
+            m_float_proc.ps_sum0(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
+                                 FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                 m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_SUM1:
+            m_float_proc.ps_sum1(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
+                                 FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                 m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_MULS0:
+            m_float_proc.ps_muls0(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_RC(inst),
+                                  m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_MULS1:
+            m_float_proc.ps_muls1(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_RC(inst),
+                                  m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_MADDS0:
+            m_float_proc.ps_madds1(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
+                                   FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                   m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_MADDS1:
+            m_float_proc.ps_madds1(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
+                                   FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                   m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_DIV:
+            m_float_proc.ps_div(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+                                m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_SUB:
+            m_float_proc.ps_sub(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+                                m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_ADD:
+            m_float_proc.ps_add(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+                                m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_SEL:
+            m_float_proc.ps_sel(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
+                                FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_RES:
+            m_float_proc.ps_res(FORM_FS(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+                                m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_MUL:
+            m_float_proc.ps_mul(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+                                m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_RSQRTE:
+            m_float_proc.ps_rsqrte(FORM_FS(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+                                   m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_MSUB:
+            m_float_proc.ps_msub(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
+                                 FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                 m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_MADD:
+            m_float_proc.ps_madd(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
+                                 FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                 m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_NMSUB:
+            m_float_proc.ps_nmsub(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
+                                  FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                  m_system_proc.m_srr1);
             break;
         case TableSubOpcode4::PS_NMADD:
+            m_float_proc.ps_nmadd(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
+                                  FORM_RC(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                                  m_system_proc.m_srr1);
             break;
-        case TableSubOpcode4::PS_CMPO0:
+        case TableSubOpcode4::PSQ_LUX:
+            m_float_proc.ps_lux(FORM_FS(inst), FORM_IX(inst), FORM_RA(inst), FORM_RB(inst),
+                                FORM_WX(inst), m_fixed_proc.m_gpr, m_storage);
             break;
-        case TableSubOpcode4::PSQ_LU:
-            break;
-        case TableSubOpcode4::PSQ_STU:
-            break;
-        case TableSubOpcode4::PS_NEG:
-            break;
-        case TableSubOpcode4::PS_CMPU1:
-            break;
-        case TableSubOpcode4::PS_MR:
-            break;
-        case TableSubOpcode4::PS_CMPO1:
-            break;
-        case TableSubOpcode4::PS_NABS:
-            break;
-        case TableSubOpcode4::PS_ABS:
-            break;
-        case TableSubOpcode4::PS_MERGE00:
-            break;
-        case TableSubOpcode4::PS_MERGE01:
-            break;
-        case TableSubOpcode4::PS_MERGE10:
-            break;
-        case TableSubOpcode4::PS_MERGE11:
-            break;
-        case TableSubOpcode4::DCBZ_L:
+        case TableSubOpcode4::PSQ_STUX:
+            m_float_proc.ps_stux(FORM_FS(inst), FORM_IX(inst), FORM_RA(inst), FORM_RB(inst),
+                                 FORM_WX(inst), m_fixed_proc.m_gpr, m_storage);
             break;
         default:
-            internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, unknown,
-                                               "Attempted to evaluate unknown instruction!"));
+            switch (sub_op_10) {
+            case TableSubOpcode4::PS_CMPU0:
+                m_float_proc.ps_cmpu0(FORM_CRFD(inst), FORM_FA(inst), FORM_FB(inst),
+                                      m_branch_proc.m_cr, m_system_proc.m_msr,
+                                      m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode4::PS_CMPO0:
+                m_float_proc.ps_cmpo0(FORM_CRFD(inst), FORM_FA(inst), FORM_FB(inst),
+                                      m_branch_proc.m_cr, m_system_proc.m_msr,
+                                      m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode4::PSQ_LUX:
+                m_float_proc.ps_lux(FORM_FS(inst), FORM_IX(inst), FORM_RA(inst), FORM_RB(inst),
+                                    FORM_WX(inst), m_fixed_proc.m_gpr, m_storage);
+                break;
+            case TableSubOpcode4::PS_NEG:
+                m_float_proc.ps_neg(FORM_FS(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+                                    m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode4::PS_CMPU1:
+                m_float_proc.ps_cmpu1(FORM_CRFD(inst), FORM_FA(inst), FORM_FB(inst),
+                                      m_branch_proc.m_cr, m_system_proc.m_msr,
+                                      m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode4::PS_MR:
+                m_float_proc.ps_mr(FORM_FS(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+                                   m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode4::PS_CMPO1:
+                m_float_proc.ps_cmpo1(FORM_CRFD(inst), FORM_FA(inst), FORM_FB(inst),
+                                      m_branch_proc.m_cr, m_system_proc.m_msr,
+                                      m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode4::PS_NABS:
+                m_float_proc.ps_nabs(FORM_FS(inst), FORM_FB(inst), FORM_RC(inst),
+                                     m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode4::PS_ABS:
+                m_float_proc.ps_abs(FORM_FS(inst), FORM_FB(inst), FORM_RC(inst), m_branch_proc.m_cr,
+                                    m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode4::PS_MERGE00:
+                m_float_proc.ps_merge00(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+                                        m_branch_proc.m_cr, m_system_proc.m_msr,
+                                        m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode4::PS_MERGE01:
+                m_float_proc.ps_merge01(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+                                        m_branch_proc.m_cr, m_system_proc.m_msr,
+                                        m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode4::PS_MERGE10:
+                m_float_proc.ps_merge10(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+                                        m_branch_proc.m_cr, m_system_proc.m_msr,
+                                        m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode4::PS_MERGE11:
+                m_float_proc.ps_merge11(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_RC(inst),
+                                        m_branch_proc.m_cr, m_system_proc.m_msr,
+                                        m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode4::DCBZ_L:
+                break;
+            default:
+                internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, unknown,
+                                                   "Attempted to evaluate unknown instruction!"));
+                break;
+            }
             break;
         }
         return m_system_proc.m_pc + 4;
@@ -369,7 +469,7 @@ namespace Toolbox::Interpreter {
     Register::PC SystemDolphin::evaluateControlFlowSubOp(u32 inst) {
         Register::PC next_instruction = m_system_proc.m_pc + 4;
 
-        TableSubOpcode19 sub_op = (TableSubOpcode19)FORM_XO_9(inst);
+        TableSubOpcode19 sub_op = (TableSubOpcode19)FORM_XO_10(inst);
         switch (sub_op) {
         case TableSubOpcode19::MCRF:
             m_branch_proc.mcrf(FORM_CRBD(inst), FORM_CRBA(inst));
@@ -410,6 +510,7 @@ namespace Toolbox::Interpreter {
             break;
         case TableSubOpcode19::BCCTR:
             m_branch_proc.bcctr(FORM_BO(inst), FORM_BI(inst), FORM_LK(inst), m_system_proc.m_pc);
+            break;
         default:
             internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, unknown,
                                                "Attempted to evaluate unknown instruction!"));
@@ -420,7 +521,7 @@ namespace Toolbox::Interpreter {
     }
 
     Register::PC SystemDolphin::evaluateFixedSubOp(u32 inst) {
-        TableSubOpcode31 sub_op = (TableSubOpcode31)FORM_XO_9(inst);
+        TableSubOpcode31 sub_op = (TableSubOpcode31)FORM_XO_10(inst);
         switch (sub_op) {
         case TableSubOpcode31::ADD:
         case TableSubOpcode31::ADDO:
@@ -624,23 +725,23 @@ namespace Toolbox::Interpreter {
         case TableSubOpcode31::LSWI:
             m_fixed_proc.lswi(FORM_RD(inst), FORM_RA(inst), FORM_NB(inst), m_storage);
             break;
-        case TableSubOpcode31::STW:
-            m_fixed_proc.stw(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::STWX:
+            m_fixed_proc.stwx(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::STWU:
-            m_fixed_proc.stwu(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::STWUX:
+            m_fixed_proc.stwux(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::STH:
-            m_fixed_proc.sth(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::STHX:
+            m_fixed_proc.sthx(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::STHU:
-            m_fixed_proc.sthu(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::STHUX:
+            m_fixed_proc.sthux(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::STB:
-            m_fixed_proc.stb(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::STBX:
+            m_fixed_proc.stbx(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
-        case TableSubOpcode31::STBU:
-            m_fixed_proc.stbu(FORM_RS(inst), FORM_D(inst), FORM_RA(inst), m_storage);
+        case TableSubOpcode31::STBUX:
+            m_fixed_proc.stbux(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
             break;
         case TableSubOpcode31::STWBRX:
             m_fixed_proc.stwbrx(FORM_RS(inst), FORM_RA(inst), FORM_RB(inst), m_storage);
@@ -814,7 +915,7 @@ namespace Toolbox::Interpreter {
     }
 
     Register::PC SystemDolphin::evaluateFloatSubOp(u32 inst) {
-        TableSubOpcode63 sub_op = (TableSubOpcode63)FORM_XO_5(inst);
+        TableSubOpcode63 sub_op = (TableSubOpcode63)FORM_XO_10(inst);
         switch (sub_op) {
         case TableSubOpcode63::FCMPU:
             m_float_proc.fcmpu(FORM_CRFD(inst), FORM_FA(inst), FORM_FB(inst), m_branch_proc.m_cr,

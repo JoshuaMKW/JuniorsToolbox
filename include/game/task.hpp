@@ -86,9 +86,24 @@ namespace Toolbox::Game {
             return static_cast<s16>(angle * 182.04445f);
         }
 
+        u32 allocGameMemory(u32 heap_ptr, u32 size, u32 alignment);
+
+        u32 listInsert(u32 list_ptr, u32 iter_at, u32 item_ptr);
+        u32 listBegin(u32 list_ptr) const;
+        u32 listEnd(u32 list_ptr) const;
+        u32 listNext(u32 iter) const;
+        u32 listItem(u32 iter) const;
         void listForEach(u32 list_ptr, std::function<void(DolphinCommunicator &, u32, u32)> fn);
-        void vectorForEach(u32 list_ptr, size_t item_size,
+
+        u32 vectorInsert(u32 vector_ptr, u32 iter_at, u32 item_ptr);
+        u32 vectorBegin(u32 vector_ptr) const;
+        u32 vectorEnd(u32 vector_ptr) const;
+        u32 vectorNext(u32 iter, u32 item_size) const;
+        u32 vectorItem(u32 iter) const;
+        void vectorForEach(u32 vector_ptr, size_t item_size,
                            std::function<void(DolphinCommunicator &, u32)> fn);
+
+        bool checkForAcquiredStackFrameAndBuffer();
 
     private:
         Interpreter::SystemDolphin m_game_interpreter;

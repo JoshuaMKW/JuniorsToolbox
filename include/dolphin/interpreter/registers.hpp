@@ -150,10 +150,10 @@ namespace Toolbox::Interpreter::Register {
         f64 ps1AsDouble() const { return std::bit_cast<f64>(m_ps1); }
 
         void setPS0(u64 value) { m_ps0 = value; }
-        void setPS0(f64 value) { m_ps0 = std::bit_cast<u64>(m_ps0); }
+        void setPS0(f64 value) { m_ps0 = std::bit_cast<u64>(value); }
 
         void setPS1(u64 value) { m_ps1 = value; }
-        void setPS1(f64 value) { m_ps1 = std::bit_cast<u64>(m_ps1); }
+        void setPS1(f64 value) { m_ps1 = std::bit_cast<u64>(value); }
 
         void setBoth(u64 lhs, u64 rhs) {
             setPS0(lhs);
@@ -274,6 +274,25 @@ namespace Toolbox::Interpreter::Register {
 #else
     typedef PairedSingle FPR;
 #endif
+
+    // quantize types
+    enum QuantizeType : u32 {
+        QUANTIZE_FLOAT = 0,
+        QUANTIZE_INVALID1 = 1,
+        QUANTIZE_INVALID2 = 2,
+        QUANTIZE_INVALID3 = 3,
+        QUANTIZE_U8 = 4,
+        QUANTIZE_U16 = 5,
+        QUANTIZE_S8 = 6,
+        QUANTIZE_S16 = 7,
+    };
+
+    typedef u32 GQR;
+
+#define GQR_ST_TYPE(gqr)  (QuantizeType)((gqr) & 0b111)
+#define GQR_ST_SCALE(gqr) (u32)(((gqr) >> 8) & 0b111111)
+#define GQR_LD_TYPE(gqr)  (QuantizeType)(((gqr) >> 16) & 0b111)
+#define GQR_LD_SCALE(gqr) (u32)(((gqr) >> 24) & 0b111111)
 
     enum class FPSCRCmp : u8 {
         NONE = 0,
@@ -493,6 +512,7 @@ namespace Toolbox::Interpreter::Register {
 
     struct RegisterSnapshot {
         PC m_pc;
+        PC m_last_pc;
         GPR m_gpr[32];
         FPR m_fpr[32];
         CR m_cr;

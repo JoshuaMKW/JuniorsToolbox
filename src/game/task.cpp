@@ -51,13 +51,41 @@ namespace Toolbox::Game {
     };
 
     void TaskCommunicator::tRun(void *param) {
+        m_game_interpreter = Interpreter::SystemDolphin();
+
+        m_game_interpreter.onException([](u32 bad_instr_ptr, Interpreter::ExceptionCause cause,
+                                          const Interpreter::Register::RegisterSnapshot &snapshot) {
+            TOOLBOX_ERROR_V("[Interpreter] {} at PC = 0x{:08X}, Last PC = 0x{:08X}:",
+                            magic_enum::enum_name(cause), bad_instr_ptr, snapshot.m_last_pc);
+            std::vector<std::string> exception_message = StringifySnapshot(snapshot);
+            for (auto &line : exception_message) {
+                TOOLBOX_ERROR_V("[Interpreter] {}", line);
+            }
+        });
+
+        m_game_interpreter.onInvalid([](u32 bad_instr_ptr, const std::string &cause,
+                                        const Interpreter::Register::RegisterSnapshot &snapshot) {
+            TOOLBOX_ERROR_V("[Interpreter] Invalid instruction at PC = 0x{:08X}, Last PC = "
+                            "0x{:08X} (Reason: {}):",
+                            bad_instr_ptr, snapshot.m_last_pc, cause);
+            std::vector<std::string> exception_message = StringifySnapshot(snapshot);
+            for (auto &line : exception_message) {
+                TOOLBOX_ERROR_V("[Interpreter] {}", line);
+            }
+        });
+
+        m_game_interpreter.setGlobalsPointerR(0x80416BA0);
+        m_game_interpreter.setGlobalsPointerRW(0x804141C0);
+
         while (!m_kill_flag.load()) {
             AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
             DolphinCommunicator &communicator =
                 MainApplication::instance().getDolphinCommunicator();
 
-            m_game_interpreter = Interpreter::SystemDolphin(communicator);
+            m_game_interpreter.setMemoryBuffer(communicator.manager().getMemoryView(),
+                                               communicator.manager().getMemorySize());
+            checkForAcquiredStackFrameAndBuffer();
 
             // Dismiss tasks if disconnected to avoid errors
             while (!m_task_queue.empty()) {
@@ -76,29 +104,174 @@ namespace Toolbox::Game {
         m_kill_condition.notify_all();
     }
 
+    u32 TaskCommunicator::allocGameMemory(u32 heap_ptr, u32 size, u32 alignment) {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        u32 alloc_fn_ptr = 0;
+
+        u32 vtable_ptr = communicator.read<u32>(heap_ptr).value();
+        if (vtable_ptr == 0x803E0070) /* Solid Heap (USA) */ {
+            alloc_fn_ptr = 0x802C48C4;
+        } else if (vtable_ptr == 0x803DFF38) /* Exp Heap (USA) */ {
+            alloc_fn_ptr = 0x802C14D0;
+        }
+
+        if (alloc_fn_ptr == 0) {
+            return 0;
+        }
+
+        u32 args[3]   = {heap_ptr, size, alignment};
+        auto snapshot = m_game_interpreter.evaluateFunction(alloc_fn_ptr, 3, args, 0, nullptr);
+
+        return snapshot.m_gpr[3];
+    }
+
+    u32 TaskCommunicator::listInsert(u32 list_ptr, u32 iter_at, u32 item_ptr) {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+
+        u32 prev_it = communicator.read<u32>(iter_at + 0x4).value();
+
+        // Allocate the new bytes
+
+        u32 current_heap_ptr = communicator.read<u32>(0x8040E294).value();
+        if (current_heap_ptr == 0) {
+            return 0;
+        }
+
+        // Evaluate for TNode_ type
+        u32 node_ptr = allocGameMemory(current_heap_ptr, 0xC, 4);
+        if (node_ptr == 0) {
+            return 0;
+        }
+
+        // Initialize the new node
+        communicator.write<u32>(node_ptr, iter_at);
+        communicator.write<u32>(node_ptr + 0x4, prev_it);
+        communicator.write<u32>(node_ptr + 0x8, item_ptr);
+
+        // Update links
+        communicator.write<u32>(iter_at + 0x4, node_ptr);
+        communicator.write<u32>(prev_it, node_ptr);
+
+        u32 list_size = communicator.read<u32>(list_ptr + 0x4).value();
+        communicator.write<u32>(list_ptr + 0x4, list_size + 1);
+
+        return node_ptr;
+    }
+
+    u32 TaskCommunicator::listBegin(u32 list_ptr) const {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+        return communicator.read<u32>(list_ptr + 0x8).value();
+    }
+
+    u32 TaskCommunicator::listEnd(u32 list_ptr) const { return list_ptr + 0x8; }
+
+    u32 TaskCommunicator::listNext(u32 iter) const {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+        return communicator.read<u32>(iter).value();
+    }
+
+    u32 TaskCommunicator::listItem(u32 iter) const {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+        return communicator.read<u32>(iter + 0x8).value();
+    }
+
     void TaskCommunicator::listForEach(u32 list_ptr,
                                        std::function<void(DolphinCommunicator &, u32, u32)> fn) {
         TOOLBOX_ASSERT(fn, "Must provide a callback to listForEach!");
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
-        u32 list_it                       = communicator.read<u32>(list_ptr + 0x8).value();
-        u32 list_end                      = list_ptr + 0x8;
+        u32 list_it                       = listBegin(list_ptr);
+        u32 list_end                      = listEnd(list_ptr);
         while (list_it && list_it != list_end) {
-            u32 item_ptr = communicator.read<u32>(list_it + 0x8).value();
-            fn(communicator, list_it, item_ptr);
-            list_it = communicator.read<u32>(list_it).value();
+            fn(communicator, list_it, listItem(list_it));
+            list_it = listNext(list_it);
         }
     }
+
+    u32 TaskCommunicator::vectorInsert(u32 vector_ptr, u32 iter_at, u32 item_ptr) {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+        return 0;
+    }
+
+    u32 TaskCommunicator::vectorBegin(u32 vector_ptr) const {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+        return communicator.read<u32>(vector_ptr + 0x4).value();
+    }
+
+    u32 TaskCommunicator::vectorEnd(u32 vector_ptr) const {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+        return communicator.read<u32>(vector_ptr + 0x8).value();
+    }
+
+    u32 TaskCommunicator::vectorNext(u32 iter, u32 item_size) const { return iter + item_size; }
+
+    u32 TaskCommunicator::vectorItem(u32 iter) const { return iter; }
 
     void TaskCommunicator::vectorForEach(u32 vector_ptr, size_t item_size,
                                          std::function<void(DolphinCommunicator &, u32)> fn) {
         TOOLBOX_ASSERT(fn, "Must provide a callback to vectorForEach!");
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
-        u32 vector_it                     = communicator.read<u32>(vector_ptr + 0x4).value();
-        u32 vector_end                    = communicator.read<u32>(vector_ptr + 0x8).value();
+        u32 vector_it                     = vectorBegin(vector_ptr);
+        u32 vector_end                    = vectorEnd(vector_ptr);
         while (vector_it != vector_end) {
-            fn(communicator, vector_it);
-            vector_it += item_size;
+            fn(communicator, vectorItem(vector_it));
+            vector_it = vectorNext(vector_it, item_size);
         }
+    }
+
+    bool TaskCommunicator::checkForAcquiredStackFrameAndBuffer() {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+        if (!communicator.manager().isHooked()) {
+            m_game_interpreter.setStackPointer(0);
+            return false;
+        }
+
+        // Here we use an unsafe buffer just to acquire
+        // the true buffer through a call to JKRHeap::alloc
+        if (!m_game_interpreter.isStackPointerValid()) {
+            // Under this circumstance, the heap hasn't been initialized yet
+            u32 system_heap_ptr = communicator.read<u32>(0x8040E290).value();
+            if (system_heap_ptr == 0) {
+                m_game_interpreter.setStackPointer(0);
+                return false;
+            }
+
+            u32 cached_stack_ptr = communicator.read<u32>(0x800001C0).value();
+            if (cached_stack_ptr != 0) {
+                m_game_interpreter.setStackPointer(cached_stack_ptr);
+            } else {
+                // Memory below fst_ptr is the end of the heap, which we
+                // can assume is unused (if it isn't, holy shit lol)
+                u32 fst_ptr = communicator.read<u32>(0x80000034).value();
+                m_game_interpreter.setStackPointer(fst_ptr - 0x100);
+
+                {
+                    // Get stack pointer
+                    u32 alloc_ptr = allocGameMemory(system_heap_ptr, 0x4000, 0x4);
+                    if (alloc_ptr == 0) {
+                        TOOLBOX_ERROR("(Task) Failed to request memory for stack frame!");
+                        return false;
+                    }
+
+                    m_game_interpreter.setStackPointer(alloc_ptr + 0x4000);
+                    communicator.write<u32>(0x800001C0, alloc_ptr);
+                }
+            }
+
+            u32 cached_buffer_ptr = communicator.read<u32>(0x800001C4).value();
+            if (cached_buffer_ptr == 0) {
+                // Get data buffer
+                u32 alloc_ptr = allocGameMemory(system_heap_ptr, 0x10000, 0x4);
+                if (alloc_ptr == 0) {
+                    TOOLBOX_ERROR("(Task) Failed to request memory for stack frame!");
+                    return false;
+                }
+
+                communicator.write<u32>(0x800001C4, alloc_ptr);
+            }
+        }
+
+        return true;
     }
 
     u32 TaskCommunicator::getActorPtr(RefPtr<ISceneObject> actor) {
@@ -319,10 +492,88 @@ namespace Toolbox::Game {
                 "Task", "Failed to add object to game scene since parent isn't IdxGroup!");
         }
 
-        listForEach(parent_ptr + 0x10, [&](DolphinCommunicator &communicator, u32 iter_ptr, u32 item_ptr) {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
-        });
+        // Get cached buffer ptr
+        u32 buffer_ptr = communicator.read<u32>(0x800001C4).value();
+        if (buffer_ptr == 0) {
+            return make_error<void>(
+                "Task", "Failed to add object to game scene (Claimed buffer doesn't exist)!");
+        }
 
+        std::span<u8> obj_data = object->getData();
+        if (obj_data.size() > (0x10000 - 0x100)) {
+            return make_error<void>(
+                "Task", "Failed to add object to game scene (Obj data is too large for buffer)!");
+        }
+
+        communicator.writeBytes(reinterpret_cast<const char *>(obj_data.data()), buffer_ptr + 0x100,
+                                obj_data.size());
+
+        // Create this JSUMemoryInputStream
+        // 0  - VTable
+        // 4  - unknown (state?)
+        // 8  - buffer
+        // c  - length
+        // 10 - position
+        communicator.write<u32>(buffer_ptr, 0x803E01C8);
+        communicator.write<u32>(buffer_ptr + 0x4, 0);
+        communicator.write<u32>(buffer_ptr + 0x8, buffer_ptr + 0x100);
+        communicator.write<u32>(buffer_ptr + 0xC, obj_data.size());
+        communicator.write<u32>(buffer_ptr + 0x10, 0);
+
+        // Create reference out JSUMemoryInputStream
+        // 0  - VTable
+        // 4  - unknown (state?)
+        // 8  - buffer
+        // c  - length
+        // 10 - position
+        communicator.write<u32>(buffer_ptr + 0x20, 0x803E01C8);
+        communicator.write<u32>(buffer_ptr + 0x24, 0);
+        communicator.write<u32>(buffer_ptr + 0x28, 0);
+        communicator.write<u32>(buffer_ptr + 0x2C, 0);
+        communicator.write<u32>(buffer_ptr + 0x30, 0);
+
+        // genObject -> (in, ref_out)
+        u32 args[2]       = {buffer_ptr, buffer_ptr + 0x20};
+        auto gen_snapshot = m_game_interpreter.evaluateFunction(0x802FA598, 2, args, 0, nullptr);
+
+        u32 nameref_ptr = gen_snapshot.m_gpr[3];
+        if (nameref_ptr == 0) {
+            return make_error<void>(
+                "Task", "Failed to add object to game scene (Call to genObject returned nullptr)!");
+        }
+
+        // Here we insert our generated object pointer into the perform list
+        // of our parent object...
+        u32 parent_perform_list = parent_ptr + 0x10;
+        u32 new_it = listInsert(parent_perform_list, listEnd(parent_perform_list), nameref_ptr);
+        if (new_it == 0) {
+            return make_error<void>(
+                "Task", "Failed to add object to game scene (Parent insertion failed)!");
+        }
+
+        u32 vtable_ptr = communicator.read<u32>(nameref_ptr).value();
+
+        {
+            // Call virtual function load(JSUMemoryInputStream &in)
+            u32 args[2] = {nameref_ptr, buffer_ptr + 0x20};
+
+            u32 func_load_ptr = communicator.read<u32>(vtable_ptr + 0x10).value();
+
+            m_game_interpreter.evaluateFunction(func_load_ptr, 2, args, 0, nullptr);
+        }
+
+        {
+            // Call virtual function loadAfter()
+            u32 args[1] = {nameref_ptr};
+
+            u32 func_load_after_ptr = communicator.read<u32>(vtable_ptr + 0x18).value();
+
+            m_game_interpreter.evaluateFunction(func_load_after_ptr, 1, args, 0, nullptr);
+        }
+
+        // Object is initialized successfully
         return {};
     }
 
@@ -358,26 +609,27 @@ namespace Toolbox::Game {
         std::string obj_game_key = obj_game_key_result.value();
 
         // Remove the object from the parent list
-        listForEach(parent_ptr + 0x10, [&](DolphinCommunicator &communicator, u32 iter_ptr,
-                                           u32 item_ptr) {
-            u32 item_key_ptr = communicator.read<u32>(item_ptr + 4).value();
-            if (item_key_ptr == 0) {
-                return;
-            }
+        listForEach(parent_ptr + 0x10,
+                    [&](DolphinCommunicator &communicator, u32 iter_ptr, u32 item_ptr) {
+                        u32 item_key_ptr = communicator.read<u32>(item_ptr + 4).value();
+                        if (item_key_ptr == 0) {
+                            return;
+                        }
 
-            const char *item_key =
-                static_cast<const char *>(communicator.manager().getMemoryView()) + item_key_ptr - 0x80000000;
-            if (obj_game_key == item_key) {
-                u32 next_ptr = communicator.read<u32>(iter_ptr).value();
-                u32 prev_ptr = communicator.read<u32>(iter_ptr + 0x4).value();
+                        const char *item_key =
+                            static_cast<const char *>(communicator.manager().getMemoryView()) +
+                            item_key_ptr - 0x80000000;
+                        if (obj_game_key == item_key) {
+                            u32 next_ptr = communicator.read<u32>(iter_ptr).value();
+                            u32 prev_ptr = communicator.read<u32>(iter_ptr + 0x4).value();
 
-                communicator.write<u32>(prev_ptr, next_ptr);
-                communicator.write<u32>(next_ptr + 0x4, prev_ptr);
+                            communicator.write<u32>(prev_ptr, next_ptr);
+                            communicator.write<u32>(next_ptr + 0x4, prev_ptr);
 
-                u32 list_size = communicator.read<u32>(parent_ptr + 0x14).value();
-                communicator.write<u32>(parent_ptr + 0x14, list_size - 1);
-            }
-        });
+                            u32 list_size = communicator.read<u32>(parent_ptr + 0x14).value();
+                            communicator.write<u32>(parent_ptr + 0x14, list_size - 1);
+                        }
+                    });
 
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
@@ -394,7 +646,8 @@ namespace Toolbox::Game {
                 if (elem_ptr == obj_ptr) {
                     // This moves the future elements on top of the deleted one
                     char *buf = static_cast<char *>(communicator.manager().getMemoryView());
-                    std::memmove(buf + elem_array_at - 0x80000000, buf + elem_array_at + 4 - 0x80000000, (obj_count - i) * 4);
+                    std::memmove(buf + elem_array_at - 0x80000000,
+                                 buf + elem_array_at + 4 - 0x80000000, (obj_count - i) * 4);
                     communicator.write<u32>(item_ptr + 0x14, --obj_count);
                     break;
                 }

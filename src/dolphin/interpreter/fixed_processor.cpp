@@ -845,7 +845,7 @@ namespace Toolbox::Interpreter {
             return;
         }
         u64 result = ra == 0 ? si : m_gpr[ra] + si;
-        m_gpr[rt]  = (result << 16) & 0x7FFFFFFF;
+        m_gpr[rt]  = (result << 16) & 0xFFFFFFFF;
     }
 
     void FixedPointProcessor::add(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {
@@ -873,6 +873,9 @@ namespace Toolbox::Interpreter {
         u64 result = ra == 0 ? si : m_gpr[ra] + si;
         m_gpr[rt]  = result & 0xFFFFFFFF;
         XER_SET_CA(m_xer, result > 0xFFFFFFFF);
+        if (rc) {
+            cr.cmp(0, (s32)m_gpr[rt], 0, m_xer);
+        }
     }
 
     void FixedPointProcessor::subf(u8 rt, u8 ra, u8 rb, bool oe, bool rc, Register::CR &cr) {
