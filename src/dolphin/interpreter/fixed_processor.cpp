@@ -1381,8 +1381,7 @@ namespace Toolbox::Interpreter {
                 PROC_INVALID_MSG(FixedPointProcessor, extsb, "Invalid registers detected!"));
             return;
         }
-        m_gpr[ra] =
-            static_cast<Register::GPR>(std::bit_cast<u64, s64>((s64)m_gpr[rs]) & 0x7FFFFFFF);
+        m_gpr[ra] = static_cast<Register::GPR>(u32(s32(s8(m_gpr[rs]))));
         if (rc) {
             cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
         }
@@ -1395,7 +1394,7 @@ namespace Toolbox::Interpreter {
             return;
         }
         m_gpr[ra] =
-            static_cast<Register::GPR>(std::bit_cast<u64, s64>((s64)m_gpr[rs]) & 0x7FFFFFFF);
+            static_cast<Register::GPR>(u32(s32(s16(m_gpr[rs]))));
         if (rc) {
             cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
         }
@@ -1429,7 +1428,7 @@ namespace Toolbox::Interpreter {
             return;
         }
         u32 mask  = MakeRotationMask(mb, me);
-        m_gpr[ra] = std::rotl(m_gpr[rs], sh & 0x1F) & mask;
+        m_gpr[ra] = static_cast<Register::GPR>(std::rotl<u32>(static_cast<u32>(m_gpr[rs]), sh & 0x1F) & mask);
         if (rc) {
             cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
         }
@@ -1442,7 +1441,7 @@ namespace Toolbox::Interpreter {
             return;
         }
         u32 mask  = MakeRotationMask(mb, me);
-        m_gpr[ra] = std::rotl(m_gpr[rs], m_gpr[rb] & 0x1F) & mask;
+        m_gpr[ra] = static_cast<Register::GPR>(std::rotl<u32>(static_cast<u32>(m_gpr[rs]), m_gpr[rb] & 0x1F) & mask);
         if (rc) {
             cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
         }
@@ -1456,7 +1455,7 @@ namespace Toolbox::Interpreter {
         }
         u64 mask  = static_cast<u64>(MakeRotationMask(mb, me));
         m_gpr[ra] = static_cast<Register::GPR>((m_gpr[ra] & ~mask) |
-                                               (std::rotl(m_gpr[rs], sh & 0x1F) & mask));
+                                               (std::rotl<u32>(static_cast<u32>(m_gpr[rs]), sh & 0x1F) & mask));
         if (rc) {
             cr.cmp(0, (s32)m_gpr[ra], 0, m_xer);
         }

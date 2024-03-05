@@ -34,7 +34,9 @@ namespace Toolbox::Interpreter {
             m_ctr -= 1;
             if (m_ctr != 0 && !cond_true) {
                 b(target_addr, aa, lk, pc);
+                return;
             }
+            pc += 4;
             return;
         }
 
@@ -43,7 +45,9 @@ namespace Toolbox::Interpreter {
             m_ctr -= 1;
             if (m_ctr == 0 && !cond_true) {
                 b(target_addr, aa, lk, pc);
+                return;
             }
+            pc += 4;
             return;
         }
 
@@ -58,7 +62,9 @@ namespace Toolbox::Interpreter {
             m_ctr -= 1;
             if (m_ctr != 0 && cond_true) {
                 b(target_addr, aa, lk, pc);
+                return;
             }
+            pc += 4;
             return;
         }
 
@@ -67,13 +73,37 @@ namespace Toolbox::Interpreter {
             m_ctr -= 1;
             if (m_ctr == 0 && cond_true) {
                 b(target_addr, aa, lk, pc);
+                return;
             }
+            pc += 4;
             return;
         }
 
         // bc cri
         if ((bo & 0b11100) == 0b01100 && cond_true) {
             b(target_addr, aa, lk, pc);
+            return;
+        }
+
+        // bdnz
+        if ((bo & 0b10110) == 0b10000) {
+            m_ctr -= 1;
+            if (m_ctr != 0) {
+                b(target_addr, aa, lk, pc);
+                return;
+            }
+            pc += 4;
+            return;
+        }
+
+        // bdz
+        if ((bo & 0b10110) == 0b10010) {
+            m_ctr -= 1;
+            if (m_ctr == 0) {
+                b(target_addr, aa, lk, pc);
+                return;
+            }
+            pc += 4;
             return;
         }
 
@@ -89,12 +119,16 @@ namespace Toolbox::Interpreter {
     void BranchProcessor::bclr(u8 bo, u8 bi, bool lk, Register::PC &pc) {
         bool cond_true = m_cr.is(bi / 4, BitToCRCmp(bi));
 
+        s32 target_addr = static_cast<s32>(m_lr);
+
         // bdnz && !cri
         if ((bo & 0b11110) == 0b00000) {
             m_ctr -= 1;
             if (m_ctr != 0 && !cond_true) {
-                b((s32)m_lr, true, lk, pc);
+                b(target_addr, true, lk, pc);
+                return;
             }
+            pc += 4;
             return;
         }
 
@@ -102,17 +136,17 @@ namespace Toolbox::Interpreter {
         if ((bo & 0b11110) == 0b00010) {
             m_ctr -= 1;
             if (m_ctr == 0 && !cond_true) {
-                b((s32)m_lr, true, lk, pc);
+                b(target_addr, true, lk, pc);
+                return;
             }
+            pc += 4;
             return;
         }
 
         // bc !cri
         if ((bo & 0b11100) == 0b00100 && !cond_true) {
-            b((s32)m_lr, true, lk, pc);
-            if (!lk) {
-                m_return_cb();
-            }
+            b(target_addr, true, lk, pc);
+            m_return_cb();
             return;
         }
 
@@ -120,8 +154,10 @@ namespace Toolbox::Interpreter {
         if ((bo & 0b11110) == 0b01000) {
             m_ctr -= 1;
             if (m_ctr != 0 && cond_true) {
-                b((s32)m_lr, true, lk, pc);
+                b(target_addr, true, lk, pc);
+                return;
             }
+            pc += 4;
             return;
         }
 
@@ -129,25 +165,46 @@ namespace Toolbox::Interpreter {
         if ((bo & 0b11110) == 0b01010) {
             m_ctr -= 1;
             if (m_ctr == 0 && cond_true) {
-                b((s32)m_lr, true, lk, pc);
+                b(target_addr, true, lk, pc);
+                return;
             }
+            pc += 4;
             return;
         }
 
         // bc cri
         if ((bo & 0b11100) == 0b01100 && cond_true) {
-            b((s32)m_lr, true, lk, pc);
-            if (!lk)
-                m_return_cb();
+            b(target_addr, true, lk, pc);
+            m_return_cb();
             return;
         }
 
-        // blr
-        if ((bo & 0b10100) == 0b10100) [[likely]] {
-            b((s32)m_lr, true, lk, pc);
-            if (!lk) {
-                m_return_cb();
+        // bdnz
+        if ((bo & 0b10110) == 0b10000) {
+            m_ctr -= 1;
+            if (m_ctr != 0) {
+                b(target_addr, true, lk, pc);
+                return;
             }
+            pc += 4;
+            return;
+        }
+
+        // bdz
+        if ((bo & 0b10110) == 0b10010) {
+            m_ctr -= 1;
+            if (m_ctr == 0) {
+                b(target_addr, true, lk, pc);
+                return;
+            }
+            pc += 4;
+            return;
+        }
+
+        // b (call branch directly to save performance)
+        if ((bo & 0b10100) == 0b10100) [[likely]] {
+            b(target_addr, true, lk, pc);
+            m_return_cb();
             return;
         }
 

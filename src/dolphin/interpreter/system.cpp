@@ -643,10 +643,10 @@ namespace Toolbox::Interpreter {
             m_fixed_proc.cntlzw(FORM_RA(inst), FORM_RB(inst), FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::EXTSH:
-            m_fixed_proc.extsh(FORM_RA(inst), FORM_RB(inst), FORM_Rc(inst), m_branch_proc.m_cr);
+            m_fixed_proc.extsh(FORM_RA(inst), FORM_RS(inst), FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::EXTSB:
-            m_fixed_proc.extsb(FORM_RA(inst), FORM_RB(inst), FORM_Rc(inst), m_branch_proc.m_cr);
+            m_fixed_proc.extsb(FORM_RA(inst), FORM_RS(inst), FORM_Rc(inst), m_branch_proc.m_cr);
             break;
         case TableSubOpcode31::SRW:
             m_fixed_proc.srw(FORM_RA(inst), FORM_RS(inst), FORM_RB(inst), FORM_Rc(inst),
@@ -915,24 +915,9 @@ namespace Toolbox::Interpreter {
     }
 
     Register::PC SystemDolphin::evaluateFloatSubOp(u32 inst) {
-        TableSubOpcode63 sub_op = (TableSubOpcode63)FORM_XO_10(inst);
-        switch (sub_op) {
-        case TableSubOpcode63::FCMPU:
-            m_float_proc.fcmpu(FORM_CRFD(inst), FORM_FA(inst), FORM_FB(inst), m_branch_proc.m_cr,
-                               m_system_proc.m_msr, m_system_proc.m_srr1);
-            break;
-        case TableSubOpcode63::FRSP:
-            m_float_proc.frsp(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
-                              m_system_proc.m_msr, m_system_proc.m_srr1);
-            break;
-        case TableSubOpcode63::FCTIW:
-            m_float_proc.fctiw(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
-                               m_system_proc.m_msr, m_system_proc.m_srr1);
-            break;
-        case TableSubOpcode63::FCTIWZ:
-            m_float_proc.fctiwz(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
-                                m_system_proc.m_msr, m_system_proc.m_srr1);
-            break;
+        TableSubOpcode63 sub_op_5  = (TableSubOpcode63)FORM_XO_5(inst);
+        TableSubOpcode63 sub_op_10 = (TableSubOpcode63)FORM_XO_10(inst);
+        switch (sub_op_5) {
         case TableSubOpcode63::FDIV:
             m_float_proc.fdiv(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
@@ -945,13 +930,18 @@ namespace Toolbox::Interpreter {
             m_float_proc.fadd(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
-        case TableSubOpcode63::FRES:
-            m_float_proc.fres(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
-                              m_system_proc.m_msr, m_system_proc.m_srr1);
+        case TableSubOpcode63::FSEL:
+            m_float_proc.fsel(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
+                              FORM_Rc(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
+                              m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FMUL:
             m_float_proc.fmul(FORM_FS(inst), FORM_FA(inst), FORM_FB(inst), FORM_Rc(inst),
                               m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
+            break;
+        case TableSubOpcode63::FRSQRTE:
+            m_float_proc.frsqrte(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
+                                 m_system_proc.m_msr, m_system_proc.m_srr1);
             break;
         case TableSubOpcode63::FMSUB:
             m_float_proc.fmsub(FORM_FS(inst), FORM_FA(inst), FORM_FC(inst), FORM_FB(inst),
@@ -973,49 +963,68 @@ namespace Toolbox::Interpreter {
                                 FORM_Rc(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
                                 m_system_proc.m_srr1);
             break;
-        case TableSubOpcode63::FCMPO:
-            m_float_proc.fcmpo(FORM_CRFD(inst), FORM_FA(inst), FORM_FB(inst), m_branch_proc.m_cr,
-                               m_system_proc.m_msr, m_system_proc.m_srr1);
-            break;
-        case TableSubOpcode63::MTFSB1:
-            m_float_proc.mtfsb1(FORM_CRBD(inst), FORM_Rc(inst), m_branch_proc.m_cr,
-                                m_system_proc.m_msr, m_system_proc.m_srr1);
-            break;
-        case TableSubOpcode63::FNEG:
-            m_float_proc.fneg(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
-                              m_system_proc.m_msr, m_system_proc.m_srr1);
-            break;
-        case TableSubOpcode63::MCRFS:
-            m_float_proc.mcrfs(FORM_CRBD(inst), FORM_CRBA(inst), m_branch_proc.m_cr,
-                               m_system_proc.m_msr, m_system_proc.m_srr1);
-            break;
-        case TableSubOpcode63::MTFSB0:
-            m_float_proc.mtfsb0(FORM_CRBD(inst), FORM_Rc(inst), m_branch_proc.m_cr,
-                                m_system_proc.m_msr, m_system_proc.m_srr1);
-            break;
-        case TableSubOpcode63::FMR:
-            m_float_proc.fmr(FORM_CRFD(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
-                             m_system_proc.m_msr, m_system_proc.m_srr1);
-            break;
-        case TableSubOpcode63::MTFSFI:
-            break;
-        case TableSubOpcode63::FNABS:
-            m_float_proc.fnabs(FORM_CRFD(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
-                               m_system_proc.m_msr, m_system_proc.m_srr1);
-            break;
-        case TableSubOpcode63::FABS:
-            m_float_proc.fabs(FORM_CRFD(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
-                              m_system_proc.m_msr, m_system_proc.m_srr1);
-            break;
-        case TableSubOpcode63::MFFS:
-            m_float_proc.mffs(FORM_FS(inst), FORM_Rc(inst), m_branch_proc.m_cr, m_system_proc.m_msr,
-                              m_system_proc.m_srr1);
-            break;
-        case TableSubOpcode63::MTFS:
         default:
-            internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, unknown,
-                                               "Attempted to evaluate unknown instruction!"));
-            break;
+            switch (sub_op_10) {
+            case TableSubOpcode63::FCMPU:
+                m_float_proc.fcmpu(FORM_CRFD(inst), FORM_FA(inst), FORM_FB(inst),
+                                   m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::FRSP:
+                m_float_proc.frsp(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
+                                  m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::FCTIW:
+                m_float_proc.fctiw(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
+                                   m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::FCTIWZ:
+                m_float_proc.fctiwz(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
+                                    m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::FCMPO:
+                m_float_proc.fcmpo(FORM_CRFD(inst), FORM_FA(inst), FORM_FB(inst),
+                                   m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::MTFSB1:
+                m_float_proc.mtfsb1(FORM_CRBD(inst), FORM_Rc(inst), m_branch_proc.m_cr,
+                                    m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::FNEG:
+                m_float_proc.fneg(FORM_FS(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
+                                  m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::MCRFS:
+                m_float_proc.mcrfs(FORM_CRBD(inst), FORM_CRBA(inst), m_branch_proc.m_cr,
+                                   m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::MTFSB0:
+                m_float_proc.mtfsb0(FORM_CRBD(inst), FORM_Rc(inst), m_branch_proc.m_cr,
+                                    m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::FMR:
+                m_float_proc.fmr(FORM_CRFD(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
+                                 m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::MTFSFI:
+                break;
+            case TableSubOpcode63::FNABS:
+                m_float_proc.fnabs(FORM_CRFD(inst), FORM_FB(inst), FORM_Rc(inst),
+                                   m_branch_proc.m_cr, m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::FABS:
+                m_float_proc.fabs(FORM_CRFD(inst), FORM_FB(inst), FORM_Rc(inst), m_branch_proc.m_cr,
+                                  m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::MFFS:
+                m_float_proc.mffs(FORM_FS(inst), FORM_Rc(inst), m_branch_proc.m_cr,
+                                  m_system_proc.m_msr, m_system_proc.m_srr1);
+                break;
+            case TableSubOpcode63::MTFS:
+            default:
+                internalInvalidCB(PROC_INVALID_MSG(SystemDolphin, unknown,
+                                                   "Attempted to evaluate unknown instruction!"));
+                break;
+            }
         }
         return m_system_proc.m_pc + 4;
     }
