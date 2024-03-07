@@ -1159,8 +1159,17 @@ namespace Toolbox::UI {
         m_hierarchy_virtual_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
         m_hierarchy_virtual_node_menu.addOption(
-            "Insert Object Here...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_I},
+            "Insert Object Before...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
+                m_create_obj_dialog.open();
+                return;
+            });
+
+        m_hierarchy_virtual_node_menu.addOption(
+            "Insert Object After...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
                 m_create_obj_dialog.open();
                 return;
             });
@@ -1242,12 +1251,29 @@ namespace Toolbox::UI {
     void SceneWindow::buildContextMenuGroupObj() {
         m_hierarchy_group_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
-        m_hierarchy_group_node_menu.addOption("Add Child Object...",
-                                              {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
-                                              [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                                                  m_create_obj_dialog.open();
-                                                  return;
-                                              });
+        m_hierarchy_group_node_menu.addOption(
+            "Add Child Object...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_CHILD);
+                m_create_obj_dialog.open();
+                return;
+            });
+
+        m_hierarchy_group_node_menu.addOption(
+            "Insert Object Before...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
+                m_create_obj_dialog.open();
+                return;
+            });
+
+        m_hierarchy_group_node_menu.addOption(
+            "Insert Object After...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
+                m_create_obj_dialog.open();
+                return;
+            });
 
         m_hierarchy_group_node_menu.addDivider();
 
@@ -1325,8 +1351,17 @@ namespace Toolbox::UI {
         m_hierarchy_physical_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
         m_hierarchy_physical_node_menu.addOption(
-            "Insert Object Here...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            "Insert Object Before...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
+                m_create_obj_dialog.open();
+                return;
+            });
+
+        m_hierarchy_physical_node_menu.addOption(
+            "Insert Object After...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
                 m_create_obj_dialog.open();
                 return;
             });
@@ -1815,18 +1850,26 @@ namespace Toolbox::UI {
         m_create_obj_dialog.setup();
         m_create_obj_dialog.setActionOnAccept(
             [this](size_t sibling_index, std::string_view name, const Object::Template &template_,
-                   std::string_view wizard_name, SelectionNodeInfo<Object::ISceneObject> info) {
+                   std::string_view wizard_name, CreateObjDialog::InsertPolicy policy,
+                   SelectionNodeInfo<Object::ISceneObject> info) {
                 auto new_object_result = Object::ObjectFactory::create(template_, wizard_name);
                 if (!name.empty()) {
                     new_object_result->setNameRef(name);
                 }
 
+                size_t insert_index;
+
                 GroupSceneObject *this_parent;
-                if (info.m_selected->isGroupObject()) {
-                    this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected.get());
+                if (info.m_selected->isGroupObject() &&
+                    policy == CreateObjDialog::InsertPolicy::INSERT_CHILD) {
+                    this_parent  = reinterpret_cast<GroupSceneObject *>(info.m_selected.get());
+                    insert_index = this_parent->getChildren().size();
                 } else {
                     this_parent =
                         reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+                    insert_index = policy == CreateObjDialog::InsertPolicy::INSERT_BEFORE
+                                       ? sibling_index
+                                       : sibling_index + 1;
                 }
 
                 if (!this_parent) {
@@ -1836,7 +1879,7 @@ namespace Toolbox::UI {
                     return;
                 }
 
-                auto result = this_parent->insertChild(sibling_index, std::move(new_object_result));
+                auto result = this_parent->insertChild(insert_index, std::move(new_object_result));
                 if (!result) {
                     logObjectGroupError(result.error());
                     return;

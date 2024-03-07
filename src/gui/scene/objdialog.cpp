@@ -184,9 +184,9 @@ namespace Toolbox::UI {
             }
 
             if (ImGui::Button("Create")) {
-                m_on_accept(0, proposed_name, *m_templates.at(m_template_index),
+                m_on_accept(node_info.m_selection_index, proposed_name, *m_templates.at(m_template_index),
                             m_templates.at(m_template_index)->wizards().at(m_wizard_index).m_name,
-                            node_info);
+                            m_insert_policy, node_info);
                 m_open = false;
             }
 
