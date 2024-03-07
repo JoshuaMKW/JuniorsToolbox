@@ -26,8 +26,8 @@ namespace Toolbox {
         constexpr endian_swapped_t() : mData(T{}) {}
         constexpr endian_swapped_t(T v) : mData(getFlipped(v)) {}
 
-        constexpr operator T() const { return getFlipped(mData); }
-        constexpr T operator*() const { return getFlipped(mData); }
+        constexpr operator T() const { return mData; }
+        constexpr T operator*() const { return mData; }
 
     private:
         static constexpr T getFlipped(T v) {
@@ -64,3 +64,36 @@ namespace Toolbox {
     static_assert(sizeof(endian_swapped_t<f64>) == sizeof(f64));
 
 }  // namespace Toolbox
+
+#define TOOLBOX_BITWISE_ENUM(EnumType)                                                             \
+    inline EnumType operator|(EnumType lhs, EnumType rhs) {                                        \
+        using T = std::underlying_type_t<EnumType>;                                                \
+        return static_cast<EnumType>(static_cast<T>(lhs) | static_cast<T>(rhs));                   \
+    }                                                                                              \
+    inline EnumType operator&(EnumType lhs, EnumType rhs) {                                        \
+        using T = std::underlying_type_t<EnumType>;                                                \
+        return static_cast<EnumType>(static_cast<T>(lhs) & static_cast<T>(rhs));                   \
+    }                                                                                              \
+    inline EnumType operator^(EnumType lhs, EnumType rhs) {                                        \
+        using T = std::underlying_type_t<EnumType>;                                                \
+        return static_cast<EnumType>(static_cast<T>(lhs) ^ static_cast<T>(rhs));                   \
+    }                                                                                              \
+    inline EnumType operator~(EnumType rhs) {                                                      \
+        using T = std::underlying_type_t<EnumType>;                                                \
+        return static_cast<EnumType>(~static_cast<T>(rhs));                                        \
+    }                                                                                              \
+    inline EnumType &operator|=(EnumType &lhs, EnumType rhs) {                                     \
+        using T = std::underlying_type_t<EnumType>;                                                \
+        lhs     = static_cast<EnumType>(static_cast<T>(lhs) | static_cast<T>(rhs));                \
+        return lhs;                                                                                \
+    }                                                                                              \
+    inline EnumType &operator&=(EnumType &lhs, EnumType rhs) {                                     \
+        using T = std::underlying_type_t<EnumType>;                                                \
+        lhs     = static_cast<EnumType>(static_cast<T>(lhs) & static_cast<T>(rhs));                \
+        return lhs;                                                                                \
+    }                                                                                              \
+    inline EnumType &operator^=(EnumType &lhs, EnumType rhs) {                                     \
+        using T = std::underlying_type_t<EnumType>;                                                \
+        lhs     = static_cast<EnumType>(static_cast<T>(lhs) ^ static_cast<T>(rhs));                \
+        return lhs;                                                                                \
+    }

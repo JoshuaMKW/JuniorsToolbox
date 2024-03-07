@@ -19,7 +19,7 @@ namespace Toolbox::Object {
     class MetaStruct : public ISerializable, public ISmartResource {
     public:
         using MemberT      = RefPtr<MetaMember>;
-        using GetMemberT   = std::expected<MemberT, MetaScopeError>;
+        using GetMemberT   = Result<MemberT, MetaScopeError>;
         using CacheMemberT = std::unordered_map<std::string, MemberT>;
 
         MetaStruct(std::string_view name) : m_name(name) {}
@@ -54,8 +54,8 @@ namespace Toolbox::Object {
 
         bool operator==(const MetaStruct &other) const;
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override;
-        std::expected<void, SerialError> deserialize(Deserializer &in) override;
+        Result<void, SerialError> serialize(Serializer &out) const override;
+        Result<void, SerialError> deserialize(Deserializer &in) override;
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 

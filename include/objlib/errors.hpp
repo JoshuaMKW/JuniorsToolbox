@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error.hpp"
+#include "core/error.hpp"
 #include <stacktrace>
 #include <string>
 #include <variant>

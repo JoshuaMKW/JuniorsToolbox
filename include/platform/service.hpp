@@ -8,8 +8,9 @@
 namespace Toolbox::Platform {
     
     /*
-        Platform API is read only for the sake of not being a virus lol.
+        Service
+        API is read only for the sake of not being a virus lol.
     */
-    std::expected<bool, BaseError> IsServiceRunning(std::string_view service_name);
+    Result<bool, BaseError> IsServiceRunning(std::string_view service_name);
 
 }

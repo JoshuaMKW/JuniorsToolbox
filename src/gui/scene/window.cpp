@@ -2,21 +2,26 @@
 #define _USE_MATH_DEFINES
 #endif
 
+#include <algorithm>
 #include <cmath>
+#include <execution>
+#include <vector>
 
+#include "core/application.hpp"
 #include "core/log.hpp"
-#include "gui/logging/errors.hpp"
-#include "gui/scene/window.hpp"
+#include "core/timing.hpp"
 
 #include "gui/IconsForkAwesome.h"
-#include "gui/application.hpp"
+#include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
-#include "gui/modelcache.hpp"
-#include "gui/util.hpp"
-
 #include "gui/input.hpp"
+#include "gui/logging/errors.hpp"
+#include "gui/modelcache.hpp"
+#include "gui/scene/window.hpp"
 #include "gui/settings.hpp"
 #include "gui/util.hpp"
+
+#include "platform/capture.hpp"
 
 #include <lib/bStream/bstream.h>
 
@@ -31,7 +36,6 @@
 #include <iconv.h>
 
 #if WIN32
-#define NOMINMAX
 #include <windows.h>
 #endif
 #include <gui/context_menu.hpp>
@@ -76,9 +80,12 @@ namespace Toolbox::UI {
     }
     */
 
+    static std::unordered_set<std::string> s_game_blacklist = {"Map", "Sky"};
+
     static std::string getNodeUID(RefPtr<Toolbox::Object::ISceneObject> node) {
         std::string node_name =
-            std::format("{} ({})###{}", node->type(), node->getNameRef().name(), node->getUUID());
+            std::format("{} ({}) [{:08X}]###{}", node->type(), node->getNameRef().name(),
+                        node->getGamePtr(), node->getUUID());
         return node_name;
     }
 
@@ -97,6 +104,8 @@ namespace Toolbox::UI {
 
     SceneWindow::SceneWindow() : DockWindow() {
         m_properties_render_handler = renderEmptyProperties;
+
+        m_communicator.tStart(true, nullptr);
 
         buildContextMenuVirtualObj();
         buildContextMenuGroupObj();
@@ -139,6 +148,10 @@ namespace Toolbox::UI {
                 }
             }
 
+            if (m_communicator.isSceneLoaded(1, 2)) {
+                reassignAllActorPtrs(0);
+            }
+
             return true;
         }
 
@@ -171,6 +184,10 @@ namespace Toolbox::UI {
 
     bool SceneWindow::update(f32 delta_time) {
         bool inputState = m_renderer.inputUpdate(delta_time);
+
+        if (Input::GetKeyDown(GLFW_KEY_E)) {
+            m_is_game_edit_mode ^= true;
+        }
 
         std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
         for (auto &rail : m_current_scene->getRailData().rails()) {
@@ -251,13 +268,13 @@ namespace Toolbox::UI {
                 m_properties_render_handler = renderObjectProperties;
 
                 TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", render_obj->type(),
-                                  render_obj->getNameRef().name());
+                                    render_obj->getNameRef().name());
             }
         } else if (std::holds_alternative<RefPtr<Rail::RailNode>>(selection)) {
             auto node = std::get<RefPtr<Rail::RailNode>>(selection);
             if (node) {
                 RefPtr<Rail::Rail> rail = get_shared_ptr(*node->rail());
-                ImGuiID rail_id                  = static_cast<ImGuiID>(rail->getUUID());
+                ImGuiID rail_id         = static_cast<ImGuiID>(rail->getUUID());
 
                 // In this circumstance, select the whole rail
                 if (Input::GetKey(GLFW_KEY_LEFT_ALT)) {
@@ -321,7 +338,7 @@ namespace Toolbox::UI {
                     m_properties_render_handler = renderRailNodeProperties;
 
                     TOOLBOX_DEBUG_LOG_V("Hit node {} of rail \"{}\"",
-                                      rail->getNodeIndex(node).value(), rail->name());
+                                        rail->getNodeIndex(node).value(), rail->name());
                 }
             }
         }
@@ -337,31 +354,36 @@ namespace Toolbox::UI {
     }
 
     bool SceneWindow::postUpdate(f32 delta_time) {
-        if (!m_renderer.isGizmoManipulated()) {
-            return true;
+        if (m_renderer.isGizmoManipulated() && m_hierarchy_selected_nodes.size() > 0) {
+            glm::mat4x4 gizmo_transform = m_renderer.getGizmoTransform();
+            Transform obj_transform;
+
+            ImGuizmo::DecomposeMatrixToComponents(
+                glm::value_ptr(gizmo_transform), glm::value_ptr(obj_transform.m_translation),
+                glm::value_ptr(obj_transform.m_rotation), glm::value_ptr(obj_transform.m_scale));
+
+            // RefPtr<ISceneObject> obj = m_hierarchy_selected_nodes[0].m_selected;
+            // BoundingBox obj_old_bb            = obj->getBoundingBox().value();
+            // Transform obj_old_transform       = obj->getTransform().value();
+
+            //// Since the translation is for the gizmo, offset it back to the actual transform
+            // obj_transform.m_translation = obj_old_transform.m_translation + (translation -
+            // obj_old_bb.m_center);
+
+            RefPtr<PhysicalSceneObject> object =
+                ref_cast<PhysicalSceneObject>(m_hierarchy_selected_nodes[0].m_selected);
+            m_hierarchy_selected_nodes[0].m_selected->setTransform(obj_transform);
         }
 
-        // TODO: update all selected objects based on Gizmo
-        if (m_hierarchy_selected_nodes.size() == 0) {
-            return true;
+        if (m_is_game_edit_mode) {
+            for (auto &renderable : m_renderables) {
+                if (s_game_blacklist.contains(renderable.m_object->type())) {
+                    continue;
+                }
+                m_communicator.setObjectTransform(
+                    ref_cast<PhysicalSceneObject>(renderable.m_object), renderable.m_transform);
+            }
         }
-
-        glm::mat4x4 gizmo_transform = m_renderer.getGizmoTransform();
-        Transform obj_transform;
-
-        ImGuizmo::DecomposeMatrixToComponents(
-            glm::value_ptr(gizmo_transform), glm::value_ptr(obj_transform.m_translation),
-            glm::value_ptr(obj_transform.m_rotation), glm::value_ptr(obj_transform.m_scale));
-
-        // RefPtr<ISceneObject> obj = m_hierarchy_selected_nodes[0].m_selected;
-        // BoundingBox obj_old_bb            = obj->getBoundingBox().value();
-        // Transform obj_old_transform       = obj->getTransform().value();
-
-        //// Since the translation is for the gizmo, offset it back to the actual transform
-        // obj_transform.m_translation = obj_old_transform.m_translation + (translation -
-        // obj_old_bb.m_center);
-
-        m_hierarchy_selected_nodes[0].m_selected->setTransform(obj_transform);
 
         m_update_render_objs = true;
         return true;
@@ -372,6 +394,7 @@ namespace Toolbox::UI {
         renderProperties();
         renderRailEditor();
         renderScene(deltaTime);
+        renderDolphin(deltaTime);
     }
 
     void SceneWindow::renderHierarchy() {
@@ -469,10 +492,8 @@ namespace Toolbox::UI {
             if (is_filtered_out) {
                 auto objects = std::static_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
                                    ->getChildren();
-                if (objects.has_value()) {
-                    for (auto object : objects.value()) {
-                        renderTree(object);
-                    }
+                for (auto &object : objects) {
+                    renderTree(object);
                 }
             } else {
                 if (node_visibility) {
@@ -518,10 +539,8 @@ namespace Toolbox::UI {
                 if (node_open) {
                     auto objects = std::static_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
                                        ->getChildren();
-                    if (objects.has_value()) {
-                        for (auto object : objects.value()) {
-                            renderTree(object);
-                        }
+                    for (auto &object : objects) {
+                        renderTree(object);
                     }
                     ImGui::TreePop();
                 }
@@ -768,6 +787,38 @@ namespace Toolbox::UI {
         return is_updated;
     }
 
+    static void recursiveFlattenActorTree(RefPtr<ISceneObject> actor,
+                                          std::vector<RefPtr<ISceneObject>> &out) {
+        out.push_back(actor);
+        for (auto &child : actor->getChildren()) {
+            recursiveFlattenActorTree(child, out);
+        }
+    }
+
+    static void recursiveAssignActorPtrs(Game::TaskCommunicator &communicator,
+                                         std::vector<RefPtr<ISceneObject>> objects) {
+        std::for_each(std::execution::par, objects.begin(), objects.end(),
+                      [&communicator](RefPtr<ISceneObject> object) {
+                          u32 actor_ptr = communicator.getActorPtr(object);
+                          object->setGamePtr(actor_ptr);
+                          if (actor_ptr == 0) {
+                              TOOLBOX_WARN_V("[Scene] Failed to find ptr for object \"{}\"",
+                                             object->getNameRef().name());
+                          } else {
+                              TOOLBOX_INFO_V("[Scene] Found ptr for object \"{}\" at 0x{:08X}",
+                                             object->getNameRef().name(), actor_ptr);
+                          }
+                      });
+    }
+
+    void SceneWindow::reassignAllActorPtrs(u32 param) {
+        RefPtr<ISceneObject> root = m_current_scene->getObjHierarchy().getRoot();
+        std::vector<RefPtr<ISceneObject>> objects;
+        recursiveFlattenActorTree(root, objects);
+        double timing = Timing::measure(recursiveAssignActorPtrs, m_communicator, objects);
+        TOOLBOX_INFO_V("[SCENE] Acquired all actor ptrs in {} seconds", timing);
+    }
+
     void SceneWindow::renderRailEditor() {
         const std::string rail_editor_str = getWindowChildUID(*this, "Rail Editor");
 
@@ -850,8 +901,8 @@ namespace Toolbox::UI {
                 if (is_rail_open) {
                     for (size_t i = 0; i < rail->nodes().size(); ++i) {
                         RefPtr<Rail::RailNode> node = rail->nodes()[i];
-                        std::string node_uid_str             = getNodeUID(node);
-                        ImGuiID node_id = static_cast<ImGuiID>(node->getUUID());
+                        std::string node_uid_str    = getNodeUID(node);
+                        ImGuiID node_id             = static_cast<ImGuiID>(node->getUUID());
 
                         bool is_rail_node_selected =
                             std::any_of(m_rail_node_list_selected_nodes.begin(),
@@ -912,7 +963,7 @@ namespace Toolbox::UI {
 
         // perhaps find a way to limit this so it only happens when we need to re-render?
         if (m_current_scene != nullptr) {
-            if (m_update_render_objs) {
+            if (m_update_render_objs || !settings.m_is_rendering_simple) {
                 m_renderables.clear();
                 auto perform_result = m_current_scene->getObjHierarchy().getRoot()->performScene(
                     delta_time, !settings.m_is_rendering_simple, m_renderables, m_resource_cache,
@@ -922,11 +973,6 @@ namespace Toolbox::UI {
                     logObjectError(error);
                 }
                 m_update_render_objs = false;
-                m_renderer.markDirty();
-            } else if (!settings.m_is_rendering_simple) {
-                for (auto &renderable : m_renderables) {
-                    renderable.m_model->UpdateAnimations(delta_time);
-                }
                 m_renderer.markDirty();
             }
         }
@@ -945,10 +991,129 @@ namespace Toolbox::UI {
             if (ImGui::IsWindowFocused()) {
                 m_focused_window = EditorWindow::RENDER_VIEW;
             }
+
             m_renderer.render(m_renderables, delta_time);
+
+            renderScenePeripherals(delta_time);
+            renderPlaybackButtons(delta_time);
         }
         ImGui::End();
     }
+
+    void SceneWindow::renderPlaybackButtons(f32 delta_time) {
+        float window_bar_height =
+            ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
+        ImGui::SetCursorPos({0, window_bar_height + 10});
+
+        const ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
+        const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
+
+        const ImVec2 window_size = ImGui::GetWindowSize();
+        ImVec2 cmd_button_size   = ImGui::CalcTextSize(ICON_FK_UNDO) + frame_padding;
+        cmd_button_size.x        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.5f;
+        cmd_button_size.y        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.f;
+
+        bool is_dolphin_running = DolphinHookManager::instance().isProcessRunning();
+        if (is_dolphin_running) {
+            ImGui::BeginDisabled();
+        }
+
+        ImGui::PushStyleColor(ImGuiCol_Button, {0.1f, 0.35f, 0.1f, 0.9f});
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.2f, 0.7f, 0.2f, 0.9f});
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.7f, 0.2f, 1.0f});
+
+        ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
+        if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
+            DolphinHookManager::instance().startProcess();
+            m_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        }
+
+        ImGui::PopStyleColor(3);
+
+        if (is_dolphin_running) {
+            ImGui::EndDisabled();
+        }
+
+        ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, {0.35f, 0.1f, 0.1f, 0.9f});
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.7f, 0.2f, 0.2f, 0.9f});
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.7f, 0.2f, 0.2f, 1.0f});
+
+        if (!is_dolphin_running) {
+            ImGui::BeginDisabled();
+        }
+
+        ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 + cmd_button_size.x);
+        if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size)) {
+            DolphinHookManager::instance().stopProcess();
+        }
+
+        ImGui::PopStyleColor(3);
+
+        ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, {0.1f, 0.2f, 0.4f, 0.9f});
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.2f, 0.4f, 0.8f, 0.9f});
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.4f, 0.8f, 1.0f});
+
+        ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
+        if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size)) {
+            m_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        }
+
+        ImGui::PopStyleColor(3);
+
+        if (!is_dolphin_running) {
+            ImGui::EndDisabled();
+        }
+    }
+
+    void SceneWindow::renderScenePeripherals(f32 delta_time) {
+        float window_bar_height =
+            ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
+        ImGui::SetCursorPos({0, window_bar_height + 10});
+
+        const ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
+        const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
+
+        ImGui::SetCursorPosX(window_padding.x);
+        if (ImGui::Button(m_is_game_edit_mode ? "Game: Edit Mode" : "Game: View Mode")) {
+            m_is_game_edit_mode ^= true;
+        }
+    }
+
+    void SceneWindow::renderDolphin(f32 delta_time) {
+        std::string dolphin_view_str = getWindowChildUID(*this, "Dolphin View");
+
+        ImGuiWindowClass dolphinViewOverride;
+        dolphinViewOverride.ClassId                  = static_cast<ImGuiID>(getUUID());
+        dolphinViewOverride.ParentViewportId         = ImGui::GetCurrentWindow()->ViewportId;
+        dolphinViewOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe;
+        dolphinViewOverride.DockingAllowUnclassed    = false;
+        ImGui::SetNextWindowClass(&dolphinViewOverride);
+
+        if (ImGui::Begin(dolphin_view_str.c_str())) {
+            if (m_dolphin_texture_id != std::numeric_limits<GLuint>::max()) {
+                glDeleteTextures(1, &m_dolphin_texture_id);
+            }
+            m_dolphin_texture_id =
+                m_communicator.captureXFBAsTexture(static_cast<int>(ImGui::GetWindowWidth()),
+                                                   static_cast<int>(ImGui::GetWindowHeight()));
+            if (m_dolphin_texture_id == std::numeric_limits<GLuint>::max()) {
+                ImGui::Text("Start a Dolphin process running\nSuper Mario Sunshine to get started");
+            } else {
+                ImVec2 render_size = {
+                    ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x * 2,
+                    ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y * 2 -
+                        (ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight())};
+                ImGui::Image((ImTextureID)m_dolphin_texture_id, render_size);
+            }
+
+            renderPlaybackButtons(delta_time);
+        }
+        ImGui::End();
+    }  // namespace Toolbox::UI
 
     void SceneWindow::renderHierarchyContextMenu(std::string str_id,
                                                  SelectionNodeInfo<Object::ISceneObject> &info) {
@@ -994,8 +1159,17 @@ namespace Toolbox::UI {
         m_hierarchy_virtual_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
         m_hierarchy_virtual_node_menu.addOption(
-            "Insert Object Here...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_I},
+            "Insert Object Before...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
+                m_create_obj_dialog.open();
+                return;
+            });
+
+        m_hierarchy_virtual_node_menu.addOption(
+            "Insert Object After...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
                 m_create_obj_dialog.open();
                 return;
             });
@@ -1033,7 +1207,7 @@ namespace Toolbox::UI {
                     return;
                 }
                 std::vector<std::string> sibling_names;
-                auto children = std::move(this_parent->getChildren().value());
+                auto children = this_parent->getChildren();
                 for (auto &child : children) {
                     sibling_names.push_back(std::string(child->getNameRef().name()));
                 }
@@ -1063,6 +1237,9 @@ namespace Toolbox::UI {
                     return;
                 }
                 this_parent->removeChild(info.m_selected->getNameRef().name());
+
+                m_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
                 m_hierarchy_selected_nodes.erase(node_it);
@@ -1074,12 +1251,29 @@ namespace Toolbox::UI {
     void SceneWindow::buildContextMenuGroupObj() {
         m_hierarchy_group_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
-        m_hierarchy_group_node_menu.addOption("Add Child Object...",
-                                              {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
-                                              [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                                                  m_create_obj_dialog.open();
-                                                  return;
-                                              });
+        m_hierarchy_group_node_menu.addOption(
+            "Add Child Object...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_CHILD);
+                m_create_obj_dialog.open();
+                return;
+            });
+
+        m_hierarchy_group_node_menu.addOption(
+            "Insert Object Before...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
+                m_create_obj_dialog.open();
+                return;
+            });
+
+        m_hierarchy_group_node_menu.addOption(
+            "Insert Object After...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
+                m_create_obj_dialog.open();
+                return;
+            });
 
         m_hierarchy_group_node_menu.addDivider();
 
@@ -1113,7 +1307,7 @@ namespace Toolbox::UI {
                     return;
                 }
                 std::vector<std::string> sibling_names;
-                auto children = std::move(this_parent->getChildren().value());
+                auto children = this_parent->getChildren();
                 for (auto &child : children) {
                     sibling_names.push_back(std::string(child->getNameRef().name()));
                 }
@@ -1142,6 +1336,9 @@ namespace Toolbox::UI {
                     return;
                 }
                 this_parent->removeChild(info.m_selected->getNameRef().name());
+
+                m_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
                 m_hierarchy_selected_nodes.erase(node_it);
@@ -1154,8 +1351,17 @@ namespace Toolbox::UI {
         m_hierarchy_physical_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
         m_hierarchy_physical_node_menu.addOption(
-            "Insert Object Here...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            "Insert Object Before...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
+                m_create_obj_dialog.open();
+                return;
+            });
+
+        m_hierarchy_physical_node_menu.addOption(
+            "Insert Object After...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
                 m_create_obj_dialog.open();
                 return;
             });
@@ -1257,7 +1463,7 @@ namespace Toolbox::UI {
                     return;
                 }
                 std::vector<std::string> sibling_names;
-                auto children = std::move(this_parent->getChildren().value());
+                auto children = this_parent->getChildren();
                 for (auto &child : children) {
                     sibling_names.push_back(std::string(child->getNameRef().name()));
                 }
@@ -1286,9 +1492,34 @@ namespace Toolbox::UI {
                     return;
                 }
                 this_parent->removeChild(info.m_selected->getNameRef().name());
+
+                m_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
                 m_hierarchy_selected_nodes.erase(node_it);
+                m_update_render_objs = true;
+                return;
+            });
+
+        m_hierarchy_physical_node_menu.addDivider();
+
+        m_hierarchy_physical_node_menu.addOption(
+            "Copy Player Transform", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_LEFT_ALT, GLFW_KEY_P},
+            [this]() { return m_communicator.isSceneLoaded(); },
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_communicator.setObjectTransformToMario(
+                    ref_cast<PhysicalSceneObject>(info.m_selected));
+                m_update_render_objs = true;
+                return;
+            });
+
+        m_hierarchy_physical_node_menu.addOption(
+            "Copy Player Position", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_LEFT_ALT, GLFW_KEY_P},
+            [this]() { return m_communicator.isSceneLoaded(); },
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_communicator.setObjectTranslationToMario(
+                    ref_cast<PhysicalSceneObject>(info.m_selected));
                 m_update_render_objs = true;
                 return;
             });
@@ -1322,7 +1553,7 @@ namespace Toolbox::UI {
                         return;
                     }
                     std::vector<std::string> sibling_names;
-                    auto children = std::move(this_parent->getChildren().value());
+                    auto children = this_parent->getChildren();
                     for (auto &child : children) {
                         sibling_names.push_back(std::string(child->getNameRef().name()));
                     }
@@ -1354,6 +1585,10 @@ namespace Toolbox::UI {
                         return;
                     }
                     this_parent->removeChild(info.m_selected->getNameRef().name());
+
+                    m_communicator.taskRemoveSceneObject(info.m_selected,
+                                                         get_shared_ptr(*this_parent));
+
                     auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                              m_hierarchy_selected_nodes.end(), info);
                     m_hierarchy_selected_nodes.erase(node_it);
@@ -1495,7 +1730,7 @@ namespace Toolbox::UI {
                                                     {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
                                                     [this](SelectionNodeInfo<Rail::RailNode> info) {
                                                         m_create_rail_dialog.open();
-                                                        return std::expected<void, BaseError>();
+                                                        return Result<void>();
                                                     });
 
         m_rail_node_list_single_node_menu.addDivider();
@@ -1509,7 +1744,7 @@ namespace Toolbox::UI {
                 m_renderer.setCameraOrientation(
                     {0, 1, 0}, translation, {translation.x, translation.y, translation.z + 1000});
                 m_update_render_objs = true;
-                return std::expected<void, BaseError>();
+                return Result<void>();
             });
 
         m_rail_node_list_single_node_menu.addOption(
@@ -1537,7 +1772,7 @@ namespace Toolbox::UI {
             [this](SelectionNodeInfo<Rail::RailNode> info) {
                 info.m_selected = make_deep_clone<Rail::RailNode>(info.m_selected);
                 MainApplication::instance().getSceneRailNodeClipboard().setData(info);
-                return std::expected<void, BaseError>();
+                return Result<void>();
             });
 
         m_rail_node_list_single_node_menu.addOption(
@@ -1555,7 +1790,7 @@ namespace Toolbox::UI {
                     selected_index += 1;
                 }
                 m_update_render_objs = true;
-                return std::expected<void, BaseError>();
+                return Result<void>();
             });
 
         m_rail_node_list_single_node_menu.addOption("Delete", {GLFW_KEY_DELETE},
@@ -1563,7 +1798,7 @@ namespace Toolbox::UI {
                                                         Rail::Rail *rail = info.m_selected->rail();
                                                         rail->removeNode(info.m_selected);
                                                         m_update_render_objs = true;
-                                                        return std::expected<void, BaseError>();
+                                                        return Result<void>();
                                                     });
     }
 
@@ -1578,7 +1813,7 @@ namespace Toolbox::UI {
                     select.m_selected = make_deep_clone<Rail::RailNode>(select.m_selected);
                 }
                 MainApplication::instance().getSceneRailNodeClipboard().setData(info);
-                return std::expected<void, BaseError>();
+                return Result<void>();
             });
 
         m_rail_node_list_multi_node_menu.addOption(
@@ -1596,7 +1831,7 @@ namespace Toolbox::UI {
                     selected_index += 1;
                 }
                 m_update_render_objs = true;
-                return std::expected<void, BaseError>();
+                return Result<void>();
             });
 
         m_rail_node_list_multi_node_menu.addOption(
@@ -1607,7 +1842,7 @@ namespace Toolbox::UI {
                     rail->removeNode(select.m_selected);
                 }
                 m_update_render_objs = true;
-                return std::expected<void, BaseError>();
+                return Result<void>();
             });
     }
 
@@ -1615,17 +1850,26 @@ namespace Toolbox::UI {
         m_create_obj_dialog.setup();
         m_create_obj_dialog.setActionOnAccept(
             [this](size_t sibling_index, std::string_view name, const Object::Template &template_,
-                   std::string_view wizard_name, SelectionNodeInfo<Object::ISceneObject> info) {
+                   std::string_view wizard_name, CreateObjDialog::InsertPolicy policy,
+                   SelectionNodeInfo<Object::ISceneObject> info) {
                 auto new_object_result = Object::ObjectFactory::create(template_, wizard_name);
                 if (!name.empty()) {
                     new_object_result->setNameRef(name);
                 }
 
-                ISceneObject *this_parent;
-                if (info.m_selected->isGroupObject()) {
-                    this_parent = info.m_selected.get();
+                size_t insert_index;
+
+                GroupSceneObject *this_parent;
+                if (info.m_selected->isGroupObject() &&
+                    policy == CreateObjDialog::InsertPolicy::INSERT_CHILD) {
+                    this_parent  = reinterpret_cast<GroupSceneObject *>(info.m_selected.get());
+                    insert_index = this_parent->getChildren().size();
                 } else {
-                    this_parent = info.m_selected->getParent();
+                    this_parent =
+                        reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+                    insert_index = policy == CreateObjDialog::InsertPolicy::INSERT_BEFORE
+                                       ? sibling_index
+                                       : sibling_index + 1;
                 }
 
                 if (!this_parent) {
@@ -1635,11 +1879,16 @@ namespace Toolbox::UI {
                     return;
                 }
 
-                auto result = this_parent->insertChild(sibling_index, std::move(new_object_result));
+                auto result = this_parent->insertChild(insert_index, std::move(new_object_result));
                 if (!result) {
                     logObjectGroupError(result.error());
                     return;
                 }
+
+                RefPtr<ISceneObject> object = this_parent->getChild(std::string(name)).value();
+                m_communicator.taskAddSceneObject(
+                    object, get_shared_ptr(*this_parent),
+                    [object](u32 actor_ptr) { object->setGamePtr(actor_ptr); });
 
                 m_update_render_objs = true;
                 return;
@@ -1782,6 +2031,8 @@ namespace Toolbox::UI {
             m_dock_node_up_left_id, ImGuiDir_Down, 0.5f, nullptr, &m_dock_node_up_left_id);
 
         ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Scene View").c_str(), dockspace_id);
+        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Dolphin View").c_str(),
+                                     dockspace_id);
         ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Hierarchy Editor").c_str(),
                                      m_dock_node_up_left_id);
         ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Rail Editor").c_str(),
@@ -1843,5 +2094,4 @@ namespace Toolbox::UI {
             }
         }
     }
-
 };  // namespace Toolbox::UI

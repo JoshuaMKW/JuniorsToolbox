@@ -78,7 +78,7 @@ namespace Toolbox {
         out << indention_str << "}" << std::endl;
     }
 
-    std::expected<void, SerialError> RailData::serialize(Serializer &out) const {
+    Result<void, SerialError> RailData::serialize(Serializer &out) const {
         size_t header_start = 0;
 
         size_t name_start = 12 + 12 * m_rails.size();
@@ -112,7 +112,7 @@ namespace Toolbox {
         return {};
     }
 
-    std::expected<void, SerialError> RailData::deserialize(Deserializer &in) {
+    Result<void, SerialError> RailData::deserialize(Deserializer &in) {
         while (true) {
             size_t node_count = in.read<u32, std::endian::big>();
             size_t name_pos   = in.read<u32, std::endian::big>();

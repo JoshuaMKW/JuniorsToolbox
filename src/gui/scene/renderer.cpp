@@ -1,10 +1,11 @@
 // #include <GLFW/glfw3.h>
+
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 #include <J3D/Rendering/J3DRendering.hpp>
 #include <iostream>
 #include <unordered_set>
 
-#include "gui/application.hpp"
+#include "core/application.hpp"
 #include "gui/input.hpp"
 #include "gui/logging/errors.hpp"
 #include "core/log.hpp"
@@ -320,12 +321,13 @@ namespace Toolbox::UI {
         m_window_size_prev = m_window_size;
         m_window_size      = ImGui::GetWindowSize();
         m_render_rect      = {m_window_rect.Min + style.WindowPadding,
-                              m_window_rect.Max - style.WindowPadding};
+                              m_window_rect.Max};
+
+        ImVec2 relative_window_pos = ImGui::GetCursorPos();
+
         // For the window bar
-        m_render_rect.Min.y += style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
-        m_render_size = ImVec2(m_window_size.x - style.WindowPadding.x * 2,
-                               m_window_size.y - style.WindowPadding.y * 2 -
-                                   (style.FramePadding.y * 2.0f + ImGui::GetTextLineHeight()));
+        m_render_rect.Min += relative_window_pos;
+        m_render_size = ImVec2(m_render_rect.GetWidth(), m_render_rect.GetHeight());
 
         ImVec2 mouse_pos = ImGui::GetMousePos();
 
@@ -468,7 +470,7 @@ namespace Toolbox::UI {
     }
 
     void Renderer::viewportEnd() {
-        ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_tex_id)), m_render_size,
+        ImGui::Image((ImTextureID)m_tex_id, m_render_size,
                      {0.0f, 1.0f}, {1.0f, 0.0f});
 
         if (m_render_gizmo) {
@@ -615,7 +617,9 @@ namespace Toolbox::UI {
                     ud_delta *= 10;
                 }
 
-                ud_delta += Input::GetMouseScrollDelta() * 10.0f;
+                if (m_is_window_hovered) {
+                    ud_delta += Input::GetMouseScrollDelta() * 10.0f;
+                }
 
                 lr_delta *= settings.m_camera_speed * delta_time * 500.0f;
                 ud_delta *= settings.m_camera_speed * delta_time * 500.0f;

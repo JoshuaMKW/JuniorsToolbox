@@ -20,6 +20,7 @@ namespace ImGui {
     void EndGroupPanel();
     bool BeginChildPanel(ImGuiID id, const ImVec2 &size, ImGuiWindowFlags extra_flags = 0);
     void EndChildPanel();
+    bool AlignedButton(const char *label, ImVec2 size = ImVec2{0, 0}, ImGuiButtonFlags flags = ImGuiButtonFlags_None);
     bool ArrowButtonEx(const char *str_id, ImGuiDir dir, ImVec2 size, ImGuiButtonFlags flags,
                        float arrow_scale);
     bool InputScalarCompact(const char *label, ImGuiDataType data_type, void *p_data,

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error.hpp"
+#include "core/error.hpp"
 #include "objlib/qualname.hpp"
 
 #include <expected>
@@ -28,7 +28,7 @@ namespace Toolbox::Object {
     using MetaError = std::variant<MetaTypeError, MetaArrayError, MetaScopeError>;
 
     template <typename _Ret>
-    inline std::expected<_Ret, MetaError> make_meta_error(std::string_view context,
+    inline Result<_Ret, MetaError> make_meta_error(std::string_view context,
                                                           std::string_view error_type,
                                                           std::string_view expected_type) {
         MetaTypeError err = {
@@ -43,7 +43,7 @@ namespace Toolbox::Object {
     }
 
     template <typename _Ret>
-    inline std::expected<_Ret, MetaArrayError>
+    inline Result<_Ret, MetaArrayError>
     make_meta_error(std::string_view context, size_t error_index, size_t array_size) {
         MetaArrayError err = {
             std::vector<std::string>({std::format("{}: IndexError: Index {} exceeds array size {}.", context, error_index,
@@ -56,7 +56,7 @@ namespace Toolbox::Object {
     }
 
     template <typename _Ret>
-    inline std::expected<_Ret, MetaScopeError>
+    inline Result<_Ret, MetaScopeError>
     make_meta_error(const QualifiedName &scope, size_t error_index, std::string_view reason) {
         MetaScopeError err = {
             std::vector<std::string>({std::format("ScopeError: {}", reason), scope.toString("."),

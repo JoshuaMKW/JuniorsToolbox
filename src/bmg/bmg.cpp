@@ -80,7 +80,7 @@ namespace Toolbox::BMG {
         return txt;
     }
 
-    std::expected<void, SerialError> CmdMessage::serialize(Serializer &out) const {
+    Result<void, SerialError> CmdMessage::serialize(Serializer &out) const {
         std::vector<std::string> parts = getParts();
         for (auto &part : parts) {
             auto result = rawFromCommand(part);
@@ -93,7 +93,7 @@ namespace Toolbox::BMG {
         return {};
     }
 
-    std::expected<void, SerialError> CmdMessage::deserialize(Deserializer &in) {
+    Result<void, SerialError> CmdMessage::deserialize(Deserializer &in) {
         m_message_data.clear();
 
         while (true) {
@@ -391,7 +391,7 @@ namespace Toolbox::BMG {
         out << indention_str << "}" << std::endl;
     }
 
-    std::expected<void, SerialError> MessageData::serialize(Serializer &out) const {
+    Result<void, SerialError> MessageData::serialize(Serializer &out) const {
         // Header
         out.write<u32, std::endian::big>('MESG');
         out.write<u32, std::endian::big>('bmg1');
@@ -468,7 +468,7 @@ namespace Toolbox::BMG {
         return {};
     }
 
-    std::expected<void, SerialError> MessageData::deserialize(Deserializer &in) {
+    Result<void, SerialError> MessageData::deserialize(Deserializer &in) {
         if (!isMagicValid(in)) {
             return make_serial_error<void>(in, "Magic of BMG is invalid! (Expected MESGbmg1)");
         }

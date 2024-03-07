@@ -2,7 +2,7 @@
 #include "objlib/object.hpp"
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"
-#include "gui/application.hpp"
+#include "core/application.hpp"
 #include <chrono>
 #include <imgui.h>
 // #include <imgui_impl_glfw.h>
@@ -16,9 +16,13 @@
 using namespace Toolbox::Object;
 
 int main(int argc, char **argv) {
-    auto &app = Toolbox::UI::MainApplication::instance();
-    app.setup();
-    app.run();
-    app.teardown();
-    return 0;
+    auto &app = Toolbox::MainApplication::instance();
+    if (!app.setup()) {
+        return EXIT_CODE_FAILED_SETUP;
+    }
+    int exit_code = app.run();
+    if (!app.teardown()) {
+        return EXIT_CODE_FAILED_TEARDOWN;
+    }
+    return exit_code;
 }

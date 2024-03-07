@@ -5,7 +5,7 @@
 
 namespace Toolbox::Object {
 
-    std::expected<void, JSONError> MetaEnum::loadJSON(const nlohmann::json &json_value) {
+    Result<void, JSONError> MetaEnum::loadJSON(const nlohmann::json &json_value) {
         return tryJSON(json_value, [this](const json &j) {
             switch (m_type) {
             case MetaType::S8:
@@ -48,7 +48,7 @@ namespace Toolbox::Object {
                m_cur_value == other.m_cur_value && m_bit_mask == other.m_bit_mask;
     }
 
-    std::expected<void, SerialError> MetaEnum::serialize(Serializer &out) const {
+    Result<void, SerialError> MetaEnum::serialize(Serializer &out) const {
         try {
             switch (m_type) {
             case MetaType::S8:
@@ -76,7 +76,7 @@ namespace Toolbox::Object {
         }
     }
 
-    std::expected<void, SerialError> MetaEnum::deserialize(Deserializer &in) {
+    Result<void, SerialError> MetaEnum::deserialize(Deserializer &in) {
         try {
             switch (m_type) {
             case MetaType::S8:

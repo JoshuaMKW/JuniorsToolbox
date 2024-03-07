@@ -122,7 +122,7 @@ namespace Toolbox::Rail {
         value->set<u32>(flags);
     }
 
-    std::expected<s16, MetaError> RailNode::getValue(size_t index) const {
+    Result<s16, MetaError> RailNode::getValue(size_t index) const {
         auto value = m_values->value<MetaValue>(index);
         if (!value) {
             return std::unexpected(value.error());
@@ -130,7 +130,7 @@ namespace Toolbox::Rail {
         return *value.value()->get<s16>();
     }
 
-    std::expected<void, MetaError> RailNode::setValue(size_t index, s16 value) {
+    Result<void, MetaError> RailNode::setValue(size_t index, s16 value) {
         auto meta_value = m_values->value<MetaValue>(index);
         if (!meta_value) {
             return std::unexpected(meta_value.error());
@@ -144,7 +144,7 @@ namespace Toolbox::Rail {
         return static_cast<u16>(*value_count->get<u32>());
     }
 
-    std::expected<s16, MetaError> RailNode::getConnectionValue(size_t index) const {
+    Result<s16, MetaError> RailNode::getConnectionValue(size_t index) const {
         auto value = m_connections->value<MetaValue>(index);
         if (!value) {
             return std::unexpected(value.error());
@@ -152,7 +152,7 @@ namespace Toolbox::Rail {
         return *value.value()->get<s16>();
     }
 
-    std::expected<f32, MetaError> RailNode::getConnectionDistance(size_t index) const {
+    Result<f32, MetaError> RailNode::getConnectionDistance(size_t index) const {
         auto value = m_distances->value<MetaValue>(index);
         if (!value) {
             return std::unexpected(value.error());
@@ -160,7 +160,7 @@ namespace Toolbox::Rail {
         return *value.value()->get<f32>();
     }
 
-    std::expected<void, SerialError> RailNode::serialize(Serializer &out) const {
+    Result<void, SerialError> RailNode::serialize(Serializer &out) const {
         auto connection_count = getConnectionCount();
 
         {
@@ -224,7 +224,7 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::expected<void, SerialError> RailNode::deserialize(Deserializer &in) {
+    Result<void, SerialError> RailNode::deserialize(Deserializer &in) {
         auto x = in.read<s16, std::endian::big>();
         auto y = in.read<s16, std::endian::big>();
         auto z = in.read<s16, std::endian::big>();
@@ -268,7 +268,7 @@ namespace Toolbox::Rail {
         m_distances->syncArray();
     }
 
-    std::expected<void, MetaError> RailNode::setConnectionValue(size_t index, s16 value) {
+    Result<void, MetaError> RailNode::setConnectionValue(size_t index, s16 value) {
         auto connection = m_connections->value<MetaValue>(index);
         if (!connection) {
             return std::unexpected(connection.error());
@@ -277,14 +277,14 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    std::expected<void, MetaError> RailNode::setConnectionDistance(size_t connection,
+    Result<void, MetaError> RailNode::setConnectionDistance(size_t connection,
                                                                    const glm::vec3 &to_pos) {
         glm::vec3 position = getPosition();
         glm::vec3 delta    = to_pos - position;
         return setConnectionDistance(connection, glm::length(delta));
     }
 
-    std::expected<void, MetaError> RailNode::setConnectionDistance(size_t connection,
+    Result<void, MetaError> RailNode::setConnectionDistance(size_t connection,
                                                                    f32 distance) {
         auto meta_distance = m_distances->value<MetaValue>(connection);
         if (!meta_distance) {

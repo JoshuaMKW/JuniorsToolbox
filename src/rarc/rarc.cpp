@@ -94,10 +94,10 @@ namespace Toolbox::RARC {
     }
     static bool isSpecialPath(std::string_view name) { return name == "." || name == ".."; }
 
-    static std::expected<ScopePtr<LowResourceArchive>, SerialError>
+    static Result<ScopePtr<LowResourceArchive>, SerialError>
     loadLowResourceArchive(Deserializer &in);
 
-    static std::expected<void, SerialError>
+    static Result<void, SerialError>
     saveLowResourceArchive(const LowResourceArchive &low_archive, Serializer &out);
 
     // --------- //
@@ -116,21 +116,21 @@ namespace Toolbox::RARC {
         std::size_t adjustment;
     };
 
-    static std::expected<SpecialDirs, BaseError>
+    static Result<SpecialDirs, BaseError>
     createSpecialDirs(const ResourceArchive::Node &node,
                       std::optional<ResourceArchive::Node> parent);
 
-    static std::expected<void, BaseError>
+    static Result<void>
     insertSpecialDirs(std::vector<ResourceArchive::Node> &nodes);
 
     static void removeSpecialDirs(std::vector<ResourceArchive::Node> &nodes);
 
-    static std::expected<void, BaseError>
+    static Result<void>
     sortNodesForSaveRecursive(const std::vector<ResourceArchive::Node> &src,
                               std::vector<ResourceArchive::Node> &out,
                               children_info_type &children_info, std::size_t node_index);
 
-    static std::expected<std::vector<ResourceArchive::Node>, BaseError>
+    static Result<std::vector<ResourceArchive::Node>, BaseError>
     processNodesForSave(const std::vector<ResourceArchive::Node> &nodes,
                         children_info_type &children_info);
 
@@ -146,7 +146,7 @@ namespace Toolbox::RARC {
 
     bool ResourceArchive::isMagicValid(u32 magic) { return magic == 'RARC'; }
 
-    std::expected<ResourceArchive, FSError>
+    Result<ResourceArchive, FSError>
     ResourceArchive::createFromPath(const std::filesystem::path root) {
         struct Entry {
             std::string str;
@@ -387,12 +387,12 @@ namespace Toolbox::RARC {
         return m_nodes.end();
     }
 
-    std::expected<void, FSError>
+    Result<void, FSError>
     ResourceArchive::extractToPath(const std::filesystem::path &path) const {
-        return std::expected<void, FSError>();
+        return Result<void, FSError>();
     }
 
-    std::expected<void, FSError>
+    Result<void, FSError>
     ResourceArchive::importFiles(const std::vector<std::filesystem::path> &files, node_it parent) {
         if (files.size() == 0)
             return {};
@@ -459,7 +459,7 @@ namespace Toolbox::RARC {
         return {};
     }
 
-    std::expected<void, FSError> ResourceArchive::importFolder(const std::filesystem::path &folder,
+    Result<void, FSError> ResourceArchive::importFolder(const std::filesystem::path &folder,
                                                                node_it parent) {
         // Generate an archive so we can steal the DFS structure.
         auto rarc_result = createFromPath(folder);
@@ -536,7 +536,7 @@ namespace Toolbox::RARC {
         return {};
     }
 
-    std::expected<ResourceArchive::node_it, BaseError>
+    Result<ResourceArchive::node_it, BaseError>
     ResourceArchive::createFolder(node_it parent, std::string_view name) {
         auto parent_index = std::distance(m_nodes.begin(), parent);
 
@@ -610,12 +610,12 @@ namespace Toolbox::RARC {
         return {};
     }
 
-    std::expected<ResourceArchive::node_it, BaseError>
+    Result<ResourceArchive::node_it, BaseError>
     ResourceArchive::createFile(node_it parent, std::string_view name, std::span<const char> data) {
-        return std::expected<node_it, BaseError>();
+        return Result<node_it, BaseError>();
     }
 
-    std::expected<void, BaseError> ResourceArchive::removeNodes(std::vector<Node> &nodes) {
+    Result<void> ResourceArchive::removeNodes(std::vector<Node> &nodes) {
         if (nodes.size() == 0)
             return {};
 
@@ -667,7 +667,7 @@ namespace Toolbox::RARC {
         return {};
     }
 
-    std::expected<ResourceArchive::node_it, FSError>
+    Result<ResourceArchive::node_it, FSError>
     ResourceArchive::replaceNode(node_it old_node, const std::filesystem::path &path) {
         {
             auto result = Toolbox::exists(path);
@@ -774,7 +774,7 @@ namespace Toolbox::RARC {
         return {};
     }
 
-    std::expected<void, FSError>
+    Result<void, FSError>
     ResourceArchive::extractNodeToFolder(const_node_it node_it,
                                          const std::filesystem::path &folder) {
         if (node_it == m_nodes.end())
@@ -838,7 +838,7 @@ namespace Toolbox::RARC {
 
     void ResourceArchive::dump(std::ostream &out, size_t indention, size_t indention_width) const {}
 
-    std::expected<void, SerialError> ResourceArchive::serialize(Serializer &out) const {
+    Result<void, SerialError> ResourceArchive::serialize(Serializer &out) const {
         struct OffsetInfo {
             std::size_t string_offset;
             std::size_t fs_node_offset;
@@ -1028,7 +1028,7 @@ namespace Toolbox::RARC {
         return saveLowResourceArchive(low_archive, out);
     }
 
-    std::expected<void, SerialError> ResourceArchive::deserialize(Deserializer &in) {
+    Result<void, SerialError> ResourceArchive::deserialize(Deserializer &in) {
         auto result = loadLowResourceArchive(in);
         if (!result) {
             return std::unexpected(result.error());
@@ -1053,7 +1053,7 @@ namespace Toolbox::RARC {
         return ScopePtr<ISmartResource>();
     }
 
-    std::expected<void, BaseError> ResourceArchive::recalculateIDs() {
+    Result<void> ResourceArchive::recalculateIDs() {
         std::vector<int> parent_stack = {
             -1,
         };
@@ -1103,7 +1103,7 @@ namespace Toolbox::RARC {
         return {};
     }
 
-    static std::expected<ScopePtr<LowResourceArchive>, SerialError>
+    static Result<ScopePtr<LowResourceArchive>, SerialError>
     loadLowResourceArchive(Deserializer &in) {
         auto low_archive = make_scoped<LowResourceArchive>();
 
@@ -1206,7 +1206,7 @@ namespace Toolbox::RARC {
         return low_archive;
     }
 
-    static std::expected<void, SerialError>
+    static Result<void, SerialError>
     saveLowResourceArchive(const LowResourceArchive &low_archive, Serializer &out) {
         // Metaheader
         {
@@ -1301,7 +1301,7 @@ namespace Toolbox::RARC {
         return {};
     }
 
-    static std::expected<SpecialDirs, BaseError>
+    static Result<SpecialDirs, BaseError>
     createSpecialDirs(const ResourceArchive::Node &node,
                       std::optional<ResourceArchive::Node> parent) {
         if (!node.is_folder())
@@ -1343,7 +1343,7 @@ namespace Toolbox::RARC {
         return nodes;
     }
 
-    static std::expected<void, BaseError>
+    static Result<void>
     insertSpecialDirs(std::vector<ResourceArchive::Node> &nodes) {
         std::vector<DirAdjustmentInfo> folder_infos;
         std::size_t adjust_amount = 2;
@@ -1430,7 +1430,7 @@ namespace Toolbox::RARC {
         }
     }
 
-    static std::expected<void, BaseError>
+    static Result<void>
     sortNodesForSaveRecursive(const std::vector<ResourceArchive::Node> &src,
                               std::vector<ResourceArchive::Node> &out,
                               children_info_type &children_info, std::size_t node_index) {
@@ -1483,7 +1483,7 @@ namespace Toolbox::RARC {
         return {};
     }
 
-    static std::expected<std::vector<ResourceArchive::Node>, BaseError>
+    static Result<std::vector<ResourceArchive::Node>, BaseError>
     processNodesForSave(const std::vector<ResourceArchive::Node> &nodes,
                         children_info_type &children_info) {
         std::vector<ResourceArchive::Node> out;

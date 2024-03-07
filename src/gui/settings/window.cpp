@@ -4,6 +4,7 @@
 #include "gui/keybind.hpp"
 #include "gui/settings.hpp"
 #include "gui/themes.hpp"
+#include <ImGuiFileDialog.h>
 #include <gui/logging/errors.hpp>
 
 namespace Toolbox::UI {
@@ -128,6 +129,13 @@ namespace Toolbox::UI {
                     bool throwaway = false;
                     if (ImGui::Selectable(profile.c_str(), &throwaway)) {
                         manager.setCurrentProfile(profile);
+                        std::string dolphin_path_str =
+                            manager.getCurrentProfile().m_dolphin_path.string();
+                        for (size_t i = 0;
+                             i < std::min(dolphin_path_str.size(), m_dolphin_path_input.size());
+                             ++i) {
+                            m_dolphin_path_input[i] = dolphin_path_str[i];
+                        }
                         break;
                     }
                 }
@@ -320,6 +328,33 @@ namespace Toolbox::UI {
 
     void SettingsWindow::renderSettingsAdvanced(f32 delta_time) {
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+
+        if (ImGui::BeginGroupPanel("Dolphin Integration", nullptr, {})) {
+            s64 min = 1;
+            s64 max = 100;
+            float button_width =
+                ImGui::CalcTextSize("...").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+            float label_width = ImGui::CalcTextSize("Dolphin Path").x;
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - button_width - label_width -
+                                    ImGui::GetStyle().ItemSpacing.x * 2);
+            if (ImGui::InputTextWithHint("Dolphin Path", "Specify the Dolphin EXE path...",
+                                         m_dolphin_path_input.data(), m_dolphin_path_input.size(),
+                                         ImGuiInputTextFlags_EnterReturnsTrue)) {
+                // TODO: This copy system is slow and should be replace with a proper resize
+                // callback
+                settings.m_dolphin_path =
+                    std::string(m_dolphin_path_input.data(), m_dolphin_path_input.size());
+            }
+            ImGui::SameLine();
+            if (ImGui::AlignedButton("...", {button_width, 0}) && !m_is_path_dialog_open) {
+                m_is_path_dialog_open = true;
+            }
+            ImGui::SliderScalar("Hook Refresh Rate", ImGuiDataType_S64,
+                                &settings.m_dolphin_refresh_rate, &min, &max, nullptr,
+                                ImGuiSliderFlags_AlwaysClamp);
+        }
+        ImGui::EndGroupPanel();
+
         ImGui::Checkbox("Cache Object Templates", &settings.m_is_template_cache_allowed);
         ImGui::Checkbox("Pipe Logs To Terminal", &settings.m_log_to_cout_cerr);
 
@@ -334,12 +369,44 @@ namespace Toolbox::UI {
             auto template_cache_result = Toolbox::remove_all(cwd / "Templates/.cache");
             if (!template_cache_result) {
                 TOOLBOX_ERROR("(Settings) Failed to clear Template cache!");
-                TOOLBOX_ERROR_V("              Reason: {}", template_cache_result.error().message());
+                TOOLBOX_ERROR_V("              Reason: {}",
+                                template_cache_result.error().message());
             }
 
             TOOLBOX_INFO("(Settings) Cleared Template cache successfully!");
 
             // Any other caches...
+        }
+
+        if (m_is_path_dialog_open) {
+            ImGuiFileDialog::Instance()->OpenDialog(
+                "OpenDolphinDialog", "Choose Dolphin EXE", {"Dolphin{.exe}"},
+                settings.m_dolphin_path.string(), "Dolphin.exe");
+        }
+
+        if (ImGuiFileDialog::Instance()->Display("OpenDolphinDialog")) {
+            ImGuiFileDialog::Instance()->Close();
+            m_is_path_dialog_open = false;
+
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
+
+                auto file_result = Toolbox::is_regular_file(path);
+                if (!file_result) {
+                    return;
+                }
+
+                if (!file_result.value()) {
+                    return;
+                }
+
+                settings.m_dolphin_path = path;
+                std::string path_str    = path.string();
+                for (size_t i = 0; i < std::min(path_str.size(), m_dolphin_path_input.size());
+                     ++i) {
+                    m_dolphin_path_input[i] = path_str[i];
+                }
+            }
         }
     }
 

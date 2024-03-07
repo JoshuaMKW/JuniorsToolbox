@@ -20,7 +20,7 @@ namespace Toolbox::Object {
         [[nodiscard]] std::string_view name() const { return m_name; }
         [[nodiscard]] u16 code() const { return m_name_hash; }
 
-        std::expected<void, EncodingError> setName(std::string_view name) {
+        Result<void, EncodingError> setName(std::string_view name) {
             auto result = String::toGameEncoding(name);
             if (!result) {
                 return std::unexpected(result.error());
@@ -30,7 +30,7 @@ namespace Toolbox::Object {
             return {};
         }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override {
+        Result<void, SerialError> serialize(Serializer &out) const override {
             auto result = String::toGameEncoding(m_name);
             if (!result) {
                 return make_serial_error<void>(out, result.error().m_message[0]);
@@ -41,7 +41,7 @@ namespace Toolbox::Object {
             return {};
         }
 
-        std::expected<void, SerialError> deserialize(Deserializer &in) override {
+        Result<void, SerialError> deserialize(Deserializer &in) override {
             m_name_hash     = in.read<u16, std::endian::big>();
             auto str_result = String::fromGameEncoding(in.readString<std::endian::big>());
             if (!str_result) {

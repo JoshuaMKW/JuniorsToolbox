@@ -41,35 +41,37 @@
       }
     },
     "Wizard": {
-      "Transform": [
-        [
-          0,
-          0,
-          0
+      "Default": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
         ],
-        [
-          0,
-          0,
-          0
-        ],
-        [
-          1,
-          1,
-          1
-        ]
-      ],
-      "Character": "",
-      "LightCount": 0,
-      "LightArray": {
-        "ID": 0,
-        "Name": "LightX"
-      },
-      "ParticleName": "((null))",
-      "SoundID": -1,
-      "Volume": 1.0,
-      "Pitch": 1.0,
-      "SpawnRate": 15,
-      "Shape": 0
+        "Character": "",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "ParticleName": "((null))",
+        "SoundID": -1,
+        "Volume": 1.0,
+        "Pitch": 1.0,
+        "SpawnRate": 15,
+        "Shape": 0
+      }
     },
     "Rendering": {}
   }

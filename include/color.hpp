@@ -35,7 +35,7 @@ namespace Toolbox::Color {
         constexpr RGBAShader() = default;
         constexpr RGBAShader(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override {
+        Result<void, SerialError> serialize(Serializer &out) const override {
             out.write(m_r);
             out.write(m_g);
             out.write(m_b);
@@ -43,7 +43,7 @@ namespace Toolbox::Color {
             return {};
         }
 
-        std::expected<void, SerialError> deserialize(Deserializer &in) override {
+        Result<void, SerialError> deserialize(Deserializer &in) override {
             m_r = in.read<f32>();
             m_g = in.read<f32>();
             m_b = in.read<f32>();
@@ -73,14 +73,14 @@ namespace Toolbox::Color {
         constexpr RGBShader() = default;
         constexpr RGBShader(f32 r, f32 g, f32 b) { setColor(r, g, b, 1.0f); }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override {
+        Result<void, SerialError> serialize(Serializer &out) const override {
             out.write(m_r);
             out.write(m_g);
             out.write(m_b);
             return {};
         }
 
-        std::expected<void, SerialError> deserialize(Deserializer &in) override {
+        Result<void, SerialError> deserialize(Deserializer &in) override {
             m_r = in.read<f32>();
             m_g = in.read<f32>();
             m_b = in.read<f32>();
@@ -109,7 +109,7 @@ namespace Toolbox::Color {
         constexpr RGBA32(u8 r, u8 g, u8 b, u8 a) : m_r(r), m_g(g), m_b(b), m_a(a) {}
         constexpr RGBA32(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override {
+        Result<void, SerialError> serialize(Serializer &out) const override {
             out.write<u8, std::endian::big>(m_r);
             out.write<u8, std::endian::big>(m_g);
             out.write<u8, std::endian::big>(m_b);
@@ -117,7 +117,7 @@ namespace Toolbox::Color {
             return {};
         }
 
-        std::expected<void, SerialError> deserialize(Deserializer &in) override {
+        Result<void, SerialError> deserialize(Deserializer &in) override {
             m_r = in.read<u8, std::endian::big>();
             m_g = in.read<u8, std::endian::big>();
             m_b = in.read<u8, std::endian::big>();
@@ -152,12 +152,12 @@ namespace Toolbox::Color {
         constexpr RGB5A3() = default;
         constexpr RGB5A3(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override {
+        Result<void, SerialError> serialize(Serializer &out) const override {
             out.writeBytes({reinterpret_cast<const char *>(&m_color), sizeof(m_color)});
             return {};
         }
 
-        std::expected<void, SerialError> deserialize(Deserializer &in) override {
+        Result<void, SerialError> deserialize(Deserializer &in) override {
             in.readBytes({reinterpret_cast<char *>(&m_color), sizeof(m_color)});
             return {};
         }
@@ -185,14 +185,14 @@ namespace Toolbox::Color {
         constexpr RGB24(u8 r, u8 g, u8 b) : m_r(r), m_g(g), m_b(b) {}
         constexpr RGB24(f32 r, f32 g, f32 b) { setColor(r, g, b, 1.0f); }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override {
+        Result<void, SerialError> serialize(Serializer &out) const override {
             out.write<u8, std::endian::big>(m_r);
             out.write<u8, std::endian::big>(m_g);
             out.write<u8, std::endian::big>(m_b);
             return {};
         }
 
-        std::expected<void, SerialError> deserialize(Deserializer &in) override {
+        Result<void, SerialError> deserialize(Deserializer &in) override {
             m_r = in.read<u8, std::endian::big>();
             m_g = in.read<u8, std::endian::big>();
             m_b = in.read<u8, std::endian::big>();
@@ -224,12 +224,12 @@ namespace Toolbox::Color {
         constexpr RGB565() = default;
         constexpr RGB565(f32 r, f32 g, f32 b, f32 a) { setColor(r, g, b, a); }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override {
+        Result<void, SerialError> serialize(Serializer &out) const override {
             out.writeBytes({reinterpret_cast<const char *>(&m_color), sizeof(m_color)});
             return {};
         }
 
-        std::expected<void, SerialError> deserialize(Deserializer &in) override {
+        Result<void, SerialError> deserialize(Deserializer &in) override {
             in.readBytes({reinterpret_cast<char *>(&m_color), sizeof(m_color)});
             return {};
         }

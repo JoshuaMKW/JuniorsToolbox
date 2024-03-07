@@ -23,8 +23,8 @@ namespace Toolbox::BMG {
         [[nodiscard]] std::string getString() const;
         [[nodiscard]] std::string getSimpleString() const;
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override;
-        std::expected<void, SerialError> deserialize(Deserializer &in) override;
+        Result<void, SerialError> serialize(Serializer &out) const override;
+        Result<void, SerialError> deserialize(Deserializer &in) override;
 
         CmdMessage &operator=(const CmdMessage &) = default;
         CmdMessage &operator=(CmdMessage &&)      = default;
@@ -233,8 +233,8 @@ namespace Toolbox::BMG {
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override;
-        std::expected<void, SerialError> deserialize(Deserializer &in) override;
+        Result<void, SerialError> serialize(Serializer &out) const override;
+        Result<void, SerialError> deserialize(Deserializer &in) override;
 
     protected:
         static bool isMagicValid(Deserializer &in);

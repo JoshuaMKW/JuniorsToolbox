@@ -42,11 +42,11 @@ namespace Toolbox {
             return m_root->getChild(name);
         }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override {
+        Result<void, SerialError> serialize(Serializer &out) const override {
             return m_root->serialize(out);
         }
 
-        std::expected<void, SerialError> deserialize(Deserializer &in) override {
+        Result<void, SerialError> deserialize(Deserializer &in) override {
             return m_root->deserialize(in);
         }
 
@@ -82,7 +82,7 @@ namespace Toolbox {
         ~SceneInstance();
 
         
-        static std::expected<ScopePtr<SceneInstance>, SerialError>
+        static Result<ScopePtr<SceneInstance>, SerialError>
         FromPath(const std::filesystem::path &root);
 
         [[nodiscard]] static ScopePtr<SceneInstance> EmptyScene() {
@@ -106,7 +106,7 @@ namespace Toolbox {
         [[nodiscard]] BMG::MessageData getMessageData() const { return m_message_data; }
         void setMessageData(BMG::MessageData &message_data) { m_message_data = message_data; }
 
-        std::expected<void, SerialError> saveToPath(const std::filesystem::path &root);
+        Result<void, SerialError> saveToPath(const std::filesystem::path &root);
 
         void dump(std::ostream &os, size_t indent, size_t indent_size) const;
         void dump(std::ostream &os, size_t indent) const { dump(os, indent, 4); }

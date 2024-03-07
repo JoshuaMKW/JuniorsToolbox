@@ -2,6 +2,7 @@
 
 #include <format>
 #include <functional>
+#include <mutex>
 #include <stacktrace>
 #include <string>
 #include <vector>
@@ -80,6 +81,7 @@ namespace Toolbox::Log {
         [[nodiscard]] const std::vector<LogMessage> &messages() const { return m_messages; }
 
     private:
+        std::mutex m_write_mutex;
         size_t m_max_trace                 = 8;
         size_t m_indentation               = 0;
         std::vector<LogMessage> m_messages = {};

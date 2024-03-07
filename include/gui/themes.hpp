@@ -66,7 +66,7 @@ namespace Toolbox::UI {
 
         size_t getActiveThemeIndex() const { return m_active_theme; }
 
-        std::expected<void, FSError> initialize();
+        Result<void, FSError> initialize();
 
     private:
         size_t m_active_theme = 0;

@@ -27,7 +27,7 @@ namespace Toolbox::Object {
         name[scopeidx] = makeNameArrayIndex(std::string_view(name_str), index);
     }
 
-    inline std::expected<size_t, MetaScopeError> getArrayIndex(const QualifiedName &name,
+    inline Result<size_t, MetaScopeError> getArrayIndex(const QualifiedName &name,
                                                                size_t scopeidx) {
         auto name_str = name[scopeidx];
 
@@ -46,7 +46,7 @@ namespace Toolbox::Object {
         return std::stoi(std::string(index), nullptr, 0);
     }
 
-    inline std::expected<size_t, MetaScopeError> getArrayIndex(std::string_view name) {
+    inline Result<size_t, MetaScopeError> getArrayIndex(std::string_view name) {
         return getArrayIndex(name, 0);
     }
 
@@ -165,7 +165,7 @@ namespace Toolbox::Object {
         [[nodiscard]] QualifiedName qualifiedName() const;
 
         template <typename T>
-        [[nodiscard]] std::expected<RefPtr<T>, MetaError> value(size_t index) const {
+        [[nodiscard]] Result<RefPtr<T>, MetaError> value(size_t index) const {
             return std::unexpected("Invalid type");
         }
 
@@ -288,8 +288,8 @@ namespace Toolbox::Object {
             }
         }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override;
-        std::expected<void, SerialError> deserialize(Deserializer &in) override;
+        Result<void, SerialError> serialize(Serializer &out) const override;
+        Result<void, SerialError> deserialize(Deserializer &in) override;
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
@@ -309,7 +309,7 @@ namespace Toolbox::Object {
     };
 
     template <>
-    [[nodiscard]] inline std::expected<RefPtr<MetaStruct>, MetaError>
+    [[nodiscard]] inline Result<RefPtr<MetaStruct>, MetaError>
     MetaMember::value<MetaStruct>(size_t index) const {
         if (!validateIndex(index)) {
             return make_meta_error<RefPtr<MetaStruct>>(m_name, index, m_values.size());
@@ -321,7 +321,7 @@ namespace Toolbox::Object {
         return std::get<RefPtr<MetaStruct>>(m_values[index]);
     }
     template <>
-    [[nodiscard]] inline std::expected<RefPtr<MetaEnum>, MetaError>
+    [[nodiscard]] inline Result<RefPtr<MetaEnum>, MetaError>
     MetaMember::value<MetaEnum>(size_t index) const {
         if (!validateIndex(index)) {
             return make_meta_error<RefPtr<MetaEnum>>(m_name, index, m_values.size());
@@ -333,7 +333,7 @@ namespace Toolbox::Object {
         return std::get<RefPtr<MetaEnum>>(m_values[index]);
     }
     template <>
-    [[nodiscard]] inline std::expected<RefPtr<MetaValue>, MetaError>
+    [[nodiscard]] inline Result<RefPtr<MetaValue>, MetaError>
     MetaMember::value<MetaValue>(size_t index) const {
         if (!validateIndex(index)) {
             return make_meta_error<RefPtr<MetaValue>>(m_name, index, m_values.size());
@@ -355,7 +355,7 @@ namespace Toolbox::Object {
     }
 
     template <typename T>
-    [[nodiscard]] inline std::expected<T, MetaError>
+    [[nodiscard]] inline Result<T, MetaError>
     getMetaValue(RefPtr<MetaMember> member, size_t array_index = 0) {
         if (member->isTypeEnum()) {
             auto enum_result = member->value<MetaEnum>(array_index);
@@ -380,7 +380,7 @@ namespace Toolbox::Object {
     }
 
     template <typename T>
-    [[nodiscard]] inline std::expected<bool, MetaError>
+    [[nodiscard]] inline Result<bool, MetaError>
     setMetaValue(RefPtr<MetaMember> member, size_t array_index, const T &value) {
         auto type_result = getMetaType(member);
         if (!type_result) {
@@ -390,7 +390,7 @@ namespace Toolbox::Object {
     }
 
     template <typename T>
-    [[nodiscard]] inline std::expected<bool, MetaError>
+    [[nodiscard]] inline Result<bool, MetaError>
     setMetaValue(RefPtr<MetaMember> member, size_t array_index, const T &value, MetaType type) {
         if (member->isTypeEnum()) {
             auto enum_result = member->value<MetaEnum>(array_index);
@@ -406,7 +406,7 @@ namespace Toolbox::Object {
         return setMetaValue(value_result.value(), value, type);
     }
 
-    [[nodiscard]] inline std::expected<std::vector<MetaEnum::enum_type>, MetaError>
+    [[nodiscard]] inline Result<std::vector<MetaEnum::enum_type>, MetaError>
     getMetaEnumValues(RefPtr<MetaMember> member) {
         if (!member->isTypeEnum()) {
             return make_meta_error<std::vector<MetaEnum::enum_type>>(

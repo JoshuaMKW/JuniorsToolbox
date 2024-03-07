@@ -43,39 +43,41 @@
       }
     },
     "Wizard": {
-      "Transform": [
-        [
-          0,
-          0,
-          0
+      "Default": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
         ],
-        [
-          0,
-          0,
-          0
+        "Translation": [
+          0.0,
+          0.0,
+          0.0
         ],
-        [
-          1,
-          1,
-          1
-        ]
-      ],
-      "Translation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "BaseScale": 2048,
-      "LayerScale": 8,
-      "Type": 2,
-      "Color": [
-        0,
-        0,
-        20,
-        255
-      ],
-      "Darkness": 120,
-      "Layers": 24
+        "BaseScale": 2048,
+        "LayerScale": 8,
+        "Type": 2,
+        "Color": [
+          0,
+          0,
+          20,
+          255
+        ],
+        "Darkness": 120,
+        "Layers": 24
+      }
     },
     "Rendering": {}
   }

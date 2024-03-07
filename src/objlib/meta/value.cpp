@@ -8,7 +8,7 @@
 
 namespace Toolbox::Object {
 
-    std::expected<void, JSONError> MetaValue::loadJSON(const nlohmann::json &json_value) {
+    Result<void, JSONError> MetaValue::loadJSON(const nlohmann::json &json_value) {
         return tryJSON(json_value, [this](const json &j) {
             switch (m_type) {
             case MetaType::BOOL:
@@ -120,7 +120,7 @@ namespace Toolbox::Object {
         return m_type == other.m_type && m_value_buf == other.m_value_buf;
     }
 
-    std::expected<void, SerialError> MetaValue::serialize(Serializer &out) const {
+    Result<void, SerialError> MetaValue::serialize(Serializer &out) const {
         try {
             switch (m_type) {
             case MetaType::BOOL:
@@ -197,7 +197,7 @@ namespace Toolbox::Object {
         }
     }
 
-    std::expected<void, SerialError> MetaValue::deserialize(Deserializer &in) {
+    Result<void, SerialError> MetaValue::deserialize(Deserializer &in) {
         try {
             switch (m_type) {
             case MetaType::BOOL:
