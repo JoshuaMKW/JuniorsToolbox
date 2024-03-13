@@ -102,7 +102,7 @@ namespace Toolbox::UI {
                 if (profile_name != "") {
                     auto result = manager.addProfile(profile_name, AppSettings());
                     if (!result) {
-                        logSerialError(result.error());
+                        LogError(result.error());
                     } else {
                         manager.setCurrentProfile(profile_name);
                         TOOLBOX_INFO_V("(Settings) Created profile \"{}\" successfully!",
@@ -166,7 +166,7 @@ namespace Toolbox::UI {
             std::string profile_name = std::string(manager.getCurrentProfileName());
             auto result              = manager.removeProfile(profile_name);
             if (!result) {
-                logSerialError(result.error());
+                LogError(result.error());
             } else {
                 TOOLBOX_INFO_V("(Settings) Deleted profile \"{}\" successfully!", profile_name);
             }

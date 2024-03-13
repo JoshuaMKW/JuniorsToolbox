@@ -350,13 +350,13 @@ namespace Toolbox::Game {
 
         auto game_stage_result = communicator.read<u8>(application_addr + 0xE);
         if (!game_stage_result) {
-            logError(game_stage_result.error());
+            LogError(game_stage_result.error());
             return false;
         }
 
         auto game_scenario_result = communicator.read<u8>(application_addr + 0xF);
         if (!game_scenario_result) {
-            logError(game_scenario_result.error());
+            LogError(game_scenario_result.error());
             return false;
         }
 
@@ -409,13 +409,13 @@ namespace Toolbox::Game {
 
                 auto game_stage_result = communicator.read<u8>(application_addr + 0xE);
                 if (!game_stage_result) {
-                    logError(game_stage_result.error());
+                    LogError(game_stage_result.error());
                     return true;
                 }
 
                 auto game_scenario_result = communicator.read<u8>(application_addr + 0xF);
                 if (!game_scenario_result) {
-                    logError(game_scenario_result.error());
+                    LogError(game_scenario_result.error());
                     return true;
                 }
 

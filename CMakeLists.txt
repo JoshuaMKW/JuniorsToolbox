@@ -36,6 +36,8 @@ file(GLOB TOOLBOX_SRC
     "include/dolphin/interpreter/instructions/*.hpp"
     "src/game/*.cpp"
     "include/game/*.hpp"
+    "src/core/mimedata/*.cpp"
+    "include/core/mimedata/*.hpp"
     "src/objlib/*.cpp"
     "include/objlib/*.hpp"
     "src/platform/*.cpp"

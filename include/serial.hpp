@@ -1,10 +1,12 @@
 #pragma once
 
 #include "core/error.hpp"
+#include "core/memory.hpp"
 #include "core/types.hpp"
 #include <bit>
 #include <expected>
 #include <iostream>
+#include <sstream>
 #include <stack>
 #include <span>
 #include <stacktrace>
@@ -29,6 +31,70 @@ namespace Toolbox {
 
         std::ostream &stream() { return m_out; }
         std::string_view filepath() const { return m_file_path; }
+
+        template <std::endian E = std::endian::native>
+        static Result<void, SerialError> ObjectToBytes(const ISerializable& _s, Buffer& buf_out) {
+            std::streampos startpos = tell();
+            std::streampos endpos;
+
+            Result<void, SerialError> result;
+
+            std::stringbuf strbuf;
+            Serializer sout(&strbuf);
+
+            sout.pushBreakpoint();
+            {
+                result = _s.serialize(sout);
+                endpos = sout.tell();
+            }
+            sout.popBreakpoint();
+
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+
+            size_t objsize = static_cast<size_t>(endpos - startpos);
+
+            std::streambuf *rdbuf = sout.stream().rdbuf();
+            char *objptr = rdbuf->pptr();
+
+            buf_out.alloc(objsize);
+            std::memcpy(buf_out.buf(), objptr, objsize);
+
+            return result;
+        }
+
+        template <std::endian E = std::endian::native>
+        static Result<void, SerialError> ObjectToBytes(const ISerializable &_s, std::vector<char> &buf_out) {
+            std::streampos startpos = tell();
+            std::streampos endpos;
+
+            Result<void, SerialError> result;
+
+            std::stringbuf strbuf;
+            Serializer sout(&strbuf);
+
+            sout.pushBreakpoint();
+            {
+                result = _s.serialize(sout);
+                endpos = sout.tell();
+            }
+            sout.popBreakpoint();
+
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+
+            size_t objsize = static_cast<size_t>(endpos - startpos);
+
+            std::streambuf *rdbuf = sout.stream().rdbuf();
+            char *objptr          = rdbuf->pptr();
+
+            buf_out.resize(objsize);
+            std::memcpy(buf_out.data(), objptr, objsize);
+
+            return result;
+        }
 
         template <typename T, std::endian E = std::endian::native> Serializer &write(const T &t) {
             if constexpr (E == std::endian::native) {
@@ -147,6 +213,29 @@ namespace Toolbox {
 
         std::istream &stream() { return m_in; }
         std::string_view filepath() const { return m_file_path; }
+
+        template <std::endian E = std::endian::native>
+        static Result<void, SerialError> BytesToObject(const Buffer &serial_data, ISerializable &obj) {
+            std::stringstream str_in;
+            std::stringbuf buf;
+            buf.setbuf(serial_data.buf<char>(), serial_data.size());
+            str_in.set_rdbuf(&buf);
+
+            Deserializer in(&str_in);
+            return obj.deserialize(in);
+        }
+
+        template <std::endian E = std::endian::native>
+        static Result<void, SerialError> BytesToObject(const std::vector<char> &serial_data,
+                                                       ISerializable &obj) {
+            std::stringstream str_in;
+            std::stringbuf buf;
+            buf.setbuf(serial_data.data(), serial_data.size());
+            str_in.set_rdbuf(&buf);
+
+            Deserializer in(&str_in);
+            return obj.deserialize(in);
+        }
 
         template <typename T, std::endian E = std::endian::native> T read() {
             T t{};

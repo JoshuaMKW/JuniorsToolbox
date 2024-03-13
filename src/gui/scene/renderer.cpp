@@ -188,7 +188,7 @@ namespace Toolbox::UI {
                     BaseError error =
                         make_error<void>("Compile failure in vertex shader:", gl_error_log_buffer)
                             .error();
-                    logError(error);
+                    LogError(error);
 
                     return false;
                 }
@@ -214,7 +214,7 @@ namespace Toolbox::UI {
                     BaseError error =
                         make_error<void>("Compile failure in geometry shader:", gl_error_log_buffer)
                             .error();
-                    logError(error);
+                    LogError(error);
 
                     return false;
                 }
@@ -240,7 +240,7 @@ namespace Toolbox::UI {
                     BaseError error =
                         make_error<void>("Compile failure in fragment shader:", gl_error_log_buffer)
                             .error();
-                    logError(error);
+                    LogError(error);
 
                     return false;
                 }
@@ -260,7 +260,7 @@ namespace Toolbox::UI {
 
                 BaseError error =
                     make_error<void>("Linking failure in shaders:", gl_error_log_buffer).error();
-                logError(error);
+                LogError(error);
 
                 return false;
             }

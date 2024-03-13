@@ -160,14 +160,14 @@ namespace Toolbox {
         {
             auto result = Object::TemplateFactory::initialize();
             if (!result) {
-                logFSError(result.error());
+                LogError(result.error());
             }
         }
 
         {
             auto result = ThemeManager::instance().initialize();
             if (!result) {
-                logFSError(result.error());
+                LogError(result.error());
             }
         }
 
@@ -488,7 +488,7 @@ namespace Toolbox {
     bool MainApplication::determineEnvironmentConflicts() {
         auto service_result = Platform::IsServiceRunning("NahimicService");
         if (!service_result) {
-            logError(service_result.error());
+            LogError(service_result.error());
             return true;
         }
 

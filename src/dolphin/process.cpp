@@ -35,7 +35,7 @@ namespace Toolbox::Dolphin {
                 DolphinHookManager &manager = DolphinHookManager::instance();
                 auto result                 = manager.refresh();
                 if (!result) {
-                    logError(result.error());
+                    LogError(result.error());
                 }
                 m_hook_flag.store(false);
             }

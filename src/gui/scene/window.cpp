@@ -139,7 +139,7 @@ namespace Toolbox::UI {
 
             auto scene_result = SceneInstance::FromPath(path);
             if (!scene_result) {
-                logSerialError(scene_result.error());
+                LogError(scene_result.error());
                 return false;
             } else {
                 m_current_scene = std::move(scene_result.value());
@@ -175,7 +175,7 @@ namespace Toolbox::UI {
 
         auto result = m_current_scene->saveToPath(root_path);
         if (!result) {
-            logSerialError(result.error());
+            LogError(result.error());
             return false;
         }
 
@@ -667,7 +667,7 @@ namespace Toolbox::UI {
                     ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
                 auto result = rail->setNodePosition(node, pos[0], pos[1], pos[2]);
                 if (!result) {
-                    logMetaError(result.error());
+                    LogError(result.error());
                 }
                 is_updated = true;
             }
@@ -718,7 +718,7 @@ namespace Toolbox::UI {
                     for (u16 j = connection_count; j < connection_count_old; ++j) {
                         auto result = rail->removeConnection(node, j);
                         if (!result) {
-                            logMetaError(result.error());
+                            LogError(result.error());
                             connection_count = j;
                             break;
                         }
@@ -727,7 +727,7 @@ namespace Toolbox::UI {
                     for (u16 j = connection_count_old; j < connection_count; ++j) {
                         auto result = rail->addConnection(node, rail->nodes()[0]);
                         if (!result) {
-                            logMetaError(result.error());
+                            LogError(result.error());
                             connection_count = j;
                             break;
                         }
@@ -754,7 +754,7 @@ namespace Toolbox::UI {
                 s16 connection_value   = 0;
                 auto connection_result = node->getConnectionValue(i);
                 if (!connection_result) {
-                    logMetaError(connection_result.error());
+                    LogError(connection_result.error());
                 } else {
                     connection_value = connection_result.value();
                 }
@@ -770,7 +770,7 @@ namespace Toolbox::UI {
                         auto result =
                             rail->replaceConnection(node, i, rail->nodes()[connection_value]);
                         if (!result) {
-                            logMetaError(result.error());
+                            LogError(result.error());
                         }
                         is_updated = true;
                     }
@@ -970,7 +970,7 @@ namespace Toolbox::UI {
                     lights);
                 if (!perform_result) {
                     const ObjectError &error = perform_result.error();
-                    logObjectError(error);
+                    LogError(error);
                 }
                 m_update_render_objs = false;
                 m_renderer.markDirty();
@@ -1198,10 +1198,9 @@ namespace Toolbox::UI {
             "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 auto nodes = MainApplication::instance().getSceneObjectClipboard().getData();
-                auto this_parent =
-                    reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+                auto this_parent = info.m_selected->getParent();
                 if (!this_parent) {
-                    logError(
+                    LogError(
                         make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
                             .error());
                     return;
@@ -1231,7 +1230,7 @@ namespace Toolbox::UI {
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
-                    logError(
+                    LogError(
                         make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
                             .error());
                     return;
@@ -1301,7 +1300,7 @@ namespace Toolbox::UI {
                 auto nodes       = MainApplication::instance().getSceneObjectClipboard().getData();
                 auto this_parent = std::reinterpret_pointer_cast<GroupSceneObject>(info.m_selected);
                 if (!this_parent) {
-                    logError(
+                    LogError(
                         make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
                             .error());
                     return;
@@ -1330,7 +1329,7 @@ namespace Toolbox::UI {
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
-                    logError(
+                    LogError(
                         make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
                             .error());
                     return;
@@ -1383,14 +1382,14 @@ namespace Toolbox::UI {
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 auto member_result = info.m_selected->getMember("Transform");
                 if (!member_result) {
-                    logError(make_error<void>("Scene Hierarchy",
+                    LogError(make_error<void>("Scene Hierarchy",
                                               "Failed to find transform member of physical object")
                                  .error());
                     return;
                 }
                 auto member_ptr = member_result.value();
                 if (!member_ptr) {
-                    logError(make_error<void>("Scene Hierarchy",
+                    LogError(make_error<void>("Scene Hierarchy",
                                               "Found the transform member but it was null")
                                  .error());
                     return;
@@ -1412,14 +1411,14 @@ namespace Toolbox::UI {
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 auto member_result = info.m_selected->getMember("Transform");
                 if (!member_result) {
-                    logError(make_error<void>("Scene Hierarchy",
+                    LogError(make_error<void>("Scene Hierarchy",
                                               "Failed to find transform member of physical object")
                                  .error());
                     return;
                 }
                 auto member_ptr = member_result.value();
                 if (!member_ptr) {
-                    logError(make_error<void>("Scene Hierarchy",
+                    LogError(make_error<void>("Scene Hierarchy",
                                               "Found the transform member but it was null")
                                  .error());
                     return;
@@ -1429,7 +1428,7 @@ namespace Toolbox::UI {
                 m_renderer.getCameraTranslation(transform.m_translation);
                 auto result = setMetaValue<Transform>(member_ptr, 0, transform);
                 if (!result) {
-                    logError(
+                    LogError(
                         make_error<void>("Scene Hierarchy",
                                          "Failed to set the transform member of physical object")
                             .error());
@@ -1457,7 +1456,7 @@ namespace Toolbox::UI {
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
-                    logError(
+                    LogError(
                         make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
                             .error());
                     return;
@@ -1486,7 +1485,7 @@ namespace Toolbox::UI {
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
-                    logError(
+                    LogError(
                         make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
                             .error());
                     return;
@@ -1547,7 +1546,7 @@ namespace Toolbox::UI {
                     auto this_parent =
                         reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                     if (!this_parent) {
-                        logError(make_error<void>("Scene Hierarchy",
+                        LogError(make_error<void>("Scene Hierarchy",
                                                   "Failed to get parent node for pasting")
                                      .error());
                         return;
@@ -1579,7 +1578,7 @@ namespace Toolbox::UI {
                     auto this_parent =
                         reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                     if (!this_parent) {
-                        logError(make_error<void>("Scene Hierarchy",
+                        LogError(make_error<void>("Scene Hierarchy",
                                                   "Failed to get parent node for pasting")
                                      .error());
                         return;
@@ -1756,7 +1755,7 @@ namespace Toolbox::UI {
                 m_renderer.getCameraTranslation(translation);
                 auto result = rail->setNodePosition(info.m_selected, translation);
                 if (!result) {
-                    logMetaError(result.error());
+                    LogError(result.error());
                     return;
                 }
 
@@ -1875,13 +1874,13 @@ namespace Toolbox::UI {
                 if (!this_parent) {
                     auto result = make_error<void>("Scene Hierarchy",
                                                    "Failed to get parent node for obj creation");
-                    logError(result.error());
+                    LogError(result.error());
                     return;
                 }
 
                 auto result = this_parent->insertChild(insert_index, std::move(new_object_result));
                 if (!result) {
-                    logObjectGroupError(result.error());
+                    LogError(result.error());
                     return;
                 }
 
@@ -1902,7 +1901,7 @@ namespace Toolbox::UI {
                                                      SelectionNodeInfo<Object::ISceneObject> info) {
             if (new_name.empty()) {
                 auto result = make_error<void>("Rail Data", "Can not rename rail to empty string");
-                logError(result.error());
+                LogError(result.error());
                 return;
             }
             info.m_selected->setNameRef(new_name);
@@ -1916,7 +1915,7 @@ namespace Toolbox::UI {
                                                       s16 node_distance, bool loop) {
             if (name.empty()) {
                 auto result = make_error<void>("Rail Data", "Can not name rail as empty string");
-                logError(result.error());
+                LogError(result.error());
                 return;
             }
 
@@ -1951,7 +1950,7 @@ namespace Toolbox::UI {
             for (u16 i = 0; i < node_count; ++i) {
                 auto result = new_rail.connectNodeToNeighbors(i, true);
                 if (!result) {
-                    logMetaError(result.error());
+                    LogError(result.error());
                 }
             }
 
@@ -1960,7 +1959,7 @@ namespace Toolbox::UI {
                 {
                     auto result = new_rail.removeConnection(0, 1);
                     if (!result) {
-                        logMetaError(result.error());
+                        LogError(result.error());
                     }
                 }
 
@@ -1968,7 +1967,7 @@ namespace Toolbox::UI {
                 {
                     auto result = new_rail.removeConnection(node_count - 1, 1);
                     if (!result) {
-                        logMetaError(result.error());
+                        LogError(result.error());
                     }
                 }
             }
@@ -1988,7 +1987,7 @@ namespace Toolbox::UI {
                 if (new_name.empty()) {
                     auto result =
                         make_error<void>("Scene Hierarchy", "Can not rename rail to empty string");
-                    logError(result.error());
+                    LogError(result.error());
                     return;
                 }
                 info.m_selected->setName(new_name);
@@ -2089,7 +2088,7 @@ namespace Toolbox::UI {
 
                 auto result = m_current_scene->saveToPath(path);
                 if (!result) {
-                    logSerialError(result.error());
+                    LogError(result.error());
                 }
             }
         }
