@@ -56,7 +56,7 @@ namespace Toolbox {
         if (!has_color()) {
             return std::nullopt;
         }
-        const Buffer &data_buf = m_data_map["application/x-color"];
+        Buffer &data_buf = m_data_map["application/x-color"];
         Color::RGBAShader rgba_color;
         TRY_ELSE_LOG_R(Deserializer::BytesToObject(data_buf, rgba_color), std::nullopt);
         return rgba_color;
@@ -118,17 +118,19 @@ namespace Toolbox {
     void MimeData::clear() { m_data_map.clear(); }
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
+
+    /* TODO: Change NULL to HTML */
     static std::unordered_map<u32, std::string> s_format_to_mime = {
         {CF_UNICODETEXT, "text/plain"            },
         {CF_TEXT,        "text/plain"            },
-        {CF_HTML,        "text/html"             },
+        {CF_NULL,        "text/html"             },
         {CF_HDROP,       "text/uri-list"         },
         {CF_DIB,         "application/x-qt-image"}
     };
 
     static std::unordered_map<std::string, u32> s_mime_to_format = {
         {"text/plain",             CF_TEXT },
-        {"text/html",              CF_HTML },
+        {"text/html",              CF_NULL },
         {"text/uri-list",          CF_HDROP},
         {"application/x-qt-image", CF_DIB  },
     };

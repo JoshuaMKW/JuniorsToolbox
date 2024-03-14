@@ -43,41 +43,19 @@ namespace Toolbox::Dolphin {
         return out;
     }
 
-    u32 DolphinHookManager::captureXFBAsTexture(int width, int height, u32 xfb_start, int xfb_width,
+    ImageHandle DolphinHookManager::captureXFBAsTexture(int width, int height, u32 xfb_start, int xfb_width,
                                                 int xfb_height) {
         if (xfb_start == 0 || xfb_width == 0 || xfb_height == 0)
-            return 0xFFFFFFFF;
+            return ImageHandle();
 
         std::vector<u8> xfb_data(xfb_width * xfb_height * 2);
         auto result = readBytes(reinterpret_cast<char *>(&xfb_data[0]), xfb_start, xfb_data.size());
         if (!result) {
-            return 0xFFFFFFFF;
+            return ImageHandle();
         }
 
         Buffer rgb_image = YUV422ToRGB888(xfb_data.data(), xfb_width, xfb_height);
-
-        GLuint textureID;
-        // Generate a texture object
-        glGenTextures(1, &textureID);
-
-        // Bind the texture object
-        glBindTexture(GL_TEXTURE_2D, textureID);
-
-        // Set the texture's stretching properties
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        // Upload the texture data
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, xfb_width, xfb_height, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                     rgb_image.buf());
-
-        // Unbind the texture
-        glBindTexture(GL_TEXTURE_2D, 0);
-
-        return textureID;
+        return ImageHandle(rgb_image, 3, xfb_width, xfb_height);
     }
 
 }  // namespace Toolbox::Dolphin

@@ -890,10 +890,10 @@ namespace Toolbox::Game {
         return {};
     }
 
-    u32 TaskCommunicator::captureXFBAsTexture(int width, int height) {
+    ImageHandle TaskCommunicator::captureXFBAsTexture(int width, int height) {
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
-            return 0xFFFFFFFF;
+            return ImageHandle();
         }
 
         u32 application_address = 0x803E9700;

@@ -8,6 +8,7 @@
 #include "core/core.hpp"
 #include "core/error.hpp"
 #include "core/memory.hpp"
+#include "image/imagehandle.hpp"
 #include "platform/process.hpp"
 
 #include "unique.hpp"
@@ -87,7 +88,7 @@ namespace Toolbox::Dolphin {
         Result<void> readBytes(char *buf, u32 address, size_t size);
         Result<void> writeBytes(const char *buf, u32 address, size_t size);
 
-        u32 captureXFBAsTexture(int width, int height, u32 xfb_start, int xfb_width, int xfb_height);
+        ImageHandle captureXFBAsTexture(int width, int height, u32 xfb_start, int xfb_width, int xfb_height);
 
     private:
         Platform::ProcessInformation m_proc_info;

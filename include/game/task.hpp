@@ -60,7 +60,7 @@ namespace Toolbox::Game {
         Result<void> setObjectTransform(RefPtr<PhysicalSceneObject> object,
                                         const Transform &transform);
 
-        u32 captureXFBAsTexture(int width, int height);
+        ImageHandle captureXFBAsTexture(int width, int height);
 
         ScopePtr<Interpreter::SystemDolphin> createInterpreter();
         ScopePtr<Interpreter::SystemDolphin> createInterpreterUnchecked();

@@ -23,10 +23,21 @@
 
 using namespace Toolbox::Dolphin;
 
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+
 #define EXIT_CODE_OK 0
 #define EXIT_CODE_FAILED_RUNTIME  (1 << 28) | 1
 #define EXIT_CODE_FAILED_SETUP    (1 << 28) | 2
 #define EXIT_CODE_FAILED_TEARDOWN (1 << 28) | 3
+
+#elif TOOLBOX_PLATFORM_LINUX
+
+#define EXIT_CODE_OK              0
+#define EXIT_CODE_FAILED_RUNTIME  1
+#define EXIT_CODE_FAILED_SETUP    2
+#define EXIT_CODE_FAILED_TEARDOWN 3
+
+#endif
 
 namespace Toolbox {
 
@@ -49,9 +60,11 @@ namespace Toolbox {
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> &getSceneObjectClipboard() {
             return m_hierarchy_clipboard;
         }
+
         TypedDataClipboard<SelectionNodeInfo<Rail::Rail>> &getSceneRailClipboard() {
             return m_rail_clipboard;
         }
+
         TypedDataClipboard<SelectionNodeInfo<Rail::RailNode>> &getSceneRailNodeClipboard() {
             return m_rail_node_clipboard;
         }

@@ -16,6 +16,7 @@
 
 #include "core/clipboard.hpp"
 #include "game/task.hpp"
+#include "gui/image/imagepainter.hpp"
 #include "gui/property/property.hpp"
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
@@ -195,6 +196,7 @@ namespace Toolbox::UI {
         bool m_is_game_edit_mode = false;
 
         Game::TaskCommunicator m_communicator;
-        u32 m_dolphin_texture_id;
+        ImageHandle m_dolphin_image;
+        ImagePainter m_dolphin_painter;
     };
 }  // namespace Toolbox::UI

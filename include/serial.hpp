@@ -5,14 +5,14 @@
 #include "core/types.hpp"
 #include <bit>
 #include <expected>
+#include <format>
 #include <iostream>
+#include <optional>
+#include <span>
 #include <sstream>
 #include <stack>
-#include <span>
 #include <stacktrace>
 #include <vector>
-#include <optional>
-#include <format>
 
 namespace Toolbox {
 
@@ -32,15 +32,15 @@ namespace Toolbox {
         std::ostream &stream() { return m_out; }
         std::string_view filepath() const { return m_file_path; }
 
-        template <std::endian E = std::endian::native>
-        static Result<void, SerialError> ObjectToBytes(const ISerializable& _s, Buffer& buf_out) {
-            std::streampos startpos = tell();
+        template <typename _S, std::endian E = std::endian::native>
+        static Result<void, SerialError> ObjectToBytes(const _S &_s, Buffer &buf_out) {
+            std::streampos startpos = 0;
             std::streampos endpos;
 
             Result<void, SerialError> result;
 
-            std::stringbuf strbuf;
-            Serializer sout(&strbuf);
+            std::stringstream strstream;
+            Serializer sout(strstream.rdbuf());
 
             sout.pushBreakpoint();
             {
@@ -54,44 +54,9 @@ namespace Toolbox {
             }
 
             size_t objsize = static_cast<size_t>(endpos - startpos);
-
-            std::streambuf *rdbuf = sout.stream().rdbuf();
-            char *objptr = rdbuf->pptr();
 
             buf_out.alloc(objsize);
-            std::memcpy(buf_out.buf(), objptr, objsize);
-
-            return result;
-        }
-
-        template <std::endian E = std::endian::native>
-        static Result<void, SerialError> ObjectToBytes(const ISerializable &_s, std::vector<char> &buf_out) {
-            std::streampos startpos = tell();
-            std::streampos endpos;
-
-            Result<void, SerialError> result;
-
-            std::stringbuf strbuf;
-            Serializer sout(&strbuf);
-
-            sout.pushBreakpoint();
-            {
-                result = _s.serialize(sout);
-                endpos = sout.tell();
-            }
-            sout.popBreakpoint();
-
-            if (!result) {
-                return std::unexpected(result.error());
-            }
-
-            size_t objsize = static_cast<size_t>(endpos - startpos);
-
-            std::streambuf *rdbuf = sout.stream().rdbuf();
-            char *objptr          = rdbuf->pptr();
-
-            buf_out.resize(objsize);
-            std::memcpy(buf_out.data(), objptr, objsize);
+            strstream.read(buf_out.buf<char>(), objsize);
 
             return result;
         }
@@ -153,7 +118,7 @@ namespace Toolbox {
         }
 
         Serializer &padTo(std::size_t alignment, std::span<const char> fill) {
-            std::size_t pos       = tell();
+            std::size_t pos = tell();
             std::size_t pad = (alignment - (pos % alignment));
             if (pad == alignment)
                 return *this;
@@ -214,26 +179,14 @@ namespace Toolbox {
         std::istream &stream() { return m_in; }
         std::string_view filepath() const { return m_file_path; }
 
-        template <std::endian E = std::endian::native>
-        static Result<void, SerialError> BytesToObject(const Buffer &serial_data, ISerializable &obj) {
+        template <typename _S, std::endian E = std::endian::native>
+        static Result<void, SerialError> BytesToObject(Buffer &serial_data, _S &obj) {
             std::stringstream str_in;
             std::stringbuf buf;
-            buf.setbuf(serial_data.buf<char>(), serial_data.size());
+            buf.pubsetbuf(serial_data.buf<char>(), serial_data.size());
             str_in.set_rdbuf(&buf);
 
-            Deserializer in(&str_in);
-            return obj.deserialize(in);
-        }
-
-        template <std::endian E = std::endian::native>
-        static Result<void, SerialError> BytesToObject(const std::vector<char> &serial_data,
-                                                       ISerializable &obj) {
-            std::stringstream str_in;
-            std::stringbuf buf;
-            buf.setbuf(serial_data.data(), serial_data.size());
-            str_in.set_rdbuf(&buf);
-
-            Deserializer in(&str_in);
+            Deserializer in(&buf);
             return obj.deserialize(in);
         }
 
@@ -330,7 +283,8 @@ namespace Toolbox {
         }
 
         Deserializer &alignTo(size_t alignment) {
-            return seek((static_cast<size_t>(tell()) + alignment - 1) & ~(alignment - 1), std::ios::beg);
+            return seek((static_cast<size_t>(tell()) + alignment - 1) & ~(alignment - 1),
+                        std::ios::beg);
         }
 
         Deserializer &seek(std::streamoff off, std::ios_base::seekdir way) {
@@ -372,11 +326,12 @@ namespace Toolbox {
     };
 
     template <typename _Ret>
-    inline Result<_Ret, SerialError>
-    make_serial_error(std::string_view context, std::string_view reason, size_t error_pos,
-                      std::string_view filepath) {
+    inline Result<_Ret, SerialError> make_serial_error(std::string_view context,
+                                                       std::string_view reason, size_t error_pos,
+                                                       std::string_view filepath) {
         SerialError err = {
-            std::vector<std::string>({std::format("SerialError: {}", context), std::format("Reason: {}", reason)}),
+            std::vector<std::string>(
+                {std::format("SerialError: {}", context), std::format("Reason: {}", reason)}),
             std::stacktrace::current(),
             error_pos,
             std::string(filepath),
@@ -385,8 +340,8 @@ namespace Toolbox {
     }
 
     template <typename _Ret>
-    inline Result<_Ret, SerialError>
-    make_serial_error(Serializer &s, std::string_view reason, int error_adjust) {
+    inline Result<_Ret, SerialError> make_serial_error(Serializer &s, std::string_view reason,
+                                                       int error_adjust) {
         auto pos = std::max(static_cast<size_t>(s.tell()) + error_adjust, static_cast<size_t>(0));
         return make_serial_error<_Ret>(
             std::format("Unexpected byte at position {} ({:X}).", pos, pos), reason,
@@ -394,14 +349,13 @@ namespace Toolbox {
     }
 
     template <typename _Ret>
-    inline Result<_Ret, SerialError> make_serial_error(Serializer &s,
-                                                              std::string_view reason) {
+    inline Result<_Ret, SerialError> make_serial_error(Serializer &s, std::string_view reason) {
         return make_serial_error<_Ret>(s, reason, 0);
     }
 
     template <typename _Ret>
-    inline Result<_Ret, SerialError>
-    make_serial_error(Deserializer &s, std::string_view reason, int error_adjust) {
+    inline Result<_Ret, SerialError> make_serial_error(Deserializer &s, std::string_view reason,
+                                                       int error_adjust) {
         auto pos = std::max(static_cast<size_t>(s.tell()) + error_adjust, static_cast<size_t>(0));
         return make_serial_error<_Ret>(
             std::format("Unexpected byte at position {} ({:X}).", pos, pos), reason,
@@ -409,8 +363,7 @@ namespace Toolbox {
     }
 
     template <typename _Ret>
-    inline Result<_Ret, SerialError> make_serial_error(Deserializer &s,
-                                                              std::string_view reason) {
+    inline Result<_Ret, SerialError> make_serial_error(Deserializer &s, std::string_view reason) {
         return make_serial_error<_Ret>(s, reason, 0);
     }
 

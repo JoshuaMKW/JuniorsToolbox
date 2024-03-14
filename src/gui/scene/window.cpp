@@ -1094,20 +1094,17 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowClass(&dolphinViewOverride);
 
         if (ImGui::Begin(dolphin_view_str.c_str())) {
-            if (m_dolphin_texture_id != std::numeric_limits<GLuint>::max()) {
-                glDeleteTextures(1, &m_dolphin_texture_id);
-            }
-            m_dolphin_texture_id =
+            m_dolphin_image = std::move(
                 m_communicator.captureXFBAsTexture(static_cast<int>(ImGui::GetWindowWidth()),
-                                                   static_cast<int>(ImGui::GetWindowHeight()));
-            if (m_dolphin_texture_id == std::numeric_limits<GLuint>::max()) {
+                                                   static_cast<int>(ImGui::GetWindowHeight())));
+            if (!m_dolphin_image) {
                 ImGui::Text("Start a Dolphin process running\nSuper Mario Sunshine to get started");
             } else {
                 ImVec2 render_size = {
                     ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x * 2,
                     ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y * 2 -
                         (ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight())};
-                ImGui::Image((ImTextureID)m_dolphin_texture_id, render_size);
+                m_dolphin_painter.render(m_dolphin_image, render_size);
             }
 
             renderPlaybackButtons(delta_time);
@@ -1197,7 +1194,7 @@ namespace Toolbox::UI {
         m_hierarchy_virtual_node_menu.addOption(
             "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                auto nodes = MainApplication::instance().getSceneObjectClipboard().getData();
+                auto nodes       = MainApplication::instance().getSceneObjectClipboard().getData();
                 auto this_parent = info.m_selected->getParent();
                 if (!this_parent) {
                     LogError(

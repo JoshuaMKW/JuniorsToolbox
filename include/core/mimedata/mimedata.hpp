@@ -56,6 +56,16 @@ namespace Toolbox {
 
         void clear();
 
+        MimeData &operator=(const MimeData &other) {
+            m_data_map = other.m_data_map;
+            return *this;
+        }
+
+        MimeData &operator=(MimeData &&other) {
+            m_data_map = std::move(other.m_data_map);
+            return *this;
+        }
+
     protected:
 #ifdef TOOLBOX_PLATFORM_WINDOWS
         static FORMATETC FormatForMime(std::string_view mimetype);
