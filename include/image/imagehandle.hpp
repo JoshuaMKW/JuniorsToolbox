@@ -24,7 +24,8 @@ namespace Toolbox {
         // Data should be a valid RED, RGB, or RGBA image as loaded by stbi
         ImageHandle(const Buffer &data, int channels, int dx, int dy);
 
-        bool isValid() const noexcept;
+        [[nodiscard]] bool isValid() const noexcept;
+        std::pair<int, int> size() const { return {m_image_width, m_image_height}; }
 
         ImageHandle &operator=(const ImageHandle &);
         ImageHandle &operator=(ImageHandle &&) noexcept;
@@ -39,7 +40,7 @@ namespace Toolbox {
 
     private:
         u64 m_image_handle = std::numeric_limits<u64>::max();
-        int m_image_width = 0;
+        int m_image_width  = 0;
         int m_image_height = 0;
         u32 m_image_format = 0;
     };
