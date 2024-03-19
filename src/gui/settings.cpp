@@ -1,6 +1,6 @@
 #include "gui/settings.hpp"
 #include "fsystem.hpp"
-#include "gui/keybind.hpp"
+#include "core/keybind/keybind.hpp"
 #include "gui/logging/errors.hpp"
 #include "jsonlib.hpp"
 

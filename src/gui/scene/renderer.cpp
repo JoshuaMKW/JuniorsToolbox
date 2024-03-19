@@ -6,7 +6,7 @@
 #include <unordered_set>
 
 #include "core/application.hpp"
-#include "gui/input.hpp"
+#include "core/input/input.hpp"
 #include "gui/logging/errors.hpp"
 #include "core/log.hpp"
 #include "gui/scene/renderer.hpp"

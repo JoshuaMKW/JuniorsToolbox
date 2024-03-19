@@ -45,6 +45,7 @@ namespace Toolbox {
             EVENT_MOUSE_RELEASE_NON_CLIENT,
             EVENT_MOUSE_MOVE,
             EVENT_MOUSE_MOVE_NON_CLIENT,
+            EVENT_MOUSE_SCROLL,
             EVENT_WINDOW_HIDE,
             EVENT_WINDOW_MOVE,
             EVENT_WINDOW_RESIZE,

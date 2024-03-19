@@ -100,7 +100,7 @@ namespace Toolbox::Game {
         u32 vectorEnd(u32 vector_ptr) const;
         u32 vectorNext(u32 iter, u32 item_size) const;
         u32 vectorItem(u32 iter) const;
-        void vectorForEach(u32 vector_ptr, size_t item_size,
+        void vectorForEach(u32 vector_ptr, u32 item_size,
                            std::function<void(DolphinCommunicator &, u32)> fn);
 
         bool checkForAcquiredStackFrameAndBuffer();

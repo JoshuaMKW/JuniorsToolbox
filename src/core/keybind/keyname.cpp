@@ -1,15 +1,11 @@
-#include <algorithm>
+#pragma once
+
 #include <string>
 #include <unordered_map>
-
 #include <GLFW/glfw3.h>
-#include <imgui.h>
+#include "core/keybind/keybind.hpp"
 
-#include "gui/IconsForkAwesome.h"
-#include "gui/input.hpp"
-#include "gui/keybind.hpp"
-
-namespace Toolbox::UI {
+namespace Toolbox {
 
     static std::unordered_map<int, std::string> s_key_to_name = {
         {GLFW_KEY_UNKNOWN,       "Unknown"          },
@@ -257,31 +253,7 @@ namespace Toolbox::UI {
         {"Menu",              GLFW_KEY_MENU         },
     };
 
-    bool KeyBindHeld(const std::vector<int> &keybind) {
-        return std::all_of(keybind.begin(), keybind.end(),
-                           [](int keybind) { return Input::GetKey(keybind); });
-    }
-
-    bool KeyBindScanInput(std::vector<int> &current_keybind) {
-        // Check if any of the keys are still being held
-        bool any_keys_held = std::any_of(current_keybind.begin(), current_keybind.end(),
-                                          [](int key) { return Input::GetKey(key); });
-        if (current_keybind.size() > 0 && !any_keys_held) {
-            return true;
-        }
-        // Check if any new keys have been pressed
-        for (int key = 0; key < 512; ++key) {
-            bool is_already_held = std::any_of(current_keybind.begin(), current_keybind.end(),
-                                               [&](int our_key) { return our_key == key; });
-            if (!is_already_held && Input::GetKey(key)) {
-                current_keybind.push_back(key);
-            }
-        }
-        // Force a max length of 3 keys
-        return current_keybind.size() >= 3;
-    }
-
     std::string KeyNameFromEnum(int key) { return s_key_to_name[key]; }
     int KeyNameToEnum(const std::string &key_name) { return s_name_to_key[key_name]; }
 
-}  // namespace Toolbox::UI
+}

@@ -1,4 +1,4 @@
-#include "gui/input.hpp"
+#include "core/input/input.hpp"
 #include <imgui.h>
 
 #if WIN32
@@ -12,7 +12,7 @@
 #include <GLFW/glfw3.h>
 #include <imgui_impl_glfw.h>
 
-namespace Toolbox::UI::Input {
+namespace Toolbox::Input {
     // Anonymous namespace within Input allows us to have private-scope variables that are only
     // accessible from this TU. This allows us to hide direct access to the input state variables
     // and only allow access via the Get functions.
@@ -20,8 +20,8 @@ namespace Toolbox::UI::Input {
         constexpr uint32_t KEY_MAX          = 512;
         constexpr uint32_t MOUSE_BUTTON_MAX = 3;
 
-        ImVec2 mMousePosition = {0, 0};
-        ImVec2 mMouseDelta = {0, 0};
+        ImVec2 mMousePosition     = {0, 0};
+        ImVec2 mMouseDelta        = {0, 0};
         int32_t mMouseScrollDelta = 0;
 
         bool mMouseWrapped = false;
@@ -37,40 +37,42 @@ namespace Toolbox::UI::Input {
 
         void SetMouseState(uint32_t button, bool pressed) { mMouseButtonsDown[button] = pressed; }
 
-        void SetMousePosition(uint32_t x, uint32_t y) { mMousePosition = ImVec2((float)x, (float)y); }
+        void SetMousePosition(uint32_t x, uint32_t y) {
+            mMousePosition = ImVec2((float)x, (float)y);
+        }
 
         void SetMouseScrollDelta(uint32_t delta) { mMouseScrollDelta = delta; }
     }  // namespace
-}  // namespace Toolbox::UI::Input
+}  // namespace Toolbox::Input
 
-bool Toolbox::UI::Input::GetKey(uint32_t key) { return mKeysDown[key]; }
+bool Toolbox::Input::GetKey(uint32_t key) { return mKeysDown[key]; }
 
-bool Toolbox::UI::Input::GetKeyDown(uint32_t key) {
+bool Toolbox::Input::GetKeyDown(uint32_t key) {
     bool is_down = mKeysDown[key] && !mPrevKeysDown[key];
     return is_down;
 }
 
-bool Toolbox::UI::Input::GetKeyUp(uint32_t key) { return mPrevKeysDown[key] && !mKeysDown[key]; }
+bool Toolbox::Input::GetKeyUp(uint32_t key) { return mPrevKeysDown[key] && !mKeysDown[key]; }
 
-bool Toolbox::UI::Input::GetMouseButton(uint32_t button) { return mMouseButtonsDown[button]; }
+bool Toolbox::Input::GetMouseButton(uint32_t button) { return mMouseButtonsDown[button]; }
 
-bool Toolbox::UI::Input::GetMouseButtonDown(uint32_t button) {
+bool Toolbox::Input::GetMouseButtonDown(uint32_t button) {
     return mMouseButtonsDown[button] && !mPrevMouseButtonsDown[button];
 }
 
-bool Toolbox::UI::Input::GetMouseButtonUp(uint32_t button) {
+bool Toolbox::Input::GetMouseButtonUp(uint32_t button) {
     return mPrevMouseButtonsDown[button] && !mMouseButtonsDown[button];
 }
 
-ImVec2 Toolbox::UI::Input::GetMouseViewportPosition() { return mMousePosition; }
+ImVec2 Toolbox::Input::GetMouseViewportPosition() { return mMousePosition; }
 
-ImVec2 Toolbox::UI::Input::GetMouseDelta() { return mMouseDelta; }
+ImVec2 Toolbox::Input::GetMouseDelta() { return mMouseDelta; }
 
-int32_t Toolbox::UI::Input::GetMouseScrollDelta() { return mMouseScrollDelta; }
+int32_t Toolbox::Input::GetMouseScrollDelta() { return mMouseScrollDelta; }
 
-bool Toolbox::UI::Input::GetMouseWrapped() { return mMouseWrapped; }
+bool Toolbox::Input::GetMouseWrapped() { return mMouseWrapped; }
 
-void Toolbox::UI::Input::SetMousePosition(ImVec2 pos, bool overwrite_delta) {
+void Toolbox::Input::SetMousePosition(ImVec2 pos, bool overwrite_delta) {
     if (!overwrite_delta) {
         SetMouseWrapped(true);
     }
@@ -91,9 +93,9 @@ void Toolbox::UI::Input::SetMousePosition(ImVec2 pos, bool overwrite_delta) {
 #endif
 }
 
-void Toolbox::UI::Input::SetMouseWrapped(bool wrapped) { mMouseWrapped = wrapped; }
+void Toolbox::Input::SetMouseWrapped(bool wrapped) { mMouseWrapped = wrapped; }
 
-void Toolbox::UI::Input::UpdateInputState() {
+void Toolbox::Input::UpdateInputState() {
     if (!mMouseWrapped) {
         mMouseDelta = {mMousePosition.x - mPrevMousePosition.x,
                        mMousePosition.y - mPrevMousePosition.y};
@@ -102,7 +104,7 @@ void Toolbox::UI::Input::UpdateInputState() {
     }
 }
 
-void Toolbox::UI::Input::PostUpdateInputState() {
+void Toolbox::Input::PostUpdateInputState() {
     for (int i = 0; i < KEY_MAX; i++)
         mPrevKeysDown[i] = mKeysDown[i];
     for (int i = 0; i < MOUSE_BUTTON_MAX; i++)
@@ -113,7 +115,7 @@ void Toolbox::UI::Input::PostUpdateInputState() {
     mMouseScrollDelta = 0;
 }
 
-void Toolbox::UI::Input::GLFWKeyCallback(GLFWwindow *window, int key, int scancode, int action,
+void Toolbox::Input::GLFWKeyCallback(GLFWwindow *window, int key, int scancode, int action,
                                          int mods) {
     if (key >= KEY_MAX)
         return;
@@ -126,13 +128,13 @@ void Toolbox::UI::Input::GLFWKeyCallback(GLFWwindow *window, int key, int scanco
     ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
 }
 
-void Toolbox::UI::Input::GLFWMousePositionCallback(GLFWwindow *window, double xpos, double ypos) {
+void Toolbox::Input::GLFWMousePositionCallback(GLFWwindow *window, double xpos, double ypos) {
     SetMousePosition((uint32_t)xpos, (uint32_t)ypos);
 
     ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
 }
 
-void Toolbox::UI::Input::GLFWMouseButtonCallback(GLFWwindow *window, int button, int action,
+void Toolbox::Input::GLFWMouseButtonCallback(GLFWwindow *window, int button, int action,
                                                  int mods) {
     if (button >= MOUSE_BUTTON_MAX)
         return;
@@ -145,7 +147,7 @@ void Toolbox::UI::Input::GLFWMouseButtonCallback(GLFWwindow *window, int button,
     ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
 }
 
-void Toolbox::UI::Input::GLFWMouseScrollCallback(GLFWwindow *window, double xoffset,
+void Toolbox::Input::GLFWMouseScrollCallback(GLFWwindow *window, double xoffset,
                                                  double yoffset) {
     SetMouseScrollDelta((uint32_t)yoffset);
 

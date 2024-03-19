@@ -1,7 +1,7 @@
 #include "gui/settings/window.hpp"
 #include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
-#include "gui/keybind.hpp"
+#include "core/keybind/keybind.hpp"
 #include "gui/settings.hpp"
 #include "gui/themes.hpp"
 #include <ImGuiFileDialog.h>

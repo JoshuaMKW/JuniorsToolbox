@@ -1,13 +1,20 @@
 #pragma once
 
-#include "core/event/keyevent.hpp"
 #include <algorithm>
 #include <string>
+
+#include "core/event/keyevent.hpp"
+#include <magic_enum.hpp>
 
 namespace Toolbox {
 
     KeyEvent::KeyEvent(TypeID type, int key, int modifiers, const std::string &text)
-        : BaseEvent(type), m_target_key(key), m_target_modifiers(modifiers), m_resultant_text(text) {
+        : BaseEvent(type), m_target_key(key), m_target_modifiers(modifiers),
+          m_resultant_text(text) {
+        TOOLBOX_ASSERT_V(
+            type == EVENT_KEY_PRESS || type == EVENT_KEY_RELEASE,
+            "KeyEvent must be constructed with type EVENT_KEY_PRESS or EVENT_KEY_RELEASE (Got {})",
+            magic_enum::enum_name(type));
     }
 
     [[nodiscard]] size_t KeyEvent::getKeyCount() const noexcept {

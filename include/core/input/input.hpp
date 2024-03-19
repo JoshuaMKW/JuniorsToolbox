@@ -6,7 +6,7 @@
 
 struct GLFWwindow;
 
-namespace Toolbox::UI::Input {
+namespace Toolbox::Input {
     bool GetKey(uint32_t key);
     bool GetKeyDown(uint32_t key);
     bool GetKeyUp(uint32_t key);
@@ -31,4 +31,4 @@ namespace Toolbox::UI::Input {
     void GLFWMousePositionCallback(GLFWwindow *window, double xpos, double ypos);
     void GLFWMouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
     void GLFWMouseScrollCallback(GLFWwindow *window, double xoffset, double yoffset);
-}  // namespace Toolbox::UI::Input
+}

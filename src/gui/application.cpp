@@ -1,7 +1,7 @@
 #include "core/application.hpp"
 #include "gui/IconsForkAwesome.h"
 #include "gui/font.hpp"
-#include "gui/input.hpp"
+#include "core/input/input.hpp"
 #include "gui/settings/window.hpp"
 #include "gui/themes.hpp"
 #include "gui/util.hpp"

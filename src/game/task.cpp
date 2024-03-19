@@ -123,7 +123,7 @@ namespace Toolbox::Game {
         u32 args[3]   = {heap_ptr, size, alignment};
         auto snapshot = m_game_interpreter.evaluateFunction(alloc_fn_ptr, 3, args, 0, nullptr);
 
-        return snapshot.m_gpr[3];
+        return static_cast<u32>(snapshot.m_gpr[3]);
     }
 
     u32 TaskCommunicator::listInsert(u32 list_ptr, u32 iter_at, u32 item_ptr) {
@@ -207,7 +207,7 @@ namespace Toolbox::Game {
 
     u32 TaskCommunicator::vectorItem(u32 iter) const { return iter; }
 
-    void TaskCommunicator::vectorForEach(u32 vector_ptr, size_t item_size,
+    void TaskCommunicator::vectorForEach(u32 vector_ptr, u32 item_size,
                                          std::function<void(DolphinCommunicator &, u32)> fn) {
         TOOLBOX_ASSERT(fn, "Must provide a callback to vectorForEach!");
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
@@ -308,7 +308,7 @@ namespace Toolbox::Game {
         u32 argv[2]   = {rootref_addr, request_buffer_address};
         auto snapshot = dolphin_interpreter->evaluateFunction(0x80198d0c, 2, argv, 0, nullptr);
 
-        return snapshot.m_gpr[3];
+        return static_cast<u32>(snapshot.m_gpr[3]);
     }
 
     bool TaskCommunicator::isSceneLoaded() {
@@ -519,7 +519,7 @@ namespace Toolbox::Game {
         communicator.write<u32>(buffer_ptr, 0x803E01C8);
         communicator.write<u32>(buffer_ptr + 0x4, 0);
         communicator.write<u32>(buffer_ptr + 0x8, buffer_ptr + 0x100);
-        communicator.write<u32>(buffer_ptr + 0xC, obj_data.size());
+        communicator.write<u32>(buffer_ptr + 0xC, static_cast<u32>(obj_data.size()));
         communicator.write<u32>(buffer_ptr + 0x10, 0);
 
         // Create reference out JSUMemoryInputStream
@@ -538,7 +538,7 @@ namespace Toolbox::Game {
         u32 args[2]       = {buffer_ptr, buffer_ptr + 0x20};
         auto gen_snapshot = m_game_interpreter.evaluateFunction(0x802FA598, 2, args, 0, nullptr);
 
-        u32 nameref_ptr = gen_snapshot.m_gpr[3];
+        u32 nameref_ptr = static_cast<u32>(gen_snapshot.m_gpr[3]);
         if (nameref_ptr == 0) {
             return make_error<void>(
                 "Task", "Failed to add object to game scene (Call to genObject returned nullptr)!");
@@ -640,7 +640,7 @@ namespace Toolbox::Game {
                                               u32 item_ptr) {
             u32 obj_count     = communicator.read<u32>(item_ptr + 0x14).value();
             u32 obj_array_ptr = communicator.read<u32>(item_ptr + 0x18).value();
-            for (size_t i = 0; i < obj_count; ++i) {
+            for (u32 i = 0; i < obj_count; ++i) {
                 u32 elem_array_at = obj_array_ptr + i * sizeof(u32);
                 u32 elem_ptr      = communicator.read<u32>(elem_array_at).value();
                 if (elem_ptr == obj_ptr) {
@@ -726,7 +726,7 @@ namespace Toolbox::Game {
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
-            return make_error<void>("Task", "Failed to set object transform in scene!");
+            return make_error<void>("Task", "Failed to set object transform in scene (Scene not loaded)!");
         }
 
         u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
@@ -747,11 +747,12 @@ namespace Toolbox::Game {
         Transform transform                 = getMetaValue<Transform>(transform_member, 0).value();
         transform.m_translation             = translation;
         transform.m_rotation                = rotation;
-        setMetaValue(transform_member, 0, transform);
+        auto result = setMetaValue(transform_member, 0, transform);
+        if (!result) {
+            return make_error<void>("Task", "Failed to set object transform in scene (Member not found)!");
+        }
 
-        setObjectTransform(object, transform);
-
-        return {};
+        return setObjectTransform(object, transform);
     }
 
     Result<void> TaskCommunicator::setObjectTranslationToMario(RefPtr<PhysicalSceneObject> object) {
@@ -778,11 +779,13 @@ namespace Toolbox::Game {
         RefPtr<MetaMember> transform_member = transform_result.value();
         Transform transform                 = getMetaValue<Transform>(transform_member, 0).value();
         transform.m_translation             = translation;
-        setMetaValue(transform_member, 0, transform);
+        auto result                         = setMetaValue(transform_member, 0, transform);
+        if (!result) {
+            return make_error<void>("Task",
+                                    "Failed to set object transform in scene (Member not found)!");
+        }
 
-        setObjectTransform(object, transform);
-
-        return {};
+        return setObjectTransform(object, transform);
     }
 
     Result<void> TaskCommunicator::setCameraTransformToGameCamera(Camera &camera) {
@@ -874,7 +877,7 @@ namespace Toolbox::Game {
         communicator.write<f32>(ptr + 0x34, transform.m_rotation.y);
         communicator.write<f32>(ptr + 0x38, transform.m_rotation.z);
 
-        std::string_view type = object->type();
+        std::string type = object->type();
         if (type.starts_with("NPC")) {
             communicator.write<f32>(ptr + 0xAC, 0.0f);
             communicator.write<f32>(ptr + 0xB0, 0.0f);

@@ -51,6 +51,7 @@ namespace Toolbox {
         case EVENT_MOUSE_RELEASE_NON_CLIENT:
         case EVENT_MOUSE_MOVE:
         case EVENT_MOUSE_MOVE_NON_CLIENT:
+        case EVENT_MOUSE_SCROLL:
             return true;
         default:
             return false;

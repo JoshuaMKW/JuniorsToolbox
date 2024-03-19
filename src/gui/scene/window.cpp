@@ -14,7 +14,7 @@
 #include "gui/IconsForkAwesome.h"
 #include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
-#include "gui/input.hpp"
+#include "core/input/input.hpp"
 #include "gui/logging/errors.hpp"
 #include "gui/modelcache.hpp"
 #include "gui/scene/window.hpp"
