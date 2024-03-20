@@ -11,7 +11,7 @@
 #include "core/log.hpp"
 #include "core/timing.hpp"
 
-#include "gui/IconsForkAwesome.h"
+#include "IconsForkAwesome.h"
 #include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
 #include "core/input/input.hpp"

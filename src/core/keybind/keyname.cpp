@@ -3,6 +3,8 @@
 #include <string>
 #include <unordered_map>
 #include <GLFW/glfw3.h>
+
+#include <IconsForkAwesome.h>
 #include "core/keybind/keybind.hpp"
 
 namespace Toolbox {

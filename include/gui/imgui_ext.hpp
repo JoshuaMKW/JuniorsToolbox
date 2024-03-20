@@ -3,6 +3,10 @@
 #include "core/assert.hpp"
 #include "core/core.hpp"
 
+#ifdef IM_ASSERT
+#undef IM_ASSERT
+#endif
+
 #define IM_ASSERT(_EXPR) TOOLBOX_CORE_ASSERT(_EXPR)
 
 #ifndef TOOLBOX_DEBUG

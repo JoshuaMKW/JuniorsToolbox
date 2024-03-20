@@ -585,9 +585,9 @@ namespace Toolbox::UI {
 
         if (m_is_window_focused) {
             AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-            bool translate_held   = KeyBindHeld(settings.m_gizmo_translate_mode_keybind);
-            bool rotate_held      = KeyBindHeld(settings.m_gizmo_rotate_mode_keybind);
-            bool scale_held       = KeyBindHeld(settings.m_gizmo_scale_mode_keybind);
+            bool translate_held   = settings.m_gizmo_translate_mode_keybind.isInputMatching();
+            bool rotate_held      = settings.m_gizmo_rotate_mode_keybind.isInputMatching();
+            bool scale_held       = settings.m_gizmo_scale_mode_keybind.isInputMatching();
 
             if (translate_held) {
                 m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;

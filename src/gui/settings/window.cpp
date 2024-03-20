@@ -1,7 +1,7 @@
 #include "gui/settings/window.hpp"
+#include "core/keybind/keybind.hpp"
 #include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
-#include "core/keybind/keybind.hpp"
 #include "gui/settings.hpp"
 #include "gui/themes.hpp"
 #include <ImGuiFileDialog.h>
@@ -9,15 +9,15 @@
 
 namespace Toolbox::UI {
 
-    bool KeyBindInput(std::string_view text, bool *is_reading, const std::vector<int> &keybind,
-                      std::vector<int> &new_binding) {
+    bool KeyBindInput(std::string_view text, bool *is_reading, const KeyBind &keybind,
+                      KeyBind &new_binding) {
         if (!is_reading)
             return false;
 
         ImGui::PushID(text.data());
 
-        std::string keybind_name = *is_reading ? KeyBindToString(new_binding) + " ..."
-                                               : KeyBindToString(keybind);
+        std::string keybind_name = *is_reading ? new_binding.toString() + " ..."
+                                               : keybind.toString();
         ImGui::InputText("##binding_text", keybind_name.data(), keybind_name.size(),
                          ImGuiInputTextFlags_ReadOnly);
 
@@ -41,9 +41,9 @@ namespace Toolbox::UI {
         bool is_binding_finalized = false;
 
         if (!(*is_reading)) {
-            new_binding.clear();
+            new_binding = KeyBind();
         } else {
-            is_binding_finalized = KeyBindScanInput(new_binding);
+            is_binding_finalized = new_binding.scanNextInputKey();
             if (is_binding_finalized) {
                 *is_reading = false;
             }
@@ -198,9 +198,9 @@ namespace Toolbox::UI {
     void SettingsWindow::renderSettingsControl(f32 delta_time) {
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
-        static std::vector<int> s_gizmo_translate_keybind = {};
-        static std::vector<int> s_gizmo_rotate_keybind    = {};
-        static std::vector<int> s_gizmo_scale_keybind     = {};
+        static KeyBind s_gizmo_translate_keybind = {};
+        static KeyBind s_gizmo_rotate_keybind    = {};
+        static KeyBind s_gizmo_scale_keybind     = {};
 
         static bool s_gizmo_translate_keybind_active = false;
         static bool s_gizmo_rotate_keybind_active    = false;
@@ -214,7 +214,7 @@ namespace Toolbox::UI {
                                  s_gizmo_translate_keybind)) {
                     if (!s_gizmo_translate_keybind.empty()) {
                         settings.m_gizmo_translate_mode_keybind = s_gizmo_translate_keybind;
-                        s_gizmo_translate_keybind.clear();
+                        s_gizmo_translate_keybind               = KeyBind();
                     }
                 }
                 if (should_clear_others_on_use && s_gizmo_translate_keybind_active) {
@@ -228,7 +228,7 @@ namespace Toolbox::UI {
                                  settings.m_gizmo_rotate_mode_keybind, s_gizmo_rotate_keybind)) {
                     if (!s_gizmo_rotate_keybind.empty()) {
                         settings.m_gizmo_rotate_mode_keybind = s_gizmo_rotate_keybind;
-                        s_gizmo_rotate_keybind.clear();
+                        s_gizmo_rotate_keybind               = KeyBind();
                     }
                 }
                 if (should_clear_others_on_use && s_gizmo_rotate_keybind_active) {
@@ -242,7 +242,7 @@ namespace Toolbox::UI {
                                  settings.m_gizmo_scale_mode_keybind, s_gizmo_scale_keybind)) {
                     if (!s_gizmo_scale_keybind.empty()) {
                         settings.m_gizmo_scale_mode_keybind = s_gizmo_scale_keybind;
-                        s_gizmo_scale_keybind.clear();
+                        s_gizmo_scale_keybind               = KeyBind();
                     }
                 }
                 if (should_clear_others_on_use && s_gizmo_scale_keybind_active) {

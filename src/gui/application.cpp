@@ -1,5 +1,5 @@
 #include "core/application.hpp"
-#include "gui/IconsForkAwesome.h"
+#include "IconsForkAwesome.h"
 #include "gui/font.hpp"
 #include "core/input/input.hpp"
 #include "gui/settings/window.hpp"

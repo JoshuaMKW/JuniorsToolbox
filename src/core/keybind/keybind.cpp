@@ -17,7 +17,8 @@ namespace Toolbox {
         size_t key_begin_index = 0;
         while (true) {
             size_t next_delimiter_index = bind_str.find('+', key_begin_index);
-            std::string key_name        = bind_str.substr(key_begin_index, next_delimiter_index - key_begin_index);
+            std::string key_name =
+                bind_str.substr(key_begin_index, next_delimiter_index - key_begin_index);
             result.m_key_combo.push_back(KeyNameToEnum(key_name));
 
             // Last character is + or we reached end of string
@@ -65,6 +66,14 @@ namespace Toolbox {
         }
         // Force a max length of 3 keys
         return m_key_combo.size() >= 3;
+    }
+
+    bool KeyBind::operator==(const KeyBind &other) const {
+        return m_key_combo == other.m_key_combo;
+    }
+
+    bool KeyBind::operator!=(const KeyBind &other) const {
+        return m_key_combo != other.m_key_combo;
     }
 
 }  // namespace Toolbox

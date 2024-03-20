@@ -8,7 +8,7 @@
 
 #include <ImGuiFileDialog.h>
 
-#include <gui/IconsForkAwesome.h>
+#include <IconsForkAwesome.h>
 #include <gui/modelcache.hpp>
 
 #include "gui/window.hpp"

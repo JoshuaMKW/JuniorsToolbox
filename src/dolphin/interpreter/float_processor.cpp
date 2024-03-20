@@ -2386,7 +2386,7 @@ namespace Toolbox::Interpreter {
         const double ps1 = DolphinLib::ApproximateReciprocal(b);
 
         m_fpr[frt].setBoth(ps0, ps1);
-        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat((float)ps0));
 
         if (rc) {
             UpdateCR1(cr, m_fpscr);
@@ -2429,7 +2429,7 @@ namespace Toolbox::Interpreter {
         const double ps1 = ForceSingle(m_fpscr, DolphinLib::ApproximateReciprocalSquareRoot(b));
 
         m_fpr[frt].setBoth(ps0, ps1);
-        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat(ps0));
+        FPSCR_SET_FPRT(m_fpscr, (u32)DolphinLib::ClassifyFloat((float)ps0));
 
         if (rc) {
             UpdateCR1(cr, m_fpscr);

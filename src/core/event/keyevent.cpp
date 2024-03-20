@@ -8,13 +8,15 @@
 
 namespace Toolbox {
 
-    KeyEvent::KeyEvent(TypeID type, int key, int modifiers, const std::string &text)
-        : BaseEvent(type), m_target_key(key), m_target_modifiers(modifiers),
-          m_resultant_text(text) {
+    KeyEvent::KeyEvent(TypeID type, int key, int modifiers, const std::string &text,
+                       int repeat_count)
+        : BaseEvent(type), m_target_key(key), m_target_modifiers(modifiers), m_resultant_text(text),
+          m_repeat_count(repeat_count) {
         TOOLBOX_ASSERT_V(
             type == EVENT_KEY_PRESS || type == EVENT_KEY_RELEASE,
             "KeyEvent must be constructed with type EVENT_KEY_PRESS or EVENT_KEY_RELEASE (Got {})",
-            magic_enum::enum_name(type));
+            type < SystemEventType::EVENT_USER_BEGIN ? magic_enum::enum_name((SystemEventType)type)
+                                                     : "UserEnum");
     }
 
     [[nodiscard]] size_t KeyEvent::getKeyCount() const noexcept {

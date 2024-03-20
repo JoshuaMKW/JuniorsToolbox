@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/assert.hpp"
+#include "core/keybind/keybind.hpp"
 #include "core/types.hpp"
 #include "fsystem.hpp"
 #include "json.hpp"
@@ -42,9 +43,9 @@ namespace Toolbox {
         float m_far_plane           = 500000.0f;
 
         // Control
-        std::vector<int> m_gizmo_translate_mode_keybind = {GLFW_KEY_1};
-        std::vector<int> m_gizmo_rotate_mode_keybind    = {GLFW_KEY_2};
-        std::vector<int> m_gizmo_scale_mode_keybind     = {GLFW_KEY_3};
+        KeyBind m_gizmo_translate_mode_keybind = KeyBind({GLFW_KEY_1});
+        KeyBind m_gizmo_rotate_mode_keybind    = KeyBind({GLFW_KEY_2});
+        KeyBind m_gizmo_scale_mode_keybind     = KeyBind({GLFW_KEY_3});
 
         // Advanced
         std::filesystem::path m_dolphin_path = "";

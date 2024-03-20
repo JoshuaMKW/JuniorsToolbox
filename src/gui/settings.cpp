@@ -71,10 +71,10 @@ namespace Toolbox {
 
                 // Control
                 settings.m_gizmo_translate_mode_keybind =
-                    UI::KeyBindFromString(j["Gizmo Translate Mode"]);
+                    KeyBind::FromString(j["Gizmo Translate Mode"]);
                 settings.m_gizmo_rotate_mode_keybind =
-                    UI::KeyBindFromString(j["Gizmo Rotate Mode"]);
-                settings.m_gizmo_scale_mode_keybind = UI::KeyBindFromString(j["Gizmo Scale Mode"]);
+                    KeyBind::FromString(j["Gizmo Rotate Mode"]);
+                settings.m_gizmo_scale_mode_keybind = KeyBind::FromString(j["Gizmo Scale Mode"]);
 
                 // UI
                 settings.m_gui_theme   = j["App Theme"];
@@ -193,9 +193,9 @@ namespace Toolbox {
             j["Backup File On Save"]    = profile.m_is_file_backup_allowed;
 
             // Control
-            j["Gizmo Translate Mode"] = UI::KeyBindToString(profile.m_gizmo_translate_mode_keybind);
-            j["Gizmo Rotate Mode"]    = UI::KeyBindToString(profile.m_gizmo_rotate_mode_keybind);
-            j["Gizmo Scale Mode"]     = UI::KeyBindToString(profile.m_gizmo_scale_mode_keybind);
+            j["Gizmo Translate Mode"] = profile.m_gizmo_translate_mode_keybind.toString();
+            j["Gizmo Rotate Mode"]    = profile.m_gizmo_rotate_mode_keybind.toString();
+            j["Gizmo Scale Mode"]     = profile.m_gizmo_scale_mode_keybind.toString();
 
             // UI
             j["App Theme"]   = profile.m_gui_theme;

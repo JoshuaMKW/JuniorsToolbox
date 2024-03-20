@@ -73,7 +73,7 @@ namespace Toolbox::Platform {
         }
 
         if (process.m_thread) {
-            DWORD result = WaitForSingleObject(process.m_thread, max_wait);
+            DWORD result = WaitForSingleObject(process.m_thread, (DWORD)max_wait);
             if (result == WAIT_TIMEOUT) {
                 // Force thread to close
                 if (!TerminateThread(process.m_thread, 0)) {
