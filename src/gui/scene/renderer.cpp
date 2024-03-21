@@ -334,8 +334,8 @@ namespace Toolbox::UI {
         m_is_window_hovered = ImGui::IsWindowHovered();
         m_is_window_focused = ImGui::IsWindowFocused();
 
-        bool right_click      = Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT);
-        bool right_click_down = Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT);
+        bool right_click      = Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT);
+        bool right_click_down = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
 
         if (m_render_rect.Contains(mouse_pos)) {
             if (right_click) {
@@ -348,7 +348,7 @@ namespace Toolbox::UI {
         }
 
         if (m_is_window_focused && m_is_view_manipulating &&
-            Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {  // Mouse wrap
+            Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {  // Mouse wrap
             bool wrapped = false;
 
             if (mouse_pos.x < m_render_rect.Min.x) {
@@ -368,7 +368,7 @@ namespace Toolbox::UI {
             }
 
             if (wrapped) {
-                Input::SetMousePosition(mouse_pos, false);
+                Input::SetMousePosition(mouse_pos.x, mouse_pos.y, false);
             }
         } else {
             m_is_view_manipulating = false;
@@ -474,8 +474,8 @@ namespace Toolbox::UI {
                      {0.0f, 1.0f}, {1.0f, 0.0f});
 
         if (m_render_gizmo) {
-            bool shift_held = Input::GetKey(GLFW_KEY_LEFT_SHIFT);
-            bool ctrl_held  = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
+            bool shift_held = Input::GetKey(Input::KeyCode::LEFTSHIFT);
+            bool ctrl_held  = Input::GetKey(Input::KeyCode::LEFTCONTROL);
 
             float snap[3];
             if ((m_gizmo_op & (ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU))) {
@@ -574,11 +574,12 @@ namespace Toolbox::UI {
     bool Renderer::inputUpdate(f32 delta_time) {
         const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
-        if (m_is_view_manipulating && Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
-            ImVec2 mouse_delta = Input::GetMouseDelta();
+        if (m_is_view_manipulating && Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {
+            float delta_x, delta_y;
+            Input::GetMouseDelta(delta_x, delta_y);
 
-            m_camera.turnLeftRight(-mouse_delta.x * settings.m_camera_sensitivity * delta_time * 0.25f);
-            m_camera.tiltUpDown(-mouse_delta.y * settings.m_camera_sensitivity * delta_time * 0.25f);
+            m_camera.turnLeftRight(-delta_x * settings.m_camera_sensitivity * delta_time * 0.25f);
+            m_camera.tiltUpDown(-delta_y * settings.m_camera_sensitivity * delta_time * 0.25f);
 
             m_is_view_dirty = true;
         }
@@ -600,25 +601,28 @@ namespace Toolbox::UI {
             // Camera movement
             {
                 float lr_delta = 0, ud_delta = 0;
-                if (Input::GetKey(GLFW_KEY_A)) {
+                if (Input::GetKey(Input::KeyCode::A)) {
                     lr_delta -= 1;
                 }
-                if (Input::GetKey(GLFW_KEY_D)) {
+                if (Input::GetKey(Input::KeyCode::D)) {
                     lr_delta += 1;
                 }
-                if (Input::GetKey(GLFW_KEY_W)) {
+                if (Input::GetKey(Input::KeyCode::W)) {
                     ud_delta += 1;
                 }
-                if (Input::GetKey(GLFW_KEY_S)) {
+                if (Input::GetKey(Input::KeyCode::S)) {
                     ud_delta -= 1;
                 }
-                if (Input::GetKey(GLFW_KEY_LEFT_SHIFT)) {
+                if (Input::GetKey(Input::KeyCode::LEFTSHIFT)) {
                     lr_delta *= 10;
                     ud_delta *= 10;
                 }
 
                 if (m_is_window_hovered) {
-                    ud_delta += Input::GetMouseScrollDelta() * 10.0f;
+                    float delta_x, delta_y;
+                    Input::GetMouseScrollDelta(delta_x, delta_y);
+                    lr_delta += delta_x * 10.0f;
+                    ud_delta += delta_y * 10.0f;
                 }
 
                 lr_delta *= settings.m_camera_speed * delta_time * 500.0f;
@@ -655,8 +659,8 @@ namespace Toolbox::UI {
             return std::nullopt;
         }
 
-        const bool left_click  = Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_LEFT);
-        const bool right_click = Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT);
+        const bool left_click  = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
+        const bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
 
         // Mouse pos is absolute
         ImVec2 mouse_pos = ImGui::GetMousePos();

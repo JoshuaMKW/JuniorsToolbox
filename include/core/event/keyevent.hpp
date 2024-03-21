@@ -1,7 +1,9 @@
 #pragma once
 
-#include "core/event/event.hpp"
 #include <string>
+
+#include "core/event/event.hpp"
+#include "core/input/input.hpp"
 
 namespace Toolbox {
 
@@ -13,22 +15,28 @@ namespace Toolbox {
         KeyEvent(const KeyEvent &)     = default;
         KeyEvent(KeyEvent &&) noexcept = default;
 
-        KeyEvent(TypeID type, int key, int modifiers, const std::string &text = "", int repeat_count = 1);
+        KeyEvent(TypeID type, Input::KeyCode key, Input::KeyModifiers modifiers,
+                 const std::string &text = "", int repeat_count = 1);
 
         [[nodiscard]] size_t getKeyCount() const noexcept;
         [[nodiscard]] size_t getRepeatCount() const noexcept { return m_repeat_count; }
 
-        [[nodiscard]] int getKey() const noexcept { return m_target_key; }
-        [[nodiscard]] int getModifiers() const noexcept { return m_target_modifiers; }
+        [[nodiscard]] Input::KeyCode getKey() const noexcept { return m_target_key; }
+        [[nodiscard]] const Input::KeyCodes &getHeldKeys() const noexcept { return m_held_keys; }
+        [[nodiscard]] Input::KeyModifiers getModifiers() const noexcept { return m_modifiers; }
         [[nodiscard]] const std::string &getText() const noexcept { return m_resultant_text; }
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
+        KeyEvent &operator=(const KeyEvent &)     = default;
+        KeyEvent &operator=(KeyEvent &&) noexcept = default;
+
     private:
-        int m_target_key             = -1;
-        int m_target_modifiers       = -1;
-        int m_repeat_count           = 1;
-        std::string m_resultant_text = "";
+        Input::KeyCode m_target_key     = Input::KeyCode::KEY_NONE;
+        Input::KeyCodes m_held_keys     = {};
+        Input::KeyModifiers m_modifiers = Input::KeyModifier::KEY_NONE;
+        int m_repeat_count              = 1;
+        std::string m_resultant_text    = "";
     };
 
 }  // namespace Toolbox

@@ -4,22 +4,30 @@
 #include <imgui.h>
 #include <map>
 
+#include "core/input/mousebutton.hpp"
+#include "core/input/keycode.hpp"
+
 struct GLFWwindow;
 
 namespace Toolbox::Input {
-    bool GetKey(uint32_t key);
-    bool GetKeyDown(uint32_t key);
-    bool GetKeyUp(uint32_t key);
 
-    bool GetMouseButton(uint32_t button);
-    bool GetMouseButtonDown(uint32_t button);
-    bool GetMouseButtonUp(uint32_t button);
+    bool IsKeyModifier(KeyCode key);
+    KeyCodes GetPressedKeys(bool include_mods = true);
+    KeyModifiers GetPressedKeyModifiers();
+    bool GetKey(KeyCode key);
+    bool GetKeyDown(KeyCode key);
+    bool GetKeyUp(KeyCode key);
 
-    ImVec2 GetMouseViewportPosition();
-    void SetMousePosition(ImVec2 pos, bool overwrite_delta = true);
+    MouseButtons GetPressedMouseButtons();
+    bool GetMouseButton(MouseButton button);
+    bool GetMouseButtonDown(MouseButton button);
+    bool GetMouseButtonUp(MouseButton button);
 
-    ImVec2 GetMouseDelta();
-    int32_t GetMouseScrollDelta();
+    void GetMouseViewportPosition(float &x, float &y);
+    void SetMousePosition(float x, float y, bool overwrite_delta = true);
+
+    void GetMouseDelta(float &x, float &y);
+    void GetMouseScrollDelta(float &x, float &y);
 
     bool GetMouseWrapped();
     void SetMouseWrapped(bool wrapped);
@@ -31,4 +39,5 @@ namespace Toolbox::Input {
     void GLFWMousePositionCallback(GLFWwindow *window, double xpos, double ypos);
     void GLFWMouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
     void GLFWMouseScrollCallback(GLFWwindow *window, double xoffset, double yoffset);
+
 }

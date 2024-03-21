@@ -62,10 +62,7 @@ namespace Toolbox {
     void BaseEvent::ignore() { m_accepted_state = TriState::TS_FALSE; }
 
     ScopePtr<ISmartResource> BaseEvent::clone(bool deep) const {
-        BaseEvent result;
-        result.m_accepted_state = m_accepted_state;
-        result.m_event_type     = m_event_type;
-        return make_scoped<BaseEvent>(std::move(result));
+        return make_scoped<BaseEvent>(*this);
     }
 
 }  // namespace Toolbox

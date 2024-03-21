@@ -255,7 +255,7 @@ namespace Toolbox {
         {"Menu",              GLFW_KEY_MENU         },
     };
 
-    std::string KeyNameFromEnum(int key) { return s_key_to_name[key]; }
-    int KeyNameToEnum(const std::string &key_name) { return s_name_to_key[key_name]; }
+    std::string KeyNameFromEnum(Input::KeyCode key) { return s_key_to_name[static_cast<u16>(key)]; }
+    Input::KeyCode KeyNameToEnum(const std::string &key_name) { return static_cast<Input::KeyCode>(s_name_to_key[key_name]); }
 
 }

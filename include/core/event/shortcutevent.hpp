@@ -1,34 +1,34 @@
 #pragma once
 
+#include "core/action/action.hpp"
 #include "core/event/event.hpp"
+#include "core/keybind/keybind.hpp"
 
 namespace Toolbox {
 
     class ShortcutEvent final : public BaseEvent {
     private:
-        ShortcutEvent() = default;
+        ShortcutEvent() = delete;
 
     public:
         ShortcutEvent(const ShortcutEvent &)     = default;
         ShortcutEvent(ShortcutEvent &&) noexcept = default;
 
-        [[nodiscard]] bool isSystemBind() const;
+        ShortcutEvent(const Action &action, bool is_system_bind = false);
 
-        [[nodiscard]] MouseButton getButton() const noexcept { return m_mouse_button; }
-        [[nodiscard]] MouseButtons getState() const noexcept { return m_mouse_state; }
-        [[nodiscard]] std::pair<float, float> getGlobalPoint() const noexcept {
-            return {m_screen_pos_x, m_screen_pos_y};
-        }
+        [[nodiscard]] bool isSystemBind() const { return m_is_system_bind; }
+
+        [[nodiscard]] const KeyBind &getKeyBind() const { return m_action.getKeyBind(); }
+        [[nodiscard]] const Action &getAction() const { return m_action; }
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
+        ShortcutEvent &operator=(const ShortcutEvent &)     = default;
+        ShortcutEvent &operator=(ShortcutEvent &&) noexcept = default;
+
     private:
-        float m_screen_pos_x;
-        float m_screen_pos_y;
-        MouseButton m_mouse_button;
-        MouseButtons m_mouse_state;
-        bool m_mouse_pressed;
-        bool m_mouse_released;
+        Action m_action;
+        bool m_is_system_bind;
     };
 
 }  // namespace Toolbox
