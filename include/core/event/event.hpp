@@ -88,8 +88,15 @@ namespace Toolbox {
 
     private:
         TriState m_accepted_state = TriState::TS_INDETERMINATE;
-        TypeID m_event_type = SystemEventType::EVENT_NONE;
-        bool m_is_system_event = false;
+        TypeID m_event_type       = SystemEventType::EVENT_NONE;
+        bool m_is_system_event    = false;
+    };
+
+    class IEventProcessor {
+    public:
+        virtual ~IEventProcessor() = default;
+
+        virtual void onEvent(const BaseEvent &event) = 0;
     };
 
 }  // namespace Toolbox

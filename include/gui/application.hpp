@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/application/application.hpp"
+
 #include <glad/glad.h>
 
 // Included first to let definitions take over
@@ -9,53 +11,35 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-#include "gui/scene/window.hpp"
-#include "gui/window.hpp"
-
-#include "clipboard.hpp"
-#include "dolphin/process.hpp"
-
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #undef GLFW_INCLUDE_NONE
 
-#include <thread>
+#include "gui/scene/window.hpp"
+#include "gui/window.hpp"
+
+#include "core/clipboard.hpp"
+#include "dolphin/process.hpp"
 
 using namespace Toolbox::Dolphin;
 
-#ifdef TOOLBOX_PLATFORM_WINDOWS
-
-#define EXIT_CODE_OK 0
-#define EXIT_CODE_FAILED_RUNTIME  (1 << 28) | 1
-#define EXIT_CODE_FAILED_SETUP    (1 << 28) | 2
-#define EXIT_CODE_FAILED_TEARDOWN (1 << 28) | 3
-
-#elif TOOLBOX_PLATFORM_LINUX
-
-#define EXIT_CODE_OK              0
-#define EXIT_CODE_FAILED_RUNTIME  1
-#define EXIT_CODE_FAILED_SETUP    2
-#define EXIT_CODE_FAILED_TEARDOWN 3
-
-#endif
-
 namespace Toolbox {
 
-    class MainApplication {
+    class GUIApplication : public CoreApplication {
     protected:
-        MainApplication();
+        GUIApplication();
 
     public:
-        virtual ~MainApplication() {}
+        virtual ~GUIApplication() {}
 
-        static MainApplication &instance() {
-            static MainApplication _inst;
+        static GUIApplication &instance() {
+            static GUIApplication _inst;
             return _inst;
         }
 
-        bool setup();
-        int run();
-        bool teardown();
+        virtual void onInit() override;
+        virtual void onUpdate(TimeStep delta_time) override;
+        virtual void onExit() override;
 
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> &getSceneObjectClipboard() {
             return m_hierarchy_clipboard;

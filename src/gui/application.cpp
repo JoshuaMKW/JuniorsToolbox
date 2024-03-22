@@ -1,7 +1,6 @@
-#include "core/application.hpp"
 #include "IconsForkAwesome.h"
-#include "gui/font.hpp"
 #include "core/input/input.hpp"
+#include "gui/font.hpp"
 #include "gui/settings/window.hpp"
 #include "gui/themes.hpp"
 #include "gui/util.hpp"
@@ -22,17 +21,19 @@
 #include <gui/logging/errors.hpp>
 #include <gui/logging/window.hpp>
 #include <imgui.h>
+#include <imgui_impl_glfw.h>
 #include <imgui_internal.h>
 
 #include "core/core.hpp"
 #include "dolphin/hook.hpp"
+#include "gui/application.hpp"
 #include "gui/scene/ImGuizmo.h"
 
 // void ImGuiSetupTheme(bool, float);
 
 namespace Toolbox {
 
-    int MainApplication::run() {
+    int GUIApplication::run() {
         Clock::time_point lastFrameTime, thisFrameTime;
 
         while (true) {
@@ -68,17 +69,20 @@ namespace Toolbox {
         }
     }
 
-    MainApplication::MainApplication() {
+    GUIApplication::GUIApplication() {
         m_dockspace_built = false;
         m_dockspace_id    = ImGuiID();
         m_render_window   = nullptr;
         m_windows         = {};
     }
 
-    bool MainApplication::setup() {
+    void GUIApplication::onInit() {
         // Initialize GLFW
-        if (!glfwInit())
-            return false;
+        if (!glfwInit()) {
+            setExitCode(EXIT_CODE_FAILED_SETUP);
+            stop();
+            return;
+        }
 
         // TODO: Load application settings
         //
@@ -98,7 +102,9 @@ namespace Toolbox {
         m_render_window = glfwCreateWindow(1280, 720, "Junior's Toolbox", nullptr, nullptr);
         if (m_render_window == nullptr) {
             glfwTerminate();
-            return false;
+            setExitCode(EXIT_CODE_FAILED_SETUP);
+            stop();
+            return;
         }
 
         glfwSetCharCallback(m_render_window, ImGui_ImplGlfw_CharCallback);
@@ -181,11 +187,11 @@ namespace Toolbox {
         determineEnvironmentConflicts();
 
         m_dolphin_communicator.start();
-
-        return true;
     }
 
-    bool MainApplication::teardown() {
+    void GUIApplication::onUpdate(TimeStep delta_time) {}
+
+    void GUIApplication::onExit() {
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
@@ -198,11 +204,9 @@ namespace Toolbox {
         m_windows.clear();
 
         m_dolphin_communicator.kill();
-
-        return true;
     }
 
-    bool MainApplication::execute(f32 delta_time) {
+    bool GUIApplication::execute(f32 delta_time) {
         // Try to make sure we return an error if anything's fucky
         if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window))
             return false;
@@ -233,7 +237,7 @@ namespace Toolbox {
         return true;
     }
 
-    void MainApplication::render(f32 delta_time) {  // Begin actual rendering
+    void GUIApplication::render(f32 delta_time) {  // Begin actual rendering
         glfwMakeContextCurrent(m_render_window);
 
         // The context renders both the ImGui elements and the background elements.
@@ -297,7 +301,7 @@ namespace Toolbox {
         glfwSwapBuffers(m_render_window);
     }
 
-    void MainApplication::renderMenuBar() {
+    void GUIApplication::renderMenuBar() {
         m_options_open = false;
         ImGui::BeginMainMenuBar();
 
@@ -452,7 +456,7 @@ namespace Toolbox {
         }
     }
 
-    void MainApplication::renderWindows(f32 delta_time) {
+    void GUIApplication::renderWindows(f32 delta_time) {
         // Render viewer context
         for (auto &window : m_windows) {
             if (!m_dockspace_built && !m_docked_map[window->getUUID()]) {
@@ -468,7 +472,7 @@ namespace Toolbox {
         }
     }
 
-    bool MainApplication::postRender(f32 delta_time) {
+    bool GUIApplication::postRender(f32 delta_time) {
         // Try to make sure we return an error if anything's fucky
         if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window))
             return false;
@@ -485,7 +489,7 @@ namespace Toolbox {
         return true;
     }
 
-    bool MainApplication::determineEnvironmentConflicts() {
+    bool GUIApplication::determineEnvironmentConflicts() {
         auto service_result = Platform::IsServiceRunning("NahimicService");
         if (!service_result) {
             LogError(service_result.error());

@@ -7,7 +7,7 @@
 #include "core/error.hpp"
 #include "tristate.hpp"
 
-namespace Toolbox::UI {
+namespace Toolbox {
 
     struct ClipboardError : public BaseError {};
 
