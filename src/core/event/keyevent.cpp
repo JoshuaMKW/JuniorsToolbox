@@ -8,9 +8,10 @@
 
 namespace Toolbox {
 
-    KeyEvent::KeyEvent(TypeID type, Input::KeyCode key, Input::KeyModifiers modifiers,
+    KeyEvent::KeyEvent(const UUID64 &target_id, TypeID type, Input::KeyCode key,
+                       Input::KeyModifiers modifiers,
                        const std::string &text, int repeat_count)
-        : BaseEvent(type), m_target_key(key), m_modifiers(modifiers), m_resultant_text(text),
+        : BaseEvent(target_id, type), m_target_key(key), m_modifiers(modifiers), m_resultant_text(text),
           m_repeat_count(repeat_count) {
         TOOLBOX_ASSERT_V(
             type == EVENT_KEY_PRESS || type == EVENT_KEY_RELEASE,

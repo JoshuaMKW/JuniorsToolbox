@@ -1,10 +1,10 @@
 #pragma once
 
-#include "core/event/event.hpp"
 #include "core/input/input.hpp"
+#include "gui/event/event.hpp"
 #include <string>
 
-namespace Toolbox {
+namespace Toolbox::UI {
 
     class MouseEvent final : public BaseEvent {
     private:
@@ -14,7 +14,7 @@ namespace Toolbox {
         MouseEvent(const MouseEvent &)     = default;
         MouseEvent(MouseEvent &&) noexcept = default;
 
-        MouseEvent(TypeID type, float pos_x, float pos_y,
+        MouseEvent(const UUID64 &target_id, TypeID type, float pos_x, float pos_y,
                    Input::MouseButton button     = Input::MouseButton::BUTTON_NONE,
                    Input::MouseButtonState state = Input::MouseButtonState::STATE_NONE);
 

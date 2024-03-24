@@ -15,7 +15,8 @@ namespace Toolbox {
         KeyEvent(const KeyEvent &)     = default;
         KeyEvent(KeyEvent &&) noexcept = default;
 
-        KeyEvent(TypeID type, Input::KeyCode key, Input::KeyModifiers modifiers,
+        KeyEvent(const UUID64 &target_id, TypeID type, Input::KeyCode key,
+                 Input::KeyModifiers modifiers,
                  const std::string &text = "", int repeat_count = 1);
 
         [[nodiscard]] size_t getKeyCount() const noexcept;

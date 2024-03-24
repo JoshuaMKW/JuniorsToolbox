@@ -19,19 +19,14 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "gui/layer/imlayer.hpp"
+
 namespace Toolbox::UI {
 
-    class IWindow : public IUnique {
+    class IWindow {
     protected:
-        static ImGuiID s_next_window_uid;
-
         virtual void renderMenuBar()            = 0;
         virtual void renderBody(f32 delta_time) = 0;
-
-        virtual void onDeleteKey()   = 0;
-        virtual void onPageDownKey() = 0;
-        virtual void onPageUpKey()   = 0;
-        virtual void onHomeKey()     = 0;
 
     public:
         virtual ~IWindow() = default;
@@ -68,33 +63,33 @@ namespace Toolbox::UI {
         virtual void render(f32 delta_time) = 0;
     };
 
-    class SimpleWindow : public IWindow {
+    class SimpleWindow : public ImLayer, public IWindow {
     protected:
+        SimpleWindow() : ImLayer("Unnamed Window") {}
+
         void renderMenuBar() override {}
         void renderBody(f32 delta_time) override {}
 
-        void onDeleteKey() override {}
-        void onPageDownKey() override {}
-        void onPageUpKey() override {}
-        void onHomeKey() override {}
-
     public:
-        SimpleWindow() = default;
-        SimpleWindow(std::optional<ImVec2> default_size) : m_default_size(default_size) {}
-        SimpleWindow(std::optional<ImVec2> min_size, std::optional<ImVec2> max_size)
-            : m_min_size(min_size), m_max_size(max_size) {}
-        SimpleWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
+        SimpleWindow(const std::string &name, std::optional<ImVec2> default_size)
+            : ImLayer(name), m_default_size(default_size) {}
+        SimpleWindow(const std::string &name, std::optional<ImVec2> min_size,
                      std::optional<ImVec2> max_size)
-            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size) {}
-        SimpleWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
-                     std::optional<ImVec2> max_size, ImGuiWindowClass window_class)
-            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
-              m_window_class(window_class) {}
-        SimpleWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
-                     std::optional<ImVec2> max_size, ImGuiWindowClass window_class,
-                     ImGuiWindowFlags flags)
-            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
-              m_window_class(window_class), m_flags(flags) {}
+            : ImLayer(name), m_min_size(min_size), m_max_size(max_size) {}
+        SimpleWindow(const std::string &name, std::optional<ImVec2> default_size,
+                     std::optional<ImVec2> min_size, std::optional<ImVec2> max_size)
+            : ImLayer(name), m_default_size(default_size), m_min_size(min_size),
+              m_max_size(max_size) {}
+        SimpleWindow(const std::string &name, std::optional<ImVec2> default_size,
+                     std::optional<ImVec2> min_size, std::optional<ImVec2> max_size,
+                     ImGuiWindowClass window_class)
+            : ImLayer(name), m_default_size(default_size), m_min_size(min_size),
+              m_max_size(max_size), m_window_class(window_class) {}
+        SimpleWindow(const std::string &name, std::optional<ImVec2> default_size,
+                     std::optional<ImVec2> min_size, std::optional<ImVec2> max_size,
+                     ImGuiWindowClass window_class, ImGuiWindowFlags flags)
+            : ImLayer(name), m_default_size(default_size), m_min_size(min_size),
+              m_max_size(max_size), m_window_class(window_class), m_flags(flags) {}
         ~SimpleWindow() override = default;
 
         void open() override { m_is_open = true; }
@@ -202,35 +197,40 @@ namespace Toolbox::UI {
         std::optional<ImVec2> m_max_size     = {};
     };
 
-    class DockWindow : public IWindow {
+    class DockWindow : public ImLayer, public IWindow {
     protected:
+        DockWindow()
+            : ImLayer("Unnamed Window") {}
+
         virtual void buildDockspace(ImGuiID dockspace_id){};
 
         void renderDockspace();
         void renderMenuBar() override {}
         void renderBody(f32 delta_time) override {}
 
-        void onDeleteKey() override {}
-        void onPageDownKey() override {}
-        void onPageUpKey() override {}
-        void onHomeKey() override {}
-
     public:
-        DockWindow() = default;
-        explicit DockWindow(std::optional<ImVec2> default_size) : m_default_size(default_size) {}
-        DockWindow(std::optional<ImVec2> min_size, std::optional<ImVec2> max_size)
-            : m_min_size(min_size), m_max_size(max_size) {}
-        DockWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
+        explicit DockWindow(const std::string &name, std::optional<ImVec2> default_size)
+            : ImLayer(name), m_default_size(default_size) {}
+        DockWindow(const std::string &name, std::optional<ImVec2> min_size,
                    std::optional<ImVec2> max_size)
-            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size) {}
-        DockWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
+            : ImLayer(name), m_min_size(min_size), m_max_size(max_size) {}
+        DockWindow(const std::string &name, std::optional<ImVec2> default_size,
+                   std::optional<ImVec2> min_size,
+                   std::optional<ImVec2> max_size)
+            : ImLayer(name), m_default_size(default_size), m_min_size(min_size),
+              m_max_size(max_size) {}
+        DockWindow(const std::string &name, std::optional<ImVec2> default_size,
+                   std::optional<ImVec2> min_size,
                    std::optional<ImVec2> max_size, ImGuiWindowClass window_class)
-            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
+            : ImLayer(name), m_default_size(default_size), m_min_size(min_size),
+              m_max_size(max_size),
               m_window_class(window_class) {}
-        DockWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
+        DockWindow(const std::string &name, std::optional<ImVec2> default_size,
+                   std::optional<ImVec2> min_size,
                    std::optional<ImVec2> max_size, ImGuiWindowClass window_class,
                    ImGuiWindowFlags flags)
-            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
+            : ImLayer(name), m_default_size(default_size), m_min_size(min_size),
+              m_max_size(max_size),
               m_window_class(window_class), m_flags(flags) {}
         ~DockWindow() override = default;
 
@@ -332,7 +332,7 @@ namespace Toolbox::UI {
         ImGuiWindowFlags m_flags                = 0;
         mutable ImGuiWindowClass m_window_class = ImGuiWindowClass();
 
-        ImGuiID m_dockspace_id = 0;
+        ImGuiID m_dockspace_id   = 0;
         bool m_is_docking_set_up = false;
 
         std::optional<ImVec2> m_default_size = {};
@@ -341,12 +341,12 @@ namespace Toolbox::UI {
         std::optional<ImVec2> m_max_size     = {};
     };
 
-    inline std::string getWindowUID(const IWindow &window) {
-        return std::to_string(window.getUUID());
+    inline std::string getWindowUID(const ImLayer &window_layer) {
+        return std::to_string(window_layer.getUUID());
     }
 
-    inline std::string getWindowChildUID(const IWindow &window, const std::string &child_name) {
-        return std::format("{}##{}", child_name, getWindowUID(window));
+    inline std::string getWindowChildUID(const ImLayer &window_layer, const std::string &child_name) {
+        return std::format("{}##{}", child_name, getWindowUID(window_layer));
     }
 
 }  // namespace Toolbox::UI

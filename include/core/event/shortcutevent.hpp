@@ -14,7 +14,7 @@ namespace Toolbox {
         ShortcutEvent(const ShortcutEvent &)     = default;
         ShortcutEvent(ShortcutEvent &&) noexcept = default;
 
-        ShortcutEvent(const Action &action, bool is_system_bind = false);
+        ShortcutEvent(const UUID64 &target_id, const Action &action, bool is_system_bind = false);
 
         [[nodiscard]] bool isSystemBind() const { return m_is_system_bind; }
 

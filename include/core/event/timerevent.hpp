@@ -15,7 +15,7 @@ namespace Toolbox {
         TimerEvent(const TimerEvent &)     = default;
         TimerEvent(TimerEvent &&) noexcept = default;
 
-        TimerEvent(const UUID64 &timer_uuid);
+        TimerEvent(const UUID64 &target_id, const UUID64 &timer_uuid);
 
         [[nodiscard]] const UUID64 &getTimerUUID() const { return m_timer_uuid; }
 

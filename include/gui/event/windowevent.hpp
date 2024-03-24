@@ -1,10 +1,10 @@
 #pragma once
 
-#include "core/event/event.hpp"
 #include "core/input/input.hpp"
+#include "gui/event/event.hpp"
 #include <string>
 
-namespace Toolbox {
+namespace Toolbox::UI {
 
     class WindowEvent final : public BaseEvent {
     private:
@@ -14,7 +14,8 @@ namespace Toolbox {
         WindowEvent(const WindowEvent &)     = default;
         WindowEvent(WindowEvent &&) noexcept = default;
 
-        WindowEvent(TypeID type, float pos_x, float pos_y, float size_x, float size_y);
+        WindowEvent(const UUID64 &target_id, TypeID type, float pos_x, float pos_y, float size_x,
+                    float size_y);
 
         [[nodiscard]] bool isHideEvent() const noexcept { return getType() == EVENT_WINDOW_HIDE; }
 
