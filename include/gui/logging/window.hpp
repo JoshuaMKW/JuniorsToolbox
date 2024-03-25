@@ -81,7 +81,7 @@ namespace Toolbox::UI {
         bool postUpdate(f32 delta_time) override { return true; }
 
     private:
-        Log::ReportLevel m_logging_level = Log::ReportLevel::INFO;
+        Log::ReportLevel m_logging_level = Log::ReportLevel::REPORT_INFO;
         uint32_t m_dock_space_id         = 0;
         bool m_scroll_requested          = false;
     };

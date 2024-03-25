@@ -6,7 +6,7 @@ namespace Toolbox::Log {
     void AppLogger::log(ReportLevel level, const std::string &message) {
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();
         if (settings.m_log_to_cout_cerr) {
-            if (level == ReportLevel::ERROR)
+            if (level == ReportLevel::REPORT_ERROR)
                 std::cerr << message << std::endl;
             else
                 std::cout << message << std::endl;

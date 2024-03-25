@@ -2,7 +2,7 @@
 #include "dolphin/interpreter/instructions/forms.hpp"
 #include "dolphin/process.hpp"
 
-#include "core/application.hpp"
+#include "gui/application.hpp"
 #include "core/log.hpp"
 
 using namespace Toolbox::Dolphin;
@@ -94,7 +94,7 @@ namespace Toolbox::Interpreter {
     }
 
     void SystemDolphin::evaluateInstruction() {
-        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
 
         u32 inst      = read<u32>((u32)m_system_proc.m_pc);
         Opcode opcode = FORM_OPCD(inst);

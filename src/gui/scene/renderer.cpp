@@ -5,10 +5,11 @@
 #include <iostream>
 #include <unordered_set>
 
-#include "core/application.hpp"
 #include "core/input/input.hpp"
-#include "gui/logging/errors.hpp"
 #include "core/log.hpp"
+
+#include "gui/application.hpp"
+#include "gui/logging/errors.hpp"
 #include "gui/scene/renderer.hpp"
 #include "gui/settings.hpp"
 #include "gui/util.hpp"
@@ -474,8 +475,8 @@ namespace Toolbox::UI {
                      {0.0f, 1.0f}, {1.0f, 0.0f});
 
         if (m_render_gizmo) {
-            bool shift_held = Input::GetKey(Input::KeyCode::LEFTSHIFT);
-            bool ctrl_held  = Input::GetKey(Input::KeyCode::LEFTCONTROL);
+            bool shift_held = Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT);
+            bool ctrl_held  = Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL);
 
             float snap[3];
             if ((m_gizmo_op & (ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU))) {
@@ -575,7 +576,7 @@ namespace Toolbox::UI {
         const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
         if (m_is_view_manipulating && Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {
-            float delta_x, delta_y;
+            double delta_x, delta_y;
             Input::GetMouseDelta(delta_x, delta_y);
 
             m_camera.turnLeftRight(-delta_x * settings.m_camera_sensitivity * delta_time * 0.25f);
@@ -601,25 +602,25 @@ namespace Toolbox::UI {
             // Camera movement
             {
                 float lr_delta = 0, ud_delta = 0;
-                if (Input::GetKey(Input::KeyCode::A)) {
+                if (Input::GetKey(Input::KeyCode::KEY_A)) {
                     lr_delta -= 1;
                 }
-                if (Input::GetKey(Input::KeyCode::D)) {
+                if (Input::GetKey(Input::KeyCode::KEY_D)) {
                     lr_delta += 1;
                 }
-                if (Input::GetKey(Input::KeyCode::W)) {
+                if (Input::GetKey(Input::KeyCode::KEY_W)) {
                     ud_delta += 1;
                 }
-                if (Input::GetKey(Input::KeyCode::S)) {
+                if (Input::GetKey(Input::KeyCode::KEY_S)) {
                     ud_delta -= 1;
                 }
-                if (Input::GetKey(Input::KeyCode::LEFTSHIFT)) {
+                if (Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT)) {
                     lr_delta *= 10;
                     ud_delta *= 10;
                 }
 
                 if (m_is_window_hovered) {
-                    float delta_x, delta_y;
+                    double delta_x, delta_y;
                     Input::GetMouseScrollDelta(delta_x, delta_y);
                     lr_delta += delta_x * 10.0f;
                     ud_delta += delta_y * 10.0f;

@@ -84,11 +84,6 @@ namespace Toolbox::UI {
         void buildCreateRailDialog();
         void buildRenameRailDialog();
 
-        void onDeleteKey() override;
-        void onPageDownKey() override;
-        void onPageUpKey() override;
-        void onHomeKey() override;
-
     public:
         ImGuiWindowFlags flags() const override { return DockWindow::flags() | ImGuiWindowFlags_MenuBar; }
 

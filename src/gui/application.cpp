@@ -76,7 +76,7 @@ namespace Toolbox {
         m_windows         = {};
     }
 
-    void GUIApplication::onInit() {
+    void GUIApplication::onInit(int argc, const char **argv) {
         // Initialize GLFW
         if (!glfwInit()) {
             setExitCode(EXIT_CODE_FAILED_SETUP);

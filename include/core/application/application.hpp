@@ -39,7 +39,7 @@ namespace Toolbox {
 
         virtual ~CoreApplication() {}
 
-        void run();
+        void run(int argc, const char **argv);
         void stop();
 
         const std::string &getAppName() const { return m_app_name; }
@@ -47,7 +47,7 @@ namespace Toolbox {
 
         // Override these functions to implement your application
 
-        virtual void onInit() {}
+        virtual void onInit(int argc, const char **argv) {}
         virtual void onUpdate(TimeStep delta_time) {}
         virtual void onExit() {}
 
@@ -81,8 +81,8 @@ namespace Toolbox {
         void setExitCode(int exit_code) { m_exit_code = exit_code; }
 
     private:
-        bool execute();
-        void setup();
+        bool update();
+        void setup(int argc, const char **argv);
         void teardown();
 
     private:

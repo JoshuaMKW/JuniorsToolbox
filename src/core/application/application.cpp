@@ -23,14 +23,14 @@ namespace Toolbox {
         m_last_frame_time = GetTime();
     }
 
-    void CoreApplication::run() {
-        setup();
+    void CoreApplication::run(int argc, const char **argv) {
+        setup(argc, argv);
 
         while (m_is_running) {
             TimePoint this_frame_time = GetTime();
             m_delta_time              = TimeStep(m_last_frame_time, this_frame_time);
 
-            const bool good_exec = execute();
+            const bool good_exec = update();
             if (!good_exec)
                 break;
 
@@ -45,16 +45,19 @@ namespace Toolbox {
 
     void CoreApplication::stop() { m_is_running = false; }
 
-    bool CoreApplication::execute() {
+    bool CoreApplication::update() {
         // TODO: Add logic to pass through logical layers
         // and compare the UUID of the event to the layer UUID
         for (auto &layer : m_layers) {
             layer->onUpdate(m_delta_time);
         }
+
+        // TODO: improve fail response
+        return m_exit_code == 0;
     }
 
-    void CoreApplication::setup() {
-        onInit();
+    void CoreApplication::setup(int argc, const char **argv) {
+        onInit(argc, argv);
         for (auto &layer : m_layers) {
             layer->onAttach();
         }

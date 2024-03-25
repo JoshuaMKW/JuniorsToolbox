@@ -22,22 +22,10 @@ namespace Toolbox::UI {
             return;
         }
         switch (ev->getType()) {
-        case BaseEvent::SystemEventType::EVENT_ACTION_ADDED:
-        case BaseEvent::SystemEventType::EVENT_ACTION_CHANGED:
-        case BaseEvent::SystemEventType::EVENT_ACTION_REMOVED:
-        case BaseEvent::SystemEventType::EVENT_ACTIVATION_CHANGE:
-        case BaseEvent::SystemEventType::EVENT_APPLICATION_EXIT:
-        case BaseEvent::SystemEventType::EVENT_APPLICATION_STATE_CHANGE:
-        case BaseEvent::SystemEventType::EVENT_CLIPBOARD:
-        case BaseEvent::SystemEventType::EVENT_CLOSE:
-        case BaseEvent::SystemEventType::EVENT_FILE_OPEN:
-        case BaseEvent::SystemEventType::EVENT_FOCUS_IN:
-        case BaseEvent::SystemEventType::EVENT_FOCUS_OUT:
-        case BaseEvent::SystemEventType::EVENT_KEY_PRESS:
-        case BaseEvent::SystemEventType::EVENT_KEY_RELEASE:
-        case BaseEvent::SystemEventType::EVENT_LANGUAGE_CHANGE:
-        case BaseEvent::SystemEventType::EVENT_SHORTCUT:
-        case BaseEvent::SystemEventType::EVENT_TIMER:
+        case EVENT_FOCUS_IN:
+        case EVENT_FOCUS_OUT:
+            // TODO: Call focus event
+            break;
         case EVENT_WINDOW_HIDE:
         case EVENT_WINDOW_MOVE:
         case EVENT_WINDOW_RESIZE:

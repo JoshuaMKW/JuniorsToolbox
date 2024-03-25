@@ -7,14 +7,14 @@
 #include <execution>
 #include <vector>
 
-#include "core/application.hpp"
+#include "core/input/input.hpp"
 #include "core/log.hpp"
 #include "core/timing.hpp"
 
 #include "IconsForkAwesome.h"
+#include "gui/application.hpp"
 #include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
-#include "core/input/input.hpp"
 #include "gui/logging/errors.hpp"
 #include "gui/modelcache.hpp"
 #include "gui/scene/window.hpp"
@@ -1991,32 +1991,6 @@ namespace Toolbox::UI {
             });
         m_rename_rail_dialog.setActionOnReject([](SelectionNodeInfo<Rail::Rail>) {});
     }
-
-    void SceneWindow::onDeleteKey() {
-        switch (m_focused_window) {
-        case EditorWindow::OBJECT_TREE: {
-            break;
-        }
-        case EditorWindow::PROPERTY_EDITOR: {
-            break;
-        }
-        case EditorWindow::RAIL_TREE: {
-            break;
-        }
-        case EditorWindow::RENDER_VIEW: {
-            break;
-        }
-        case EditorWindow::NONE:
-        default:
-            break;
-        }
-    }
-
-    void SceneWindow::onPageDownKey() {}
-
-    void SceneWindow::onPageUpKey() {}
-
-    void SceneWindow::onHomeKey() {}
 
     void SceneWindow::buildDockspace(ImGuiID dockspace_id) {
         m_dock_node_left_id =

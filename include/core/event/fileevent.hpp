@@ -34,6 +34,6 @@ namespace Toolbox {
     private:
         std::filesystem::path m_path;
         Action m_action;
-    }
+    };
 
 }  // namespace Toolbox

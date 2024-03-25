@@ -20,6 +20,11 @@ namespace Toolbox::UI {
 
         explicit ImLayer(const std::string &name);
 
+        [[nodiscard]] bool isOpen() const noexcept { return m_is_open; }
+
+        void close() noexcept { m_is_open = false; }
+        void open() noexcept { m_is_open = true; }
+
         void onUpdate(TimeStep delta_time) override final;
         void onEvent(RefPtr<BaseEvent> ev) override final;
 
@@ -37,6 +42,7 @@ namespace Toolbox::UI {
         bool m_is_open    = true;
         ImVec2 m_size     = {0, 0};
         ImVec2 m_position = {0, 0};
+        ImGuiWindowFlags m_render_flags;
     };
 
 }  // namespace Toolbox::UI

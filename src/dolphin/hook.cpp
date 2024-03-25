@@ -4,7 +4,7 @@
 #include <string_view>
 #include <thread>
 
-#include "core/application.hpp"
+#include "gui/application.hpp"
 #include "gui/settings.hpp"
 
 #include "dolphin/hook.hpp"
@@ -101,7 +101,7 @@ namespace Toolbox::Dolphin {
 
     Result<void> DolphinHookManager::startProcess() {
         AppSettings &settings        = SettingsManager::instance().getCurrentProfile();
-        MainApplication &application = MainApplication::instance();
+        GUIApplication &application = GUIApplication::instance();
 
         if (isProcessRunning()) {
             return {};

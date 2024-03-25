@@ -13,10 +13,10 @@ namespace Toolbox {
         explicit TimeStep(double elapsed_seconds) : m_duration(elapsed_seconds) {}
         TimeStep(TimePoint start, TimePoint end) : m_duration(end - start) {}
 
-        float seconds() const { return m_duration.count(); }
-        float milliseconds() const { return m_duration.count() * 1000.0; }
+        double seconds() const { return m_duration.count(); }
+        double milliseconds() const { return m_duration.count() * 1000.0; }
 
-        operator float() const { return m_duration.count(); }
+        operator double() const { return m_duration.count(); }
 
         TimeStep &operator=(const TimeStep &other)     = default;
         TimeStep &operator=(TimeStep &&other) noexcept = default;

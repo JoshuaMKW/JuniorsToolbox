@@ -15,35 +15,40 @@
 // Internals
 
 namespace {
+  
+  using namespace Toolbox::Input;
+
+  constexpr size_t c_keys_max = GetKeyCodes().size();
+  constexpr size_t c_buttons_max = GetMouseButtons().size();
 
     using namespace Toolbox::Input;
 
-    static float s_mouse_position_x = 0;
-    static float s_mouse_position_y = 0;
+    static double s_mouse_position_x = 0;
+    static double s_mouse_position_y = 0;
 
-    static float s_prev_mouse_position_x = 0;
-    static float s_prev_mouse_position_y = 0;
+    static double s_prev_mouse_position_x = 0;
+    static double s_prev_mouse_position_y = 0;
 
-    static float s_mouse_delta_x = 0;
-    static float s_mouse_delta_y = 0;
+    static double s_mouse_delta_x = 0;
+    static double s_mouse_delta_y = 0;
 
-    static float s_mouse_scroll_delta_x = 0;
-    static float s_mouse_scroll_delta_y = 0;
+    static double s_mouse_scroll_delta_x = 0;
+    static double s_mouse_scroll_delta_y = 0;
 
     static bool s_mouse_wrapped = false;
 
-    static bool s_keys_down[c_valid]      = {false};
-    static bool s_prev_keys_down[c_valid] = {false};
+    static bool s_keys_down[c_keys_max]      = {false};
+    static bool s_prev_keys_down[c_keys_max] = {false};
 
-    static bool s_mouse_buttons_down[c_mouse_button_max]      = {false};
-    static bool s_prev_mouse_buttons_down[c_mouse_button_max] = {false};
+    static bool s_mouse_buttons_down[c_buttons_max]      = {false};
+    static bool s_prev_mouse_buttons_down[c_buttons_max] = {false};
 
-    static bool GetKeyState(KeyCode key) { return s_keys_down[static_cast<u16>(key)]; }
-    static void SetKeyState(KeyCode key, bool state) { s_keys_down[static_cast<u16>(key)] = state; }
+    static bool GetKeyState(KeyCode key) { return s_keys_down[raw_enum(key)]; }
+    static void SetKeyState(KeyCode key, bool state) { s_keys_down[raw_enum(key)] = state; }
 
-    static bool GetMouseButtonState(MouseButton button) { return s_mouse_buttons_down[button]; }
+    static bool GetMouseButtonState(MouseButton button) { return s_mouse_buttons_down[raw_enum(button)]; }
     static void SetMouseButtonState(MouseButton button, bool state) {
-        s_mouse_buttons_down[button] = state;
+        s_mouse_buttons_down[raw_enum(button)] = state;
     }
 
 }  // namespace
@@ -110,34 +115,34 @@ namespace Toolbox::Input {
         return buttons;
     }
 
-    bool GetMouseButton(MouseButton button) { return s_mouse_buttons_down[button]; }
+    bool GetMouseButton(MouseButton button) { return s_mouse_buttons_down[raw_enum(button)]; }
 
     bool GetMouseButtonDown(MouseButton button) {
-        return s_mouse_buttons_down[button] && !s_prev_mouse_buttons_down[button];
+        return s_mouse_buttons_down[raw_enum(button)] && !s_prev_mouse_buttons_down[raw_enum(button)];
     }
 
     bool GetMouseButtonUp(MouseButton button) {
-        return s_prev_mouse_buttons_down[button] && !s_mouse_buttons_down[button];
+        return s_prev_mouse_buttons_down[raw_enum(button)] && !s_mouse_buttons_down[raw_enum(button)];
     }
 
-    void GetMouseViewportPosition(float &x, float &y) {
+    void GetMouseViewportPosition(double &x, double &y) {
         x = s_mouse_position_x;
         y = s_mouse_position_y;
     }
 
-    void GetMouseDelta(float &x, float &y) {
+    void GetMouseDelta(double &x, double &y) {
         x = s_mouse_delta_x;
         y = s_mouse_delta_y;
     }
 
-    void GetMouseScrollDelta(float &x, float &y) {
+    void GetMouseScrollDelta(double &x, double &y) {
         x = s_mouse_scroll_delta_x;
         y = s_mouse_scroll_delta_y;
     }
 
     bool GetMouseWrapped() { return s_mouse_wrapped; }
 
-    void SetMousePosition(float pos_x, float pos_y, bool overwrite_delta) {
+    void SetMousePosition(double pos_x, double pos_y, bool overwrite_delta) {
         if (!overwrite_delta) {
             SetMouseWrapped(true);
         }
@@ -171,9 +176,9 @@ namespace Toolbox::Input {
     }
 
     void PostUpdateInputState() {
-        for (int i = 0; i < c_valid; i++)
+        for (int i = 0; i < c_keys_max; i++)
             s_prev_keys_down[i] = s_keys_down[i];
-        for (int i = 0; i < c_mouse_button_max; i++)
+        for (int i = 0; i < c_buttons_max; i++)
             s_prev_mouse_buttons_down[i] = s_mouse_buttons_down[i];
 
         s_prev_mouse_position_x = s_mouse_position_x;
@@ -184,7 +189,7 @@ namespace Toolbox::Input {
     }
 
     void GLFWKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-        if (key >= c_valid)
+        if (key >= c_keys_max)
             return;
 
         if (action == GLFW_PRESS)
@@ -196,13 +201,13 @@ namespace Toolbox::Input {
     }
 
     void GLFWMousePositionCallback(GLFWwindow *window, double xpos, double ypos) {
-        SetMousePosition((uint32_t)xpos, (uint32_t)ypos);
+        SetMousePosition(xpos, ypos);
 
         ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
     }
 
     void GLFWMouseButtonCallback(GLFWwindow *window, int button, int action, int mods) {
-        if (button >= c_mouse_button_max)
+        if (button >= c_buttons_max)
             return;
 
         if (action == GLFW_PRESS)
@@ -214,8 +219,8 @@ namespace Toolbox::Input {
     }
 
     void GLFWMouseScrollCallback(GLFWwindow *window, double xoffset, double yoffset) {
-        s_mouse_scroll_delta_x = static_cast<float>(xoffset);
-        s_mouse_scroll_delta_y = static_cast<float>(yoffset);
+        s_mouse_scroll_delta_x = xoffset;
+        s_mouse_scroll_delta_y = yoffset;
 
         ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
     }

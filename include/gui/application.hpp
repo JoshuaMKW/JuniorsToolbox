@@ -37,7 +37,7 @@ namespace Toolbox {
             return _inst;
         }
 
-        virtual void onInit() override;
+        virtual void onInit(int argc, const char **argv) override;
         virtual void onUpdate(TimeStep delta_time) override;
         virtual void onExit() override;
 

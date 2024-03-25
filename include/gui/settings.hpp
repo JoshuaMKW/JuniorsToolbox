@@ -19,6 +19,8 @@
 
 namespace Toolbox {
 
+    using namespace Input;
+
     struct AppSettings {
         // General
         bool m_is_better_obj_allowed  = false;
@@ -43,9 +45,9 @@ namespace Toolbox {
         float m_far_plane           = 500000.0f;
 
         // Control
-        KeyBind m_gizmo_translate_mode_keybind = KeyBind({GLFW_KEY_1});
-        KeyBind m_gizmo_rotate_mode_keybind    = KeyBind({GLFW_KEY_2});
-        KeyBind m_gizmo_scale_mode_keybind     = KeyBind({GLFW_KEY_3});
+        KeyBind m_gizmo_translate_mode_keybind = KeyBind({KeyCode::KEY_D1});
+        KeyBind m_gizmo_rotate_mode_keybind    = KeyBind({KeyCode::KEY_D2});
+        KeyBind m_gizmo_scale_mode_keybind     = KeyBind({KeyCode::KEY_D3});
 
         // Advanced
         std::filesystem::path m_dolphin_path = "";

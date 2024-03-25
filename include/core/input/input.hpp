@@ -24,10 +24,10 @@ namespace Toolbox::Input {
     bool GetMouseButtonUp(MouseButton button);
 
     void GetMouseViewportPosition(float &x, float &y);
-    void SetMousePosition(float x, float y, bool overwrite_delta = true);
+    void SetMousePosition(double x, double y, bool overwrite_delta = true);
 
-    void GetMouseDelta(float &x, float &y);
-    void GetMouseScrollDelta(float &x, float &y);
+    void GetMouseDelta(double &x, double &y);
+    void GetMouseScrollDelta(double &x, double &y);
 
     bool GetMouseWrapped();
     void SetMouseWrapped(bool wrapped);
