@@ -32,7 +32,7 @@
 
 namespace Toolbox::UI {
 
-    class SceneWindow final : public DockWindow {
+    class SceneWindow final : public ImWindow {
     public:
         SceneWindow();
         ~SceneWindow();
@@ -46,16 +46,17 @@ namespace Toolbox::UI {
         };
 
     protected:
-        void buildDockspace(ImGuiID dockspace_id) override;
-        void renderMenuBar() override;
-        void renderBody(f32 delta_time) override;
+        ImGuiID onBuildDockspace() override;
+        void onRenderMenuBar() override;
+        void onRenderBody(TimeStep delta_time) override;
+
         void renderHierarchy();
         void renderTree(RefPtr<Object::ISceneObject> node);
         void renderRailEditor();
-        void renderScene(f32 delta_time);
-        void renderDolphin(f32 delta_time);
-        void renderPlaybackButtons(f32 delta_time);
-        void renderScenePeripherals(f32 delta_time);
+        void renderScene(TimeStep delta_time);
+        void renderDolphin(TimeStep delta_time);
+        void renderPlaybackButtons(TimeStep delta_time);
+        void renderScenePeripherals(TimeStep delta_time);
         void renderHierarchyContextMenu(std::string str_id,
                                         SelectionNodeInfo<Object::ISceneObject> &info);
         void renderRailContextMenu(std::string str_id, SelectionNodeInfo<Rail::Rail> &info);
@@ -85,7 +86,7 @@ namespace Toolbox::UI {
         void buildRenameRailDialog();
 
     public:
-        ImGuiWindowFlags flags() const override { return DockWindow::flags() | ImGuiWindowFlags_MenuBar; }
+        ImGuiWindowFlags flags() const override { return ImWindow::flags() | ImGuiWindowFlags_MenuBar; }
 
         const ImGuiWindowClass *windowClass() const override {
             if (parent() && parent()->windowClass()) {
@@ -113,7 +114,6 @@ namespace Toolbox::UI {
             return m_current_scene->rootPath() ? m_current_scene->rootPath().value().string()
                                                : "(unknown)";
         }
-        [[nodiscard]] std::string name() const override { return "Scene Editor"; }
         [[nodiscard]] bool unsaved() const override { return false; }
 
         // Returns the supported file types, empty string is designed for a folder.
@@ -121,11 +121,11 @@ namespace Toolbox::UI {
             return {"", "arc", "szs"};
         }
 
-        [[nodiscard]] bool loadData(const std::filesystem::path &path) override;
-        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override;
+        [[nodiscard]] bool onLoadData(const std::filesystem::path &path) override;
+        [[nodiscard]] bool onSaveData(std::optional<std::filesystem::path> path) override;
 
-        bool update(f32 delta_time) override;
-        bool postUpdate(f32 delta_time) override;
+        void onImGuiUpdate(TimeStep delta_time) override;
+        void onImGuiPostUpdate(TimeStep delta_time) override;
 
     private:
         ScopePtr<Toolbox::SceneInstance> m_current_scene;

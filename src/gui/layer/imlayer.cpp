@@ -4,19 +4,19 @@ using namespace Toolbox;
 
 namespace Toolbox::UI {
 
-    ImLayer::ImLayer(const std::string &name) : ProcessLayer(name) {}
+    ImProcessLayer::ImProcessLayer(const std::string &name) : ProcessLayer(name) {}
 
-    void ImLayer::onUpdate(TimeStep delta_time) {
-        onImGuiUpdate(delta_time);
-
-        const std::string name = std::format("{}##{}", getName(), getUUID());
-        if (ImGui::Begin(name.c_str())) {
-            onImGuiRender(delta_time);
+    void ImProcessLayer::onUpdate(TimeStep delta_time) {
+        if (isOpen()) {
+            onImGuiUpdate(delta_time);
         }
-        ImGui::End();
+        onImGuiRender(delta_time);
+        if (isOpen()) {
+            onImGuiPostUpdate(delta_time);
+        }
     }
 
-    void ImLayer::onEvent(RefPtr<BaseEvent> ev) {
+    void ImProcessLayer::onEvent(RefPtr<BaseEvent> ev) {
         ProcessLayer::onEvent(ev);
         if (ev->isAccepted() || ev->isIgnored()) {
             return;

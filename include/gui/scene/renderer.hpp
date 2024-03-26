@@ -1,17 +1,19 @@
 #pragma once
 
-#include <imgui.h>
 #include <unordered_map>
 
-#include "gui/scene/ImGuizmo.h"
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <J3D/Data/J3DModelInstance.hpp>
+
+#include "core/types.hpp"
+#include "core/time/timestep.hpp"
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
+#include "gui/scene/ImGuizmo.h"
+#include "scene/raildata.hpp"
+#include "scene/scene.hpp"
 #include "path.hpp"
-#include "core/types.hpp"
-#include <J3D/Data/J3DModelInstance.hpp>
-#include <imgui_internal.h>
-#include <scene/raildata.hpp>
-#include <scene/scene.hpp>
 
 using namespace Toolbox;
 
@@ -48,7 +50,7 @@ namespace Toolbox::UI {
         void setGizmoTransform(const glm::mat4x4 &mtx) { m_gizmo_matrix = mtx; }
         void setGizmoOperation(ImGuizmo::OPERATION op) { m_gizmo_op = op; }
 
-        bool inputUpdate(f32 delta_time);
+        bool inputUpdate(TimeStep delta_time);
 
         using selection_variant_t =
             std::variant<RefPtr<ISceneObject>, RefPtr<Rail::RailNode>, std::nullopt_t>;
@@ -57,7 +59,7 @@ namespace Toolbox::UI {
                                           std::vector<RefPtr<Rail::RailNode>> rail_nodes,
                                           bool &should_reset);
 
-        void render(std::vector<ISceneObject::RenderInfo> renderables, f32 delta_time);
+        void render(std::vector<ISceneObject::RenderInfo> renderables, TimeStep delta_time);
 
     protected:
         void initializePaths(const RailData &rail_data,

@@ -13,12 +13,12 @@
 
 namespace Toolbox::UI {
 
-    class ImLayer : public ProcessLayer {
+    class ImProcessLayer : public ProcessLayer {
     public:
-        ImLayer()  = delete;
-        ~ImLayer() = default;
+        ImProcessLayer()  = delete;
+        ~ImProcessLayer() = default;
 
-        explicit ImLayer(const std::string &name);
+        explicit ImProcessLayer(const std::string &name);
 
         [[nodiscard]] bool isOpen() const noexcept { return m_is_open; }
 
@@ -31,6 +31,7 @@ namespace Toolbox::UI {
     protected:
         virtual void onImGuiUpdate(TimeStep delta_time) {}
         virtual void onImGuiRender(TimeStep delta_time) {}
+        virtual void onImGuiPostUpdate(TimeStep delta_time) {}
 
         // Event callbacks
         virtual void onDropEvent(RefPtr<DropEvent> ev) {}
@@ -42,7 +43,6 @@ namespace Toolbox::UI {
         bool m_is_open    = true;
         ImVec2 m_size     = {0, 0};
         ImVec2 m_position = {0, 0};
-        ImGuiWindowFlags m_render_flags;
     };
 
 }  // namespace Toolbox::UI

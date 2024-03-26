@@ -57,6 +57,7 @@ namespace Toolbox {
     }
 
     void CoreApplication::setup(int argc, const char **argv) {
+        m_is_running = true;
         onInit(argc, argv);
         for (auto &layer : m_layers) {
             layer->onAttach();
@@ -70,7 +71,7 @@ namespace Toolbox {
         onExit();
     }
 
-    void CoreApplication::onEvent(const BaseEvent &ev) {
+    void CoreApplication::onEvent(RefPtr<BaseEvent> ev) {
         // TODO: Add logic to pass through logical layers
         // and compare the UUID of the event to the layer UUID
     }

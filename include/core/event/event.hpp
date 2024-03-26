@@ -78,7 +78,7 @@ namespace Toolbox {
     public:
         virtual ~IEventProcessor() = default;
 
-        virtual void onEvent(const BaseEvent &event) = 0;
+        virtual void onEvent(RefPtr<BaseEvent> ev) = 0;
     };
 
 }  // namespace Toolbox

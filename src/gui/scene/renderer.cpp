@@ -311,7 +311,7 @@ namespace Toolbox::UI {
         glDeleteTextures(1, &m_tex_id);
     }
 
-    void Renderer::render(std::vector<ISceneObject::RenderInfo> renderables, f32 delta_time) {
+    void Renderer::render(std::vector<ISceneObject::RenderInfo> renderables, TimeStep delta_time) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         ImVec2 window_pos = ImGui::GetWindowPos();
@@ -572,12 +572,14 @@ namespace Toolbox::UI {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    bool Renderer::inputUpdate(f32 delta_time) {
+    bool Renderer::inputUpdate(TimeStep delta_time) {
         const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
         if (m_is_view_manipulating && Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {
             double delta_x, delta_y;
             Input::GetMouseDelta(delta_x, delta_y);
+
+            TOOLBOX_DEBUG_LOG_V("Mouse Delta: {} {}", delta_x, delta_y);
 
             m_camera.turnLeftRight(-delta_x * settings.m_camera_sensitivity * delta_time * 0.25f);
             m_camera.tiltUpDown(-delta_y * settings.m_camera_sensitivity * delta_time * 0.25f);

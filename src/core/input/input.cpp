@@ -15,11 +15,11 @@
 // Internals
 
 namespace {
-  
-  using namespace Toolbox::Input;
 
-  constexpr size_t c_keys_max = GetKeyCodes().size();
-  constexpr size_t c_buttons_max = GetMouseButtons().size();
+    using namespace Toolbox::Input;
+
+    constexpr size_t c_keys_max    = 512;
+    constexpr size_t c_buttons_max = 32;
 
     using namespace Toolbox::Input;
 
@@ -46,7 +46,9 @@ namespace {
     static bool GetKeyState(KeyCode key) { return s_keys_down[raw_enum(key)]; }
     static void SetKeyState(KeyCode key, bool state) { s_keys_down[raw_enum(key)] = state; }
 
-    static bool GetMouseButtonState(MouseButton button) { return s_mouse_buttons_down[raw_enum(button)]; }
+    static bool GetMouseButtonState(MouseButton button) {
+        return s_mouse_buttons_down[raw_enum(button)];
+    }
     static void SetMouseButtonState(MouseButton button, bool state) {
         s_mouse_buttons_down[raw_enum(button)] = state;
     }
@@ -59,8 +61,8 @@ namespace Toolbox::Input {
     bool IsKeyModifier(KeyCode key) {
         return key == KeyCode::KEY_LEFTSHIFT || key == KeyCode::KEY_RIGHTSHIFT ||
                key == KeyCode::KEY_LEFTCONTROL || key == KeyCode::KEY_RIGHTCONTROL ||
-               key == KeyCode::KEY_LEFTALT || key == KeyCode::KEY_RIGHTALT || key == KeyCode::KEY_LEFTSUPER ||
-               key == KeyCode::KEY_RIGHTSUPER;
+               key == KeyCode::KEY_LEFTALT || key == KeyCode::KEY_RIGHTALT ||
+               key == KeyCode::KEY_LEFTSUPER || key == KeyCode::KEY_RIGHTSUPER;
     }
 
     KeyCodes GetPressedKeys(bool include_mods) {
@@ -93,16 +95,16 @@ namespace Toolbox::Input {
         return modifiers;
     }
 
-    bool GetKey(KeyCode key) { return s_keys_down[static_cast<u16>(key)]; }
+    bool GetKey(KeyCode key) { return s_keys_down[raw_enum(key)]; }
 
     bool GetKeyDown(KeyCode key) {
         bool is_down =
-            s_keys_down[static_cast<u16>(key)] && !s_prev_keys_down[static_cast<u16>(key)];
+            s_keys_down[raw_enum(key)] && !s_prev_keys_down[raw_enum(key)];
         return is_down;
     }
 
     bool GetKeyUp(KeyCode key) {
-        return s_prev_keys_down[static_cast<u16>(key)] && !s_keys_down[static_cast<u16>(key)];
+        return s_prev_keys_down[raw_enum(key)] && !s_keys_down[raw_enum(key)];
     }
 
     MouseButtons GetPressedMouseButtons() {
@@ -118,11 +120,13 @@ namespace Toolbox::Input {
     bool GetMouseButton(MouseButton button) { return s_mouse_buttons_down[raw_enum(button)]; }
 
     bool GetMouseButtonDown(MouseButton button) {
-        return s_mouse_buttons_down[raw_enum(button)] && !s_prev_mouse_buttons_down[raw_enum(button)];
+        return s_mouse_buttons_down[raw_enum(button)] &&
+               !s_prev_mouse_buttons_down[raw_enum(button)];
     }
 
     bool GetMouseButtonUp(MouseButton button) {
-        return s_prev_mouse_buttons_down[raw_enum(button)] && !s_mouse_buttons_down[raw_enum(button)];
+        return s_prev_mouse_buttons_down[raw_enum(button)] &&
+               !s_mouse_buttons_down[raw_enum(button)];
     }
 
     void GetMouseViewportPosition(double &x, double &y) {
@@ -193,15 +197,19 @@ namespace Toolbox::Input {
             return;
 
         if (action == GLFW_PRESS)
-            s_keys_down[static_cast<u16>(key)] = true;
+            s_keys_down[key] = true;
         else if (action == GLFW_RELEASE)
-            s_keys_down[static_cast<u16>(key)] = false;
+            s_keys_down[key] = false;
 
         ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
     }
 
     void GLFWMousePositionCallback(GLFWwindow *window, double xpos, double ypos) {
-        SetMousePosition(xpos, ypos);
+        int win_x, win_y;
+        glfwGetWindowPos(window, &win_x, &win_y);
+
+        s_mouse_position_x = win_x + xpos;
+        s_mouse_position_y = win_y + ypos;
 
         ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
     }

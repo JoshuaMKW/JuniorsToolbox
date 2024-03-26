@@ -28,7 +28,7 @@ namespace Toolbox::UI {
         m_scroll_requested = (int)m_logging_level <= (int)message.m_level;
     }
 
-    void LoggingWindow::renderMenuBar() {
+    void LoggingWindow::onRenderMenuBar() {
         auto &logger = Log::AppLogger::instance();
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("Verbosity", true)) {
@@ -86,13 +86,13 @@ namespace Toolbox::UI {
         }
     }
 
-    void LoggingWindow::renderBody(f32 delta_time) {
+    void LoggingWindow::onRenderBody(TimeStep delta_time) {
         ImFont *mono_font = FontManager::instance().getFont("NanumGothicCoding-Bold", 12.0f);
         if (mono_font) {
             ImGui::PushFont(mono_font);
         }
 
-        if (ImGui::BeginChild(getWindowChildUID(*this, "Log View").c_str(), {}, false,
+        if (ImGui::BeginChild(ImWindowComponentTitle(*this, "Log View").c_str(), {}, false,
                               ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             bool is_auto_scroll_mode = ImGui::GetScrollMaxY() - ImGui::GetScrollY() < 12.0f;
 
@@ -140,7 +140,5 @@ namespace Toolbox::UI {
             ImGui::PopFont();
         }
     }
-
-    bool LoggingWindow::update(f32 delta_time) { return true; }
 
 }  // namespace Toolbox::UI

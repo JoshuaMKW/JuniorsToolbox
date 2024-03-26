@@ -37,11 +37,11 @@ namespace Toolbox::UI {
         ~ContextMenu() = default;
 
         void addOption(std::string_view label, const KeyBind &keybind, operator_t op);
-        void addOption(std::string_view label, std::initializer_list<int> keybind, operator_t op);
+        void addOption(std::string_view label, std::initializer_list<KeyCode> keybind, operator_t op);
 
         void addOption(std::string_view label, const KeyBind &keybind, condition_t condition,
                        operator_t op);
-        void addOption(std::string_view label, std::initializer_list<int> keybind,
+        void addOption(std::string_view label, std::initializer_list<KeyCode> keybind,
                        condition_t condition, operator_t op);
 
         void addDivider();
@@ -68,7 +68,7 @@ namespace Toolbox::UI {
 
     template <typename _DataT>
     inline void ContextMenu<_DataT>::addOption(std::string_view name,
-                                               std::initializer_list<int> keybind, operator_t op) {
+                                               std::initializer_list<KeyCode> keybind, operator_t op) {
         ContextOp option = {.m_name      = std::string(name),
                             .m_keybind   = KeyBind(keybind),
                             .m_condition = []() { return true; },
@@ -88,7 +88,7 @@ namespace Toolbox::UI {
 
     template <typename _DataT>
     inline void ContextMenu<_DataT>::addOption(std::string_view name,
-                                               std::initializer_list<int> keybind,
+                                               std::initializer_list<KeyCode> keybind,
                                                condition_t condition, operator_t op) {
         ContextOp option = {.m_name      = std::string(name),
                             .m_keybind   = KeyBind(keybind),

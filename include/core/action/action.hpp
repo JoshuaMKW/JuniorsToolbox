@@ -17,7 +17,7 @@ namespace Toolbox {
                const std::string &description, std::function<void()> action);
 
         [[nodiscard]] const KeyBind &getKeyBind() const { return m_key_bind; }
-        [[nodiscard]] const std::string &getName() const { return m_name; }
+        [[nodiscard]] const std::string &name() const { return m_name; }
         [[nodiscard]] const std::string &getDescription() const { return m_description; }
 
         void execute() const { m_action(); }

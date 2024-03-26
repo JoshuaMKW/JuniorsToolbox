@@ -102,7 +102,7 @@ namespace Toolbox::UI {
 
     SceneWindow::~SceneWindow() = default;
 
-    SceneWindow::SceneWindow() : DockWindow() {
+    SceneWindow::SceneWindow() : ImWindow("Scene Editor") {
         m_properties_render_handler = renderEmptyProperties;
 
         m_communicator.tStart(true, nullptr);
@@ -124,7 +124,7 @@ namespace Toolbox::UI {
         buildRenameRailDialog();
     }
 
-    bool SceneWindow::loadData(const std::filesystem::path &path) {
+    bool SceneWindow::onLoadData(const std::filesystem::path &path) {
         if (!Toolbox::exists(path)) {
             return false;
         }
@@ -159,7 +159,7 @@ namespace Toolbox::UI {
         return false;
     }
 
-    bool SceneWindow::saveData(std::optional<std::filesystem::path> path) {
+    bool SceneWindow::onSaveData(std::optional<std::filesystem::path> path) {
         std::filesystem::path root_path;
 
         if (!path) {
@@ -182,11 +182,15 @@ namespace Toolbox::UI {
         return true;
     }
 
-    bool SceneWindow::update(f32 delta_time) {
-        bool inputState = m_renderer.inputUpdate(delta_time);
+    void SceneWindow::onImGuiUpdate(TimeStep delta_time) {
+        m_renderer.inputUpdate(delta_time);
 
-        if (Input::GetKeyDown(GLFW_KEY_E)) {
-            m_is_game_edit_mode ^= true;
+        if (m_communicator.isSceneLoaded()) {
+            if (Input::GetKeyDown(KeyCode::KEY_E)) {
+                m_is_game_edit_mode ^= true;
+            }
+        } else {
+            m_is_game_edit_mode = false;
         }
 
         std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
@@ -196,19 +200,17 @@ namespace Toolbox::UI {
             rendered_nodes.insert(rendered_nodes.end(), rail->nodes().begin(), rail->nodes().end());
         }
 
-        bool should_reset                       = false;
-        bool should_select                      = false;
-        Renderer::selection_variant_t selection = std::nullopt;
-        if (!ImGuizmo::IsOver()) {
-            should_select = true;
-            selection     = m_renderer.findSelection(m_renderables, rendered_nodes, should_reset);
-        } else {
-            return inputState;
+        if (ImGuizmo::IsOver()) {
+            return;
         }
 
-        bool multi_select = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
+        bool should_reset = false;
+        Renderer::selection_variant_t selection =
+            m_renderer.findSelection(m_renderables, rendered_nodes, should_reset);
 
-        if (should_reset && should_select && !multi_select) {
+        bool multi_select = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
+
+        if (should_reset && !multi_select) {
             m_hierarchy_selected_nodes.clear();
             m_rail_node_list_selected_nodes.clear();
             m_selected_properties.clear();
@@ -277,7 +279,7 @@ namespace Toolbox::UI {
                 ImGuiID rail_id         = static_cast<ImGuiID>(rail->getUUID());
 
                 // In this circumstance, select the whole rail
-                if (Input::GetKey(GLFW_KEY_LEFT_ALT)) {
+                if (Input::GetKey(KeyCode::KEY_LEFTALT)) {
                     bool is_rail_selected = std::any_of(
                         m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
                         [&](auto &info) { return info.m_node_id == rail_id; });
@@ -350,10 +352,10 @@ namespace Toolbox::UI {
             m_renderer.setGizmoVisible(true);
         }
 
-        return inputState;
+        return;
     }
 
-    bool SceneWindow::postUpdate(f32 delta_time) {
+    void SceneWindow::onImGuiPostUpdate(TimeStep delta_time) {
         if (m_renderer.isGizmoManipulated() && m_hierarchy_selected_nodes.size() > 0) {
             glm::mat4x4 gizmo_transform = m_renderer.getGizmoTransform();
             Transform obj_transform;
@@ -386,10 +388,9 @@ namespace Toolbox::UI {
         }
 
         m_update_render_objs = true;
-        return true;
     }
 
-    void SceneWindow::renderBody(f32 deltaTime) {
+    void SceneWindow::onRenderBody(TimeStep deltaTime) {
         renderHierarchy();
         renderProperties();
         renderRailEditor();
@@ -398,7 +399,7 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::renderHierarchy() {
-        std::string hierarchy_window_name = getWindowChildUID(*this, "Hierarchy Editor");
+        std::string hierarchy_window_name = ImWindowComponentTitle(*this, "Hierarchy Editor");
 
         ImGuiWindowClass hierarchyOverride;
         hierarchyOverride.ClassId               = static_cast<ImGuiID>(getUUID());
@@ -461,7 +462,7 @@ namespace Toolbox::UI {
 
         constexpr auto node_flags = dir_flags | ImGuiTreeNodeFlags_DefaultOpen;
 
-        bool multi_select     = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
+        bool multi_select     = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
         bool needs_scene_sync = node->getTransform() ? false : true;
 
         std::string display_name = std::format("{} ({})", node->type(), node->getNameRef().name());
@@ -593,7 +594,7 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::renderProperties() {
-        std::string properties_editor_str = getWindowChildUID(*this, "Properties Editor");
+        std::string properties_editor_str = ImWindowComponentTitle(*this, "Properties Editor");
 
         ImGuiWindowClass propertiesOverride;
         propertiesOverride.ClassId                  = static_cast<ImGuiID>(getUUID());
@@ -820,7 +821,7 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::renderRailEditor() {
-        const std::string rail_editor_str = getWindowChildUID(*this, "Rail Editor");
+        const std::string rail_editor_str = ImWindowComponentTitle(*this, "Rail Editor");
 
         const ImGuiTreeNodeFlags rail_flags = ImGuiTreeNodeFlags_OpenOnArrow |
                                               ImGuiTreeNodeFlags_OpenOnDoubleClick |
@@ -837,7 +838,7 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowSizeConstraints({300, 500}, {FLT_MAX, FLT_MAX});
 
         if (ImGui::Begin(rail_editor_str.c_str())) {
-            bool multi_select = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
+            bool multi_select = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
 
             if (ImGui::IsWindowFocused()) {
                 m_focused_window = EditorWindow::RAIL_TREE;
@@ -956,7 +957,7 @@ namespace Toolbox::UI {
         }
     }
 
-    void SceneWindow::renderScene(f32 delta_time) {
+    void SceneWindow::renderScene(TimeStep delta_time) {
         const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
         std::vector<J3DLight> lights;
@@ -977,7 +978,7 @@ namespace Toolbox::UI {
             }
         }
 
-        std::string scene_view_str = getWindowChildUID(*this, "Scene View");
+        std::string scene_view_str = ImWindowComponentTitle(*this, "Scene View");
 
         ImGuiWindowClass sceneViewOverride;
         sceneViewOverride.ClassId                  = static_cast<ImGuiID>(getUUID());
@@ -1000,7 +1001,7 @@ namespace Toolbox::UI {
         ImGui::End();
     }
 
-    void SceneWindow::renderPlaybackButtons(f32 delta_time) {
+    void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
         float window_bar_height =
             ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
         ImGui::SetCursorPos({0, window_bar_height + 10});
@@ -1069,7 +1070,7 @@ namespace Toolbox::UI {
         }
     }
 
-    void SceneWindow::renderScenePeripherals(f32 delta_time) {
+    void SceneWindow::renderScenePeripherals(TimeStep delta_time) {
         float window_bar_height =
             ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
         ImGui::SetCursorPos({0, window_bar_height + 10});
@@ -1083,8 +1084,8 @@ namespace Toolbox::UI {
         }
     }
 
-    void SceneWindow::renderDolphin(f32 delta_time) {
-        std::string dolphin_view_str = getWindowChildUID(*this, "Dolphin View");
+    void SceneWindow::renderDolphin(TimeStep delta_time) {
+        std::string dolphin_view_str = ImWindowComponentTitle(*this, "Dolphin View");
 
         ImGuiWindowClass dolphinViewOverride;
         dolphinViewOverride.ClassId                  = static_cast<ImGuiID>(getUUID());
@@ -1156,7 +1157,7 @@ namespace Toolbox::UI {
         m_hierarchy_virtual_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
         m_hierarchy_virtual_node_menu.addOption(
-            "Insert Object Before...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            "Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
                 m_create_obj_dialog.open();
@@ -1164,7 +1165,7 @@ namespace Toolbox::UI {
             });
 
         m_hierarchy_virtual_node_menu.addOption(
-            "Insert Object After...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            "Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
                 m_create_obj_dialog.open();
@@ -1174,7 +1175,7 @@ namespace Toolbox::UI {
         m_hierarchy_virtual_node_menu.addDivider();
 
         m_hierarchy_virtual_node_menu.addOption(
-            "Rename...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_R},
+            "Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_rename_obj_dialog.open();
                 m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
@@ -1184,17 +1185,17 @@ namespace Toolbox::UI {
         m_hierarchy_virtual_node_menu.addDivider();
 
         m_hierarchy_virtual_node_menu.addOption(
-            "Copy", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_C},
+            "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-                MainApplication::instance().getSceneObjectClipboard().setData(info);
+                GUIApplication::instance().getSceneObjectClipboard().setData(info);
                 return;
             });
 
         m_hierarchy_virtual_node_menu.addOption(
-            "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V},
+            "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                auto nodes       = MainApplication::instance().getSceneObjectClipboard().getData();
+                auto nodes       = GUIApplication::instance().getSceneObjectClipboard().getData();
                 auto this_parent = info.m_selected->getParent();
                 if (!this_parent) {
                     LogError(
@@ -1223,7 +1224,7 @@ namespace Toolbox::UI {
         m_hierarchy_virtual_node_menu.addDivider();
 
         m_hierarchy_virtual_node_menu.addOption(
-            "Delete", {GLFW_KEY_DELETE}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
+            "Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
@@ -1248,7 +1249,7 @@ namespace Toolbox::UI {
         m_hierarchy_group_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
         m_hierarchy_group_node_menu.addOption(
-            "Add Child Object...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            "Add Child Object...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_CHILD);
                 m_create_obj_dialog.open();
@@ -1256,7 +1257,7 @@ namespace Toolbox::UI {
             });
 
         m_hierarchy_group_node_menu.addOption(
-            "Insert Object Before...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            "Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
                 m_create_obj_dialog.open();
@@ -1264,7 +1265,7 @@ namespace Toolbox::UI {
             });
 
         m_hierarchy_group_node_menu.addOption(
-            "Insert Object After...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            "Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
                 m_create_obj_dialog.open();
@@ -1273,28 +1274,28 @@ namespace Toolbox::UI {
 
         m_hierarchy_group_node_menu.addDivider();
 
-        m_hierarchy_group_node_menu.addOption("Rename...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_R},
-                                              [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                                                  m_rename_obj_dialog.open();
-                                                  m_rename_obj_dialog.setOriginalName(
-                                                      info.m_selected->getNameRef().name());
-                                                  return;
-                                              });
+        m_hierarchy_group_node_menu.addOption(
+            "Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                m_rename_obj_dialog.open();
+                m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
+                return;
+            });
 
         m_hierarchy_group_node_menu.addDivider();
 
         m_hierarchy_group_node_menu.addOption(
-            "Copy", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_C},
+            "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-                MainApplication::instance().getSceneObjectClipboard().setData(info);
+                GUIApplication::instance().getSceneObjectClipboard().setData(info);
                 return;
             });
 
         m_hierarchy_group_node_menu.addOption(
-            "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V},
+            "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                auto nodes       = MainApplication::instance().getSceneObjectClipboard().getData();
+                auto nodes       = GUIApplication::instance().getSceneObjectClipboard().getData();
                 auto this_parent = std::reinterpret_pointer_cast<GroupSceneObject>(info.m_selected);
                 if (!this_parent) {
                     LogError(
@@ -1322,7 +1323,7 @@ namespace Toolbox::UI {
         m_hierarchy_group_node_menu.addDivider();
 
         m_hierarchy_group_node_menu.addOption(
-            "Delete", {GLFW_KEY_DELETE}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
+            "Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
@@ -1347,7 +1348,7 @@ namespace Toolbox::UI {
         m_hierarchy_physical_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
         m_hierarchy_physical_node_menu.addOption(
-            "Insert Object Before...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            "Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
                 m_create_obj_dialog.open();
@@ -1355,7 +1356,7 @@ namespace Toolbox::UI {
             });
 
         m_hierarchy_physical_node_menu.addOption(
-            "Insert Object After...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+            "Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
                 m_create_obj_dialog.open();
@@ -1365,7 +1366,7 @@ namespace Toolbox::UI {
         m_hierarchy_physical_node_menu.addDivider();
 
         m_hierarchy_physical_node_menu.addOption(
-            "Rename...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_R},
+            "Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_rename_obj_dialog.open();
                 m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
@@ -1375,7 +1376,7 @@ namespace Toolbox::UI {
         m_hierarchy_physical_node_menu.addDivider();
 
         m_hierarchy_physical_node_menu.addOption(
-            "View in Scene", {GLFW_KEY_LEFT_ALT, GLFW_KEY_V},
+            "View in Scene", {KeyCode::KEY_LEFTALT, KeyCode::KEY_V},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 auto member_result = info.m_selected->getMember("Transform");
                 if (!member_result) {
@@ -1404,7 +1405,7 @@ namespace Toolbox::UI {
             });
 
         m_hierarchy_physical_node_menu.addOption(
-            "Move to Camera", {GLFW_KEY_LEFT_ALT, GLFW_KEY_C},
+            "Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 auto member_result = info.m_selected->getMember("Transform");
                 if (!member_result) {
@@ -1439,17 +1440,17 @@ namespace Toolbox::UI {
         m_hierarchy_physical_node_menu.addDivider();
 
         m_hierarchy_physical_node_menu.addOption(
-            "Copy", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_C},
+            "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-                MainApplication::instance().getSceneObjectClipboard().setData(info);
+                GUIApplication::instance().getSceneObjectClipboard().setData(info);
                 return;
             });
 
         m_hierarchy_physical_node_menu.addOption(
-            "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V},
+            "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                auto nodes = MainApplication::instance().getSceneObjectClipboard().getData();
+                auto nodes = GUIApplication::instance().getSceneObjectClipboard().getData();
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
@@ -1478,7 +1479,7 @@ namespace Toolbox::UI {
         m_hierarchy_physical_node_menu.addDivider();
 
         m_hierarchy_physical_node_menu.addOption(
-            "Delete", {GLFW_KEY_DELETE}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
+            "Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 auto this_parent =
                     reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                 if (!this_parent) {
@@ -1501,7 +1502,8 @@ namespace Toolbox::UI {
         m_hierarchy_physical_node_menu.addDivider();
 
         m_hierarchy_physical_node_menu.addOption(
-            "Copy Player Transform", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_LEFT_ALT, GLFW_KEY_P},
+            "Copy Player Transform",
+            {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
             [this]() { return m_communicator.isSceneLoaded(); },
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_communicator.setObjectTransformToMario(
@@ -1511,7 +1513,8 @@ namespace Toolbox::UI {
             });
 
         m_hierarchy_physical_node_menu.addOption(
-            "Copy Player Position", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_LEFT_ALT, GLFW_KEY_P},
+            "Copy Player Position",
+            {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
             [this]() { return m_communicator.isSceneLoaded(); },
             [this](SelectionNodeInfo<Object::ISceneObject> info) {
                 m_communicator.setObjectTranslationToMario(
@@ -1526,19 +1529,19 @@ namespace Toolbox::UI {
             ContextMenu<std::vector<SelectionNodeInfo<Object::ISceneObject>>>();
 
         m_hierarchy_multi_node_menu.addOption(
-            "Copy", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_C},
+            "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
             [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
                 for (auto &info : infos) {
                     info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
                 }
-                MainApplication::instance().getSceneObjectClipboard().setData(infos);
+                GUIApplication::instance().getSceneObjectClipboard().setData(infos);
                 return;
             });
 
         m_hierarchy_multi_node_menu.addOption(
-            "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V},
+            "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
             [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
-                auto nodes = MainApplication::instance().getSceneObjectClipboard().getData();
+                auto nodes = GUIApplication::instance().getSceneObjectClipboard().getData();
                 for (auto &info : infos) {
                     auto this_parent =
                         reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
@@ -1569,7 +1572,7 @@ namespace Toolbox::UI {
         m_hierarchy_multi_node_menu.addDivider();
 
         m_hierarchy_multi_node_menu.addOption(
-            "Delete", {GLFW_KEY_DELETE},
+            "Delete", {KeyCode::KEY_DELETE},
             [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
                 for (auto &info : infos) {
                     auto this_parent =
@@ -1598,7 +1601,7 @@ namespace Toolbox::UI {
         m_rail_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::Rail>>();
 
         m_rail_list_single_node_menu.addOption("Insert Rail Here...",
-                                               {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+                                               {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
                                                [this](SelectionNodeInfo<Rail::Rail> info) {
                                                    m_create_rail_dialog.open();
                                                    return;
@@ -1606,13 +1609,13 @@ namespace Toolbox::UI {
 
         m_rail_list_single_node_menu.addDivider();
 
-        m_rail_list_single_node_menu.addOption("Rename...", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_R},
-                                               [this](SelectionNodeInfo<Rail::Rail> info) {
-                                                   m_rename_rail_dialog.open();
-                                                   m_rename_rail_dialog.setOriginalName(
-                                                       info.m_selected->name());
-                                                   return;
-                                               });
+        m_rail_list_single_node_menu.addOption(
+            "Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
+            [this](SelectionNodeInfo<Rail::Rail> info) {
+                m_rename_rail_dialog.open();
+                m_rename_rail_dialog.setOriginalName(info.m_selected->name());
+                return;
+            });
 
         // m_rail_list_single_node_menu.addDivider();
         //
@@ -1621,17 +1624,17 @@ namespace Toolbox::UI {
         m_rail_list_single_node_menu.addDivider();
 
         m_rail_list_single_node_menu.addOption(
-            "Copy", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_C},
+            "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
             [this](SelectionNodeInfo<Rail::Rail> info) {
                 info.m_selected = make_deep_clone<Rail::Rail>(info.m_selected);
-                MainApplication::instance().getSceneRailClipboard().setData(info);
+                GUIApplication::instance().getSceneRailClipboard().setData(info);
                 return;
             });
 
         m_rail_list_single_node_menu.addOption(
-            "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V},
+            "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
             [this](SelectionNodeInfo<Rail::Rail> info) {
-                auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
+                auto nodes = GUIApplication::instance().getSceneRailClipboard().getData();
                 if (nodes.size() > 0) {
                     RailData data         = m_current_scene->getRailData();
                     size_t selected_index = data.getRailCount();
@@ -1655,7 +1658,7 @@ namespace Toolbox::UI {
                 return;
             });
 
-        m_rail_list_single_node_menu.addOption("Delete", {GLFW_KEY_DELETE},
+        m_rail_list_single_node_menu.addOption("Delete", {KeyCode::KEY_DELETE},
                                                [this](SelectionNodeInfo<Rail::Rail> info) {
                                                    m_rail_visible_map.erase(info.m_node_id);
                                                    RailData data = m_current_scene->getRailData();
@@ -1670,19 +1673,19 @@ namespace Toolbox::UI {
         m_rail_list_multi_node_menu = ContextMenu<std::vector<SelectionNodeInfo<Rail::Rail>>>();
 
         m_rail_list_multi_node_menu.addOption(
-            "Copy", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_C},
+            "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
             [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
                 for (auto &select : info) {
                     select.m_selected = make_deep_clone<Rail::Rail>(select.m_selected);
                 }
-                MainApplication::instance().getSceneRailClipboard().setData(info);
+                GUIApplication::instance().getSceneRailClipboard().setData(info);
                 return;
             });
 
         m_rail_list_multi_node_menu.addOption(
-            "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V},
+            "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
             [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
-                auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
+                auto nodes = GUIApplication::instance().getSceneRailClipboard().getData();
                 if (nodes.size() > 0) {
                     RailData data         = m_current_scene->getRailData();
                     size_t selected_index = data.getRailCount();
@@ -1707,7 +1710,8 @@ namespace Toolbox::UI {
             });
 
         m_rail_list_multi_node_menu.addOption(
-            "Delete", {GLFW_KEY_DELETE}, [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
+            "Delete", {KeyCode::KEY_DELETE},
+            [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
                 RailData data = m_current_scene->getRailData();
                 for (auto &select : info) {
                     m_rail_visible_map.erase(select.m_node_id);
@@ -1723,7 +1727,7 @@ namespace Toolbox::UI {
         m_rail_node_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::RailNode>>();
 
         m_rail_node_list_single_node_menu.addOption("Insert Node Here...",
-                                                    {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_N},
+                                                    {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
                                                     [this](SelectionNodeInfo<Rail::RailNode> info) {
                                                         m_create_rail_dialog.open();
                                                         return Result<void>();
@@ -1732,7 +1736,7 @@ namespace Toolbox::UI {
         m_rail_node_list_single_node_menu.addDivider();
 
         m_rail_node_list_single_node_menu.addOption(
-            "View in Scene", {GLFW_KEY_LEFT_ALT, GLFW_KEY_V},
+            "View in Scene", {KeyCode::KEY_LEFTALT, KeyCode::KEY_V},
             [this](SelectionNodeInfo<Rail::RailNode> info) {
                 Rail::Rail *rail      = info.m_selected->rail();
                 glm::vec3 translation = info.m_selected->getPosition();
@@ -1744,7 +1748,7 @@ namespace Toolbox::UI {
             });
 
         m_rail_node_list_single_node_menu.addOption(
-            "Move to Camera", {GLFW_KEY_LEFT_ALT, GLFW_KEY_C},
+            "Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
             [this](SelectionNodeInfo<Rail::RailNode> info) {
                 Rail::Rail *rail = info.m_selected->rail();
 
@@ -1764,15 +1768,15 @@ namespace Toolbox::UI {
         m_rail_node_list_single_node_menu.addDivider();
 
         m_rail_node_list_single_node_menu.addOption(
-            "Copy", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_C},
+            "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
             [this](SelectionNodeInfo<Rail::RailNode> info) {
                 info.m_selected = make_deep_clone<Rail::RailNode>(info.m_selected);
-                MainApplication::instance().getSceneRailNodeClipboard().setData(info);
+                GUIApplication::instance().getSceneRailNodeClipboard().setData(info);
                 return Result<void>();
             });
 
         m_rail_node_list_single_node_menu.addOption(
-            "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V},
+            "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
             [this](SelectionNodeInfo<Rail::RailNode> info) {
                 Rail::Rail *rail      = info.m_selected->rail();
                 size_t selected_index = rail->getNodeCount();
@@ -1780,7 +1784,7 @@ namespace Toolbox::UI {
                 if (result) {
                     selected_index = result.value();
                 }
-                auto nodes = MainApplication::instance().getSceneRailNodeClipboard().getData();
+                auto nodes = GUIApplication::instance().getSceneRailNodeClipboard().getData();
                 for (auto &node : nodes) {
                     rail->insertNode(selected_index + 1, node.m_selected);
                     selected_index += 1;
@@ -1789,7 +1793,7 @@ namespace Toolbox::UI {
                 return Result<void>();
             });
 
-        m_rail_node_list_single_node_menu.addOption("Delete", {GLFW_KEY_DELETE},
+        m_rail_node_list_single_node_menu.addOption("Delete", {KeyCode::KEY_DELETE},
                                                     [this](SelectionNodeInfo<Rail::RailNode> info) {
                                                         Rail::Rail *rail = info.m_selected->rail();
                                                         rail->removeNode(info.m_selected);
@@ -1803,17 +1807,17 @@ namespace Toolbox::UI {
             ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>>();
 
         m_rail_node_list_multi_node_menu.addOption(
-            "Copy", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_C},
+            "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
             [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
                 for (auto &select : info) {
                     select.m_selected = make_deep_clone<Rail::RailNode>(select.m_selected);
                 }
-                MainApplication::instance().getSceneRailNodeClipboard().setData(info);
+                GUIApplication::instance().getSceneRailNodeClipboard().setData(info);
                 return Result<void>();
             });
 
         m_rail_node_list_multi_node_menu.addOption(
-            "Paste", {GLFW_KEY_LEFT_CONTROL, GLFW_KEY_V},
+            "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
             [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
                 Rail::Rail *rail      = info[0].m_selected->rail();
                 size_t selected_index = rail->getNodeCount();
@@ -1821,7 +1825,7 @@ namespace Toolbox::UI {
                 if (result) {
                     selected_index = result.value();
                 }
-                auto nodes = MainApplication::instance().getSceneRailNodeClipboard().getData();
+                auto nodes = GUIApplication::instance().getSceneRailNodeClipboard().getData();
                 for (auto &node : nodes) {
                     rail->insertNode(selected_index + 1, node.m_selected);
                     selected_index += 1;
@@ -1831,7 +1835,7 @@ namespace Toolbox::UI {
             });
 
         m_rail_node_list_multi_node_menu.addOption(
-            "Delete", {GLFW_KEY_DELETE},
+            "Delete", {KeyCode::KEY_DELETE},
             [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
                 for (auto &select : info) {
                     Rail::Rail *rail = select.m_selected->rail();
@@ -1992,26 +1996,34 @@ namespace Toolbox::UI {
         m_rename_rail_dialog.setActionOnReject([](SelectionNodeInfo<Rail::Rail>) {});
     }
 
-    void SceneWindow::buildDockspace(ImGuiID dockspace_id) {
-        m_dock_node_left_id =
-            ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.25f, nullptr, &dockspace_id);
-        m_dock_node_up_left_id   = ImGui::DockBuilderSplitNode(m_dock_node_left_id, ImGuiDir_Down,
-                                                               0.5f, nullptr, &m_dock_node_left_id);
-        m_dock_node_down_left_id = ImGui::DockBuilderSplitNode(
-            m_dock_node_up_left_id, ImGuiDir_Down, 0.5f, nullptr, &m_dock_node_up_left_id);
+    ImGuiID SceneWindow::onBuildDockspace() {
+        ImGuiID dockspace_id = ImGui::GetID(std::to_string(getUUID()).c_str());
+        ImGui::DockBuilderAddNode(dockspace_id);
+        {
+            ImGuiID other_node_id;
+            m_dock_node_left_id    = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.25f,
+                                                                 nullptr, &other_node_id);
+            m_dock_node_up_left_id = ImGui::DockBuilderSplitNode(
+                m_dock_node_left_id, ImGuiDir_Down, 0.5f, nullptr, &m_dock_node_left_id);
+            m_dock_node_down_left_id = ImGui::DockBuilderSplitNode(
+                m_dock_node_up_left_id, ImGuiDir_Down, 0.5f, nullptr, &m_dock_node_up_left_id);
 
-        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Scene View").c_str(), dockspace_id);
-        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Dolphin View").c_str(),
-                                     dockspace_id);
-        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Hierarchy Editor").c_str(),
-                                     m_dock_node_up_left_id);
-        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Rail Editor").c_str(),
-                                     m_dock_node_up_left_id);
-        ImGui::DockBuilderDockWindow(getWindowChildUID(*this, "Properties Editor").c_str(),
-                                     m_dock_node_down_left_id);
+            ImGui::DockBuilderDockWindow(ImWindowComponentTitle(*this, "Scene View").c_str(),
+                                         other_node_id);
+            ImGui::DockBuilderDockWindow(ImWindowComponentTitle(*this, "Dolphin View").c_str(),
+                                         other_node_id);
+            ImGui::DockBuilderDockWindow(ImWindowComponentTitle(*this, "Hierarchy Editor").c_str(),
+                                         m_dock_node_up_left_id);
+            ImGui::DockBuilderDockWindow(ImWindowComponentTitle(*this, "Rail Editor").c_str(),
+                                         m_dock_node_up_left_id);
+            ImGui::DockBuilderDockWindow(ImWindowComponentTitle(*this, "Properties Editor").c_str(),
+                                         m_dock_node_down_left_id);
+        }
+        ImGui::DockBuilderFinish(dockspace_id);
+        return dockspace_id;
     }
 
-    void SceneWindow::renderMenuBar() {
+    void SceneWindow::onRenderMenuBar() {
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("File", true)) {
                 if (ImGui::MenuItem(ICON_FK_FLOPPY_O " Save")) {
@@ -2031,7 +2043,7 @@ namespace Toolbox::UI {
         if (m_is_save_default_ready) {
             m_is_save_default_ready = false;
             if (m_current_scene->rootPath())
-                (void)saveData(m_current_scene->rootPath());
+                (void)onSaveData(m_current_scene->rootPath());
             else
                 m_is_save_as_dialog_open = true;
         }

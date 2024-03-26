@@ -16,16 +16,18 @@
 
 namespace Toolbox::UI {
 
-    void DockWindow::renderDockspace() {
-        m_dockspace_id = ImGui::GetID(getWindowUID(*this).c_str());
-        if (!ImGui::DockBuilderGetNode(m_dockspace_id)) {
-            ImGui::DockBuilderAddNode(m_dockspace_id);
-
-            buildDockspace(m_dockspace_id);
-
-            ImGui::DockBuilderFinish(m_dockspace_id);
+    void ImWindow::onRenderDockspace() {
+        if (!m_is_docking_set_up) {
+            m_dockspace_id = onBuildDockspace();
+            m_is_docking_set_up = true;
         }
-        ImGui::DockSpace(m_dockspace_id, {}, ImGuiDockNodeFlags_None, nullptr);
+
+        bool is_dockspace_avail = m_dockspace_id != std::numeric_limits<ImGuiID>::max() &&
+                                  ImGui::DockBuilderGetNode(m_dockspace_id) != nullptr;
+        
+        if (is_dockspace_avail) {
+            ImGui::DockSpace(m_dockspace_id, {}, ImGuiDockNodeFlags_None, nullptr);
+        }
     }
 
 }  // namespace Toolbox::UI

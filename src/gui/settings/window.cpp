@@ -54,7 +54,7 @@ namespace Toolbox::UI {
         return is_binding_finalized;
     }
 
-    void SettingsWindow::renderBody(f32 delta_time) {
+    void SettingsWindow::onRenderBody(TimeStep delta_time) {
         renderProfileBar(delta_time);
 
         if (ImGui::BeginTabBar("##settings_tabs", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) {
@@ -87,7 +87,7 @@ namespace Toolbox::UI {
         }
     }
 
-    void SettingsWindow::renderProfileBar(f32 delta_time) {
+    void SettingsWindow::renderProfileBar(TimeStep delta_time) {
         SettingsManager &manager = SettingsManager::instance();
 
         ImGui::Text("Current Profile");
@@ -189,13 +189,13 @@ namespace Toolbox::UI {
         }
     }
 
-    void SettingsWindow::renderSettingsGeneral(f32 delta_time) {
+    void SettingsWindow::renderSettingsGeneral(TimeStep delta_time) {
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();
         ImGui::Checkbox("Include BetterSMS Objects", &settings.m_is_better_obj_allowed);
         ImGui::Checkbox("Enable File Backup on Save", &settings.m_is_file_backup_allowed);
     }
 
-    void SettingsWindow::renderSettingsControl(f32 delta_time) {
+    void SettingsWindow::renderSettingsControl(TimeStep delta_time) {
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
         static KeyBind s_gizmo_translate_keybind = {};
@@ -254,7 +254,7 @@ namespace Toolbox::UI {
         ImGui::EndGroupPanel();
     }
 
-    void SettingsWindow::renderSettingsUI(f32 delta_time) {
+    void SettingsWindow::renderSettingsUI(TimeStep delta_time) {
         auto &manager = ThemeManager::instance();
 
         auto themes = manager.themes();
@@ -300,7 +300,7 @@ namespace Toolbox::UI {
         }
     }
 
-    void SettingsWindow::renderSettingsPreview(f32 delta_time) {
+    void SettingsWindow::renderSettingsPreview(TimeStep delta_time) {
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
         ImGui::Checkbox("Use Simple Rendering", &settings.m_is_rendering_simple);
@@ -326,7 +326,7 @@ namespace Toolbox::UI {
         ImGui::EndGroupPanel();
     }
 
-    void SettingsWindow::renderSettingsAdvanced(f32 delta_time) {
+    void SettingsWindow::renderSettingsAdvanced(TimeStep delta_time) {
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
         if (ImGui::BeginGroupPanel("Dolphin Integration", nullptr, {})) {

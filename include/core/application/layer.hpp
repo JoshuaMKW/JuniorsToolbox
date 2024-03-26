@@ -20,7 +20,7 @@ namespace Toolbox {
 
         virtual ~ProcessLayer() = default;
 
-        [[nodiscard]] const std::string &getName() const { return m_name; }
+        [[nodiscard]] const std::string &name() const { return m_name; }
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
         [[nodiscard]] bool isTargetOfEvent(const RefPtr<BaseEvent>& ev) const noexcept {

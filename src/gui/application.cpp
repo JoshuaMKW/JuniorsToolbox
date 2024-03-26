@@ -33,26 +33,6 @@
 
 namespace Toolbox {
 
-    int GUIApplication::run() {
-        Clock::time_point lastFrameTime, thisFrameTime;
-
-        while (true) {
-            lastFrameTime = thisFrameTime;
-            thisFrameTime = Util::GetTime();
-
-            f32 delta_time = Util::GetDeltaTime(lastFrameTime, thisFrameTime);
-
-            if (!execute(delta_time))
-                break;
-
-            render(delta_time);
-
-            postRender(delta_time);
-        }
-
-        return 0;
-    }
-
     void DealWithGLErrors(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                           const GLchar *message, const void *userParam) {
         switch (severity) {
@@ -189,27 +169,10 @@ namespace Toolbox {
         m_dolphin_communicator.start();
     }
 
-    void GUIApplication::onUpdate(TimeStep delta_time) {}
-
-    void GUIApplication::onExit() {
-        ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
-        ImGui::DestroyContext();
-
-        glfwDestroyWindow(m_render_window);
-        glfwTerminate();
-
-        J3DUniformBufferObject::DestroyUBO();
-
-        m_windows.clear();
-
-        m_dolphin_communicator.kill();
-    }
-
-    bool GUIApplication::execute(f32 delta_time) {
+    void GUIApplication::onUpdate(TimeStep delta_time) {
         // Try to make sure we return an error if anything's fucky
         if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window))
-            return false;
+            return;
 
         // Apply input callbacks to detached viewports
         if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)) {
@@ -227,17 +190,27 @@ namespace Toolbox {
         glfwPollEvents();
         Input::UpdateInputState();
 
-        // Update viewer context
-        for (auto &window : m_windows) {
-            if (!window->update(delta_time)) {
-                return false;
-            }
-        }
+        render(delta_time);
 
-        return true;
+        Input::PostUpdateInputState();
     }
 
-    void GUIApplication::render(f32 delta_time) {  // Begin actual rendering
+    void GUIApplication::onExit() {
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+
+        glfwDestroyWindow(m_render_window);
+        glfwTerminate();
+
+        J3DUniformBufferObject::DestroyUBO();
+
+        m_windows.clear();
+
+        m_dolphin_communicator.kill();
+    }
+
+    void GUIApplication::render(TimeStep delta_time) {  // Begin actual rendering
         glfwMakeContextCurrent(m_render_window);
 
         // The context renders both the ImGui elements and the background elements.
@@ -265,7 +238,21 @@ namespace Toolbox {
 #endif
 
         renderMenuBar();
-        renderWindows(delta_time);
+
+        // Update dock context
+        for (auto &window : m_windows) {
+            if (!m_dockspace_built && !m_docked_map[window->getUUID()]) {
+                std::string window_name =
+                    std::format("{}###{}", window->title(), window->getUUID());
+                ImGui::DockBuilderDockWindow(window_name.c_str(), m_dockspace_id);
+                m_docked_map[window->getUUID()] = true;
+            }
+        }
+
+        // Update and render windows
+        for (auto &window : m_windows) {
+            window->onUpdate(delta_time);
+        }
 
         // Render imgui
         ImGui::Render();
@@ -317,7 +304,7 @@ namespace Toolbox {
 
             if (ImGui::MenuItem(ICON_FK_FLOPPY_O " Save All")) {
                 for (auto &window : m_windows) {
-                    (void)window->saveData(std::nullopt);
+                    (void)window->onSaveData(std::nullopt);
                 }
             }
 
@@ -379,7 +366,7 @@ namespace Toolbox {
                         }
                     }
 
-                    if (!scene_window->loadData(path)) {
+                    if (!scene_window->onLoadData(path)) {
                         return;
                     }
                     scene_window->open();
@@ -423,7 +410,7 @@ namespace Toolbox {
 
                 if (path.extension() == ".szs" || path.extension() == ".arc") {
                     auto scene_window = make_referable<SceneWindow>();
-                    if (!scene_window->loadData(path)) {
+                    if (!scene_window->onLoadData(path)) {
                         return;
                     }
                     scene_window->open();
@@ -454,39 +441,6 @@ namespace Toolbox {
                 (*settings_window_it)->open();
             }
         }
-    }
-
-    void GUIApplication::renderWindows(f32 delta_time) {
-        // Render viewer context
-        for (auto &window : m_windows) {
-            if (!m_dockspace_built && !m_docked_map[window->getUUID()]) {
-                std::string window_name =
-                    std::format("{}###{}", window->title(), window->getUUID());
-                ImGui::DockBuilderDockWindow(window_name.c_str(), m_dockspace_id);
-                m_docked_map[window->getUUID()] = true;
-            }
-        }
-
-        for (auto &window : m_windows) {
-            window->render(delta_time);
-        }
-    }
-
-    bool GUIApplication::postRender(f32 delta_time) {
-        // Try to make sure we return an error if anything's fucky
-        if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window))
-            return false;
-
-        // Update viewer context
-        for (auto &window : m_windows) {
-            if (!window->postUpdate(delta_time)) {
-                return false;
-            }
-        }
-
-        Input::PostUpdateInputState();
-
-        return true;
     }
 
     bool GUIApplication::determineEnvironmentConflicts() {

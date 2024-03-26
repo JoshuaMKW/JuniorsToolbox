@@ -76,11 +76,8 @@ namespace Toolbox {
         }
 
     protected:
-        bool execute(f32 delta_time);
-        void render(f32 delta_time);
+        void render(TimeStep delta_time);
         void renderMenuBar();
-        void renderWindows(f32 delta_time);
-        bool postRender(f32 delta_time);
 
         bool determineEnvironmentConflicts();
 
@@ -94,7 +91,7 @@ namespace Toolbox {
         std::filesystem::path m_save_path = std::filesystem::current_path();
 
         GLFWwindow *m_render_window;
-        std::vector<RefPtr<IWindow>> m_windows;
+        std::vector<RefPtr<ImWindow>> m_windows;
 
         std::unordered_map<UUID64, bool> m_docked_map;
         ImGuiID m_dockspace_id;
