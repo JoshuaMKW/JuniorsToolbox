@@ -1,5 +1,7 @@
 #include "core/application/application.hpp"
 
+#include <algorithm>
+#include <execution>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -31,6 +33,13 @@ namespace Toolbox {
             m_delta_time              = TimeStep(m_last_frame_time, this_frame_time);
 
             onUpdate(m_delta_time);
+
+            // Process delayed events
+            m_event_mutex.lock();
+            std::for_each(std::execution::par, m_events.begin(), m_events.end(),
+                          [&](auto &ev) { onEvent(ev); });
+            m_events.clear();
+            m_event_mutex.unlock();
 
             m_frame_counter += 1;
             m_last_frame_time = this_frame_time;

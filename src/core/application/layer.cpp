@@ -2,6 +2,11 @@
 
 namespace Toolbox {
 
+    bool ProcessLayer::isTargetOfEvent(RefPtr<BaseEvent> ev) const noexcept {
+        bool is_same_id = ev->getTargetId() == getUUID();
+        return is_same_id;
+    }
+
     void ProcessLayer::onEvent(RefPtr<BaseEvent> ev) {
         if (!isTargetOfEvent(ev)) {
             propogateEvent(ev);
@@ -28,6 +33,8 @@ namespace Toolbox {
             break;
         case BaseEvent::SystemEventType::EVENT_TIMER:
             onTimerEvent(ref_cast<TimerEvent>(ev));
+            break;
+        default:
             break;
         }
     }

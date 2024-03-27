@@ -23,9 +23,7 @@ namespace Toolbox {
         [[nodiscard]] const std::string &name() const { return m_name; }
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
-        [[nodiscard]] bool isTargetOfEvent(const RefPtr<BaseEvent>& ev) const noexcept {
-            return ev->getTargetId() == m_uuid;
-        }
+        [[nodiscard]] virtual bool isTargetOfEvent(RefPtr<BaseEvent> ev) const noexcept;
 
         virtual void onAttach() {}
         virtual void onDetach() {}
@@ -44,7 +42,6 @@ namespace Toolbox {
         virtual void onShortcutEvent(RefPtr<ShortcutEvent> ev) {}
         virtual void onTimerEvent(RefPtr<TimerEvent> ev) {}
 
-    private:
         void propogateEvent(RefPtr<BaseEvent> ev);
 
         UUID64 m_uuid;

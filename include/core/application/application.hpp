@@ -67,7 +67,9 @@ namespace Toolbox {
                           "Event must be derived from BaseEvent");
             RefPtr<_Event> ev = make_referable<_Event>(std::forward<_Args>(args)...);
             if constexpr (_Queue) {
+                m_event_mutex.lock();
                 m_events.emplace_back(ev);
+                m_event_mutex.unlock();
             } else {
                 onEvent(ev);
             }
@@ -101,8 +103,10 @@ namespace Toolbox {
         TimePoint m_last_frame_time;
         TimeStep m_delta_time;
 
+        std::mutex m_event_mutex;
+
         std::vector<RefPtr<ProcessLayer>> m_layers;
-        std::vector<BaseEvent> m_events;
+        std::vector<RefPtr<BaseEvent>> m_events;
     };
 
 }  // namespace Toolbox

@@ -14,30 +14,26 @@ namespace Toolbox::UI {
         MouseEvent(const MouseEvent &)     = default;
         MouseEvent(MouseEvent &&) noexcept = default;
 
-        MouseEvent(const UUID64 &target_id, TypeID type, float pos_x, float pos_y,
+        MouseEvent(const UUID64 &target_id, TypeID type, const ImVec2 &pos,
                    Input::MouseButton button     = Input::MouseButton::BUTTON_NONE,
-                   Input::MouseButtonState state = Input::MouseButtonState::STATE_NONE);
+                   Input::MouseButtonState state = Input::MouseButtonState::STATE_NONE,
+                   bool is_client                = true);
 
         [[nodiscard]] bool isPressEvent() const noexcept {
             TypeID type = getType();
-            return type == EVENT_MOUSE_PRESS || type == EVENT_MOUSE_PRESS_DBL ||
-                   type == EVENT_MOUSE_PRESS_NON_CLIENT || type == EVENT_MOUSE_PRESS_DBL_NON_CLIENT;
+            return type == EVENT_MOUSE_PRESS || type == EVENT_MOUSE_PRESS_DBL;
         }
 
         [[nodiscard]] bool isDoubleClickEvent() const noexcept {
             TypeID type = getType();
-            return type == EVENT_MOUSE_PRESS_DBL || type == EVENT_MOUSE_PRESS_DBL_NON_CLIENT;
+            return type == EVENT_MOUSE_PRESS_DBL;
         }
 
-        [[nodiscard]] bool isNonClientEvent() const noexcept {
-            TypeID type = getType();
-            return type == EVENT_MOUSE_PRESS_NON_CLIENT || type == EVENT_MOUSE_PRESS_DBL_NON_CLIENT ||
-                   type == EVENT_MOUSE_RELEASE_NON_CLIENT || type == EVENT_MOUSE_MOVE_NON_CLIENT;
-        }
+        [[nodiscard]] bool isNonClientEvent() const noexcept { return !m_is_client; }
 
         [[nodiscard]] bool isReleaseEvent() const noexcept {
             TypeID type = getType();
-            return type == EVENT_MOUSE_RELEASE || type == EVENT_MOUSE_RELEASE_NON_CLIENT;
+            return type == EVENT_MOUSE_RELEASE;
         }
 
         [[nodiscard]] bool isUpdateEvent() const noexcept {
@@ -51,10 +47,7 @@ namespace Toolbox::UI {
         [[nodiscard]] Input::MouseButton getButton() const noexcept { return m_mouse_button; }
         [[nodiscard]] Input::MouseButtons getHeldButtons() const noexcept { return m_mouse_state; }
 
-        [[nodiscard]] void getGlobalPoint(float &x, float &y) const noexcept {
-            x = m_screen_pos_x;
-            y = m_screen_pos_y;
-        }
+        [[nodiscard]] ImVec2 getGlobalPoint() const noexcept { return m_screen_pos; }
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
@@ -62,11 +55,11 @@ namespace Toolbox::UI {
         MouseEvent &operator=(MouseEvent &&) noexcept = default;
 
     private:
-        float m_screen_pos_x;
-        float m_screen_pos_y;
+        ImVec2 m_screen_pos;
         Input::MouseButton m_mouse_button;
         Input::MouseButtons m_mouse_state;
         Input::MouseButtonState m_mouse_press_state;
+        bool m_is_client;
     };
 
-}  // namespace Toolbox
+}  // namespace Toolbox::UI

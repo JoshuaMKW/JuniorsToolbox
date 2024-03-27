@@ -32,31 +32,31 @@ namespace Toolbox::UI {
     }
 
     void ImWindow::close() {
-        GUIApplication::instance().dispatchEvent<WindowEvent, false>(getUUID(), EVENT_WINDOW_CLOSE,
+        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_CLOSE,
                                                                      ImVec2{0, 0});
         defocus();
     }
 
     void ImWindow::defocus() {
-        GUIApplication::instance().dispatchEvent<BaseEvent, false>(getUUID(), EVENT_FOCUS_OUT);
+        GUIApplication::instance().dispatchEvent<BaseEvent, true>(getUUID(), EVENT_FOCUS_OUT);
     }
 
     void ImWindow::focus() {
-        GUIApplication::instance().dispatchEvent<BaseEvent, false>(getUUID(), EVENT_FOCUS_IN);
+        GUIApplication::instance().dispatchEvent<BaseEvent, true>(getUUID(), EVENT_FOCUS_IN);
     }
 
     void ImWindow::open() {
-        GUIApplication::instance().dispatchEvent<WindowEvent, false>(getUUID(), EVENT_WINDOW_SHOW,
+        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_SHOW,
                                                                      ImVec2{0, 0});
     }
 
     void ImWindow::hide() {
-        GUIApplication::instance().dispatchEvent<WindowEvent, false>(getUUID(), EVENT_WINDOW_HIDE,
+        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_HIDE,
                                                                      ImVec2{0, 0});
     }
 
     void ImWindow::show() {
-        GUIApplication::instance().dispatchEvent<WindowEvent, false>(getUUID(), EVENT_WINDOW_SHOW,
+        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_SHOW,
                                                                      ImVec2{0, 0});
     }
 
@@ -75,6 +75,14 @@ namespace Toolbox::UI {
             init_size.x = std::max(init_size.x, min_size->x);
             init_size.y = std::max(init_size.y, min_size->y);
         }
+
+        std::optional<ImVec2> max_size = maxSize();
+        if (max_size) {
+            init_size.x = std::min(init_size.x, max_size->x);
+            init_size.y = std::min(init_size.y, max_size->y);
+        }
+
+        setSize(init_size);
     }
 
     void ImWindow::onImGuiRender(TimeStep delta_time) {
@@ -108,27 +116,26 @@ namespace Toolbox::UI {
             ImGui::SetNextWindowClass(window_class);*/
 
         bool is_focused = isFocused();
-        bool is_hidden  = isHidden();
+        bool is_hidden  = window ? (window->Hidden || window->Collapsed) : false;
         bool is_open    = isOpen();
 
         bool was_focused = is_focused;
-        bool was_hidden  = is_hidden;
+        bool was_hidden  = isHidden();
         bool was_open    = is_open;
 
         if (ImGui::Begin(window_name.c_str(), &is_open, flags_)) {
             ImVec2 updated_size = ImGui::GetWindowSize();
             ImVec2 updated_pos  = ImGui::GetWindowPos();
 
-            is_hidden  = ImGui::IsWindowCollapsed();
             is_focused = ImGui::IsWindowFocused();
 
             if (updated_size != size) {
-                GUIApplication::instance().dispatchEvent<WindowEvent, false>(
+                GUIApplication::instance().dispatchEvent<WindowEvent, true>(
                     getUUID(), EVENT_WINDOW_RESIZE, updated_size);
             }
 
             if (updated_pos != pos) {
-                GUIApplication::instance().dispatchEvent<WindowEvent, false>(
+                GUIApplication::instance().dispatchEvent<WindowEvent, true>(
                     getUUID(), EVENT_WINDOW_MOVE, updated_pos);
             }
 
@@ -141,19 +148,25 @@ namespace Toolbox::UI {
         }
         ImGui::End();
 
+        // Handle open/close and focus/defocus
         if (is_open) {
             if (!was_open) {
                 show();
             }
             if (is_focused && !was_focused) {
                 focus();
+            } else if (!is_focused && was_focused) {
+                defocus();
             }
         } else if (was_open) {
-            if (is_hidden && !was_hidden) {
-                hide();
-            } else {
-                close();
-            }
+            close();
+        }
+
+        // Handle collapse/hide
+        if (is_hidden && !was_hidden) {
+            hide();
+        } else if (!is_hidden && was_hidden) {
+            show();
         }
     }
 

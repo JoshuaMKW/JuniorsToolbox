@@ -3,11 +3,11 @@
 
 namespace Toolbox::UI {
 
-    MouseEvent::MouseEvent(const UUID64 &target_id, TypeID type, float pos_x, float pos_y,
+    MouseEvent::MouseEvent(const UUID64 &target_id, TypeID type, const ImVec2 &pos,
                            Input::MouseButton button,
-                           Input::MouseButtonState press_state)
-        : BaseEvent(target_id, type), m_screen_pos_x(pos_x), m_screen_pos_y(pos_y), m_mouse_button(button),
-          m_mouse_press_state(press_state) {
+                           Input::MouseButtonState press_state, bool is_client)
+        : BaseEvent(target_id, type), m_screen_pos(pos), m_mouse_button(button),
+          m_mouse_press_state(press_state), m_is_client(is_client) {
         m_mouse_state = Input::GetPressedMouseButtons();
     }
 

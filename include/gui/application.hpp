@@ -41,14 +41,14 @@ namespace Toolbox {
         virtual void onUpdate(TimeStep delta_time) override;
         virtual void onExit() override;
 
-        void addWindow(RefPtr<ImWindow> window) { 
-          addLayer(window);
-          m_windows.push_back(window);
+        void addWindow(RefPtr<ImWindow> window) {
+            addLayer(window);
+            m_windows.push_back(window);
         }
 
         void removeWindow(RefPtr<ImWindow> window) {
-          removeLayer(window);
-          std::erase(m_windows, window);
+            removeLayer(window);
+            std::erase(m_windows, window);
         }
 
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> &getSceneObjectClipboard() {
@@ -65,9 +65,7 @@ namespace Toolbox {
 
         DolphinCommunicator &getDolphinCommunicator() { return m_dolphin_communicator; }
 
-        std::filesystem::path getProjectRoot() const {
-            return m_project_root;
-        }
+        std::filesystem::path getProjectRoot() const { return m_project_root; }
 
         ImVec2 windowScreenPos() {
             int x = 0, y = 0;
@@ -97,8 +95,8 @@ namespace Toolbox {
         TypedDataClipboard<SelectionNodeInfo<Rail::RailNode>> m_rail_node_clipboard;
 
         std::filesystem::path m_project_root = std::filesystem::current_path();
-        std::filesystem::path m_load_path = std::filesystem::current_path();
-        std::filesystem::path m_save_path = std::filesystem::current_path();
+        std::filesystem::path m_load_path    = std::filesystem::current_path();
+        std::filesystem::path m_save_path    = std::filesystem::current_path();
 
         GLFWwindow *m_render_window;
         std::vector<RefPtr<ImWindow>> m_windows;

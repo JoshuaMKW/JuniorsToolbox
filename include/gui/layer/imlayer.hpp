@@ -20,6 +20,8 @@ namespace Toolbox::UI {
 
         explicit ImProcessLayer(const std::string &name);
 
+        [[nodiscard]] bool isTargetOfEvent(RefPtr<BaseEvent> ev) const noexcept override final;
+
         [[nodiscard]] bool isOpen() const noexcept { return m_is_open; }
         [[nodiscard]] bool isHidden() const noexcept { return m_is_hidden; }
         [[nodiscard]] bool isFocused() const noexcept { return m_is_focused; }
