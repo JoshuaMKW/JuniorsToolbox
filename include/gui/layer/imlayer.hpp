@@ -21,9 +21,14 @@ namespace Toolbox::UI {
         explicit ImProcessLayer(const std::string &name);
 
         [[nodiscard]] bool isOpen() const noexcept { return m_is_open; }
+        [[nodiscard]] bool isHidden() const noexcept { return m_is_hidden; }
+        [[nodiscard]] bool isFocused() const noexcept { return m_is_focused; }
 
-        void close() noexcept { m_is_open = false; }
-        void open() noexcept { m_is_open = true; }
+        [[nodiscard]] ImVec2 getSize() const noexcept { return m_size; }
+        [[nodiscard]] ImVec2 getPos() const noexcept { return m_position; }
+
+        void setSize(const ImVec2 &size) noexcept { m_size = size; }
+        void setPos(const ImVec2 &pos) noexcept { m_position = pos; }
 
         void onUpdate(TimeStep delta_time) override final;
         void onEvent(RefPtr<BaseEvent> ev) override final;
@@ -35,12 +40,14 @@ namespace Toolbox::UI {
 
         // Event callbacks
         virtual void onDropEvent(RefPtr<DropEvent> ev) {}
-        virtual void onFocusEvent(RefPtr<BaseEvent> ev) {}
+        virtual void onFocusEvent(RefPtr<BaseEvent> ev);
         virtual void onMouseEvent(RefPtr<MouseEvent> ev) {}
-        virtual void onWindowEvent(RefPtr<WindowEvent> ev) {}
+        virtual void onWindowEvent(RefPtr<WindowEvent> ev);
 
     private:
         bool m_is_open    = true;
+        bool m_is_hidden  = false;
+        bool m_is_focused = false;
         ImVec2 m_size     = {0, 0};
         ImVec2 m_position = {0, 0};
     };

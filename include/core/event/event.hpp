@@ -22,7 +22,6 @@ namespace Toolbox {
             EVENT_APPLICATION_EXIT,
             EVENT_APPLICATION_STATE_CHANGE,
             EVENT_CLIPBOARD,
-            EVENT_CLOSE,
             EVENT_FILE_OPEN,
             EVENT_KEY_PRESS,
             EVENT_KEY_RELEASE,
@@ -54,8 +53,9 @@ namespace Toolbox {
         [[nodiscard]] virtual TypeID getType() const noexcept { return m_event_type; }
         [[nodiscard]] UUID64 getTargetId() const noexcept { return m_target_id; }
 
-        bool isAccepted() const noexcept { return m_accepted_state == TriState::TS_TRUE; }
-        bool isIgnored() const noexcept { return m_accepted_state == TriState::TS_FALSE; }
+        [[nodiscard]] bool isAccepted() const noexcept { return m_accepted_state == TriState::TS_TRUE; }
+        [[nodiscard]] bool isIgnored() const noexcept { return m_accepted_state == TriState::TS_FALSE; }
+        [[nodiscard]] bool isHandled() const noexcept { return isAccepted() || isIgnored(); }
 
         [[nodiscard]] bool isSystemEvent() const noexcept { return m_is_system_event; }
 

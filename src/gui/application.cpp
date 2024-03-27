@@ -158,11 +158,11 @@ namespace Toolbox {
         }
 
         auto settings_window = make_referable<SettingsWindow>();
-        m_windows.push_back(settings_window);
+        addWindow(settings_window);
 
         auto logging_window = make_referable<LoggingWindow>();
         logging_window->open();
-        m_windows.push_back(logging_window);
+        addWindow(logging_window);
 
         determineEnvironmentConflicts();
 
@@ -249,10 +249,7 @@ namespace Toolbox {
             }
         }
 
-        // Update and render windows
-        for (auto &window : m_windows) {
-            window->onUpdate(delta_time);
-        }
+        CoreApplication::onUpdate(delta_time);
 
         // Render imgui
         ImGui::Render();
@@ -370,7 +367,7 @@ namespace Toolbox {
                         return;
                     }
                     scene_window->open();
-                    m_windows.push_back(scene_window);
+                    addWindow(scene_window);
                 } else {
                     auto sys_path   = std::filesystem::path(path) / "sys";
                     auto files_path = std::filesystem::path(path) / "files";
@@ -414,7 +411,7 @@ namespace Toolbox {
                         return;
                     }
                     scene_window->open();
-                    m_windows.push_back(scene_window);
+                    addWindow(scene_window);
                 }
             }
 

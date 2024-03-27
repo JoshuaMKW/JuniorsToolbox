@@ -48,7 +48,13 @@ namespace Toolbox {
         // Override these functions to implement your application
 
         virtual void onInit(int argc, const char **argv) {}
-        virtual void onUpdate(TimeStep delta_time) {}
+
+        virtual void onUpdate(TimeStep delta_time) {
+            for (auto &layer : m_layers) {
+                layer->onUpdate(m_delta_time);
+            }
+        }
+
         virtual void onExit() {}
 
         // ------------------------------------------------------
@@ -57,9 +63,9 @@ namespace Toolbox {
 
         template <typename _Event, bool _Queue, typename... _Args>
         void dispatchEvent(_Args &&...args) {
-            static_assert(std::is_assignable_v<_Event, BaseEvent>,
+            static_assert(std::is_base_of_v<BaseEvent, _Event>,
                           "Event must be derived from BaseEvent");
-            _Event ev(std::forward<_Args>(args)...);
+            RefPtr<_Event> ev = make_referable<_Event>(std::forward<_Args>(args)...);
             if constexpr (_Queue) {
                 m_events.emplace_back(ev);
             } else {

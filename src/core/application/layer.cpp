@@ -3,6 +3,11 @@
 namespace Toolbox {
 
     void ProcessLayer::onEvent(RefPtr<BaseEvent> ev) {
+        if (!isTargetOfEvent(ev)) {
+            propogateEvent(ev);
+            return;
+        }
+
         switch (ev->getType()) {
         case BaseEvent::SystemEventType::EVENT_ACTION_ADDED:
         case BaseEvent::SystemEventType::EVENT_ACTION_CHANGED:
@@ -11,7 +16,6 @@ namespace Toolbox {
         case BaseEvent::SystemEventType::EVENT_APPLICATION_EXIT:
         case BaseEvent::SystemEventType::EVENT_APPLICATION_STATE_CHANGE:
         case BaseEvent::SystemEventType::EVENT_CLIPBOARD:
-        case BaseEvent::SystemEventType::EVENT_CLOSE:
         case BaseEvent::SystemEventType::EVENT_FILE_OPEN:
         case BaseEvent::SystemEventType::EVENT_LANGUAGE_CHANGE:
             break;
@@ -28,4 +32,14 @@ namespace Toolbox {
         }
     }
 
-}
+    void ProcessLayer::propogateEvent(RefPtr<BaseEvent> ev) {
+        for (auto &layer : m_sublayers) {
+            layer->onEvent(ev);
+            if (ev->isHandled()) {
+                break;
+            }
+        }
+        return;
+    }
+
+}  // namespace Toolbox

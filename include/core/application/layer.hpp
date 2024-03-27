@@ -45,8 +45,11 @@ namespace Toolbox {
         virtual void onTimerEvent(RefPtr<TimerEvent> ev) {}
 
     private:
+        void propogateEvent(RefPtr<BaseEvent> ev);
+
         UUID64 m_uuid;
         std::string m_name = "Unnamed Layer";
+        std::vector<RefPtr<ProcessLayer>> m_sublayers;
     };
 
 }  // namespace Toolbox

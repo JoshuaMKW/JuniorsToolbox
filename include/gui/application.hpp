@@ -41,6 +41,16 @@ namespace Toolbox {
         virtual void onUpdate(TimeStep delta_time) override;
         virtual void onExit() override;
 
+        void addWindow(RefPtr<ImWindow> window) { 
+          addLayer(window);
+          m_windows.push_back(window);
+        }
+
+        void removeWindow(RefPtr<ImWindow> window) {
+          removeLayer(window);
+          std::erase(m_windows, window);
+        }
+
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> &getSceneObjectClipboard() {
             return m_hierarchy_clipboard;
         }

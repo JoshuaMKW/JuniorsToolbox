@@ -14,8 +14,7 @@ namespace Toolbox::UI {
         WindowEvent(const WindowEvent &)     = default;
         WindowEvent(WindowEvent &&) noexcept = default;
 
-        WindowEvent(const UUID64 &target_id, TypeID type, float pos_x, float pos_y, float size_x,
-                    float size_y);
+        WindowEvent(const UUID64 &target_id, TypeID type, const ImVec2 &geo_data);
 
         [[nodiscard]] bool isHideEvent() const noexcept { return getType() == EVENT_WINDOW_HIDE; }
 
@@ -27,15 +26,8 @@ namespace Toolbox::UI {
 
         [[nodiscard]] bool isShowEvent() const noexcept { return getType() == EVENT_WINDOW_SHOW; }
 
-        [[nodiscard]] void getGlobalPoint(float &x, float &y) const noexcept {
-            x = m_screen_pos_x;
-            y = m_screen_pos_y;
-        }
-
-        [[nodiscard]] void getSize(float &x, float &y) const noexcept {
-            x = m_size_x;
-            y = m_size_y;
-        }
+        [[nodiscard]] ImVec2 getGlobalPoint() const noexcept { return m_geo_data; }
+        [[nodiscard]] ImVec2 getSize() const noexcept { return m_geo_data; }
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
@@ -43,10 +35,7 @@ namespace Toolbox::UI {
         WindowEvent &operator=(WindowEvent &&) noexcept = default;
 
     private:
-        float m_screen_pos_x;
-        float m_screen_pos_y;
-        float m_size_x;
-        float m_size_y;
+        ImVec2 m_geo_data;
     };
 
-}  // namespace Toolbox
+}  // namespace Toolbox::UI

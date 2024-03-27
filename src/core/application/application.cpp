@@ -30,31 +30,20 @@ namespace Toolbox {
             TimePoint this_frame_time = GetTime();
             m_delta_time              = TimeStep(m_last_frame_time, this_frame_time);
 
-            const bool good_exec = update();
-            if (!good_exec)
-                break;
-
             onUpdate(m_delta_time);
 
             m_frame_counter += 1;
             m_last_frame_time = this_frame_time;
+
+            if (m_exit_code != 0) {
+                stop();
+            }
         }
 
         teardown();
     }
 
     void CoreApplication::stop() { m_is_running = false; }
-
-    bool CoreApplication::update() {
-        // TODO: Add logic to pass through logical layers
-        // and compare the UUID of the event to the layer UUID
-        for (auto &layer : m_layers) {
-            layer->onUpdate(m_delta_time);
-        }
-
-        // TODO: improve fail response
-        return m_exit_code == 0;
-    }
 
     void CoreApplication::setup(int argc, const char **argv) {
         m_is_running = true;
@@ -72,8 +61,12 @@ namespace Toolbox {
     }
 
     void CoreApplication::onEvent(RefPtr<BaseEvent> ev) {
-        // TODO: Add logic to pass through logical layers
-        // and compare the UUID of the event to the layer UUID
+        for (auto &layer : m_layers) {
+            layer->onEvent(ev);
+        }
+        if (!ev->isHandled()) {
+            TOOLBOX_DEBUG_LOG_V("[EVENT] Unhandled event of TypeID {}", ev->getType());
+        }
     }
 
     void CoreApplication::addLayer(RefPtr<ProcessLayer> layer) {

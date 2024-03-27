@@ -72,7 +72,6 @@ namespace Toolbox::UI {
         }
 
         [[nodiscard]] virtual std::optional<ImVec2> defaultSize() const { return m_default_size; }
-        [[nodiscard]] virtual std::optional<ImVec2> size() const { return m_size; }
         [[nodiscard]] virtual std::optional<ImVec2> minSize() const { return m_min_size; }
         [[nodiscard]] virtual std::optional<ImVec2> maxSize() const { return m_max_size; }
 
@@ -82,57 +81,24 @@ namespace Toolbox::UI {
         // Returns the supported file type, or empty if designed for a folder.
         [[nodiscard]] virtual std::vector<std::string> extensions() const { return {}; }
 
+        void close();
+        void defocus();
+        void focus();
+        void open();
+
+        void hide();
+        void show();
+
         [[nodiscard]] virtual bool onLoadData(const std::filesystem::path &path) { return false; }
         [[nodiscard]] virtual bool onSaveData(std::optional<std::filesystem::path> path) {
             return false;
         }
 
-        void onImGuiRender(TimeStep delta_time) override final {
-            std::optional<ImVec2> default_size = defaultSize();
-            if (default_size.has_value())
-                ImGui::SetNextWindowSize(default_size.value(), ImGuiCond_Once);
+        void onAttach() override;
+        void onImGuiRender(TimeStep delta_time) override final;
+        void onWindowEvent(RefPtr<WindowEvent> ev) override;
 
-            ImVec2 default_min = {0, 0};
-            ImVec2 default_max = {FLT_MAX, FLT_MAX};
-            ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
-                                                maxSize() ? maxSize().value() : default_max);
-
-            std::string window_name = std::format("{}###{}", title(), getUUID());
-
-            ImGuiWindowFlags flags_ = flags();
-            if (unsaved()) {
-                flags_ |= ImGuiWindowFlags_UnsavedDocument;
-            }
-
-            // TODO: Fix window class causing problems.
-
-            /*const ImGuiWindowClass *window_class = windowClass();
-            if (window_class)
-                ImGui::SetNextWindowClass(window_class);*/
-
-            bool is_open = isOpen();
-            if (ImGui::Begin(window_name.c_str(), &is_open, flags_)) {
-                m_size     = ImGui::GetWindowSize();
-                m_viewport = ImGui::GetWindowViewport();
-                onRenderDockspace();
-                onRenderMenuBar();
-                onRenderBody(delta_time);
-            } else {
-                m_viewport = nullptr;
-            }
-            ImGui::End();
-        }
-
-        [[nodiscard]] std::string title() const {
-            std::string ctx = context();
-            std::string t;
-            if (ctx != "") {
-                t = std::format("{} - {}", name(), ctx);
-            } else {
-                t = name();
-            }
-            return t;
-        }
+        [[nodiscard]] std::string title() const;
 
     protected:
         UUID64 m_UUID64;
@@ -145,7 +111,6 @@ namespace Toolbox::UI {
         mutable ImGuiWindowClass m_window_class = ImGuiWindowClass();
 
         std::optional<ImVec2> m_default_size = {};
-        std::optional<ImVec2> m_size         = {};
         std::optional<ImVec2> m_min_size     = {};
         std::optional<ImVec2> m_max_size     = {};
 
