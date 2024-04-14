@@ -171,8 +171,10 @@ namespace Toolbox {
 
     void GUIApplication::onUpdate(TimeStep delta_time) {
         // Try to make sure we return an error if anything's fucky
-        if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window))
+        if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window)) {
+            exit(0);
             return;
+        }
 
         // Apply input callbacks to detached viewports
         if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)) {

@@ -17,11 +17,10 @@ namespace Toolbox::UI {
     }
 
     bool ImProcessLayer::isTargetOfEvent(RefPtr<BaseEvent> ev) const noexcept {
-        BaseEvent::TypeID event_id = ev->getType();
-        bool is_mouse_event = event_id >= EVENT_MOUSE_ENTER && event_id <= EVENT_MOUSE_SCROLL;
-        if (is_mouse_event) {
+        /*if (isMouseEvent(ev)) {
             return isMouseOver(m_position, m_size, ref_cast<MouseEvent>(ev)->getGlobalPoint());
-        }
+        }*/
+        return ProcessLayer::isTargetOfEvent(ev);
     }
 
     void ImProcessLayer::onUpdate(TimeStep delta_time) {
@@ -35,23 +34,27 @@ namespace Toolbox::UI {
     }
 
     void ImProcessLayer::onEvent(RefPtr<BaseEvent> ev) {
+        // In this case, the event is a mouse event and the mouse is not over the layer
+        if (isMouseEvent(ev) &&
+            !isMouseOver(m_position, m_size, ref_cast<MouseEvent>(ev)->getGlobalPoint())) {
+            return;
+        }
+
         ProcessLayer::onEvent(ev);
         if (ev->isAccepted()) {
             return;
         }
 
-        if (!isTargetOfEvent(ev)) {
-            return;
-        }
-
         switch (ev->getType()) {
         case EVENT_CONTEXT_MENU:
+            onContextMenuEvent(ref_cast<ContextMenuEvent>(ev));
             break;
         case EVENT_CURSOR_CHANGE:
             break;
         case EVENT_DRAG_ENTER:
         case EVENT_DRAG_LEAVE:
         case EVENT_DRAG_MOVE:
+            onDragEvent(ref_cast<DragEvent>(ev));
             break;
         case EVENT_DROP:
             onDropEvent(ref_cast<DropEvent>(ev));

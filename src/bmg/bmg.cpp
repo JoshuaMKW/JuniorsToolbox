@@ -181,7 +181,7 @@ namespace Toolbox::BMG {
             std::string text = m_message_data.substr(bracket_r, bracket_l);
 
             bracket_r      = m_message_data.find('}', bracket_l);
-            next_bracket_l = m_message_data.find('{', bracket_l);
+            next_bracket_l = m_message_data.find('{', bracket_l + 1);
 
             const bool isCommandEnclosed =
                 bracket_r < next_bracket_l && bracket_r != std::string::npos;

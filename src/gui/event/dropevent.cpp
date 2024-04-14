@@ -9,7 +9,7 @@ namespace Toolbox::UI {
           m_drop_type(drop_type), m_source_id(action.getSourceUUID()) {}
 
     ScopePtr<ISmartResource> DropEvent::clone(bool deep) const {
-        return ScopePtr<ISmartResource>();
+        return make_scoped<DropEvent>(*this);
     }
 
 }  // namespace Toolbox::UI

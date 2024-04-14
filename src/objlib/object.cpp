@@ -215,6 +215,8 @@ namespace Toolbox::Object {
         m_type = type.name();
         setNameRef(name);
 
+        const char *debug_name = name.name().data();
+
         auto template_result = TemplateFactory::create(m_type);
         if (!template_result) {
             auto error_v = template_result.error();
@@ -956,6 +958,8 @@ namespace Toolbox::Object {
         setNameRef(name);
 
         const char *type_cstr = m_type.c_str();
+
+        const char *debug_name = name.name().data();
 
         auto template_result = TemplateFactory::create(m_type);
         if (!template_result) {

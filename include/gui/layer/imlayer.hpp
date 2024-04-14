@@ -5,6 +5,8 @@
 #include "core/event/keyevent.hpp"
 #include "core/event/shortcutevent.hpp"
 #include "core/event/timerevent.hpp"
+#include "gui/event/contextmenuevent.hpp"
+#include "gui/event/dragevent.hpp"
 #include "gui/event/dropevent.hpp"
 #include "gui/event/mouseevent.hpp"
 #include "gui/event/windowevent.hpp"
@@ -41,6 +43,8 @@ namespace Toolbox::UI {
         virtual void onImGuiPostUpdate(TimeStep delta_time) {}
 
         // Event callbacks
+        virtual void onContextMenuEvent(RefPtr<ContextMenuEvent> ev) {}
+        virtual void onDragEvent(RefPtr<DragEvent> ev) {}
         virtual void onDropEvent(RefPtr<DropEvent> ev) {}
         virtual void onFocusEvent(RefPtr<BaseEvent> ev);
         virtual void onMouseEvent(RefPtr<MouseEvent> ev) {}
