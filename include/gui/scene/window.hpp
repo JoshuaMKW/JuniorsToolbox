@@ -85,6 +85,10 @@ namespace Toolbox::UI {
         void buildCreateRailDialog();
         void buildRenameRailDialog();
 
+        void loadMimeObject(Buffer &buffer, RefPtr<ISceneObject> parent, size_t child_index);
+        void loadMimeRail(Buffer &buffer, size_t index);
+        void loadMimeRailNode(Buffer &buffer, RefPtr<Rail::Rail> rail, size_t node_index);
+
     public:
         ImGuiWindowFlags flags() const override { return ImWindow::flags() | ImGuiWindowFlags_MenuBar; }
 
@@ -126,6 +130,9 @@ namespace Toolbox::UI {
 
         void onImGuiUpdate(TimeStep delta_time) override;
         void onImGuiPostUpdate(TimeStep delta_time) override;
+        void onContextMenuEvent(RefPtr<ContextMenuEvent> ev) override;
+        void onDragEvent(RefPtr<DragEvent> ev) override;
+        void onDropEvent(RefPtr<DropEvent> ev) override;
 
     private:
         ScopePtr<Toolbox::SceneInstance> m_current_scene;

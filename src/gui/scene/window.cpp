@@ -390,6 +390,83 @@ namespace Toolbox::UI {
         m_update_render_objs = true;
     }
 
+    void SceneWindow::onContextMenuEvent(RefPtr<ContextMenuEvent> ev) {}
+
+    static std::unordered_set<std::string> s_scene_mime_formats = {
+        "toolbox/scene/object", "toolbox/scene/rail", "toolbox/scene/railnode"};
+
+    void SceneWindow::onDragEvent(RefPtr<DragEvent> ev) {
+        DragAction &action = ev->getDragAction();
+        MimeData mime      = action.getMimeData();
+
+        // Check for early exit
+        bool is_valid_format =
+            std::any_of(s_scene_mime_formats.begin(), s_scene_mime_formats.end(),
+                        [&](const std::string &format) { return mime.has_format(format); });
+        if (!is_valid_format) {
+            ev->ignore();
+            return;
+        }
+
+        if (ev->getType() == EVENT_DRAG_ENTER) {
+        } else if (ev->getType() == EVENT_DRAG_LEAVE) {
+        } else if (ev->getType() == EVENT_DRAG_MOVE) {
+        }
+    }
+
+    void SceneWindow::onDropEvent(RefPtr<DropEvent> ev) {
+        MimeData mime = ev->getMimeData();
+
+        // Check for early exit
+        bool is_valid_format =
+            std::any_of(s_scene_mime_formats.begin(), s_scene_mime_formats.end(),
+                        [&](const std::string &format) { return mime.has_format(format); });
+        if (!is_valid_format) {
+            ev->ignore();
+            return;
+        }
+
+        ImVec2 drop_pos = ev->getGlobalPoint();
+        DropType drop_type = ev->getDropType();
+
+        ImVec2 window_pos = getPos();
+        ImVec2 window_size = getSize();
+
+        ImVec2 local_pos = {drop_pos.x - window_pos.x, drop_pos.y - window_pos.y};
+
+        if (mime.has_format("toolbox/scene/object")) {
+            Buffer obj_data =
+                mime.get_data("toolbox/scene/object").value();
+
+            RefPtr<ISceneObject> parent_obj;
+            size_t child_index = 0;
+
+            // TODO: Implement dropping objects into the scene hierarchy (and also in scene view?)
+
+            loadMimeObject(obj_data, parent_obj, child_index);
+            return;
+        }
+        
+        if (mime.has_format("toolbox/scene/rail")) {
+            Buffer rail_data = mime.get_data("toolbox/scene/rail").value();
+
+            size_t child_index = 0;
+
+            loadMimeRail(rail_data, child_index);
+            return;
+        }
+        
+        if (mime.has_format("toolbox/scene/railnode")) {
+            Buffer node_data = mime.get_data("toolbox/scene/railnode").value();
+
+            RefPtr<Rail::Rail> parent_rail;
+            size_t child_index = 0;
+
+            loadMimeRailNode(node_data, parent_rail, child_index);
+            return;
+        }
+    }
+
     void SceneWindow::onRenderBody(TimeStep deltaTime) {
         renderHierarchy();
         renderProperties();
@@ -1994,6 +2071,56 @@ namespace Toolbox::UI {
                 info.m_selected->setName(new_name);
             });
         m_rename_rail_dialog.setActionOnReject([](SelectionNodeInfo<Rail::Rail>) {});
+    }
+
+    void SceneWindow::loadMimeObject(Buffer &buffer, RefPtr<ISceneObject> parent,
+                                     size_t child_index) {
+        std::stringbuf str_buf;
+        Deserializer in(buffer, &str_buf);
+
+        auto result = Object::ObjectFactory::create(in);
+        if (!result) {
+            LogError(result.error());
+            return;
+        }
+
+        RefPtr<Object::ISceneObject> obj = std::move(result.value());
+        if (!obj) {
+            LogError(make_error<void>("Scene Hierarchy", "Failed to create object").error());
+            return;
+        }
+
+        parent->insertChild(child_index, obj);
+        m_update_render_objs = true;
+    }
+
+    void SceneWindow::loadMimeRail(Buffer &buffer, size_t index) {
+        Rail::Rail rail("((null))");
+
+        auto result = Deserializer::BytesToObject(buffer, rail);
+        if (!result) {
+            LogError(result.error());
+            return;
+        }
+
+        RailData data   = m_current_scene->getRailData();
+        data.insertRail(index, rail);
+        m_current_scene->setRailData(data);
+        m_update_render_objs = true;
+    }
+
+    void SceneWindow::loadMimeRailNode(Buffer &buffer, RefPtr<Rail::Rail> rail,
+                                       size_t node_index) {
+        Rail::RailNode node;
+
+        auto result = Deserializer::BytesToObject(buffer, node);
+        if (!result) {
+            LogError(result.error());
+            return;
+        }
+
+        rail->insertNode(node_index, make_referable<Rail::RailNode>(node));
+        m_update_render_objs = true;
     }
 
     ImGuiID SceneWindow::onBuildDockspace() {

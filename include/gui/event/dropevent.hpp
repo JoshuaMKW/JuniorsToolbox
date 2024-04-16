@@ -13,13 +13,13 @@ namespace Toolbox::UI {
         DropEvent(const DropEvent &)     = default;
         DropEvent(DropEvent &&) noexcept = default;
 
-        DropEvent(float pos_x, float pos_y, DropType drop_type, const DragAction &action);
+        DropEvent(const ImVec2 &pos, DropType drop_type, const DragAction &action);
 
-        [[nodiscard]] void getGlobalPoint(float &x, float &y) const noexcept {
-            x = m_screen_pos_x;
-            y = m_screen_pos_y;
+        [[nodiscard]] ImVec2 getGlobalPoint() const noexcept {
+            return m_screen_pos;
         }
 
+        [[nodiscard]] const MimeData &getMimeData() const noexcept { return m_mime_data; }
         [[nodiscard]] DropType getDropType() const noexcept { return m_drop_type; }
         [[nodiscard]] UUID64 getSourceId() const noexcept { return m_source_id; }
 
@@ -29,9 +29,9 @@ namespace Toolbox::UI {
         DropEvent &operator=(DropEvent &&) noexcept = default;
 
     private:
-        float m_screen_pos_x;
-        float m_screen_pos_y;
+        ImVec2 m_screen_pos;
         DropType m_drop_type;
+        MimeData m_mime_data;
         UUID64 m_source_id;
     };
 

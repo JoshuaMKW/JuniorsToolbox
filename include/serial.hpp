@@ -23,6 +23,13 @@ namespace Toolbox {
 
     class Serializer {
     public:
+        Serializer(Buffer &buf, std::streambuf *rdbuf) : m_out(rdbuf) {
+            rdbuf->pubsetbuf(buf.buf<char>(), buf.size());
+        }
+        Serializer(Buffer &buf, std::streambuf *rdbuf, std::string_view file_path)
+            : m_out(rdbuf), m_file_path(file_path) {
+            rdbuf->pubsetbuf(buf.buf<char>(), buf.size());
+        }
         Serializer(std::streambuf *out) : m_out(out) {}
         Serializer(std::streambuf *out, std::string_view file_path)
             : m_out(out), m_file_path(file_path) {}
@@ -170,6 +177,12 @@ namespace Toolbox {
 
     class Deserializer {
     public:
+        Deserializer(Buffer &buf, std::streambuf *rdbuf) : m_in(rdbuf) {
+            rdbuf->pubsetbuf(buf.buf<char>(), buf.size());
+        }
+        Deserializer(Buffer &buf, std::streambuf *rdbuf, std::string_view file_path) : m_in(rdbuf), m_file_path(file_path) {
+            rdbuf->pubsetbuf(buf.buf<char>(), buf.size());
+        }
         Deserializer(std::streambuf *in) : m_in(in) {}
         Deserializer(std::streambuf *in, std::string_view file_path)
             : m_in(in), m_file_path(file_path) {}
