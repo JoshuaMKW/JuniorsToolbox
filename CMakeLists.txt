@@ -56,6 +56,8 @@ file(GLOB TOOLBOX_SRC
     "include/gui/image/*.hpp"
     "src/gui/layer/*.cpp"
     "include/gui/layer/*.hpp"
+    "src/gui/widget/*.cpp"
+    "include/gui/widget/*.hpp"
     "src/image/*.cpp"
     "include/image/*.hpp"
     "src/objlib/*.cpp"
