@@ -10,6 +10,32 @@ using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
 
+    Result<void, SerialError> Rail::serialize(Serializer &out) const {
+        out.writeString<std::endian::big>(m_name);
+        out.write<u16, std::endian::big>(static_cast<u16>(m_nodes.size()));
+        for (const auto &node : m_nodes) {
+            auto result = node->serialize(out);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+        return {};
+    }
+
+    Result<void, SerialError> Rail::deserialize(Deserializer &in) {
+        m_name = in.readString<std::endian::big>();
+        m_nodes.clear();
+        u16 node_count = in.read<u16, std::endian::big>();
+        for (u16 i = 0; i < node_count; ++i) {
+            auto node   = make_referable<RailNode>();
+            auto result = node->deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            m_nodes.push_back(node);
+        }
+    }
+
     glm::vec3 Rail::getCenteroid() const {
         size_t node_count = m_nodes.size();
         if (node_count == 0)
@@ -257,8 +283,7 @@ namespace Toolbox::Rail {
         return insertConnection(m_nodes[node], index, m_nodes[to]);
     }
 
-    Result<void, MetaError> Rail::insertConnection(node_ptr_t node, size_t index,
-                                                          node_ptr_t to) {
+    Result<void, MetaError> Rail::insertConnection(node_ptr_t node, size_t index, node_ptr_t to) {
         auto connectionCount = node->getConnectionCount();
         if (connectionCount >= 8) {
             return make_meta_error<void>("Error adding connection (max)", connectionCount, 8);
@@ -311,8 +336,7 @@ namespace Toolbox::Rail {
         return replaceConnection(m_nodes[node], index, m_nodes[to]);
     }
 
-    Result<void, MetaError> Rail::replaceConnection(node_ptr_t node, size_t index,
-                                                           node_ptr_t to) {
+    Result<void, MetaError> Rail::replaceConnection(node_ptr_t node, size_t index, node_ptr_t to) {
         if (index >= node->getConnectionCount()) {
             return make_meta_error<void>("Error replacing connection (index)", index,
                                          node->getConnectionCount());

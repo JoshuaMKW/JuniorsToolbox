@@ -14,7 +14,8 @@ using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
 
-    class Rail : public ISmartResource, public IUnique {
+    // NOTE: Serialization is for Toolbox UI only. Use RalData for actual game data.
+    class Rail : public ISerializable, public ISmartResource, public IUnique {
     public:
         using node_ptr_t = RefPtr<RailNode>;
 
@@ -32,6 +33,9 @@ namespace Toolbox::Rail {
 
         Rail &operator=(const Rail &other) = default;
         Rail &operator=(Rail &&other)      = default;
+
+        Result<void, SerialError> serialize(Serializer &out) const override;
+        Result<void, SerialError> deserialize(Deserializer &in) override;
 
         [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
 

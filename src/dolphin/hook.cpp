@@ -35,6 +35,10 @@ namespace Toolbox::Dolphin {
         Platform::ProcessID pid = std::numeric_limits<Platform::ProcessID>::max();
         do {
             if (strcmp(pe32.szExeFile, process_file.data()) == 0) {
+                // Sometimes dead processes are still in the list
+                if (pe32.cntThreads == 0) {
+                    continue;
+                }
                 pid = pe32.th32ProcessID;
                 break;
             }

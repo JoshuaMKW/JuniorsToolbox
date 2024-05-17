@@ -25,6 +25,9 @@ namespace Toolbox {
         return std::make_unique<T>(std::forward<Args>(args)...);
     }
 
+    template <typename _T>
+    using Referable = std::enable_shared_from_this<_T>;
+
     class Buffer {
     public:
         using byte_t = u8;

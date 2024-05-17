@@ -88,6 +88,14 @@ namespace Toolbox::Game {
 
         u32 allocGameMemory(u32 heap_ptr, u32 size, u32 alignment);
 
+        bool constructThread(u32 thread_ptr, u32 func, u32 parameter, u32 stack, u32 stackSize,
+                             u32 priority, u16 attributes);
+
+        // Blocking
+        void waitMutex(u32 mutex_ptr);
+        void lockMutex(u32 thread_id, u32 mutex_ptr);
+        void unlockMutex(u32 thread_id, u32 mutex_ptr);
+
         u32 listInsert(u32 list_ptr, u32 iter_at, u32 item_ptr);
         u32 listBegin(u32 list_ptr) const;
         u32 listEnd(u32 list_ptr) const;

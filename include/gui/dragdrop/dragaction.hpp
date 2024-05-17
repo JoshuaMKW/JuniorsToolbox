@@ -15,7 +15,7 @@ namespace Toolbox::UI {
         DragAction()                   = default;
 
     public:
-        DragAction(const DragAction &) = delete;
+        DragAction(const DragAction &) = default;
         DragAction(DragAction &&)      = default;
 
         [[nodiscard]] ImVec2 getHotSpot() const { return m_hot_spot; }

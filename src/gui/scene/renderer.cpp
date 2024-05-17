@@ -617,19 +617,19 @@ namespace Toolbox::UI {
                     ud_delta -= 1;
                 }
                 if (Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT)) {
-                    lr_delta *= 10;
-                    ud_delta *= 10;
+                    lr_delta *= 10.0f;
+                    ud_delta *= 10.0f;
                 }
 
                 if (m_is_window_hovered) {
                     double delta_x, delta_y;
                     Input::GetMouseScrollDelta(delta_x, delta_y);
-                    lr_delta += delta_x * 10.0f;
-                    ud_delta += delta_y * 10.0f;
+                    lr_delta += static_cast<float>(delta_x * 10.0f);
+                    ud_delta += static_cast<float>(delta_y * 10.0f);
                 }
 
-                lr_delta *= settings.m_camera_speed * delta_time * 500.0f;
-                ud_delta *= settings.m_camera_speed * delta_time * 500.0f;
+                lr_delta *= static_cast<float>(settings.m_camera_speed * delta_time * 500.0f);
+                ud_delta *= static_cast<float>(settings.m_camera_speed * delta_time * 500.0f);
 
                 m_camera.translateLeftRight(-lr_delta);
                 m_camera.translateFwdBack(ud_delta);

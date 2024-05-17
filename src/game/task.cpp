@@ -17,6 +17,14 @@ using namespace Toolbox;
 
 namespace Toolbox::Game {
 
+    namespace {
+        std::string StringifyFPR(const Interpreter::Register::FPR &fpr) {
+            double fpr_val        = fpr.ps0AsDouble();
+            std::string formatter = fpr_val < 0.0 ? "{:9.9g}" : "{:10.10g}";
+            return std::format("{:10.09g}", fpr_val);
+        }
+    }  // namespace
+
     static std::vector<std::string>
     StringifySnapshot(const Interpreter::Register::RegisterSnapshot &snapshot) {
         std::vector<std::string> result;
@@ -30,11 +38,12 @@ namespace Toolbox::Game {
                 i + 24, snapshot.m_gpr[i + 24]));
         }
         for (size_t i = 0; i < 8; ++i) {
-            result.push_back(std::format(
-                "| f{:<2} = {:.08f}, f{:<2} = {:.08f}, f{:<2} = {:.08f}, f{:<2} = {:.08f} |", i,
-                snapshot.m_fpr[i].ps0AsDouble(), i + 8, snapshot.m_fpr[i + 8].ps0AsDouble(), i + 16,
-                snapshot.m_fpr[i + 16].ps0AsDouble(), i + 24,
-                snapshot.m_fpr[i + 24].ps0AsDouble()));
+            result.push_back(std::format("| f{:<2} = {}, f{:<2} = {}, f{:<2} = "
+                                         "{}, f{:<2} = {} |",
+                                         i, StringifyFPR(snapshot.m_fpr[i]), i + 8,
+                                         StringifyFPR(snapshot.m_fpr[i + 8]), i + 16,
+                                         StringifyFPR(snapshot.m_fpr[i + 16]), i + 24,
+                                         StringifyFPR(snapshot.m_fpr[i + 24])));
         }
         result.push_back(
             "--------------------------------------------------------------------------");
@@ -80,8 +89,7 @@ namespace Toolbox::Game {
         while (!m_kill_flag.load()) {
             AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
-            DolphinCommunicator &communicator =
-                GUIApplication::instance().getDolphinCommunicator();
+            DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
 
             m_game_interpreter.setMemoryBuffer(communicator.manager().getMemoryView(),
                                                communicator.manager().getMemorySize());
@@ -120,10 +128,89 @@ namespace Toolbox::Game {
             return 0;
         }
 
+        // u32 spoof_thread_id = static_cast<u32>(UUID64());
+        // u32 spoof_thread_id = communicator.read<u32>(0x800000E4).value();
+        u32 spoof_thread_id = 0x80002B00;
+
+        // constructThread(spoof_thread_id, 0, 0, 0x80000A00, 0x1F0, 18, 0);
+
+        // We must respect the mutex
+        //lockMutex(spoof_thread_id, heap_ptr + 0x18);
+
+        waitMutex(heap_ptr + 0x18);
+
         u32 args[3]   = {heap_ptr, size, alignment};
         auto snapshot = m_game_interpreter.evaluateFunction(alloc_fn_ptr, 3, args, 0, nullptr);
 
+        //unlockMutex(spoof_thread_id, heap_ptr + 0x18);
+
         return static_cast<u32>(snapshot.m_gpr[3]);
+    }
+
+    bool TaskCommunicator::constructThread(u32 thread_ptr, u32 func, u32 parameter, u32 stack,
+                                           u32 stackSize, u32 priority, u16 attributes) {
+        u32 args[7] = {thread_ptr, func, parameter, stack, stackSize, priority, attributes};
+        Interpreter::Register::RegisterSnapshot snapshot =
+            m_game_interpreter.evaluateFunction(0x80348948, 7, args, 0, nullptr);
+        return static_cast<bool>(snapshot.m_gpr[3]);
+    }
+
+    void TaskCommunicator::waitMutex(u32 mutex_ptr) {
+        while (true) {
+            DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+            AppSettings &settings             = SettingsManager::instance().getCurrentProfile();
+            u32 mutex_lock_count              = communicator.read<u32>(mutex_ptr + 0xC).value();
+            if (mutex_lock_count == 0) {
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
+        }
+    }
+
+    void TaskCommunicator::lockMutex(u32 thread_ptr, u32 mutex_ptr) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        AppSettings &settings             = SettingsManager::instance().getCurrentProfile();
+
+        while (true) {
+            u32 mutex_thread_ptr = communicator.read<u32>(mutex_ptr + 0x8).value();
+            u32 mutex_lock_count = communicator.read<u32>(mutex_ptr + 0xC).value();
+            if (mutex_thread_ptr == 0) {
+                communicator.write<u32>(mutex_ptr + 0x8, thread_ptr);
+                communicator.write<u32>(mutex_ptr + 0xC, mutex_lock_count + 1);
+                u32 thread_mutex_ptr = communicator.read<u32>(thread_ptr + 0x2F8).value();
+                if (thread_mutex_ptr == 0) {
+                    communicator.write<u32>(thread_ptr + 0x2F4, mutex_ptr);
+                } else {
+                    communicator.write<u32>(thread_ptr + 0x10, mutex_ptr);
+                }
+                communicator.write<u32>(mutex_ptr + 0x14, thread_mutex_ptr);
+                communicator.write<u32>(mutex_ptr + 0x10, 0);
+                communicator.write<u32>(thread_ptr + 0x2F8, mutex_ptr);
+                return;
+            } else if (mutex_thread_ptr == thread_ptr) {
+                communicator.write<u32>(mutex_ptr + 0xC, mutex_lock_count + 1);
+                return;
+            }
+            communicator.write<u32>(thread_ptr + 0x2F0, mutex_ptr);
+            std::this_thread::sleep_for(std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
+            communicator.write<u32>(thread_ptr + 0x2F0, 0);
+        }
+    }
+
+    void TaskCommunicator::unlockMutex(u32 thread_ptr, u32 mutex_ptr) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        u32 mutex_thread_ptr = communicator.read<u32>(mutex_ptr + 0x8).value();
+        u32 mutex_lock_count = communicator.read<u32>(mutex_ptr + 0xC).value();
+        if (mutex_thread_ptr == thread_ptr) {
+            if (mutex_lock_count - 1 == 0) {
+                communicator.write<u32>(mutex_ptr + 0x8, 0);
+                communicator.write<u32>(mutex_ptr + 0xC, 0);
+            } else {
+                communicator.write<u32>(mutex_ptr + 0xC, mutex_lock_count - 1);
+            }
+            return;
+        }
     }
 
     u32 TaskCommunicator::listInsert(u32 list_ptr, u32 iter_at, u32 item_ptr) {
@@ -247,7 +334,7 @@ namespace Toolbox::Game {
 
                 {
                     // Get stack pointer
-                    u32 alloc_ptr = allocGameMemory(system_heap_ptr, 0x4000, 0x4);
+                    u32 alloc_ptr = allocGameMemory(system_heap_ptr, 0x2000, 0x4);
                     if (alloc_ptr == 0) {
                         TOOLBOX_ERROR("(Task) Failed to request memory for stack frame!");
                         return false;
@@ -261,7 +348,7 @@ namespace Toolbox::Game {
             u32 cached_buffer_ptr = communicator.read<u32>(0x800001C4).value();
             if (cached_buffer_ptr == 0) {
                 // Get data buffer
-                u32 alloc_ptr = allocGameMemory(system_heap_ptr, 0x10000, 0x4);
+                u32 alloc_ptr = allocGameMemory(system_heap_ptr, 0x8000, 0x4);
                 if (alloc_ptr == 0) {
                     TOOLBOX_ERROR("(Task) Failed to request memory for stack frame!");
                     return false;
@@ -726,7 +813,8 @@ namespace Toolbox::Game {
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
-            return make_error<void>("Task", "Failed to set object transform in scene (Scene not loaded)!");
+            return make_error<void>("Task",
+                                    "Failed to set object transform in scene (Scene not loaded)!");
         }
 
         u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
@@ -747,9 +835,10 @@ namespace Toolbox::Game {
         Transform transform                 = getMetaValue<Transform>(transform_member, 0).value();
         transform.m_translation             = translation;
         transform.m_rotation                = rotation;
-        auto result = setMetaValue(transform_member, 0, transform);
+        auto result                         = setMetaValue(transform_member, 0, transform);
         if (!result) {
-            return make_error<void>("Task", "Failed to set object transform in scene (Member not found)!");
+            return make_error<void>("Task",
+                                    "Failed to set object transform in scene (Member not found)!");
         }
 
         return setObjectTransform(object, transform);
@@ -937,7 +1026,7 @@ namespace Toolbox::Game {
             });
         dolphin_interpreter->onInvalid([](u32 bad_instr_ptr, const std::string &cause,
                                           const Interpreter::Register::RegisterSnapshot &snapshot) {
-            TOOLBOX_ERROR_V("[Interpreter] Invalid instruction at PC = {:08X} (Reason: {}):",
+            TOOLBOX_ERROR_V("[Interpreter] Invalid instruction at PC = 0x{:08X} (Reason: {}):",
                             bad_instr_ptr, cause);
             std::vector<std::string> exception_message = StringifySnapshot(snapshot);
             for (auto &line : exception_message) {

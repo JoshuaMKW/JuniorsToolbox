@@ -37,12 +37,9 @@ namespace Toolbox::UI {
         ~ContextMenu() = default;
 
         void addOption(std::string_view label, const KeyBind &keybind, operator_t op);
-        void addOption(std::string_view label, std::initializer_list<KeyCode> keybind, operator_t op);
 
         void addOption(std::string_view label, const KeyBind &keybind, condition_t condition,
                        operator_t op);
-        void addOption(std::string_view label, std::initializer_list<KeyCode> keybind,
-                       condition_t condition, operator_t op);
 
         void addDivider();
 
@@ -67,31 +64,10 @@ namespace Toolbox::UI {
     }
 
     template <typename _DataT>
-    inline void ContextMenu<_DataT>::addOption(std::string_view name,
-                                               std::initializer_list<KeyCode> keybind, operator_t op) {
-        ContextOp option = {.m_name      = std::string(name),
-                            .m_keybind   = KeyBind(keybind),
-                            .m_condition = []() { return true; },
-                            .m_op        = op};
-        m_options.push_back(option);
-    }
-
-    template <typename _DataT>
     inline void ContextMenu<_DataT>::addOption(std::string_view name, const KeyBind &keybind,
                                                condition_t condition, operator_t op) {
         ContextOp option = {.m_name      = std::string(name),
                             .m_keybind   = keybind,
-                            .m_condition = condition,
-                            .m_op        = op};
-        m_options.push_back(option);
-    }
-
-    template <typename _DataT>
-    inline void ContextMenu<_DataT>::addOption(std::string_view name,
-                                               std::initializer_list<KeyCode> keybind,
-                                               condition_t condition, operator_t op) {
-        ContextOp option = {.m_name      = std::string(name),
-                            .m_keybind   = KeyBind(keybind),
                             .m_condition = condition,
                             .m_op        = op};
         m_options.push_back(option);

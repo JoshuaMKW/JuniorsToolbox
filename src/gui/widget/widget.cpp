@@ -14,7 +14,30 @@ namespace Toolbox::UI {
         GUIApplication::instance().dispatchEvent<BaseEvent, true>(getUUID(), EVENT_FOCUS_IN);
     }
 
-    void ImWidget::onAttach() {}
+    void ImWidget::onAttach() {
+        ImProcessLayer::onAttach();
+
+        ImVec2 init_size = {0, 0};
+
+        std::optional<ImVec2> default_size = defaultSize();
+        if (default_size) {
+            init_size = *default_size;
+        }
+
+        std::optional<ImVec2> min_size = minSize();
+        if (min_size) {
+            init_size.x = std::max(init_size.x, min_size->x);
+            init_size.y = std::max(init_size.y, min_size->y);
+        }
+
+        std::optional<ImVec2> max_size = maxSize();
+        if (max_size) {
+            init_size.x = std::min(init_size.x, max_size->x);
+            init_size.y = std::min(init_size.y, max_size->y);
+        }
+
+        setSize(init_size);
+    }
 
     void ImWidget::onImGuiRender(TimeStep delta_time) {
         std::string window_name = std::format("{}###{}", title(), getUUID());

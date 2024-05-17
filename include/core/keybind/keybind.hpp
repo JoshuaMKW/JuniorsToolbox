@@ -18,7 +18,7 @@ namespace Toolbox {
         KeyBind(KeyBind &&) noexcept = default;
         ~KeyBind()                   = default;
 
-        explicit KeyBind(std::initializer_list<Input::KeyCode> keys);
+        KeyBind(std::initializer_list<Input::KeyCode> keys);
         explicit KeyBind(const Input::KeyCodes &keys);
 
         [[nodiscard]] static KeyBind FromString(const std::string &);
