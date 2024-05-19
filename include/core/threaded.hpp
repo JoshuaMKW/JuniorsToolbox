@@ -12,7 +12,7 @@ namespace Toolbox {
         virtual _ExitT tRun(void *param) = 0;
 
     public:
-        virtual ~Threaded() { tKill(false); }
+        virtual ~Threaded() { tKill(!_m_detached); }
 
         // Starts the detached thread
         void tStart(bool detached, void *param) {
@@ -61,6 +61,9 @@ namespace Toolbox {
         }
 
         bool tIsKilled() const { return _m_killed; }
+
+    protected:
+        bool tIsSignalKill() const { return _m_kill_flag.load(); }
 
     private:
         void tRun_(void *param) {

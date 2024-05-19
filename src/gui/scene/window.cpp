@@ -44,6 +44,7 @@
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 
 #include <glm/gtx/euler_angles.hpp>
+#include "gui/scene/window.hpp"
 
 using namespace Toolbox;
 
@@ -105,7 +106,7 @@ namespace Toolbox::UI {
     SceneWindow::SceneWindow() : ImWindow("Scene Editor") {
         m_properties_render_handler = renderEmptyProperties;
 
-        m_communicator.tStart(true, nullptr);
+        m_communicator.tStart(false, nullptr);
 
         buildContextMenuVirtualObj();
         buildContextMenuGroupObj();
@@ -2203,4 +2204,5 @@ namespace Toolbox::UI {
             }
         }
     }
+
 };  // namespace Toolbox::UI

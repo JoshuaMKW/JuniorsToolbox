@@ -19,8 +19,8 @@ using namespace Toolbox::UI;
 
 namespace Toolbox::Dolphin {
 
-    void DolphinCommunicator::run() {
-        while (!m_kill_flag.load()) {
+    void DolphinCommunicator::tRun(void *param) {
+        while (!tIsSignalKill()) {
             AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
             if (!m_hook_flag.load()) {
@@ -42,8 +42,6 @@ namespace Toolbox::Dolphin {
 
             std::this_thread::sleep_for(std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
         }
-
-        m_kill_condition.notify_all();
     }
 
 }  // namespace Toolbox::Dolphin

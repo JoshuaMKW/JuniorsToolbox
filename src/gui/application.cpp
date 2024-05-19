@@ -27,6 +27,8 @@
 #include "core/core.hpp"
 #include "dolphin/hook.hpp"
 #include "gui/application.hpp"
+#include "gui/scene/window.hpp"
+#include "gui/pad/window.hpp"
 #include "gui/scene/ImGuizmo.h"
 
 // void ImGuiSetupTheme(bool, float);
@@ -166,7 +168,7 @@ namespace Toolbox {
 
         determineEnvironmentConflicts();
 
-        m_dolphin_communicator.start();
+        m_dolphin_communicator.tStart(false, nullptr);
     }
 
     void GUIApplication::onUpdate(TimeStep delta_time) {
@@ -209,7 +211,7 @@ namespace Toolbox {
 
         m_windows.clear();
 
-        m_dolphin_communicator.kill();
+        m_dolphin_communicator.tKill(true);
     }
 
     void GUIApplication::render(TimeStep delta_time) {  // Begin actual rendering
@@ -315,12 +317,26 @@ namespace Toolbox {
 
             ImGui::EndMenu();
         }
+
         if (ImGui::BeginMenu("Edit")) {
             if (ImGui::MenuItem(ICON_FK_COG " Settings")) {
                 m_options_open = true;
             }
             ImGui::EndMenu();
         }
+
+        if (ImGui::BeginMenu("Window")) {
+            if (ImGui::MenuItem("BMG")) {
+                
+            }
+            if (ImGui::MenuItem("PAD")) {
+                auto pad_window = make_referable<PadInputWindow>();
+                pad_window->open();
+                addWindow(pad_window);
+            }
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu(ICON_FK_QUESTION_CIRCLE)) {
             if (ImGui::MenuItem("About")) {
                 m_options_open = true;

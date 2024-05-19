@@ -7,6 +7,7 @@
 
 #include "core/core.hpp"
 #include "core/types.hpp"
+#include "core/threaded.hpp"
 
 #include "dolphin/hook.hpp"
 
@@ -25,29 +26,11 @@ namespace Toolbox::Dolphin {
             std::chrono::milliseconds(static_cast<u32>(1000 / framerate)));
     }
 
-    class DolphinCommunicator {
+    class DolphinCommunicator : public Threaded<void> {
     public:
         DolphinCommunicator() = default;
-        ~DolphinCommunicator() { kill(); }
 
         DolphinHookManager &manager() const { return DolphinHookManager::instance(); }
-
-        // Starts the detached thread
-        void start() {
-            if (!m_started) {
-                m_thread  = std::thread(&DolphinCommunicator::run, this);
-                m_started = true;
-            }
-        }
-
-        // Waits until the running thread is killed
-        void kill() {
-            m_kill_flag.store(true);
-            m_kill_condition.notify_one();
-
-            std::unique_lock<std::mutex> lk(m_mutex);
-            m_kill_condition.wait(lk);
-        }
 
         void signalHook() { m_hook_flag.store(true); }
 
@@ -81,7 +64,7 @@ namespace Toolbox::Dolphin {
         }
 
     protected:
-        void run();
+        void tRun(void *param) override;
 
     private:
         bool m_started = false;
@@ -90,9 +73,6 @@ namespace Toolbox::Dolphin {
         std::thread m_thread;
 
         std::atomic<bool> m_hook_flag;
-
-        std::atomic<bool> m_kill_flag;
-        std::condition_variable m_kill_condition;
     };
 
 }  // namespace Toolbox::Dolphin
