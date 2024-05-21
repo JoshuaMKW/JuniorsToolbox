@@ -415,10 +415,12 @@ namespace Toolbox {
 
                 auto file_result = Toolbox::is_regular_file(path);
                 if (!file_result) {
+                    ImGuiFileDialog::Instance()->Close();
                     return;
                 }
 
                 if (!file_result.value()) {
+                    ImGuiFileDialog::Instance()->Close();
                     return;
                 }
                 m_load_path = path.parent_path();
@@ -426,6 +428,7 @@ namespace Toolbox {
                 if (path.extension() == ".szs" || path.extension() == ".arc") {
                     auto scene_window = make_referable<SceneWindow>();
                     if (!scene_window->onLoadData(path)) {
+                        ImGuiFileDialog::Instance()->Close();
                         return;
                     }
                     scene_window->open();

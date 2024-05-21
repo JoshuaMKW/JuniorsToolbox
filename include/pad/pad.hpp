@@ -49,16 +49,22 @@ namespace Toolbox {
         PadData &operator=(const PadData &) = default;
         PadData &operator=(PadData &&)      = default;
 
-        constexpr f32 convertAngleS16ToFloat(s16 angle) {
+        constexpr f32 convertAngleS16ToFloat(s16 angle) const {
             return static_cast<f32>(angle) / 182.04445f;
         }
 
-        constexpr s16 convertAngleFloatToS16(f32 angle) {
+        constexpr s16 convertAngleFloatToS16(f32 angle) const {
             return static_cast<s16>(angle * 182.04445f);
         }
 
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
+
+        Result<void, SerialError> toText(std::ofstream &out) const;
+        Result<void, SerialError> fromText(std::ifstream &in);
+
+        u32 getFrameCount() const noexcept { return m_frame_count; }
+        void setFrameCount(u32 frame_count) noexcept { m_frame_count = frame_count; }
 
         size_t getPadAnalogMagnitudeInfoCount() const noexcept { return m_analog_magnitude.size(); }
         size_t getPadAnalogDirectionInfoCount() const noexcept { return m_analog_direction.size(); }

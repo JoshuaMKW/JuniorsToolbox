@@ -8,6 +8,7 @@
 #include <string_view>
 #include <vector>
 
+#include "core/clipboard.hpp"
 #include "core/memory.hpp"
 #include "fsystem.hpp"
 #include "objlib/object.hpp"
@@ -15,10 +16,11 @@
 #include "scene/scene.hpp"
 #include "smart_resource.hpp"
 
-#include "core/clipboard.hpp"
 #include "game/task.hpp"
 #include "gui/application.hpp"
+#include "gui/context_menu.hpp"
 #include "gui/image/imagepainter.hpp"
+#include "gui/pad/window.hpp"
 #include "gui/property/property.hpp"
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
@@ -28,35 +30,63 @@
 #include "gui/scene/renderer.hpp"
 #include "gui/window.hpp"
 
-#include "gui/pad/window.hpp"
-#include <gui/context_menu.hpp>
+#include <ImGuiFileDialog.h>
 #include <imgui.h>
 
 namespace Toolbox::UI {
 
-    PadInputWindow::PadInputWindow() : ImWindow("Pad Recorder") {
+    PadInputWindow::PadInputWindow() : ImWindow("Pad Recorder"), m_pad_rail("mariomodoki") {
         m_pad_recorder.tStart(false, nullptr);
+        m_pad_recorder.onCreateLink(
+            [this](const ReplayLinkNode &node) { tryReuseOrCreateRailNode(node); });
     }
 
     PadInputWindow::~PadInputWindow() {}
 
     void PadInputWindow::onRenderMenuBar() {
-        if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Open")) {
-                /*auto path = Toolbox::openFileDialog();
-                if (path) {
-                    onLoadData(*path);
-                }*/
+        if (ImGui::BeginMenuBar()) {
+            if (ImGui::BeginMenu("File")) {
+                if (ImGui::MenuItem("Open")) {
+                    m_is_open_dialog_open = true;
+                }
+
+                if (!m_load_path) {
+                    ImGui::BeginDisabled();
+                }
+
+                if (ImGui::MenuItem("Save")) {
+                    m_is_save_default_ready = true;
+                    m_is_save_dialog_open   = true;
+                }
+
+                if (!m_load_path) {
+                    ImGui::EndDisabled();
+                }
+
+                if (ImGui::MenuItem("Save As")) {
+                    m_is_save_dialog_open = true;
+                }
+
+                if (ImGui::MenuItem("Save As Text")) {
+                    m_is_save_text_dialog_open = true;
+                }
+
+                ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem("Save")) {
-                /*auto path = Toolbox::saveFileDialog();
-                if (path) {
-                    onSaveData(*path);
-                }*/
+            if (ImGui::BeginMenu("Settings")) {
+                bool inverse_state = m_pad_recorder.isCameraInversed();
+                if (ImGui::Checkbox("Inverse Camera Transform", &inverse_state)) {
+                    m_pad_recorder.setCameraInversed(inverse_state);
+                }
+                ImGui::EndMenu();
             }
 
-            ImGui::EndMenu();
+            if (ImGui::MenuItem("Help")) {
+                // TODO: Show help dialog
+            }
+
+            ImGui::EndMenuBar();
         }
     }
 
@@ -64,12 +94,14 @@ namespace Toolbox::UI {
         renderRecordPanel();
         renderControllerView();
         renderRecordedInputData();
+        renderFileDialogs();
     }
 
     void PadInputWindow::renderRecordPanel() {
         float window_bar_height =
             ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
-        ImGui::SetCursorPos({0, window_bar_height + 10});
+        window_bar_height *= 2.0f;
+        ImGui::SetCursorPos({0, window_bar_height + 5});
 
         const ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
         const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
@@ -115,6 +147,10 @@ namespace Toolbox::UI {
             m_pad_recorder.stopRecording();
         }
 
+        if (!is_recording) {
+            ImGui::EndDisabled();
+        }
+
         ImGui::PopStyleColor(3);
 
         ImGui::SameLine();
@@ -129,10 +165,6 @@ namespace Toolbox::UI {
         }
 
         ImGui::PopStyleColor(3);
-
-        if (!is_recording) {
-            ImGui::EndDisabled();
-        }
     }
 
     void PadInputWindow::renderControllerView() {
@@ -146,36 +178,203 @@ namespace Toolbox::UI {
     void PadInputWindow::renderRecordedInputData() {
         ImGui::BeginChild("Recorded Input Data", {0, 0}, true);
 
-        ImGui::Text("Recorded Input Data");
+        std::string window_preview = "Scene not selected.";
+
+        const std::vector<RefPtr<ImWindow>> &windows = GUIApplication::instance().getWindows();
+        auto window_it =
+            std::find_if(windows.begin(), windows.end(), [this](RefPtr<ImWindow> window) {
+                return window->getUUID() == m_attached_scene_uuid;
+            });
+        if (window_it != windows.end()) {
+            window_preview = (*window_it)->context();
+        }
+
+        if (ImGui::BeginCombo("Scene Context", window_preview.c_str(),
+                              ImGuiComboFlags_PopupAlignLeft)) {
+            for (RefPtr<const ImWindow> window : windows) {
+                if (window->name() != "Scene Editor") {
+                    continue;
+                }
+                bool selected = window->getUUID() == m_attached_scene_uuid;
+                if (ImGui::Selectable(window->context().c_str(), &selected)) {
+                    m_attached_scene_uuid = window->getUUID();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        if (ImGui::Button("Apply Scene Nodes")) {
+            GUIApplication::instance().dispatchEvent<SceneCreateRailEvent, true>(
+                m_attached_scene_uuid, m_pad_rail);
+        }
 
         ImGui::EndChild();
     }
 
+    void PadInputWindow::renderFileDialogs() {
+        if (m_is_open_dialog_open) {
+            ImGuiFileDialog::Instance()->OpenDialog(
+                "OpenPadDialog", "Choose Folder", nullptr,
+                m_load_path ? m_load_path->string().c_str() : ".", "");
+        }
+
+        if (ImGuiFileDialog::Instance()->Display("OpenPadDialog")) {
+            m_is_open_dialog_open = false;
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
+
+                auto file_result = Toolbox::is_directory(path);
+                if (!file_result) {
+                    ImGuiFileDialog::Instance()->Close();
+                    return;
+                }
+
+                if (!file_result.value()) {
+                    ImGuiFileDialog::Instance()->Close();
+                    return;
+                }
+
+                m_load_path = path.parent_path();
+
+                m_pad_recorder.resetRecording();
+                m_pad_recorder.loadFromFolder(*m_load_path);
+
+                ImGuiFileDialog::Instance()->Close();
+                return;
+            }
+        }
+
+        if (m_is_save_dialog_open) {
+            if (!m_is_save_default_ready) {
+                ImGuiFileDialog::Instance()->OpenDialog(
+                    "SavePadDialog", "Choose Folder", nullptr,
+                    m_load_path ? m_load_path->string().c_str() : ".", "");
+            } else {
+                m_pad_recorder.saveToFolder(*m_load_path);
+                return;
+            }
+        }
+
+        if (ImGuiFileDialog::Instance()->Display("SavePadDialog")) {
+            m_is_save_dialog_open = false;
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
+
+                m_load_path = path.parent_path();
+
+                m_pad_recorder.saveToFolder(*m_load_path);
+
+                ImGuiFileDialog::Instance()->Close();
+                return;
+            }
+        }
+
+#if 0
+        if (m_is_save_text_dialog_open) {
+            ImGuiFileDialog::Instance()->OpenDialog(
+                "SavePadTextDialog", "Choose File", ".txt",
+                m_load_path ? m_load_path->string().c_str() : ".", "");
+        }
+
+        if (ImGuiFileDialog::Instance()->Display("SavePadTextDialog")) {
+            m_is_save_dialog_open = false;
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
+
+                m_load_path = path.parent_path();
+                m_file_path = path;
+
+                if (m_file_path->extension() == ".txt") {
+                    std::ofstream outstr = std::ofstream(*m_file_path, std::ios::out);
+                    if (!outstr.is_open()) {
+                        TOOLBOX_ERROR("[PAD RECORD] Failed to save .txt file.");
+                        ImGuiFileDialog::Instance()->Close();
+                        return;
+                    }
+                    m_pad_data.toText(outstr);
+                    ImGuiFileDialog::Instance()->Close();
+                    return;
+                }
+
+                TOOLBOX_ERROR("[PAD RECORD] Unsupported file type.");
+                ImGuiFileDialog::Instance()->Close();
+                return;
+            }
+        }
+#endif
+    }
+
     void PadInputWindow::loadMimePadData(Buffer &buffer) {}
 
+    void PadInputWindow::tryReuseOrCreateRailNode(const ReplayLinkNode &link_node) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        u32 player_ptr                    = communicator.read<u32>(0x8040E108).value();
+        if (!player_ptr) {
+            if (m_pad_recorder.isCameraInversed()) {
+                TOOLBOX_ERROR("[PAD RECORD] Player pointer is null. Please ensure that the game is "
+                              "running and the player is loaded.");
+                RefPtr<RailNode> node = make_referable<RailNode>(0, 0, 0);
+                m_pad_rail.addNode(node);
+                if (m_pad_rail.nodes().size() > 1) {
+                    m_pad_rail.connectNodeToNeighbors(m_pad_rail.nodes().size() - 2, true);
+                }
+                return;
+            }
+            return;
+        }
+        glm::vec3 player_position = {communicator.read<f32>(player_ptr + 0x10).value(),
+                                     communicator.read<f32>(player_ptr + 0x14).value(),
+                                     communicator.read<f32>(player_ptr + 0x18).value()};
+
+        std::vector<Rail::Rail::node_ptr_t> rail_nodes = m_pad_rail.nodes();
+        auto node_it = std::find_if(rail_nodes.begin(), rail_nodes.end(),
+                                    [&player_position](const Rail::Rail::node_ptr_t &node) {
+                                        glm::vec3 node_pos = node->getPosition();
+                                        glm::vec3 pos_diff = node_pos - player_position;
+                                        return std::sqrtf(glm::dot(pos_diff, pos_diff)) < 100.0f;
+                                    });
+        if (node_it != rail_nodes.end()) {
+            TOOLBOX_INFO("[PAD RECORD] Reusing existing rail node and snapping player to node.");
+            glm::vec3 node_position = (*node_it)->getPosition();
+            communicator.write<f32>(player_ptr + 0x10, node_position.x);
+            communicator.write<f32>(player_ptr + 0x14, node_position.y);
+            communicator.write<f32>(player_ptr + 0x18, node_position.z);
+            return;
+        }
+
+        TOOLBOX_INFO("[PAD RECORD] Creating new rail node and snapping player to node.");
+
+        glm::vec<3, s16> node_position = {static_cast<s16>(player_position.x),
+                                          static_cast<s16>(player_position.y),
+                                          static_cast<s16>(player_position.z)};
+        RefPtr<RailNode> node =
+            make_referable<RailNode>(node_position.x, node_position.y, node_position.z);
+        m_pad_rail.addNode(node);
+        if (m_pad_rail.nodes().size() > 1) {
+            m_pad_rail.connectNodeToNeighbors(m_pad_rail.nodes().size() - 2, true);
+        }
+
+        communicator.write<f32>(player_ptr + 0x10, static_cast<f32>(node_position.x));
+        communicator.write<f32>(player_ptr + 0x14, static_cast<f32>(node_position.y));
+        communicator.write<f32>(player_ptr + 0x18, static_cast<f32>(node_position.z));
+    }
+
     bool PadInputWindow::onLoadData(const std::filesystem::path &path) {
-        if (!Toolbox::exists(path)) {
+        auto file_result = Toolbox::is_directory(path);
+        if (!file_result) {
             return false;
         }
 
-        if (Toolbox::is_regular_file(path)) {
-            if (path.extension().string() != "pad") {
+        if (!file_result.value()) {
+            return false;
+        }
+
+        if (Toolbox::is_directory(path)) {
+            if (!path.filename().string().starts_with("pad")) {
                 return false;
             }
 
-            std::ifstream instr = std::ifstream(path, std::ios::binary | std::ios::in);
-            if (!instr.is_open()) {
-                return false;
-            }
-
-            Deserializer in(instr.rdbuf());
-            auto result = m_pad_data.deserialize(in);
-            if (!result) {
-                LogError(result.error());
-                return false;
-            }
-
-            return true;
+            return m_pad_recorder.loadFromFolder(path);
         }
 
         // TODO: Implement opening from archives.
@@ -183,20 +382,10 @@ namespace Toolbox::UI {
     }
 
     bool PadInputWindow::onSaveData(std::optional<std::filesystem::path> path) {
-        if (!path) {
+        if (!path && !m_load_path) {
             return false;
         }
-
-        std::ofstream outstr = std::ofstream(*path, std::ios::binary | std::ios::out);
-        Serializer out(outstr.rdbuf());
-
-        auto result = m_pad_data.serialize(out);
-        if (!result) {
-            LogError(result.error());
-            return false;
-        }
-
-        return true;
+        return m_pad_recorder.saveToFolder(path ? *path : *m_load_path);
     }
 
     void PadInputWindow::onImGuiUpdate(TimeStep delta_time) {}

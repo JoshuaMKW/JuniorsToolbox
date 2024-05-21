@@ -32,6 +32,29 @@
 
 namespace Toolbox::UI {
 
+#define SCENE_CREATE_RAIL_EVENT 100
+
+    class SceneCreateRailEvent : public BaseEvent {
+    private:
+        SceneCreateRailEvent() = default;
+
+    public:
+        SceneCreateRailEvent(const SceneCreateRailEvent &)     = default;
+        SceneCreateRailEvent(SceneCreateRailEvent &&) noexcept = default;
+
+        SceneCreateRailEvent(const UUID64 &target_id, const Rail::Rail &rail);
+
+        [[nodiscard]] const Rail::Rail &getRail() const noexcept { return m_rail; }
+
+        ScopePtr<ISmartResource> clone(bool deep) const override;
+
+        SceneCreateRailEvent &operator=(const SceneCreateRailEvent &)     = default;
+        SceneCreateRailEvent &operator=(SceneCreateRailEvent &&) noexcept = default;
+
+    private:
+        Rail::Rail m_rail;
+    };
+
     class SceneWindow final : public ImWindow {
     public:
         SceneWindow();
@@ -133,6 +156,7 @@ namespace Toolbox::UI {
         void onContextMenuEvent(RefPtr<ContextMenuEvent> ev) override;
         void onDragEvent(RefPtr<DragEvent> ev) override;
         void onDropEvent(RefPtr<DropEvent> ev) override;
+        void onEvent(RefPtr<BaseEvent> ev) override;
 
     private:
         ScopePtr<Toolbox::SceneInstance> m_current_scene;

@@ -51,6 +51,8 @@ namespace Toolbox {
             std::erase(m_windows, window);
         }
 
+        const std::vector<RefPtr<ImWindow>> &getWindows() const { return m_windows; }
+
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> &getSceneObjectClipboard() {
             return m_hierarchy_clipboard;
         }

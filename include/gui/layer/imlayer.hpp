@@ -35,7 +35,7 @@ namespace Toolbox::UI {
         void setPos(const ImVec2 &pos) noexcept { m_position = pos; }
 
         void onUpdate(TimeStep delta_time) override final;
-        void onEvent(RefPtr<BaseEvent> ev) override final;
+        void onEvent(RefPtr<BaseEvent> ev) override;
 
     protected:
         virtual void onImGuiUpdate(TimeStep delta_time) {}

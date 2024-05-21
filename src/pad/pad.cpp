@@ -1,5 +1,8 @@
 #include "pad/pad.hpp"
 
+#include <fstream>
+#include <magic_enum.hpp>
+
 namespace Toolbox {
 
     template <typename T>
@@ -66,6 +69,8 @@ namespace Toolbox {
         u32 analog_direction_data =
             static_cast<u32>(analog_direction_frames + (m_analog_direction.size() << 2));
 
+        // TODO: Nintendo files have some form of padding/alignment data that seems unimportant
+
         u32 button_input_frames =
             static_cast<u32>(analog_direction_data + (m_analog_direction.size() << 1));
         u32 button_input_data = static_cast<u32>(button_input_frames + (m_buttons.size() << 2));
@@ -74,7 +79,7 @@ namespace Toolbox {
         u32 trigger_l_data   = static_cast<u32>(trigger_l_frames + (m_trigger_l.size() << 2));
 
         u32 trigger_r_frames = static_cast<u32>(trigger_l_data + m_trigger_l.size());
-        u32 trigger_r_data   = static_cast<u32>(trigger_r_frames + m_trigger_r.size());
+        u32 trigger_r_data   = static_cast<u32>(trigger_r_frames + m_trigger_r.size() << 2);
 
         out.write<u32, std::endian::big>(analog_magnitude_frames);
         out.write<u32, std::endian::big>(analog_magnitude_data);
@@ -148,8 +153,8 @@ namespace Toolbox {
         m_analog_magnitude = deserializeInputAnalog<float>(
             in, analog_magnitude_frames, analog_magnitude_data, analog_magnitude_frames_size);
 
-        m_analog_magnitude = deserializeInputAnalog<float>(
-            in, analog_magnitude_frames, analog_magnitude_data, analog_magnitude_frames);
+        m_analog_direction = deserializeInputAnalog<s16>(
+            in, analog_direction_frames, analog_direction_data, analog_direction_frames_size);
 
         m_buttons = deserializeInputButtons(in, button_input_frames, button_input_data,
                                             button_input_frames_size);
@@ -162,6 +167,73 @@ namespace Toolbox {
 
         return {};
     }
+
+    Result<void, SerialError> PadData::toText(std::ofstream &out) const {
+        out << "# Analog Magnitude: ([How long in frames], [How far the stick is pushed from 0 to "
+               "32])"
+            << std::endl;
+        for (const auto &info : m_analog_magnitude) {
+            out << std::format("analog_magnitude({}, {})", info.m_frames_active, info.m_input_state)
+                << std::endl;
+        }
+        out << "# Actions for " << m_frame_count << " frames" << std::endl;
+
+        out << std::endl;
+
+        out << "# Analog Direction: ([How long in frames], [Stick Direction from -180 to 180)"
+            << std::endl;
+        for (const auto &info : m_analog_direction) {
+            out << std::format("analog_direction({}, {})", info.m_frames_active, convertAngleS16ToFloat(info.m_input_state))
+                << std::endl;
+        }
+        out << "# Actions for " << m_frame_count << " frames" << std::endl;
+
+        out << std::endl;
+
+        constexpr std::array<std::string_view, 16> c_button_names = {
+            "LEFT", "RIGHT", "DOWN", "UP", "Z", "R", "L", "0x0080", "A", "B", "X", "Y", "START"};
+
+        out << "# Buttons pressed: ([How long in frames], [Which buttons pressed])" << std::endl;
+
+        for (const auto &info : m_buttons) {
+            std::string str_input = "";
+            for (size_t i = 0; i < c_button_names.size(); i++) {
+                if ((info.m_input_state & PadButtons((1 << i))) != PadButtons::BUTTON_NONE) {
+                    if (!str_input.empty()) {
+                        str_input += "|";
+                    }
+                    str_input += c_button_names[i];
+                }
+            }
+            out << std::format("buttons_pressed({}, {})", info.m_frames_active, str_input)
+                << std::endl;
+        }
+        out << "# Actions for " << m_frame_count << " frames" << std::endl;
+
+        out << std::endl;
+
+        out << "# Trigger 1 held: ([How long in frames], [How far it is pushed from 0 to 150])"
+            << std::endl;
+        for (const auto &info : m_trigger_l) {
+            out << std::format("trigger_1_held({}, {})", info.m_frames_active, info.m_input_state)
+                << std::endl;
+        }
+        out << "# Actions for " << m_frame_count << " frames" << std::endl;
+
+        out << std::endl;
+
+        out << "# Trigger 2 held: ([How long in frames], [How far it is pushed from 0 to 150])"
+            << std::endl;
+        for (const auto &info : m_trigger_r) {
+            out << std::format("trigger_2_held({}, {})", info.m_frames_active, info.m_input_state)
+                << std::endl;
+        }
+        out << "# Actions for " << m_frame_count << " frames" << std::endl;
+
+        return {};
+    }
+
+    Result<void, SerialError> PadData::fromText(std::ifstream &in) { return {}; }
 
     u32 PadData::getPadAnalogMagnitudeStartFrame(size_t index) const {
         u32 start_frame = 0;

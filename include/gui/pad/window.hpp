@@ -17,6 +17,7 @@
 
 #include "core/clipboard.hpp"
 #include "game/task.hpp"
+#include "gui/event/event.hpp"
 #include "gui/image/imagepainter.hpp"
 #include "gui/property/property.hpp"
 #include "gui/scene/billboard.hpp"
@@ -27,7 +28,6 @@
 #include "gui/scene/renderer.hpp"
 #include "gui/window.hpp"
 
-#include <gui/context_menu.hpp>
 #include <imgui.h>
 
 namespace Toolbox::UI {
@@ -44,8 +44,11 @@ namespace Toolbox::UI {
         void renderRecordPanel();
         void renderControllerView();
         void renderRecordedInputData();
+        void renderFileDialogs();
 
         void loadMimePadData(Buffer &buffer);
+
+        void tryReuseOrCreateRailNode(const ReplayLinkNode &node);
 
     public:
         ImGuiWindowFlags flags() const override {
@@ -73,9 +76,9 @@ namespace Toolbox::UI {
         std::optional<ImVec2> maxSize() const override { return std::nullopt; }
 
         [[nodiscard]] std::string context() const override {
-            if (m_file_name == "")
+            if (!m_file_path)
                 return "(unknown)";
-            return m_file_name;
+            return m_file_path->string();
         }
         [[nodiscard]] bool unsaved() const override { return false; }
 
@@ -94,19 +97,24 @@ namespace Toolbox::UI {
         void onDropEvent(RefPtr<DropEvent> ev) override;
 
     private:
-        PadData m_pad_data;
-        PadRecorder m_pad_recorder;
+        UUID64 m_attached_scene_uuid;
 
-        std::string m_file_name = "";
+        PadRecorder m_pad_recorder;
+        Rail::Rail m_pad_rail;
+
+        std::optional<std::filesystem::path> m_file_path = std::nullopt;
+        std::optional<std::filesystem::path> m_load_path = std::nullopt;
 
         bool m_is_recording_input = false;
         u32 m_last_recorded_frame = 0;
 
         size_t m_controller_port = 0;
 
-        bool m_is_save_default_ready  = false;
-        bool m_is_save_as_dialog_open = false;
-        bool m_is_verify_open         = false;
+        bool m_is_save_default_ready    = false;
+        bool m_is_open_dialog_open      = false;
+        bool m_is_save_dialog_open      = false;
+        bool m_is_save_text_dialog_open = false;
+        bool m_is_verify_open           = false;
     };
 
 }  // namespace Toolbox::UI
