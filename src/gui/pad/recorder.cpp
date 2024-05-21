@@ -20,6 +20,19 @@ namespace Toolbox {
         }
     }
 
+    bool PadRecorder::hasRecordData(char from_link, char to_link) const {
+        return std::any_of(m_pad_datas.begin(), m_pad_datas.end(),
+                           [&](const PadDataLinkInfo &info) {
+                               return info.m_from_link == from_link && info.m_to_link == to_link;
+                           });
+    }
+
+    bool PadRecorder::isRecordComplete() const {
+        // TODO: Loop through all the links and check if they have a complete record
+        //       by checking the padinfos for each node in the links.
+        return false;
+    }
+
     void PadRecorder::startRecording() {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
@@ -42,17 +55,60 @@ namespace Toolbox {
             m_last_frame = 0;
         }
 
-        m_link_data.clearLinkNodes();
         initNewLinkData();
         resetRecordState();
         initNextInputData();
         m_record_flag.store(true);
     }
 
+    void PadRecorder::startRecording(char from_link, char to_link) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        if (!communicator.manager().isHooked()) {
+            TOOLBOX_ERROR("[PAD RECORD] Dolphin is not running or the memory is not hooked.");
+            return;
+        }
+
+        if (from_link == to_link) {
+            TOOLBOX_ERROR("[PAD RECORD] Cannot record to the same link.");
+            return;
+        }
+
+        if (from_link == '*' || to_link == '*') {
+            TOOLBOX_ERROR("[PAD RECORD] Cannot record to or from the sentinel link.");
+            return;
+        }
+
+        u32 application_ptr = 0x803E9700;
+        u32 director_ptr    = communicator.read<u32>(application_ptr + 0x4).value();
+        u8 director_type    = communicator.read<u8>(application_ptr + 0x8).value();
+
+        if (director_type == 5) {
+            m_last_frame = communicator.read<u32>(director_ptr + 0x5C).value();
+        } else if (m_camera_flag.load()) {
+            TOOLBOX_ERROR(
+                "[PAD RECORD] Director type is not 5. Please ensure that the game is in a "
+                "stage before recording.");
+            return;
+        } else {
+            m_last_frame = 0;
+        }
+
+        m_current_link = from_link;
+        m_next_link    = to_link;
+
+        resetRecordState();
+        initNextInputData(from_link, to_link);
+        m_record_flag.store(true);
+    }
+
     void PadRecorder::stopRecording() {
         m_record_flag.store(false);
-        initNewLinkData();
+        if (m_current_link == '*' || m_next_link == '*') {
+            initNewLinkData();
+        }
         resetRecordState();
+        m_current_link = '*';
+        m_next_link    = '*';
     }
 
     bool PadRecorder::loadFromFolder(const std::filesystem::path &folder_path) {
@@ -82,9 +138,10 @@ namespace Toolbox {
                     continue;
                 }
                 std::filesystem::path pad_path =
-                    folder_path / std::format("tutorial{}{}.bin",
-                                              std::tolower(node.m_node_name.name().back()),
-                                              std::tolower(node.m_infos[i].m_next_link));
+                    folder_path /
+                    std::format("tutorial{}{}.bin",
+                                static_cast<char>(std::tolower(node.m_node_name.name().back())),
+                                static_cast<char>(std::tolower(node.m_infos[i].m_next_link)));
                 std::ifstream pad_file(pad_path, std::ios::binary);
                 if (!pad_file.is_open()) {
                     TOOLBOX_ERROR_V("[PAD RECORD] Failed to open pad data file at '{}'.",
@@ -131,8 +188,9 @@ namespace Toolbox {
         for (size_t i = 0; i < m_pad_datas.size(); ++i) {
             const PadDataLinkInfo &pad_data = m_pad_datas[i];
             std::filesystem::path pad_path =
-                folder_path / std::format("tutorial{}{}.bin", std::tolower(pad_data.m_from_link),
-                                          std::tolower(pad_data.m_to_link));
+                folder_path / std::format("tutorial{}{}.bin",
+                                          static_cast<char>(std::tolower(pad_data.m_from_link)),
+                                          static_cast<char>(std::tolower(pad_data.m_to_link)));
             std::ofstream pad_file(pad_path, std::ios::binary);
             if (!pad_file.is_open()) {
                 TOOLBOX_ERROR_V("[PAD RECORD] Failed to open pad data file at '{}'.",
@@ -168,6 +226,7 @@ namespace Toolbox {
 
         bool is_new_link_button_pressed =
             (pressed_buttons & PadButtons::BUTTON_UP) != PadButtons::BUTTON_NONE;
+        bool is_isolated_link_recording = m_current_link != '*' && m_next_link != '*';
 
         held_buttons &= ~PadButtons::BUTTON_UP;
         pressed_buttons &= ~PadButtons::BUTTON_UP;
@@ -289,9 +348,14 @@ namespace Toolbox {
 
         if (is_new_link_button_pressed) {
             applyInputChunk();
-            initNextInputData();
-            initNewLinkData();
-            resetRecordState();
+            if (is_isolated_link_recording) {
+                stopRecording();
+            } else {
+                applyInputChunk();
+                initNextInputData();
+                initNewLinkData();
+                resetRecordState();
+            }
         }
     }
 
@@ -305,18 +369,41 @@ namespace Toolbox {
     }
 
     void PadRecorder::initNextInputData() {
-        char new_link_chr = static_cast<char>('A' + m_pad_datas.size() + 1);
-        char prev_link_chr =
-            m_pad_datas.size() > 0 ? static_cast<char>('A' + m_pad_datas.size()) : '*';
+        char new_link_chr  = static_cast<char>('A' + m_pad_datas.size() + 1);
+        char prev_link_chr = m_pad_datas.size() > 0 ? static_cast<char>('A' + m_pad_datas.size())
+                                                    : '*';
 
         PadDataLinkInfo pad_data = {};
-        pad_data.m_from_link = prev_link_chr;
-        pad_data.m_to_link   = new_link_chr;
+        pad_data.m_from_link     = prev_link_chr;
+        pad_data.m_to_link       = new_link_chr;
         m_pad_datas.push_back(std::move(pad_data));
     }
 
+    void PadRecorder::initNextInputData(char from_link, char to_link) {
+        PadDataLinkInfo pad_data = {};
+        pad_data.m_from_link     = from_link;
+        pad_data.m_to_link       = to_link;
+        auto pad_it =
+            std::find_if(m_pad_datas.begin(), m_pad_datas.end(), [&](const PadDataLinkInfo &info) {
+                return info.m_from_link == from_link && info.m_to_link == to_link;
+            });
+        if (pad_it == m_pad_datas.end()) {
+            m_pad_datas.push_back(std::move(pad_data));
+        }
+    }
+
     void PadRecorder::applyInputChunk() {
-        PadDataLinkInfo &pad_data = m_pad_datas.back();
+        if (m_pad_datas.empty()) {
+            return;
+        }
+        auto pad_it =
+            std::find_if(m_pad_datas.begin(), m_pad_datas.end(), [&](const PadDataLinkInfo &info) {
+                return info.m_from_link == m_current_link && info.m_to_link == m_next_link;
+            });
+        bool link_exists = pad_it != m_pad_datas.end() &&
+                           (m_current_link != '*' && m_next_link != '*');
+
+        PadDataLinkInfo &pad_data = link_exists ? *pad_it : m_pad_datas.back();
         pad_data.m_data.addPadButtonInput(m_button_info.m_start_frame,
                                           m_button_info.m_info.m_frames_active,
                                           m_button_info.m_info.m_input_state);

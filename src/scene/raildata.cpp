@@ -52,6 +52,16 @@ namespace Toolbox {
     void RailData::insertRail(size_t index, const Rail::Rail &rail) {
         auto new_rail = make_referable<Rail::Rail>(rail);
         new_rail->setSiblingID(m_next_sibling_id++);
+        auto rail_it = std::find_if(m_rails.begin(), m_rails.end(), [&](const rail_ptr_t& r) {
+            return r->name() == rail.name();
+        });
+        size_t existing_index = rail_it - m_rails.begin();
+        if (rail_it != m_rails.end()) {
+            m_rails.erase(rail_it);
+        }
+        if (index > existing_index) {
+            --index;
+        }
         m_rails.insert(m_rails.begin() + index, std::move(new_rail));
     }
 

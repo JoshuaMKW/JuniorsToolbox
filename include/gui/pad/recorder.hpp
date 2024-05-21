@@ -18,13 +18,13 @@ namespace Toolbox {
             PadInputInfo<T> m_info = {};
         };
 
+    public:
         struct PadDataLinkInfo {
             char m_from_link = '*';
             char m_to_link   = '*';
             PadData m_data   = {};
         };
-        
-    public:
+
         using create_link_cb = std::function<void(const ReplayLinkNode &)>;
 
         PadRecorder()                        = default;
@@ -35,24 +35,32 @@ namespace Toolbox {
         PadRecorder &operator=(const PadRecorder &)     = delete;
         PadRecorder &operator=(PadRecorder &&) noexcept = default;
 
-        const std::vector<PadDataLinkInfo> &data() const noexcept { return m_pad_datas; }
+        const std::vector<PadDataLinkInfo> &padData() const noexcept { return m_pad_datas; }
+        const ReplayLinkData &linkData() const noexcept { return m_link_data; }
 
-        u8 getPort() const { return m_port; }
+        [[nodiscard]] bool hasRecordData(char from_link, char to_link) const;
+
+        [[nodiscard]] u8 getPort() const { return m_port; }
         void setPort(u8 port) { m_port = port; }
 
-        PadTrimCommand getTrimState() const { return m_trim_state; }
+        [[nodiscard]] PadTrimCommand getTrimState() const { return m_trim_state; }
         void setTrimState(PadTrimCommand state) { m_trim_state = state; }
 
-        bool isCameraInversed() const { return m_camera_flag.load(); }
+        [[nodiscard]] bool isCameraInversed() const { return m_camera_flag.load(); }
         void setCameraInversed(bool inversed) { m_camera_flag.store(inversed); }
 
-        bool isRecording() const { return m_record_flag.load(); }
+        [[nodiscard]] bool isRecordComplete() const;
+        [[nodiscard]] bool isRecording() const { return m_record_flag.load(); }
+        [[nodiscard]] bool isRecording(char from_link, char to_link) const {
+            return isRecording() && m_current_link == from_link && m_next_link == to_link;
+        }
         void resetRecording() {
             m_record_flag.store(false);
             m_link_data.clearLinkNodes();
             m_pad_datas.clear();
         }
         void startRecording();
+        void startRecording(char from_link, char to_link);
         void stopRecording();
 
         bool loadFromFolder(const std::filesystem::path &folder_path);
@@ -64,6 +72,7 @@ namespace Toolbox {
         void tRun(void *param) override;
 
         void initNextInputData();
+        void initNextInputData(char from_link, char to_link);
         void applyInputChunk();
 
         void recordPadData();
@@ -80,6 +89,9 @@ namespace Toolbox {
         bool m_first_input_found = false;
         u32 m_start_frame        = 0;
         u32 m_last_frame         = 0;
+
+        char m_current_link = '*';
+        char m_next_link    = '*';
 
         PadRecordInfo<float> m_analog_magnitude_info = {};
         PadRecordInfo<s16> m_analog_direction_info   = {};

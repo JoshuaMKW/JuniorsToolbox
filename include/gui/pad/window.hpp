@@ -45,6 +45,7 @@ namespace Toolbox::UI {
         void renderControllerView();
         void renderRecordedInputData();
         void renderFileDialogs();
+        void renderLinkDataState();
 
         void loadMimePadData(Buffer &buffer);
 
@@ -97,7 +98,7 @@ namespace Toolbox::UI {
         void onDropEvent(RefPtr<DropEvent> ev) override;
 
     private:
-        UUID64 m_attached_scene_uuid;
+        UUID64 m_attached_scene_uuid = 0;
 
         PadRecorder m_pad_recorder;
         Rail::Rail m_pad_rail;

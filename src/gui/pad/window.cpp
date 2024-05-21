@@ -45,7 +45,15 @@ namespace Toolbox::UI {
 
     void PadInputWindow::onRenderMenuBar() {
         if (ImGui::BeginMenuBar()) {
+            bool is_recording = m_pad_recorder.isRecording();
+
             if (ImGui::BeginMenu("File")) {
+                bool is_record_complete = !is_recording ? m_pad_recorder.isRecordComplete() : false;
+
+                if (is_recording) {
+                    ImGui::BeginDisabled();
+                }
+
                 if (ImGui::MenuItem("Open")) {
                     m_is_open_dialog_open = true;
                 }
@@ -55,8 +63,13 @@ namespace Toolbox::UI {
                 }
 
                 if (ImGui::MenuItem("Save")) {
-                    m_is_save_default_ready = true;
-                    m_is_save_dialog_open   = true;
+                    if (!is_record_complete) {
+                        TOOLBOX_ERROR("[PAD RECORD] Record is not complete. Please check remaining "
+                                      "links for missing pad data.");
+                    } else {
+                        m_is_save_default_ready = true;
+                        m_is_save_dialog_open   = true;
+                    }
                 }
 
                 if (!m_load_path) {
@@ -64,21 +77,35 @@ namespace Toolbox::UI {
                 }
 
                 if (ImGui::MenuItem("Save As")) {
-                    m_is_save_dialog_open = true;
+                    if (!is_record_complete) {
+                        TOOLBOX_ERROR("[PAD RECORD] Record is not complete. Please check remaining "
+                                      "links for missing pad data.");
+                    } else {
+                        m_is_save_dialog_open = true;
+                    }
                 }
 
-                if (ImGui::MenuItem("Save As Text")) {
-                    m_is_save_text_dialog_open = true;
+                if (is_recording) {
+                    ImGui::EndDisabled();
                 }
 
                 ImGui::EndMenu();
             }
 
             if (ImGui::BeginMenu("Settings")) {
+                if (is_recording) {
+                    ImGui::BeginDisabled();
+                }
+
                 bool inverse_state = m_pad_recorder.isCameraInversed();
                 if (ImGui::Checkbox("Inverse Camera Transform", &inverse_state)) {
                     m_pad_recorder.setCameraInversed(inverse_state);
                 }
+
+                if (is_recording) {
+                    ImGui::EndDisabled();
+                }
+
                 ImGui::EndMenu();
             }
 
@@ -168,7 +195,7 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::renderControllerView() {
-        ImGui::BeginChild("Controller View", {0, 0}, true);
+        ImGui::BeginChild("Controller View", {0, 300}, true);
 
         ImGui::Text("Controller View");
 
@@ -203,9 +230,21 @@ namespace Toolbox::UI {
             ImGui::EndCombo();
         }
 
-        if (ImGui::Button("Apply Scene Nodes")) {
+        ImGui::Separator();
+
+        renderLinkDataState();
+
+        if (m_attached_scene_uuid == 0) {
+            ImGui::BeginDisabled();
+        }
+
+        if (ImGui::Button("Make Scene Rail")) {
             GUIApplication::instance().dispatchEvent<SceneCreateRailEvent, true>(
                 m_attached_scene_uuid, m_pad_rail);
+        }
+
+        if (m_attached_scene_uuid == 0) {
+            ImGui::EndDisabled();
         }
 
         ImGui::EndChild();
@@ -234,7 +273,7 @@ namespace Toolbox::UI {
                     return;
                 }
 
-                m_load_path = path.parent_path();
+                m_load_path = path;
 
                 m_pad_recorder.resetRecording();
                 m_pad_recorder.loadFromFolder(*m_load_path);
@@ -258,9 +297,7 @@ namespace Toolbox::UI {
         if (ImGuiFileDialog::Instance()->Display("SavePadDialog")) {
             m_is_save_dialog_open = false;
             if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
-
-                m_load_path = path.parent_path();
+                m_load_path = ImGuiFileDialog::Instance()->GetFilePathName();
 
                 m_pad_recorder.saveToFolder(*m_load_path);
 
@@ -304,6 +341,39 @@ namespace Toolbox::UI {
 #endif
     }
 
+    void PadInputWindow::renderLinkDataState() {
+        ImGuiID id = ImGui::GetID("Link Data State");
+        if (ImGui::BeginChildPanel(id, {0, 0})) {
+            const std::vector<ReplayLinkNode> &link_nodes = m_pad_recorder.linkData().linkNodes();
+            for (size_t i = 0; i < link_nodes.size(); ++i) {
+                for (size_t j = 0; j < 3; ++j) {
+                    char from_link = 'A' + i;
+                    char to_link   = link_nodes[i].m_infos[j].m_next_link;
+                    if (to_link == '*') {
+                        continue;
+                    }
+                    bool is_recording = m_pad_recorder.isRecording(from_link, to_link);
+                    if (m_pad_recorder.hasRecordData(from_link, to_link)) {
+                        ImGui::Text("Link %c -> %c", from_link, to_link);
+                        ImGui::SameLine();
+                        if (ImGui::Button(is_recording ? ICON_FK_SQUARE : ICON_FK_UNDO)) {
+                            is_recording ? m_pad_recorder.stopRecording()
+                                         : m_pad_recorder.startRecording(from_link, to_link);
+                        }
+                    } else {
+                        ImGui::Text("Link %c -> %c", from_link, to_link);
+                        ImGui::SameLine();
+                        if (ImGui::Button(is_recording ? ICON_FK_SQUARE : ICON_FK_CIRCLE)) {
+                            is_recording ? m_pad_recorder.stopRecording()
+                                         : m_pad_recorder.startRecording(from_link, to_link);
+                        }
+                    }
+                }
+            }
+            ImGui::EndChildPanel();
+        }
+    }
+
     void PadInputWindow::loadMimePadData(Buffer &buffer) {}
 
     void PadInputWindow::tryReuseOrCreateRailNode(const ReplayLinkNode &link_node) {
@@ -316,7 +386,13 @@ namespace Toolbox::UI {
                 RefPtr<RailNode> node = make_referable<RailNode>(0, 0, 0);
                 m_pad_rail.addNode(node);
                 if (m_pad_rail.nodes().size() > 1) {
-                    m_pad_rail.connectNodeToNeighbors(m_pad_rail.nodes().size() - 2, true);
+                    size_t prev_node_index = m_pad_rail.nodes().size() - 2;
+                    if (prev_node_index == 0) {
+                        m_pad_rail.connectNodeToNext(prev_node_index);
+                    } else {
+                        m_pad_rail.connectNodeToNeighbors(prev_node_index, true);
+                    }
+                    m_pad_rail.connectNodeToPrev(node);
                 }
                 return;
             }
@@ -351,7 +427,13 @@ namespace Toolbox::UI {
             make_referable<RailNode>(node_position.x, node_position.y, node_position.z);
         m_pad_rail.addNode(node);
         if (m_pad_rail.nodes().size() > 1) {
-            m_pad_rail.connectNodeToNeighbors(m_pad_rail.nodes().size() - 2, true);
+            size_t prev_node_index = m_pad_rail.nodes().size() - 2;
+            if (prev_node_index == 0) {
+                m_pad_rail.connectNodeToNext(prev_node_index);
+            } else {
+                m_pad_rail.connectNodeToNeighbors(prev_node_index, true);
+            }
+            m_pad_rail.connectNodeToPrev(node);
         }
 
         communicator.write<f32>(player_ptr + 0x10, static_cast<f32>(node_position.x));
