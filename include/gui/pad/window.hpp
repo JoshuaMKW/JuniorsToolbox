@@ -53,7 +53,7 @@ namespace Toolbox::UI {
 
     public:
         ImGuiWindowFlags flags() const override {
-            return ImWindow::flags() | ImGuiWindowFlags_MenuBar;
+            return ImWindow::flags() | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoResize;
         }
 
         const ImGuiWindowClass *windowClass() const override {
@@ -71,10 +71,14 @@ namespace Toolbox::UI {
 
         std::optional<ImVec2> minSize() const override {
             return {
-                {500, 700}
+                {360, 700}
             };
         }
-        std::optional<ImVec2> maxSize() const override { return std::nullopt; }
+        std::optional<ImVec2> maxSize() const override {
+            return {
+                {360, 700}
+            };
+        }
 
         [[nodiscard]] std::string context() const override {
             if (!m_file_path)

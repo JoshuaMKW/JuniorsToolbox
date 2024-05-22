@@ -232,17 +232,16 @@ bool ImGui::AlignedButton(const char *label, ImVec2 size, ImGuiButtonFlags flags
 
     ImGui::PushID(label);
     {
-        ImVec2 button_pos = ImGui::GetCursorPos();
-        clicked = ImGui::ButtonEx("##button", size, flags);
+        ImVec2 button_pos     = ImGui::GetCursorPos();
+        clicked               = ImGui::ButtonEx("##button", size, flags);
         ImVec2 button_end_pos = ImGui::GetCursorPos();
-        ImVec2 button_size = ImGui::GetItemRectSize();
+        ImVec2 button_size    = ImGui::GetItemRectSize();
 
         ImGui::SameLine();
 
-        ImGui::SetCursorPos({
-            button_pos.x + button_size.x * 0.5f - text_size.x * 0.5f,
-            button_pos.y + button_size.y * 0.5f - text_size.y * 0.5f - frame_padding.y * 0.5f
-        });
+        ImGui::SetCursorPos(
+            {button_pos.x + button_size.x * 0.5f - text_size.x * 0.5f,
+             button_pos.y + button_size.y * 0.5f - text_size.y * 0.5f - frame_padding.y * 0.5f});
         if (GImGui->DisabledStackSize > 0) {
             ImGui::TextDisabled(label);
         } else {
@@ -635,7 +634,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
 
     // Render
     const ImU32 text_col                       = GetColorU32(ImGuiCol_Text);
-    ImGuiNavHighlightFlags nav_highlight_flags = ImGuiNavHighlightFlags_TypeThin;
+    ImGuiNavHighlightFlags nav_highlight_flags = ImGuiNavHighlightFlags_Compact;
     if (display_frame) {
         // Framed type
         const ImU32 bg_col = GetColorU32((held && hovered) ? ImGuiCol_HeaderActive
@@ -939,7 +938,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
 
     // Render
     const ImU32 text_col                       = ImGui::GetColorU32(ImGuiCol_Text);
-    ImGuiNavHighlightFlags nav_highlight_flags = ImGuiNavHighlightFlags_TypeThin;
+    ImGuiNavHighlightFlags nav_highlight_flags = ImGuiNavHighlightFlags_Compact;
     if (display_frame) {
         // Framed type
         const ImU32 bg_col = ImGui::GetColorU32((held && hovered) ? ImGuiCol_HeaderActive
@@ -1021,6 +1020,112 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
                                     (is_open ? ImGuiItemStatusFlags_Opened : 0));
 
     return is_open;
+}
+
+bool ImGui::DrawCircle(const ImVec2 &center, float radius, ImU32 color, ImU32 fill_color,
+                       float thickness) {
+    ImVec2 window_pos     = ImGui::GetWindowPos();
+    ImDrawList *draw_list = ImGui::GetWindowDrawList();
+    if ((fill_color & IM_COL32_A_MASK) != 0) {
+        // Draw border circle
+        draw_list->AddCircle(center + window_pos, radius + thickness, color, 0, thickness);
+        draw_list->AddCircleFilled(center + window_pos, radius, fill_color);
+    } else {
+        draw_list->AddCircle(center + window_pos, radius, color, 0, thickness);
+    }
+    return true;
+}
+
+bool ImGui::DrawSquare(const ImVec2 &center, float size, ImU32 color, ImU32 fill_color,
+                       float thickness) {
+    ImVec2 window_pos     = ImGui::GetWindowPos();
+    ImDrawList *draw_list = ImGui::GetWindowDrawList();
+    ImVec2 p0(center.x - size / 2, center.y - size / 2);
+    ImVec2 p1(center.x + size / 2, center.y + size / 2);
+    if ((fill_color & IM_COL32_A_MASK) != 0) {
+        draw_list->AddRectFilled(p0 + window_pos, p1 + window_pos, fill_color);
+        draw_list->AddRect(p0 + window_pos, p1 + window_pos, color, 0, 0, thickness);
+    } else {
+        draw_list->AddRect(p0 + window_pos, p1 + window_pos, color, 0, 0, thickness);
+    }
+    return true;
+}
+
+bool ImGui::DrawNgon(int num_sides, const ImVec2 &center, float radius, ImU32 color,
+                     ImU32 fill_color, float thickness, float angle) {
+    if (num_sides < 3)
+        return false;
+
+    ImDrawList *draw_list = ImGui::GetWindowDrawList();
+
+    ImVec2 true_center = center + ImGui::GetWindowPos();
+
+    const float angle_step = IM_PI * 2.0f / num_sides;
+    ImVec2 p0(true_center.x + cosf(angle) * radius, true_center.y + sinf(angle) * radius);
+    if ((fill_color & IM_COL32_A_MASK) != 0) {
+        draw_list->PathLineTo(p0);
+        for (int i = 1; i <= num_sides; i++) {
+            const ImVec2 p1(true_center.x + cosf(angle + angle_step * i) * radius,
+                            true_center.y + sinf(angle + angle_step * i) * radius);
+            draw_list->PathLineTo(p1);
+        }
+        draw_list->PathFillConvex(fill_color);
+    }
+    for (int i = 1; i <= num_sides; i++) {
+        const ImVec2 p1(true_center.x + cosf(angle + angle_step * i) * radius,
+                        true_center.y + sinf(angle + angle_step * i) * radius);
+        draw_list->AddLine(p0, p1, color, thickness);
+        p0 = p1;
+    }
+    return true;
+}
+
+bool ImGui::DrawConvexPolygon(const ImVec2 *points, int num_points, ImU32 color, ImU32 fill_color,
+                              float thickness) {
+    if (num_points < 3)
+        return false;
+
+    ImDrawList *draw_list = ImGui::GetWindowDrawList();
+    ImVec2 window_pos     = ImGui::GetWindowPos();
+
+    ImVec2 *true_points = new ImVec2[num_points];
+    {
+        for (int i = 0; i < num_points; i++) {
+            true_points[i] = points[i] + window_pos;
+        }
+
+        draw_list->AddConvexPolyFilled(true_points, num_points, fill_color);
+        if (thickness > 0.0f) {
+            draw_list->AddPolyline(true_points, num_points, color, ImDrawFlags_Closed, thickness);
+        }
+    }
+    delete[] true_points;
+
+    return true;
+}
+
+bool ImGui::DrawConcavePolygon(const ImVec2 *points, int num_points, ImU32 color, ImU32 fill_color,
+                               float thickness) {
+    if (num_points < 3)
+        return false;
+
+    ImDrawList *draw_list = ImGui::GetWindowDrawList();
+    ImVec2 window_pos     = ImGui::GetWindowPos();
+
+    ImVec2 *true_points = new ImVec2[num_points];
+    {
+        for (int i = 0; i < num_points; i++) {
+            true_points[i] = points[i] + window_pos;
+        }
+
+        draw_list->AddConcavePolyFilled(true_points, num_points, fill_color);
+        if (thickness > 0.0f) {
+            draw_list->AddPolyline(true_points, num_points, color, ImDrawFlags_Closed, thickness);
+        }
+    }
+    delete[] true_points;
+
+    return true;
 }
 
 bool ImGui::TreeNodeEx(const char *label, ImGuiTreeNodeFlags flags, bool focused, bool *visible) {

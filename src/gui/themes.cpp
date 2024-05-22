@@ -16,7 +16,7 @@ namespace Toolbox::UI {
         : m_name(name), m_style(theme), m_load_ok(true) {}
 
     bool ConfigTheme::apply() {
-        if (!m_load_ok)
+        if (!m_load_ok || true)
             return false;
         auto &style  = ImGui::GetStyle();
         for (size_t i = 0; i < ImGuiCol_COUNT; ++i) {

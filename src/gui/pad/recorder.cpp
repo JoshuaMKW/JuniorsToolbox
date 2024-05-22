@@ -226,10 +226,10 @@ namespace Toolbox {
 
         bool is_new_link_button_pressed =
             (pressed_buttons & PadButtons::BUTTON_UP) != PadButtons::BUTTON_NONE;
-        bool is_isolated_link_recording = m_current_link != '*' && m_next_link != '*';
+        is_new_link_button_pressed &=
+            (m_last_pressed_buttons & PadButtons::BUTTON_UP) == PadButtons::BUTTON_NONE;
 
-        held_buttons &= ~PadButtons::BUTTON_UP;
-        pressed_buttons &= ~PadButtons::BUTTON_UP;
+        bool is_isolated_link_recording = m_current_link != '*' && m_next_link != '*';
 
         u8 trigger_l = communicator.read<u8>(gamepad_ptr + 0x26).value();
         u8 trigger_r = communicator.read<u8>(gamepad_ptr + 0x27).value();
@@ -279,6 +279,10 @@ namespace Toolbox {
                     frame_step - 1, director_qf, m_last_frame);
             }
         }
+
+        m_last_pressed_buttons = pressed_buttons;
+        held_buttons &= ~PadButtons::BUTTON_UP;
+        pressed_buttons &= ~PadButtons::BUTTON_UP;
 
         u32 current_frame = m_last_frame + frame_step;
 
@@ -344,14 +348,13 @@ namespace Toolbox {
             m_analog_direction_info.m_info.m_input_state   = stick_angle;
         }
 
-        m_last_frame = current_frame;
+        m_last_frame           = current_frame;
 
         if (is_new_link_button_pressed) {
             applyInputChunk();
             if (is_isolated_link_recording) {
                 stopRecording();
             } else {
-                applyInputChunk();
                 initNextInputData();
                 initNewLinkData();
                 resetRecordState();
@@ -370,8 +373,7 @@ namespace Toolbox {
 
     void PadRecorder::initNextInputData() {
         char new_link_chr  = static_cast<char>('A' + m_pad_datas.size() + 1);
-        char prev_link_chr = m_pad_datas.size() > 0 ? static_cast<char>('A' + m_pad_datas.size())
-                                                    : '*';
+        char prev_link_chr = static_cast<char>('A' + m_pad_datas.size());
 
         PadDataLinkInfo pad_data = {};
         pad_data.m_from_link     = prev_link_chr;

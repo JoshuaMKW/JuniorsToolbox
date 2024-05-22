@@ -87,6 +87,7 @@ namespace Toolbox {
         PadTrimCommand m_trim_state = PadTrimCommand::TRIM_NONE;
 
         bool m_first_input_found = false;
+        PadButtons m_last_pressed_buttons = PadButtons::BUTTON_NONE;
         u32 m_start_frame        = 0;
         u32 m_last_frame         = 0;
 
