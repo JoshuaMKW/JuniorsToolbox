@@ -18,6 +18,7 @@ namespace Toolbox {
                 recordPadData();
             }
         }
+        tEmitKilledSignal();
     }
 
     bool PadRecorder::hasRecordData(char from_link, char to_link) const {

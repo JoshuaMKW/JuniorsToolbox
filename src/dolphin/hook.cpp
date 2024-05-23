@@ -80,6 +80,11 @@ namespace Toolbox::Dolphin {
         return {};
     }
 
+    static bool IsHandleOpen(Platform::LowHandle handle) {
+        DCB flags;
+        return GetCommState(handle, &flags);
+    }
+
 #elif TOOLBOX_PLATFORM_LINUX
     static Result<Platform::ProcessID, BaseError> FindProcessPID(std::string_view process_name) {
         return make_error<Platform::ProcessID>("Linux support unimplemented!");
@@ -216,6 +221,31 @@ namespace Toolbox::Dolphin {
         }
         m_mem_handle = nullptr;
         return {};
+    }
+
+    Result<bool> DolphinHookManager::refresh() {
+        if (!Platform::IsExProcessRunning(m_proc_info)) {
+            auto unhook_result = unhook();
+            if (!unhook_result) {
+                return std::unexpected(unhook_result.error());
+            }
+        }
+
+        /*if (m_mem_view) {
+          m_memory_mutex.lock();
+            CloseMemoryView(m_mem_view);
+            auto view_result = OpenMemoryView(m_mem_handle);
+            if (!view_result || view_result.value() == nullptr) {
+                CloseProcessMemory(m_mem_handle);
+                m_mem_handle = nullptr;
+                m_mem_view   = nullptr;
+                m_memory_mutex.unlock();
+                return std::unexpected(view_result.error());
+            }
+            m_memory_mutex.unlock();
+        }*/
+
+        return hook();
     }
 
     Result<void> DolphinHookManager::readBytes(char *buf, u32 address, size_t size) {

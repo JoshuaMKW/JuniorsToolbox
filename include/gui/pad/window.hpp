@@ -103,7 +103,14 @@ namespace Toolbox::UI {
 
     private:
         UUID64 m_attached_scene_uuid = 0;
+        
+        u8 m_scene_id = 0, m_episode_id = 0;
+        bool m_is_viewing_shadow_mario = false;
+        bool m_is_viewing_piantissimo = false;
+        u32 m_shadow_mario_ptr = 0;
+        u32 m_piantissimo_ptr = 0;
 
+        Game::TaskCommunicator m_task_communicator;
         PadRecorder m_pad_recorder;
         Rail::Rail m_pad_rail;
 

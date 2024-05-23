@@ -1117,7 +1117,6 @@ bool ImGui::DrawConcavePolygon(const ImVec2 *points, int num_points, ImU32 color
         for (int i = 0; i < num_points; i++) {
             true_points[i] = points[i] + window_pos;
         }
-
         draw_list->AddConcavePolyFilled(true_points, num_points, fill_color);
         if (thickness > 0.0f) {
             draw_list->AddPolyline(true_points, num_points, color, ImDrawFlags_Closed, thickness);

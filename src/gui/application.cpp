@@ -169,12 +169,13 @@ namespace Toolbox {
         determineEnvironmentConflicts();
 
         m_dolphin_communicator.tStart(false, nullptr);
+        m_task_communicator.tStart(false, nullptr);
     }
 
     void GUIApplication::onUpdate(TimeStep delta_time) {
         // Try to make sure we return an error if anything's fucky
         if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window)) {
-            exit(0);
+            stop();
             return;
         }
 
@@ -212,6 +213,7 @@ namespace Toolbox {
         m_windows.clear();
 
         m_dolphin_communicator.tKill(true);
+        m_task_communicator.tKill(true);
     }
 
     void GUIApplication::render(TimeStep delta_time) {  // Begin actual rendering

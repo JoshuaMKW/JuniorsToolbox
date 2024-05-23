@@ -31,6 +31,7 @@ namespace Toolbox::Game {
         bool isSceneLoaded(u8 stage, u8 scenario);
 
         u32 getActorPtr(RefPtr<ISceneObject> actor);
+        u32 getActorPtr(const std::string &name);
 
         Result<void> taskLoadScene(u8 stage, u8 scenario,
                                    transact_complete_cb complete_cb = nullptr);
@@ -127,9 +128,6 @@ namespace Toolbox::Game {
         std::mutex m_interpreter_mutex;
 
         std::atomic<bool> m_hook_flag;
-
-        std::atomic<bool> m_kill_flag;
-        std::condition_variable m_kill_condition;
     };
 
 }  // namespace Toolbox::Game

@@ -113,8 +113,6 @@ namespace Toolbox::UI {
     SceneWindow::SceneWindow() : ImWindow("Scene Editor") {
         m_properties_render_handler = renderEmptyProperties;
 
-        m_communicator.tStart(false, nullptr);
-
         buildContextMenuVirtualObj();
         buildContextMenuGroupObj();
         buildContextMenuPhysicalObj();
@@ -137,6 +135,9 @@ namespace Toolbox::UI {
             return false;
         }
 
+        Game::TaskCommunicator &task_communicator =
+            GUIApplication::instance().getTaskCommunicator();
+
         if (Toolbox::is_directory(path)) {
             if (path.filename() != "scene") {
                 return false;
@@ -156,7 +157,7 @@ namespace Toolbox::UI {
                 }
             }
 
-            if (m_communicator.isSceneLoaded(1, 2)) {
+            if (task_communicator.isSceneLoaded(1, 2)) {
                 reassignAllActorPtrs(0);
             }
 
@@ -193,7 +194,10 @@ namespace Toolbox::UI {
     void SceneWindow::onImGuiUpdate(TimeStep delta_time) {
         m_renderer.inputUpdate(delta_time);
 
-        if (m_communicator.isSceneLoaded()) {
+        Game::TaskCommunicator &task_communicator =
+            GUIApplication::instance().getTaskCommunicator();
+
+        if (task_communicator.isSceneLoaded()) {
             if (Input::GetKeyDown(KeyCode::KEY_E)) {
                 m_is_game_edit_mode ^= true;
             }
@@ -364,6 +368,9 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::onImGuiPostUpdate(TimeStep delta_time) {
+        Game::TaskCommunicator &task_communicator =
+            GUIApplication::instance().getTaskCommunicator();
+
         if (m_renderer.isGizmoManipulated() && m_hierarchy_selected_nodes.size() > 0) {
             glm::mat4x4 gizmo_transform = m_renderer.getGizmoTransform();
             Transform obj_transform;
@@ -390,7 +397,7 @@ namespace Toolbox::UI {
                 if (s_game_blacklist.contains(renderable.m_object->type())) {
                     continue;
                 }
-                m_communicator.setObjectTransform(
+                task_communicator.setObjectTransform(
                     ref_cast<PhysicalSceneObject>(renderable.m_object), renderable.m_transform);
             }
         }
@@ -483,8 +490,8 @@ namespace Toolbox::UI {
         case SCENE_CREATE_RAIL_EVENT: {
             auto event = std::static_pointer_cast<SceneCreateRailEvent>(ev);
             if (event) {
-                const Rail::Rail &rail             = event->getRail();
-                RailData data                      = m_current_scene->getRailData();
+                const Rail::Rail &rail = event->getRail();
+                RailData data          = m_current_scene->getRailData();
                 data.addRail(rail);
                 m_current_scene->setRailData(data);
                 m_rail_visible_map[rail.getUUID()] = true;
@@ -918,10 +925,11 @@ static void recursiveAssignActorPtrs(Game::TaskCommunicator &communicator,
 }
 
 void SceneWindow::reassignAllActorPtrs(u32 param) {
-    RefPtr<ISceneObject> root = m_current_scene->getObjHierarchy().getRoot();
+    Game::TaskCommunicator &task_communicator = GUIApplication::instance().getTaskCommunicator();
+    RefPtr<ISceneObject> root                 = m_current_scene->getObjHierarchy().getRoot();
     std::vector<RefPtr<ISceneObject>> objects;
     recursiveFlattenActorTree(root, objects);
-    double timing = Timing::measure(recursiveAssignActorPtrs, m_communicator, objects);
+    double timing = Timing::measure(recursiveAssignActorPtrs, task_communicator, objects);
     TOOLBOX_INFO_V("[SCENE] Acquired all actor ptrs in {} seconds", timing);
 }
 
@@ -1107,6 +1115,8 @@ void SceneWindow::renderScene(TimeStep delta_time) {
 }
 
 void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
+    Game::TaskCommunicator &task_communicator = GUIApplication::instance().getTaskCommunicator();
+
     float window_bar_height = ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
     ImGui::SetCursorPos({0, window_bar_height + 10});
 
@@ -1130,7 +1140,7 @@ void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
     ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
     if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
         DolphinHookManager::instance().startProcess();
-        m_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        task_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
     }
 
     ImGui::PopStyleColor(3);
@@ -1164,7 +1174,7 @@ void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
 
     ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
     if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size)) {
-        m_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        task_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
     }
 
     ImGui::PopStyleColor(3);
@@ -1188,6 +1198,8 @@ void SceneWindow::renderScenePeripherals(TimeStep delta_time) {
 }
 
 void SceneWindow::renderDolphin(TimeStep delta_time) {
+    Game::TaskCommunicator &task_communicator = GUIApplication::instance().getTaskCommunicator();
+
     std::string dolphin_view_str = ImWindowComponentTitle(*this, "Dolphin View");
 
     ImGuiWindowClass dolphinViewOverride;
@@ -1198,7 +1210,7 @@ void SceneWindow::renderDolphin(TimeStep delta_time) {
     ImGui::SetNextWindowClass(&dolphinViewOverride);
 
     if (ImGui::Begin(dolphin_view_str.c_str())) {
-        m_dolphin_image = std::move(m_communicator.captureXFBAsTexture(
+        m_dolphin_image = std::move(task_communicator.captureXFBAsTexture(
             static_cast<int>(ImGui::GetWindowWidth()), static_cast<int>(ImGui::GetWindowHeight())));
         if (!m_dolphin_image) {
             ImGui::Text("Start a Dolphin process running\nSuper Mario Sunshine to get started");
@@ -1334,7 +1346,9 @@ void SceneWindow::buildContextMenuVirtualObj() {
             }
             this_parent->removeChild(info.m_selected->getNameRef().name());
 
-            m_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+            Game::TaskCommunicator &task_communicator =
+                GUIApplication::instance().getTaskCommunicator();
+            task_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
 
             auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                      m_hierarchy_selected_nodes.end(), info);
@@ -1432,7 +1446,9 @@ void SceneWindow::buildContextMenuGroupObj() {
             }
             this_parent->removeChild(info.m_selected->getNameRef().name());
 
-            m_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+            Game::TaskCommunicator &task_communicator =
+                GUIApplication::instance().getTaskCommunicator();
+            task_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
 
             auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                      m_hierarchy_selected_nodes.end(), info);
@@ -1584,7 +1600,9 @@ void SceneWindow::buildContextMenuPhysicalObj() {
             }
             this_parent->removeChild(info.m_selected->getNameRef().name());
 
-            m_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+            Game::TaskCommunicator &task_communicator =
+                GUIApplication::instance().getTaskCommunicator();
+            task_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
 
             auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                      m_hierarchy_selected_nodes.end(), info);
@@ -1597,9 +1615,15 @@ void SceneWindow::buildContextMenuPhysicalObj() {
 
     m_hierarchy_physical_node_menu.addOption(
         "Copy Player Transform", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
-        [this]() { return m_communicator.isSceneLoaded(); },
+        [this]() {
+            Game::TaskCommunicator &task_communicator =
+                GUIApplication::instance().getTaskCommunicator();
+            return task_communicator.isSceneLoaded();
+        },
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            m_communicator.setObjectTransformToMario(
+            Game::TaskCommunicator &task_communicator =
+                GUIApplication::instance().getTaskCommunicator();
+            task_communicator.setObjectTransformToMario(
                 ref_cast<PhysicalSceneObject>(info.m_selected));
             m_update_render_objs = true;
             return;
@@ -1607,9 +1631,15 @@ void SceneWindow::buildContextMenuPhysicalObj() {
 
     m_hierarchy_physical_node_menu.addOption(
         "Copy Player Position", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
-        [this]() { return m_communicator.isSceneLoaded(); },
+        [this]() {
+            Game::TaskCommunicator &task_communicator =
+                GUIApplication::instance().getTaskCommunicator();
+            return task_communicator.isSceneLoaded();
+        },
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            m_communicator.setObjectTranslationToMario(
+            Game::TaskCommunicator &task_communicator =
+                GUIApplication::instance().getTaskCommunicator();
+            task_communicator.setObjectTranslationToMario(
                 ref_cast<PhysicalSceneObject>(info.m_selected));
             m_update_render_objs = true;
             return;
@@ -1677,7 +1707,10 @@ void SceneWindow::buildContextMenuMultiObj() {
                 }
                 this_parent->removeChild(info.m_selected->getNameRef().name());
 
-                m_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
+                Game::TaskCommunicator &task_communicator =
+                    GUIApplication::instance().getTaskCommunicator();
+                task_communicator.taskRemoveSceneObject(info.m_selected,
+                                                        get_shared_ptr(*this_parent));
 
                 auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
                                          m_hierarchy_selected_nodes.end(), info);
@@ -1975,7 +2008,10 @@ void SceneWindow::buildCreateObjDialog() {
             }
 
             RefPtr<ISceneObject> object = this_parent->getChild(std::string(name)).value();
-            m_communicator.taskAddSceneObject(
+
+            Game::TaskCommunicator &task_communicator =
+                GUIApplication::instance().getTaskCommunicator();
+            task_communicator.taskAddSceneObject(
                 object, get_shared_ptr(*this_parent),
                 [object](u32 actor_ptr) { object->setGamePtr(actor_ptr); });
 

@@ -71,16 +71,7 @@ namespace Toolbox::Dolphin {
 
         Result<bool> hook();
         Result<bool> unhook();
-        Result<bool> refresh() {
-            if (!Platform::IsExProcessRunning(m_proc_info)) {
-                auto unhook_result = unhook();
-                if (!unhook_result) {
-                    return std::unexpected(unhook_result.error());
-                }
-            }
-
-            return hook();
-        }
+        Result<bool> refresh();
 
         void *getMemoryView() const { return isHooked() ? m_mem_view : nullptr; }
         size_t getMemorySize() const { return isHooked() ? 0x1800000 : 0; }

@@ -64,6 +64,10 @@ namespace Toolbox {
 
     protected:
         bool tIsSignalKill() const { return _m_kill_flag.load(); }
+        void tEmitKilledSignal() {
+            _m_killed = true;
+            _m_kill_condition.notify_all();
+        }
 
     private:
         void tRun_(void *param) {

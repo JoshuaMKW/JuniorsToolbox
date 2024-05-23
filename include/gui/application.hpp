@@ -66,6 +66,7 @@ namespace Toolbox {
         }
 
         DolphinCommunicator &getDolphinCommunicator() { return m_dolphin_communicator; }
+        Game::TaskCommunicator &getTaskCommunicator() { return m_task_communicator; }
 
         std::filesystem::path getProjectRoot() const { return m_project_root; }
 
@@ -113,6 +114,7 @@ namespace Toolbox {
 
         std::thread m_thread_templates_init;
         DolphinCommunicator m_dolphin_communicator;
+        Game::TaskCommunicator m_task_communicator;
     };
 
 }  // namespace Toolbox

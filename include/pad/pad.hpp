@@ -49,11 +49,11 @@ namespace Toolbox {
         PadData &operator=(const PadData &) = default;
         PadData &operator=(PadData &&)      = default;
 
-        constexpr f32 convertAngleS16ToFloat(s16 angle) const {
+        static constexpr f32 convertAngleS16ToFloat(s16 angle) {
             return static_cast<f32>(angle) / 182.04445f;
         }
 
-        constexpr s16 convertAngleFloatToS16(f32 angle) const {
+        static constexpr s16 convertAngleFloatToS16(f32 angle) {
             return static_cast<s16>(angle * 182.04445f);
         }
 

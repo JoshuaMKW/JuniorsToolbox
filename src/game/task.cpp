@@ -86,7 +86,7 @@ namespace Toolbox::Game {
         m_game_interpreter.setGlobalsPointerR(0x80416BA0);
         m_game_interpreter.setGlobalsPointerRW(0x804141C0);
 
-        while (!m_kill_flag.load()) {
+        while (!tIsSignalKill()) {
             AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
             DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
@@ -109,7 +109,7 @@ namespace Toolbox::Game {
             std::this_thread::sleep_for(std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
         }
 
-        m_kill_condition.notify_all();
+        tEmitKilledSignal();
     }
 
     u32 TaskCommunicator::allocGameMemory(u32 heap_ptr, u32 size, u32 alignment) {
@@ -394,6 +394,34 @@ namespace Toolbox::Game {
 
         u32 argv[2]   = {rootref_addr, request_buffer_address};
         auto snapshot = dolphin_interpreter->evaluateFunction(0x80198d0c, 2, argv, 0, nullptr);
+
+        return static_cast<u32>(snapshot.m_gpr[3]);
+    }
+
+    u32 TaskCommunicator::getActorPtr(const std::string &name) {
+        if (!isSceneLoaded()) {
+            return 0;
+        }
+
+        auto dolphin_interpreter = createInterpreterUnchecked();
+        if (!dolphin_interpreter) {
+            return 0;
+        }
+
+        constexpr u32 request_buffer_address = 0x80000FA0;
+
+        Buffer &interpreter_buf = dolphin_interpreter->getMemoryBuffer();
+
+        std::memset(interpreter_buf.buf<u8>() + (request_buffer_address - 0x80000000), '\0', 0x200);
+
+        std::strncpy(interpreter_buf.buf<char>() + (request_buffer_address - 0x80000000),
+                     name.c_str(), name.size());
+
+        u32 namerefgen_addr = dolphin_interpreter->read<u32>(0x8040E408);
+        u32 rootref_addr    = dolphin_interpreter->read<u32>(namerefgen_addr + 0x4);
+
+        u32 argv[2]   = {rootref_addr, request_buffer_address};
+        auto snapshot = dolphin_interpreter->evaluateFunction(0x80198D0C, 2, argv, 0, nullptr);
 
         return static_cast<u32>(snapshot.m_gpr[3]);
     }

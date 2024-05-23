@@ -221,7 +221,6 @@ namespace Toolbox::UI {
 
         bool m_is_game_edit_mode = false;
 
-        Game::TaskCommunicator m_communicator;
         ImageHandle m_dolphin_image;
         ImagePainter m_dolphin_painter;
     };
