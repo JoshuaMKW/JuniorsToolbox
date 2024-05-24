@@ -103,6 +103,9 @@ namespace Toolbox::UI {
 
     private:
         UUID64 m_attached_scene_uuid = 0;
+
+        char m_cur_from_link = '*';
+        char m_cur_to_link = '*';
         
         u8 m_scene_id = 0, m_episode_id = 0;
         bool m_is_viewing_shadow_mario = false;
@@ -116,7 +119,10 @@ namespace Toolbox::UI {
 
         std::optional<std::filesystem::path> m_file_path = std::nullopt;
         std::optional<std::filesystem::path> m_load_path = std::nullopt;
+        std::optional<std::filesystem::path> m_import_path = std::nullopt;
+        std::optional<std::filesystem::path> m_export_path = std::nullopt;
 
+        bool m_is_viewing_rumble  = false;
         bool m_is_recording_input = false;
         u32 m_last_recorded_frame = 0;
 
@@ -126,6 +132,8 @@ namespace Toolbox::UI {
         bool m_is_open_dialog_open      = false;
         bool m_is_save_dialog_open      = false;
         bool m_is_save_text_dialog_open = false;
+        bool m_is_import_dialog_open    = false;
+        bool m_is_export_dialog_open    = false;
         bool m_is_verify_open           = false;
     };
 

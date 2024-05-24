@@ -63,8 +63,8 @@ namespace Toolbox {
         Result<void, SerialError> toText(std::ofstream &out) const;
         Result<void, SerialError> fromText(std::ifstream &in);
 
-        u32 getFrameCount() const noexcept { return m_frame_count; }
-        void setFrameCount(u32 frame_count) noexcept { m_frame_count = frame_count; }
+        // Call this after data has been modified
+        bool calcFrameCount(u32 &frame_count);
 
         size_t getPadAnalogMagnitudeInfoCount() const noexcept { return m_analog_magnitude.size(); }
         size_t getPadAnalogDirectionInfoCount() const noexcept { return m_analog_direction.size(); }

@@ -34,43 +34,109 @@
 #include <ImGuiFileDialog.h>
 #include <imgui.h>
 
-static const std::vector<ImVec2> s_controller_base = {
-    ImVec2(0.109504, -1.0),       ImVec2(0.229339, -0.987603),  ImVec2(0.382231, -0.971074),
-    ImVec2(0.456612, -0.950413),  ImVec2(0.539256, -0.933884),  ImVec2(0.621901, -0.913223),
-    ImVec2(0.683884, -0.892562),  ImVec2(0.741736, -0.871901),  ImVec2(0.799587, -0.855372),
-    ImVec2(0.853306, -0.830579),  ImVec2(0.907025, -0.805785),  ImVec2(0.956612, -0.785124),
-    ImVec2(1.030992, -0.727273),  ImVec2(1.092975, -0.68595),   ImVec2(1.150826, -0.623967),
-    ImVec2(1.179752, -0.57438),   ImVec2(1.216942, -0.520661),  ImVec2(1.233471, -0.446281),
-    ImVec2(1.254132, -0.371901),  ImVec2(1.270661, -0.243802),  ImVec2(1.291322, -0.033058),
-    ImVec2(1.311983, 0.198347),   ImVec2(1.307851, 0.61157),    ImVec2(1.295455, 0.727273),
-    ImVec2(1.274793, 0.805785),   ImVec2(1.245868, 0.859504),   ImVec2(1.21281, 0.917355),
-    ImVec2(1.142562, 0.975207),   ImVec2(1.068182, 0.987603),   ImVec2(0.997934, 0.96281),
-    ImVec2(0.944215, 0.917355),   ImVec2(0.915289, 0.867769),   ImVec2(0.890496, 0.809917),
-    ImVec2(0.869835, 0.743802),   ImVec2(0.853306, 0.68595),    ImVec2(0.832645, 0.516529),
-    ImVec2(0.816116, 0.376033),   ImVec2(0.791322, 0.264463),   ImVec2(0.774793, 0.22314),
-    ImVec2(0.754132, 0.18595),    ImVec2(0.729339, 0.140496),   ImVec2(0.621901, 0.053719),
-    ImVec2(0.580579, 0.028926),   ImVec2(0.535124, 0.004132),   ImVec2(0.493802, -0.020661),
-    ImVec2(0.452479, -0.041322),  ImVec2(0.407025, -0.070248),  ImVec2(0.365702, -0.090909),
-    ImVec2(0.32438, -0.115702),   ImVec2(0.225207, -0.132231),  ImVec2(0.121901, -0.152893),
-    ImVec2(-0.134298, -0.144628), ImVec2(-0.216942, -0.123967), ImVec2(-0.299587, -0.107438),
-    ImVec2(-0.353306, -0.086777), ImVec2(-0.39876, -0.070248),  ImVec2(-0.444215, -0.049587),
-    ImVec2(-0.485537, -0.033058), ImVec2(-0.52686, -0.012397),  ImVec2(-0.584711, 0.020661),
-    ImVec2(-0.683884, 0.115702),  ImVec2(-0.733471, 0.18595),   ImVec2(-0.758264, 0.227273),
-    ImVec2(-0.778926, 0.268595),  ImVec2(-0.799587, 0.367769),  ImVec2(-0.816116, 0.495868),
-    ImVec2(-0.836777, 0.632231),  ImVec2(-0.853306, 0.710744),  ImVec2(-0.873967, 0.785124),
-    ImVec2(-0.894628, 0.855372),  ImVec2(-0.915289, 0.909091),  ImVec2(-0.981405, 0.971074),
-    ImVec2(-1.10124, 1.0),        ImVec2(-1.163223, 0.966942),  ImVec2(-1.225207, 0.900826),
-    ImVec2(-1.254132, 0.826446),  ImVec2(-1.278926, 0.768595),  ImVec2(-1.295455, 0.657025),
-    ImVec2(-1.311983, 0.438017),  ImVec2(-1.291322, -0.049587), ImVec2(-1.270661, -0.260331),
-    ImVec2(-1.254132, -0.347107), ImVec2(-1.233471, -0.438017), ImVec2(-1.208678, -0.5),
-    ImVec2(-1.17562, -0.566116),  ImVec2(-1.084711, -0.669421), ImVec2(-1.010331, -0.72314),
-    ImVec2(-0.960744, -0.752066), ImVec2(-0.907025, -0.789256), ImVec2(-0.857438, -0.818182),
-    ImVec2(-0.799587, -0.838843), ImVec2(-0.75, -0.859504),     ImVec2(-0.704545, -0.876033),
-    ImVec2(-0.634298, -0.896694), ImVec2(-0.572314, -0.913223), ImVec2(-0.514463, -0.933884),
-    ImVec2(-0.419421, -0.950413), ImVec2(-0.32438, -0.971074),  ImVec2(-0.229339, -0.987603),
-    ImVec2(-0.022727, -1.0)};
+static const std::vector<ImVec2> s_controller_base_points = {
+    ImVec2(0.126939728447689, -0.9979365868418832),
+    ImVec2(0.24654011951415217, -0.9834500658396175),
+    ImVec2(0.3991203624960013, -0.9642552499613684),
+    ImVec2(0.4731294497400282, -0.9422992692885306),
+    ImVec2(0.555472391832531, -0.9243304500576878),
+    ImVec2(0.6377442204293304, -0.9022302426980523),
+    ImVec2(0.6993571959488083, -0.8804906369602239),
+    ImVec2(0.7568398006395951, -0.8588231271133879),
+    ImVec2(0.8143935188260857, -0.8412870053953447),
+    ImVec2(0.8676716396493923, -0.8155602556679278),
+    ImVec2(0.9209497430202924, -0.7898325060928159),
+    ImVec2(0.9701686065106118, -0.7683092403851841),
+    ImVec2(1.0435276389115409, -0.7091689413818865),
+    ImVec2(1.1047800128092116, -0.6667704825667368),
+    ImVec2(1.1615404493135018, -0.603787283713055),
+    ImVec2(1.18959663126559, -0.55370300774473),
+    ImVec2(1.2258434412270518, -0.4993431344132213),
+    ImVec2(1.2410718137894867, -0.42468599202148705),
+    ImVec2(1.2604315570283078, -0.34995673628635393),
+    ImVec2(1.274722403769338, -0.22158877555851345),
+    ImVec2(1.2917022670567455, -0.010516288721074168),
+    ImVec2(1.308321546174752, 0.2212140513459913),
+    ImVec2(1.2969784397531323, 0.634302002138202),
+    ImVec2(1.2825650319419606, 0.7497710399806854),
+    ImVec2(1.2605359555304354, 0.8279104806009969),
+    ImVec2(1.230677835126632, 0.8811164880809047),
+    ImVec2(1.1966152308553488, 0.9383817354413934),
+    ImVec2(1.125368273348793, 0.9949989276541746),
+    ImVec2(1.050783261752864, 1.0060949296925281),
+    ImVec2(0.9809786583763175, 0.9800797091391094),
+    ImVec2(0.928061139174818, 0.9336941063343712),
+    ImVec2(0.9000049397703234, 0.8836108302137414),
+    ImVec2(0.8762253724815205, 0.8253349438407543),
+    ImVec2(0.8567213851034955, 0.7588694293060888),
+    ImVec2(0.8412045591674652, 0.7007377696198994),
+    ImVec2(0.8235035100888499, 0.5309819890894076),
+    ImVec2(0.8094290208304226, 0.3902189164847134),
+    ImVec2(0.7865859620629226, 0.2782331941709088),
+    ImVec2(0.7707806653008905, 0.2366280170379594),
+    ImVec2(0.750771867066667, 0.1990830970856925),
+    ImVec2(0.7267759248428548, 0.15320332243725432),
+    ImVec2(0.6208687556440506, 0.06456448735185925),
+    ImVec2(0.5799857466975977, 0.039054095107045404),
+    ImVec2(0.53497038467947, 0.013470572218731113),
+    ImVec2(0.49408737573301714, -0.012039820026082731),
+    ImVec2(0.4531312535954703, -0.0334188590469168),
+    ImVec2(0.40818900476843656, -0.06313373515924768),
+    ImVec2(0.3668049440877048, -0.08364690579452823),
+    ImVec2(0.32546364595397516, -0.10704697421285306),
+    ImVec2(0.22621878502070732, -0.1226670720812432),
+    ImVec2(0.12282118431437794, -0.14296770752534527),
+    ImVec2(-0.1341262527410403, -0.1449181844869373),
+    ImVec2(-0.21694248525807607, -0.1239674386736311),
+    ImVec2(-0.299596901514939, -0.10743815317818765),
+    ImVec2(-0.3533061194768429, -0.08677708787917242),
+    ImVec2(-0.3987603042385443, -0.07024821100337546),
+    ImVec2(-0.44421509987946595, -0.0495866418631448),
+    ImVec2(-0.4855370793342304, -0.03305834364810655),
+    ImVec2(-0.5268596232513064, -0.012396642684578782),
+    ImVec2(-0.5849825298519895, 0.010453239209275725),
+    ImVec2(-0.6857991194839402, 0.10374895650102961),
+    ImVec2(-0.7366045637910664, 0.17312084491237023),
+    ImVec2(-0.7621149734882868, 0.21400485370651823),
+    ImVec2(-0.7834949949044095, 0.25495995854396347),
+    ImVec2(-0.8058836730900469, 0.35375826969400276),
+    ImVec2(-0.8246457914554964, 0.48154928876983943),
+    ImVec2(-0.84768350718413, 0.6175309358550498),
+    ImVec2(-0.8655802305239805, 0.6957435071188617),
+    ImVec2(-0.8875361937444118, 0.7697515945151934),
+    ImVec2(-0.9094200436214442, 0.8396283112351388),
+    ImVec2(-0.931015422672475, 0.8929785454018443),
+    ImVec2(-0.998203105393637, 0.9537982217867155),
+    ImVec2(-1.118524682251308, 0.9806284070913974),
+    ImVec2(-1.1799213002881828, 0.9464936894767152),
+    ImVec2(-1.2407419765207492, 0.8793059893031466),
+    ImVec2(-1.2683644611123428, 0.8044325068812159),
+    ImVec2(-1.292145045701247, 0.7461576029035175),
+    ImVec2(-1.3067243632682795, 0.634316124728917),
+    ImVec2(-1.3194276293448075, 0.4150530273345106),
+    ImVec2(-1.2902599129267363, -0.07211612404512581),
+    ImVec2(-1.2659240697548912, -0.2824674425437636),
+    ImVec2(-1.2478831371806494, -0.3689417553126528),
+    ImVec2(-1.2256386856818098, -0.4594773251099196),
+    ImVec2(-1.1997677092675951, -0.5210181872859987),
+    ImVec2(-1.165560860857108, -0.5865471758469549),
+    ImVec2(-1.0728627858911317, -0.688249861178279),
+    ImVec2(-0.9975565885039951, -0.74066256952358),
+    ImVec2(-0.9474723125356702, -0.7687187514756681),
+    ImVec2(-0.8931124392041613, -0.8049655614371299),
+    ImVec2(-0.8430281632358365, -0.8330217433892182),
+    ImVec2(-0.7848253900539435, -0.8526699574540411),
+    ImVec2(-0.7348853582248227, -0.8724623982056618),
+    ImVec2(-0.689148810415487, -0.8881955816242949),
+    ImVec2(-0.6185519252044354, -0.9076274556589214),
+    ImVec2(-0.5562888948418596, -0.9230721682515528),
+    ImVec2(-0.4980861216599666, -0.9427203823163757),
+    ImVec2(-0.4027701261909109, -0.9575881532570034),
+    ImVec2(-0.30738301722615163, -0.9765873123264237),
+    ImVec2(-0.21206802160479116, -0.9914551007194579),
+    ImVec2(-0.005271132130535799, -1.0002443359974917)};
 
-static const std::vector<ImVec2> s_controller_form_l = {
+static const std::vector<ImVec2> s_controller_form_l_points = {
     ImVec2(0.208122, 0.949239),   ImVec2(0.28934, 0.86802),     ImVec2(0.451777, 0.695431),
     ImVec2(0.532995, 0.502538),   ImVec2(0.553299, 0.269036),   ImVec2(0.553299, 0.045685),
     ImVec2(0.695431, -0.116751),  ImVec2(0.786802, -0.238579),  ImVec2(0.847716, -0.431472),
@@ -82,7 +148,7 @@ static const std::vector<ImVec2> s_controller_form_l = {
     ImVec2(-0.604061, 0.857868),  ImVec2(-0.42132, 0.969543),   ImVec2(-0.19797, 1.0),
     ImVec2(0.015228, 0.979695)};
 
-static const std::vector<ImVec2> s_controller_form_r = {
+static const std::vector<ImVec2> s_controller_form_r_points = {
     ImVec2(-0.015228, 0.979695),  ImVec2(0.19797, 1.0),         ImVec2(0.42132, 0.969543),
     ImVec2(0.604061, 0.857868),   ImVec2(0.746193, 0.685279),   ImVec2(0.837563, 0.482234),
     ImVec2(0.847716, 0.258883),   ImVec2(0.817259, 0.055838),   ImVec2(0.695431, -0.137056),
@@ -207,6 +273,10 @@ namespace Toolbox::UI {
                     ImGui::EndDisabled();
                 }
 
+                ImGui::Separator();
+
+                ImGui::Checkbox("View Rumble", &m_is_viewing_rumble);
+
                 ImGui::EndMenu();
             }
 
@@ -305,7 +375,7 @@ namespace Toolbox::UI {
         if (ImGui::Checkbox("View Piantissimo", &m_is_viewing_piantissimo)) {
             m_is_viewing_shadow_mario = false;
         }
-       
+
         ImGui::BeginChild("Controller View", {0, 300}, true);
 
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
@@ -336,10 +406,15 @@ namespace Toolbox::UI {
                 GUIApplication::instance().getTaskCommunicator();
             if (!task_communicator.isSceneLoaded(m_scene_id, m_episode_id) ||
                 m_shadow_mario_ptr == 0) {
-                std::string shadow_mario_name =
-                    "\x83\x7D\x83\x8A\x83\x49\x83\x82\x83\x68\x83\x4C\x5F\x30";
-                std::string piantissimo_name = "83\x82\x83\x93\x83\x65\x83\x7D\x83\x93";
-                m_shadow_mario_ptr           = task_communicator.getActorPtr(shadow_mario_name);
+                if (!task_communicator.getLoadedScene(m_scene_id, m_episode_id)) {
+                    TOOLBOX_ERROR("[PAD RECORD] Scene not loaded.");
+                    m_shadow_mario_ptr        = 0;
+                    m_is_viewing_shadow_mario = false;
+                } else {
+                    std::string shadow_mario_name =
+                        "\x83\x7D\x83\x8A\x83\x49\x83\x82\x83\x68\x83\x4C\x5F\x30";
+                    m_shadow_mario_ptr = task_communicator.getActorPtr(shadow_mario_name);
+                }
             }
             if (m_shadow_mario_ptr == 0) {
                 m_is_viewing_shadow_mario = false;
@@ -349,9 +424,11 @@ namespace Toolbox::UI {
                 stick_mag   = communicator.read<f32>(enemy_mario_ptr + 0x8C).value() / 32.0f;
                 stick_angle = communicator.read<s16>(enemy_mario_ptr + 0x90).value();
                 stick_x     = stick_mag *
-                          std::cos(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f));
+                          std::cos(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f) -
+                                   IM_PI / 2);
                 stick_y = stick_mag *
-                          std::sin(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f));
+                          std::sin(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f) -
+                                   IM_PI / 2);
 
                 u32 controller_meaning_ptr =
                     communicator.read<u32>(enemy_mario_ptr + 0x108).value();
@@ -365,8 +442,14 @@ namespace Toolbox::UI {
                 GUIApplication::instance().getTaskCommunicator();
             if (!task_communicator.isSceneLoaded(m_scene_id, m_episode_id) ||
                 m_piantissimo_ptr == 0) {
-                std::string piantissimo_name = "\x83\x82\x83\x93\x83\x65\x83\x7D\x83\x93";
-                m_piantissimo_ptr           = task_communicator.getActorPtr(piantissimo_name);
+                if (!task_communicator.getLoadedScene(m_scene_id, m_episode_id)) {
+                    TOOLBOX_ERROR("[PAD RECORD] Scene not loaded.");
+                    m_shadow_mario_ptr        = 0;
+                    m_is_viewing_shadow_mario = false;
+                } else {
+                    std::string piantissimo_name = "\x83\x82\x83\x93\x83\x65\x83\x7D\x83\x93";
+                    m_piantissimo_ptr            = task_communicator.getActorPtr(piantissimo_name);
+                }
             }
             if (m_piantissimo_ptr == 0) {
                 m_is_viewing_piantissimo = false;
@@ -376,9 +459,11 @@ namespace Toolbox::UI {
                 stick_mag   = communicator.read<f32>(enemy_mario_ptr + 0x8C).value() / 32.0f;
                 stick_angle = communicator.read<s16>(enemy_mario_ptr + 0x90).value();
                 stick_x     = stick_mag *
-                          std::cos(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f));
+                          std::cos(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f) -
+                                   IM_PI / 2);
                 stick_y = stick_mag *
-                          std::sin(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f));
+                          std::sin(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f) -
+                                   IM_PI / 2);
 
                 u32 controller_meaning_ptr =
                     communicator.read<u32>(enemy_mario_ptr + 0x108).value();
@@ -422,7 +507,8 @@ namespace Toolbox::UI {
         f32 rumble_x   = 0.0f;
         f32 rumble_y   = 0.0f;
         u32 rumble_ptr = communicator.read<u32>(0x804141C0 - 0x60F0).value();
-        if (rumble_ptr && !m_is_viewing_shadow_mario && !m_is_viewing_piantissimo) {
+        if (rumble_ptr && !m_is_viewing_shadow_mario && !m_is_viewing_piantissimo &&
+            m_is_viewing_rumble) {
             u32 data_ptr =
                 communicator.read<u32>(rumble_ptr + 0xC + (m_pad_recorder.getPort() << 2)).value();
             rumble_x = communicator.read<f32>(data_ptr + 0x0).value();
@@ -503,12 +589,12 @@ namespace Toolbox::UI {
         bool is_rumble_active = rumble_x != 0.0f && rumble_y != 0.0f;
         // Controller base
         {
-            ImVec2 controller_position = {172, 140};
+            ImVec2 controller_position = {171, 140};
             float controller_radius    = 100.0f;
             ImU32 controller_color     = is_rumble_active ? IM_COL32(140, 60, 220, 255)
                                                           : IM_COL32(100, 30, 180, 255);
 
-            std::vector<ImVec2> points = s_controller_base;
+            std::vector<ImVec2> points = s_controller_base_points;
             for (ImVec2 &point : points) {
                 point *= controller_radius;
                 point += controller_position + rumble_position;
@@ -525,7 +611,7 @@ namespace Toolbox::UI {
             ImU32 controller_color     = is_rumble_active ? IM_COL32(140, 60, 220, 255)
                                                           : IM_COL32(100, 30, 180, 255);
 
-            std::vector<ImVec2> points = s_controller_form_l;
+            std::vector<ImVec2> points = s_controller_form_l_points;
             for (ImVec2 &point : points) {
                 point *= controller_radius;
                 point.y *= -1.0f;
@@ -543,7 +629,7 @@ namespace Toolbox::UI {
             ImU32 controller_color     = is_rumble_active ? IM_COL32(140, 60, 220, 255)
                                                           : IM_COL32(100, 30, 180, 255);
 
-            std::vector<ImVec2> points = s_controller_form_r;
+            std::vector<ImVec2> points = s_controller_form_r_points;
             for (ImVec2 &point : points) {
                 point *= controller_radius;
                 point.y *= -1.0f;
@@ -561,10 +647,20 @@ namespace Toolbox::UI {
             ImVec2 stick_tilted_position =
                 stick_position + ImVec2(stick_x * stick_radius, -stick_y * stick_radius);
             ImU32 stick_color = IM_COL32(160, 160, 160, 255);
+            ImVec2 stick_angle_position =
+                stick_position +
+                ImVec2(std::cos(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f) -
+                                IM_PI / 2) *
+                           stick_radius,
+                       -std::sin(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f) -
+                                 IM_PI / 2) *
+                           stick_radius);
 
             ImGui::DrawNgon(8, stick_position, stick_radius + 7.5f, IM_COL32_BLACK, stick_color,
                             2.0f, 0.0f);
             ImGui::DrawCircle(stick_tilted_position, stick_radius, IM_COL32_BLACK, stick_color,
+                              2.0f);
+            ImGui::DrawCircle(stick_angle_position, 1.5f, IM_COL32_WHITE, IM_COL32(255, 0, 0, 255),
                               2.0f);
         }
 
@@ -842,39 +938,47 @@ namespace Toolbox::UI {
             }
         }
 
-#if 0
-        if (m_is_save_text_dialog_open) {
-            ImGuiFileDialog::Instance()->OpenDialog(
-                "SavePadTextDialog", "Choose File", ".txt",
-                m_load_path ? m_load_path->string().c_str() : ".", "");
+        if (m_is_import_dialog_open) {
+            ImGuiFileDialog::Instance()->OpenDialog("ImportPadRecordDialog", "Choose File",
+                                                    ".pad,.txt",
+                                                    m_import_path ? m_import_path->string().c_str()
+                                                    : m_load_path ? m_load_path->string().c_str()
+                                                                  : ".",
+                                                    "");
         }
 
-        if (ImGuiFileDialog::Instance()->Display("SavePadTextDialog")) {
-            m_is_save_dialog_open = false;
+        if (ImGuiFileDialog::Instance()->Display("ImportPadRecordDialog")) {
+            m_is_import_dialog_open = false;
             if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
+                m_import_path = ImGuiFileDialog::Instance()->GetFilePathName();
 
-                m_load_path = path.parent_path();
-                m_file_path = path;
+                m_pad_recorder.loadPadRecording(m_cur_from_link, m_cur_to_link, *m_import_path);
 
-                if (m_file_path->extension() == ".txt") {
-                    std::ofstream outstr = std::ofstream(*m_file_path, std::ios::out);
-                    if (!outstr.is_open()) {
-                        TOOLBOX_ERROR("[PAD RECORD] Failed to save .txt file.");
-                        ImGuiFileDialog::Instance()->Close();
-                        return;
-                    }
-                    m_pad_data.toText(outstr);
-                    ImGuiFileDialog::Instance()->Close();
-                    return;
-                }
-
-                TOOLBOX_ERROR("[PAD RECORD] Unsupported file type.");
                 ImGuiFileDialog::Instance()->Close();
                 return;
             }
         }
-#endif
+
+        if (m_is_export_dialog_open) {
+            ImGuiFileDialog::Instance()->OpenDialog("ExportPadRecordDialog", "Choose File",
+                                                    ".pad,.txt",
+                                                    m_export_path ? m_export_path->string().c_str()
+                                                    : m_load_path ? m_load_path->string().c_str()
+                                                                  : ".",
+                                                    "");
+        }
+
+        if (ImGuiFileDialog::Instance()->Display("ExportPadRecordDialog")) {
+            m_is_export_dialog_open = false;
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                m_export_path = ImGuiFileDialog::Instance()->GetFilePathName();
+
+                m_pad_recorder.savePadRecording(m_cur_from_link, m_cur_to_link, *m_export_path);
+
+                ImGuiFileDialog::Instance()->Close();
+                return;
+            }
+        }
     }
 
     void PadInputWindow::renderLinkDataState() {
@@ -888,21 +992,73 @@ namespace Toolbox::UI {
                     if (to_link == '*') {
                         continue;
                     }
-                    bool is_recording = m_pad_recorder.isRecording(from_link, to_link);
-                    if (m_pad_recorder.hasRecordData(from_link, to_link)) {
-                        ImGui::Text("Link %c -> %c", from_link, to_link);
-                        ImGui::SameLine();
-                        if (ImGui::Button(is_recording ? ICON_FK_SQUARE : ICON_FK_UNDO)) {
-                            is_recording ? m_pad_recorder.stopRecording()
-                                         : m_pad_recorder.startRecording(from_link, to_link);
+                    std::string link_name =
+                        std::format(ICON_FK_LINK " {} -> {}", from_link, to_link);
+                    if (ImGui::BeginGroupPanel(link_name.c_str(), nullptr, {0, 0})) {
+                        ImVec2 anchor_pos = ImGui::GetCursorPos();
+                        ImVec2 group_size = ImGui::GetContentRegionAvail();
+
+                        ImGui::Text("Pad Record - ");
+                        ImGui::SameLine(0.0f, 0.0f);
+
+                        bool is_recording = m_pad_recorder.isRecording(from_link, to_link);
+                        if (m_pad_recorder.hasRecordData(from_link, to_link)) {
+                            if (ImGui::Button(is_recording ? ICON_FK_SQUARE : ICON_FK_UNDO)) {
+                                is_recording ? m_pad_recorder.stopRecording()
+                                             : m_pad_recorder.startRecording(from_link, to_link);
+                            }
+                        } else {
+                            if (ImGui::Button(is_recording ? ICON_FK_SQUARE : ICON_FK_CIRCLE)) {
+                                is_recording ? m_pad_recorder.stopRecording()
+                                             : m_pad_recorder.startRecording(from_link, to_link);
+                            }
                         }
-                    } else {
-                        ImGui::Text("Link %c -> %c", from_link, to_link);
-                        ImGui::SameLine();
-                        if (ImGui::Button(is_recording ? ICON_FK_SQUARE : ICON_FK_CIRCLE)) {
-                            is_recording ? m_pad_recorder.stopRecording()
-                                         : m_pad_recorder.startRecording(from_link, to_link);
+
+                        ImGui::SameLine(0.0f, 0.0f);
+
+                        if (ImGui::Button(ICON_FK_PLAY)) {
+                            m_pad_recorder.playPadRecording(from_link, to_link);
                         }
+
+                        ImGui::SameLine(0.0f, 0.0f);
+
+                        if (ImGui::Button(ICON_FK_TRASH)) {
+                            m_pad_recorder.clearLink(from_link, to_link);
+                        }
+
+                        if (is_recording) {
+                            ImGui::BeginDisabled();
+                        }
+
+                        ImGuiStyle &style = ImGui::GetStyle();
+                        ImVec2 import_button_size =
+                            ImGui::CalcTextSize("Import") + style.FramePadding * 2;
+                        ImVec2 export_button_size =
+                            ImGui::CalcTextSize("Export") + style.FramePadding * 2;
+
+                        ImGui::SetCursorPos({anchor_pos.x + group_size.x -
+                                                 (import_button_size.x + export_button_size.x +
+                                                  style.ItemSpacing.x),
+                                             anchor_pos.y});
+
+                        if (ImGui::Button("Import")) {
+                            m_is_import_dialog_open = true;
+                            m_cur_from_link         = from_link;
+                            m_cur_to_link           = to_link;
+                        }
+
+                        ImGui::SameLine();
+
+                        if (ImGui::Button("Export")) {
+                            m_is_export_dialog_open = true;
+                            m_cur_from_link         = from_link;
+                            m_cur_to_link           = to_link;
+                        }
+
+                        if (is_recording) {
+                            ImGui::EndDisabled();
+                        }
+                        ImGui::EndGroupPanel();
                     }
                 }
             }

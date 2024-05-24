@@ -47,6 +47,22 @@ namespace Toolbox {
         void setReplayLinkName(std::string_view name) { m_replay_link_name.setName(name); }
         void setReplaySceneName(std::string_view name) { m_replay_scene_name.setName(name); }
 
+        [[nodiscard]] bool hasLinkNode(char from_link, char to_link) {
+            for (size_t i = 0; i < m_link_nodes.size(); ++i) {
+                for (size_t j = 0; j < 3; ++j) {
+                    char from_link = 'A' + i;
+                    char to_link   = m_link_nodes[i].m_infos[j].m_next_link;
+                    if (to_link == '*') {
+                        continue;
+                    }
+                    if (from_link == from_link && to_link == to_link) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         size_t addLinkNode(ReplayLinkNode &&node) {
             m_link_nodes.push_back(std::move(node));
             return m_link_nodes.size() - 1;
@@ -64,6 +80,26 @@ namespace Toolbox {
         }
 
         void removeLinkNode(size_t index) { m_link_nodes.erase(m_link_nodes.begin() + index); }
+        void removeLinkNode(char from_link, char to_link) {
+            for (size_t i = 0; i < m_link_nodes.size(); ++i) {
+                ReplayLinkNode &node = m_link_nodes[i];
+                for (size_t j = 0; j < 3; ++j) {
+                    char from_link = 'A' + i;
+                    char to_link   = node.m_infos[j].m_next_link;
+                    if (to_link == '*') {
+                        continue;
+                    }
+                    if (from_link == from_link && to_link == to_link) {
+                        node.m_infos[j].m_next_link = '*';
+                        if (node.m_infos[0].isSentinelNode() && node.m_infos[1].isSentinelNode() &&
+                            node.m_infos[2].isSentinelNode()) {
+                            removeLinkNode(i);
+                        }
+                        return;
+                    }
+                }
+            }
+        }
 
         void clearLinkNodes() { m_link_nodes.clear(); }
 

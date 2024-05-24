@@ -135,14 +135,14 @@ namespace Toolbox::Game {
         // constructThread(spoof_thread_id, 0, 0, 0x80000A00, 0x1F0, 18, 0);
 
         // We must respect the mutex
-        //lockMutex(spoof_thread_id, heap_ptr + 0x18);
+        // lockMutex(spoof_thread_id, heap_ptr + 0x18);
 
         waitMutex(heap_ptr + 0x18);
 
         u32 args[3]   = {heap_ptr, size, alignment};
         auto snapshot = m_game_interpreter.evaluateFunction(alloc_fn_ptr, 3, args, 0, nullptr);
 
-        //unlockMutex(spoof_thread_id, heap_ptr + 0x18);
+        // unlockMutex(spoof_thread_id, heap_ptr + 0x18);
 
         return static_cast<u32>(snapshot.m_gpr[3]);
     }
@@ -503,6 +503,33 @@ namespace Toolbox::Game {
             return false;
         }
 
+        return true;
+    }
+
+    bool TaskCommunicator::getLoadedScene(u8 &stage, u8 &scenario) {
+        constexpr u32 application_addr = 0x803E9700;
+
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        // Early exit to avoid errors
+        if (!communicator.manager().isHooked()) {
+            return false;
+        }
+
+        auto game_stage_result = communicator.read<u8>(application_addr + 0xE);
+        if (!game_stage_result) {
+            LogError(game_stage_result.error());
+            return false;
+        }
+
+        auto game_scenario_result = communicator.read<u8>(application_addr + 0xF);
+        if (!game_scenario_result) {
+            LogError(game_scenario_result.error());
+            return false;
+        }
+
+        stage    = game_stage_result.value();
+        scenario = game_scenario_result.value();
         return true;
     }
 

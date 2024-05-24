@@ -50,6 +50,8 @@ namespace Toolbox {
         void setCameraInversed(bool inversed) { m_camera_flag.store(inversed); }
 
         [[nodiscard]] bool isRecordComplete() const;
+
+        [[nodiscard]] bool isPlaying() const { return m_play_flag.load(); }
         [[nodiscard]] bool isRecording() const { return m_record_flag.load(); }
         [[nodiscard]] bool isRecording(char from_link, char to_link) const {
             return isRecording() && m_current_link == from_link && m_next_link == to_link;
@@ -66,6 +68,20 @@ namespace Toolbox {
         bool loadFromFolder(const std::filesystem::path &folder_path);
         bool saveToFolder(const std::filesystem::path &folder_path);
 
+        bool loadPadRecording(char from_link, char to_link, const std::filesystem::path &file_path);
+        bool savePadRecording(char from_link, char to_link, const std::filesystem::path &file_path);
+
+        bool playPadRecording(char from_link, char to_link);
+
+        void clearLink(char from_link, char to_link) {
+            m_pad_datas.erase(std::remove_if(m_pad_datas.begin(), m_pad_datas.end(),
+              [from_link, to_link](const PadDataLinkInfo& info) {
+                                                 return info.m_from_link == from_link && info.m_to_link == to_link;
+                                             }),
+                                          m_pad_datas.end());
+            m_link_data.removeLinkNode(from_link, to_link);
+        }
+
         void onCreateLink(create_link_cb callback) { m_on_create_link = callback; }
 
     protected:
@@ -75,6 +91,7 @@ namespace Toolbox {
         void initNextInputData(char from_link, char to_link);
         void applyInputChunk();
 
+        void playPadData();
         void recordPadData();
         void resetRecordState();
         void initNewLinkData();
@@ -100,7 +117,8 @@ namespace Toolbox {
         PadRecordInfo<u8> m_trigger_l_info           = {};
         PadRecordInfo<u8> m_trigger_r_info           = {};
 
-        std::mutex m_record_mutex;
+        std::mutex m_mutex;
+        std::atomic<bool> m_play_flag = false;
         std::atomic<bool> m_record_flag = false;
         std::atomic<bool> m_camera_flag = true;
 

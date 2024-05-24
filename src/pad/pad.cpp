@@ -1,7 +1,9 @@
 #include "pad/pad.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <magic_enum.hpp>
+#include <numeric>
 
 namespace Toolbox {
 
@@ -79,7 +81,7 @@ namespace Toolbox {
         u32 trigger_l_data   = static_cast<u32>(trigger_l_frames + (m_trigger_l.size() << 2));
 
         u32 trigger_r_frames = static_cast<u32>(trigger_l_data + m_trigger_l.size());
-        u32 trigger_r_data   = static_cast<u32>(trigger_r_frames + m_trigger_r.size() << 2);
+        u32 trigger_r_data   = static_cast<u32>(trigger_r_frames + (m_trigger_r.size() << 2));
 
         out.write<u32, std::endian::big>(analog_magnitude_frames);
         out.write<u32, std::endian::big>(analog_magnitude_data);
@@ -183,7 +185,8 @@ namespace Toolbox {
         out << "# Analog Direction: ([How long in frames], [Stick Direction from -180 to 180)"
             << std::endl;
         for (const auto &info : m_analog_direction) {
-            out << std::format("analog_direction({}, {})", info.m_frames_active, convertAngleS16ToFloat(info.m_input_state))
+            out << std::format("analog_direction({}, {})", info.m_frames_active,
+                               convertAngleS16ToFloat(info.m_input_state))
                 << std::endl;
         }
         out << "# Actions for " << m_frame_count << " frames" << std::endl;
@@ -234,6 +237,50 @@ namespace Toolbox {
     }
 
     Result<void, SerialError> PadData::fromText(std::ifstream &in) { return {}; }
+
+    bool PadData::calcFrameCount(u32 &frame_count) {
+        frame_count = 0;
+
+        u32 buttons_frame_count = std::accumulate(
+            m_buttons.begin(), m_buttons.end(), 0,
+            [](u32 val, const PadInputInfo<PadButtons> &info) { return val + info.m_frames_active; });
+
+        u32 analog_magnitude_frame_count = std::accumulate(
+            m_analog_magnitude.begin(), m_analog_magnitude.end(), 0,
+            [](u32 val, const PadInputInfo<float> &info) { return val + info.m_frames_active; });
+
+        if (buttons_frame_count != analog_magnitude_frame_count) {
+            return false;
+        }
+
+        u32 analog_direction_frame_count = std::accumulate(
+            m_analog_direction.begin(), m_analog_direction.end(), 0,
+            [](u32 val, const PadInputInfo<s16> &info) { return val + info.m_frames_active; });
+
+        if (analog_magnitude_frame_count != analog_direction_frame_count) {
+            return false;
+        }
+
+        u32 trigger_l_frame_count = std::accumulate(
+            m_trigger_l.begin(), m_trigger_l.end(), 0,
+            [](u32 val, const PadInputInfo<u8> &info) { return val + info.m_frames_active; });
+
+        if (analog_direction_frame_count != trigger_l_frame_count) {
+            return false;
+        }
+
+        u32 trigger_r_frame_count = std::accumulate(
+            m_trigger_r.begin(), m_trigger_r.end(), 0,
+            [](u32 val, const PadInputInfo<u8> &info) { return val + info.m_frames_active; });
+
+        if (trigger_l_frame_count != trigger_r_frame_count) {
+            return false;
+        }
+
+        m_frame_count = buttons_frame_count;
+        frame_count = buttons_frame_count;
+        return true;
+    }
 
     u32 PadData::getPadAnalogMagnitudeStartFrame(size_t index) const {
         u32 start_frame = 0;
