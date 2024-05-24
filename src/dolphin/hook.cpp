@@ -109,18 +109,17 @@ namespace Toolbox::Dolphin {
     }
 
     Result<void> DolphinHookManager::startProcess() {
-        AppSettings &settings        = SettingsManager::instance().getCurrentProfile();
+        AppSettings &settings       = SettingsManager::instance().getCurrentProfile();
         GUIApplication &application = GUIApplication::instance();
 
         if (isProcessRunning()) {
             return {};
         }
 
-        std::string dolphin_args = std::format(
-            "-e {}/sys/main.dol -d -c -a HLE", application.getProjectRoot().string());
+        std::string dolphin_args =
+            std::format("-e {}/sys/main.dol -d -c -a HLE", application.getProjectRoot().string());
 
-        auto process_result = Platform::CreateExProcess(
-            settings.m_dolphin_path, dolphin_args);
+        auto process_result = Platform::CreateExProcess(settings.m_dolphin_path, dolphin_args);
         if (!process_result) {
             return std::unexpected(process_result.error());
         }
@@ -249,26 +248,36 @@ namespace Toolbox::Dolphin {
     }
 
     Result<void> DolphinHookManager::readBytes(char *buf, u32 address, size_t size) {
-        if (!m_mem_view)
+        std::unique_lock lock(m_memory_mutex);
+        if (!m_mem_view) {
             return make_error<void>("SHARED_MEMORY",
                                     "Tried to read bytes without a memory handle!");
+        }
 
-        m_memory_mutex.lock();
+        if ((address & 0x7FFFFFFF) >= 0x1800000) {
+            return make_error<void>("SHARED_MEMORY",
+                                    "Tried to read bytes to a protected memory region!");
+        }
+
         const char *true_address = static_cast<const char *>(m_mem_view) + (address & 0x7FFFFFFF);
         memcpy(buf, true_address, size);
-        m_memory_mutex.unlock();
         return {};
     }
 
     Result<void> DolphinHookManager::writeBytes(const char *buf, u32 address, size_t size) {
-        if (!m_mem_view)
+        std::unique_lock lock(m_memory_mutex);
+        if (!m_mem_view) {
             return make_error<void>("SHARED_MEMORY",
                                     "Tried to write bytes without a memory handle!");
+        }
 
-        m_memory_mutex.lock();
+        if ((address & 0x7FFFFFFF) >= 0x1800000) {
+            return make_error<void>("SHARED_MEMORY",
+                                    "Tried to write bytes to a protected memory region!");
+        }
+
         char *true_address = static_cast<char *>(m_mem_view) + (address & 0x7FFFFFFF);
         memcpy(true_address, buf, size);
-        m_memory_mutex.unlock();
         return {};
     }
 

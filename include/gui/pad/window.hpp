@@ -46,6 +46,7 @@ namespace Toolbox::UI {
         void renderRecordedInputData();
         void renderFileDialogs();
         void renderLinkDataState();
+        void renderLinkPanel(const ReplayNodeInfo &link_node, char link_chr);
 
         void loadMimePadData(Buffer &buffer);
 

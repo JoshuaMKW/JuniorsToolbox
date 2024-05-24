@@ -57,7 +57,8 @@ namespace Toolbox::Game {
 
         Result<void> setCameraTransformToGameCamera(Camera &camera);
 
-        Result<void> setMarioToCameraTransform(const Transform &camera_transform);
+        Result<void> getMarioTransform(Transform &transform);
+        Result<void> setMarioTransform(const Transform &transform);
 
         Result<void> setObjectTransform(RefPtr<PhysicalSceneObject> object,
                                         const Transform &transform);

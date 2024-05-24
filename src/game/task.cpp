@@ -967,7 +967,7 @@ namespace Toolbox::Game {
         return {};
     }
 
-    Result<void> TaskCommunicator::setMarioToCameraTransform(const Transform &camera_transform) {
+    Result<void> TaskCommunicator::getMarioTransform(Transform &transform) {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
 
         // This also checks for connected Dolphin
@@ -977,12 +977,35 @@ namespace Toolbox::Game {
 
         u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
 
-        communicator.write<f32>(mario_ptr + 0x10, camera_transform.m_translation.x);
-        communicator.write<f32>(mario_ptr + 0x14, camera_transform.m_translation.y);
-        communicator.write<f32>(mario_ptr + 0x18, camera_transform.m_translation.z);
-        communicator.write<f32>(mario_ptr + 0x34, camera_transform.m_rotation.y);
+        transform.m_translation.x = communicator.read<f32>(mario_ptr + 0x10).value();
+        transform.m_translation.y = communicator.read<f32>(mario_ptr + 0x14).value();
+        transform.m_translation.z = communicator.read<f32>(mario_ptr + 0x18).value();
+        s16 raw_angle             = communicator.read<s16>(mario_ptr + 0x96).value();
 
-        s16 signed_angle = convertAngleFloatToS16(camera_transform.m_rotation.y);
+        transform.m_rotation = {0.0f, convertAngleS16ToFloat(raw_angle), 0.0f};
+        transform.m_scale    = {1.0f, 1.0f, 1.0f};
+        return Result<void>();
+    }
+
+    Result<void> TaskCommunicator::setMarioTransform(const Transform &transform) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        // This also checks for connected Dolphin
+        if (!isSceneLoaded()) {
+            return make_error<void>("Task", "Failed to set mario transform in scene (not loaded)!");
+        }
+
+        u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
+        if (mario_ptr == 0) {
+            return make_error<void>("Task", "Failed to set mario transform in scene (nullptr)!");
+        }
+
+        communicator.write<f32>(mario_ptr + 0x10, transform.m_translation.x);
+        communicator.write<f32>(mario_ptr + 0x14, transform.m_translation.y);
+        communicator.write<f32>(mario_ptr + 0x18, transform.m_translation.z);
+        communicator.write<f32>(mario_ptr + 0x34, transform.m_rotation.y);
+
+        s16 signed_angle = convertAngleFloatToS16(transform.m_rotation.y);
         communicator.write<s16>(mario_ptr + 0x96, signed_angle);
 
         return {};
