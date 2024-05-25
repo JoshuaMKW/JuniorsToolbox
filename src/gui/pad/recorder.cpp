@@ -22,7 +22,6 @@ namespace Toolbox {
 
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
-        tEmitKilledSignal();
     }
 
     bool PadRecorder::hasRecordData(char from_link, char to_link) const {

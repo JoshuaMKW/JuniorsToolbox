@@ -42,8 +42,6 @@ namespace Toolbox::Dolphin {
 
             std::this_thread::sleep_for(std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
         }
-
-        tEmitKilledSignal();
     }
 
 }  // namespace Toolbox::Dolphin

@@ -108,8 +108,6 @@ namespace Toolbox::Game {
 
             std::this_thread::sleep_for(std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
         }
-
-        tEmitKilledSignal();
     }
 
     u32 TaskCommunicator::allocGameMemory(u32 heap_ptr, u32 size, u32 alignment) {

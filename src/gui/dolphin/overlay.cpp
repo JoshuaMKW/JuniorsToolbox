@@ -74,7 +74,6 @@ namespace Toolbox::UI {
                 Platform::ForceWindowToFront(m_window);
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }
-        tEmitKilledSignal();
     }
 
 }  // namespace Toolbox::UI
