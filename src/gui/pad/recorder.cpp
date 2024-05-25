@@ -397,42 +397,49 @@ namespace Toolbox {
         m_play_flag.store(true);
     }
 
+    Result<PadRecorder::PadFrameData> PadRecorder::readPadFrameData(PadSourceType source) {
+        switch (source) {
+        case PadSourceType::SOURCE_PLAYER:
+            return readPadFrameDataPlayer();
+        case PadSourceType::SOURCE_EMARIO:
+            return readPadFrameDataEMario();
+        case PadSourceType::SOURCE_PIANTISSIMO:
+            return readPadFrameDataPiantissimo();
+        default:
+            return make_error<PadFrameData>("PAD RECORD", "Invalid source type.");
+        }
+    }
+
+    PadRecorder::PadFrameData PadRecorder::getPadFrameData(char from_link, char to_link,
+                                                           u32 frame) const {
+        // TODO: Implement this
+        return PadFrameData();
+    }
+
     void PadRecorder::playPadData() {}
 
     void PadRecorder::recordPadData() {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
-
-        u32 application_ptr = 0x803E9700;
-        u32 gamepad_ptr = communicator.read<u32>(application_ptr + 0x20 + (m_port << 2)).value();
-
-        bool is_connected = communicator.read<u8>(gamepad_ptr + 0x7A).value() != 0xFF;
-        if (!is_connected) {
-            TOOLBOX_ERROR("[PAD RECORD] Controller is not connected. Please ensure that "
-                          "the controller is "
-                          "connected and the input is being read by Dolphin.");
+        if (!communicator.manager().isHooked()) {
+            TOOLBOX_ERROR("[PAD RECORD] Dolphin is not running or the memory is not hooked.");
             return;
         }
 
-        PadButtons held_buttons =
-            static_cast<PadButtons>(communicator.read<u32>(gamepad_ptr + 0x18).value());
-        PadButtons pressed_buttons =
-            static_cast<PadButtons>(communicator.read<u32>(gamepad_ptr + 0x1C).value());
+        auto result = readPadFrameData(PadSourceType::SOURCE_PLAYER);
+        if (!result) {
+            LogError(result.error());
+            return;
+        }
+
+        PadFrameData frame_data = result.value();
+        frame_data.m_stick_mag *= 32.0f;
 
         bool is_new_link_button_pressed =
-            (pressed_buttons & PadButtons::BUTTON_UP) != PadButtons::BUTTON_NONE;
+            (frame_data.m_pressed_buttons & PadButtons::BUTTON_UP) != PadButtons::BUTTON_NONE;
         is_new_link_button_pressed &=
             (m_last_pressed_buttons & PadButtons::BUTTON_UP) == PadButtons::BUTTON_NONE;
 
         bool is_isolated_link_recording = m_current_link != '*' && m_next_link != '*';
-
-        u8 trigger_l = communicator.read<u8>(gamepad_ptr + 0x26).value();
-        u8 trigger_r = communicator.read<u8>(gamepad_ptr + 0x27).value();
-
-        f32 stick_x = communicator.read<f32>(gamepad_ptr + 0x48).value();
-        f32 stick_y = communicator.read<f32>(gamepad_ptr + 0x4C).value();
-
-        f32 stick_mag   = communicator.read<f32>(gamepad_ptr + 0x50).value() * 32.0f;
-        s16 stick_angle = communicator.read<s16>(gamepad_ptr + 0x54).value();
 
         // Inverse the input transformation from camera space to world space
         if (m_camera_flag.load()) {
@@ -441,13 +448,14 @@ namespace Toolbox {
                 TOOLBOX_WARN("[PAD RECORD] Attempt to inverse camera transformation failed as "
                              "there is no active player camera.");
             } else {
-                stick_angle +=
+                frame_data.m_stick_angle +=
                     communicator.read<s16>(camera_ptr + 0x258).value();  // Transform to world space
             }
         }
 
-        u32 director_ptr = communicator.read<u32>(application_ptr + 0x4).value();
-        u8 director_type = communicator.read<u8>(application_ptr + 0x8).value();
+        u32 application_ptr = 0x803E9700;
+        u32 director_ptr    = communicator.read<u32>(application_ptr + 0x4).value();
+        u8 director_type    = communicator.read<u8>(application_ptr + 0x8).value();
 
         s32 frame_step = 1;
 
@@ -474,51 +482,53 @@ namespace Toolbox {
             }
         }
 
-        m_last_pressed_buttons = pressed_buttons;
-        held_buttons &= ~PadButtons::BUTTON_UP;
-        pressed_buttons &= ~PadButtons::BUTTON_UP;
+        m_last_pressed_buttons = frame_data.m_pressed_buttons;
+        frame_data.m_held_buttons &= ~PadButtons::BUTTON_UP;
+        frame_data.m_pressed_buttons &= ~PadButtons::BUTTON_UP;
 
         u32 current_frame = m_last_frame + frame_step;
 
         PadDataLinkInfo &pad_data = m_pad_datas.back();
 
         m_button_info.m_info.m_frames_active += frame_step;
-        bool is_new_button_info = pressed_buttons != PadButtons::BUTTON_NONE;
-        is_new_button_info |= held_buttons != m_button_info.m_info.m_input_state;
+        bool is_new_button_info = frame_data.m_pressed_buttons != PadButtons::BUTTON_NONE;
+        is_new_button_info |= frame_data.m_held_buttons != m_button_info.m_info.m_input_state;
         if (is_new_button_info) {
             pad_data.m_data.addPadButtonInput(m_button_info.m_start_frame,
                                               m_button_info.m_info.m_frames_active,
                                               m_button_info.m_info.m_input_state);
             m_button_info.m_start_frame          = current_frame;
             m_button_info.m_info.m_frames_active = 0;
-            m_button_info.m_info.m_input_state   = held_buttons;
+            m_button_info.m_info.m_input_state   = frame_data.m_held_buttons;
         }
 
         m_trigger_l_info.m_info.m_frames_active += frame_step;
-        bool is_new_trigger_l_info = trigger_l != m_trigger_l_info.m_info.m_input_state;
+        bool is_new_trigger_l_info =
+            frame_data.m_trigger_l != m_trigger_l_info.m_info.m_input_state;
         if (is_new_trigger_l_info) {
             pad_data.m_data.addPadTriggerLInput(m_trigger_l_info.m_start_frame,
                                                 m_trigger_l_info.m_info.m_frames_active,
                                                 m_trigger_l_info.m_info.m_input_state);
             m_trigger_l_info.m_start_frame          = current_frame;
             m_trigger_l_info.m_info.m_frames_active = 0;
-            m_trigger_l_info.m_info.m_input_state   = trigger_l;
+            m_trigger_l_info.m_info.m_input_state   = frame_data.m_trigger_l;
         }
 
         m_trigger_r_info.m_info.m_frames_active += frame_step;
-        bool is_new_trigger_r_info = trigger_r != m_trigger_r_info.m_info.m_input_state;
+        bool is_new_trigger_r_info =
+            frame_data.m_trigger_r != m_trigger_r_info.m_info.m_input_state;
         if (is_new_trigger_r_info) {
             pad_data.m_data.addPadTriggerRInput(m_trigger_r_info.m_start_frame,
                                                 m_trigger_r_info.m_info.m_frames_active,
                                                 m_trigger_r_info.m_info.m_input_state);
             m_trigger_r_info.m_start_frame          = current_frame;
             m_trigger_r_info.m_info.m_frames_active = 0;
-            m_trigger_r_info.m_info.m_input_state   = trigger_r;
+            m_trigger_r_info.m_info.m_input_state   = frame_data.m_trigger_r;
         }
 
         m_analog_magnitude_info.m_info.m_frames_active += frame_step;
         bool is_new_analog_magnitude_info =
-            stick_mag != m_analog_magnitude_info.m_info.m_input_state;
+            frame_data.m_stick_mag != m_analog_magnitude_info.m_info.m_input_state;
         if (is_new_analog_magnitude_info) {
             pad_data.m_data.addPadAnalogMagnitudeInput(
                 m_analog_magnitude_info.m_start_frame,
@@ -526,12 +536,12 @@ namespace Toolbox {
                 m_analog_magnitude_info.m_info.m_input_state);
             m_analog_magnitude_info.m_start_frame          = current_frame;
             m_analog_magnitude_info.m_info.m_frames_active = 0;
-            m_analog_magnitude_info.m_info.m_input_state   = stick_mag;
+            m_analog_magnitude_info.m_info.m_input_state   = frame_data.m_stick_mag;
         }
 
         m_analog_direction_info.m_info.m_frames_active += frame_step;
         bool is_new_analog_direction_info =
-            stick_angle != m_analog_direction_info.m_info.m_input_state;
+            frame_data.m_stick_angle != m_analog_direction_info.m_info.m_input_state;
         if (is_new_analog_direction_info) {
             pad_data.m_data.addPadAnalogDirectionInput(
                 m_analog_direction_info.m_start_frame,
@@ -539,7 +549,7 @@ namespace Toolbox {
                 m_analog_direction_info.m_info.m_input_state);
             m_analog_direction_info.m_start_frame          = current_frame;
             m_analog_direction_info.m_info.m_frames_active = 0;
-            m_analog_direction_info.m_info.m_input_state   = stick_angle;
+            m_analog_direction_info.m_info.m_input_state   = frame_data.m_stick_angle;
         }
 
         m_last_frame = current_frame;
@@ -648,6 +658,166 @@ namespace Toolbox {
 
         if (m_on_create_link) {
             m_on_create_link(node);
+        }
+    }
+
+    Result<PadRecorder::PadFrameData> PadRecorder::readPadFrameDataPlayer() {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        u32 application_ptr = 0x803E9700;
+        u32 gamepad_ptr = communicator.read<u32>(application_ptr + 0x20 + (m_port << 2)).value();
+
+        bool is_connected = communicator.read<u8>(gamepad_ptr + 0x7A).value() != 0xFF;
+        if (!is_connected) {
+            TOOLBOX_ERROR("[PAD RECORD] Controller is not connected. Please ensure that "
+                          "the controller is "
+                          "connected and the input is being read by Dolphin.");
+            return make_error<PadFrameData>("PAD RECORD",
+                                            "Controller is not connected. Please ensure that "
+                                            "the controller is "
+                                            "connected and the input is being read by Dolphin.");
+        }
+
+        PadFrameData frame_data{};
+        {
+            frame_data.m_held_buttons =
+                static_cast<PadButtons>(communicator.read<u32>(gamepad_ptr + 0x18).value());
+            frame_data.m_pressed_buttons =
+                static_cast<PadButtons>(communicator.read<u32>(gamepad_ptr + 0x1C).value());
+
+            frame_data.m_trigger_l = communicator.read<u8>(gamepad_ptr + 0x26).value();
+            frame_data.m_trigger_r = communicator.read<u8>(gamepad_ptr + 0x27).value();
+
+            frame_data.m_stick_x = communicator.read<f32>(gamepad_ptr + 0x48).value();
+            frame_data.m_stick_y = communicator.read<f32>(gamepad_ptr + 0x4C).value();
+
+            frame_data.m_stick_mag   = communicator.read<f32>(gamepad_ptr + 0x50).value();
+            frame_data.m_stick_angle = communicator.read<s16>(gamepad_ptr + 0x54).value();
+
+            frame_data.m_c_stick_x = communicator.read<f32>(gamepad_ptr + 0x58).value();
+            frame_data.m_c_stick_y = communicator.read<f32>(gamepad_ptr + 0x5C).value();
+
+            frame_data.m_c_stick_mag   = communicator.read<f32>(gamepad_ptr + 0x60).value();
+            frame_data.m_c_stick_angle = communicator.read<s16>(gamepad_ptr + 0x64).value();
+
+            frame_data.m_rumble_x = 0.0f;
+            frame_data.m_rumble_y = 0.0f;
+            u32 rumble_ptr        = communicator.read<u32>(0x804141C0 - 0x60F0).value();
+            if (rumble_ptr) {
+                u32 data_ptr = communicator.read<u32>(rumble_ptr + 0xC + (m_port << 2)).value();
+                frame_data.m_rumble_x = communicator.read<f32>(data_ptr + 0x0).value();
+                frame_data.m_rumble_y = communicator.read<f32>(data_ptr + 0x4).value();
+            }
+        }
+        return frame_data;
+    }
+
+    Result<PadRecorder::PadFrameData> PadRecorder::readPadFrameDataEMario() {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        Game::TaskCommunicator &task_communicator =
+            GUIApplication::instance().getTaskCommunicator();
+        if (!task_communicator.isSceneLoaded(m_scene_id, m_episode_id) || m_shadow_mario_ptr == 0) {
+            if (!task_communicator.getLoadedScene(m_scene_id, m_episode_id)) {
+                m_shadow_mario_ptr        = 0;
+                m_is_viewing_shadow_mario = false;
+                return make_error<PadRecorder::PadFrameData>("PAD RECORD", "Scene is not loaded.");
+            } else {
+                std::string shadow_mario_name =
+                    "\x83\x7D\x83\x8A\x83\x49\x83\x82\x83\x68\x83\x4C\x5F\x30";
+                m_shadow_mario_ptr = task_communicator.getActorPtr(shadow_mario_name);
+            }
+        }
+
+        if (m_shadow_mario_ptr == 0) {
+            m_is_viewing_shadow_mario = false;
+            return make_error<PadRecorder::PadFrameData>("PAD RECORD",
+                                                         "Shadow Mario not found in scene.");
+        } else {
+            PadFrameData frame_data{};
+
+            u32 enemy_mario_ptr    = communicator.read<u32>(m_shadow_mario_ptr + 0x150).value();
+            frame_data.m_stick_mag = communicator.read<f32>(enemy_mario_ptr + 0x8C).value() / 32.0f;
+            frame_data.m_stick_angle = communicator.read<s16>(enemy_mario_ptr + 0x90).value();
+            frame_data.m_stick_x =
+                frame_data.m_stick_mag *
+                std::cos(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) *
+                             (IM_PI / 180.0f) -
+                         IM_PI / 2);
+            frame_data.m_stick_y =
+                frame_data.m_stick_mag *
+                std::sin(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) *
+                             (IM_PI / 180.0f) -
+                         IM_PI / 2);
+
+            frame_data.m_c_stick_x     = 0.0f;
+            frame_data.m_c_stick_y     = 0.0f;
+            frame_data.m_c_stick_mag   = 0.0f;
+            frame_data.m_c_stick_angle = 0;
+
+            u32 controller_meaning_ptr   = communicator.read<u32>(enemy_mario_ptr + 0x108).value();
+            frame_data.m_pressed_buttons = static_cast<PadButtons>(
+                communicator.read<u32>(controller_meaning_ptr + 0x8).value());
+            frame_data.m_held_buttons = static_cast<PadButtons>(
+                communicator.read<u32>(controller_meaning_ptr + 0x4).value());
+
+            frame_data.m_rumble_x = 0.0f;
+            frame_data.m_rumble_y = 0.0f;
+            return frame_data;
+        }
+    }
+
+    Result<PadRecorder::PadFrameData> PadRecorder::readPadFrameDataPiantissimo() {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        Game::TaskCommunicator &task_communicator =
+            GUIApplication::instance().getTaskCommunicator();
+        if (!task_communicator.isSceneLoaded(m_scene_id, m_episode_id) || m_piantissimo_ptr == 0) {
+            if (!task_communicator.getLoadedScene(m_scene_id, m_episode_id)) {
+                m_piantissimo_ptr        = 0;
+                m_is_viewing_piantissimo = false;
+                return make_error<PadRecorder::PadFrameData>("PAD RECORD", "Scene is not loaded.");
+            } else {
+                std::string piantissimo_name = "\x83\x82\x83\x93\x83\x65\x83\x7D\x83\x93";
+                m_piantissimo_ptr            = task_communicator.getActorPtr(piantissimo_name);
+            }
+        }
+
+        if (m_piantissimo_ptr == 0) {
+            m_is_viewing_piantissimo = false;
+            return make_error<PadRecorder::PadFrameData>("PAD RECORD",
+                                                         "Piantissimo not found in scene.");
+        } else {
+            PadFrameData frame_data{};
+
+            u32 enemy_mario_ptr    = communicator.read<u32>(m_piantissimo_ptr + 0x150).value();
+            frame_data.m_stick_mag = communicator.read<f32>(enemy_mario_ptr + 0x8C).value() / 32.0f;
+            frame_data.m_stick_angle = communicator.read<s16>(enemy_mario_ptr + 0x90).value();
+            frame_data.m_stick_x =
+                frame_data.m_stick_mag *
+                std::cos(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) *
+                             (IM_PI / 180.0f) -
+                         IM_PI / 2);
+            frame_data.m_stick_y =
+                frame_data.m_stick_mag *
+                std::sin(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) *
+                             (IM_PI / 180.0f) -
+                         IM_PI / 2);
+
+            frame_data.m_c_stick_x     = 0.0f;
+            frame_data.m_c_stick_y     = 0.0f;
+            frame_data.m_c_stick_mag   = 0.0f;
+            frame_data.m_c_stick_angle = 0;
+
+            u32 controller_meaning_ptr   = communicator.read<u32>(enemy_mario_ptr + 0x108).value();
+            frame_data.m_pressed_buttons = static_cast<PadButtons>(
+                communicator.read<u32>(controller_meaning_ptr + 0x8).value());
+            frame_data.m_held_buttons = static_cast<PadButtons>(
+                communicator.read<u32>(controller_meaning_ptr + 0x4).value());
+            frame_data.m_rumble_x = 0.0f;
+            frame_data.m_rumble_y = 0.0f;
+
+            return frame_data;
         }
     }
 

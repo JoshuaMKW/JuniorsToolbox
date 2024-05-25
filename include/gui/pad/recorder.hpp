@@ -25,6 +25,29 @@ namespace Toolbox {
             PadData m_data   = {};
         };
 
+        enum class PadSourceType {
+            SOURCE_PLAYER,
+            SOURCE_EMARIO,
+            SOURCE_PIANTISSIMO,
+        };
+
+        struct PadFrameData {
+            PadButtons m_held_buttons;
+            PadButtons m_pressed_buttons;
+            u8 m_trigger_l;
+            u8 m_trigger_r;
+            f32 m_stick_x;
+            f32 m_stick_y;
+            f32 m_stick_mag;
+            s16 m_stick_angle;
+            f32 m_c_stick_x;
+            f32 m_c_stick_y;
+            f32 m_c_stick_mag;
+            s16 m_c_stick_angle;
+            f32 m_rumble_x;
+            f32 m_rumble_y;
+        };
+
         using create_link_cb = std::function<void(const ReplayLinkNode &)>;
 
         PadRecorder()                        = default;
@@ -84,6 +107,9 @@ namespace Toolbox {
 
         void onCreateLink(create_link_cb callback) { m_on_create_link = callback; }
 
+        Result<PadFrameData> readPadFrameData(PadSourceType source);
+        PadFrameData getPadFrameData(char from_link, char to_link, u32 frame) const;
+
     protected:
         void tRun(void *param) override;
 
@@ -96,12 +122,22 @@ namespace Toolbox {
         void resetRecordState();
         void initNewLinkData();
 
+        Result<PadFrameData> readPadFrameDataPlayer();
+        Result<PadFrameData> readPadFrameDataEMario();
+        Result<PadFrameData> readPadFrameDataPiantissimo();
+
     private:
         ReplayLinkData m_link_data;
         std::vector<PadDataLinkInfo> m_pad_datas;
 
         u8 m_port                   = 0;
         PadTrimCommand m_trim_state = PadTrimCommand::TRIM_NONE;
+
+        u8 m_scene_id = 0, m_episode_id = 0;
+        bool m_is_viewing_shadow_mario = false;
+        bool m_is_viewing_piantissimo  = false;
+        u32 m_shadow_mario_ptr         = 0;
+        u32 m_piantissimo_ptr          = 0;
 
         bool m_first_input_found = false;
         PadButtons m_last_pressed_buttons = PadButtons::BUTTON_NONE;

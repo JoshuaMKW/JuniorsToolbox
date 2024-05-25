@@ -87,7 +87,6 @@ namespace Toolbox::UI {
         Platform::LowWindow m_dolphin_window = nullptr;
         std::map<std::string, render_layer_cb> m_render_layers;
 
-        bool m_is_forced_transparent;
         DolphinOverlayZUpdater m_z_updater;
     };
 

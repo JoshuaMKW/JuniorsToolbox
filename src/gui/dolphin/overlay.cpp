@@ -19,9 +19,11 @@ namespace Toolbox::UI {
         m_z_updater.setWindow(window_handle);
         m_z_updater.setTarget(m_dolphin_window);
 
+        ImVec2 pos = ImGui::GetCursorPos();
         for (const auto &[layer_name, render_layer] : m_render_layers) {
             render_layer(delta_time, std::string_view(layer_name), ImGui::GetWindowWidth(),
                          ImGui::GetWindowHeight(), getUUID());
+            ImGui::SetCursorPos(pos);
         }
     }
 

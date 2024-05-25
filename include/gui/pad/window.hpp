@@ -43,6 +43,7 @@ namespace Toolbox::UI {
 
         void renderRecordPanel();
         void renderControllerView();
+        void renderControllerOverlay(const ImVec2 &center, f32 scale, u8 alpha);
         void renderRecordedInputData();
         void renderFileDialogs();
         void renderLinkDataState();
@@ -96,8 +97,9 @@ namespace Toolbox::UI {
         [[nodiscard]] bool onLoadData(const std::filesystem::path &path) override;
         [[nodiscard]] bool onSaveData(std::optional<std::filesystem::path> path) override;
 
+        void onAttach() override;
+        void onDetach() override;
         void onImGuiUpdate(TimeStep delta_time) override;
-        void onImGuiPostUpdate(TimeStep delta_time) override;
         void onContextMenuEvent(RefPtr<ContextMenuEvent> ev) override;
         void onDragEvent(RefPtr<DragEvent> ev) override;
         void onDropEvent(RefPtr<DropEvent> ev) override;
@@ -123,6 +125,7 @@ namespace Toolbox::UI {
         std::optional<std::filesystem::path> m_import_path = std::nullopt;
         std::optional<std::filesystem::path> m_export_path = std::nullopt;
 
+        bool m_render_controller_overlay = false;
         bool m_is_viewing_rumble  = false;
         bool m_is_recording_input = false;
         u32 m_last_recorded_frame = 0;

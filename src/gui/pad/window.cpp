@@ -35,130 +35,130 @@
 #include <imgui.h>
 
 static const std::vector<ImVec2> s_controller_base_points = {
-    ImVec2(0.126939728447689, -0.9979365868418832),
-    ImVec2(0.24654011951415217, -0.9834500658396175),
-    ImVec2(0.3991203624960013, -0.9642552499613684),
-    ImVec2(0.4731294497400282, -0.9422992692885306),
-    ImVec2(0.555472391832531, -0.9243304500576878),
-    ImVec2(0.6377442204293304, -0.9022302426980523),
-    ImVec2(0.6993571959488083, -0.8804906369602239),
-    ImVec2(0.7568398006395951, -0.8588231271133879),
-    ImVec2(0.8143935188260857, -0.8412870053953447),
-    ImVec2(0.8676716396493923, -0.8155602556679278),
-    ImVec2(0.9209497430202924, -0.7898325060928159),
-    ImVec2(0.9701686065106118, -0.7683092403851841),
-    ImVec2(1.0435276389115409, -0.7091689413818865),
-    ImVec2(1.1047800128092116, -0.6667704825667368),
-    ImVec2(1.1615404493135018, -0.603787283713055),
-    ImVec2(1.18959663126559, -0.55370300774473),
-    ImVec2(1.2258434412270518, -0.4993431344132213),
-    ImVec2(1.2410718137894867, -0.42468599202148705),
-    ImVec2(1.2604315570283078, -0.34995673628635393),
-    ImVec2(1.274722403769338, -0.22158877555851345),
-    ImVec2(1.2917022670567455, -0.010516288721074168),
-    ImVec2(1.308321546174752, 0.2212140513459913),
-    ImVec2(1.2969784397531323, 0.634302002138202),
-    ImVec2(1.2825650319419606, 0.7497710399806854),
-    ImVec2(1.2605359555304354, 0.8279104806009969),
-    ImVec2(1.230677835126632, 0.8811164880809047),
-    ImVec2(1.1966152308553488, 0.9383817354413934),
-    ImVec2(1.125368273348793, 0.9949989276541746),
-    ImVec2(1.050783261752864, 1.0060949296925281),
-    ImVec2(0.9809786583763175, 0.9800797091391094),
-    ImVec2(0.928061139174818, 0.9336941063343712),
-    ImVec2(0.9000049397703234, 0.8836108302137414),
-    ImVec2(0.8762253724815205, 0.8253349438407543),
-    ImVec2(0.8567213851034955, 0.7588694293060888),
-    ImVec2(0.8412045591674652, 0.7007377696198994),
-    ImVec2(0.8235035100888499, 0.5309819890894076),
-    ImVec2(0.8094290208304226, 0.3902189164847134),
-    ImVec2(0.7865859620629226, 0.2782331941709088),
-    ImVec2(0.7707806653008905, 0.2366280170379594),
-    ImVec2(0.750771867066667, 0.1990830970856925),
-    ImVec2(0.7267759248428548, 0.15320332243725432),
-    ImVec2(0.6208687556440506, 0.06456448735185925),
-    ImVec2(0.5799857466975977, 0.039054095107045404),
-    ImVec2(0.53497038467947, 0.013470572218731113),
-    ImVec2(0.49408737573301714, -0.012039820026082731),
-    ImVec2(0.4531312535954703, -0.0334188590469168),
-    ImVec2(0.40818900476843656, -0.06313373515924768),
-    ImVec2(0.3668049440877048, -0.08364690579452823),
-    ImVec2(0.32546364595397516, -0.10704697421285306),
-    ImVec2(0.22621878502070732, -0.1226670720812432),
-    ImVec2(0.12282118431437794, -0.14296770752534527),
-    ImVec2(-0.1341262527410403, -0.1449181844869373),
-    ImVec2(-0.21694248525807607, -0.1239674386736311),
-    ImVec2(-0.299596901514939, -0.10743815317818765),
-    ImVec2(-0.3533061194768429, -0.08677708787917242),
-    ImVec2(-0.3987603042385443, -0.07024821100337546),
-    ImVec2(-0.44421509987946595, -0.0495866418631448),
-    ImVec2(-0.4855370793342304, -0.03305834364810655),
-    ImVec2(-0.5268596232513064, -0.012396642684578782),
-    ImVec2(-0.5849825298519895, 0.010453239209275725),
-    ImVec2(-0.6857991194839402, 0.10374895650102961),
-    ImVec2(-0.7366045637910664, 0.17312084491237023),
-    ImVec2(-0.7621149734882868, 0.21400485370651823),
-    ImVec2(-0.7834949949044095, 0.25495995854396347),
-    ImVec2(-0.8058836730900469, 0.35375826969400276),
-    ImVec2(-0.8246457914554964, 0.48154928876983943),
-    ImVec2(-0.84768350718413, 0.6175309358550498),
-    ImVec2(-0.8655802305239805, 0.6957435071188617),
-    ImVec2(-0.8875361937444118, 0.7697515945151934),
-    ImVec2(-0.9094200436214442, 0.8396283112351388),
-    ImVec2(-0.931015422672475, 0.8929785454018443),
-    ImVec2(-0.998203105393637, 0.9537982217867155),
-    ImVec2(-1.118524682251308, 0.9806284070913974),
-    ImVec2(-1.1799213002881828, 0.9464936894767152),
-    ImVec2(-1.2407419765207492, 0.8793059893031466),
-    ImVec2(-1.2683644611123428, 0.8044325068812159),
-    ImVec2(-1.292145045701247, 0.7461576029035175),
-    ImVec2(-1.3067243632682795, 0.634316124728917),
-    ImVec2(-1.3194276293448075, 0.4150530273345106),
-    ImVec2(-1.2902599129267363, -0.07211612404512581),
-    ImVec2(-1.2659240697548912, -0.2824674425437636),
-    ImVec2(-1.2478831371806494, -0.3689417553126528),
-    ImVec2(-1.2256386856818098, -0.4594773251099196),
-    ImVec2(-1.1997677092675951, -0.5210181872859987),
-    ImVec2(-1.165560860857108, -0.5865471758469549),
-    ImVec2(-1.0728627858911317, -0.688249861178279),
-    ImVec2(-0.9975565885039951, -0.74066256952358),
-    ImVec2(-0.9474723125356702, -0.7687187514756681),
-    ImVec2(-0.8931124392041613, -0.8049655614371299),
-    ImVec2(-0.8430281632358365, -0.8330217433892182),
-    ImVec2(-0.7848253900539435, -0.8526699574540411),
-    ImVec2(-0.7348853582248227, -0.8724623982056618),
-    ImVec2(-0.689148810415487, -0.8881955816242949),
-    ImVec2(-0.6185519252044354, -0.9076274556589214),
-    ImVec2(-0.5562888948418596, -0.9230721682515528),
-    ImVec2(-0.4980861216599666, -0.9427203823163757),
-    ImVec2(-0.4027701261909109, -0.9575881532570034),
-    ImVec2(-0.30738301722615163, -0.9765873123264237),
-    ImVec2(-0.21206802160479116, -0.9914551007194579),
-    ImVec2(-0.005271132130535799, -1.0002443359974917)};
+    ImVec2(0.126939728447689f, -0.9979365868418832f),
+    ImVec2(0.24654011951415217f, -0.9834500658396175f),
+    ImVec2(0.3991203624960013f, -0.9642552499613684f),
+    ImVec2(0.4731294497400282f, -0.9422992692885306f),
+    ImVec2(0.555472391832531f, -0.9243304500576878f),
+    ImVec2(0.6377442204293304f, -0.9022302426980523f),
+    ImVec2(0.6993571959488083f, -0.8804906369602239f),
+    ImVec2(0.7568398006395951f, -0.8588231271133879f),
+    ImVec2(0.8143935188260857f, -0.8412870053953447f),
+    ImVec2(0.8676716396493923f, -0.8155602556679278f),
+    ImVec2(0.9209497430202924f, -0.7898325060928159f),
+    ImVec2(0.9701686065106118f, -0.7683092403851841f),
+    ImVec2(1.0435276389115409f, -0.7091689413818865f),
+    ImVec2(1.1047800128092116f, -0.6667704825667368f),
+    ImVec2(1.1615404493135018f, -0.603787283713055f),
+    ImVec2(1.18959663126559f, -0.55370300774473f),
+    ImVec2(1.2258434412270518f, -0.4993431344132213f),
+    ImVec2(1.2410718137894867f, -0.42468599202148705f),
+    ImVec2(1.2604315570283078f, -0.34995673628635393f),
+    ImVec2(1.274722403769338f, -0.22158877555851345f),
+    ImVec2(1.2917022670567455f, -0.010516288721074168f),
+    ImVec2(1.308321546174752f, 0.2212140513459913f),
+    ImVec2(1.2969784397531323f, 0.634302002138202f),
+    ImVec2(1.2825650319419606f, 0.7497710399806854f),
+    ImVec2(1.2605359555304354f, 0.8279104806009969f),
+    ImVec2(1.230677835126632f, 0.8811164880809047f),
+    ImVec2(1.1966152308553488f, 0.9383817354413934f),
+    ImVec2(1.125368273348793f, 0.9949989276541746f),
+    ImVec2(1.050783261752864f, 1.0060949296925281f),
+    ImVec2(0.9809786583763175f, 0.9800797091391094f),
+    ImVec2(0.928061139174818f, 0.9336941063343712f),
+    ImVec2(0.9000049397703234f, 0.8836108302137414f),
+    ImVec2(0.8762253724815205f, 0.8253349438407543f),
+    ImVec2(0.8567213851034955f, 0.7588694293060888f),
+    ImVec2(0.8412045591674652f, 0.7007377696198994f),
+    ImVec2(0.8235035100888499f, 0.5309819890894076f),
+    ImVec2(0.8094290208304226f, 0.3902189164847134f),
+    ImVec2(0.7865859620629226f, 0.2782331941709088f),
+    ImVec2(0.7707806653008905f, 0.2366280170379594f),
+    ImVec2(0.750771867066667f, 0.1990830970856925f),
+    ImVec2(0.7267759248428548f, 0.15320332243725432f),
+    ImVec2(0.6208687556440506f, 0.06456448735185925f),
+    ImVec2(0.5799857466975977f, 0.039054095107045404f),
+    ImVec2(0.53497038467947f, 0.013470572218731113f),
+    ImVec2(0.49408737573301714f, -0.012039820026082731f),
+    ImVec2(0.4531312535954703f, -0.0334188590469168f),
+    ImVec2(0.40818900476843656f, -0.06313373515924768f),
+    ImVec2(0.3668049440877048f, -0.08364690579452823f),
+    ImVec2(0.32546364595397516f, -0.10704697421285306f),
+    ImVec2(0.22621878502070732f, -0.1226670720812432f),
+    ImVec2(0.12282118431437794f, -0.14296770752534527f),
+    ImVec2(-0.1341262527410403f, -0.1449181844869373f),
+    ImVec2(-0.21694248525807607f, -0.1239674386736311f),
+    ImVec2(-0.299596901514939f, -0.10743815317818765f),
+    ImVec2(-0.3533061194768429f, -0.08677708787917242f),
+    ImVec2(-0.3987603042385443f, -0.07024821100337546f),
+    ImVec2(-0.44421509987946595f, -0.0495866418631448f),
+    ImVec2(-0.4855370793342304f, -0.03305834364810655f),
+    ImVec2(-0.5268596232513064f, -0.012396642684578782f),
+    ImVec2(-0.5849825298519895f, 0.010453239209275725f),
+    ImVec2(-0.6857991194839402f, 0.10374895650102961f),
+    ImVec2(-0.7366045637910664f, 0.17312084491237023f),
+    ImVec2(-0.7621149734882868f, 0.21400485370651823f),
+    ImVec2(-0.7834949949044095f, 0.25495995854396347f),
+    ImVec2(-0.8058836730900469f, 0.35375826969400276f),
+    ImVec2(-0.8246457914554964f, 0.48154928876983943f),
+    ImVec2(-0.84768350718413f, 0.6175309358550498f),
+    ImVec2(-0.8655802305239805f, 0.6957435071188617f),
+    ImVec2(-0.8875361937444118f, 0.7697515945151934f),
+    ImVec2(-0.9094200436214442f, 0.8396283112351388f),
+    ImVec2(-0.931015422672475f, 0.8929785454018443f),
+    ImVec2(-0.998203105393637f, 0.9537982217867155f),
+    ImVec2(-1.118524682251308f, 0.9806284070913974f),
+    ImVec2(-1.1799213002881828f, 0.9464936894767152f),
+    ImVec2(-1.2407419765207492f, 0.8793059893031466f),
+    ImVec2(-1.2683644611123428f, 0.8044325068812159f),
+    ImVec2(-1.292145045701247f, 0.7461576029035175f),
+    ImVec2(-1.3067243632682795f, 0.634316124728917f),
+    ImVec2(-1.3194276293448075f, 0.4150530273345106f),
+    ImVec2(-1.2902599129267363f, -0.07211612404512581f),
+    ImVec2(-1.2659240697548912f, -0.2824674425437636f),
+    ImVec2(-1.2478831371806494f, -0.3689417553126528f),
+    ImVec2(-1.2256386856818098f, -0.4594773251099196f),
+    ImVec2(-1.1997677092675951f, -0.5210181872859987f),
+    ImVec2(-1.165560860857108f, -0.5865471758469549f),
+    ImVec2(-1.0728627858911317f, -0.688249861178279f),
+    ImVec2(-0.9975565885039951f, -0.74066256952358f),
+    ImVec2(-0.9474723125356702f, -0.7687187514756681f),
+    ImVec2(-0.8931124392041613f, -0.8049655614371299f),
+    ImVec2(-0.8430281632358365f, -0.8330217433892182f),
+    ImVec2(-0.7848253900539435f, -0.8526699574540411f),
+    ImVec2(-0.7348853582248227f, -0.8724623982056618f),
+    ImVec2(-0.689148810415487f, -0.8881955816242949f),
+    ImVec2(-0.6185519252044354f, -0.9076274556589214f),
+    ImVec2(-0.5562888948418596f, -0.9230721682515528f),
+    ImVec2(-0.4980861216599666f, -0.9427203823163757f),
+    ImVec2(-0.4027701261909109f, -0.9575881532570034f),
+    ImVec2(-0.30738301722615163f, -0.9765873123264237f),
+    ImVec2(-0.21206802160479116f, -0.9914551007194579f),
+    ImVec2(-0.005271132130535799f, -1.0002443359974917f)};
 
 static const std::vector<ImVec2> s_controller_form_l_points = {
-    ImVec2(0.208122, 0.949239),   ImVec2(0.28934, 0.86802),     ImVec2(0.451777, 0.695431),
-    ImVec2(0.532995, 0.502538),   ImVec2(0.553299, 0.269036),   ImVec2(0.553299, 0.045685),
-    ImVec2(0.695431, -0.116751),  ImVec2(0.786802, -0.238579),  ImVec2(0.847716, -0.431472),
-    ImVec2(0.817259, -0.664975),  ImVec2(0.725888, -0.847716),  ImVec2(0.553299, -0.969543),
-    ImVec2(0.329949, -1.0),       ImVec2(0.126904, -0.959391),  ImVec2(-0.035533, -0.817259),
-    ImVec2(-0.137056, -0.624365), ImVec2(-0.248731, -0.431472), ImVec2(-0.340102, -0.380711),
-    ImVec2(-0.522843, -0.279188), ImVec2(-0.695431, -0.137056), ImVec2(-0.817259, 0.055838),
-    ImVec2(-0.847716, 0.258883),  ImVec2(-0.837563, 0.482234),  ImVec2(-0.746193, 0.685279),
-    ImVec2(-0.604061, 0.857868),  ImVec2(-0.42132, 0.969543),   ImVec2(-0.19797, 1.0),
-    ImVec2(0.015228, 0.979695)};
+    ImVec2(0.208122f, 0.949239f),   ImVec2(0.28934f, 0.86802f),     ImVec2(0.451777f, 0.695431f),
+    ImVec2(0.532995f, 0.502538f),   ImVec2(0.553299f, 0.269036f),   ImVec2(0.553299f, 0.045685f),
+    ImVec2(0.695431f, -0.116751f),  ImVec2(0.786802f, -0.238579f),  ImVec2(0.847716f, -0.431472f),
+    ImVec2(0.817259f, -0.664975f),  ImVec2(0.725888f, -0.847716f),  ImVec2(0.553299f, -0.969543f),
+    ImVec2(0.329949f, -1.0f),       ImVec2(0.126904f, -0.959391f),  ImVec2(-0.035533f, -0.817259f),
+    ImVec2(-0.137056f, -0.624365f), ImVec2(-0.248731f, -0.431472f), ImVec2(-0.340102f, -0.380711f),
+    ImVec2(-0.522843f, -0.279188f), ImVec2(-0.695431f, -0.137056f), ImVec2(-0.817259f, 0.055838f),
+    ImVec2(-0.847716f, 0.258883f),  ImVec2(-0.837563f, 0.482234f),  ImVec2(-0.746193f, 0.685279f),
+    ImVec2(-0.604061f, 0.857868f),  ImVec2(-0.42132f, 0.969543f),   ImVec2(-0.19797f, 1.0f),
+    ImVec2(0.015228f, 0.979695f)};
 
 static const std::vector<ImVec2> s_controller_form_r_points = {
-    ImVec2(-0.015228, 0.979695),  ImVec2(0.19797, 1.0),         ImVec2(0.42132, 0.969543),
-    ImVec2(0.604061, 0.857868),   ImVec2(0.746193, 0.685279),   ImVec2(0.837563, 0.482234),
-    ImVec2(0.847716, 0.258883),   ImVec2(0.817259, 0.055838),   ImVec2(0.695431, -0.137056),
-    ImVec2(0.522843, -0.279188),  ImVec2(0.340102, -0.380711),  ImVec2(0.248731, -0.431472),
-    ImVec2(0.137056, -0.624365),  ImVec2(0.035533, -0.817259),  ImVec2(-0.126904, -0.959391),
-    ImVec2(-0.329949, -1.0),      ImVec2(-0.553299, -0.969543), ImVec2(-0.725888, -0.847716),
-    ImVec2(-0.817259, -0.664975), ImVec2(-0.847716, -0.431472), ImVec2(-0.786802, -0.238579),
-    ImVec2(-0.695431, -0.116751), ImVec2(-0.553299, 0.045685),  ImVec2(-0.553299, 0.269036),
-    ImVec2(-0.532995, 0.502538),  ImVec2(-0.451777, 0.695431),  ImVec2(-0.28934, 0.86802),
-    ImVec2(-0.208122, 0.949239)};
+    ImVec2(-0.015228f, 0.979695f),  ImVec2(0.19797f, 1.0f),         ImVec2(0.42132f, 0.969543f),
+    ImVec2(0.604061f, 0.857868f),   ImVec2(0.746193f, 0.685279f),   ImVec2(0.837563f, 0.482234f),
+    ImVec2(0.847716f, 0.258883f),   ImVec2(0.817259f, 0.055838f),   ImVec2(0.695431f, -0.137056f),
+    ImVec2(0.522843f, -0.279188f),  ImVec2(0.340102f, -0.380711f),  ImVec2(0.248731f, -0.431472f),
+    ImVec2(0.137056f, -0.624365f),  ImVec2(0.035533f, -0.817259f),  ImVec2(-0.126904f, -0.959391f),
+    ImVec2(-0.329949f, -1.0f),      ImVec2(-0.553299f, -0.969543f), ImVec2(-0.725888f, -0.847716f),
+    ImVec2(-0.817259f, -0.664975f), ImVec2(-0.847716f, -0.431472f), ImVec2(-0.786802f, -0.238579f),
+    ImVec2(-0.695431f, -0.116751f), ImVec2(-0.553299f, 0.045685f),  ImVec2(-0.553299f, 0.269036f),
+    ImVec2(-0.532995f, 0.502538f),  ImVec2(-0.451777f, 0.695431f),  ImVec2(-0.28934f, 0.86802f),
+    ImVec2(-0.208122f, 0.949239f)};
 
 static const std::vector<ImVec2> s_xy_button_points = {
     {-0.4577f, 0.1615f },
@@ -276,6 +276,7 @@ namespace Toolbox::UI {
                 ImGui::Separator();
 
                 ImGui::Checkbox("View Rumble", &m_is_viewing_rumble);
+                ImGui::Checkbox("Controller Overlay", &m_render_controller_overlay);
 
                 ImGui::EndMenu();
             }
@@ -290,7 +291,26 @@ namespace Toolbox::UI {
 
     void PadInputWindow::onRenderBody(TimeStep delta_time) {
         renderRecordPanel();
-        renderControllerView();
+
+        // Controller panel
+        {
+            if (ImGui::Checkbox("View Shadow Mario", &m_is_viewing_shadow_mario)) {
+                m_is_viewing_piantissimo = false;
+            }
+
+            if (ImGui::Checkbox("View Piantissimo", &m_is_viewing_piantissimo)) {
+                m_is_viewing_shadow_mario = false;
+            }
+
+            ImGui::BeginChild("Controller View", {0, 300}, true);
+
+            ImVec2 content_region = ImGui::GetContentRegionAvail();
+            ImVec2 center         = {content_region.x / 2, content_region.y / 2 - 20};
+            renderControllerOverlay(center, 1.0f, 255);
+
+            ImGui::EndChild();
+        }
+
         renderRecordedInputData();
         renderFileDialogs();
     }
@@ -376,161 +396,66 @@ namespace Toolbox::UI {
             m_is_viewing_shadow_mario = false;
         }
 
-        ImGui::BeginChild("Controller View", {0, 300}, true);
+        ImGui::EndChild();
 
+        ImGui::PopStyleColor();
+    }
+
+    void PadInputWindow::renderControllerOverlay(const ImVec2 &center, f32 scale, u8 alpha) {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             ImGui::Text("Dolphin not connected.");
-            ImGui::EndChild();
-            ImGui::PopStyleColor();
             return;
         }
 
-        PadButtons held_buttons    = PadButtons::BUTTON_NONE;
-        PadButtons pressed_buttons = PadButtons::BUTTON_NONE;
-
-        u8 trigger_l = 0;
-        u8 trigger_r = 0;
-
-        f32 stick_x = 0.0f;
-        f32 stick_y = 0.0f;
-
-        f32 c_stick_x = 0.0f;
-        f32 c_stick_y = 0.0f;
-
-        f32 stick_mag   = 0.0f;
-        s16 stick_angle = 0;
+        PadRecorder::PadFrameData frame_data{};
 
         if (m_is_viewing_shadow_mario) {
-            Game::TaskCommunicator &task_communicator =
-                GUIApplication::instance().getTaskCommunicator();
-            if (!task_communicator.isSceneLoaded(m_scene_id, m_episode_id) ||
-                m_shadow_mario_ptr == 0) {
-                if (!task_communicator.getLoadedScene(m_scene_id, m_episode_id)) {
-                    TOOLBOX_ERROR("[PAD RECORD] Scene not loaded.");
-                    m_shadow_mario_ptr        = 0;
-                    m_is_viewing_shadow_mario = false;
-                } else {
-                    std::string shadow_mario_name =
-                        "\x83\x7D\x83\x8A\x83\x49\x83\x82\x83\x68\x83\x4C\x5F\x30";
-                    m_shadow_mario_ptr = task_communicator.getActorPtr(shadow_mario_name);
-                }
-            }
-            if (m_shadow_mario_ptr == 0) {
-                m_is_viewing_shadow_mario = false;
-                TOOLBOX_ERROR("[PAD RECORD] Shadow Mario not found in scene.");
-            } else {
-                u32 enemy_mario_ptr = communicator.read<u32>(m_shadow_mario_ptr + 0x150).value();
-                stick_mag   = communicator.read<f32>(enemy_mario_ptr + 0x8C).value() / 32.0f;
-                stick_angle = communicator.read<s16>(enemy_mario_ptr + 0x90).value();
-                stick_x     = stick_mag *
-                          std::cos(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f) -
-                                   IM_PI / 2);
-                stick_y = stick_mag *
-                          std::sin(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f) -
-                                   IM_PI / 2);
-
-                u32 controller_meaning_ptr =
-                    communicator.read<u32>(enemy_mario_ptr + 0x108).value();
-                pressed_buttons = static_cast<PadButtons>(
-                    communicator.read<u32>(controller_meaning_ptr + 0x8).value());
-                held_buttons = static_cast<PadButtons>(
-                    communicator.read<u32>(controller_meaning_ptr + 0x4).value());
-            }
-        } else if (m_is_viewing_piantissimo) {
-            Game::TaskCommunicator &task_communicator =
-                GUIApplication::instance().getTaskCommunicator();
-            if (!task_communicator.isSceneLoaded(m_scene_id, m_episode_id) ||
-                m_piantissimo_ptr == 0) {
-                if (!task_communicator.getLoadedScene(m_scene_id, m_episode_id)) {
-                    TOOLBOX_ERROR("[PAD RECORD] Scene not loaded.");
-                    m_shadow_mario_ptr        = 0;
-                    m_is_viewing_shadow_mario = false;
-                } else {
-                    std::string piantissimo_name = "\x83\x82\x83\x93\x83\x65\x83\x7D\x83\x93";
-                    m_piantissimo_ptr            = task_communicator.getActorPtr(piantissimo_name);
-                }
-            }
-            if (m_piantissimo_ptr == 0) {
-                m_is_viewing_piantissimo = false;
-                TOOLBOX_ERROR("[PAD RECORD] Shadow Mario not found in scene.");
-            } else {
-                u32 enemy_mario_ptr = communicator.read<u32>(m_piantissimo_ptr + 0x150).value();
-                stick_mag   = communicator.read<f32>(enemy_mario_ptr + 0x8C).value() / 32.0f;
-                stick_angle = communicator.read<s16>(enemy_mario_ptr + 0x90).value();
-                stick_x     = stick_mag *
-                          std::cos(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f) -
-                                   IM_PI / 2);
-                stick_y = stick_mag *
-                          std::sin(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f) -
-                                   IM_PI / 2);
-
-                u32 controller_meaning_ptr =
-                    communicator.read<u32>(enemy_mario_ptr + 0x108).value();
-                pressed_buttons = static_cast<PadButtons>(
-                    communicator.read<u32>(controller_meaning_ptr + 0x8).value());
-                held_buttons = static_cast<PadButtons>(
-                    communicator.read<u32>(controller_meaning_ptr + 0x4).value());
-            }
-        } else {
-            u32 application_ptr = 0x803E9700;
-            u32 gamepad_ptr =
-                communicator.read<u32>(application_ptr + 0x20 + (m_pad_recorder.getPort() << 2))
-                    .value();
-
-            bool is_connected = communicator.read<u8>(gamepad_ptr + 0x7A).value() != 0xFF;
-            if (!is_connected) {
-                TOOLBOX_ERROR("[PAD RECORD] Controller is not connected. Please ensure that "
-                              "the controller is "
-                              "connected and the input is being read by Dolphin.");
+            auto result = m_pad_recorder.readPadFrameData(PadRecorder::PadSourceType::SOURCE_EMARIO);
+            if (!result) {
+                LogError(result.error());
+                ImGui::Text("Error reading Shadow Mario data.");
                 return;
             }
-
-            held_buttons =
-                static_cast<PadButtons>(communicator.read<u32>(gamepad_ptr + 0x18).value());
-            pressed_buttons =
-                static_cast<PadButtons>(communicator.read<u32>(gamepad_ptr + 0x1C).value());
-
-            trigger_l = communicator.read<u8>(gamepad_ptr + 0x26).value();
-            trigger_r = communicator.read<u8>(gamepad_ptr + 0x27).value();
-
-            stick_x = communicator.read<f32>(gamepad_ptr + 0x48).value();
-            stick_y = communicator.read<f32>(gamepad_ptr + 0x4C).value();
-
-            c_stick_x = communicator.read<f32>(gamepad_ptr + 0x58).value();
-            c_stick_y = communicator.read<f32>(gamepad_ptr + 0x5C).value();
-
-            stick_mag   = communicator.read<f32>(gamepad_ptr + 0x50).value();
-            stick_angle = communicator.read<s16>(gamepad_ptr + 0x54).value();
+            frame_data = result.value();
+        } else if (m_is_viewing_piantissimo) {
+            auto result =
+                m_pad_recorder.readPadFrameData(PadRecorder::PadSourceType::SOURCE_PIANTISSIMO);
+            if (!result) {
+                LogError(result.error());
+                ImGui::Text("Error reading Piantissimo data.");
+                return;
+            }
+            frame_data = result.value();
+        } else {
+            auto result =
+                m_pad_recorder.readPadFrameData(PadRecorder::PadSourceType::SOURCE_PLAYER);
+            if (!result) {
+                LogError(result.error());
+                ImGui::Text("Error reading player data.");
+                return;
+            }
+            frame_data = result.value();
         }
 
-        f32 rumble_x   = 0.0f;
-        f32 rumble_y   = 0.0f;
-        u32 rumble_ptr = communicator.read<u32>(0x804141C0 - 0x60F0).value();
-        if (rumble_ptr && !m_is_viewing_shadow_mario && !m_is_viewing_piantissimo &&
-            m_is_viewing_rumble) {
-            u32 data_ptr =
-                communicator.read<u32>(rumble_ptr + 0xC + (m_pad_recorder.getPort() << 2)).value();
-            rumble_x = communicator.read<f32>(data_ptr + 0x0).value();
-            rumble_y = communicator.read<f32>(data_ptr + 0x4).value();
-        }
-
-        ImVec2 rumble_position = {rumble_x * 7.0f, rumble_y * 7.0f};
+        ImVec2 rumble_position = m_is_viewing_rumble
+                                     ? ImVec2(frame_data.m_rumble_x * 7.0f, frame_data.m_rumble_y * 7.0f)
+                                     : ImVec2(0.0f, 0.0f);
 
         // L button
         {
-            bool is_l_pressed = (held_buttons & PadButtons::BUTTON_L) != PadButtons::BUTTON_NONE;
-            ImVec2 l_button_position = {85, 50};
-            float l_button_radius    = 27.0f;
-            ImU32 l_button_color     = is_l_pressed ? IM_COL32(240, 240, 240, 255)
-                                                    : IM_COL32(160, 160, 160, 255);
+            bool is_l_pressed = (frame_data.m_held_buttons & PadButtons::BUTTON_L) != PadButtons::BUTTON_NONE;
+            ImVec2 l_button_position = (ImVec2(-85, -57) + rumble_position) * scale + center;
+            float l_button_radius    = 27.0f * scale;
+            ImU32 l_button_color     = is_l_pressed ? IM_COL32(240, 240, 240, alpha)
+                                                    : IM_COL32(160, 160, 160, alpha);
 
             std::vector<ImVec2> points = s_lr_button_points;
 
             for (ImVec2 &point : points) {
                 point *= l_button_radius;
-                point += l_button_position + rumble_position;
-                point.y += 7.0f * (trigger_l / 150.0f);
+                point += l_button_position;
+                point.y += 7.0f * (frame_data.m_trigger_l / 150.0f) * scale;
             }
 
             ImGui::DrawConvexPolygon(points.data(), points.size(), IM_COL32_BLACK, l_button_color,
@@ -539,19 +464,20 @@ namespace Toolbox::UI {
 
         // R button
         {
-            bool is_r_pressed = (held_buttons & PadButtons::BUTTON_R) != PadButtons::BUTTON_NONE;
-            ImVec2 r_button_position = {255, 50};
-            float r_button_radius    = 28.0f;
-            ImU32 r_button_color     = is_r_pressed ? IM_COL32(240, 240, 240, 255)
-                                                    : IM_COL32(160, 160, 160, 255);
+            bool is_r_pressed =
+                (frame_data.m_held_buttons & PadButtons::BUTTON_R) != PadButtons::BUTTON_NONE;
+            ImVec2 r_button_position = (ImVec2(85, -57) + rumble_position) * scale + center;
+            float r_button_radius    = 28.0f * scale;
+            ImU32 r_button_color     = is_r_pressed ? IM_COL32(240, 240, 240, alpha)
+                                                    : IM_COL32(160, 160, 160, alpha);
 
             std::vector<ImVec2> points = s_lr_button_points;
 
             for (ImVec2 &point : points) {
                 point.x *= -1;
                 point *= r_button_radius;
-                point += r_button_position + rumble_position;
-                point.y += 7.0f * (trigger_r / 150.0f);
+                point += r_button_position;
+                point.y += 7.0f * (frame_data.m_trigger_r / 150.0f) * scale;
             }
 
             ImGui::DrawConvexPolygon(points.data(), points.size(), IM_COL32_BLACK, r_button_color,
@@ -560,11 +486,12 @@ namespace Toolbox::UI {
 
         // Z button
         {
-            bool is_z_pressed = (held_buttons & PadButtons::BUTTON_Z) != PadButtons::BUTTON_NONE;
-            ImVec2 z_button_position = {257, 60};
-            float z_button_radius    = 28.0f;
-            ImU32 z_button_color     = is_z_pressed ? IM_COL32(140, 80, 240, 255)
-                                                    : IM_COL32(80, 20, 200, 255);
+            bool is_z_pressed =
+                (frame_data.m_held_buttons & PadButtons::BUTTON_Z) != PadButtons::BUTTON_NONE;
+            ImVec2 z_button_position = (ImVec2(87, -47) + rumble_position) * scale + center;
+            float z_button_radius    = 28.0f * scale;
+            ImU32 z_button_color     = is_z_pressed ? IM_COL32(140, 80, 240, alpha)
+                                                    : IM_COL32(80, 20, 200, alpha);
 
             std::vector<ImVec2> points = s_z_button_points;
 
@@ -579,25 +506,25 @@ namespace Toolbox::UI {
 
             for (ImVec2 &point : points) {
                 point *= z_button_radius;
-                point += z_button_position + rumble_position;
+                point += z_button_position;
             }
 
             ImGui::DrawConvexPolygon(points.data(), points.size(), IM_COL32_BLACK, z_button_color,
                                      2.0f);
         }
 
-        bool is_rumble_active = rumble_x != 0.0f && rumble_y != 0.0f;
+        bool is_rumble_active = rumble_position.x != 0.0f && rumble_position.y != 0.0f;
         // Controller base
         {
-            ImVec2 controller_position = {171, 140};
-            float controller_radius    = 100.0f;
-            ImU32 controller_color     = is_rumble_active ? IM_COL32(140, 60, 220, 255)
-                                                          : IM_COL32(100, 30, 180, 255);
+            ImVec2 controller_position = (ImVec2(1, 33) + rumble_position) * scale + center;
+            float controller_radius    = 100.0f * scale;
+            ImU32 controller_color     = is_rumble_active ? IM_COL32(140, 60, 220, alpha)
+                                                          : IM_COL32(100, 30, 180, alpha);
 
             std::vector<ImVec2> points = s_controller_base_points;
             for (ImVec2 &point : points) {
                 point *= controller_radius;
-                point += controller_position + rumble_position;
+                point += controller_position;
             }
 
             ImGui::DrawConcavePolygon(points.data(), points.size(), IM_COL32_BLACK,
@@ -606,16 +533,16 @@ namespace Toolbox::UI {
 
         // Controller form l
         {
-            ImVec2 controller_position = {100, 130};
-            float controller_radius    = 69.0f;
-            ImU32 controller_color     = is_rumble_active ? IM_COL32(140, 60, 220, 255)
-                                                          : IM_COL32(100, 30, 180, 255);
+            ImVec2 controller_position = (ImVec2(-70, 23) + rumble_position) * scale + center;
+            float controller_radius    = 69.0f * scale;
+            ImU32 controller_color     = is_rumble_active ? IM_COL32(140, 60, 220, alpha)
+                                                          : IM_COL32(100, 30, 180, alpha);
 
             std::vector<ImVec2> points = s_controller_form_l_points;
             for (ImVec2 &point : points) {
                 point *= controller_radius;
                 point.y *= -1.0f;
-                point += controller_position + rumble_position;
+                point += controller_position;
             }
 
             ImGui::DrawConcavePolygon(points.data(), points.size(), IM_COL32_BLACK,
@@ -624,16 +551,16 @@ namespace Toolbox::UI {
 
         // Controller form r
         {
-            ImVec2 controller_position = {240, 130};
-            float controller_radius    = 69.0f;
-            ImU32 controller_color     = is_rumble_active ? IM_COL32(140, 60, 220, 255)
-                                                          : IM_COL32(100, 30, 180, 255);
+            ImVec2 controller_position = (ImVec2(70, 23) + rumble_position) * scale + center;
+            float controller_radius    = 69.0f * scale;
+            ImU32 controller_color     = is_rumble_active ? IM_COL32(140, 60, 220, alpha)
+                                                          : IM_COL32(100, 30, 180, alpha);
 
             std::vector<ImVec2> points = s_controller_form_r_points;
             for (ImVec2 &point : points) {
                 point *= controller_radius;
                 point.y *= -1.0f;
-                point += controller_position + rumble_position;
+                point += controller_position;
             }
 
             ImGui::DrawConcavePolygon(points.data(), points.size(), IM_COL32_BLACK,
@@ -643,68 +570,67 @@ namespace Toolbox::UI {
         // Control stick
         {
             float stick_radius    = 15.0f;
-            ImVec2 stick_position = ImVec2(90, 106) + rumble_position;
+            ImVec2 stick_position = (ImVec2(-80, -1) + rumble_position) * scale + center;
             ImVec2 stick_tilted_position =
-                stick_position + ImVec2(stick_x * stick_radius, -stick_y * stick_radius);
-            ImU32 stick_color = IM_COL32(160, 160, 160, 255);
-            ImVec2 stick_angle_position =
                 stick_position +
-                ImVec2(std::cos(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f) -
-                                IM_PI / 2) *
-                           stick_radius,
-                       -std::sin(PadData::convertAngleS16ToFloat(stick_angle) * (IM_PI / 180.0f) -
-                                 IM_PI / 2) *
-                           stick_radius);
+                ImVec2(frame_data.m_stick_x, -frame_data.m_stick_y) * stick_radius * scale;
+            ImU32 stick_color = IM_COL32(160, 160, 160, alpha);
 
-            ImGui::DrawNgon(8, stick_position, stick_radius + 7.5f, IM_COL32_BLACK, stick_color,
+            ImGui::DrawNgon(8, stick_position, (stick_radius + 7.5f) * scale, IM_COL32_BLACK,
+                            stick_color,
                             2.0f, 0.0f);
-            ImGui::DrawCircle(stick_tilted_position, stick_radius, IM_COL32_BLACK, stick_color,
-                              2.0f);
-            ImGui::DrawCircle(stick_angle_position, 1.5f, IM_COL32_WHITE, IM_COL32(255, 0, 0, 255),
+            ImGui::DrawCircle(stick_tilted_position, stick_radius * scale, IM_COL32_BLACK,
+                              stick_color,
                               2.0f);
         }
 
         // C stick
         {
             float c_stick_radius    = 9.00f;
-            ImVec2 c_stick_position = ImVec2(216, 164) + rumble_position;
+            ImVec2 c_stick_position = (ImVec2(46, 57) + rumble_position) * scale + center;
             ImVec2 c_stick_tilted_position =
-                c_stick_position + ImVec2(c_stick_x * c_stick_radius, -c_stick_y * c_stick_radius);
-            ImU32 c_stick_color = IM_COL32(200, 160, 30, 255);
+                c_stick_position +
+                ImVec2(frame_data.m_c_stick_x, -frame_data.m_c_stick_y) * c_stick_radius * scale;
+            ImU32 c_stick_color = IM_COL32(200, 160, 30, alpha);
 
-            ImGui::DrawNgon(8, c_stick_position, c_stick_radius + 11.00f, IM_COL32_BLACK,
+            ImGui::DrawNgon(8, c_stick_position, (c_stick_radius + 11.00f) * scale, IM_COL32_BLACK,
                             c_stick_color, 2.0f, 0.0f);
-            ImGui::DrawCircle(c_stick_tilted_position, c_stick_radius, IM_COL32_BLACK,
+            ImGui::DrawCircle(c_stick_tilted_position, c_stick_radius * scale, IM_COL32_BLACK,
                               c_stick_color, 2.0f);
         }
 
         // A button
         {
-            bool is_a_pressed = (held_buttons & PadButtons::BUTTON_A) != PadButtons::BUTTON_NONE;
-            ImVec2 a_button_position = ImVec2(251, 107) + rumble_position;
-            ImU32 a_button_color     = is_a_pressed ? IM_COL32(90, 210, 150, 255)
-                                                    : IM_COL32(20, 170, 90, 255);
+            bool is_a_pressed =
+                (frame_data.m_held_buttons & PadButtons::BUTTON_A) != PadButtons::BUTTON_NONE;
+            ImVec2 a_button_position = (ImVec2(81, 0) + rumble_position) * scale + center;
+            ImU32 a_button_color     = is_a_pressed ? IM_COL32(90, 210, 150, alpha)
+                                                    : IM_COL32(20, 170, 90, alpha);
 
-            ImGui::DrawCircle(a_button_position, 15.0f, IM_COL32_BLACK, a_button_color, 2.0f);
+            ImGui::DrawCircle(a_button_position, 15.0f * scale, IM_COL32_BLACK, a_button_color,
+                              2.0f);
         }
 
         // B button
         {
-            bool is_b_pressed = (held_buttons & PadButtons::BUTTON_B) != PadButtons::BUTTON_NONE;
-            ImVec2 b_button_position = ImVec2(221, 123) + rumble_position;
-            ImU32 b_button_color     = is_b_pressed ? IM_COL32(240, 130, 150, 255)
-                                                    : IM_COL32(210, 30, 50, 255);
+            bool is_b_pressed =
+                (frame_data.m_held_buttons & PadButtons::BUTTON_B) != PadButtons::BUTTON_NONE;
+            ImVec2 b_button_position = (ImVec2(51, 16) + rumble_position) * scale + center;
+            ImU32 b_button_color     = is_b_pressed ? IM_COL32(240, 130, 150, alpha)
+                                                    : IM_COL32(210, 30, 50, alpha);
 
-            ImGui::DrawCircle(b_button_position, 8.0f, IM_COL32_BLACK, b_button_color, 2.0f);
+            ImGui::DrawCircle(b_button_position, 8.0f * scale, IM_COL32_BLACK, b_button_color,
+                              2.0f);
         }
 
         // X button
         {
-            bool is_x_pressed = (held_buttons & PadButtons::BUTTON_X) != PadButtons::BUTTON_NONE;
-            ImVec2 x_button_position = ImVec2(280, 97) + rumble_position;
-            float x_button_radius    = 31.0f;
-            ImU32 x_button_color     = is_x_pressed ? IM_COL32(240, 240, 240, 255)
-                                                    : IM_COL32(160, 160, 160, 255);
+            bool is_x_pressed =
+                (frame_data.m_held_buttons & PadButtons::BUTTON_X) != PadButtons::BUTTON_NONE;
+            ImVec2 x_button_position = (ImVec2(110, -10) + rumble_position) * scale + center;
+            float x_button_radius    = 31.0f * scale;
+            ImU32 x_button_color     = is_x_pressed ? IM_COL32(240, 240, 240, alpha)
+                                                    : IM_COL32(160, 160, 160, alpha);
 
             std::vector<ImVec2> points = s_xy_button_points;
 
@@ -727,11 +653,12 @@ namespace Toolbox::UI {
 
         // Y button
         {
-            bool is_y_pressed = (held_buttons & PadButtons::BUTTON_Y) != PadButtons::BUTTON_NONE;
-            ImVec2 y_button_position = ImVec2(241, 78) + rumble_position;
-            float y_button_radius    = 31.0f;
-            ImU32 y_button_color     = is_y_pressed ? IM_COL32(240, 240, 240, 255)
-                                                    : IM_COL32(160, 160, 160, 255);
+            bool is_y_pressed =
+                (frame_data.m_held_buttons & PadButtons::BUTTON_Y) != PadButtons::BUTTON_NONE;
+            ImVec2 y_button_position = (ImVec2(71, -29) + rumble_position) * scale + center;
+            float y_button_radius    = 31.0f * scale;
+            ImU32 y_button_color     = is_y_pressed ? IM_COL32(240, 240, 240, alpha)
+                                                    : IM_COL32(160, 160, 160, alpha);
 
             std::vector<ImVec2> points = s_xy_button_points;
             for (ImVec2 &point : points) {
@@ -746,31 +673,33 @@ namespace Toolbox::UI {
         // Start button
         {
             bool is_start_pressed =
-                (held_buttons & PadButtons::BUTTON_START) != PadButtons::BUTTON_NONE;
-            ImVec2 start_button_position = ImVec2(170, 110) + rumble_position;
-            ImU32 start_button_color     = is_start_pressed ? IM_COL32(240, 240, 240, 255)
-                                                            : IM_COL32(160, 160, 160, 255);
+                (frame_data.m_held_buttons & PadButtons::BUTTON_START) != PadButtons::BUTTON_NONE;
+            ImVec2 start_button_position = (ImVec2(0, 3) + rumble_position) * scale + center;
+            ImU32 start_button_color     = is_start_pressed ? IM_COL32(240, 240, 240, alpha)
+                                                            : IM_COL32(160, 160, 160, alpha);
 
-            ImGui::DrawCircle(start_button_position, 6.0f, IM_COL32_BLACK, start_button_color,
+            ImGui::DrawCircle(start_button_position, 6.0f * scale, IM_COL32_BLACK,
+                              start_button_color,
                               2.0f);
         }
 
         // D-pad
         {
-            bool is_up_pressed = (held_buttons & PadButtons::BUTTON_UP) != PadButtons::BUTTON_NONE;
+            bool is_up_pressed =
+                (frame_data.m_held_buttons & PadButtons::BUTTON_UP) != PadButtons::BUTTON_NONE;
             bool is_down_pressed =
-                (held_buttons & PadButtons::BUTTON_DOWN) != PadButtons::BUTTON_NONE;
+                (frame_data.m_held_buttons & PadButtons::BUTTON_DOWN) != PadButtons::BUTTON_NONE;
             bool is_left_pressed =
-                (held_buttons & PadButtons::BUTTON_LEFT) != PadButtons::BUTTON_NONE;
+                (frame_data.m_held_buttons & PadButtons::BUTTON_LEFT) != PadButtons::BUTTON_NONE;
             bool is_right_pressed =
-                (held_buttons & PadButtons::BUTTON_RIGHT) != PadButtons::BUTTON_NONE;
+                (frame_data.m_held_buttons & PadButtons::BUTTON_RIGHT) != PadButtons::BUTTON_NONE;
 
-            ImVec2 dpad_center = ImVec2(124, 164) + rumble_position;
-            float dpad_radius  = 6.0f;
+            ImVec2 dpad_center = (ImVec2(-46, 57) + rumble_position) * scale + center;
+            float dpad_radius  = 6.0f * scale;
             float dpad_size    = 3.5f;
 
-            ImU32 dpad_color         = IM_COL32(160, 160, 160, 255);
-            ImU32 dpad_color_pressed = IM_COL32(240, 240, 240, 255);
+            ImU32 dpad_color         = IM_COL32(160, 160, 160, alpha);
+            ImU32 dpad_color_pressed = IM_COL32(240, 240, 240, alpha);
 
             float angle_offset = IM_PI / 4.0f;
 
@@ -824,10 +753,6 @@ namespace Toolbox::UI {
                                 dpad_color, 0.0f, 0.0f);
             }
         }
-
-        ImGui::EndChild();
-
-        ImGui::PopStyleColor();
     }
 
     void PadInputWindow::renderRecordedInputData() {
@@ -1039,8 +964,8 @@ namespace Toolbox::UI {
                         glm::vec3 from_to = m_pad_rail.nodes()[to_index]->getPosition() -
                                             player_transform.m_translation;
 
-                        player_transform.m_rotation =
-                            glm::vec3(0.0f, std::atan2(from_to.x, from_to.z) * (180.0f / IM_PI), 0.0f);
+                        player_transform.m_rotation = glm::vec3(
+                            0.0f, std::atan2(from_to.x, from_to.z) * (180.0f / IM_PI), 0.0f);
                     }
 
                     player_transform.m_scale = glm::vec3(1.0f);
@@ -1193,9 +1118,21 @@ namespace Toolbox::UI {
         return m_pad_recorder.saveToFolder(path ? *path : *m_load_path);
     }
 
-    void PadInputWindow::onImGuiUpdate(TimeStep delta_time) {}
+    void PadInputWindow::onAttach() {
+        GUIApplication::instance().registerDolphinOverlay(
+            "Pad Record Overlay", [this](TimeStep delta_time, std::string_view layer_name,
+                                         int width, int height, UUID64 window_uuid) {
+                ImGui::Text(layer_name.data());
+                if (m_render_controller_overlay) {
+                    f32 controller_scale = static_cast<float>(std::min(width, height)) / 1500.0f;
+                    renderControllerOverlay({width * 0.12f, height * 0.85f}, controller_scale, 255);
+                }
+            });
+    }
 
-    void PadInputWindow::onImGuiPostUpdate(TimeStep delta_time) {}
+    void PadInputWindow::onDetach() {}
+
+    void PadInputWindow::onImGuiUpdate(TimeStep delta_time) {}
 
     void PadInputWindow::onContextMenuEvent(RefPtr<ContextMenuEvent> ev) {}
 
