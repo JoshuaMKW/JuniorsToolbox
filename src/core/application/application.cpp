@@ -57,9 +57,6 @@ namespace Toolbox {
     void CoreApplication::setup(int argc, const char **argv) {
         m_is_running = true;
         onInit(argc, argv);
-        for (auto &layer : m_layers) {
-            layer->onAttach();
-        }
     }
 
     void CoreApplication::teardown() {

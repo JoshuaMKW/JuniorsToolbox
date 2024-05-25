@@ -24,6 +24,8 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_internal.h>
 
+#include "gui/imgui_ext.hpp"
+
 #include "core/core.hpp"
 #include "dolphin/hook.hpp"
 #include "gui/application.hpp"
@@ -78,6 +80,7 @@ namespace Toolbox {
 #else
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
 #endif
+        glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
         glfwWindowHint(GLFW_DEPTH_BITS, 32);
         glfwWindowHint(GLFW_SAMPLES, 4);
 
@@ -105,6 +108,7 @@ namespace Toolbox {
 
         // Initialize imgui
         ImGui::CreateContext();
+
         ImGuiIO &io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -136,6 +140,10 @@ namespace Toolbox {
         ImGui_ImplGlfw_InitForOpenGL(m_render_window, false);
         ImGui_ImplOpenGL3_Init("#version 150");
 
+        ImGuiPlatformIO &platform_io      = ImGui::GetPlatformIO();
+        platform_io.Platform_CreateWindow = ImGui_ImplGlfw_CreateWindow_Ex;
+        platform_io.Renderer_RenderWindow = ImGui_ImplOpenGL3_RenderWindow_Ex;
+
         auto &settings_manager = SettingsManager::instance();
         settings_manager.initialize();
 
@@ -165,6 +173,10 @@ namespace Toolbox {
         auto logging_window = make_referable<LoggingWindow>();
         logging_window->open();
         addWindow(logging_window);
+
+        auto dolphin_overlay = make_referable<DolphinOverlay>();
+        dolphin_overlay->open();
+        addWindow(dolphin_overlay);
 
         determineEnvironmentConflicts();
 
@@ -214,6 +226,27 @@ namespace Toolbox {
 
         m_dolphin_communicator.tKill(true);
         m_task_communicator.tKill(true);
+    }
+
+    void GUIApplication::registerDolphinOverlay(const std::string &name,
+                                                DolphinOverlay::render_layer_cb cb) {
+      auto dolphin_overlay_it = std::find_if(
+            m_windows.begin(), m_windows.end(),
+            [](auto window) { return window->name() == "Dolphin Overlay"; });
+      if (dolphin_overlay_it != m_windows.end()) {
+        RefPtr<DolphinOverlay> dolphin_overlay = ref_cast<DolphinOverlay>(*dolphin_overlay_it);
+        dolphin_overlay->registerRenderLayer(name, cb);
+      }
+    }
+
+    void GUIApplication::deregisterDolphinOverlay(const std::string &name) {
+        auto dolphin_overlay_it = std::find_if(m_windows.begin(), m_windows.end(), [](auto window) {
+            return window->name() == "Dolphin Overlay";
+        });
+        if (dolphin_overlay_it != m_windows.end()) {
+            RefPtr<DolphinOverlay> dolphin_overlay = ref_cast<DolphinOverlay>(*dolphin_overlay_it);
+            dolphin_overlay->deregisterRenderLayer(name);
+        }
     }
 
     void GUIApplication::render(TimeStep delta_time) {  // Begin actual rendering

@@ -54,3 +54,8 @@ namespace ImGui {
                             ImU32 fill_color = IM_COL32_BLACK_TRANS, float thickness = 1.0f);
 
 }  // namespace ImGui
+
+#define ImGuiViewportFlags_TransparentFrameBuffer (1 << 20)
+
+void ImGui_ImplGlfw_CreateWindow_Ex(ImGuiViewport *viewport);
+void ImGui_ImplOpenGL3_RenderWindow_Ex(ImGuiViewport *viewport, void *);

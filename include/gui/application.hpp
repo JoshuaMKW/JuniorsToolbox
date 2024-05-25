@@ -15,6 +15,7 @@
 #include <GLFW/glfw3.h>
 #undef GLFW_INCLUDE_NONE
 
+#include "gui/dolphin/overlay.hpp"
 #include "gui/scene/window.hpp"
 #include "gui/window.hpp"
 
@@ -69,6 +70,9 @@ namespace Toolbox {
         Game::TaskCommunicator &getTaskCommunicator() { return m_task_communicator; }
 
         std::filesystem::path getProjectRoot() const { return m_project_root; }
+
+        void registerDolphinOverlay(const std::string &name, DolphinOverlay::render_layer_cb cb);
+        void deregisterDolphinOverlay(const std::string &name);
 
         ImVec2 windowScreenPos() {
             int x = 0, y = 0;

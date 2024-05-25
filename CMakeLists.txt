@@ -48,6 +48,8 @@ file(GLOB TOOLBOX_SRC
     "include/dolphin/interpreter/instructions/*.hpp"
     "src/game/*.cpp"
     "include/game/*.hpp"
+    "src/gui/dolphin/*.cpp"
+    "include/gui/dolphin/*.hpp"
     "src/gui/event/*.cpp"
     "include/gui/event/*.hpp"
     "src/gui/dragdrop/*.cpp"

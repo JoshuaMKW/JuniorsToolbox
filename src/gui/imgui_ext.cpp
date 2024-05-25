@@ -2,7 +2,12 @@
 #include <IconsForkAwesome.h>
 #include <string>
 #include <vector>
-// #include <imgui.h>
+
+#include <glfw/glfw3.h>
+#include <imgui_impl_glfw.cpp>
+#include <imgui_impl_opengl3.h>
+
+#pragma comment(lib, "opengl32.lib")
 
 static const ImGuiDataTypeInfo GDataTypeInfo[] = {
     {sizeof(char),           "S8",     "%d",    "%d"   }, // ImGuiDataType_S8
@@ -1133,4 +1138,64 @@ bool ImGui::TreeNodeEx(const char *label, ImGuiTreeNodeFlags flags, bool focused
         return false;
 
     return TreeNodeBehavior(window->GetID(label), flags, label, NULL, focused, visible);
+}
+
+void ImGui_ImplGlfw_CreateWindow_Ex(ImGuiViewport *viewport) {
+    ImGui_ImplGlfw_Data *bd         = ImGui_ImplGlfw_GetBackendData();
+    ImGui_ImplGlfw_ViewportData *vd = IM_NEW(ImGui_ImplGlfw_ViewportData)();
+    viewport->PlatformUserData      = vd;
+
+    // GLFW 3.2 unfortunately always set focus on glfwCreateWindow() if GLFW_VISIBLE is set,
+    // regardless of GLFW_FOCUSED With GLFW 3.3, the hint GLFW_FOCUS_ON_SHOW fixes this problem
+    glfwWindowHint(GLFW_VISIBLE, false);
+    glfwWindowHint(GLFW_FOCUSED, false);
+#if GLFW_HAS_FOCUS_ON_SHOW
+    glfwWindowHint(GLFW_FOCUS_ON_SHOW, false);
+#endif
+    glfwWindowHint(GLFW_DECORATED,
+                   (viewport->Flags & ImGuiViewportFlags_NoDecoration) ? false : true);
+#if GLFW_HAS_WINDOW_TOPMOST
+    glfwWindowHint(GLFW_FLOATING, (viewport->Flags & ImGuiViewportFlags_TopMost) ? true : false);
+#endif
+    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER,
+                   (viewport->Flags & ImGuiViewportFlags_TransparentFrameBuffer) ? true : false);
+    GLFWwindow *share_window = (bd->ClientApi == GlfwClientApi_OpenGL) ? bd->Window : nullptr;
+    vd->Window      = glfwCreateWindow((int)viewport->Size.x, (int)viewport->Size.y, "No Title Yet",
+                                       nullptr, share_window);
+    vd->WindowOwned = true;
+    viewport->PlatformHandle = (void *)vd->Window;
+#ifdef _WIN32
+    viewport->PlatformHandleRaw = glfwGetWin32Window(vd->Window);
+#elif defined(__APPLE__)
+    viewport->PlatformHandleRaw = (void *)glfwGetCocoaWindow(vd->Window);
+#endif
+    glfwSetWindowPos(vd->Window, (int)viewport->Pos.x, (int)viewport->Pos.y);
+
+    // Install GLFW callbacks for secondary viewports
+    glfwSetWindowFocusCallback(vd->Window, ImGui_ImplGlfw_WindowFocusCallback);
+    glfwSetCursorEnterCallback(vd->Window, ImGui_ImplGlfw_CursorEnterCallback);
+    glfwSetCursorPosCallback(vd->Window, ImGui_ImplGlfw_CursorPosCallback);
+    glfwSetMouseButtonCallback(vd->Window, ImGui_ImplGlfw_MouseButtonCallback);
+    glfwSetScrollCallback(vd->Window, ImGui_ImplGlfw_ScrollCallback);
+    glfwSetKeyCallback(vd->Window, ImGui_ImplGlfw_KeyCallback);
+    glfwSetCharCallback(vd->Window, ImGui_ImplGlfw_CharCallback);
+    glfwSetWindowCloseCallback(vd->Window, ImGui_ImplGlfw_WindowCloseCallback);
+    glfwSetWindowPosCallback(vd->Window, ImGui_ImplGlfw_WindowPosCallback);
+    glfwSetWindowSizeCallback(vd->Window, ImGui_ImplGlfw_WindowSizeCallback);
+    if (bd->ClientApi == GlfwClientApi_OpenGL) {
+        glfwMakeContextCurrent(vd->Window);
+        glfwSwapInterval(0);
+    }
+}
+
+void ImGui_ImplOpenGL3_RenderWindow_Ex(ImGuiViewport *viewport, void *) {
+    if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear)) {
+        ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+        if ((viewport->Flags & ImGuiViewportFlags_TransparentFrameBuffer)) {
+            clear_color.w = 0.0f;
+        }
+        glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+    ImGui_ImplOpenGL3_RenderDrawData(viewport->DrawData);
 }

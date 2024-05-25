@@ -8,17 +8,23 @@
 #include "platform/process.hpp"
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
+#include <TlHelp32.h>
 #include <Windows.h>
 #elif TOOLBOX_PLATFORM_LINUX
+#include <limits>
+#include <process.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <signal.h>
-#include <limits>
-#include <process.h>
 #endif
 
 namespace Toolbox::Platform {
+
+    struct EnumWindowsData {
+        ProcessID m_proc_id;
+        std::vector<LowWindow> m_window_handles;
+    };
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
     static std::string GetLastErrorMessage() {
@@ -109,11 +115,80 @@ namespace Toolbox::Platform {
         return false;
     }
 
+    static BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM param) {
+        EnumWindowsData *data = reinterpret_cast<EnumWindowsData *>(param);
+        DWORD win_proc_id     = 0;
+        GetWindowThreadProcessId(hwnd, &win_proc_id);
+        if (win_proc_id == data->m_proc_id) {
+            data->m_window_handles.push_back(hwnd);
+        }
+        return TRUE;
+    }
+
+    std::vector<LowWindow> FindWindowsOfProcess(const ProcessInformation &process) {
+        EnumWindowsData data = {process.m_process_id, {}};
+        EnumWindows(EnumWindowsProc, reinterpret_cast<LPARAM>(&data));
+        return data.m_window_handles;
+    }
+
+    std::string GetWindowTitle(LowWindow window) {
+        WINDOWINFO win_info{};
+        if (!GetWindowInfo(window, &win_info)) {
+            return "";
+        }
+
+        char title[256];
+        int title_len = GetWindowText(window, title, sizeof(title));
+
+        std::string win_title = std::string(title, title_len);
+
+        TOOLBOX_DEBUG_LOG_V("Window ({}) - Type: {}, Status: {}", win_title,
+                            win_info.atomWindowType, win_info.dwWindowStatus);
+
+        return win_title;
+    }
+
+    bool GetWindowClientRect(LowWindow window, int &x, int &y, int &width, int &height) {
+        RECT win_rect;
+        if (!GetClientRect(window, &win_rect)) {
+            return false;
+        }
+
+        POINT top_left = {win_rect.left, win_rect.top};
+        ClientToScreen(window, &top_left);
+
+        x      = top_left.x;
+        y      = top_left.y;
+        width  = win_rect.right - win_rect.left;
+        height = win_rect.bottom - win_rect.top;
+
+        return true;
+    }
+
+    bool ForceWindowToFront(LowWindow window) {
+        return SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0,
+                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+
+    bool ForceWindowToFront(LowWindow window, LowWindow target) {
+        return SetWindowPos(window, GetNextWindow(target, GW_HWNDPREV), 0, 0, 0, 0,
+                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+
+    bool SetWindowTransparency(LowWindow window, uint8_t alpha) {
+        SetWindowLongPtr(window, GWL_STYLE, WS_EX_LAYERED);
+        SetLayeredWindowAttributes(window, RGB(0, 0, 0), 255, LWA_ALPHA);
+        if (!ShowWindow(window, SW_SHOW)) {
+            return false;
+        }
+        return UpdateWindow(window);
+    }
+
 #elif TOOLBOX_PLATFORM_LINUX
     std::string GetLastErrorMessage() { return std::strerror(errno); }
 
     Result<ProcessInformation> CreateExProcess(const std::filesystem::path &program_path,
-                                       const std::string &cmdargs) {
+                                               const std::string &cmdargs) {
         std::string true_cmdargs =
             std::format("\"{}\" {}", program_path.string().c_str(), cmdargs.data());
 

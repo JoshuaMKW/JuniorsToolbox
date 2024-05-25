@@ -101,7 +101,7 @@ namespace Toolbox::UI {
             if (size.x > 0 && size.y > 0) {
                 ImGui::SetWindowSize(window, size);
             }
-            // ImGui::SetWindowPos(window, pos);
+            ImGui::SetWindowPos(window, pos);
         }
 
         ImGuiWindowFlags flags_ = flags();
@@ -123,7 +123,17 @@ namespace Toolbox::UI {
         bool was_hidden  = isHidden();
         bool was_open    = is_open;
 
+        if ((flags_ & ImGuiWindowFlags_NoBackground)) {
+            ImGui::SetNextWindowBgAlpha(0.0f);
+        }
+
         if (ImGui::Begin(window_name.c_str(), &is_open, flags_)) {
+            ImGuiViewport *viewport = ImGui::GetCurrentWindow()->Viewport;
+
+            if ((flags_ & ImGuiWindowFlags_NoBackground)) {
+                viewport->Flags |= ImGuiViewportFlags_TransparentFrameBuffer;
+            }
+
             ImVec2 updated_size = ImGui::GetWindowSize();
             ImVec2 updated_pos  = ImGui::GetWindowPos();
 
