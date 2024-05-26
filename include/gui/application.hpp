@@ -71,8 +71,8 @@ namespace Toolbox {
 
         std::filesystem::path getProjectRoot() const { return m_project_root; }
 
-        void registerDolphinOverlay(const std::string &name, DolphinOverlay::render_layer_cb cb);
-        void deregisterDolphinOverlay(const std::string &name);
+        void registerDolphinOverlay(UUID64 scene_uuid, const std::string &name, SceneWindow::render_layer_cb cb);
+        void deregisterDolphinOverlay(UUID64 scene_uuid, const std::string &name);
 
         ImVec2 windowScreenPos() {
             int x = 0, y = 0;

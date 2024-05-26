@@ -775,7 +775,15 @@ namespace Toolbox::UI {
                 }
                 bool selected = window->getUUID() == m_attached_scene_uuid;
                 if (ImGui::Selectable(window->context().c_str(), &selected)) {
+                    GUIApplication::instance().deregisterDolphinOverlay(m_attached_scene_uuid,
+                                                                        "Pad Record Overlay");
                     m_attached_scene_uuid = window->getUUID();
+                    GUIApplication::instance().registerDolphinOverlay(
+                        m_attached_scene_uuid, "Pad Record Overlay",
+                        [this](TimeStep delta_time, std::string_view layer_name, int width,
+                               int height, const glm::mat4x4 &vp_mtx, UUID64 window_uuid) {
+                            onRenderPadOverlay(delta_time, layer_name, width, height, vp_mtx, window_uuid);
+                        });
                 }
             }
             ImGui::EndCombo();
@@ -1022,8 +1030,9 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::onRenderPadOverlay(TimeStep delta_time, std::string_view layer_name,
-                                            int width, int height, UUID64 window_uuid) {
-        tryRenderNodes(delta_time, layer_name, width, height, window_uuid);
+                                            int width, int height,
+                                            const glm::mat4x4 &vp_mtx, UUID64 window_uuid) {
+        tryRenderNodes(delta_time, layer_name, width, height, vp_mtx, window_uuid);
 
         ImGui::Text(layer_name.data());
 
@@ -1101,39 +1110,8 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::tryRenderNodes(TimeStep delta_time, std::string_view layer_name, int width,
-                                        int height, UUID64 window_uuid) {
+                                        int height, const glm::mat4x4 &vp_mtx, UUID64 window_uuid) {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
-        Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
-
-        u32 camera_ptr = communicator.read<u32>(0x8040D0A8).value();
-        if (!camera_ptr) {
-            TOOLBOX_ERROR("[PAD RECORD] Camera pointer is null. Please ensure that the game is "
-                          "running and the camera is loaded.");
-            return;
-        }
-
-        u32 proj_mtx_ptr     = camera_ptr + 0x16C;
-        u32 view_mtx_ptr     = camera_ptr + 0x1EC;
-        glm::mat4x4 proj_mtx = glm::identity<glm::mat4x4>();
-        glm::mat4x4 view_mtx = glm::identity<glm::mat4x4>();
-
-        f32 fovy   = communicator.read<f32>(camera_ptr + 0x48).value();
-        f32 aspect = communicator.read<f32>(camera_ptr + 0x4C).value();
-        proj_mtx   = glm::perspectiveRH_ZO(glm::radians(fovy), aspect, 1.0f, 100000.0f);
-
-        view_mtx[0][0] = communicator.read<f32>(view_mtx_ptr + 0x00).value();
-        view_mtx[1][0] = communicator.read<f32>(view_mtx_ptr + 0x04).value();
-        view_mtx[2][0] = communicator.read<f32>(view_mtx_ptr + 0x08).value();
-        view_mtx[0][1] = communicator.read<f32>(view_mtx_ptr + 0x10).value();
-        view_mtx[1][1] = communicator.read<f32>(view_mtx_ptr + 0x14).value();
-        view_mtx[2][1] = communicator.read<f32>(view_mtx_ptr + 0x18).value();
-        view_mtx[0][2] = -communicator.read<f32>(view_mtx_ptr + 0x20).value();
-        view_mtx[1][2] = -communicator.read<f32>(view_mtx_ptr + 0x24).value();
-        view_mtx[2][2] = -communicator.read<f32>(view_mtx_ptr + 0x28).value();
-        view_mtx[3][0] = communicator.read<f32>(view_mtx_ptr + 0x0C).value();
-        view_mtx[3][1] = communicator.read<f32>(view_mtx_ptr + 0x1C).value();
-        view_mtx[3][2] = -communicator.read<f32>(view_mtx_ptr + 0x2C).value();
 
         u32 application_address = 0x803E9700;
         u32 display_address     = communicator.read<u32>(application_address + 0x1C).value();
@@ -1144,11 +1122,11 @@ namespace Toolbox::UI {
         f32 client_to_game_ratio = ((f32)width / (f32)height) / ((f32)xfb_width / (f32)xfb_height);
         f32 scaled_width         = width;
         f32 scaled_height        = height;
-        if (client_to_game_ratio > 1.0f) {
+        /*if (client_to_game_ratio > 1.0f) {
             scaled_width = width / (0.67f + client_to_game_ratio * 0.33f);
         } else {
             scaled_height = height * (0.5f + client_to_game_ratio * 0.5f);
-        }
+        }*/
 
         u32 mario_address         = communicator.read<u32>(0x8040E108).value();
         glm::vec3 player_position = {
@@ -1171,7 +1149,7 @@ namespace Toolbox::UI {
             NodeData node_data;
 
             glm::vec3 node_position   = node->getPosition();
-            glm::vec3 screen_position = proj_mtx * view_mtx * glm::vec4(node_position, 1.0f);
+            glm::vec3 screen_position = vp_mtx * glm::vec4(node_position, 1.0f);
 
             node_data.m_screen_depth = -screen_position.z;
             if (node_data.m_screen_depth < FLT_EPSILON) {
@@ -1229,13 +1207,13 @@ namespace Toolbox::UI {
 
     f32 PadInputWindow::getDistanceFromPlayer(const glm::vec3 &pos) const {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
-        u32 mario_address         = communicator.read<u32>(0x8040E108).value();
-        glm::vec3 player_position = {
+        u32 mario_address                 = communicator.read<u32>(0x8040E108).value();
+        glm::vec3 player_position         = {
             communicator.read<f32>(mario_address + 0x10).value(),
             communicator.read<f32>(mario_address + 0x14).value(),
             communicator.read<f32>(mario_address + 0x18).value(),
         };
-        glm::vec3 player_to_node    = pos - player_position;
+        glm::vec3 player_to_node = pos - player_position;
         return std::sqrtf(glm::dot(player_to_node, player_to_node));
     }
 
@@ -1272,16 +1250,9 @@ namespace Toolbox::UI {
         m_pad_recorder.onCreateLink(
             [this](const ReplayLinkNode &node) { tryReuseOrCreateRailNode(node); });
         m_pad_recorder.tStart(false, nullptr);
-
-        GUIApplication::instance().registerDolphinOverlay(
-            "Pad Record Overlay", [this](TimeStep delta_time, std::string_view layer_name,
-                                         int width, int height, UUID64 window_uuid) {
-                onRenderPadOverlay(delta_time, layer_name, width, height, window_uuid);
-            });
     }
 
     void PadInputWindow::onDetach() {
-        GUIApplication::instance().deregisterDolphinOverlay("Pad Record Overlay");
         m_pad_recorder.tKill(true);
     }
 

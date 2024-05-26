@@ -68,6 +68,17 @@ namespace Toolbox::UI {
             RENDER_VIEW,
         };
 
+        using render_layer_cb = std::function<void(TimeStep delta_time, std::string_view layer_name,
+                                                   int width, int height, const glm::mat4x4 &vp_mtx, UUID64 window_uuid)>;
+
+        void registerOverlay(const std::string &layer_name, render_layer_cb cb) {
+            m_render_layers[layer_name] = cb;
+        }
+
+        void deregisterOverlay(const std::string &layer_name) {
+            m_render_layers.erase(layer_name);
+        }
+
     protected:
         ImGuiID onBuildDockspace() override;
         void onRenderMenuBar() override;
@@ -223,5 +234,7 @@ namespace Toolbox::UI {
 
         ImageHandle m_dolphin_image;
         ImagePainter m_dolphin_painter;
+
+        std::map<std::string, render_layer_cb> m_render_layers;
     };
 }  // namespace Toolbox::UI

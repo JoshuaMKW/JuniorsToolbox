@@ -228,24 +228,27 @@ namespace Toolbox {
         m_task_communicator.tKill(true);
     }
 
-    void GUIApplication::registerDolphinOverlay(const std::string &name,
-                                                DolphinOverlay::render_layer_cb cb) {
-      auto dolphin_overlay_it = std::find_if(
-            m_windows.begin(), m_windows.end(),
-            [](auto window) { return window->name() == "Dolphin Overlay"; });
-      if (dolphin_overlay_it != m_windows.end()) {
-        RefPtr<DolphinOverlay> dolphin_overlay = ref_cast<DolphinOverlay>(*dolphin_overlay_it);
-        dolphin_overlay->registerRenderLayer(name, cb);
+    void GUIApplication::registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
+                                                SceneWindow::render_layer_cb cb) {
+      auto scene_window_it = std::find_if(
+            m_windows.begin(), m_windows.end(), [&scene_uuid](auto window) {
+            return window->getUUID() == scene_uuid;
+        });
+      if (scene_window_it != m_windows.end()) {
+        RefPtr<SceneWindow> scene_window = ref_cast<SceneWindow>(*scene_window_it);
+        scene_window->registerOverlay(name, cb);
       }
     }
 
-    void GUIApplication::deregisterDolphinOverlay(const std::string &name) {
-        auto dolphin_overlay_it = std::find_if(m_windows.begin(), m_windows.end(), [](auto window) {
-            return window->name() == "Dolphin Overlay";
+    void GUIApplication::deregisterDolphinOverlay(UUID64 scene_uuid, const std::string &name) {
+        auto scene_window_it =
+            std::find_if(m_windows.begin(), m_windows.end(),
+                         [&scene_uuid](auto window) {
+            return window->getUUID() == scene_uuid;
         });
-        if (dolphin_overlay_it != m_windows.end()) {
-            RefPtr<DolphinOverlay> dolphin_overlay = ref_cast<DolphinOverlay>(*dolphin_overlay_it);
-            dolphin_overlay->deregisterRenderLayer(name);
+        if (scene_window_it != m_windows.end()) {
+            RefPtr<SceneWindow> scene_window = ref_cast<SceneWindow>(*scene_window_it);
+            scene_window->deregisterOverlay(name);
         }
     }
 

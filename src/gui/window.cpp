@@ -101,11 +101,15 @@ namespace Toolbox::UI {
             if (size != m_next_size && m_is_resized) {
                 if (m_next_size.x >= 0.0f && m_next_size.y >= 0.0f) {
                     ImGui::SetNextWindowSize(size);
+                    GUIApplication::instance().dispatchEvent<WindowEvent, true>(
+                        getUUID(), EVENT_WINDOW_RESIZE, m_next_size);
                 }
                 m_is_resized = false;
             }
             if (pos != m_next_pos && m_is_repositioned) {
                 ImGui::SetNextWindowPos(m_next_pos);
+                GUIApplication::instance().dispatchEvent<WindowEvent, true>(
+                    getUUID(), EVENT_WINDOW_MOVE, m_next_pos);
                 m_is_repositioned = false;
             }
         }
@@ -140,20 +144,7 @@ namespace Toolbox::UI {
                 viewport->Flags |= ImGuiViewportFlags_TransparentFrameBuffer;
             }
 
-            ImVec2 updated_size = ImGui::GetWindowSize();
-            ImVec2 updated_pos  = ImGui::GetWindowPos();
-
             is_focused = ImGui::IsWindowFocused();
-
-            if (updated_size != size) {
-                GUIApplication::instance().dispatchEvent<WindowEvent, true>(
-                    getUUID(), EVENT_WINDOW_RESIZE, updated_size);
-            }
-
-            if (updated_pos != pos) {
-                GUIApplication::instance().dispatchEvent<WindowEvent, true>(
-                    getUUID(), EVENT_WINDOW_MOVE, updated_pos);
-            }
 
             m_viewport = ImGui::GetWindowViewport();
             onRenderDockspace();

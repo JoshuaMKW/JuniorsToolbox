@@ -50,13 +50,13 @@ namespace Toolbox::UI {
         void renderLinkPanel(const ReplayNodeInfo &link_node, char link_chr);
 
         void onRenderPadOverlay(TimeStep delta_time, std::string_view layer_name, int width,
-                                int height, UUID64 window_uuid);
+                                int height, const glm::mat4x4 &vp_mtx, UUID64 window_uuid);
 
         void loadMimePadData(Buffer &buffer);
 
         void tryReuseOrCreateRailNode(const ReplayLinkNode &node);
         void tryRenderNodes(TimeStep delta_time, std::string_view layer_name, int width, int height,
-                            UUID64 window_uuid);
+                            const glm::mat4x4 &vp_mtx, UUID64 window_uuid);
 
         f32 getDistanceFromPlayer(const glm::vec3 &pos) const;
 
