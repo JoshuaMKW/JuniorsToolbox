@@ -49,9 +49,16 @@ namespace Toolbox::UI {
         void renderLinkDataState();
         void renderLinkPanel(const ReplayNodeInfo &link_node, char link_chr);
 
+        void onRenderPadOverlay(TimeStep delta_time, std::string_view layer_name, int width,
+                                int height, UUID64 window_uuid);
+
         void loadMimePadData(Buffer &buffer);
 
         void tryReuseOrCreateRailNode(const ReplayLinkNode &node);
+        void tryRenderNodes(TimeStep delta_time, std::string_view layer_name, int width, int height,
+                            UUID64 window_uuid);
+
+        f32 getDistanceFromPlayer(const glm::vec3 &pos) const;
 
     public:
         ImGuiWindowFlags flags() const override {
@@ -108,27 +115,26 @@ namespace Toolbox::UI {
         UUID64 m_attached_scene_uuid = 0;
 
         char m_cur_from_link = '*';
-        char m_cur_to_link = '*';
-        
+        char m_cur_to_link   = '*';
+
         u8 m_scene_id = 0, m_episode_id = 0;
         bool m_is_viewing_shadow_mario = false;
-        bool m_is_viewing_piantissimo = false;
-        u32 m_shadow_mario_ptr = 0;
-        u32 m_piantissimo_ptr = 0;
+        bool m_is_viewing_piantissimo  = false;
+        u32 m_shadow_mario_ptr         = 0;
+        u32 m_piantissimo_ptr          = 0;
 
-        Game::TaskCommunicator m_task_communicator;
         PadRecorder m_pad_recorder;
         Rail::Rail m_pad_rail;
 
-        std::optional<std::filesystem::path> m_file_path = std::nullopt;
-        std::optional<std::filesystem::path> m_load_path = std::nullopt;
+        std::optional<std::filesystem::path> m_file_path   = std::nullopt;
+        std::optional<std::filesystem::path> m_load_path   = std::nullopt;
         std::optional<std::filesystem::path> m_import_path = std::nullopt;
         std::optional<std::filesystem::path> m_export_path = std::nullopt;
 
         bool m_render_controller_overlay = false;
-        bool m_is_viewing_rumble  = false;
-        bool m_is_recording_input = false;
-        u32 m_last_recorded_frame = 0;
+        bool m_is_viewing_rumble         = false;
+        bool m_is_recording_input        = false;
+        u32 m_last_recorded_frame        = 0;
 
         size_t m_controller_port = 0;
 

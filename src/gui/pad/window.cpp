@@ -202,11 +202,7 @@ static const std::vector<ImVec2> s_lr_button_points = {
 
 namespace Toolbox::UI {
 
-    PadInputWindow::PadInputWindow() : ImWindow("Pad Recorder"), m_pad_rail("mariomodoki") {
-        m_pad_recorder.tStart(false, nullptr);
-        m_pad_recorder.onCreateLink(
-            [this](const ReplayLinkNode &node) { tryReuseOrCreateRailNode(node); });
-    }
+    PadInputWindow::PadInputWindow() : ImWindow("Pad Recorder"), m_pad_rail("mariomodoki") {}
 
     PadInputWindow::~PadInputWindow() {}
 
@@ -363,6 +359,8 @@ namespace Toolbox::UI {
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 + cmd_button_size.x);
         if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size)) {
             m_pad_recorder.stopRecording();
+            m_cur_from_link = '*';
+            m_cur_to_link   = '*';
         }
 
         if (!is_recording) {
@@ -411,7 +409,8 @@ namespace Toolbox::UI {
         PadRecorder::PadFrameData frame_data{};
 
         if (m_is_viewing_shadow_mario) {
-            auto result = m_pad_recorder.readPadFrameData(PadRecorder::PadSourceType::SOURCE_EMARIO);
+            auto result =
+                m_pad_recorder.readPadFrameData(PadRecorder::PadSourceType::SOURCE_EMARIO);
             if (!result) {
                 LogError(result.error());
                 ImGui::Text("Error reading Shadow Mario data.");
@@ -438,13 +437,14 @@ namespace Toolbox::UI {
             frame_data = result.value();
         }
 
-        ImVec2 rumble_position = m_is_viewing_rumble
-                                     ? ImVec2(frame_data.m_rumble_x * 7.0f, frame_data.m_rumble_y * 7.0f)
-                                     : ImVec2(0.0f, 0.0f);
+        ImVec2 rumble_position =
+            m_is_viewing_rumble ? ImVec2(frame_data.m_rumble_x * 7.0f, frame_data.m_rumble_y * 7.0f)
+                                : ImVec2(0.0f, 0.0f);
 
         // L button
         {
-            bool is_l_pressed = (frame_data.m_held_buttons & PadButtons::BUTTON_L) != PadButtons::BUTTON_NONE;
+            bool is_l_pressed =
+                (frame_data.m_held_buttons & PadButtons::BUTTON_L) != PadButtons::BUTTON_NONE;
             ImVec2 l_button_position = (ImVec2(-85, -57) + rumble_position) * scale + center;
             float l_button_radius    = 27.0f * scale;
             ImU32 l_button_color     = is_l_pressed ? IM_COL32(240, 240, 240, alpha)
@@ -577,11 +577,9 @@ namespace Toolbox::UI {
             ImU32 stick_color = IM_COL32(160, 160, 160, alpha);
 
             ImGui::DrawNgon(8, stick_position, (stick_radius + 7.5f) * scale, IM_COL32_BLACK,
-                            stick_color,
-                            2.0f, 0.0f);
+                            stick_color, 2.0f, 0.0f);
             ImGui::DrawCircle(stick_tilted_position, stick_radius * scale, IM_COL32_BLACK,
-                              stick_color,
-                              2.0f);
+                              stick_color, 2.0f);
         }
 
         // C stick
@@ -679,8 +677,7 @@ namespace Toolbox::UI {
                                                             : IM_COL32(160, 160, 160, alpha);
 
             ImGui::DrawCircle(start_button_position, 6.0f * scale, IM_COL32_BLACK,
-                              start_button_color,
-                              2.0f);
+                              start_button_color, 2.0f);
         }
 
         // D-pad
@@ -965,13 +962,15 @@ namespace Toolbox::UI {
                                             player_transform.m_translation;
 
                         player_transform.m_rotation = glm::vec3(
-                            0.0f, std::atan2(from_to.x, from_to.z) * (180.0f / IM_PI), 0.0f);
+                            0.0f, std::atan2f(from_to.x, from_to.z) * (180.0f / IM_PI), 0.0f);
                     }
 
                     player_transform.m_scale = glm::vec3(1.0f);
 
                     task_communicator.setMarioTransform(player_transform);
 
+                    m_cur_from_link = from_link;
+                    m_cur_to_link   = to_link;
                     m_pad_recorder.startRecording(from_link, to_link);
                 }
             }
@@ -1019,6 +1018,18 @@ namespace Toolbox::UI {
                 ImGui::EndDisabled();
             }
             ImGui::EndGroupPanel();
+        }
+    }
+
+    void PadInputWindow::onRenderPadOverlay(TimeStep delta_time, std::string_view layer_name,
+                                            int width, int height, UUID64 window_uuid) {
+        tryRenderNodes(delta_time, layer_name, width, height, window_uuid);
+
+        ImGui::Text(layer_name.data());
+
+        if (m_render_controller_overlay) {
+            f32 controller_scale = static_cast<float>(std::min(width, height)) / 1500.0f;
+            renderControllerOverlay({width * 0.12f, height * 0.85f}, controller_scale, 255);
         }
     }
 
@@ -1089,6 +1100,145 @@ namespace Toolbox::UI {
         communicator.write<f32>(player_ptr + 0x18, static_cast<f32>(node_position.z));
     }
 
+    void PadInputWindow::tryRenderNodes(TimeStep delta_time, std::string_view layer_name, int width,
+                                        int height, UUID64 window_uuid) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        Game::TaskCommunicator &task_communicator =
+            GUIApplication::instance().getTaskCommunicator();
+
+        u32 camera_ptr = communicator.read<u32>(0x8040D0A8).value();
+        if (!camera_ptr) {
+            TOOLBOX_ERROR("[PAD RECORD] Camera pointer is null. Please ensure that the game is "
+                          "running and the camera is loaded.");
+            return;
+        }
+
+        u32 proj_mtx_ptr     = camera_ptr + 0x16C;
+        u32 view_mtx_ptr     = camera_ptr + 0x1EC;
+        glm::mat4x4 proj_mtx = glm::identity<glm::mat4x4>();
+        glm::mat4x4 view_mtx = glm::identity<glm::mat4x4>();
+
+        f32 fovy   = communicator.read<f32>(camera_ptr + 0x48).value();
+        f32 aspect = communicator.read<f32>(camera_ptr + 0x4C).value();
+        proj_mtx   = glm::perspectiveRH_ZO(glm::radians(fovy), aspect, 1.0f, 100000.0f);
+
+        view_mtx[0][0] = communicator.read<f32>(view_mtx_ptr + 0x00).value();
+        view_mtx[1][0] = communicator.read<f32>(view_mtx_ptr + 0x04).value();
+        view_mtx[2][0] = communicator.read<f32>(view_mtx_ptr + 0x08).value();
+        view_mtx[0][1] = communicator.read<f32>(view_mtx_ptr + 0x10).value();
+        view_mtx[1][1] = communicator.read<f32>(view_mtx_ptr + 0x14).value();
+        view_mtx[2][1] = communicator.read<f32>(view_mtx_ptr + 0x18).value();
+        view_mtx[0][2] = -communicator.read<f32>(view_mtx_ptr + 0x20).value();
+        view_mtx[1][2] = -communicator.read<f32>(view_mtx_ptr + 0x24).value();
+        view_mtx[2][2] = -communicator.read<f32>(view_mtx_ptr + 0x28).value();
+        view_mtx[3][0] = communicator.read<f32>(view_mtx_ptr + 0x0C).value();
+        view_mtx[3][1] = communicator.read<f32>(view_mtx_ptr + 0x1C).value();
+        view_mtx[3][2] = -communicator.read<f32>(view_mtx_ptr + 0x2C).value();
+
+        u32 application_address = 0x803E9700;
+        u32 display_address     = communicator.read<u32>(application_address + 0x1C).value();
+        u32 xfb_address         = communicator.read<u32>(display_address + 0x8).value();
+        u16 xfb_width           = communicator.read<u16>(display_address + 0x14).value();
+        u16 xfb_height          = communicator.read<u16>(display_address + 0x18).value();
+
+        f32 client_to_game_ratio = ((f32)width / (f32)height) / ((f32)xfb_width / (f32)xfb_height);
+        f32 scaled_width         = width;
+        f32 scaled_height        = height;
+        if (client_to_game_ratio > 1.0f) {
+            scaled_width = width / (0.67f + client_to_game_ratio * 0.33f);
+        } else {
+            scaled_height = height * (0.5f + client_to_game_ratio * 0.5f);
+        }
+
+        u32 mario_address         = communicator.read<u32>(0x8040E108).value();
+        glm::vec3 player_position = {
+            communicator.read<f32>(mario_address + 0x10).value(),
+            communicator.read<f32>(mario_address + 0x14).value(),
+            communicator.read<f32>(mario_address + 0x18).value(),
+        };
+
+        struct NodeData {
+            ImVec2 m_screen_position;
+            f32 m_screen_depth;
+            f32 m_player_distance;
+        };
+
+        // Transform each rail node into screen space
+        std::vector<NodeData> node_datas;
+
+        std::vector<Rail::Rail::node_ptr_t> rail_nodes = m_pad_rail.nodes();
+        for (const RefPtr<RailNode> &node : rail_nodes) {
+            NodeData node_data;
+
+            glm::vec3 node_position   = node->getPosition();
+            glm::vec3 screen_position = proj_mtx * view_mtx * glm::vec4(node_position, 1.0f);
+
+            node_data.m_screen_depth = -screen_position.z;
+            if (node_data.m_screen_depth < FLT_EPSILON) {
+                node_datas.push_back({});
+                continue;
+            }
+
+            node_data.m_screen_position.x = screen_position.x / node_data.m_screen_depth;
+            node_data.m_screen_position.x =
+                ((node_data.m_screen_position.x + 1.0f) * 0.5f) * scaled_width;
+
+            node_data.m_screen_position.y = screen_position.y / node_data.m_screen_depth;
+            node_data.m_screen_position.y =
+                ((1.0f - node_data.m_screen_position.y) * 0.5f) * scaled_height;
+
+            glm::vec3 player_to_node    = node_position - player_position;
+            node_data.m_player_distance = std::sqrtf(glm::dot(player_to_node, player_to_node));
+
+            node_datas.emplace_back(node_data);
+        }
+
+        ImVec2 cursor_pos = ImGui::GetCursorPos();
+
+        // Draw rail nodes
+        for (size_t i = 0; i < rail_nodes.size(); ++i) {
+            if (node_datas[i].m_screen_depth < FLT_EPSILON) {
+                continue;
+            }
+            ImVec2 node_position = node_datas[i].m_screen_position;
+            f32 node_size        = 20000.0f / node_datas[i].m_screen_depth;
+            node_size            = std::clamp(node_size, 2.0f, 10000.0f);
+            ImU32 node_color     = m_cur_to_link == ('A' + i) ? IM_COL32(0, 255, 0, 200)
+                                                              : IM_COL32(255, 0, 0, 200);
+            ImGui::DrawCircle(node_position, node_size, IM_COL32_BLACK, node_color, 2.0f);
+
+            std::string distance_text =
+                std::format("{:.2f}m", node_datas[i].m_player_distance * 0.01);
+
+            ImVec2 text_size = ImGui::CalcTextSize(distance_text.c_str());
+
+            ImVec2 item_padding = ImGui::GetStyle().FramePadding;
+            ImVec2 back_pos =
+                node_position - ImVec2(text_size.x * 0.5f, text_size.y + node_size + 5.0f);
+            ImGui::GetWindowDrawList()->AddRectFilled(
+                ImGui::GetWindowPos() + back_pos - item_padding,
+                ImGui::GetWindowPos() + back_pos + text_size + item_padding, IM_COL32(0, 0, 0, 200),
+                5.0f);
+
+            ImGui::SetCursorPos(back_pos);
+            ImGui::Text(distance_text.c_str());
+        }
+
+        ImGui::SetCursorPos(cursor_pos);
+    }
+
+    f32 PadInputWindow::getDistanceFromPlayer(const glm::vec3 &pos) const {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        u32 mario_address         = communicator.read<u32>(0x8040E108).value();
+        glm::vec3 player_position = {
+            communicator.read<f32>(mario_address + 0x10).value(),
+            communicator.read<f32>(mario_address + 0x14).value(),
+            communicator.read<f32>(mario_address + 0x18).value(),
+        };
+        glm::vec3 player_to_node    = pos - player_position;
+        return std::sqrtf(glm::dot(player_to_node, player_to_node));
+    }
+
     bool PadInputWindow::onLoadData(const std::filesystem::path &path) {
         auto file_result = Toolbox::is_directory(path);
         if (!file_result) {
@@ -1119,20 +1269,32 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::onAttach() {
+        m_pad_recorder.onCreateLink(
+            [this](const ReplayLinkNode &node) { tryReuseOrCreateRailNode(node); });
+        m_pad_recorder.tStart(false, nullptr);
+
         GUIApplication::instance().registerDolphinOverlay(
             "Pad Record Overlay", [this](TimeStep delta_time, std::string_view layer_name,
                                          int width, int height, UUID64 window_uuid) {
-                ImGui::Text(layer_name.data());
-                if (m_render_controller_overlay) {
-                    f32 controller_scale = static_cast<float>(std::min(width, height)) / 1500.0f;
-                    renderControllerOverlay({width * 0.12f, height * 0.85f}, controller_scale, 255);
-                }
+                onRenderPadOverlay(delta_time, layer_name, width, height, window_uuid);
             });
     }
 
-    void PadInputWindow::onDetach() {}
+    void PadInputWindow::onDetach() {
+        GUIApplication::instance().deregisterDolphinOverlay("Pad Record Overlay");
+        m_pad_recorder.tKill(true);
+    }
 
-    void PadInputWindow::onImGuiUpdate(TimeStep delta_time) {}
+    void PadInputWindow::onImGuiUpdate(TimeStep delta_time) {
+        if (m_cur_from_link != '*' && m_cur_to_link != '*') {
+            Rail::Rail::node_ptr_t to_node = m_pad_rail.nodes()[m_cur_to_link - 'A'];
+            if (getDistanceFromPlayer(to_node->getPosition()) < 20.0f) {
+                m_pad_recorder.stopRecording();
+                m_cur_from_link = '*';
+                m_cur_to_link   = '*';
+            }
+        }
+    }
 
     void PadInputWindow::onContextMenuEvent(RefPtr<ContextMenuEvent> ev) {}
 

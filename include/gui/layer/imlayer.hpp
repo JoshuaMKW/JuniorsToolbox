@@ -28,11 +28,11 @@ namespace Toolbox::UI {
         [[nodiscard]] bool isHidden() const noexcept { return m_is_hidden; }
         [[nodiscard]] bool isFocused() const noexcept { return m_is_focused; }
 
-        [[nodiscard]] ImVec2 getSize() const noexcept { return m_size; }
-        [[nodiscard]] ImVec2 getPos() const noexcept { return m_position; }
+        [[nodiscard]] ImVec2 virtual getSize() const noexcept { return m_size; }
+        [[nodiscard]] ImVec2 virtual getPos() const noexcept { return m_position; }
 
-        void setSize(const ImVec2 &size) noexcept { m_size = size; }
-        void setPos(const ImVec2 &pos) noexcept { m_position = pos; }
+        virtual void setSize(const ImVec2 &size) noexcept { m_size = size; }
+        virtual void setPos(const ImVec2 &pos) noexcept { m_position = pos; }
 
         void onUpdate(TimeStep delta_time) override final;
         void onEvent(RefPtr<BaseEvent> ev) override;

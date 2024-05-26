@@ -1033,8 +1033,8 @@ bool ImGui::DrawCircle(const ImVec2 &center, float radius, ImU32 color, ImU32 fi
     ImDrawList *draw_list = ImGui::GetWindowDrawList();
     if ((fill_color & IM_COL32_A_MASK) != 0) {
         // Draw border circle
-        draw_list->AddCircle(center + window_pos, radius + thickness, color, 0, thickness);
         draw_list->AddCircleFilled(center + window_pos, radius, fill_color);
+        draw_list->AddCircle(center + window_pos, radius, color, 0, thickness);
     } else {
         draw_list->AddCircle(center + window_pos, radius, color, 0, thickness);
     }

@@ -45,25 +45,35 @@ namespace Toolbox::UI {
             return;
         }
 
+        bool is_target = isTargetOfEvent(ev);
+
         switch (ev->getType()) {
         case EVENT_CONTEXT_MENU:
-            onContextMenuEvent(ref_cast<ContextMenuEvent>(ev));
+            if (is_target) {
+                onContextMenuEvent(ref_cast<ContextMenuEvent>(ev));
+            }
             break;
         case EVENT_CURSOR_CHANGE:
             break;
         case EVENT_DRAG_ENTER:
         case EVENT_DRAG_LEAVE:
         case EVENT_DRAG_MOVE:
-            onDragEvent(ref_cast<DragEvent>(ev));
+            if (is_target) {
+                onDragEvent(ref_cast<DragEvent>(ev));
+            }
             break;
         case EVENT_DROP:
-            onDropEvent(ref_cast<DropEvent>(ev));
+            if (is_target) {
+                onDropEvent(ref_cast<DropEvent>(ev));
+            }
             break;
         case EVENT_FONT_CHANGE:
             break;
         case EVENT_FOCUS_IN:
         case EVENT_FOCUS_OUT:
-            onFocusEvent(ev);
+            if (is_target) {
+                onFocusEvent(ev);
+            }
             break;
         case EVENT_MOUSE_ENTER:
         case EVENT_MOUSE_LEAVE:
@@ -76,7 +86,7 @@ namespace Toolbox::UI {
             // first, as the mouse event may be handled by
             // a sublayer whose rect is within the parent
             propogateEvent(ev);
-            if (!ev->isHandled()) {
+            if (is_target && !ev->isHandled()) {
                 onMouseEvent(ref_cast<MouseEvent>(ev));
             }
             break;
@@ -85,7 +95,9 @@ namespace Toolbox::UI {
         case EVENT_WINDOW_MOVE:
         case EVENT_WINDOW_RESIZE:
         case EVENT_WINDOW_SHOW:
-            onWindowEvent(ref_cast<WindowEvent>(ev));
+            if (is_target) {
+                onWindowEvent(ref_cast<WindowEvent>(ev));
+            }
             break;
         }
     }

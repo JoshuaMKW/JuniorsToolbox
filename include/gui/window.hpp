@@ -71,6 +71,15 @@ namespace Toolbox::UI {
             return flags_;
         }
 
+        [[nodiscard]] void setSize(const ImVec2 &size) noexcept override {
+            m_next_size  = size;
+            m_is_resized = true;
+        }
+        [[nodiscard]] void setPos(const ImVec2 &pos) noexcept override {
+            m_next_pos        = pos;
+            m_is_repositioned = true;
+        }
+
         [[nodiscard]] virtual std::optional<ImVec2> defaultSize() const { return m_default_size; }
         [[nodiscard]] virtual std::optional<ImVec2> minSize() const { return m_min_size; }
         [[nodiscard]] virtual std::optional<ImVec2> maxSize() const { return m_max_size; }
@@ -101,6 +110,9 @@ namespace Toolbox::UI {
         [[nodiscard]] std::string title() const;
 
     protected:
+        void setLayerSize(const ImVec2 &size) noexcept { ImProcessLayer::setSize(size); }
+        void setLayerPos(const ImVec2 &pos) noexcept { ImProcessLayer::setPos(pos); }
+
         UUID64 m_UUID64;
         ImGuiID m_sibling_id = 0;
 
@@ -117,6 +129,11 @@ namespace Toolbox::UI {
     private:
         ImGuiID m_dockspace_id   = std::numeric_limits<ImGuiID>::max();
         bool m_is_docking_set_up = false;
+        bool m_is_resized        = false;
+        bool m_is_repositioned   = false;
+
+        ImVec2 m_next_size = {};
+        ImVec2 m_next_pos  = {};
     };
 
     inline std::string ImWindowComponentTitle(const ImWindow &window_layer,

@@ -33,7 +33,7 @@ namespace Toolbox::UI {
 
     void ImWindow::close() {
         GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_CLOSE,
-                                                                     ImVec2{0, 0});
+                                                                    ImVec2{0, 0});
         defocus();
     }
 
@@ -47,17 +47,17 @@ namespace Toolbox::UI {
 
     void ImWindow::open() {
         GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_SHOW,
-                                                                     ImVec2{0, 0});
+                                                                    ImVec2{0, 0});
     }
 
     void ImWindow::hide() {
         GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_HIDE,
-                                                                     ImVec2{0, 0});
+                                                                    ImVec2{0, 0});
     }
 
     void ImWindow::show() {
         GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_SHOW,
-                                                                     ImVec2{0, 0});
+                                                                    ImVec2{0, 0});
     }
 
     void ImWindow::onAttach() {
@@ -98,10 +98,16 @@ namespace Toolbox::UI {
 
         ImGuiWindow *window = ImGui::FindWindowByName(window_name.c_str());
         if (window) {
-            if (size.x > 0 && size.y > 0) {
-                ImGui::SetWindowSize(window, size);
+            if (size != m_next_size && m_is_resized) {
+                if (m_next_size.x >= 0.0f && m_next_size.y >= 0.0f) {
+                    ImGui::SetNextWindowSize(size);
+                }
+                m_is_resized = false;
             }
-            ImGui::SetWindowPos(window, pos);
+            if (pos != m_next_pos && m_is_repositioned) {
+                ImGui::SetNextWindowPos(m_next_pos);
+                m_is_repositioned = false;
+            }
         }
 
         ImGuiWindowFlags flags_ = flags();
@@ -193,7 +199,8 @@ namespace Toolbox::UI {
                 win_size.x = std::min(win_size.x, m_max_size->x);
                 win_size.y = std::min(win_size.y, m_max_size->y);
             }
-            setSize(win_size);
+            setLayerSize(win_size);
+            ev->accept();
             break;
         }
         default:

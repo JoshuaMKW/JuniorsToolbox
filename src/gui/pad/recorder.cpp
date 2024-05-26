@@ -9,13 +9,13 @@ namespace Toolbox {
     void PadRecorder::tRun(void *param) {
         while (!tIsSignalKill()) {
             if (m_record_flag.load()) {
-                std::unique_lock<std::mutex> lk(m_mutex);
+                std::scoped_lock lock(m_mutex);
                 recordPadData();
                 continue;
             }
 
             if (m_play_flag.load()) {
-                std::unique_lock<std::mutex> lk(m_mutex);
+                std::scoped_lock lock(m_mutex);
                 playPadData();
                 continue;
             }
@@ -54,6 +54,8 @@ namespace Toolbox {
             TOOLBOX_ERROR("[PAD RECORD] Dolphin is not running or the memory is not hooked.");
             return;
         }
+
+        std::scoped_lock lock(m_mutex);
 
         u32 application_ptr = 0x803E9700;
         u32 director_ptr    = communicator.read<u32>(application_ptr + 0x4).value();
@@ -94,6 +96,8 @@ namespace Toolbox {
             return;
         }
 
+        //std::scoped_lock lock(m_mutex);
+
         u32 application_ptr = 0x803E9700;
         u32 director_ptr    = communicator.read<u32>(application_ptr + 0x4).value();
         u8 director_type    = communicator.read<u8>(application_ptr + 0x8).value();
@@ -120,7 +124,7 @@ namespace Toolbox {
     void PadRecorder::stopRecording() {
         m_record_flag.store(false);
 
-        std::unique_lock<std::mutex> lk(m_mutex);
+        //std::scoped_lock lock(m_mutex);
 
         applyInputChunk();
         if (m_current_link == '*' || m_next_link == '*') {

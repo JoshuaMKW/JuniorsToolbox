@@ -45,6 +45,7 @@ namespace Toolbox::Dolphin {
 
             return *endian_swapped_t<T>(data);
         }
+
         template <typename T> Result<void> write(u32 address, const T &value) {
             T swapped_v = *endian_swapped_t<T>(value);
             auto result = DolphinHookManager::instance().writeBytes(
