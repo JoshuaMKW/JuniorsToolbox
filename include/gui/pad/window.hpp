@@ -42,7 +42,6 @@ namespace Toolbox::UI {
         void onRenderBody(TimeStep delta_time) override;
 
         void renderRecordPanel();
-        void renderControllerView();
         void renderControllerOverlay(const ImVec2 &center, f32 scale, u8 alpha);
         void renderRecordedInputData();
         void renderFileDialogs();

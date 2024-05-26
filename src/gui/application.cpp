@@ -174,10 +174,6 @@ namespace Toolbox {
         logging_window->open();
         addWindow(logging_window);
 
-        auto dolphin_overlay = make_referable<DolphinOverlay>();
-        dolphin_overlay->open();
-        addWindow(dolphin_overlay);
-
         determineEnvironmentConflicts();
 
         m_dolphin_communicator.tStart(false, nullptr);

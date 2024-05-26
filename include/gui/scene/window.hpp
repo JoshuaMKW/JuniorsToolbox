@@ -102,6 +102,7 @@ namespace Toolbox::UI {
         static bool renderRailProperties(SceneWindow &window);
         static bool renderRailNodeProperties(SceneWindow &window);
 
+        void calcDolphinVPMatrix();
         void reassignAllActorPtrs(u32 param);
 
         void buildContextMenuVirtualObj();
@@ -235,6 +236,7 @@ namespace Toolbox::UI {
         ImageHandle m_dolphin_image;
         ImagePainter m_dolphin_painter;
 
+        glm::mat4x4 m_dolphin_vp_mtx;
         std::map<std::string, render_layer_cb> m_render_layers;
     };
 }  // namespace Toolbox::UI

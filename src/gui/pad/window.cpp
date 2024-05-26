@@ -301,7 +301,7 @@ namespace Toolbox::UI {
             ImGui::BeginChild("Controller View", {0, 300}, true);
 
             ImVec2 content_region = ImGui::GetContentRegionAvail();
-            ImVec2 center         = {content_region.x / 2, content_region.y / 2 - 20};
+            ImVec2 center         = {content_region.x / 2 + 7, content_region.y / 2 - 20};
             renderControllerOverlay(center, 1.0f, 255);
 
             ImGui::EndChild();
@@ -381,22 +381,6 @@ namespace Toolbox::UI {
         }
 
         ImGui::PopStyleColor(3);
-    }
-
-    void PadInputWindow::renderControllerView() {
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, {0.8, 0.2, 0.7, 1.0});
-
-        if (ImGui::Checkbox("View Shadow Mario", &m_is_viewing_shadow_mario)) {
-            m_is_viewing_piantissimo = false;
-        }
-
-        if (ImGui::Checkbox("View Piantissimo", &m_is_viewing_piantissimo)) {
-            m_is_viewing_shadow_mario = false;
-        }
-
-        ImGui::EndChild();
-
-        ImGui::PopStyleColor();
     }
 
     void PadInputWindow::renderControllerOverlay(const ImVec2 &center, f32 scale, u8 alpha) {
@@ -576,7 +560,7 @@ namespace Toolbox::UI {
                 ImVec2(frame_data.m_stick_x, -frame_data.m_stick_y) * stick_radius * scale;
             ImU32 stick_color = IM_COL32(160, 160, 160, alpha);
 
-            ImGui::DrawNgon(8, stick_position, (stick_radius + 7.5f) * scale, IM_COL32_BLACK,
+            ImGui::DrawNgon(8, stick_position, (stick_radius + 6.0f) * scale, IM_COL32_BLACK,
                             stick_color, 2.0f, 0.0f);
             ImGui::DrawCircle(stick_tilted_position, stick_radius * scale, IM_COL32_BLACK,
                               stick_color, 2.0f);
@@ -584,14 +568,14 @@ namespace Toolbox::UI {
 
         // C stick
         {
-            float c_stick_radius    = 9.00f;
+            float c_stick_radius    = 11.00f;
             ImVec2 c_stick_position = (ImVec2(46, 57) + rumble_position) * scale + center;
             ImVec2 c_stick_tilted_position =
                 c_stick_position +
                 ImVec2(frame_data.m_c_stick_x, -frame_data.m_c_stick_y) * c_stick_radius * scale;
             ImU32 c_stick_color = IM_COL32(200, 160, 30, alpha);
 
-            ImGui::DrawNgon(8, c_stick_position, (c_stick_radius + 11.00f) * scale, IM_COL32_BLACK,
+            ImGui::DrawNgon(8, c_stick_position, (c_stick_radius + 10.00f) * scale, IM_COL32_BLACK,
                             c_stick_color, 2.0f, 0.0f);
             ImGui::DrawCircle(c_stick_tilted_position, c_stick_radius * scale, IM_COL32_BLACK,
                               c_stick_color, 2.0f);
@@ -605,7 +589,7 @@ namespace Toolbox::UI {
             ImU32 a_button_color     = is_a_pressed ? IM_COL32(90, 210, 150, alpha)
                                                     : IM_COL32(20, 170, 90, alpha);
 
-            ImGui::DrawCircle(a_button_position, 15.0f * scale, IM_COL32_BLACK, a_button_color,
+            ImGui::DrawCircle(a_button_position, 17.0f * scale, IM_COL32_BLACK, a_button_color,
                               2.0f);
         }
 
@@ -617,7 +601,7 @@ namespace Toolbox::UI {
             ImU32 b_button_color     = is_b_pressed ? IM_COL32(240, 130, 150, alpha)
                                                     : IM_COL32(210, 30, 50, alpha);
 
-            ImGui::DrawCircle(b_button_position, 8.0f * scale, IM_COL32_BLACK, b_button_color,
+            ImGui::DrawCircle(b_button_position, 9.0f * scale, IM_COL32_BLACK, b_button_color,
                               2.0f);
         }
 
@@ -676,7 +660,7 @@ namespace Toolbox::UI {
             ImU32 start_button_color     = is_start_pressed ? IM_COL32(240, 240, 240, alpha)
                                                             : IM_COL32(160, 160, 160, alpha);
 
-            ImGui::DrawCircle(start_button_position, 6.0f * scale, IM_COL32_BLACK,
+            ImGui::DrawCircle(start_button_position, 7.0f * scale, IM_COL32_BLACK,
                               start_button_color, 2.0f);
         }
 
@@ -1038,7 +1022,7 @@ namespace Toolbox::UI {
 
         if (m_render_controller_overlay) {
             f32 controller_scale = static_cast<float>(std::min(width, height)) / 1500.0f;
-            renderControllerOverlay({width * 0.12f, height * 0.85f}, controller_scale, 255);
+            renderControllerOverlay({width * 0.12f, height * 0.9f}, controller_scale, 255);
         }
     }
 
@@ -1070,8 +1054,7 @@ namespace Toolbox::UI {
                                      communicator.read<f32>(player_ptr + 0x14).value(),
                                      communicator.read<f32>(player_ptr + 0x18).value()};
 
-        std::vector<Rail::Rail::node_ptr_t> rail_nodes = m_pad_rail.nodes();
-        auto node_it = std::find_if(rail_nodes.begin(), rail_nodes.end(),
+        /*auto node_it = std::find_if(rail_nodes.begin(), rail_nodes.end(),
                                     [&player_position](const Rail::Rail::node_ptr_t &node) {
                                         glm::vec3 node_pos = node->getPosition();
                                         glm::vec3 pos_diff = node_pos - player_position;
@@ -1084,7 +1067,7 @@ namespace Toolbox::UI {
             communicator.write<f32>(player_ptr + 0x14, node_position.y);
             communicator.write<f32>(player_ptr + 0x18, node_position.z);
             return;
-        }
+        }*/
 
         TOOLBOX_INFO("[PAD RECORD] Creating new rail node and snapping player to node.");
 
@@ -1121,7 +1104,7 @@ namespace Toolbox::UI {
 
         f32 client_to_game_ratio = ((f32)width / (f32)height) / ((f32)xfb_width / (f32)xfb_height);
         f32 scaled_width         = width;
-        f32 scaled_height        = height;
+        f32 scaled_height        = height * 1.025f;
         /*if (client_to_game_ratio > 1.0f) {
             scaled_width = width / (0.67f + client_to_game_ratio * 0.33f);
         } else {
@@ -1178,6 +1161,7 @@ namespace Toolbox::UI {
             if (node_datas[i].m_screen_depth < FLT_EPSILON) {
                 continue;
             }
+
             ImVec2 node_position = node_datas[i].m_screen_position;
             f32 node_size        = 20000.0f / node_datas[i].m_screen_depth;
             node_size            = std::clamp(node_size, 2.0f, 10000.0f);

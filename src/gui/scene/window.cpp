@@ -194,6 +194,8 @@ namespace Toolbox::UI {
     void SceneWindow::onImGuiUpdate(TimeStep delta_time) {
         m_renderer.inputUpdate(delta_time);
 
+        calcDolphinVPMatrix();
+
         Game::TaskCommunicator &task_communicator =
             GUIApplication::instance().getTaskCommunicator();
 
@@ -924,6 +926,65 @@ static void recursiveAssignActorPtrs(Game::TaskCommunicator &communicator,
                   });
 }
 
+void SceneWindow::calcDolphinVPMatrix() {
+    m_dolphin_vp_mtx = glm::identity<glm::mat4x4>();
+
+    DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+    if (!communicator.manager().isHooked()) {
+        return;
+    }
+
+    u32 camera_ptr = communicator.read<u32>(0x8040D0A8).value();
+    if (!camera_ptr) {
+        return;
+    }
+
+    u32 proj_mtx_ptr     = camera_ptr + 0x16C;
+    u32 view_mtx_ptr     = camera_ptr + 0x1EC;
+    glm::mat4x4 proj_mtx = glm::identity<glm::mat4x4>();
+    glm::mat4x4 view_mtx = glm::identity<glm::mat4x4>();
+
+    f32 fovy   = communicator.read<f32>(camera_ptr + 0x48).value();
+    f32 aspect = communicator.read<f32>(camera_ptr + 0x4C).value();
+    proj_mtx   = glm::perspectiveRH_NO(
+        glm::radians(fovy), aspect > FLT_EPSILON ? aspect : (4.0f / 3.0f), 1.0f, 100000.0f);
+
+    /*glm::vec3 camera_pos = {
+        communicator.read<f32>(camera_ptr + 0x10).value(),
+        communicator.read<f32>(camera_ptr + 0x14).value(),
+        communicator.read<f32>(camera_ptr + 0x18).value(),
+    };
+
+    glm::vec3 camera_up = {
+        communicator.read<f32>(camera_ptr + 0x30).value(),
+        communicator.read<f32>(camera_ptr + 0x34).value(),
+        communicator.read<f32>(camera_ptr + 0x38).value(),
+    };
+
+    glm::vec3 camera_target = {
+        communicator.read<f32>(camera_ptr + 0x3C).value(),
+        communicator.read<f32>(camera_ptr + 0x40).value(),
+        communicator.read<f32>(camera_ptr + 0x44).value(),
+    };
+
+    view_mtx = glm::lookAtRH(camera_pos, camera_target, camera_up);*/
+
+    view_mtx[0][0] = communicator.read<f32>(view_mtx_ptr + 0x00).value();
+    view_mtx[1][0] = communicator.read<f32>(view_mtx_ptr + 0x04).value();
+    view_mtx[2][0] = communicator.read<f32>(view_mtx_ptr + 0x08).value();
+    view_mtx[0][1] = communicator.read<f32>(view_mtx_ptr + 0x10).value();
+    view_mtx[1][1] = communicator.read<f32>(view_mtx_ptr + 0x14).value();
+    view_mtx[2][1] = communicator.read<f32>(view_mtx_ptr + 0x18).value();
+    view_mtx[0][2] = -communicator.read<f32>(view_mtx_ptr + 0x20).value();
+    view_mtx[1][2] = -communicator.read<f32>(view_mtx_ptr + 0x24).value();
+    view_mtx[2][2] = -communicator.read<f32>(view_mtx_ptr + 0x28).value();
+    view_mtx[3][0] = communicator.read<f32>(view_mtx_ptr + 0x0C).value();
+    view_mtx[3][1] = communicator.read<f32>(view_mtx_ptr + 0x1C).value();
+    view_mtx[3][2] = -communicator.read<f32>(view_mtx_ptr + 0x2C).value();
+
+    m_dolphin_vp_mtx = proj_mtx * view_mtx;
+}
+
 void SceneWindow::reassignAllActorPtrs(u32 param) {
     Game::TaskCommunicator &task_communicator = GUIApplication::instance().getTaskCommunicator();
     RefPtr<ISceneObject> root                 = m_current_scene->getObjHierarchy().getRoot();
@@ -1210,63 +1271,40 @@ void SceneWindow::renderDolphin(TimeStep delta_time) {
     ImGui::SetNextWindowClass(&dolphinViewOverride);
 
     if (ImGui::Begin(dolphin_view_str.c_str())) {
-        ImVec2 cursor_pos = ImGui::GetCursorPos();
-
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
-        Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
-
-        u32 camera_ptr = communicator.read<u32>(0x8040D0A8).value();
-        if (!camera_ptr) {
-            TOOLBOX_ERROR("[PAD RECORD] Camera pointer is null. Please ensure that the game is "
-                          "running and the camera is loaded.");
-            return;
-        }
-
-        u32 proj_mtx_ptr     = camera_ptr + 0x16C;
-        u32 view_mtx_ptr     = camera_ptr + 0x1EC;
-        glm::mat4x4 proj_mtx = glm::identity<glm::mat4x4>();
-        glm::mat4x4 view_mtx = glm::identity<glm::mat4x4>();
-
-        f32 fovy   = communicator.read<f32>(camera_ptr + 0x48).value();
-        f32 aspect = communicator.read<f32>(camera_ptr + 0x4C).value();
-        proj_mtx   = glm::perspectiveRH_ZO(
-            glm::radians(fovy), aspect > FLT_EPSILON ? aspect : (4.0f / 3.0f), 1.0f, 100000.0f);
-
-        view_mtx[0][0] = communicator.read<f32>(view_mtx_ptr + 0x00).value();
-        view_mtx[1][0] = communicator.read<f32>(view_mtx_ptr + 0x04).value();
-        view_mtx[2][0] = communicator.read<f32>(view_mtx_ptr + 0x08).value();
-        view_mtx[0][1] = communicator.read<f32>(view_mtx_ptr + 0x10).value();
-        view_mtx[1][1] = communicator.read<f32>(view_mtx_ptr + 0x14).value();
-        view_mtx[2][1] = communicator.read<f32>(view_mtx_ptr + 0x18).value();
-        view_mtx[0][2] = -communicator.read<f32>(view_mtx_ptr + 0x20).value();
-        view_mtx[1][2] = -communicator.read<f32>(view_mtx_ptr + 0x24).value();
-        view_mtx[2][2] = -communicator.read<f32>(view_mtx_ptr + 0x28).value();
-        view_mtx[3][0] = communicator.read<f32>(view_mtx_ptr + 0x0C).value();
-        view_mtx[3][1] = communicator.read<f32>(view_mtx_ptr + 0x1C).value();
-        view_mtx[3][2] = -communicator.read<f32>(view_mtx_ptr + 0x2C).value();
+        ImVec2 window_pos = ImGui::GetWindowPos();
 
         ImVec2 render_size = {
             ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x * 2,
             ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y * 2 -
                 (ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight())};
 
-        m_dolphin_image = std::move(task_communicator.captureXFBAsTexture(
-            static_cast<int>(ImGui::GetWindowWidth()), static_cast<int>(ImGui::GetWindowHeight())));
-        if (!m_dolphin_image) {
-            ImGui::Text("Start a Dolphin process running\nSuper Mario Sunshine to get started");
-        } else {
-            m_dolphin_painter.render(m_dolphin_image, render_size);
+        ImVec2 cursor_pos = ImGui::GetCursorPos() + ImGui::GetStyle().FramePadding;
+        //ImGui::PushClipRect(window_pos + cursor_pos, window_pos + cursor_pos + render_size, true);
+
+        // Render the Dolphin view and overlays
+        {
+            DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+            Game::TaskCommunicator &task_communicator =
+                GUIApplication::instance().getTaskCommunicator();
+
+            m_dolphin_image = std::move(
+                task_communicator.captureXFBAsTexture(static_cast<int>(ImGui::GetWindowWidth()),
+                                                      static_cast<int>(ImGui::GetWindowHeight())));
+            if (!m_dolphin_image) {
+                ImGui::Text("Start a Dolphin process running\nSuper Mario Sunshine to get started");
+            } else {
+                m_dolphin_painter.render(m_dolphin_image, render_size);
+
+                ImGui::SetCursorPos(cursor_pos);
+                for (const auto &[layer_name, render_layer] : m_render_layers) {
+                    render_layer(delta_time, std::string_view(layer_name), ImGui::GetWindowSize().x,
+                                 ImGui::GetWindowSize().y, m_dolphin_vp_mtx, getUUID());
+                    ImGui::SetCursorPos(cursor_pos);
+                }
+            }
         }
 
-        glm::mat4x4 vp_mtx = proj_mtx * view_mtx;
-
-        ImGui::SetCursorPos(cursor_pos);
-        for (const auto &[layer_name, render_layer] : m_render_layers) {
-            render_layer(delta_time, std::string_view(layer_name), render_size.x, render_size.y,
-                         vp_mtx, getUUID());
-            ImGui::SetCursorPos(cursor_pos);
-        }
+        //ImGui::PopClipRect();
 
         renderPlaybackButtons(delta_time);
     }

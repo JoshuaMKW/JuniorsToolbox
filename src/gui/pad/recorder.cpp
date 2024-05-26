@@ -96,7 +96,7 @@ namespace Toolbox {
             return;
         }
 
-        //std::scoped_lock lock(m_mutex);
+        // std::scoped_lock lock(m_mutex);
 
         u32 application_ptr = 0x803E9700;
         u32 director_ptr    = communicator.read<u32>(application_ptr + 0x4).value();
@@ -124,7 +124,7 @@ namespace Toolbox {
     void PadRecorder::stopRecording() {
         m_record_flag.store(false);
 
-        //std::scoped_lock lock(m_mutex);
+        // std::scoped_lock lock(m_mutex);
 
         applyInputChunk();
         if (m_current_link == '*' || m_next_link == '*') {
@@ -577,6 +577,19 @@ namespace Toolbox {
         m_button_info           = {};
         m_trigger_l_info        = {};
         m_trigger_r_info        = {};
+    }
+
+    void PadRecorder::resetRecordState(char from_link, char to_link) {
+        resetRecordState();
+
+        auto pad_it =
+            std::find_if(m_pad_datas.begin(), m_pad_datas.end(), [&](const PadDataLinkInfo &info) {
+                return info.m_from_link == from_link && info.m_to_link == to_link;
+            });
+
+        if (pad_it != m_pad_datas.end()) {
+            pad_it->m_data = PadData();
+        }
     }
 
     void PadRecorder::initNextInputData() {

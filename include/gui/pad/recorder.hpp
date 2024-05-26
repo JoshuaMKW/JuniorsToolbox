@@ -120,6 +120,7 @@ namespace Toolbox {
         void playPadData();
         void recordPadData();
         void resetRecordState();
+        void resetRecordState(char from_link, char to_link);
         void initNewLinkData();
 
         Result<PadFrameData> readPadFrameDataPlayer();
