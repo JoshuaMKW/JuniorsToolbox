@@ -73,6 +73,8 @@ namespace Toolbox::Rail {
 
         [[nodiscard]] size_t getNodeCount() const { return m_nodes.size(); }
 
+        void clearNodes() { m_nodes.clear(); }
+
         void addNode(node_ptr_t node);
 
         Result<void, MetaError> insertNode(size_t index, node_ptr_t node);

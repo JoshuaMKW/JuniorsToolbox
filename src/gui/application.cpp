@@ -60,6 +60,11 @@ namespace Toolbox {
         m_windows         = {};
     }
 
+    GUIApplication &GUIApplication::instance() {
+        static GUIApplication _inst;
+        return _inst;
+    }
+
     void GUIApplication::onInit(int argc, const char **argv) {
         // Initialize GLFW
         if (!glfwInit()) {

@@ -36,10 +36,7 @@ namespace Toolbox::Log {
     public:
         ~AppLogger() = default;
 
-        static AppLogger &instance() {
-            static AppLogger s_logger;
-            return s_logger;
-        }
+        static AppLogger &instance();
 
         void pushStack() { m_indentation++; }
         void popStack() {

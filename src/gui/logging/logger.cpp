@@ -2,6 +2,10 @@
 #include "gui/settings.hpp"
 
 namespace Toolbox::Log {
+    AppLogger &AppLogger::instance() {
+        static AppLogger s_logger;
+        return s_logger;
+    }
 
     void AppLogger::log(ReportLevel level, const std::string &message) {
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();

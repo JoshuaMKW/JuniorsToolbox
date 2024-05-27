@@ -104,6 +104,11 @@ namespace Toolbox::Dolphin {
     static Result<void> CloseMemoryView(void *memory_view) { return {}; }
 #endif
 
+    DolphinHookManager &DolphinHookManager::instance() {
+        static DolphinHookManager _instance;
+        return _instance;
+    }
+
     bool DolphinHookManager::isProcessRunning() {
         return Platform::IsExProcessRunning(m_proc_info);
     }

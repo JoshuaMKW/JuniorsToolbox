@@ -45,10 +45,7 @@ namespace Toolbox::UI {
         ThemeManager() = default;
         ~ThemeManager() = default;
 
-        static ThemeManager &instance() {
-            static ThemeManager instance_;
-            return instance_;
-        }
+        static ThemeManager &instance();
 
         void addTheme(RefPtr<ITheme> theme) { m_themes.push_back(theme); }
         std::vector<RefPtr<ITheme>> themes() const { return m_themes; }

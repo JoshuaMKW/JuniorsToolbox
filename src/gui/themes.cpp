@@ -39,6 +39,11 @@ namespace Toolbox::UI {
         out.write(reinterpret_cast<const char *>(&m_style), sizeof(m_style));
     }
 
+    ThemeManager &ThemeManager::instance() {
+        static ThemeManager instance_;
+        return instance_;
+    }
+
     Result<void, FSError> ThemeManager::initialize() {
         auto cwd_result = Toolbox::current_path();
         if (!cwd_result) {

@@ -18,10 +18,7 @@ namespace Toolbox::UI {
         std::multimap<std::string, ImFont *> m_loaded_fonts;
 
     public:
-        static FontManager &instance() {
-            static FontManager _inst;
-            return _inst;
-        }
+        static FontManager &instance();
 
         std::set<float> fontSizes() {
             static std::set<float> s_font_sizes = {12.0f, 16.0f, 24.0f};

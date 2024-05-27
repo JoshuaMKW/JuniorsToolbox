@@ -298,12 +298,11 @@ namespace Toolbox::UI {
                 m_is_viewing_shadow_mario = false;
             }
 
-            ImGui::BeginChild("Controller View", {0, 300}, true);
-
-            ImVec2 content_region = ImGui::GetContentRegionAvail();
-            ImVec2 center         = {content_region.x / 2 + 7, content_region.y / 2 - 20};
-            renderControllerOverlay(center, 1.0f, 255);
-
+            if (ImGui::BeginChild("Controller View", {0, 300}, true)) {
+                ImVec2 content_region = ImGui::GetContentRegionAvail();
+                ImVec2 center         = {content_region.x / 2 + 7, content_region.y / 2 - 20};
+                renderControllerOverlay(center, 1.0f, 255);
+            }
             ImGui::EndChild();
         }
 
@@ -378,6 +377,7 @@ namespace Toolbox::UI {
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
         if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size)) {
             m_pad_recorder.resetRecording();
+            m_pad_rail.clearNodes();
         }
 
         ImGui::PopStyleColor(3);
@@ -737,62 +737,62 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::renderRecordedInputData() {
-        ImGui::BeginChild("Recorded Input Data", {0, 0}, true);
+        if (ImGui::BeginChild("Recorded Input Data", {0, 0}, true)) {
+            std::string window_preview = "Scene not selected.";
 
-        std::string window_preview = "Scene not selected.";
-
-        const std::vector<RefPtr<ImWindow>> &windows = GUIApplication::instance().getWindows();
-        auto window_it =
-            std::find_if(windows.begin(), windows.end(), [this](RefPtr<ImWindow> window) {
-                return window->getUUID() == m_attached_scene_uuid;
-            });
-        if (window_it != windows.end()) {
-            window_preview = (*window_it)->context();
-        }
-
-        ImGui::Text("Scene Context");
-        ImGui::PushID("Scene Context Combo");
-        if (ImGui::BeginCombo("", window_preview.c_str(), ImGuiComboFlags_PopupAlignLeft)) {
-            for (RefPtr<const ImWindow> window : windows) {
-                if (window->name() != "Scene Editor") {
-                    continue;
-                }
-                bool selected = window->getUUID() == m_attached_scene_uuid;
-                if (ImGui::Selectable(window->context().c_str(), &selected)) {
-                    GUIApplication::instance().deregisterDolphinOverlay(m_attached_scene_uuid,
-                                                                        "Pad Record Overlay");
-                    m_attached_scene_uuid = window->getUUID();
-                    GUIApplication::instance().registerDolphinOverlay(
-                        m_attached_scene_uuid, "Pad Record Overlay",
-                        [this](TimeStep delta_time, std::string_view layer_name, int width,
-                               int height, const glm::mat4x4 &vp_mtx, UUID64 window_uuid) {
-                            onRenderPadOverlay(delta_time, layer_name, width, height, vp_mtx, window_uuid);
-                        });
-                }
+            const std::vector<RefPtr<ImWindow>> &windows = GUIApplication::instance().getWindows();
+            auto window_it =
+                std::find_if(windows.begin(), windows.end(), [this](RefPtr<ImWindow> window) {
+                    return window->getUUID() == m_attached_scene_uuid;
+                });
+            if (window_it != windows.end()) {
+                window_preview = (*window_it)->context();
             }
-            ImGui::EndCombo();
+
+            ImGui::Text("Scene Context");
+            ImGui::PushID("Scene Context Combo");
+            if (ImGui::BeginCombo("", window_preview.c_str(), ImGuiComboFlags_PopupAlignLeft)) {
+                for (RefPtr<const ImWindow> window : windows) {
+                    if (window->name() != "Scene Editor") {
+                        continue;
+                    }
+                    bool selected = window->getUUID() == m_attached_scene_uuid;
+                    if (ImGui::Selectable(window->context().c_str(), &selected)) {
+                        GUIApplication::instance().deregisterDolphinOverlay(m_attached_scene_uuid,
+                                                                            "Pad Record Overlay");
+                        m_attached_scene_uuid = window->getUUID();
+                        GUIApplication::instance().registerDolphinOverlay(
+                            m_attached_scene_uuid, "Pad Record Overlay",
+                            [this](TimeStep delta_time, std::string_view layer_name, int width,
+                                   int height, const glm::mat4x4 &vp_mtx, UUID64 window_uuid) {
+                                onRenderPadOverlay(delta_time, layer_name, width, height, vp_mtx,
+                                                   window_uuid);
+                            });
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::PopID();
+
+            ImGui::SameLine();
+
+            if (m_attached_scene_uuid == 0) {
+                ImGui::BeginDisabled();
+            }
+
+            if (ImGui::Button("Make Scene Rail")) {
+                GUIApplication::instance().dispatchEvent<SceneCreateRailEvent, true>(
+                    m_attached_scene_uuid, m_pad_rail);
+            }
+
+            if (m_attached_scene_uuid == 0) {
+                ImGui::EndDisabled();
+            }
+
+            ImGui::Separator();
+
+            renderLinkDataState();
         }
-        ImGui::PopID();
-
-        ImGui::SameLine();
-
-        if (m_attached_scene_uuid == 0) {
-            ImGui::BeginDisabled();
-        }
-
-        if (ImGui::Button("Make Scene Rail")) {
-            GUIApplication::instance().dispatchEvent<SceneCreateRailEvent, true>(
-                m_attached_scene_uuid, m_pad_rail);
-        }
-
-        if (m_attached_scene_uuid == 0) {
-            ImGui::EndDisabled();
-        }
-
-        ImGui::Separator();
-
-        renderLinkDataState();
-
         ImGui::EndChild();
     }
 
@@ -904,8 +904,8 @@ namespace Toolbox::UI {
                     renderLinkPanel(link_nodes[i].m_infos[j], 'A' + i);
                 }
             }
-            ImGui::EndChildPanel();
         }
+        ImGui::EndChildPanel();
     }
 
     void PadInputWindow::renderLinkPanel(const ReplayNodeInfo &link_node, char link_chr) {
@@ -919,7 +919,15 @@ namespace Toolbox::UI {
             GUIApplication::instance().getTaskCommunicator();
 
         std::string link_name = std::format(ICON_FK_LINK " {} -> {}", from_link, to_link);
-        if (ImGui::BeginGroupPanel(link_name.c_str(), nullptr, {0, 0})) {
+        ImGuiID id            = ImGui::GetID(link_name.c_str());
+
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg, m_pad_recorder.hasRecordData(from_link, to_link)
+                                                    ? ImGuiCol_TableRowBg
+                                                    : IM_COL32(200, 0, 0, 50));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2);
+
+        if (ImGui::BeginChildPanel(id, {0, 40})) {
             ImVec2 anchor_pos = ImGui::GetCursorPos();
             ImVec2 group_size = ImGui::GetContentRegionAvail();
 
@@ -976,6 +984,8 @@ namespace Toolbox::UI {
             ImGui::SameLine(0.0f, 0.0f);
 
             if (ImGui::Button(ICON_FK_TRASH)) {
+                // TODO: Defer to later so caller loop doesn't die
+                // (Generally processing should be done in the update loop)
                 m_pad_recorder.clearLink(from_link, to_link);
             }
 
@@ -1009,13 +1019,16 @@ namespace Toolbox::UI {
             if (is_recording) {
                 ImGui::EndDisabled();
             }
-            ImGui::EndGroupPanel();
         }
+        ImGui::EndChildPanel();
+
+        ImGui::PopStyleColor(1);
+        ImGui::PopStyleVar(2);
     }
 
     void PadInputWindow::onRenderPadOverlay(TimeStep delta_time, std::string_view layer_name,
-                                            int width, int height,
-                                            const glm::mat4x4 &vp_mtx, UUID64 window_uuid) {
+                                            int width, int height, const glm::mat4x4 &vp_mtx,
+                                            UUID64 window_uuid) {
         tryRenderNodes(delta_time, layer_name, width, height, vp_mtx, window_uuid);
 
         ImGui::Text(layer_name.data());
@@ -1236,9 +1249,7 @@ namespace Toolbox::UI {
         m_pad_recorder.tStart(false, nullptr);
     }
 
-    void PadInputWindow::onDetach() {
-        m_pad_recorder.tKill(true);
-    }
+    void PadInputWindow::onDetach() { m_pad_recorder.tKill(true); }
 
     void PadInputWindow::onImGuiUpdate(TimeStep delta_time) {
         if (m_cur_from_link != '*' && m_cur_to_link != '*') {

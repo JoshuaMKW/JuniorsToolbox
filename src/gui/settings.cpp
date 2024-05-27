@@ -9,6 +9,10 @@
 #include <imgui.h>
 
 namespace Toolbox {
+    SettingsManager &SettingsManager::instance() {
+        static SettingsManager _inst;
+        return _inst;
+    }
 
     bool SettingsManager::initialize() {
         auto cwd_result = Toolbox::current_path();

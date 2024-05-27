@@ -212,7 +212,7 @@ namespace Toolbox {
         for (size_t i = 0; i < m_pad_datas.size(); ++i) {
             const PadDataLinkInfo &pad_data = m_pad_datas[i];
             std::filesystem::path pad_path =
-                folder_path / std::format("tutorial{}{}.bin",
+                folder_path / std::format("tutorial{}{}.pad",
                                           static_cast<char>(std::tolower(pad_data.m_from_link)),
                                           static_cast<char>(std::tolower(pad_data.m_to_link)));
             std::ofstream pad_file(pad_path, std::ios::binary);

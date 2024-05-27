@@ -26,17 +26,20 @@ using namespace Toolbox::Dolphin;
 
 namespace Toolbox {
 
-    class GUIApplication : public CoreApplication {
+    class GUIApplication final : public CoreApplication {
+    public:
+        static GUIApplication &instance();
+
     protected:
         GUIApplication();
 
     public:
-        virtual ~GUIApplication() {}
+        GUIApplication(const GUIApplication &) = delete;
+        GUIApplication(GUIApplication &&)      = delete;
+        GUIApplication &operator=(const GUIApplication &) = delete;
+        GUIApplication &operator=(GUIApplication &&) = delete;
 
-        static GUIApplication &instance() {
-            static GUIApplication _inst;
-            return _inst;
-        }
+        virtual ~GUIApplication() {}
 
         virtual void onInit(int argc, const char **argv) override;
         virtual void onUpdate(TimeStep delta_time) override;
