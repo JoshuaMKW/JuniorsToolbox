@@ -497,6 +497,7 @@ namespace Toolbox::UI {
                 data.addRail(rail);
                 m_current_scene->setRailData(data);
                 m_rail_visible_map[rail.getUUID()] = true;
+                ev->accept();
             }
             break;
         }
