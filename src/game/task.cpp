@@ -624,12 +624,12 @@ namespace Toolbox::Game {
         u32 parent_ptr = getActorPtr(parent);
         if (parent_ptr == 0) {
             return make_error<void>(
-                "Task", "Failed to add object to game scene since parent isn't in game scene!");
+                "GAME TASK", "Failed to add object to game scene since parent isn't in game scene!");
         }
 
         if (parent->type() != "IdxGroup") {
             return make_error<void>(
-                "Task", "Failed to add object to game scene since parent isn't IdxGroup!");
+                "GAME TASK", "Failed to add object to game scene since parent isn't IdxGroup!");
         }
 
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
@@ -638,13 +638,13 @@ namespace Toolbox::Game {
         u32 buffer_ptr = communicator.read<u32>(0x800001C4).value();
         if (buffer_ptr == 0) {
             return make_error<void>(
-                "Task", "Failed to add object to game scene (Claimed buffer doesn't exist)!");
+                "GAME TASK", "Failed to add object to game scene (Claimed buffer doesn't exist)!");
         }
 
         std::span<u8> obj_data = object->getData();
         if (obj_data.size() > (0x10000 - 0x100)) {
             return make_error<void>(
-                "Task", "Failed to add object to game scene (Obj data is too large for buffer)!");
+                "GAME TASK", "Failed to add object to game scene (Obj data is too large for buffer)!");
         }
 
         communicator.writeBytes(reinterpret_cast<const char *>(obj_data.data()), buffer_ptr + 0x100,
@@ -681,7 +681,7 @@ namespace Toolbox::Game {
         u32 nameref_ptr = static_cast<u32>(gen_snapshot.m_gpr[3]);
         if (nameref_ptr == 0) {
             return make_error<void>(
-                "Task", "Failed to add object to game scene (Call to genObject returned nullptr)!");
+                "GAME TASK", "Failed to add object to game scene (Call to genObject returned nullptr)!");
         }
 
         // Here we insert our generated object pointer into the perform list
@@ -690,7 +690,7 @@ namespace Toolbox::Game {
         u32 new_it = listInsert(parent_perform_list, listEnd(parent_perform_list), nameref_ptr);
         if (new_it == 0) {
             return make_error<void>(
-                "Task", "Failed to add object to game scene (Parent insertion failed)!");
+                "GAME TASK", "Failed to add object to game scene (Parent insertion failed)!");
         }
 
         u32 vtable_ptr = communicator.read<u32>(nameref_ptr).value();
@@ -722,7 +722,7 @@ namespace Toolbox::Game {
                                                          transact_complete_cb complete_cb) {
         if (!isSceneLoaded())
             return make_error<void>(
-                "Task", "Failed to remove object from game scene (Scene isn't loaded)!");
+                "GAME TASK", "Failed to remove object from game scene (Scene isn't loaded)!");
 
         u32 obj_ptr = getActorPtr(object);
         if (obj_ptr == 0) {
@@ -732,18 +732,18 @@ namespace Toolbox::Game {
         u32 parent_ptr = getActorPtr(parent);
         if (parent_ptr == 0) {
             return make_error<void>(
-                "Task", "Failed to remove object from game scene (Parent doesn't exist)!");
+                "GAME TASK", "Failed to remove object from game scene (Parent doesn't exist)!");
         }
 
         if (parent->type() != "IdxGroup") {
             return make_error<void>(
-                "Task", "Failed to remove object from game scene (Parent isn't IdxGroup)!");
+                "GAME TASK", "Failed to remove object from game scene (Parent isn't IdxGroup)!");
         }
 
         auto obj_game_key_result = String::toGameEncoding(object->getNameRef().name());
         if (!obj_game_key_result) {
             return make_error<void>(
-                "Task", "Failed to remove object from game scene (Failed to encode object name)!");
+                "GAME TASK", "Failed to remove object from game scene (Failed to encode object name)!");
         }
 
         std::string obj_game_key = obj_game_key_result.value();
@@ -804,7 +804,7 @@ namespace Toolbox::Game {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
 
         if (!isSceneLoaded()) {
-            return make_error<void>("Task",
+            return make_error<void>("GAME TASK",
                                     std::format("Failed to play camera demo \"{}\"!", demo_name));
         }
 
@@ -813,7 +813,7 @@ namespace Toolbox::Game {
         u8 cam_index = communicator.read<u8>(mar_director_address + 0x24C).value();
         u8 cam_max   = communicator.read<u8>(mar_director_address + 0x24D).value();
         if (((cam_index - cam_max) & 7) >= 7) {
-            return make_error<void>("Task",
+            return make_error<void>("GAME TASK",
                                     std::format("Failed to play camera demo \"{}\"!", demo_name));
         }
 
@@ -861,12 +861,12 @@ namespace Toolbox::Game {
 
         auto transform_result = object->getMember("Transform");
         if (!transform_result) {
-            return make_error<void>("Task", transform_result.error().m_message);
+            return make_error<void>("GAME TASK", transform_result.error().m_message);
         }
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
-            return make_error<void>("Task",
+            return make_error<void>("GAME TASK",
                                     "Failed to set object transform in scene (Scene not loaded)!");
         }
 
@@ -890,7 +890,7 @@ namespace Toolbox::Game {
         transform.m_rotation                = rotation;
         auto result                         = setMetaValue(transform_member, 0, transform);
         if (!result) {
-            return make_error<void>("Task",
+            return make_error<void>("GAME TASK",
                                     "Failed to set object transform in scene (Member not found)!");
         }
 
@@ -902,12 +902,12 @@ namespace Toolbox::Game {
 
         auto transform_result = object->getMember("Transform");
         if (!transform_result) {
-            return make_error<void>("Task", transform_result.error().m_message);
+            return make_error<void>("GAME TASK", transform_result.error().m_message);
         }
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
-            return make_error<void>("Task", "Failed to set object transform in scene!");
+            return make_error<void>("GAME TASK", "Failed to set object transform in scene!");
         }
 
         u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
@@ -923,7 +923,7 @@ namespace Toolbox::Game {
         transform.m_translation             = translation;
         auto result                         = setMetaValue(transform_member, 0, transform);
         if (!result) {
-            return make_error<void>("Task",
+            return make_error<void>("GAME TASK",
                                     "Failed to set object transform in scene (Member not found)!");
         }
 
@@ -935,7 +935,7 @@ namespace Toolbox::Game {
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
-            return make_error<void>("Task", "Failed to set object transform in scene!");
+            return make_error<void>("GAME TASK", "Failed to set object transform in scene!");
         }
 
         u32 camera_ptr = communicator.read<u32>(0x8040D0A8).value();
@@ -970,7 +970,7 @@ namespace Toolbox::Game {
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
-            return make_error<void>("Task", "Failed to set object transform in scene!");
+            return make_error<void>("GAME TASK", "Failed to set object transform in scene!");
         }
 
         u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
@@ -990,12 +990,12 @@ namespace Toolbox::Game {
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
-            return make_error<void>("Task", "Failed to set mario transform in scene (not loaded)!");
+            return make_error<void>("GAME TASK", "Failed to set mario transform in scene (not loaded)!");
         }
 
         u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
         if (mario_ptr == 0) {
-            return make_error<void>("Task", "Failed to set mario transform in scene (nullptr)!");
+            return make_error<void>("GAME TASK", "Failed to set mario transform in scene (nullptr)!");
         }
 
         communicator.write<f32>(mario_ptr + 0x10, transform.m_translation.x);
@@ -1015,21 +1015,19 @@ namespace Toolbox::Game {
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
-            return make_error<void>("Task", "Failed to set object transform in scene!");
+            return make_error<void>("GAME TASK", "Failed to set object transform in scene!");
         }
+
+        std::string_view obj_name = object->getNameRef().name();
 
         u32 ptr = object->getGamePtr();
         if (ptr == 0) {
-            TOOLBOX_INFO_V(
-                "(Task) Pointer for object \"{}\" was null, attempting to find pointer...",
-                object->getNameRef().name());
             u32 new_ptr = getActorPtr(object);
             object->setGamePtr(new_ptr);
             if (new_ptr == 0) {
-                return make_error<void>("Task", "Failed to object ptr in scene!");
+                return make_error<void>("GAME TASK", std::format("Failed to ptr to object \"{}\" in scene!", obj_name));
             }
-            TOOLBOX_INFO_V("(Task) Pointer for object \"{}\" was found successfully!",
-                           object->getNameRef().name());
+            TOOLBOX_INFO_V("[GAME TASK] Pointer for object \"{}\" was found successfully!", obj_name);
         }
 
         communicator.write<f32>(ptr + 0x10, transform.m_translation.x);
@@ -1078,7 +1076,7 @@ namespace Toolbox::Game {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
 
         if (!communicator.manager().isHooked()) {
-            TOOLBOX_ERROR("(TASK) Dolphin is not hooked!");
+            TOOLBOX_ERROR("[INTERPRETER] Dolphin is not hooked!");
             return nullptr;
         }
 
@@ -1093,20 +1091,20 @@ namespace Toolbox::Game {
         dolphin_interpreter->onException(
             [](u32 bad_instr_ptr, Interpreter::ExceptionCause cause,
                const Interpreter::Register::RegisterSnapshot &snapshot) {
-                TOOLBOX_ERROR_V("[Interpreter] {} at PC = 0x{:08X}:", magic_enum::enum_name(cause),
+                TOOLBOX_ERROR_V("[INTERPRETER] {} at PC = 0x{:08X}:", magic_enum::enum_name(cause),
                                 bad_instr_ptr);
                 std::vector<std::string> exception_message = StringifySnapshot(snapshot);
                 for (auto &line : exception_message) {
-                    TOOLBOX_ERROR_V("[Interpreter] {}", line);
+                    TOOLBOX_ERROR_V("[INTERPRETER] {}", line);
                 }
             });
         dolphin_interpreter->onInvalid([](u32 bad_instr_ptr, const std::string &cause,
                                           const Interpreter::Register::RegisterSnapshot &snapshot) {
-            TOOLBOX_ERROR_V("[Interpreter] Invalid instruction at PC = 0x{:08X} (Reason: {}):",
+            TOOLBOX_ERROR_V("[INTERPRETER] Invalid instruction at PC = 0x{:08X} (Reason: {}):",
                             bad_instr_ptr, cause);
             std::vector<std::string> exception_message = StringifySnapshot(snapshot);
             for (auto &line : exception_message) {
-                TOOLBOX_ERROR_V("[Interpreter] {}", line);
+                TOOLBOX_ERROR_V("[INTERPRETER] {}", line);
             }
         });
 

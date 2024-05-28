@@ -480,20 +480,14 @@ namespace Toolbox::UI {
 
             float snap[3];
             if ((m_gizmo_op & (ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU))) {
-                if (ctrl_held)
-                    TOOLBOX_DEBUG_LOG("Scale Held");
                 snap[0] = 0.1f;
                 snap[1] = 0.1f;
                 snap[2] = 0.1f;
             } else if ((m_gizmo_op & ImGuizmo::OPERATION::ROTATE)) {
-                if (ctrl_held)
-                    TOOLBOX_DEBUG_LOG("Rotate Held");
                 snap[0] = 15.0f;
                 snap[1] = 15.0f;
                 snap[2] = 15.0f;
             } else if ((m_gizmo_op & ImGuizmo::OPERATION::TRANSLATE)) {
-                if (ctrl_held)
-                    TOOLBOX_DEBUG_LOG("Translate Held");
                 snap[0] = 50.0f;
                 snap[1] = 50.0f;
                 snap[2] = 50.0f;
@@ -578,8 +572,6 @@ namespace Toolbox::UI {
         if (m_is_view_manipulating && Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {
             double delta_x, delta_y;
             Input::GetMouseDelta(delta_x, delta_y);
-
-            TOOLBOX_DEBUG_LOG_V("Mouse Delta: {} {}", delta_x, delta_y);
 
             m_camera.turnLeftRight(-delta_x * settings.m_camera_sensitivity * delta_time * 0.25f);
             m_camera.tiltUpDown(-delta_y * settings.m_camera_sensitivity * delta_time * 0.25f);

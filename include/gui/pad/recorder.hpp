@@ -97,11 +97,12 @@ namespace Toolbox {
         bool playPadRecording(char from_link, char to_link);
 
         void clearLink(char from_link, char to_link) {
-            m_pad_datas.erase(std::remove_if(m_pad_datas.begin(), m_pad_datas.end(),
-              [from_link, to_link](const PadDataLinkInfo& info) {
-                                                 return info.m_from_link == from_link && info.m_to_link == to_link;
-                                             }),
-                                          m_pad_datas.end());
+            auto remove_it =
+                std::find_if(m_pad_datas.begin(), m_pad_datas.end(),
+                             [from_link, to_link](const PadDataLinkInfo &info) {
+                                 return info.m_from_link == from_link && info.m_to_link == to_link;
+                             });
+            m_pad_datas.erase(remove_it);
             m_link_data.removeLinkNode(from_link, to_link);
         }
 
@@ -140,10 +141,10 @@ namespace Toolbox {
         u32 m_shadow_mario_ptr         = 0;
         u32 m_piantissimo_ptr          = 0;
 
-        bool m_first_input_found = false;
+        bool m_first_input_found          = false;
         PadButtons m_last_pressed_buttons = PadButtons::BUTTON_NONE;
-        u32 m_start_frame        = 0;
-        u32 m_last_frame         = 0;
+        u32 m_start_frame                 = 0;
+        u32 m_last_frame                  = 0;
 
         char m_current_link = '*';
         char m_next_link    = '*';
@@ -155,7 +156,7 @@ namespace Toolbox {
         PadRecordInfo<u8> m_trigger_r_info           = {};
 
         std::mutex m_mutex;
-        std::atomic<bool> m_play_flag = false;
+        std::atomic<bool> m_play_flag   = false;
         std::atomic<bool> m_record_flag = false;
         std::atomic<bool> m_camera_flag = true;
 

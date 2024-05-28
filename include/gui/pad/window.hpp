@@ -61,7 +61,7 @@ namespace Toolbox::UI {
 
     public:
         ImGuiWindowFlags flags() const override {
-            return ImWindow::flags() | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoResize;
+            return ImWindow::flags() | ImGuiWindowFlags_MenuBar;
         }
 
         const ImGuiWindowClass *windowClass() const override {
@@ -79,12 +79,7 @@ namespace Toolbox::UI {
 
         std::optional<ImVec2> minSize() const override {
             return {
-                {360, 700}
-            };
-        }
-        std::optional<ImVec2> maxSize() const override {
-            return {
-                {360, 700}
+                {400, 700}
             };
         }
 
@@ -144,6 +139,8 @@ namespace Toolbox::UI {
         bool m_is_import_dialog_open    = false;
         bool m_is_export_dialog_open    = false;
         bool m_is_verify_open           = false;
+
+        std::vector<std::function<void()>> m_update_tasks;
     };
 
 }  // namespace Toolbox::UI

@@ -915,115 +915,192 @@ namespace Toolbox::UI {
             return;
         }
 
-        Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
+        bool is_recording = m_pad_recorder.isRecording(from_link, to_link);
 
         std::string link_name = std::format(ICON_FK_LINK " {} -> {}", from_link, to_link);
         ImGuiID id            = ImGui::GetID(link_name.c_str());
 
-        ImGui::PushStyleColor(ImGuiCol_TableRowBg, m_pad_recorder.hasRecordData(from_link, to_link)
-                                                    ? ImGuiCol_TableRowBg
-                                                    : IM_COL32(200, 0, 0, 50));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2);
+        ImGuiStyle &style = ImGui::GetStyle();
 
-        if (ImGui::BeginChildPanel(id, {0, 40})) {
+        ImVec4 panel_color;
+        if (m_cur_from_link == from_link && m_cur_to_link == to_link) {
+            panel_color = style.Colors[ImGuiCol_FrameBgActive];
+            panel_color.w = 0.2f;
+        } else {
+            panel_color = m_pad_recorder.hasRecordData(from_link, to_link)
+                              ? style.Colors[ImGuiCol_TableRowBgAlt]
+                              : ImVec4(0.7f, 0.0f, 0.0f, 0.4f);
+        }
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg, panel_color);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5);
+
+        float panel_height = ImGui::GetTextLineHeightWithSpacing() + style.FramePadding.y * 2.0f;
+        panel_height *= 2.0f;
+        panel_height += style.ItemSpacing.y + style.FramePadding.y * 4.0f;
+
+        ImVec2 panel_pos = ImGui::GetCursorPos();
+
+        if (ImGui::BeginChildPanel(id, {0, panel_height})) {
+            ImVec2 window_pos = ImGui::GetWindowPos();
             ImVec2 anchor_pos = ImGui::GetCursorPos();
             ImVec2 group_size = ImGui::GetContentRegionAvail();
 
-            ImGui::Text("Pad Record - ");
-            ImGui::SameLine(0.0f, 0.0f);
+            // Link name
+            {
+                ImVec2 text_size = ImGui::CalcTextSize(link_name.c_str());
 
-            bool is_recording = m_pad_recorder.isRecording(from_link, to_link);
+                ImU32 tag_color =
+                    ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_TableHeaderBg]);
 
-            std::string button_label;
-            if (m_pad_recorder.hasRecordData(from_link, to_link)) {
-                button_label = ICON_FK_UNDO;
-            } else {
-                button_label = ICON_FK_CIRCLE;
+                ImGui::GetWindowDrawList()->AddRectFilled(
+                    window_pos,
+                    window_pos +
+                        ImVec2(text_size.x + style.FramePadding.x * 8, panel_height),
+                    tag_color, 5.0f, ImDrawFlags_RoundCornersLeft);
+
+                ImGui::SetCursorPosX(anchor_pos.x + style.FramePadding.x * 2);
+                ImGui::SetCursorPosY(anchor_pos.y + (panel_height / 2.0f) -
+                                     ImGui::GetTextLineHeight());
+                ImGui::Text(link_name.c_str());
             }
 
-            if (is_recording) {
-                button_label = ICON_FK_SQUARE;
-            }
-
-            if (ImGui::Button(button_label.c_str())) {
+            // Import/Export buttons
+            {
                 if (is_recording) {
-                    m_pad_recorder.stopRecording();
-                } else {
+                    ImGui::BeginDisabled();
+                }
 
-                    Transform player_transform;
-                    size_t from_index              = from_link - 'A';
-                    size_t to_index                = to_link - 'A';
-                    player_transform.m_translation = m_pad_rail.nodes()[from_index]->getPosition();
+                ImGuiStyle &style         = ImGui::GetStyle();
+                ImVec2 import_button_size = ImGui::CalcTextSize("Import") + style.FramePadding * 2;
+                ImVec2 export_button_size = ImGui::CalcTextSize("Export") + style.FramePadding * 2;
 
-                    {
-                        glm::vec3 from_to = m_pad_rail.nodes()[to_index]->getPosition() -
-                                            player_transform.m_translation;
+                ImGui::SetCursorPos(
+                    {anchor_pos.x + group_size.x -
+                         (import_button_size.x + export_button_size.x + style.ItemSpacing.x),
+                     anchor_pos.y});
 
-                        player_transform.m_rotation = glm::vec3(
-                            0.0f, std::atan2f(from_to.x, from_to.z) * (180.0f / IM_PI), 0.0f);
-                    }
+                if (ImGui::Button("Import")) {
+                    m_is_import_dialog_open = true;
+                    m_cur_from_link         = from_link;
+                    m_cur_to_link           = to_link;
+                }
 
-                    player_transform.m_scale = glm::vec3(1.0f);
+                ImGui::SameLine();
 
-                    task_communicator.setMarioTransform(player_transform);
+                if (ImGui::Button("Export")) {
+                    m_is_export_dialog_open = true;
+                    m_cur_from_link         = from_link;
+                    m_cur_to_link           = to_link;
+                }
 
-                    m_cur_from_link = from_link;
-                    m_cur_to_link   = to_link;
-                    m_pad_recorder.startRecording(from_link, to_link);
+                if (is_recording) {
+                    ImGui::EndDisabled();
                 }
             }
 
-            ImGui::SameLine(0.0f, 0.0f);
+            // Pad record data controls
+            {
+                f32 record_button_width =
+                    ImGui::CalcTextSize(ICON_FK_CIRCLE).x * 2.0f + style.FramePadding.x * 2;
+                f32 play_button_width =
+                    ImGui::CalcTextSize(ICON_FK_PLAY).x * 2.0f + style.FramePadding.x * 2;
+                f32 trash_button_width =
+                    ImGui::CalcTextSize(ICON_FK_TRASH).x * 2.0f + style.FramePadding.x * 2;
 
-            if (ImGui::Button(ICON_FK_PLAY)) {
-                m_pad_recorder.playPadRecording(from_link, to_link);
-            }
+                ImVec2 button_panel_pos = {
+                    anchor_pos.x + group_size.x -
+                        (record_button_width + play_button_width + trash_button_width),
+                    anchor_pos.y + ImGui::GetTextLineHeightWithSpacing() +
+                        style.FramePadding.y * 2};
 
-            ImGui::SameLine(0.0f, 0.0f);
+                ImGui::SetCursorPos(button_panel_pos);
 
-            if (ImGui::Button(ICON_FK_TRASH)) {
-                // TODO: Defer to later so caller loop doesn't die
-                // (Generally processing should be done in the update loop)
-                m_pad_recorder.clearLink(from_link, to_link);
-            }
+                std::string button_label;
+                if (m_pad_recorder.hasRecordData(from_link, to_link)) {
+                    button_label = ICON_FK_UNDO;
+                } else {
+                    button_label = ICON_FK_CIRCLE;
+                }
 
-            if (is_recording) {
-                ImGui::BeginDisabled();
-            }
+                if (is_recording) {
+                    button_label = ICON_FK_SQUARE;
+                }
 
-            ImGuiStyle &style         = ImGui::GetStyle();
-            ImVec2 import_button_size = ImGui::CalcTextSize("Import") + style.FramePadding * 2;
-            ImVec2 export_button_size = ImGui::CalcTextSize("Export") + style.FramePadding * 2;
+                if (ImGui::AlignedButton(button_label.c_str(), {record_button_width, 0.0f},
+                                         ImGuiButtonFlags_None, 5.0f,
+                                         ImDrawFlags_RoundCornersLeft)) {
+                    if (is_recording) {
+                        // Submit task to stop recording pad data
+                        m_update_tasks.push_back([this]() {
+                            m_pad_recorder.stopRecording();
+                            m_cur_from_link = '*';
+                            m_cur_to_link   = '*';
+                        });
+                    } else {
+                        // Submit task to record pad data
+                        m_update_tasks.push_back([this, from_link, to_link]() {
+                            Game::TaskCommunicator &task_communicator =
+                                GUIApplication::instance().getTaskCommunicator();
 
-            ImGui::SetCursorPos(
-                {anchor_pos.x + group_size.x -
-                     (import_button_size.x + export_button_size.x + style.ItemSpacing.x),
-                 anchor_pos.y});
+                            Transform player_transform;
+                            size_t from_index = from_link - 'A';
+                            size_t to_index   = to_link - 'A';
+                            player_transform.m_translation =
+                                m_pad_rail.nodes()[from_index]->getPosition();
 
-            if (ImGui::Button("Import")) {
-                m_is_import_dialog_open = true;
-                m_cur_from_link         = from_link;
-                m_cur_to_link           = to_link;
-            }
+                            {
+                                glm::vec3 from_to = m_pad_rail.nodes()[to_index]->getPosition() -
+                                                    player_transform.m_translation;
 
-            ImGui::SameLine();
+                                player_transform.m_rotation = glm::vec3(
+                                    0.0f, std::atan2f(from_to.x, from_to.z) * (180.0f / IM_PI),
+                                    0.0f);
+                            }
 
-            if (ImGui::Button("Export")) {
-                m_is_export_dialog_open = true;
-                m_cur_from_link         = from_link;
-                m_cur_to_link           = to_link;
-            }
+                            player_transform.m_scale = glm::vec3(1.0f);
 
-            if (is_recording) {
-                ImGui::EndDisabled();
+                            task_communicator.setMarioTransform(player_transform);
+
+                            m_cur_from_link = from_link;
+                            m_cur_to_link   = to_link;
+                            m_pad_recorder.startRecording(from_link, to_link);
+                        });
+                    }
+                }
+
+                ImGui::SetCursorPos(
+                    {button_panel_pos.x + record_button_width, button_panel_pos.y});
+
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
+
+                // Submit task to play back pad data
+                if (ImGui::AlignedButton(ICON_FK_PLAY, {play_button_width, 0.0f})) {
+                    m_update_tasks.push_back([this, from_link, to_link]() {
+                        m_pad_recorder.playPadRecording(from_link, to_link);
+                    });
+                }
+
+                ImGui::PopStyleVar();
+
+                ImGui::SetCursorPos({button_panel_pos.x + record_button_width + play_button_width,
+                                     button_panel_pos.y});
+
+                // Submit task to clear pad data
+                if (ImGui::AlignedButton(ICON_FK_TRASH, {trash_button_width, 0.0f},
+                                         ImGuiButtonFlags_None, 5.0f,
+                                         ImDrawFlags_RoundCornersRight)) {
+                    // TODO: Defer to later so caller loop doesn't die
+                    // (Generally processing should be done in the update loop)
+                    m_update_tasks.push_back([this, from_link, to_link]() {
+                        m_pad_recorder.clearLink(from_link, to_link);
+                    });
+                }
             }
         }
         ImGui::EndChildPanel();
 
         ImGui::PopStyleColor(1);
-        ImGui::PopStyleVar(2);
+        ImGui::PopStyleVar(1);
     }
 
     void PadInputWindow::onRenderPadOverlay(TimeStep delta_time, std::string_view layer_name,
@@ -1066,21 +1143,6 @@ namespace Toolbox::UI {
         glm::vec3 player_position = {communicator.read<f32>(player_ptr + 0x10).value(),
                                      communicator.read<f32>(player_ptr + 0x14).value(),
                                      communicator.read<f32>(player_ptr + 0x18).value()};
-
-        /*auto node_it = std::find_if(rail_nodes.begin(), rail_nodes.end(),
-                                    [&player_position](const Rail::Rail::node_ptr_t &node) {
-                                        glm::vec3 node_pos = node->getPosition();
-                                        glm::vec3 pos_diff = node_pos - player_position;
-                                        return std::sqrtf(glm::dot(pos_diff, pos_diff)) < 100.0f;
-                                    });
-        if (node_it != rail_nodes.end()) {
-            TOOLBOX_INFO("[PAD RECORD] Reusing existing rail node and snapping player to node.");
-            glm::vec3 node_position = (*node_it)->getPosition();
-            communicator.write<f32>(player_ptr + 0x10, node_position.x);
-            communicator.write<f32>(player_ptr + 0x14, node_position.y);
-            communicator.write<f32>(player_ptr + 0x18, node_position.z);
-            return;
-        }*/
 
         TOOLBOX_INFO("[PAD RECORD] Creating new rail node and snapping player to node.");
 
@@ -1252,6 +1314,11 @@ namespace Toolbox::UI {
     void PadInputWindow::onDetach() { m_pad_recorder.tKill(true); }
 
     void PadInputWindow::onImGuiUpdate(TimeStep delta_time) {
+        for (auto &task : m_update_tasks) {
+            task();
+        }
+        m_update_tasks.clear();
+
         if (m_cur_from_link != '*' && m_cur_to_link != '*') {
             Rail::Rail::node_ptr_t to_node = m_pad_rail.nodes()[m_cur_to_link - 'A'];
             if (getDistanceFromPlayer(to_node->getPosition()) < 20.0f) {
