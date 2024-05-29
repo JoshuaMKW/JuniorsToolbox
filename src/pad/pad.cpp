@@ -298,7 +298,7 @@ namespace Toolbox {
                 return i;
             }
         }
-        return m_analog_magnitude.size();
+        return npos;
     }
 
     u32 PadData::getPadAnalogDirectionStartFrame(size_t index) const {
@@ -317,7 +317,7 @@ namespace Toolbox {
                 return i;
             }
         }
-        return m_analog_direction.size();
+        return npos;
     }
 
     u32 PadData::getPadButtonStartFrame(size_t index) const {
@@ -336,7 +336,7 @@ namespace Toolbox {
                 return i;
             }
         }
-        return m_buttons.size();
+        return npos;
     }
 
     u32 PadData::getPadTriggerLStartFrame(size_t index) const {
@@ -355,7 +355,7 @@ namespace Toolbox {
                 return i;
             }
         }
-        return m_trigger_l.size();
+        return npos;
     }
 
     u32 PadData::getPadTriggerRStartFrame(size_t index) const {
@@ -374,7 +374,7 @@ namespace Toolbox {
                 return i;
             }
         }
-        return m_trigger_r.size();
+        return npos;
     }
 
     size_t PadData::addPadAnalogMagnitudeInput(u32 start_frame, u32 frames_held, float magnitude) {

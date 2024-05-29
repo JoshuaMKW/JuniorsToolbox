@@ -63,7 +63,7 @@ namespace Toolbox {
 
         if (director_type == 5) {
             m_last_frame = communicator.read<u32>(director_ptr + 0x5C).value();
-        } else if (m_camera_flag.load()) {
+        } else if (m_world_space.load()) {
             TOOLBOX_ERROR(
                 "[PAD RECORD] Director type is not 5. Please ensure that the game is in a "
                 "stage before recording.");
@@ -104,7 +104,7 @@ namespace Toolbox {
 
         if (director_type == 5) {
             m_last_frame = communicator.read<u32>(director_ptr + 0x5C).value();
-        } else if (m_camera_flag.load()) {
+        } else if (m_world_space.load()) {
             TOOLBOX_ERROR(
                 "[PAD RECORD] Director type is not 5. Please ensure that the game is in a "
                 "stage before recording.");
@@ -364,7 +364,8 @@ namespace Toolbox {
         return true;
     }
 
-    bool PadRecorder::playPadRecording(char from_link, char to_link) {
+    bool PadRecorder::playPadRecording(char from_link, char to_link,
+                                       playback_frame_cb on_frame_cb) {
         if (isRecording()) {
             TOOLBOX_ERROR("[PAD RECORD] Cannot play data while recording.");
             return false;
@@ -396,9 +397,26 @@ namespace Toolbox {
             return false;
         }
 
+        m_playback_frame_cb = on_frame_cb;
         m_current_link = from_link;
         m_next_link    = to_link;
         m_play_flag.store(true);
+    }
+
+    void PadRecorder::clearLink(char from_link, char to_link) {
+        m_mutex.lock();
+        {
+            auto remove_it =
+                std::find_if(m_pad_datas.begin(), m_pad_datas.end(),
+                             [from_link, to_link](const PadDataLinkInfo &info) {
+                                 return info.m_from_link == from_link && info.m_to_link == to_link;
+                             });
+            if (remove_it != m_pad_datas.end()) {
+                m_pad_datas.erase(remove_it);
+            }
+            m_link_data.removeLinkNode(from_link, to_link);
+        }
+        m_mutex.unlock();
     }
 
     Result<PadRecorder::PadFrameData> PadRecorder::readPadFrameData(PadSourceType source) {
@@ -416,13 +434,109 @@ namespace Toolbox {
 
     PadRecorder::PadFrameData PadRecorder::getPadFrameData(char from_link, char to_link,
                                                            u32 frame) const {
-        // TODO: Implement this
-        return PadFrameData();
+        auto pad_it =
+            std::find_if(m_pad_datas.begin(), m_pad_datas.end(), [&](const PadDataLinkInfo &info) {
+                return info.m_from_link == from_link && info.m_to_link == to_link;
+            });
+
+        if (pad_it == m_pad_datas.end()) {
+            return {};
+        }
+
+        PadFrameData frame_data = {};
+
+        size_t analog_chunk_idx = pad_it->m_data.getPadAnalogMagnitudeIndex(frame);
+        if (analog_chunk_idx != PadData::npos) {
+            const PadInputInfo<float> &analog_chunk =
+                pad_it->m_data.getPadAnalogMagnitudeInput(analog_chunk_idx);
+            frame_data.m_stick_mag = analog_chunk.m_input_state;
+        }
+
+        size_t direction_chunk_idx = pad_it->m_data.getPadAnalogDirectionIndex(frame);
+        if (direction_chunk_idx != PadData::npos) {
+            const PadInputInfo<s16> &direction_chunk =
+                pad_it->m_data.getPadAnalogDirectionInput(direction_chunk_idx);
+            frame_data.m_stick_angle = direction_chunk.m_input_state;
+        }
+
+        frame_data.m_stick_x =
+            std::cos(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) * (IM_PI / 180.0f));
+        frame_data.m_stick_y =
+            std::sin(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) * (IM_PI / 180.0f));
+
+        size_t button_chunk_idx = pad_it->m_data.getPadButtonIndex(frame);
+        if (button_chunk_idx != PadData::npos) {
+            const PadInputInfo<PadButtons> &button_chunk =
+                pad_it->m_data.getPadButtonInput(button_chunk_idx);
+            frame_data.m_held_buttons = button_chunk.m_input_state;
+        }
+
+        size_t trigger_l_chunk_idx = pad_it->m_data.getPadTriggerLIndex(frame);
+        if (trigger_l_chunk_idx != PadData::npos) {
+            const PadInputInfo<u8> &trigger_l_chunk =
+                pad_it->m_data.getPadTriggerLInput(trigger_l_chunk_idx);
+            frame_data.m_trigger_l = trigger_l_chunk.m_input_state;
+        }
+
+        size_t trigger_r_chunk_idx = pad_it->m_data.getPadTriggerRIndex(frame);
+        if (trigger_r_chunk_idx != PadData::npos) {
+            const PadInputInfo<u8> &trigger_r_chunk =
+                pad_it->m_data.getPadTriggerRInput(trigger_r_chunk_idx);
+            frame_data.m_trigger_r = trigger_r_chunk.m_input_state;
+        }
+
+        frame_data.m_c_stick_x     = 0.0f;
+        frame_data.m_c_stick_y     = 0.0f;
+        frame_data.m_c_stick_mag   = 0.0f;
+        frame_data.m_c_stick_angle = 0;
+
+        return frame_data;
     }
 
-    void PadRecorder::playPadData() {}
+    u32 PadRecorder::getPadFrameCount(char from_link, char to_link) {
+        auto pad_it =
+          std::find_if(m_pad_datas.begin(), m_pad_datas.end(), [&](const PadDataLinkInfo& info) {
+                return info.m_from_link == from_link && info.m_to_link == to_link;
+            });
+
+        if (pad_it == m_pad_datas.end()) {
+            return 0;
+        }
+
+        u32 frame_count = 0;
+        if (!pad_it->m_data.calcFrameCount(frame_count)) {
+            TOOLBOX_ERROR("[PAD RECORD] Failed to calculate frame count.");
+            return 0;
+        }
+
+        return frame_count;
+    }
+
+    void PadRecorder::playPadData() {
+        if (!m_playback_frame_cb) {
+            m_play_flag.store(false);
+            m_last_frame            = 0;
+            m_current_link          = '*';
+            m_next_link             = '*';
+        }
+
+        PadFrameData frame_data = getPadFrameData(m_current_link, m_next_link, m_last_frame++);
+        m_playback_frame_cb(frame_data);
+
+        if (m_last_frame >= getPadFrameCount(m_current_link, m_next_link)) {
+            m_play_flag.store(false);
+            m_last_frame = 0;
+            m_current_link = '*';
+            m_next_link    = '*';
+        }
+    }
 
     void PadRecorder::recordPadData() {
+        if (m_is_replaying_pad) {
+            TOOLBOX_ERROR("[PAD RECORD] Cannot record data while replaying.");
+            return;
+        }
+
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             TOOLBOX_ERROR("[PAD RECORD] Dolphin is not running or the memory is not hooked.");
@@ -446,14 +560,14 @@ namespace Toolbox {
         bool is_isolated_link_recording = m_current_link != '*' && m_next_link != '*';
 
         // Inverse the input transformation from camera space to world space
-        if (m_camera_flag.load()) {
-            u32 camera_ptr = communicator.read<u32>(0x8040D0A8).value();
-            if (camera_ptr == 0) {
-                TOOLBOX_WARN("[PAD RECORD] Attempt to inverse camera transformation failed as "
-                             "there is no active player camera.");
+        if (m_world_space.load()) {
+            u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
+            if (mario_ptr == 0) {
+                TOOLBOX_WARN("[PAD RECORD] Attempt to transform to world space failed, enter a "
+                             "scene first.");
             } else {
-                frame_data.m_stick_angle +=
-                    communicator.read<s16>(camera_ptr + 0x258).value();  // Transform to world space
+                u32 mario_ptr            = communicator.read<u32>(0x8040E108).value();
+                frame_data.m_stick_angle = communicator.read<s16>(mario_ptr + 0x90).value();
             }
         }
 

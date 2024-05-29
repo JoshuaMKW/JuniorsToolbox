@@ -261,7 +261,7 @@ namespace Toolbox::UI {
                 }
 
                 bool inverse_state = m_pad_recorder.isCameraInversed();
-                if (ImGui::Checkbox("Inverse Camera Transform", &inverse_state)) {
+                if (ImGui::Checkbox("Make World Space", &inverse_state)) {
                     m_pad_recorder.setCameraInversed(inverse_state);
                 }
 
@@ -749,6 +749,10 @@ namespace Toolbox::UI {
                 window_preview = (*window_it)->context();
             }
 
+            if (m_pad_recorder.isRecording()) {
+                ImGui::BeginDisabled();
+            }
+
             ImGui::Text("Scene Context");
             ImGui::PushID("Scene Context Combo");
             if (ImGui::BeginCombo("", window_preview.c_str(), ImGuiComboFlags_PopupAlignLeft)) {
@@ -786,6 +790,10 @@ namespace Toolbox::UI {
             }
 
             if (m_attached_scene_uuid == 0) {
+                ImGui::EndDisabled();
+            }
+
+            if (m_pad_recorder.isRecording()) {
                 ImGui::EndDisabled();
             }
 
@@ -898,10 +906,28 @@ namespace Toolbox::UI {
     void PadInputWindow::renderLinkDataState() {
         ImGuiID id = ImGui::GetID("Link Data State");
         if (ImGui::BeginChildPanel(id, {0, 0})) {
+            bool is_recording                             = m_pad_recorder.isRecording();
+            bool is_playing                               = m_pad_recorder.isPlaying();
             const std::vector<ReplayLinkNode> &link_nodes = m_pad_recorder.linkData().linkNodes();
             for (size_t i = 0; i < link_nodes.size(); ++i) {
                 for (size_t j = 0; j < 3; ++j) {
+                    char from_link = 'A' + i;
+                    char to_link   = link_nodes[i].m_infos[j].m_next_link;
+
+                    bool should_disable =
+                        is_recording ? !m_pad_recorder.isRecording(from_link, to_link) : false;
+                    should_disable |= is_playing ? !m_pad_recorder.isPlaying(from_link, to_link)
+                                                 : false;
+
+                    if (should_disable) {
+                        ImGui::BeginDisabled();
+                    }
+
                     renderLinkPanel(link_nodes[i].m_infos[j], 'A' + i);
+
+                    if (should_disable) {
+                        ImGui::EndDisabled();
+                    }
                 }
             }
         }
@@ -924,7 +950,7 @@ namespace Toolbox::UI {
 
         ImVec4 panel_color;
         if (m_cur_from_link == from_link && m_cur_to_link == to_link) {
-            panel_color = style.Colors[ImGuiCol_FrameBgActive];
+            panel_color   = style.Colors[ImGuiCol_FrameBgActive];
             panel_color.w = 0.2f;
         } else {
             panel_color = m_pad_recorder.hasRecordData(from_link, to_link)
@@ -954,8 +980,7 @@ namespace Toolbox::UI {
 
                 ImGui::GetWindowDrawList()->AddRectFilled(
                     window_pos,
-                    window_pos +
-                        ImVec2(text_size.x + style.FramePadding.x * 8, panel_height),
+                    window_pos + ImVec2(text_size.x + style.FramePadding.x * 8, panel_height),
                     tag_color, 5.0f, ImDrawFlags_RoundCornersLeft);
 
                 ImGui::SetCursorPosX(anchor_pos.x + style.FramePadding.x * 2);
@@ -1068,16 +1093,14 @@ namespace Toolbox::UI {
                     }
                 }
 
-                ImGui::SetCursorPos(
-                    {button_panel_pos.x + record_button_width, button_panel_pos.y});
+                ImGui::SetCursorPos({button_panel_pos.x + record_button_width, button_panel_pos.y});
 
                 ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 
                 // Submit task to play back pad data
                 if (ImGui::AlignedButton(ICON_FK_PLAY, {play_button_width, 0.0f})) {
-                    m_update_tasks.push_back([this, from_link, to_link]() {
-                        m_pad_recorder.playPadRecording(from_link, to_link);
-                    });
+                    m_update_tasks.push_back(
+                        [this, from_link, to_link]() { signalPadPlayback(from_link, to_link); });
                 }
 
                 ImGui::PopStyleVar();
@@ -1262,6 +1285,12 @@ namespace Toolbox::UI {
         }
 
         ImGui::SetCursorPos(cursor_pos);
+    }
+
+    void PadInputWindow::signalPadPlayback(char from_link, char to_link) {
+        m_pad_recorder.playPadRecording(
+            from_link, to_link,
+            [this](const PadRecorder::PadFrameData &data) { m_playback_data = data; });
     }
 
     f32 PadInputWindow::getDistanceFromPlayer(const glm::vec3 &pos) const {

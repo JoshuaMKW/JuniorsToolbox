@@ -57,6 +57,8 @@ namespace Toolbox::UI {
         void tryRenderNodes(TimeStep delta_time, std::string_view layer_name, int width, int height,
                             const glm::mat4x4 &vp_mtx, UUID64 window_uuid);
 
+        void signalPadPlayback(char from_link, char to_link);
+
         f32 getDistanceFromPlayer(const glm::vec3 &pos) const;
 
     public:
@@ -119,6 +121,8 @@ namespace Toolbox::UI {
 
         PadRecorder m_pad_recorder;
         Rail::Rail m_pad_rail;
+
+        PadRecorder::PadFrameData m_playback_data;
 
         std::optional<std::filesystem::path> m_file_path   = std::nullopt;
         std::optional<std::filesystem::path> m_load_path   = std::nullopt;

@@ -49,6 +49,7 @@ namespace Toolbox {
         };
 
         using create_link_cb = std::function<void(const ReplayLinkNode &)>;
+        using playback_frame_cb = std::function<void(const PadFrameData &)>;
 
         PadRecorder()                        = default;
         PadRecorder(const PadRecorder &)     = delete;
@@ -69,16 +70,21 @@ namespace Toolbox {
         [[nodiscard]] PadTrimCommand getTrimState() const { return m_trim_state; }
         void setTrimState(PadTrimCommand state) { m_trim_state = state; }
 
-        [[nodiscard]] bool isCameraInversed() const { return m_camera_flag.load(); }
-        void setCameraInversed(bool inversed) { m_camera_flag.store(inversed); }
+        [[nodiscard]] bool isCameraInversed() const { return m_world_space.load(); }
+        void setCameraInversed(bool inversed) { m_world_space.store(inversed); }
 
         [[nodiscard]] bool isRecordComplete() const;
 
         [[nodiscard]] bool isPlaying() const { return m_play_flag.load(); }
+        [[nodiscard]] bool isPlaying(char from_link, char to_link) const {
+            return isPlaying() && m_current_link == from_link && m_next_link == to_link;
+        }
+
         [[nodiscard]] bool isRecording() const { return m_record_flag.load(); }
         [[nodiscard]] bool isRecording(char from_link, char to_link) const {
             return isRecording() && m_current_link == from_link && m_next_link == to_link;
         }
+
         void resetRecording() {
             m_record_flag.store(false);
             m_link_data.clearLinkNodes();
@@ -94,22 +100,15 @@ namespace Toolbox {
         bool loadPadRecording(char from_link, char to_link, const std::filesystem::path &file_path);
         bool savePadRecording(char from_link, char to_link, const std::filesystem::path &file_path);
 
-        bool playPadRecording(char from_link, char to_link);
+        bool playPadRecording(char from_link, char to_link, playback_frame_cb on_frame_cb);
 
-        void clearLink(char from_link, char to_link) {
-            auto remove_it =
-                std::find_if(m_pad_datas.begin(), m_pad_datas.end(),
-                             [from_link, to_link](const PadDataLinkInfo &info) {
-                                 return info.m_from_link == from_link && info.m_to_link == to_link;
-                             });
-            m_pad_datas.erase(remove_it);
-            m_link_data.removeLinkNode(from_link, to_link);
-        }
+        void clearLink(char from_link, char to_link);
 
         void onCreateLink(create_link_cb callback) { m_on_create_link = callback; }
 
         Result<PadFrameData> readPadFrameData(PadSourceType source);
         PadFrameData getPadFrameData(char from_link, char to_link, u32 frame) const;
+        u32 getPadFrameCount(char from_link, char to_link);
 
     protected:
         void tRun(void *param) override;
@@ -141,6 +140,9 @@ namespace Toolbox {
         u32 m_shadow_mario_ptr         = 0;
         u32 m_piantissimo_ptr          = 0;
 
+        bool m_is_replaying_pad = false;
+        playback_frame_cb m_playback_frame_cb = nullptr;
+
         bool m_first_input_found          = false;
         PadButtons m_last_pressed_buttons = PadButtons::BUTTON_NONE;
         u32 m_start_frame                 = 0;
@@ -158,7 +160,7 @@ namespace Toolbox {
         std::mutex m_mutex;
         std::atomic<bool> m_play_flag   = false;
         std::atomic<bool> m_record_flag = false;
-        std::atomic<bool> m_camera_flag = true;
+        std::atomic<bool> m_world_space = true;
 
         std::atomic<bool> m_kill_flag = false;
         std::condition_variable m_kill_condition;

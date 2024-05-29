@@ -49,6 +49,8 @@ namespace Toolbox {
         PadData &operator=(const PadData &) = default;
         PadData &operator=(PadData &&)      = default;
 
+        static const size_t npos = std::numeric_limits<size_t>::max();
+
         static constexpr f32 convertAngleS16ToFloat(s16 angle) {
             return static_cast<f32>(angle) / 182.04445f;
         }
