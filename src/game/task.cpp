@@ -624,7 +624,8 @@ namespace Toolbox::Game {
         u32 parent_ptr = getActorPtr(parent);
         if (parent_ptr == 0) {
             return make_error<void>(
-                "GAME TASK", "Failed to add object to game scene since parent isn't in game scene!");
+                "GAME TASK",
+                "Failed to add object to game scene since parent isn't in game scene!");
         }
 
         if (parent->type() != "IdxGroup") {
@@ -644,7 +645,8 @@ namespace Toolbox::Game {
         std::span<u8> obj_data = object->getData();
         if (obj_data.size() > (0x10000 - 0x100)) {
             return make_error<void>(
-                "GAME TASK", "Failed to add object to game scene (Obj data is too large for buffer)!");
+                "GAME TASK",
+                "Failed to add object to game scene (Obj data is too large for buffer)!");
         }
 
         communicator.writeBytes(reinterpret_cast<const char *>(obj_data.data()), buffer_ptr + 0x100,
@@ -681,7 +683,8 @@ namespace Toolbox::Game {
         u32 nameref_ptr = static_cast<u32>(gen_snapshot.m_gpr[3]);
         if (nameref_ptr == 0) {
             return make_error<void>(
-                "GAME TASK", "Failed to add object to game scene (Call to genObject returned nullptr)!");
+                "GAME TASK",
+                "Failed to add object to game scene (Call to genObject returned nullptr)!");
         }
 
         // Here we insert our generated object pointer into the perform list
@@ -743,7 +746,8 @@ namespace Toolbox::Game {
         auto obj_game_key_result = String::toGameEncoding(object->getNameRef().name());
         if (!obj_game_key_result) {
             return make_error<void>(
-                "GAME TASK", "Failed to remove object from game scene (Failed to encode object name)!");
+                "GAME TASK",
+                "Failed to remove object from game scene (Failed to encode object name)!");
         }
 
         std::string obj_game_key = obj_game_key_result.value();
@@ -965,6 +969,37 @@ namespace Toolbox::Game {
         return {};
     }
 
+    Result<void> TaskCommunicator::getMarioTranslation(glm::vec3 &translation) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        if (!isSceneLoaded()) {
+            return make_error<void>("GAME TASK", "Failed to set object translation in scene!");
+        }
+
+        u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
+
+        translation.x = communicator.read<f32>(mario_ptr + 0x10).value();
+        translation.y = communicator.read<f32>(mario_ptr + 0x14).value();
+        translation.z = communicator.read<f32>(mario_ptr + 0x18).value();
+        return {};
+    }
+
+    Result<void> TaskCommunicator::setMarioTranslation(const glm::vec3 &translation,
+                                                       bool warp_camera) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        if (!isSceneLoaded()) {
+            return make_error<void>("GAME TASK",
+                                    "Failed to set mario translation in scene (not loaded)!");
+        }
+
+        u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
+        communicator.write<f32>(mario_ptr + 0x10, translation.x);
+        communicator.write<f32>(mario_ptr + 0x14, translation.y);
+        communicator.write<f32>(mario_ptr + 0x18, translation.z);
+        return {};
+    }
+
     Result<void> TaskCommunicator::getMarioTransform(Transform &transform) {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
 
@@ -985,17 +1020,32 @@ namespace Toolbox::Game {
         return Result<void>();
     }
 
-    Result<void> TaskCommunicator::setMarioTransform(const Transform &transform) {
+    Result<void> TaskCommunicator::setMarioTransform(const Transform &transform, bool warp_camera) {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
-            return make_error<void>("GAME TASK", "Failed to set mario transform in scene (not loaded)!");
+            return make_error<void>("GAME TASK",
+                                    "Failed to set mario transform in scene (not loaded)!");
         }
 
         u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
         if (mario_ptr == 0) {
-            return make_error<void>("GAME TASK", "Failed to set mario transform in scene (nullptr)!");
+            return make_error<void>("GAME TASK",
+                                    "Failed to set mario transform in scene (nullptr)!");
+        }
+
+        communicator.write<f32>(mario_ptr + 0x10, transform.m_translation.x);
+        communicator.write<f32>(mario_ptr + 0x14, transform.m_translation.y);
+        communicator.write<f32>(mario_ptr + 0x18, transform.m_translation.z);
+
+        u32 gpr_args[2] = {mario_ptr, mario_ptr + 0x10};
+        f64 fpr_args[1] = {transform.m_rotation.y};
+
+        // Call function TMario::warpRequest(TVec3f<float> *, float)
+        if (warp_camera) {
+            m_game_interpreter.evaluateFunction(0x8025599C, 2, gpr_args, 1, fpr_args);
+            return {};
         }
 
         communicator.write<f32>(mario_ptr + 0x10, transform.m_translation.x);
@@ -1025,9 +1075,11 @@ namespace Toolbox::Game {
             u32 new_ptr = getActorPtr(object);
             object->setGamePtr(new_ptr);
             if (new_ptr == 0) {
-                return make_error<void>("GAME TASK", std::format("Failed to ptr to object \"{}\" in scene!", obj_name));
+                return make_error<void>(
+                    "GAME TASK", std::format("Failed to ptr to object \"{}\" in scene!", obj_name));
             }
-            TOOLBOX_INFO_V("[GAME TASK] Pointer for object \"{}\" was found successfully!", obj_name);
+            TOOLBOX_INFO_V("[GAME TASK] Pointer for object \"{}\" was found successfully!",
+                           obj_name);
         }
 
         communicator.write<f32>(ptr + 0x10, transform.m_translation.x);

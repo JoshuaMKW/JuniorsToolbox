@@ -1086,7 +1086,7 @@ namespace Toolbox::UI {
 
                             player_transform.m_scale = glm::vec3(1.0f);
 
-                            task_communicator.setMarioTransform(player_transform);
+                            task_communicator.setMarioTransform(player_transform, true);
 
                             m_cur_from_link = from_link;
                             m_cur_to_link   = to_link;
@@ -1173,31 +1173,33 @@ namespace Toolbox::UI {
             }
             return;
         }
-        glm::vec3 player_position = {communicator.read<f32>(player_ptr + 0x10).value(),
-                                     communicator.read<f32>(player_ptr + 0x14).value(),
-                                     communicator.read<f32>(player_ptr + 0x18).value()};
 
-        TOOLBOX_INFO("[PAD RECORD] Creating new rail node and snapping player to node.");
+        Game::TaskCommunicator &task_communicator =
+            GUIApplication::instance().getTaskCommunicator();
+        {
+            glm::vec3 player_position;
+            task_communicator.getMarioTranslation(player_position);
 
-        glm::vec<3, s16> node_position = {static_cast<s16>(player_position.x),
-                                          static_cast<s16>(player_position.y),
-                                          static_cast<s16>(player_position.z)};
-        RefPtr<RailNode> node =
-            make_referable<RailNode>(node_position.x, node_position.y, node_position.z);
-        m_pad_rail.addNode(node);
-        if (m_pad_rail.nodes().size() > 1) {
-            size_t prev_node_index = m_pad_rail.nodes().size() - 2;
-            if (prev_node_index == 0) {
-                m_pad_rail.connectNodeToNext(prev_node_index);
-            } else {
-                m_pad_rail.connectNodeToNeighbors(prev_node_index, true);
+            TOOLBOX_INFO("[PAD RECORD] Creating new rail node and snapping player to node.");
+
+            glm::vec<3, s16> node_position = {static_cast<s16>(player_position.x),
+                                              static_cast<s16>(player_position.y),
+                                              static_cast<s16>(player_position.z)};
+            RefPtr<RailNode> node =
+                make_referable<RailNode>(node_position.x, node_position.y, node_position.z);
+            m_pad_rail.addNode(node);
+            if (m_pad_rail.nodes().size() > 1) {
+                size_t prev_node_index = m_pad_rail.nodes().size() - 2;
+                if (prev_node_index == 0) {
+                    m_pad_rail.connectNodeToNext(prev_node_index);
+                } else {
+                    m_pad_rail.connectNodeToNeighbors(prev_node_index, true);
+                }
+                m_pad_rail.connectNodeToPrev(node);
             }
-            m_pad_rail.connectNodeToPrev(node);
-        }
 
-        communicator.write<f32>(player_ptr + 0x10, static_cast<f32>(node_position.x));
-        communicator.write<f32>(player_ptr + 0x14, static_cast<f32>(node_position.y));
-        communicator.write<f32>(player_ptr + 0x18, static_cast<f32>(node_position.z));
+            task_communicator.setMarioTranslation(glm::vec3(node_position), true);
+        }
     }
 
     void PadInputWindow::tryRenderNodes(TimeStep delta_time, std::string_view layer_name, int width,
@@ -1298,6 +1300,26 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::signalPadPlayback(char from_link, char to_link) {
+        if (m_pad_recorder.getPadFrameCount(from_link, to_link) == 0) {
+            TOOLBOX_ERROR("[PAD RECORD] No pad data found for link {} -> {}", from_link, to_link);
+            return;
+        }
+
+        Game::TaskCommunicator &task_communicator =
+            GUIApplication::instance().getTaskCommunicator();
+
+        RefPtr<RailNode> from_node = m_pad_rail.nodes()[from_link - 'A'];
+
+        PadRecorder::PadFrameData data = m_pad_recorder.getPadFrameData(from_link, to_link, 0);
+
+        Transform from_transform;
+        from_transform.m_translation = from_node->getPosition();
+        from_transform.m_rotation    = {0.0f, PadData::convertAngleS16ToFloat(data.m_stick_angle), 0.0f};
+        from_transform.m_scale       = {1.0f, 1.0f, 1.0f};
+
+        task_communicator
+            .setMarioTransform(from_transform, true);
+
         m_pad_recorder.playPadRecording(
             from_link, to_link,
             [this](const PadRecorder::PadFrameData &data) { m_playback_data = data; });
@@ -1358,12 +1380,18 @@ namespace Toolbox::UI {
         }
         m_update_tasks.clear();
 
-        if (m_cur_from_link != '*' && m_cur_to_link != '*') {
+        if (m_pad_recorder.isRecording(m_cur_from_link, m_cur_to_link)) {
             Rail::Rail::node_ptr_t to_node = m_pad_rail.nodes()[m_cur_to_link - 'A'];
             if (getDistanceFromPlayer(to_node->getPosition()) < 20.0f) {
                 m_pad_recorder.stopRecording();
                 m_cur_from_link = '*';
                 m_cur_to_link   = '*';
+            }
+        }
+
+        if (m_pad_recorder.isPlaying(m_cur_from_link, m_cur_to_link)) {
+            DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+            if (communicator.manager().isHooked()) {
             }
         }
     }

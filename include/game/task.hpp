@@ -57,8 +57,11 @@ namespace Toolbox::Game {
 
         Result<void> setCameraTransformToGameCamera(Camera &camera);
 
+        Result<void> getMarioTranslation(glm::vec3 &translation);
+        Result<void> setMarioTranslation(const glm::vec3 &translation, bool warp_camera);
+
         Result<void> getMarioTransform(Transform &transform);
-        Result<void> setMarioTransform(const Transform &transform);
+        Result<void> setMarioTransform(const Transform &transform, bool warp_camera);
 
         Result<void> setObjectTransform(RefPtr<PhysicalSceneObject> object,
                                         const Transform &transform);

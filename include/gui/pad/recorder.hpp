@@ -59,6 +59,10 @@ namespace Toolbox {
         PadRecorder &operator=(const PadRecorder &)     = delete;
         PadRecorder &operator=(PadRecorder &&) noexcept = default;
 
+        static inline float convertAngleS16ToRadians(s16 angle) {
+            return PadData::convertAngleS16ToFloat(angle) * (IM_PI / 180.0f);
+        }
+
         const std::vector<PadDataLinkInfo> &padData() const noexcept { return m_pad_datas; }
         const ReplayLinkData &linkData() const noexcept { return m_link_data; }
 
@@ -82,7 +86,8 @@ namespace Toolbox {
 
         [[nodiscard]] bool isRecording() const { return m_record_flag.load(); }
         [[nodiscard]] bool isRecording(char from_link, char to_link) const {
-            return isRecording() && m_current_link == from_link && m_next_link == to_link;
+            return isRecording() && m_current_link == from_link && m_next_link == to_link &&
+                   from_link != '*' && to_link != '*';
         }
 
         void resetRecording() {
@@ -124,6 +129,10 @@ namespace Toolbox {
         void resetRecordState();
         void resetRecordState(char from_link, char to_link);
         void initNewLinkData();
+
+        bool setPlayerTransRot(const glm::vec3 &pos, f32 rotY);
+
+        s32 getFrameStep() const;
 
         Result<PadFrameData> readPadFrameDataPlayer();
         Result<PadFrameData> readPadFrameDataEMario();

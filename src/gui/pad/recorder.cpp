@@ -10,7 +10,7 @@ namespace Toolbox {
         while (!tIsSignalKill()) {
             TimePoint current_time = std::chrono::high_resolution_clock::now();
             TimeStep delta_time    = TimeStep(m_last_frame_time, current_time);
-            m_last_frame_time = current_time;
+            m_last_frame_time      = current_time;
 
             if (m_record_flag.load()) {
                 std::scoped_lock lock(m_mutex);
@@ -404,20 +404,37 @@ namespace Toolbox {
             return false;
         }
 
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        u32 application_ptr = 0x803E9700;
+        u32 director_ptr    = communicator.read<u32>(application_ptr + 0x4).value();
+        u8 director_type    = communicator.read<u8>(application_ptr + 0x8).value();
+
+        if (director_type == 5) {
+            m_last_frame = communicator.read<u32>(director_ptr + 0x5C).value();
+        } else if (m_world_space.load()) {
+            TOOLBOX_ERROR(
+                "[PAD RECORD] Director type is not 5. Please ensure that the game is in a "
+                "stage before recording.");
+            return false;
+        } else {
+            m_last_frame = 0;
+        }
+
         m_playback_frame_cb = on_frame_cb;
         m_current_link      = from_link;
         m_next_link         = to_link;
-        m_start_frame       = 0;
-        m_last_frame        = 0;
+        m_start_frame       = m_last_frame;
         m_play_flag.store(true);
+        return true;
     }
 
     void PadRecorder::stopPadPlayback() {
         m_play_flag.store(false);
         m_playback_frame = 0.0f;
-        m_last_frame   = 0;
-        m_current_link = '*';
-        m_next_link    = '*';
+        m_last_frame     = 0;
+        m_current_link   = '*';
+        m_next_link      = '*';
     }
 
     void PadRecorder::clearLink(char from_link, char to_link) {
@@ -477,11 +494,9 @@ namespace Toolbox {
         }
 
         frame_data.m_stick_x =
-            std::cos(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) * (IM_PI / 180.0f)) *
-            frame_data.m_stick_mag;
+            std::cos(convertAngleS16ToRadians(frame_data.m_stick_angle)) * frame_data.m_stick_mag;
         frame_data.m_stick_y =
-            std::sin(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) * (IM_PI / 180.0f)) *
-            frame_data.m_stick_mag;
+            std::sin(convertAngleS16ToRadians(frame_data.m_stick_angle)) * frame_data.m_stick_mag;
 
         size_t button_chunk_idx = pad_it->m_data.getPadButtonIndex(frame);
         if (button_chunk_idx != PadData::npos) {
@@ -537,14 +552,78 @@ namespace Toolbox {
             return;
         }
 
-        m_playback_frame += 4 * delta_time * 30.0f;
+        DolphinCommunicator &communicator =
+            GUIApplication::instance().getDolphinCommunicator();
 
-        PadFrameData frame_data = getPadFrameData(m_current_link, m_next_link, static_cast<u32>(m_playback_frame));
-        m_playback_frame_cb(frame_data);
+        Game::TaskCommunicator &task_communicator =
+            GUIApplication::instance().getTaskCommunicator();
+        if (task_communicator.isSceneLoaded()) {
+            s32 frame_step = getFrameStep();
+            if (frame_step == 0) {
+                return;
+            }
 
-        if (m_playback_frame >= getPadFrameCount(m_current_link, m_next_link)) {
-            stopPadPlayback();
-            return;
+            if (frame_step < 0) {
+                TOOLBOX_ERROR("[PAD RECORD] Stopping playback as the frame step is out of order.");
+                u32 mario_ptr       = communicator.read<u32>(0x8040E108).value();
+                u32 controller_ptr  = communicator.read<u32>(mario_ptr + 0x4FC).value();
+                u8 controller_state = communicator.read<u8>(controller_ptr + 0xE3).value();
+                communicator.write<u8>(controller_ptr + 0xE3, controller_state & 0b01111101);
+                stopPadPlayback();
+                return;
+            }
+
+            m_last_frame += frame_step;
+            m_playback_frame += frame_step;
+            if (m_playback_frame >= getPadFrameCount(m_current_link, m_next_link)) {
+                u32 mario_ptr       = communicator.read<u32>(0x8040E108).value();
+                u32 controller_ptr  = communicator.read<u32>(mario_ptr + 0x4FC).value();
+                u8 controller_state = communicator.read<u8>(controller_ptr + 0xE3).value();
+                communicator.write<u8>(controller_ptr + 0xE3, controller_state & 0b01111101);
+                stopPadPlayback();
+                return;
+            }
+
+            PadFrameData frame_data =
+                getPadFrameData(m_current_link, m_next_link, static_cast<u32>(m_playback_frame));
+            m_playback_frame_cb(frame_data);
+
+            // TODO: Apply to game state properly, detransform the angle based on camera.
+            u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
+            communicator.write<f32>(mario_ptr + 0x8C, frame_data.m_stick_mag * 32.0f);
+            communicator.write<s16>(mario_ptr + 0x90, frame_data.m_stick_angle);
+
+            u32 controller_meaning_ptr   = communicator.read<u32>(mario_ptr + 0x108).value();
+            communicator.write<u32>(controller_meaning_ptr + 0x4, static_cast<u32>(frame_data.m_held_buttons));
+            communicator.write<u32>(controller_meaning_ptr + 0x8, static_cast<u32>(frame_data.m_pressed_buttons));
+
+            u32 controller_ptr = communicator.read<u32>(mario_ptr + 0x4FC).value();
+            u8 controller_state = communicator.read<u8>(controller_ptr + 0xE3).value();
+            communicator.write<u8>(controller_ptr + 0xE3, controller_state | 0b10000010);
+
+            communicator.write<u32>(controller_ptr + 0x18,
+                                    static_cast<u32>(frame_data.m_held_buttons));
+            communicator.write<u32>(controller_ptr + 0x1C,
+                                    static_cast<u32>(frame_data.m_pressed_buttons));
+
+            communicator.write<u8>(controller_ptr + 0x26, frame_data.m_trigger_l);
+            communicator.write<u8>(controller_ptr + 0x27, frame_data.m_trigger_r);
+
+            communicator.write<f32>(controller_ptr + 0x48, frame_data.m_stick_x);
+            communicator.write<f32>(controller_ptr + 0x4C, frame_data.m_stick_y);
+
+            communicator.write<f32>(controller_ptr + 0x50, frame_data.m_stick_mag);
+            communicator.write<s16>(controller_ptr + 0x54, frame_data.m_stick_angle);
+        } else {
+            m_playback_frame += 4 * delta_time * 30.0f;
+            if (m_playback_frame >= getPadFrameCount(m_current_link, m_next_link)) {
+                stopPadPlayback();
+                return;
+            }
+
+            PadFrameData frame_data =
+                getPadFrameData(m_current_link, m_next_link, static_cast<u32>(m_playback_frame));
+            m_playback_frame_cb(frame_data);
         }
     }
 
@@ -809,6 +888,36 @@ namespace Toolbox {
         }
     }
 
+    bool PadRecorder::setPlayerTransRot(const glm::vec3 &pos, f32 rotY) {
+        Game::TaskCommunicator &task_communicator =
+            GUIApplication::instance().getTaskCommunicator();
+        Transform player_transform;
+        task_communicator.getMarioTransform(player_transform);
+        player_transform.m_translation = pos;
+        player_transform.m_rotation.y  = rotY;
+        task_communicator.setMarioTransform(player_transform, true);
+        return true;
+    }
+
+    s32 PadRecorder::getFrameStep() const {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        if (!communicator.manager().isHooked()) {
+            return -1;
+        }
+
+        u32 application_ptr = 0x803E9700;
+        u32 director_ptr    = communicator.read<u32>(application_ptr + 0x4).value();
+        u8 director_type    = communicator.read<u8>(application_ptr + 0x8).value();
+
+        // In the stage
+        if (director_type == 5) {
+            u32 director_qf = communicator.read<u32>(director_ptr + 0x5C).value();
+            return director_qf - m_last_frame;
+        } else {
+            return 1;
+        }
+    }
+
     Result<PadRecorder::PadFrameData> PadRecorder::readPadFrameDataPlayer() {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
 
@@ -889,14 +998,10 @@ namespace Toolbox {
             frame_data.m_stick_angle = communicator.read<s16>(enemy_mario_ptr + 0x90).value();
             frame_data.m_stick_x =
                 frame_data.m_stick_mag *
-                std::cos(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) *
-                             (IM_PI / 180.0f) -
-                         IM_PI / 2);
+                std::cos(convertAngleS16ToRadians(frame_data.m_stick_angle) - IM_PI / 2);
             frame_data.m_stick_y =
                 frame_data.m_stick_mag *
-                std::sin(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) *
-                             (IM_PI / 180.0f) -
-                         IM_PI / 2);
+                std::sin(convertAngleS16ToRadians(frame_data.m_stick_angle) - IM_PI / 2);
 
             frame_data.m_c_stick_x     = 0.0f;
             frame_data.m_c_stick_y     = 0.0f;
@@ -943,14 +1048,10 @@ namespace Toolbox {
             frame_data.m_stick_angle = communicator.read<s16>(enemy_mario_ptr + 0x90).value();
             frame_data.m_stick_x =
                 frame_data.m_stick_mag *
-                std::cos(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) *
-                             (IM_PI / 180.0f) -
-                         IM_PI / 2);
+                std::cos(convertAngleS16ToRadians(frame_data.m_stick_angle) - IM_PI / 2);
             frame_data.m_stick_y =
                 frame_data.m_stick_mag *
-                std::sin(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) *
-                             (IM_PI / 180.0f) -
-                         IM_PI / 2);
+                std::sin(convertAngleS16ToRadians(frame_data.m_stick_angle) - IM_PI / 2);
 
             frame_data.m_c_stick_x     = 0.0f;
             frame_data.m_c_stick_y     = 0.0f;
