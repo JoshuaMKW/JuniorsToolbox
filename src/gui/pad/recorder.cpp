@@ -8,6 +8,10 @@ namespace Toolbox {
 
     void PadRecorder::tRun(void *param) {
         while (!tIsSignalKill()) {
+            TimePoint current_time = std::chrono::high_resolution_clock::now();
+            TimeStep delta_time    = TimeStep(m_last_frame_time, current_time);
+            m_last_frame_time = current_time;
+
             if (m_record_flag.load()) {
                 std::scoped_lock lock(m_mutex);
                 recordPadData();
@@ -16,13 +20,16 @@ namespace Toolbox {
 
             if (m_play_flag.load()) {
                 std::scoped_lock lock(m_mutex);
-                playPadData();
+                playPadData(delta_time);
+                sleep();
                 continue;
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            sleep();
         }
     }
+
+    void PadRecorder::sleep() { std::this_thread::sleep_for(std::chrono::milliseconds(1)); }
 
     bool PadRecorder::hasRecordData(char from_link, char to_link) const {
         return std::any_of(m_pad_datas.begin(), m_pad_datas.end(),
@@ -398,9 +405,19 @@ namespace Toolbox {
         }
 
         m_playback_frame_cb = on_frame_cb;
-        m_current_link = from_link;
-        m_next_link    = to_link;
+        m_current_link      = from_link;
+        m_next_link         = to_link;
+        m_start_frame       = 0;
+        m_last_frame        = 0;
         m_play_flag.store(true);
+    }
+
+    void PadRecorder::stopPadPlayback() {
+        m_play_flag.store(false);
+        m_playback_frame = 0.0f;
+        m_last_frame   = 0;
+        m_current_link = '*';
+        m_next_link    = '*';
     }
 
     void PadRecorder::clearLink(char from_link, char to_link) {
@@ -449,7 +466,7 @@ namespace Toolbox {
         if (analog_chunk_idx != PadData::npos) {
             const PadInputInfo<float> &analog_chunk =
                 pad_it->m_data.getPadAnalogMagnitudeInput(analog_chunk_idx);
-            frame_data.m_stick_mag = analog_chunk.m_input_state;
+            frame_data.m_stick_mag = analog_chunk.m_input_state / 32.0f;
         }
 
         size_t direction_chunk_idx = pad_it->m_data.getPadAnalogDirectionIndex(frame);
@@ -460,9 +477,11 @@ namespace Toolbox {
         }
 
         frame_data.m_stick_x =
-            std::cos(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) * (IM_PI / 180.0f));
+            std::cos(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) * (IM_PI / 180.0f)) *
+            frame_data.m_stick_mag;
         frame_data.m_stick_y =
-            std::sin(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) * (IM_PI / 180.0f));
+            std::sin(PadData::convertAngleS16ToFloat(frame_data.m_stick_angle) * (IM_PI / 180.0f)) *
+            frame_data.m_stick_mag;
 
         size_t button_chunk_idx = pad_it->m_data.getPadButtonIndex(frame);
         if (button_chunk_idx != PadData::npos) {
@@ -495,7 +514,7 @@ namespace Toolbox {
 
     u32 PadRecorder::getPadFrameCount(char from_link, char to_link) {
         auto pad_it =
-          std::find_if(m_pad_datas.begin(), m_pad_datas.end(), [&](const PadDataLinkInfo& info) {
+            std::find_if(m_pad_datas.begin(), m_pad_datas.end(), [&](const PadDataLinkInfo &info) {
                 return info.m_from_link == from_link && info.m_to_link == to_link;
             });
 
@@ -512,22 +531,20 @@ namespace Toolbox {
         return frame_count;
     }
 
-    void PadRecorder::playPadData() {
+    void PadRecorder::playPadData(TimeStep delta_time) {
         if (!m_playback_frame_cb) {
-            m_play_flag.store(false);
-            m_last_frame            = 0;
-            m_current_link          = '*';
-            m_next_link             = '*';
+            stopPadPlayback();
+            return;
         }
 
-        PadFrameData frame_data = getPadFrameData(m_current_link, m_next_link, m_last_frame++);
+        m_playback_frame += 4 * delta_time * 30.0f;
+
+        PadFrameData frame_data = getPadFrameData(m_current_link, m_next_link, static_cast<u32>(m_playback_frame));
         m_playback_frame_cb(frame_data);
 
-        if (m_last_frame >= getPadFrameCount(m_current_link, m_next_link)) {
-            m_play_flag.store(false);
-            m_last_frame = 0;
-            m_current_link = '*';
-            m_next_link    = '*';
+        if (m_playback_frame >= getPadFrameCount(m_current_link, m_next_link)) {
+            stopPadPlayback();
+            return;
         }
     }
 

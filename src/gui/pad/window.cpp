@@ -392,7 +392,9 @@ namespace Toolbox::UI {
 
         PadRecorder::PadFrameData frame_data{};
 
-        if (m_is_viewing_shadow_mario) {
+        if (m_pad_recorder.isPlaying()) {
+            frame_data = m_playback_data;
+        } else if (m_is_viewing_shadow_mario) {
             auto result =
                 m_pad_recorder.readPadFrameData(PadRecorder::PadSourceType::SOURCE_EMARIO);
             if (!result) {
@@ -1098,9 +1100,17 @@ namespace Toolbox::UI {
                 ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 
                 // Submit task to play back pad data
-                if (ImGui::AlignedButton(ICON_FK_PLAY, {play_button_width, 0.0f})) {
-                    m_update_tasks.push_back(
-                        [this, from_link, to_link]() { signalPadPlayback(from_link, to_link); });
+                if (!m_pad_recorder.isPlaying(from_link, to_link)) {
+                    if (ImGui::AlignedButton(ICON_FK_PLAY, {play_button_width, 0.0f})) {
+                        m_update_tasks.push_back([this, from_link, to_link]() {
+                            signalPadPlayback(from_link, to_link);
+                        });
+                    }
+                } else {
+                    if (ImGui::AlignedButton(ICON_FK_SQUARE, {play_button_width, 0.0f})) {
+                        m_update_tasks.push_back(
+                            [this, from_link, to_link]() { m_pad_recorder.stopPadPlayback(); });
+                    }
                 }
 
                 ImGui::PopStyleVar();

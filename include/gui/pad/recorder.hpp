@@ -101,6 +101,7 @@ namespace Toolbox {
         bool savePadRecording(char from_link, char to_link, const std::filesystem::path &file_path);
 
         bool playPadRecording(char from_link, char to_link, playback_frame_cb on_frame_cb);
+        void stopPadPlayback();
 
         void clearLink(char from_link, char to_link);
 
@@ -112,12 +113,13 @@ namespace Toolbox {
 
     protected:
         void tRun(void *param) override;
+        void sleep();
 
         void initNextInputData();
         void initNextInputData(char from_link, char to_link);
         void applyInputChunk();
 
-        void playPadData();
+        void playPadData(TimeStep delta_time);
         void recordPadData();
         void resetRecordState();
         void resetRecordState(char from_link, char to_link);
@@ -140,6 +142,7 @@ namespace Toolbox {
         u32 m_shadow_mario_ptr         = 0;
         u32 m_piantissimo_ptr          = 0;
 
+        TimePoint m_last_frame_time;
         bool m_is_replaying_pad = false;
         playback_frame_cb m_playback_frame_cb = nullptr;
 
@@ -147,6 +150,7 @@ namespace Toolbox {
         PadButtons m_last_pressed_buttons = PadButtons::BUTTON_NONE;
         u32 m_start_frame                 = 0;
         u32 m_last_frame                  = 0;
+        float m_playback_frame            = 0.0f;
 
         char m_current_link = '*';
         char m_next_link    = '*';
