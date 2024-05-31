@@ -21,7 +21,12 @@ namespace Toolbox {
             if (m_play_flag.load()) {
                 std::scoped_lock lock(m_mutex);
                 playPadData(delta_time);
-                sleep();
+                
+                Game::TaskCommunicator &task_communicator =
+                    GUIApplication::instance().getTaskCommunicator();
+                if (!task_communicator.isSceneLoaded()) {
+                    sleep();
+                }
                 continue;
             }
 
@@ -555,76 +560,15 @@ namespace Toolbox {
         DolphinCommunicator &communicator =
             GUIApplication::instance().getDolphinCommunicator();
 
-        Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
-        if (task_communicator.isSceneLoaded()) {
-            s32 frame_step = getFrameStep();
-            if (frame_step == 0) {
-                return;
-            }
-
-            if (frame_step < 0) {
-                TOOLBOX_ERROR("[PAD RECORD] Stopping playback as the frame step is out of order.");
-                u32 mario_ptr       = communicator.read<u32>(0x8040E108).value();
-                u32 controller_ptr  = communicator.read<u32>(mario_ptr + 0x4FC).value();
-                u8 controller_state = communicator.read<u8>(controller_ptr + 0xE3).value();
-                communicator.write<u8>(controller_ptr + 0xE3, controller_state & 0b01111101);
-                stopPadPlayback();
-                return;
-            }
-
-            m_last_frame += frame_step;
-            m_playback_frame += frame_step;
-            if (m_playback_frame >= getPadFrameCount(m_current_link, m_next_link)) {
-                u32 mario_ptr       = communicator.read<u32>(0x8040E108).value();
-                u32 controller_ptr  = communicator.read<u32>(mario_ptr + 0x4FC).value();
-                u8 controller_state = communicator.read<u8>(controller_ptr + 0xE3).value();
-                communicator.write<u8>(controller_ptr + 0xE3, controller_state & 0b01111101);
-                stopPadPlayback();
-                return;
-            }
-
-            PadFrameData frame_data =
-                getPadFrameData(m_current_link, m_next_link, static_cast<u32>(m_playback_frame));
-            m_playback_frame_cb(frame_data);
-
-            // TODO: Apply to game state properly, detransform the angle based on camera.
-            u32 mario_ptr = communicator.read<u32>(0x8040E108).value();
-            communicator.write<f32>(mario_ptr + 0x8C, frame_data.m_stick_mag * 32.0f);
-            communicator.write<s16>(mario_ptr + 0x90, frame_data.m_stick_angle);
-
-            u32 controller_meaning_ptr   = communicator.read<u32>(mario_ptr + 0x108).value();
-            communicator.write<u32>(controller_meaning_ptr + 0x4, static_cast<u32>(frame_data.m_held_buttons));
-            communicator.write<u32>(controller_meaning_ptr + 0x8, static_cast<u32>(frame_data.m_pressed_buttons));
-
-            u32 controller_ptr = communicator.read<u32>(mario_ptr + 0x4FC).value();
-            u8 controller_state = communicator.read<u8>(controller_ptr + 0xE3).value();
-            communicator.write<u8>(controller_ptr + 0xE3, controller_state | 0b10000010);
-
-            communicator.write<u32>(controller_ptr + 0x18,
-                                    static_cast<u32>(frame_data.m_held_buttons));
-            communicator.write<u32>(controller_ptr + 0x1C,
-                                    static_cast<u32>(frame_data.m_pressed_buttons));
-
-            communicator.write<u8>(controller_ptr + 0x26, frame_data.m_trigger_l);
-            communicator.write<u8>(controller_ptr + 0x27, frame_data.m_trigger_r);
-
-            communicator.write<f32>(controller_ptr + 0x48, frame_data.m_stick_x);
-            communicator.write<f32>(controller_ptr + 0x4C, frame_data.m_stick_y);
-
-            communicator.write<f32>(controller_ptr + 0x50, frame_data.m_stick_mag);
-            communicator.write<s16>(controller_ptr + 0x54, frame_data.m_stick_angle);
-        } else {
-            m_playback_frame += 4 * delta_time * 30.0f;
-            if (m_playback_frame >= getPadFrameCount(m_current_link, m_next_link)) {
-                stopPadPlayback();
-                return;
-            }
-
-            PadFrameData frame_data =
-                getPadFrameData(m_current_link, m_next_link, static_cast<u32>(m_playback_frame));
-            m_playback_frame_cb(frame_data);
+        m_playback_frame += 4 * delta_time * 30.0f;
+        if (m_playback_frame >= getPadFrameCount(m_current_link, m_next_link)) {
+            stopPadPlayback();
+            return;
         }
+
+        PadFrameData frame_data =
+            getPadFrameData(m_current_link, m_next_link, static_cast<u32>(m_playback_frame));
+        m_playback_frame_cb(frame_data);
     }
 
     void PadRecorder::recordPadData() {
