@@ -286,43 +286,111 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::onRenderBody(TimeStep delta_time) {
-        renderRecordPanel();
-
-        // Controller panel
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
         {
-            if (ImGui::Checkbox("View Shadow Mario", &m_is_viewing_shadow_mario)) {
-                m_is_viewing_piantissimo = false;
+            ImVec2 window_pos            = ImGui::GetWindowPos();
+            ImVec2 controller_cursor_pos = ImGui::GetCursorPos();
+
+            ImGui::SetNextItemAllowOverlap();
+
+            // Controller panel
+            {
+                ImGui::PushStyleColor(ImGuiCol_ChildBg,
+                                      ImGui::GetStyleColorVec4(ImGuiCol_TableRowBgAlt));
+                {
+                    if (ImGui::BeginChild("Controller View", {0, 300}, true)) {
+                        ImVec2 content_region = ImGui::GetContentRegionAvail();
+                        ImVec2 center         = {content_region.x / 2, content_region.y / 2 - 20};
+                        renderControllerOverlay(center, 1.0f, 255);
+                    }
+                    ImGui::EndChild();
+                }
+                ImGui::PopStyleColor();
             }
 
-            if (ImGui::Checkbox("View Piantissimo", &m_is_viewing_piantissimo)) {
-                m_is_viewing_shadow_mario = false;
+            ImVec2 after_cursor_pos = ImGui::GetCursorPos();
+            ImVec2 item_rect_min    = ImGui::GetItemRectMin();
+            ImVec2 item_rect_max    = ImGui::GetItemRectMax();
+
+            // Record panel
+            {
+                ImGui::SetCursorPos(controller_cursor_pos);
+                if (ImGui::BeginChild("Record Panel", {0, 0}, ImGuiChildFlags_None,
+                                      ImGuiWindowFlags_AlwaysUseWindowPadding)) {
+                    renderControlButtons();
+                }
+                ImGui::EndChild();
+                ImGui::SetCursorPos(after_cursor_pos);
             }
 
-            if (ImGui::BeginChild("Controller View", {0, 300}, true)) {
-                ImVec2 content_region = ImGui::GetContentRegionAvail();
-                ImVec2 center         = {content_region.x / 2 + 7, content_region.y / 2 - 20};
-                renderControllerOverlay(center, 1.0f, 255);
-            }
-            ImGui::EndChild();
+            renderRecordedInputData();
+            renderSceneContext();
+            renderFileDialogs();
         }
-
-        renderRecordedInputData();
-        renderFileDialogs();
+        ImGui::PopStyleVar(3);
     }
 
-    void PadInputWindow::renderRecordPanel() {
+    void PadInputWindow::renderControlButtons() {
+        const ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
+        const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
+
+        std::string combo_preview = ICON_FK_EYE " Player";
+        if (m_is_viewing_shadow_mario) {
+            combo_preview = ICON_FK_EYE " Shadow Mario";
+        } else if (m_is_viewing_piantissimo) {
+            combo_preview = ICON_FK_EYE " Piantissimo";
+        }
+
+        ImGui::SetNextItemWidth(130.0f);
+
+        bool is_selection_invalid = (m_is_viewing_shadow_mario && m_shadow_mario_ptr == 0) ||
+                                    (m_is_viewing_piantissimo && m_piantissimo_ptr == 0);
+        if (is_selection_invalid) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.0f, 0.0f, 0.4f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 0.2f, 0.2f, 0.6f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 0.0f, 0.0f, 0.6f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.7f, 0.0f, 0.0f, 0.3f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.7f, 0.2f, 0.2f, 0.5f));
+        }
+
+        if (ImGui::BeginCombo("##Viewing", combo_preview.c_str())) {
+            if (ImGui::Selectable("Player",
+                                  !m_is_viewing_shadow_mario && !m_is_viewing_piantissimo)) {
+                m_is_viewing_shadow_mario = false;
+                m_is_viewing_piantissimo  = false;
+            }
+
+            if (ImGui::Selectable("Shadow Mario", m_is_viewing_shadow_mario)) {
+                m_is_viewing_shadow_mario = true;
+                m_is_viewing_piantissimo  = false;
+            }
+
+            if (ImGui::Selectable("Piantissimo", m_is_viewing_piantissimo)) {
+                m_is_viewing_shadow_mario = false;
+                m_is_viewing_piantissimo  = true;
+            }
+
+            ImGui::EndCombo();
+        }
+
+        if (is_selection_invalid) {
+            ImGui::PopStyleColor(5);
+        }
+
+        float combo_height = ImGui::GetItemRectSize().y;
+
+        ImGui::SameLine();
+
         float window_bar_height =
             ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
         window_bar_height *= 2.0f;
-        ImGui::SetCursorPos({0, window_bar_height + 5});
-
-        const ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
-        const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
 
         const ImVec2 window_size = ImGui::GetWindowSize();
         ImVec2 cmd_button_size   = ImGui::CalcTextSize(ICON_FK_UNDO) + frame_padding;
         cmd_button_size.x        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.5f;
-        cmd_button_size.y        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.f;
+        cmd_button_size.y        = combo_height;
 
         bool is_recording = m_pad_recorder.isRecording();
 
@@ -335,8 +403,13 @@ namespace Toolbox::UI {
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.7f, 0.2f, 1.0f});
 
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
-        if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
+        if (ImGui::AlignedButton(ICON_FK_CIRCLE, cmd_button_size)) {
             m_pad_recorder.startRecording();
+            m_is_recording_pad_data = true;
+            if (m_attached_scene_uuid) {
+                GUIApplication::instance().dispatchEvent<BaseEvent, true>(
+                    m_attached_scene_uuid, SCENE_DISABLE_CONTROL_EVENT);
+            }
         }
 
         ImGui::PopStyleColor(3);
@@ -356,7 +429,8 @@ namespace Toolbox::UI {
         }
 
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 + cmd_button_size.x);
-        if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size)) {
+        if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
+                                 ImDrawFlags_RoundCornersRight)) {
             m_pad_recorder.stopRecording();
             m_cur_from_link = '*';
             m_cur_to_link   = '*';
@@ -375,7 +449,8 @@ namespace Toolbox::UI {
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.4f, 0.8f, 1.0f});
 
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
-        if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size)) {
+        if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
+                                 ImDrawFlags_RoundCornersLeft)) {
             m_pad_recorder.resetRecording();
             m_pad_rail.clearNodes();
         }
@@ -398,29 +473,26 @@ namespace Toolbox::UI {
             auto result =
                 m_pad_recorder.readPadFrameData(PadRecorder::PadSourceType::SOURCE_EMARIO);
             if (!result) {
-                LogError(result.error());
-                ImGui::Text("Error reading Shadow Mario data.");
-                return;
+                frame_data = {};
+            } else {
+                frame_data = result.value();
             }
-            frame_data = result.value();
         } else if (m_is_viewing_piantissimo) {
             auto result =
                 m_pad_recorder.readPadFrameData(PadRecorder::PadSourceType::SOURCE_PIANTISSIMO);
             if (!result) {
-                LogError(result.error());
-                ImGui::Text("Error reading Piantissimo data.");
-                return;
+                frame_data = {};
+            } else {
+                frame_data = result.value();
             }
-            frame_data = result.value();
         } else {
             auto result =
                 m_pad_recorder.readPadFrameData(PadRecorder::PadSourceType::SOURCE_PLAYER);
             if (!result) {
-                LogError(result.error());
-                ImGui::Text("Error reading player data.");
-                return;
+                frame_data = {};
+            } else {
+                frame_data = result.value();
             }
-            frame_data = result.value();
         }
 
         ImVec2 rumble_position =
@@ -739,7 +811,15 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::renderRecordedInputData() {
-        if (ImGui::BeginChild("Recorded Input Data", {0, 0}, true)) {
+        ImGui::SeparatorText("Record Links");
+        {
+            renderLinkDataState();
+        }
+    }
+
+    void PadInputWindow::renderSceneContext() {
+        ImGui::SeparatorText("Scene Context");
+        if (ImGui::BeginChild("##Scene Context Elem")) {
             std::string window_preview = "Scene not selected.";
 
             const std::vector<RefPtr<ImWindow>> &windows = GUIApplication::instance().getWindows();
@@ -755,9 +835,8 @@ namespace Toolbox::UI {
                 ImGui::BeginDisabled();
             }
 
-            ImGui::Text("Scene Context");
-            ImGui::PushID("Scene Context Combo");
-            if (ImGui::BeginCombo("", window_preview.c_str(), ImGuiComboFlags_PopupAlignLeft)) {
+            if (ImGui::BeginCombo("##Scene Context Combo", window_preview.c_str(),
+                                  ImGuiComboFlags_PopupAlignLeft)) {
                 for (RefPtr<const ImWindow> window : windows) {
                     if (window->name() != "Scene Editor") {
                         continue;
@@ -778,7 +857,6 @@ namespace Toolbox::UI {
                 }
                 ImGui::EndCombo();
             }
-            ImGui::PopID();
 
             ImGui::SameLine();
 
@@ -786,7 +864,11 @@ namespace Toolbox::UI {
                 ImGui::BeginDisabled();
             }
 
-            if (ImGui::Button("Make Scene Rail")) {
+            f32 cursor_pos_x = ImGui::GetWindowSize().x -
+                               ImGui::CalcTextSize("Apply Rail").x - ImGui::GetStyle().FramePadding.x * 2.0f - ImGui::GetStyle().WindowPadding.x;
+            ImGui::SetCursorPosX(cursor_pos_x);
+
+            if (ImGui::Button("Apply Rail")) {
                 GUIApplication::instance().dispatchEvent<SceneCreateRailEvent, true>(
                     m_attached_scene_uuid, m_pad_rail);
             }
@@ -798,10 +880,6 @@ namespace Toolbox::UI {
             if (m_pad_recorder.isRecording()) {
                 ImGui::EndDisabled();
             }
-
-            ImGui::Separator();
-
-            renderLinkDataState();
         }
         ImGui::EndChild();
     }
@@ -832,6 +910,11 @@ namespace Toolbox::UI {
                 m_load_path = path;
 
                 m_pad_recorder.resetRecording();
+                if (m_attached_scene_uuid) {
+                    GUIApplication::instance().dispatchEvent<BaseEvent, true>(
+                        m_attached_scene_uuid, SCENE_ENABLE_CONTROL_EVENT);
+                }
+
                 m_pad_recorder.loadFromFolder(*m_load_path);
 
                 ImGuiFileDialog::Instance()->Close();
@@ -907,7 +990,10 @@ namespace Toolbox::UI {
 
     void PadInputWindow::renderLinkDataState() {
         ImGuiID id = ImGui::GetID("Link Data State");
-        if (ImGui::BeginChildPanel(id, {0, 0})) {
+
+        float height = ImGui::GetTextLineHeight() * 2.0f + ImGui::GetFrameHeight();
+
+        if (ImGui::BeginChildPanel(id, {0, ImGui::GetContentRegionAvail().y - height})) {
             bool is_recording                             = m_pad_recorder.isRecording();
             bool is_playing                               = m_pad_recorder.isPlaying();
             const std::vector<ReplayLinkNode> &link_nodes = m_pad_recorder.linkData().linkNodes();
@@ -1091,6 +1177,11 @@ namespace Toolbox::UI {
                             m_cur_from_link = from_link;
                             m_cur_to_link   = to_link;
                             m_pad_recorder.startRecording(from_link, to_link);
+                            m_is_recording_pad_data = true;
+                            if (m_attached_scene_uuid) {
+                                GUIApplication::instance().dispatchEvent<BaseEvent, true>(
+                                    m_attached_scene_uuid, SCENE_DISABLE_CONTROL_EVENT);
+                            }
                         });
                     }
                 }
@@ -1314,11 +1405,11 @@ namespace Toolbox::UI {
 
         Transform from_transform;
         from_transform.m_translation = from_node->getPosition();
-        from_transform.m_rotation    = {0.0f, PadData::convertAngleS16ToFloat(data.m_stick_angle), 0.0f};
+        from_transform.m_rotation    = {0.0f, PadData::convertAngleS16ToFloat(data.m_stick_angle),
+                                        0.0f};
         from_transform.m_scale       = {1.0f, 1.0f, 1.0f};
 
-        task_communicator
-            .setMarioTransform(from_transform, true);
+        task_communicator.setMarioTransform(from_transform, true);
 
         m_pad_recorder.playPadRecording(
             from_link, to_link,
@@ -1392,6 +1483,14 @@ namespace Toolbox::UI {
         if (m_pad_recorder.isPlaying(m_cur_from_link, m_cur_to_link)) {
             DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
             if (communicator.manager().isHooked()) {
+            }
+        }
+
+        if (!m_pad_recorder.isRecording() && m_is_recording_pad_data) {
+            m_is_recording_pad_data = false;
+            if (m_attached_scene_uuid) {
+                GUIApplication::instance().dispatchEvent<BaseEvent, true>(
+                    m_attached_scene_uuid, SCENE_ENABLE_CONTROL_EVENT);
             }
         }
     }

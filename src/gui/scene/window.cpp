@@ -501,6 +501,14 @@ namespace Toolbox::UI {
             }
             break;
         }
+        case SCENE_DISABLE_CONTROL_EVENT: {
+            m_control_disable_requested = true;
+            break;
+        }
+        case SCENE_ENABLE_CONTROL_EVENT: {
+            m_control_disable_requested = false;
+            break;
+        }
         default:
             break;
         }
@@ -1217,12 +1225,14 @@ void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.7f, 0.2f, 0.2f, 0.9f});
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.7f, 0.2f, 0.2f, 1.0f});
 
-    if (!is_dolphin_running) {
+    bool context_controls_disabled = !is_dolphin_running || m_control_disable_requested;
+
+    if (context_controls_disabled) {
         ImGui::BeginDisabled();
     }
 
     ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 + cmd_button_size.x);
-    if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size)) {
+    if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size, ImGuiButtonFlags_None, 5.0f, ImDrawFlags_RoundCornersBottomRight)) {
         DolphinHookManager::instance().stopProcess();
     }
 
@@ -1235,13 +1245,14 @@ void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.4f, 0.8f, 1.0f});
 
     ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
-    if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size)) {
+    if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
+                             ImDrawFlags_RoundCornersBottomLeft)) {
         task_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
     }
 
     ImGui::PopStyleColor(3);
 
-    if (!is_dolphin_running) {
+    if (context_controls_disabled) {
         ImGui::EndDisabled();
     }
 }

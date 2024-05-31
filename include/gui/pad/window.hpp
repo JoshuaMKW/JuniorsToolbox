@@ -41,12 +41,13 @@ namespace Toolbox::UI {
         void onRenderMenuBar() override;
         void onRenderBody(TimeStep delta_time) override;
 
-        void renderRecordPanel();
+        void renderControlButtons();
         void renderControllerOverlay(const ImVec2 &center, f32 scale, u8 alpha);
         void renderRecordedInputData();
         void renderFileDialogs();
         void renderLinkDataState();
         void renderLinkPanel(const ReplayNodeInfo &link_node, char link_chr);
+        void renderSceneContext();
 
         void onRenderPadOverlay(TimeStep delta_time, std::string_view layer_name, int width,
                                 int height, const glm::mat4x4 &vp_mtx, UUID64 window_uuid);
@@ -63,7 +64,7 @@ namespace Toolbox::UI {
 
     public:
         ImGuiWindowFlags flags() const override {
-            return ImWindow::flags() | ImGuiWindowFlags_MenuBar;
+            return ImWindow::flags() | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
         }
 
         const ImGuiWindowClass *windowClass() const override {
@@ -81,7 +82,7 @@ namespace Toolbox::UI {
 
         std::optional<ImVec2> minSize() const override {
             return {
-                {400, 700}
+                {400, 800}
             };
         }
 
@@ -129,9 +130,10 @@ namespace Toolbox::UI {
         std::optional<std::filesystem::path> m_import_path = std::nullopt;
         std::optional<std::filesystem::path> m_export_path = std::nullopt;
 
+        bool m_is_recording_pad_data     = false;
+
         bool m_render_controller_overlay = false;
         bool m_is_viewing_rumble         = false;
-        bool m_is_recording_input        = false;
         u32 m_last_recorded_frame        = 0;
 
         size_t m_controller_port = 0;

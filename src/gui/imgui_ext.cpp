@@ -230,7 +230,8 @@ void ImGui::EndChildPanel() {
 }
 
 // Render a rectangle shaped with optional rounding and borders
-void ImGui::RenderFrame(ImVec2 p_min, ImVec2 p_max, ImU32 fill_col, bool border, float rounding, ImDrawFlags draw_flags) {
+void ImGui::RenderFrame(ImVec2 p_min, ImVec2 p_max, ImU32 fill_col, bool border, float rounding,
+                        ImDrawFlags draw_flags) {
     ImGuiContext &g     = *GImGui;
     ImGuiWindow *window = g.CurrentWindow;
     window->DrawList->AddRectFilled(p_min, p_max, fill_col, rounding, draw_flags);
@@ -244,8 +245,8 @@ void ImGui::RenderFrame(ImVec2 p_min, ImVec2 p_max, ImU32 fill_col, bool border,
     }
 }
 
-
-bool ImGui::ButtonEx(const char *label, const ImVec2 &size_arg, ImGuiButtonFlags flags, ImDrawFlags draw_flags) {
+bool ImGui::ButtonEx(const char *label, const ImVec2 &size_arg, ImGuiButtonFlags flags,
+                     ImDrawFlags draw_flags) {
     ImGuiWindow *window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -294,7 +295,9 @@ bool ImGui::ButtonEx(const char *label, const ImVec2 &size_arg, ImGuiButtonFlags
     return pressed;
 }
 
-bool ImGui::Button(const char *label, float rounding, ImDrawFlags draw_flags) { return Button(label, ImVec2(0, 0), rounding, draw_flags); }
+bool ImGui::Button(const char *label, float rounding, ImDrawFlags draw_flags) {
+    return Button(label, ImVec2(0, 0), rounding, draw_flags);
+}
 
 bool ImGui::Button(const char *label, const ImVec2 &size, float rounding, ImDrawFlags draw_flags) {
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, rounding);
@@ -307,7 +310,8 @@ bool ImGui::AlignedButton(const char *label, ImVec2 size, ImGuiButtonFlags flags
     return AlignedButton(label, size, flags, ImDrawFlags_RoundCornersNone);
 }
 
-bool ImGui::AlignedButton(const char *label, ImVec2 size, ImGuiButtonFlags flags, ImDrawFlags draw_flags) {
+bool ImGui::AlignedButton(const char *label, ImVec2 size, ImGuiButtonFlags flags,
+                          ImDrawFlags draw_flags) {
     ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
     ImVec2 text_size     = ImGui::CalcTextSize(label);
 
@@ -342,6 +346,34 @@ bool ImGui::AlignedButton(const char *label, ImVec2 size, ImGuiButtonFlags flags
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, rounding);
     bool ret = AlignedButton(label, size, flags, draw_flags);
     ImGui::PopStyleVar();
+    return ret;
+}
+
+bool ImGui::SwitchButton(const char* label, bool active, ImVec2 size, ImGuiButtonFlags flags) {
+    return SwitchButton(label, active, size, flags, ImDrawFlags_RoundCornersNone);
+}
+
+bool ImGui::SwitchButton(const char *label, bool active, ImVec2 size, ImGuiButtonFlags flags,
+                         ImDrawFlags draw_flags) {
+    if (active) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+    }
+    bool ret = AlignedButton(label, size, flags, draw_flags);
+    if (active) {
+        ImGui::PopStyleColor();
+    }
+    return ret;
+}
+
+bool ImGui::SwitchButton(const char *label, bool active, ImVec2 size, ImGuiButtonFlags flags,
+                         float rounding, ImDrawFlags draw_flags) {
+    if (active) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+    }
+    bool ret = AlignedButton(label, size, flags, rounding, draw_flags);
+    if (active) {
+        ImGui::PopStyleColor();
+    }
     return ret;
 }
 

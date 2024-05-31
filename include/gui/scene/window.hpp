@@ -8,11 +8,11 @@
 #include <vector>
 
 #include "core/memory.hpp"
-#include "smart_resource.hpp"
 #include "fsystem.hpp"
 #include "objlib/object.hpp"
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"
+#include "smart_resource.hpp"
 
 #include "core/clipboard.hpp"
 #include "game/task.hpp"
@@ -32,7 +32,9 @@
 
 namespace Toolbox::UI {
 
-#define SCENE_CREATE_RAIL_EVENT 100
+#define SCENE_CREATE_RAIL_EVENT     100
+#define SCENE_DISABLE_CONTROL_EVENT 101
+#define SCENE_ENABLE_CONTROL_EVENT  102
 
     class SceneCreateRailEvent : public BaseEvent {
     private:
@@ -68,16 +70,15 @@ namespace Toolbox::UI {
             RENDER_VIEW,
         };
 
-        using render_layer_cb = std::function<void(TimeStep delta_time, std::string_view layer_name,
-                                                   int width, int height, const glm::mat4x4 &vp_mtx, UUID64 window_uuid)>;
+        using render_layer_cb =
+            std::function<void(TimeStep delta_time, std::string_view layer_name, int width,
+                               int height, const glm::mat4x4 &vp_mtx, UUID64 window_uuid)>;
 
         void registerOverlay(const std::string &layer_name, render_layer_cb cb) {
             m_render_layers[layer_name] = cb;
         }
 
-        void deregisterOverlay(const std::string &layer_name) {
-            m_render_layers.erase(layer_name);
-        }
+        void deregisterOverlay(const std::string &layer_name) { m_render_layers.erase(layer_name); }
 
     protected:
         ImGuiID onBuildDockspace() override;
@@ -125,18 +126,20 @@ namespace Toolbox::UI {
         void loadMimeRailNode(Buffer &buffer, RefPtr<Rail::Rail> rail, size_t node_index);
 
     public:
-        ImGuiWindowFlags flags() const override { return ImWindow::flags() | ImGuiWindowFlags_MenuBar; }
+        ImGuiWindowFlags flags() const override {
+            return ImWindow::flags() | ImGuiWindowFlags_MenuBar;
+        }
 
         const ImGuiWindowClass *windowClass() const override {
             if (parent() && parent()->windowClass()) {
                 return parent()->windowClass();
             }
 
-            ImGuiWindow *currentWindow              = ImGui::GetCurrentWindow();
-            m_window_class.ClassId                  = (ImGuiID)getUUID();
-            m_window_class.ParentViewportId         = currentWindow->ViewportId;
-            m_window_class.DockingAllowUnclassed    = true;
-            m_window_class.DockingAlwaysTabBar      = false;
+            ImGuiWindow *currentWindow           = ImGui::GetCurrentWindow();
+            m_window_class.ClassId               = (ImGuiID)getUUID();
+            m_window_class.ParentViewportId      = currentWindow->ViewportId;
+            m_window_class.DockingAllowUnclassed = true;
+            m_window_class.DockingAlwaysTabBar   = false;
             return nullptr;
         }
 
@@ -204,7 +207,7 @@ namespace Toolbox::UI {
         ImGuiID m_dock_node_down_left_id = 0;
 
         // Rail editor
-        std::unordered_map<UUID64, bool> m_rail_visible_map                  = {};
+        std::unordered_map<UUID64, bool> m_rail_visible_map                   = {};
         bool m_connections_open                                               = true;
         std::vector<SelectionNodeInfo<Rail::Rail>> m_rail_list_selected_nodes = {};
         ContextMenu<SelectionNodeInfo<Rail::Rail>> m_rail_list_single_node_menu;
@@ -227,9 +230,9 @@ namespace Toolbox::UI {
 
         bool m_options_open = false;
 
-        bool m_is_save_default_ready = false;
+        bool m_is_save_default_ready  = false;
         bool m_is_save_as_dialog_open = false;
-        bool m_is_verify_open = false;
+        bool m_is_verify_open         = false;
 
         bool m_is_game_edit_mode = false;
 
@@ -238,5 +241,8 @@ namespace Toolbox::UI {
 
         glm::mat4x4 m_dolphin_vp_mtx;
         std::map<std::string, render_layer_cb> m_render_layers;
+
+        // Event Stuff
+        bool m_control_disable_requested = false;
     };
 }  // namespace Toolbox::UI
