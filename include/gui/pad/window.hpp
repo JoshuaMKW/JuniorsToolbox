@@ -19,6 +19,7 @@
 #include "game/task.hpp"
 #include "gui/event/event.hpp"
 #include "gui/image/imagepainter.hpp"
+#include "gui/pad/linkdialog.hpp"
 #include "gui/property/property.hpp"
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
@@ -57,6 +58,8 @@ namespace Toolbox::UI {
         void tryReuseOrCreateRailNode(const ReplayLinkNode &node);
         void tryRenderNodes(TimeStep delta_time, std::string_view layer_name, int width, int height,
                             const glm::mat4x4 &vp_mtx, UUID64 window_uuid);
+
+        void onCreateLinkNode(char from_link, char to_link);
 
         void signalPadPlayback(char from_link, char to_link);
 
@@ -147,6 +150,8 @@ namespace Toolbox::UI {
         bool m_is_verify_open           = false;
 
         std::vector<std::function<void()>> m_update_tasks;
+
+        CreateLinkDialog m_create_link_dialog;
     };
 
 }  // namespace Toolbox::UI

@@ -6,6 +6,10 @@
 
 namespace Toolbox {
 
+    PadRecorder::PadRecorder() : Threaded<void>() {
+        m_link_data = make_referable<ReplayLinkData>();
+    }
+
     void PadRecorder::tRun(void *param) {
         while (!tIsSignalKill()) {
             TimePoint current_time = std::chrono::high_resolution_clock::now();
@@ -21,7 +25,7 @@ namespace Toolbox {
             if (m_play_flag.load()) {
                 std::scoped_lock lock(m_mutex);
                 playPadData(delta_time);
-                
+
                 Game::TaskCommunicator &task_communicator =
                     GUIApplication::instance().getTaskCommunicator();
                 if (!task_communicator.isSceneLoaded()) {
@@ -44,7 +48,7 @@ namespace Toolbox {
     }
 
     bool PadRecorder::isRecordComplete() const {
-        const std::vector<ReplayLinkNode> &link_nodes = m_link_data.linkNodes();
+        const std::vector<ReplayLinkNode> &link_nodes = m_link_data->linkNodes();
         for (size_t i = 0; i < link_nodes.size(); ++i) {
             for (size_t j = 0; j < 3; ++j) {
                 char from_link = 'A' + i;
@@ -165,10 +169,10 @@ namespace Toolbox {
             }
 
             Deserializer link_deserializer(link_file.rdbuf());
-            m_link_data.deserialize(link_deserializer);
+            m_link_data->deserialize(link_deserializer);
         }
 
-        for (const ReplayLinkNode &node : m_link_data.linkNodes()) {
+        for (const ReplayLinkNode &node : m_link_data->linkNodes()) {
             for (size_t i = 0; i < 3; ++i) {
                 if (node.m_infos[i].m_next_link == '*') {
                     continue;
@@ -218,7 +222,7 @@ namespace Toolbox {
             }
 
             Serializer link_serializer(link_file.rdbuf());
-            m_link_data.serialize(link_serializer);
+            m_link_data->serialize(link_serializer);
         }
 
         for (size_t i = 0; i < m_pad_datas.size(); ++i) {
@@ -253,7 +257,7 @@ namespace Toolbox {
             return false;
         }
 
-        if (!m_link_data.hasLinkNode(from_link, to_link)) {
+        if (!m_link_data->hasLinkNode(from_link, to_link)) {
             TOOLBOX_ERROR_V("[PAD RECORD] Link node from '{}' to '{}' does not exist.", from_link,
                             to_link);
             return false;
@@ -328,7 +332,7 @@ namespace Toolbox {
             return false;
         }
 
-        if (!m_link_data.hasLinkNode(from_link, to_link)) {
+        if (!m_link_data->hasLinkNode(from_link, to_link)) {
             TOOLBOX_ERROR_V("[PAD RECORD] Link node from '{}' to '{}' does not exist.", from_link,
                             to_link);
             return false;
@@ -393,7 +397,7 @@ namespace Toolbox {
             return false;
         }
 
-        if (!m_link_data.hasLinkNode(from_link, to_link)) {
+        if (!m_link_data->hasLinkNode(from_link, to_link)) {
             TOOLBOX_ERROR_V("[PAD RECORD] Link node from '{}' to '{}' does not exist.", from_link,
                             to_link);
             return false;
@@ -453,7 +457,7 @@ namespace Toolbox {
             if (remove_it != m_pad_datas.end()) {
                 m_pad_datas.erase(remove_it);
             }
-            m_link_data.removeLinkNode(from_link, to_link);
+            m_link_data->removeLinkNode(from_link, to_link);
         }
         m_mutex.unlock();
     }
@@ -557,8 +561,7 @@ namespace Toolbox {
             return;
         }
 
-        DolphinCommunicator &communicator =
-            GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
 
         m_playback_frame += 4 * delta_time * 30.0f;
         if (m_playback_frame >= getPadFrameCount(m_current_link, m_next_link)) {
@@ -806,14 +809,14 @@ namespace Toolbox {
     }
 
     void PadRecorder::initNewLinkData() {
-        char new_link_chr  = static_cast<char>('A' + m_link_data.linkNodes().size());
-        char prev_link_chr = m_link_data.linkNodes().size() > 0
-                                 ? static_cast<char>('A' + m_link_data.linkNodes().size() - 1)
+        char new_link_chr  = static_cast<char>('A' + m_link_data->linkNodes().size());
+        char prev_link_chr = m_link_data->linkNodes().size() > 0
+                                 ? static_cast<char>('A' + m_link_data->linkNodes().size() - 1)
                                  : '*';
 
         if (prev_link_chr != '*') {
-            m_link_data.modifyLinkNode(m_link_data.linkNodes().size() - 1, nullptr, &new_link_chr,
-                                       nullptr);
+            m_link_data->modifyLinkNode(m_link_data->linkNodes().size() - 1, nullptr, &new_link_chr,
+                                        nullptr);
         }
 
         ReplayLinkNode node;
@@ -825,7 +828,7 @@ namespace Toolbox {
         node.m_infos[1].m_next_link = '*';
         node.m_infos[2].m_unk_0     = 1;
         node.m_infos[2].m_next_link = '*';
-        m_link_data.addLinkNode(node);
+        m_link_data->addLinkNode(node);
 
         if (m_on_create_link) {
             m_on_create_link(node);

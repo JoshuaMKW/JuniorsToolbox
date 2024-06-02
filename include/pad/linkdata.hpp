@@ -22,8 +22,8 @@ namespace Toolbox {
     };
 
     struct ReplayLinkNode {
-        NameRef m_link_name;
-        NameRef m_node_name;
+        NameRef m_link_name = {"Link"};
+        NameRef m_node_name = {"(null)"};
         ReplayNodeInfo m_infos[3];
     };
 
@@ -31,6 +31,10 @@ namespace Toolbox {
     public:
         ReplayLinkData()  = default;
         ~ReplayLinkData() = default;
+
+        [[nodiscard]] std::vector<ReplayLinkNode> &linkNodes() noexcept {
+            return m_link_nodes;
+        }
 
         [[nodiscard]] const std::vector<ReplayLinkNode> &linkNodes() const noexcept {
             return m_link_nodes;
@@ -176,7 +180,7 @@ namespace Toolbox {
     private:
         NameRef m_replay_link_name;
         NameRef m_replay_scene_name;
-        std::vector<ReplayLinkNode> m_link_nodes;
+        std::vector<ReplayLinkNode> m_link_nodes = {};
     };
 
 }  // namespace Toolbox

@@ -9,6 +9,9 @@
 #include "pad/linkdata.hpp"
 #include "pad/pad.hpp"
 
+#include <glm/glm.hpp>
+#include <numbers>
+
 namespace Toolbox {
 
     class PadRecorder : public Threaded<void> {
@@ -51,7 +54,7 @@ namespace Toolbox {
         using create_link_cb = std::function<void(const ReplayLinkNode &)>;
         using playback_frame_cb = std::function<void(const PadFrameData &)>;
 
-        PadRecorder()                        = default;
+        PadRecorder();
         PadRecorder(const PadRecorder &)     = delete;
         PadRecorder(PadRecorder &&) noexcept = default;
         ~PadRecorder()                       = default;
@@ -60,11 +63,11 @@ namespace Toolbox {
         PadRecorder &operator=(PadRecorder &&) noexcept = default;
 
         static inline float convertAngleS16ToRadians(s16 angle) {
-            return PadData::convertAngleS16ToFloat(angle) * (IM_PI / 180.0f);
+            return PadData::convertAngleS16ToFloat(angle) * (std::numbers::pi / 180.0f);
         }
 
         const std::vector<PadDataLinkInfo> &padData() const noexcept { return m_pad_datas; }
-        const ReplayLinkData &linkData() const noexcept { return m_link_data; }
+        RefPtr<ReplayLinkData> linkData() const noexcept { return m_link_data; }
 
         [[nodiscard]] bool hasRecordData(char from_link, char to_link) const;
 
@@ -92,7 +95,7 @@ namespace Toolbox {
 
         void resetRecording() {
             m_record_flag.store(false);
-            m_link_data.clearLinkNodes();
+            m_link_data->clearLinkNodes();
             m_pad_datas.clear();
         }
         void startRecording();
@@ -139,8 +142,8 @@ namespace Toolbox {
         Result<PadFrameData> readPadFrameDataPiantissimo();
 
     private:
-        ReplayLinkData m_link_data;
-        std::vector<PadDataLinkInfo> m_pad_datas;
+        RefPtr<ReplayLinkData> m_link_data;
+        std::vector<PadDataLinkInfo> m_pad_datas = {};
 
         u8 m_port                   = 0;
         PadTrimCommand m_trim_state = PadTrimCommand::TRIM_NONE;

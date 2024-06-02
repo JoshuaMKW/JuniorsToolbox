@@ -328,6 +328,8 @@ namespace Toolbox::UI {
             renderRecordedInputData();
             renderSceneContext();
             renderFileDialogs();
+
+            m_create_link_dialog.render();
         }
         ImGui::PopStyleVar(3);
     }
@@ -813,6 +815,17 @@ namespace Toolbox::UI {
     void PadInputWindow::renderRecordedInputData() {
         ImGui::SeparatorText("Record Links");
         {
+            if (ImGui::BeginChild("##Record Link Controls")) {
+                if (ImGui::Button("Add Link")) {
+                    m_create_link_dialog.setActionOnAccept([this](char from_link, char to_link) {
+                        onCreateLinkNode(from_link, to_link);
+                    });
+                    m_create_link_dialog.setLinkData(m_pad_recorder.linkData());
+                    m_create_link_dialog.open();
+                }
+            }
+            ImGui::EndChild();
+
             renderLinkDataState();
         }
     }
@@ -864,8 +877,9 @@ namespace Toolbox::UI {
                 ImGui::BeginDisabled();
             }
 
-            f32 cursor_pos_x = ImGui::GetWindowSize().x -
-                               ImGui::CalcTextSize("Apply Rail").x - ImGui::GetStyle().FramePadding.x * 2.0f - ImGui::GetStyle().WindowPadding.x;
+            f32 cursor_pos_x = ImGui::GetWindowSize().x - ImGui::CalcTextSize("Apply Rail").x -
+                               ImGui::GetStyle().FramePadding.x * 2.0f -
+                               ImGui::GetStyle().WindowPadding.x;
             ImGui::SetCursorPosX(cursor_pos_x);
 
             if (ImGui::Button("Apply Rail")) {
@@ -996,7 +1010,7 @@ namespace Toolbox::UI {
         if (ImGui::BeginChildPanel(id, {0, ImGui::GetContentRegionAvail().y - height})) {
             bool is_recording                             = m_pad_recorder.isRecording();
             bool is_playing                               = m_pad_recorder.isPlaying();
-            const std::vector<ReplayLinkNode> &link_nodes = m_pad_recorder.linkData().linkNodes();
+            const std::vector<ReplayLinkNode> &link_nodes = m_pad_recorder.linkData()->linkNodes();
             for (size_t i = 0; i < link_nodes.size(); ++i) {
                 for (size_t j = 0; j < 3; ++j) {
                     char from_link = 'A' + i;
@@ -1388,6 +1402,42 @@ namespace Toolbox::UI {
         }
 
         ImGui::SetCursorPos(cursor_pos);
+    }
+
+    void PadInputWindow::onCreateLinkNode(char from_link, char to_link) {
+        RefPtr<ReplayLinkData> link_data = m_pad_recorder.linkData();
+        std::vector<ReplayLinkNode> &link_nodes = link_data->linkNodes();
+
+        if (from_link - 'A' < link_nodes.size()) {
+            ReplayLinkNode &link_node = link_nodes[from_link - 'A'];
+            for (size_t i = 0; i < 3; ++i) {
+                if (link_node.m_infos[i].m_next_link == to_link) {
+                    TOOLBOX_ERROR("[PAD RECORD] Link {} -> {} already exists.", from_link, to_link);
+                    return;
+                }
+
+                if (link_node.m_infos[i].m_next_link == '*') {
+                    link_node.m_infos[i].m_next_link = to_link;
+                    return;
+                }
+            }
+            
+            TOOLBOX_ERROR("[PAD RECORD] Link {} is full.", from_link);
+            return;
+        }
+
+        ReplayLinkNode node{};
+        {
+            node.m_node_name = std::format("Link{}", from_link);
+
+            ReplayNodeInfo node_info{};
+            node_info.m_next_link = to_link;
+            node_info.m_unk_0     = 1;
+
+            node.m_infos[0] = std::move(node_info);
+        }
+
+        link_nodes.push_back(std::move(node));
     }
 
     void PadInputWindow::signalPadPlayback(char from_link, char to_link) {
