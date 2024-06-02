@@ -32,7 +32,7 @@ namespace Toolbox::UI {
 
             std::unordered_map<char, std::vector<char>> link_combos;
 
-            for (size_t i = 0; link_nodes.size(); ++i) {
+            for (size_t i = 0; i < link_nodes.size(); ++i) {
                 std::vector<char> target_nodes;
                 for (size_t j = 0; j < 3; ++j) {
                     if (link_nodes[i].m_infos[j].isSentinelNode()) {
@@ -44,12 +44,18 @@ namespace Toolbox::UI {
                 link_combos['A' + i] = std::move(target_nodes);
             }
 
+            link_combos['A' + link_nodes.size()] = {};
+
+            char selected_from_str[2] = {m_from_link, '\0'};
+            char selected_to_str[2] = {m_to_link, '\0'};
+
             ImGui::SetNextItemWidth(100.0f);
-            if (ImGui::BeginCombo("Source Node", &m_from_link, ImGuiComboFlags_PopupAlignLeft)) {
+            if (ImGui::BeginCombo("Source Node", selected_from_str,
+                                  ImGuiComboFlags_PopupAlignLeft)) {
                 for (auto &[from_link, targets] : link_combos) {
                     bool selected = from_link == m_from_link;
-                    std::string from_link_str(1, from_link);
-                    if (ImGui::Selectable(from_link_str.c_str(), &selected)) {
+                    char from_link_str[2] = {from_link, '\0'};
+                    if (ImGui::Selectable(from_link_str, &selected)) {
                         m_from_link = from_link;
                     }
                 }
@@ -57,16 +63,25 @@ namespace Toolbox::UI {
             }
 
             ImGui::SetNextItemWidth(100.0f);
-            if (ImGui::BeginCombo("Target Node", &m_to_link, ImGuiComboFlags_PopupAlignLeft)) {
+            if (ImGui::BeginCombo("Target Node", selected_to_str, ImGuiComboFlags_PopupAlignLeft)) {
                 for (auto &[from_link, targets] : link_combos) {
                     bool is_source = from_link == m_from_link;
                     if (!is_source) {
                         continue;
                     }
-                    for (char &to_link : targets) {
-                        bool selected = to_link == m_to_link;
-                        std::string to_link_str(1, to_link);
-                        if (ImGui::Selectable(to_link_str.c_str(), &selected)) {
+                    for (size_t i = 0; i < link_nodes.size(); ++i) {
+                        char to_link = 'A' + i;
+
+                        bool is_taken =
+                            std::any_of(targets.begin(), targets.end(),
+                                        [to_link](char target) { return target == to_link; });
+                        if (is_taken) {
+                            continue;
+                        }
+
+                        bool selected       = to_link == m_to_link;
+                        char to_link_str[2] = {to_link, '\0'};
+                        if (ImGui::Selectable(to_link_str, &selected)) {
                             m_to_link = to_link;
                         }
                     }
@@ -74,8 +89,8 @@ namespace Toolbox::UI {
                 ImGui::EndCombo();
             }
 
-            bool state_invalid = isValidForCreate(m_from_link, m_to_link);
-            if (state_invalid) {
+            bool state_valid = isValidForCreate(m_from_link, m_to_link);
+            if (!state_valid) {
                 ImVec4 disabled_color = ImGui::GetStyle().Colors[ImGuiCol_Button];
                 disabled_color.x -= 0.1f;
                 disabled_color.y -= 0.1f;
@@ -90,8 +105,8 @@ namespace Toolbox::UI {
                 ImGui::BeginDisabled();
             }
 
-            ImVec2 create_size = ImGui::CalcTextSize("Create") + ImGui::GetStyle().FramePadding;
-            ImVec2 cancel_size = ImGui::CalcTextSize("Cancel") + ImGui::GetStyle().FramePadding;
+            ImVec2 create_size = ImGui::CalcTextSize("Create") + ImGui::GetStyle().FramePadding * 2;
+            ImVec2 cancel_size = ImGui::CalcTextSize("Cancel") + ImGui::GetStyle().FramePadding * 2;
 
             ImVec2 window_size = ImGui::GetWindowSize();
 
@@ -104,7 +119,7 @@ namespace Toolbox::UI {
                 m_open = false;
             }
 
-            if (state_invalid) {
+            if (!state_valid) {
                 // End disabled block
                 ImGui::EndDisabled();
 

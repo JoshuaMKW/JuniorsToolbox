@@ -815,11 +815,13 @@ namespace Toolbox::UI {
     void PadInputWindow::renderRecordedInputData() {
         ImGui::SeparatorText("Record Links");
         {
-            if (ImGui::BeginChild("##Record Link Controls")) {
+            if (ImGui::BeginChild("##Record Link Controls", ImVec2(0, 0),
+                                  ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize)) {
                 if (ImGui::Button("Add Link")) {
                     m_create_link_dialog.setActionOnAccept([this](char from_link, char to_link) {
                         onCreateLinkNode(from_link, to_link);
                     });
+                    m_create_link_dialog.setActionOnReject([](char from_link, char to_link) {});
                     m_create_link_dialog.setLinkData(m_pad_recorder.linkData());
                     m_create_link_dialog.open();
                 }
