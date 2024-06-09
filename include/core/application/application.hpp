@@ -59,7 +59,7 @@ namespace Toolbox {
 
         // ------------------------------------------------------
 
-        virtual void onEvent(RefPtr<BaseEvent> ev) override;
+        virtual void onEvent(RefPtr<BaseEvent> ev) override final;
 
         template <typename _Event, bool _Queue, typename... _Args>
         void dispatchEvent(_Args &&...args) {
@@ -89,7 +89,6 @@ namespace Toolbox {
         void setExitCode(int exit_code) { m_exit_code = exit_code; }
 
     private:
-        bool update();
         void setup(int argc, const char **argv);
         void teardown();
 

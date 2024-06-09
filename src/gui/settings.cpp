@@ -1,6 +1,6 @@
 #include "gui/settings.hpp"
-#include "fsystem.hpp"
 #include "core/keybind/keybind.hpp"
+#include "fsystem.hpp"
 #include "gui/logging/errors.hpp"
 #include "jsonlib.hpp"
 
@@ -21,33 +21,31 @@ namespace Toolbox {
         }
 
         m_profile_path = cwd_result.value() / "Profiles";
-        auto result    = loadProfiles();
-        if (!result) {
-            UI::LogError(result.error());
-            return false;
-        }
 
-        return true;
+        bool result = true;
+        TRY(loadProfiles()).err([&result](const SerialError &error) {
+            UI::LogError(error);
+            result = false;
+        });
+        return result;
     }
 
     bool SettingsManager::save() {
-        auto result = saveProfiles();
-        if (!result) {
-            UI::LogError(result.error());
-            return false;
-        }
-
-        return true;
+        bool result = true;
+        TRY(saveProfiles()).err([&result](const SerialError &error) {
+            UI::LogError(error);
+            result = false;
+        });
+        return result;
     }
 
     bool SettingsManager::saveProfile(std::string_view name) {
-        auto result = saveProfile(name, getProfile(name));
-        if (!result) {
-            UI::LogError(result.error());
-            return false;
-        }
-
-        return true;
+        bool result = true;
+        TRY(saveProfile(name, getProfile(name))).err([&result](const SerialError &error) {
+            UI::LogError(error);
+            result = false;
+        });
+        return result;
     }
 
     Result<void, SerialError> SettingsManager::loadProfiles() {
@@ -76,9 +74,8 @@ namespace Toolbox {
                 // Control
                 settings.m_gizmo_translate_mode_keybind =
                     KeyBind::FromString(j["Gizmo Translate Mode"]);
-                settings.m_gizmo_rotate_mode_keybind =
-                    KeyBind::FromString(j["Gizmo Rotate Mode"]);
-                settings.m_gizmo_scale_mode_keybind = KeyBind::FromString(j["Gizmo Scale Mode"]);
+                settings.m_gizmo_rotate_mode_keybind = KeyBind::FromString(j["Gizmo Rotate Mode"]);
+                settings.m_gizmo_scale_mode_keybind  = KeyBind::FromString(j["Gizmo Scale Mode"]);
 
                 // UI
                 settings.m_gui_theme   = j["App Theme"];
@@ -96,7 +93,7 @@ namespace Toolbox {
                 settings.m_far_plane            = j["Camera Far Plane"];
 
                 // Advanced
-                settings.m_dolphin_path              = std::filesystem::path(std::string(j["Dolphin Path"]));
+                settings.m_dolphin_path = std::filesystem::path(std::string(j["Dolphin Path"]));
                 settings.m_dolphin_refresh_rate      = j["Dolphin Refresh Rate"];
                 settings.m_is_template_cache_allowed = j["Cache Object Templates"];
                 settings.m_log_to_cout_cerr          = j["Log To Terminal"];
@@ -113,7 +110,7 @@ namespace Toolbox {
 
         std::ifstream in_stream = std::ifstream(m_profile_path / "profile.txt", std::ios::in);
         if (!in_stream) {
-            TOOLBOX_WARN("Profile config not found! (profile.txt is missing, it will be "
+            TOOLBOX_WARN("[SETTINGS] Profile config not found! (profile.txt is missing, it will be "
                          "generated on settings save)");
             return {};
         }
@@ -126,16 +123,19 @@ namespace Toolbox {
     Result<void, SerialError> SettingsManager::saveProfiles() {
         auto path_result = Toolbox::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
-            TOOLBOX_WARN("Folder \"Profiles\" not found, generating the folder now.");
+            TOOLBOX_WARN("[SETTINGS] Folder \"Profiles\" not found, generating the folder now.");
             auto result = Toolbox::create_directory(m_profile_path);
             if (!result) {
-                TOOLBOX_ERROR("Folder \"Profiles\" failed to create!");
+                TOOLBOX_ERROR("[SETTINGS] Folder \"Profiles\" failed to create!");
                 return {};
             }
         }
 
         for (auto &[key, value] : m_settings_profiles) {
-            saveProfile(key, value);
+            auto result = saveProfile(key, value);
+            if (!result) {
+                return result;
+            }
         }
 
         std::filesystem::path child_path = m_profile_path / "profile.txt";
@@ -156,10 +156,10 @@ namespace Toolbox {
 
         auto path_result = Toolbox::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
-            TOOLBOX_WARN("Folder \"Profiles\" not found, generating the folder now.");
+            TOOLBOX_WARN("[SETTINGS] Folder \"Profiles\" not found, generating the folder now.");
             auto result = Toolbox::create_directory(m_profile_path);
             if (!result) {
-                TOOLBOX_ERROR("Folder \"Profiles\" failed to create!");
+                TOOLBOX_ERROR("[SETTINGS] Folder \"Profiles\" failed to create!");
                 return {};
             }
         }
@@ -167,7 +167,7 @@ namespace Toolbox {
         std::filesystem::path child_path = m_profile_path / (std::string(name) + ".json");
         auto result                      = Toolbox::remove(child_path);
         if (!result) {
-            TOOLBOX_ERROR("Failed to remove deleted profile from Folder \"Profiles\"");
+            TOOLBOX_ERROR("[SETTINGS] Failed to remove deleted profile from Folder \"Profiles\"");
         }
 
         m_current_profile = "Default";
@@ -179,10 +179,10 @@ namespace Toolbox {
                                                            const AppSettings &profile) {
         auto path_result = Toolbox::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
-            TOOLBOX_WARN("Folder \"Profiles\" not found, generating the folder now.");
+            TOOLBOX_WARN("[SETTINGS] Folder \"Profiles\" not found, generating the folder now.");
             auto result = Toolbox::create_directory(m_profile_path);
             if (!result) {
-                TOOLBOX_ERROR("Folder \"Profiles\" failed to create!");
+                TOOLBOX_ERROR("[SETTINGS] Folder \"Profiles\" failed to create!");
                 return {};
             }
         }

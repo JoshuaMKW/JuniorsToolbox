@@ -22,10 +22,16 @@ namespace Toolbox::UI {
 
         explicit ImProcessLayer(const std::string &name);
 
+        // This determines if the application will clean up the layer when it is closed
+        // TRUE: The layer will be destroyed when it is closed
+        // FALSE: The layer will be kept in memory when it is closed and reused next time
+        [[nodiscard]] virtual bool destroyOnClose() const noexcept { return true; }
+
         [[nodiscard]] bool isTargetOfEvent(RefPtr<BaseEvent> ev) const noexcept override final;
 
         [[nodiscard]] bool isOpen() const noexcept { return m_is_open; }
         [[nodiscard]] bool isHidden() const noexcept { return m_is_hidden; }
+        [[nodiscard]] bool isClosed() const noexcept { return !m_is_open && !m_is_hidden; }
         [[nodiscard]] bool isFocused() const noexcept { return m_is_focused; }
 
         [[nodiscard]] ImVec2 virtual getSize() const noexcept { return m_size; }

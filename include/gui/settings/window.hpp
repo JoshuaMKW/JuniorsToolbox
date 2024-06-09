@@ -8,11 +8,13 @@ namespace Toolbox::UI {
 
     class SettingsWindow : public ImWindow {
     public:
-        SettingsWindow() : ImWindow("Application Settings") {
+        SettingsWindow(const std::string &name) : ImWindow(name) {
             m_dolphin_path_input.fill('\0');
             m_profile_create_input.fill('\0');
         }
         ~SettingsWindow() override = default;
+
+        [[nodiscard]] bool destroyOnClose() const noexcept override { return false; }
 
         ImGuiWindowFlags flags() const override {
             return ImWindow::flags() | ImGuiWindowFlags_NoResize;

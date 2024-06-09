@@ -29,9 +29,9 @@
 #include "core/core.hpp"
 #include "dolphin/hook.hpp"
 #include "gui/application.hpp"
-#include "gui/scene/window.hpp"
 #include "gui/pad/window.hpp"
 #include "gui/scene/ImGuizmo.h"
+#include "gui/scene/window.hpp"
 
 // void ImGuiSetupTheme(bool, float);
 
@@ -149,35 +149,23 @@ namespace Toolbox {
         platform_io.Platform_CreateWindow = ImGui_ImplGlfw_CreateWindow_Ex;
         platform_io.Renderer_RenderWindow = ImGui_ImplOpenGL3_RenderWindow_Ex;
 
-        auto &settings_manager = SettingsManager::instance();
-        settings_manager.initialize();
+        if (!SettingsManager::instance().initialize()) {
+            TOOLBOX_ERROR("[INIT] Failed to initialize settings manager!");
+        }
 
         auto &font_manager = FontManager::instance();
-        font_manager.initialize();
-        font_manager.setCurrentFont("NotoSansJP-Regular", 16.0f);
+        if (!font_manager.initialize()) {
+            TOOLBOX_ERROR("[INIT] Failed to initialize font manager!");
+        } else {
+            font_manager.setCurrentFont("NotoSansJP-Regular", 16.0f);
+        }
 
         // glEnable(GL_MULTISAMPLE);
 
-        {
-            auto result = Object::TemplateFactory::initialize();
-            if (!result) {
-                LogError(result.error());
-            }
-        }
+        TRY(TemplateFactory::initialize()).err([](auto error) { LogError(error); });
+        TRY(ThemeManager::instance().initialize()).err([](auto error) { LogError(error); });
 
-        {
-            auto result = ThemeManager::instance().initialize();
-            if (!result) {
-                LogError(result.error());
-            }
-        }
-
-        auto settings_window = make_referable<SettingsWindow>();
-        addWindow(settings_window);
-
-        auto logging_window = make_referable<LoggingWindow>();
-        logging_window->open();
-        addWindow(logging_window);
+        createWindow<LoggingWindow>("Application Log");
 
         determineEnvironmentConflicts();
 
@@ -205,12 +193,23 @@ namespace Toolbox {
             }
         }
 
-        glfwPollEvents();
-        Input::UpdateInputState();
+        // Render logic
+        {
+            glfwPollEvents();
+            Input::UpdateInputState();
 
-        render(delta_time);
+            render(delta_time);
 
-        Input::PostUpdateInputState();
+            Input::PostUpdateInputState();
+        }
+
+        // Check for context updates
+        {
+            if (m_opening_options_window) {
+                createWindow<SettingsWindow>("Application Settings");
+                m_opening_options_window = false;
+            }
+        }
     }
 
     void GUIApplication::onExit() {
@@ -229,33 +228,39 @@ namespace Toolbox {
         m_task_communicator.tKill(true);
     }
 
-    RefPtr<ImWindow> GUIApplication::findWindow(const std::string &title) {
-        auto it = std::find_if(m_windows.begin(), m_windows.end(), [&title](const auto& window) {
-            return window->title() == title;
-        });
+    RefPtr<ImWindow> GUIApplication::findWindow(UUID64 uuid) {
+        auto it = std::find_if(m_windows.begin(), m_windows.end(),
+                               [&uuid](const auto &window) { return window->getUUID() == uuid; });
         return it != m_windows.end() ? *it : nullptr;
+    }
+
+    RefPtr<ImWindow> GUIApplication::findWindow(const std::string &title,
+                                                const std::string &context) {
+        auto it = std::find_if(m_windows.begin(), m_windows.end(),
+                               [&title, &context](const auto &window) {
+                                   return window->title() == title && window->context() == context;
+                               });
+        return it != m_windows.end() ? *it : nullptr;
+    }
+
+    std::vector<RefPtr<ImWindow>> GUIApplication::findWindows(const std::string &title) {
+        std::vector<RefPtr<ImWindow>> result;
+        std::copy_if(m_windows.begin(), m_windows.end(), std::back_inserter(result),
+                     [&title](RefPtr<ImWindow> window) { return window->title() == title; });
+        return result;
     }
 
     void GUIApplication::registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
                                                 SceneWindow::render_layer_cb cb) {
-      auto scene_window_it = std::find_if(
-            m_windows.begin(), m_windows.end(), [&scene_uuid](auto window) {
-            return window->getUUID() == scene_uuid;
-        });
-      if (scene_window_it != m_windows.end()) {
-        RefPtr<SceneWindow> scene_window = ref_cast<SceneWindow>(*scene_window_it);
-        scene_window->registerOverlay(name, cb);
-      }
+        RefPtr<SceneWindow> scene_window = ref_cast<SceneWindow>(findWindow(scene_uuid));
+        if (scene_window) {
+            scene_window->registerOverlay(name, cb);
+        }
     }
 
     void GUIApplication::deregisterDolphinOverlay(UUID64 scene_uuid, const std::string &name) {
-        auto scene_window_it =
-            std::find_if(m_windows.begin(), m_windows.end(),
-                         [&scene_uuid](auto window) {
-            return window->getUUID() == scene_uuid;
-        });
-        if (scene_window_it != m_windows.end()) {
-            RefPtr<SceneWindow> scene_window = ref_cast<SceneWindow>(*scene_window_it);
+        RefPtr<SceneWindow> scene_window = ref_cast<SceneWindow>(findWindow(scene_uuid));
+        if (scene_window) {
             scene_window->deregisterOverlay(name);
         }
     }
@@ -299,44 +304,21 @@ namespace Toolbox {
             }
         }
 
-        CoreApplication::onUpdate(delta_time);
-
-        // Render imgui
-        ImGui::Render();
-
-        // Update buffer size
-        int width, height;
-        glfwGetFramebufferSize(m_render_window, &width, &height);
-        glViewport(0, 0, width, height);
-        glClearColor(0.100f, 0.261f, 0.402f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-        ImGuiStyle &style = ImGui::GetStyle();
-        ImGuiIO &io       = ImGui::GetIO();
-
-        if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)) {
-#ifndef IMGUI_ENABLE_VIEWPORT_WORKAROUND
-            style.WindowRounding              = 0.0f;
-            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-#endif
-
-            GLFWwindow *backup_window = glfwGetCurrentContext();
-            {
-                ImGui::UpdatePlatformWindows();
-                ImGui::RenderPlatformWindowsDefault();
-            }
-            glfwMakeContextCurrent(backup_window);
-            m_render_window = backup_window;
+        // UPDATE LOOP: We update layers here so the ImGui dockspaces can take effect first.
+        {
+            CoreApplication::onUpdate(delta_time);
+            gcClosedWindows();
         }
 
-        // Swap buffers
-        glfwSwapBuffers(m_render_window);
+        // Render imgui frame
+        {
+            ImGui::Render();
+            finalizeFrame();
+        }
     }
 
     void GUIApplication::renderMenuBar() {
-        m_options_open = false;
+        m_opening_options_window = false;
         ImGui::BeginMainMenuBar();
 
         if (ImGui::BeginMenu("File")) {
@@ -366,26 +348,23 @@ namespace Toolbox {
 
         if (ImGui::BeginMenu("Edit")) {
             if (ImGui::MenuItem(ICON_FK_COG " Settings")) {
-                m_options_open = true;
+                m_opening_options_window = true;
             }
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Window")) {
             if (ImGui::MenuItem("BMG")) {
-                
             }
             if (ImGui::MenuItem("PAD")) {
-                auto pad_window = make_referable<PadInputWindow>();
-                pad_window->open();
-                addWindow(pad_window);
+                createWindow<PadInputWindow>("Pad Recorder");
             }
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu(ICON_FK_QUESTION_CIRCLE)) {
             if (ImGui::MenuItem("About")) {
-                m_options_open = true;
+                m_opening_options_window = true;
             }
             ImGui::EndMenu();
         }
@@ -416,22 +395,16 @@ namespace Toolbox {
                 m_load_path = path;
 
                 if (path.filename() == "scene") {
-                    auto scene_window = make_referable<SceneWindow>();
-
-                    for (auto window : m_windows) {
-                        if (window->name() == scene_window->name() &&
-                            window->context() == path.string()) {
-                            window->open();
-                            ImGui::SetWindowFocus(window->title().c_str());
-                            return;
+                    RefPtr<ImWindow> existing_editor = findWindow("Scene Editor", path.string());
+                    if (existing_editor) {
+                        existing_editor->focus();
+                    } else {
+                        RefPtr<SceneWindow> scene_window =
+                            createWindow<SceneWindow, true>("Scene Editor");
+                        if (!scene_window->onLoadData(path)) {
+                            scene_window->close();
                         }
                     }
-
-                    if (!scene_window->onLoadData(path)) {
-                        return;
-                    }
-                    scene_window->open();
-                    addWindow(scene_window);
                 } else {
                     auto sys_path   = std::filesystem::path(path) / "sys";
                     auto files_path = std::filesystem::path(path) / "files";
@@ -472,13 +445,10 @@ namespace Toolbox {
                 m_load_path = path.parent_path();
 
                 if (path.extension() == ".szs" || path.extension() == ".arc") {
-                    auto scene_window = make_referable<SceneWindow>();
-                    if (!scene_window->onLoadData(path)) {
-                        ImGuiFileDialog::Instance()->Close();
-                        return;
+                    RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
+                    if (!window->onLoadData(path)) {
+                        window->close();
                     }
-                    scene_window->open();
-                    addWindow(scene_window);
                 }
             }
 
@@ -496,15 +466,43 @@ namespace Toolbox {
             }
             ImGui::EndPopup();
         }
+    }
 
-        if (m_options_open) {
-            auto settings_window_it =
-                std::find_if(m_windows.begin(), m_windows.end(),
-                             [](auto window) { return window->name() == "Application Settings"; });
-            if (settings_window_it != m_windows.end()) {
-                (*settings_window_it)->open();
-            }
+    void GUIApplication::finalizeFrame() {
+        // Update buffer size
+        {
+            int width, height;
+            glfwGetFramebufferSize(m_render_window, &width, &height);
+            glViewport(0, 0, width, height);
         }
+
+        // Clear the buffer
+        glClearColor(0.100f, 0.261f, 0.402f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiIO &io       = ImGui::GetIO();
+
+        // Update backend framework
+        if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)) {
+#ifndef IMGUI_ENABLE_VIEWPORT_WORKAROUND
+            style.WindowRounding              = 0.0f;
+            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+#endif
+
+            GLFWwindow *backup_window = glfwGetCurrentContext();
+            {
+                ImGui::UpdatePlatformWindows();
+                ImGui::RenderPlatformWindowsDefault();
+            }
+            glfwMakeContextCurrent(backup_window);
+            m_render_window = backup_window;
+        }
+
+        // Swap buffers to reset context for next frame
+        glfwSwapBuffers(m_render_window);
     }
 
     bool GUIApplication::determineEnvironmentConflicts() {
@@ -521,6 +519,21 @@ namespace Toolbox {
         }
 
         return true;
+    }
+
+    void GUIApplication::gcClosedWindows() {
+        // Check for closed windows that need destroyed
+        for (auto it = m_windows.begin(); it != m_windows.end();) {
+            RefPtr<ImWindow> win = *it;
+            if (win->isClosed()) {
+                win->onDetach();
+                if (win->destroyOnClose()) {
+                    it = m_windows.erase(it);
+                }
+                continue;
+            }
+            ++it;
+        }
     }
 
 }  // namespace Toolbox

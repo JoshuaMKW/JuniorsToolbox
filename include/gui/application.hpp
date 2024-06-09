@@ -34,10 +34,10 @@ namespace Toolbox {
         GUIApplication();
 
     public:
-        GUIApplication(const GUIApplication &) = delete;
-        GUIApplication(GUIApplication &&)      = delete;
+        GUIApplication(const GUIApplication &)            = delete;
+        GUIApplication(GUIApplication &&)                 = delete;
         GUIApplication &operator=(const GUIApplication &) = delete;
-        GUIApplication &operator=(GUIApplication &&) = delete;
+        GUIApplication &operator=(GUIApplication &&)      = delete;
 
         virtual ~GUIApplication() {}
 
@@ -56,7 +56,45 @@ namespace Toolbox {
         }
 
         const std::vector<RefPtr<ImWindow>> &getWindows() const { return m_windows; }
-        RefPtr<ImWindow> findWindow(const std::string &name);
+
+        // Find a window by its UUID
+        RefPtr<ImWindow> findWindow(UUID64 uuid);
+        RefPtr<ImWindow> findWindow(const std::string &title, const std::string &context);
+
+        std::vector<RefPtr<ImWindow>> findWindows(const std::string &title);
+
+        template <typename T, bool strict = false, typename... Args>
+        RefPtr<T> createWindow(const std::string &name, Args &&...args) {
+            std::vector<RefPtr<ImWindow>> reuse_candidates = findWindows(name);
+
+            RefPtr<T> window = make_referable<T>(name, std::forward<Args>(args)...);
+
+            // Reuse window if it is closed and not set to destroy on close
+            for (RefPtr<ImWindow> candidate : reuse_candidates) {
+                if (candidate->isClosed() && !candidate->destroyOnClose()) {
+                    candidate->onAttach();
+                    candidate->open();
+                    return ref_cast<T>(candidate);
+                }
+
+                if constexpr (!strict) {
+                    if (candidate->isHidden()) {
+                        candidate->show();
+                        candidate->focus();
+                    }
+
+                    if (candidate->isOpen()) {
+                        candidate->focus();
+                    }
+
+                    return ref_cast<T>(candidate);
+                }
+            }
+
+            window->open();
+            addWindow(window);
+            return window;
+        }
 
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> &getSceneObjectClipboard() {
             return m_hierarchy_clipboard;
@@ -75,7 +113,8 @@ namespace Toolbox {
 
         std::filesystem::path getProjectRoot() const { return m_project_root; }
 
-        void registerDolphinOverlay(UUID64 scene_uuid, const std::string &name, SceneWindow::render_layer_cb cb);
+        void registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
+                                    SceneWindow::render_layer_cb cb);
         void deregisterDolphinOverlay(UUID64 scene_uuid, const std::string &name);
 
         ImVec2 windowScreenPos() {
@@ -97,8 +136,11 @@ namespace Toolbox {
     protected:
         void render(TimeStep delta_time);
         void renderMenuBar();
+        void finalizeFrame();
 
         bool determineEnvironmentConflicts();
+
+        void gcClosedWindows();
 
     private:
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_clipboard;
@@ -116,7 +158,7 @@ namespace Toolbox {
         ImGuiID m_dockspace_id;
         bool m_dockspace_built;
 
-        bool m_options_open        = false;
+        bool m_opening_options_window        = false;
         bool m_is_file_dialog_open = false;
         bool m_is_dir_dialog_open  = false;
 

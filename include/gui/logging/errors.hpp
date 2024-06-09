@@ -67,20 +67,50 @@ namespace Toolbox::UI {
 
 }  // namespace Toolbox::UI
 
-#define TRY_ELSE_LOG(result_exp)                                                                   \
+#define TOOLBOX_TRY_STRICT_R(eval, result)                                                         \
     {                                                                                              \
-        auto result = (result_exp);                                                                \
-        if (!result) {                                                                             \
-            Toolbox::UI::LogError(result.error());                                                 \
-            return;                                                                                \
+        auto _res = (eval);                                                                        \
+        if (!_res.has_value()) {                                                                   \
+            ::Toolbox::UI::LogError(_res.error());                                                 \
+            return _res.error();                                                                   \
+        }                                                                                          \
+        (result) = _res.value();                                                                   \
+    }
+
+#define TOOLBOX_TRY_STRICT_E(eval, error)                                                          \
+    {                                                                                              \
+        auto _res = (eval);                                                                        \
+        if (!_res.has_value()) {                                                                   \
+            ::Toolbox::UI::LogError(_res.error());                                                 \
+            return (error);                                                                        \
         }                                                                                          \
     }
 
-#define TRY_ELSE_LOG_R(result_exp, fail_ret)                                                            \
+#define TOOLBOX_TRY_STRICT_RE(eval, result, error)                                                 \
     {                                                                                              \
-        auto result = (result_exp);                                                                \
-        if (!result) {                                                                             \
-            Toolbox::UI::LogError(result.error());                                                 \
-            return (fail_ret);                                                                     \
+        auto _res = (eval);                                                                        \
+        if (!_res.has_value()) {                                                                   \
+            ::Toolbox::UI::LogError(_res.error());                                                 \
+            return (error);                                                                        \
+        }                                                                                          \
+        (result) = _res.value();                                                                   \
+    }
+
+#define TOOLBOX_TRY_OR(eval, result, default_)                                                     \
+    {                                                                                              \
+        auto _res = (eval);                                                                        \
+        if (!_res.has_value()) {                                                                   \
+            ::Toolbox::UI::LogError(_res.error());                                                 \
+            (result) = (default_);                                                                 \
+        } else {                                                                                   \
+            (result) = _res.value();                                                               \
+        }                                                                                          \
+    }
+
+#define TOOLBOX_TRY(eval)                                                                          \
+    {                                                                                              \
+        auto _res = (eval);                                                                        \
+        if (!_res.has_value()) {                                                                   \
+            ::Toolbox::UI::LogError(_res.error());                                                 \
         }                                                                                          \
     }

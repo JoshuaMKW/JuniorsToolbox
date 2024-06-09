@@ -110,25 +110,7 @@ namespace Toolbox::UI {
 
     SceneWindow::~SceneWindow() = default;
 
-    SceneWindow::SceneWindow() : ImWindow("Scene Editor") {
-        m_properties_render_handler = renderEmptyProperties;
-
-        buildContextMenuVirtualObj();
-        buildContextMenuGroupObj();
-        buildContextMenuPhysicalObj();
-        buildContextMenuMultiObj();
-
-        buildCreateObjDialog();
-        buildRenameObjDialog();
-
-        buildContextMenuRail();
-        buildContextMenuMultiRail();
-        buildContextMenuRailNode();
-        buildContextMenuMultiRailNode();
-
-        buildCreateRailDialog();
-        buildRenameRailDialog();
-    }
+    SceneWindow::SceneWindow(const std::string &name) : ImWindow(name) {}
 
     bool SceneWindow::onLoadData(const std::filesystem::path &path) {
         if (!Toolbox::exists(path)) {
@@ -189,6 +171,32 @@ namespace Toolbox::UI {
         }
 
         return true;
+    }
+
+    void SceneWindow::onAttach() {
+        m_properties_render_handler = renderEmptyProperties;
+
+        buildContextMenuVirtualObj();
+        buildContextMenuGroupObj();
+        buildContextMenuPhysicalObj();
+        buildContextMenuMultiObj();
+
+        buildCreateObjDialog();
+        buildRenameObjDialog();
+
+        buildContextMenuRail();
+        buildContextMenuMultiRail();
+        buildContextMenuRailNode();
+        buildContextMenuMultiRailNode();
+
+        buildCreateRailDialog();
+        buildRenameRailDialog();
+    }
+
+    void SceneWindow::onDetach() {
+        if (unsaved()) {
+            TOOLBOX_WARN_V("[SCENE_WINDOW] Scene closed with unsaved changes ({}).", context());
+        }
     }
 
     void SceneWindow::onImGuiUpdate(TimeStep delta_time) {

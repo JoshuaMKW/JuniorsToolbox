@@ -186,23 +186,23 @@ static const std::vector<ImVec2> s_xy_button_points = {
 };
 
 static const std::vector<ImVec2> s_z_button_points = {
-    ImVec2(-0.92, -0.49), ImVec2(-0.75, -0.5),  ImVec2(-0.65, -0.495), ImVec2(-0.45, -0.46),
-    ImVec2(-0.35, -0.43), ImVec2(-0.15, -0.38), ImVec2(0.08, -0.3),    ImVec2(0.28, -0.2),
-    ImVec2(0.45, -0.1),   ImVec2(0.58, 0.0),    ImVec2(0.70, 0.1),     ImVec2(0.82, 0.2),
-    ImVec2(0.84, 0.25),   ImVec2(0.85, 0.30),   ImVec2(0.82, 0.4),     ImVec2(0.79, 0.45),
-    ImVec2(0.76, 0.5),    ImVec2(-1.0, -0.4),   ImVec2(-0.97, -0.48),
+    ImVec2(-0.92f, -0.49f), ImVec2(-0.75f, -0.5f),  ImVec2(-0.65f, -0.495f), ImVec2(-0.45f, -0.46f),
+    ImVec2(-0.35f, -0.43f), ImVec2(-0.15f, -0.38f), ImVec2(0.08f, -0.3f),    ImVec2(0.28f, -0.2f),
+    ImVec2(0.45f, -0.1f),   ImVec2(0.58f, 0.0f),    ImVec2(0.70f, 0.1f),     ImVec2(0.82f, 0.2f),
+    ImVec2(0.84f, 0.25f),   ImVec2(0.85f, 0.30f),   ImVec2(0.82f, 0.4f),     ImVec2(0.79f, 0.45f),
+    ImVec2(0.76f, 0.5f),    ImVec2(-1.0f, -0.4f),   ImVec2(-0.97f, -0.48f),
 };
 
 static const std::vector<ImVec2> s_lr_button_points = {
-    ImVec2(-0.95, 0.70),  ImVec2(-0.90, 0.45),  ImVec2(-0.80, 0.20),  ImVec2(-0.67, -0.05),
-    ImVec2(-0.49, -0.23), ImVec2(-0.25, -0.40), ImVec2(-0.05, -0.46), ImVec2(0.13, -0.48),
-    ImVec2(0.35, -0.46),  ImVec2(0.55, -0.40),  ImVec2(0.68, -0.32),  ImVec2(0.83, -0.22),
-    ImVec2(0.92, -0.08),  ImVec2(0.97, 0.02),   ImVec2(0.99, 0.14),   ImVec2(1.00, 0.30),
+    ImVec2(-0.95f, 0.70f),  ImVec2(-0.90f, 0.45f),  ImVec2(-0.80f, 0.20f),  ImVec2(-0.67f, -0.05f),
+    ImVec2(-0.49f, -0.23f), ImVec2(-0.25f, -0.40f), ImVec2(-0.05f, -0.46f), ImVec2(0.13f, -0.48f),
+    ImVec2(0.35f, -0.46f),  ImVec2(0.55f, -0.40f),  ImVec2(0.68f, -0.32f),  ImVec2(0.83f, -0.22f),
+    ImVec2(0.92f, -0.08f),  ImVec2(0.97f, 0.02f),   ImVec2(0.99f, 0.14f),   ImVec2(1.00f, 0.30f),
 };
 
 namespace Toolbox::UI {
 
-    PadInputWindow::PadInputWindow() : ImWindow("Pad Recorder"), m_pad_rail("mariomodoki") {}
+    PadInputWindow::PadInputWindow(const std::string &name) : ImWindow(name), m_pad_rail("mariomodoki") {}
 
     PadInputWindow::~PadInputWindow() {}
 
@@ -518,7 +518,7 @@ namespace Toolbox::UI {
                 point.y += 7.0f * (frame_data.m_trigger_l / 150.0f) * scale;
             }
 
-            ImGui::DrawConvexPolygon(points.data(), points.size(), IM_COL32_BLACK, l_button_color,
+            ImGui::DrawConvexPolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK, l_button_color,
                                      2.0f);
         }
 
@@ -540,7 +540,7 @@ namespace Toolbox::UI {
                 point.y += 7.0f * (frame_data.m_trigger_r / 150.0f) * scale;
             }
 
-            ImGui::DrawConvexPolygon(points.data(), points.size(), IM_COL32_BLACK, r_button_color,
+            ImGui::DrawConvexPolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK, r_button_color,
                                      2.0f);
         }
 
@@ -569,7 +569,7 @@ namespace Toolbox::UI {
                 point += z_button_position;
             }
 
-            ImGui::DrawConvexPolygon(points.data(), points.size(), IM_COL32_BLACK, z_button_color,
+            ImGui::DrawConvexPolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK, z_button_color,
                                      2.0f);
         }
 
@@ -587,7 +587,7 @@ namespace Toolbox::UI {
                 point += controller_position;
             }
 
-            ImGui::DrawConcavePolygon(points.data(), points.size(), IM_COL32_BLACK,
+            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK,
                                       controller_color, 2.0f);
         }
 
@@ -605,7 +605,7 @@ namespace Toolbox::UI {
                 point += controller_position;
             }
 
-            ImGui::DrawConcavePolygon(points.data(), points.size(), IM_COL32_BLACK,
+            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK,
                                       controller_color, 2.0f);
         }
 
@@ -623,7 +623,7 @@ namespace Toolbox::UI {
                 point += controller_position;
             }
 
-            ImGui::DrawConcavePolygon(points.data(), points.size(), IM_COL32_BLACK,
+            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK,
                                       controller_color, 2.0f);
         }
 
@@ -705,7 +705,7 @@ namespace Toolbox::UI {
                 point += x_button_position;
             }
 
-            ImGui::DrawConcavePolygon(points.data(), points.size(), IM_COL32_BLACK, x_button_color,
+            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK, x_button_color,
                                       2.0f);
         }
 
@@ -724,7 +724,7 @@ namespace Toolbox::UI {
                 point += y_button_position;
             }
 
-            ImGui::DrawConcavePolygon(points.data(), points.size(), IM_COL32_BLACK, y_button_color,
+            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK, y_button_color,
                                       2.0f);
         }
 

@@ -59,7 +59,7 @@ namespace Toolbox::UI {
 
     class SceneWindow final : public ImWindow {
     public:
-        SceneWindow();
+        SceneWindow(const std::string &name);
         ~SceneWindow();
 
         enum class EditorWindow {
@@ -166,6 +166,9 @@ namespace Toolbox::UI {
         [[nodiscard]] bool onLoadData(const std::filesystem::path &path) override;
         [[nodiscard]] bool onSaveData(std::optional<std::filesystem::path> path) override;
 
+        void onAttach() override;
+        void onDetach() override;
+
         void onImGuiUpdate(TimeStep delta_time) override;
         void onImGuiPostUpdate(TimeStep delta_time) override;
         void onContextMenuEvent(RefPtr<ContextMenuEvent> ev) override;
@@ -194,10 +197,10 @@ namespace Toolbox::UI {
         RenameObjDialog m_rename_obj_dialog;
 
         // Render view
-        bool m_update_render_objs;
-        bool m_is_render_window_open;
+        bool m_update_render_objs = false;
+        bool m_is_render_window_open = false;
         Renderer m_renderer;
-        std::vector<ISceneObject::RenderInfo> m_renderables;
+        std::vector<ISceneObject::RenderInfo> m_renderables = {};
         ResourceCache m_resource_cache;
 
         // Docking facilities
@@ -209,9 +212,11 @@ namespace Toolbox::UI {
         // Rail editor
         std::unordered_map<UUID64, bool> m_rail_visible_map                   = {};
         bool m_connections_open                                               = true;
+
         std::vector<SelectionNodeInfo<Rail::Rail>> m_rail_list_selected_nodes = {};
         ContextMenu<SelectionNodeInfo<Rail::Rail>> m_rail_list_single_node_menu;
         ContextMenu<std::vector<SelectionNodeInfo<Rail::Rail>>> m_rail_list_multi_node_menu;
+
         std::vector<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_selected_nodes = {};
         ContextMenu<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_single_node_menu;
         ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>>
@@ -223,8 +228,8 @@ namespace Toolbox::UI {
 
         EditorWindow m_focused_window = EditorWindow::NONE;
 
-        ImGuiWindow *m_hierarchy_window;
-        ImGuiWindow *m_rail_list_window;
+        ImGuiWindow *m_hierarchy_window = nullptr;
+        ImGuiWindow *m_rail_list_window = nullptr;
 
         std::string m_selected_add_zone{""};
 
@@ -239,7 +244,7 @@ namespace Toolbox::UI {
         ImageHandle m_dolphin_image;
         ImagePainter m_dolphin_painter;
 
-        glm::mat4x4 m_dolphin_vp_mtx;
+        glm::mat4x4 m_dolphin_vp_mtx = {};
         std::map<std::string, render_layer_cb> m_render_layers;
 
         // Event Stuff

@@ -87,43 +87,7 @@ namespace Toolbox::UI {
 
     void ImWindow::onImGuiRender(TimeStep delta_time) {
         std::string window_name = std::format("{}###{}", title(), getUUID());
-
-        ImVec2 default_min = {0, 0};
-        ImVec2 default_max = {FLT_MAX, FLT_MAX};
-        ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
-                                            maxSize() ? maxSize().value() : default_max);
-
-        ImVec2 pos  = getPos();
-        ImVec2 size = getSize();
-
         ImGuiWindow *window = ImGui::FindWindowByName(window_name.c_str());
-        if (window) {
-            if (size != m_next_size && m_is_resized) {
-                if (m_next_size.x >= 0.0f && m_next_size.y >= 0.0f) {
-                    ImGui::SetNextWindowSize(size);
-                    GUIApplication::instance().dispatchEvent<WindowEvent, true>(
-                        getUUID(), EVENT_WINDOW_RESIZE, m_next_size);
-                }
-                m_is_resized = false;
-            }
-            if (pos != m_next_pos && m_is_repositioned) {
-                ImGui::SetNextWindowPos(m_next_pos);
-                GUIApplication::instance().dispatchEvent<WindowEvent, true>(
-                    getUUID(), EVENT_WINDOW_MOVE, m_next_pos);
-                m_is_repositioned = false;
-            }
-        }
-
-        ImGuiWindowFlags flags_ = flags();
-        if (unsaved()) {
-            flags_ |= ImGuiWindowFlags_UnsavedDocument;
-        }
-
-        // TODO: Fix window class causing problems.
-
-        /*const ImGuiWindowClass *window_class = windowClass();
-        if (window_class)
-            ImGui::SetNextWindowClass(window_class);*/
 
         bool is_focused = isFocused();
         bool is_hidden  = window ? (window->Hidden || window->Collapsed) : false;
@@ -133,27 +97,68 @@ namespace Toolbox::UI {
         bool was_hidden  = isHidden();
         bool was_open    = is_open;
 
-        if ((flags_ & ImGuiWindowFlags_NoBackground)) {
-            ImGui::SetNextWindowBgAlpha(0.0f);
-        }
+        if (is_open) {
+            ImVec2 pos         = getPos();
+            ImVec2 size        = getSize();
 
-        if (ImGui::Begin(window_name.c_str(), &is_open, flags_)) {
-            ImGuiViewport *viewport = ImGui::GetCurrentWindow()->Viewport;
+            ImVec2 default_min = {0, 0};
+            ImVec2 default_max = {FLT_MAX, FLT_MAX};
+            ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
+                                                maxSize() ? maxSize().value() : default_max);
 
-            if ((flags_ & ImGuiWindowFlags_NoBackground)) {
-                viewport->Flags |= ImGuiViewportFlags_TransparentFrameBuffer;
+            // TODO: Fix window class causing problems.
+
+            /*const ImGuiWindowClass *window_class = windowClass();
+            if (window_class)
+                ImGui::SetNextWindowClass(window_class);*/
+
+            ImGuiWindowFlags flags_ = flags();
+            if (unsaved()) {
+                flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
-            is_focused = ImGui::IsWindowFocused();
+            // Establish window constraints
+            if (window) {
+                if (size != m_next_size && m_is_resized) {
+                    if (m_next_size.x >= 0.0f && m_next_size.y >= 0.0f) {
+                        ImGui::SetNextWindowSize(size);
+                        GUIApplication::instance().dispatchEvent<WindowEvent, true>(
+                            getUUID(), EVENT_WINDOW_RESIZE, m_next_size);
+                    }
+                    m_is_resized = false;
+                }
+                if (pos != m_next_pos && m_is_repositioned) {
+                    ImGui::SetNextWindowPos(m_next_pos);
+                    GUIApplication::instance().dispatchEvent<WindowEvent, true>(
+                        getUUID(), EVENT_WINDOW_MOVE, m_next_pos);
+                    m_is_repositioned = false;
+                }
+            }
 
-            m_viewport = ImGui::GetWindowViewport();
-            onRenderDockspace();
-            onRenderMenuBar();
-            onRenderBody(delta_time);
-        } else {
-            m_viewport = nullptr;
+            if ((flags_ & ImGuiWindowFlags_NoBackground)) {
+                ImGui::SetNextWindowBgAlpha(0.0f);
+            }
+
+            // Render the window
+            if (ImGui::Begin(window_name.c_str(), &is_open, flags_)) {
+                ImGuiViewport *viewport = ImGui::GetCurrentWindow()->Viewport;
+
+                if ((flags_ & ImGuiWindowFlags_NoBackground)) {
+                    viewport->Flags |= ImGuiViewportFlags_TransparentFrameBuffer;
+                }
+
+                is_focused = ImGui::IsWindowFocused();
+
+                m_viewport = ImGui::GetWindowViewport();
+                onRenderDockspace();
+                onRenderMenuBar();
+                onRenderBody(delta_time);
+            } else {
+                m_viewport = nullptr;
+            }
+            ImGui::End();
+
         }
-        ImGui::End();
 
         // Handle open/close and focus/defocus
         if (is_open) {

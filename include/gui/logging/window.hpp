@@ -13,9 +13,9 @@
 #include "scene/scene.hpp"
 #include "smart_resource.hpp"
 
+#include "core/clipboard.hpp"
 #include "core/log.hpp"
 #include "core/types.hpp"
-#include "core/clipboard.hpp"
 #include "gui/context_menu.hpp"
 #include "gui/property/property.hpp"
 #include "gui/window.hpp"
@@ -29,8 +29,8 @@ namespace Toolbox::UI {
         void appendMessageToPool(const Log::AppLogger::LogMessage &message);
 
     public:
-        LoggingWindow() : ImWindow("Application Log") {
-            TOOLBOX_LOG_CALLBACK(std::bind(&LoggingWindow::appendMessageToPool, this, std::placeholders::_1));
+        LoggingWindow(const std::string &name) : ImWindow(name) {
+            TOOLBOX_LOG_CALLBACK(TOOLBOX_BIND_EVENT_FN(LoggingWindow::appendMessageToPool));
             TOOLBOX_INFO("Logger successfully started!");
         }
         ~LoggingWindow() = default;
@@ -70,7 +70,7 @@ namespace Toolbox::UI {
         [[nodiscard]] bool onSaveData(std::optional<std::filesystem::path> path) override {
             return false;
         }
-    
+
     protected:
         void onRenderMenuBar() override;
         void onRenderBody(TimeStep delta_time) override;

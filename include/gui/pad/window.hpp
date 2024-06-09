@@ -35,7 +35,7 @@ namespace Toolbox::UI {
 
     class PadInputWindow final : public ImWindow {
     public:
-        PadInputWindow();
+        PadInputWindow(const std::string &name);
         ~PadInputWindow();
 
     protected:
