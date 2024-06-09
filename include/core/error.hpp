@@ -43,7 +43,7 @@ namespace Toolbox {
         inline TRY(Result<_Res, _Err> &&result) : m_result(std::move(result)) {}
         inline ~TRY() = default;
 
-        inline TRY &ok(std::function<void(_Res)> &&cb) {
+        inline TRY &ok(std::function<void(const _Res &)> &&cb) {
             if (m_result) {
                 if constexpr (std::is_void_v<_Res>) {
                     cb();
@@ -54,7 +54,7 @@ namespace Toolbox {
             return *this;
         }
 
-        inline TRY &err(std::function<void(_Err)> &&cb) {
+        inline TRY &err(std::function<void(const _Err &)> &&cb) {
             if (!m_result) {
                 if constexpr (std::is_void_v<_Err>) {
                     cb();
