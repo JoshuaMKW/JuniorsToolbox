@@ -229,6 +229,13 @@ namespace Toolbox {
         m_task_communicator.tKill(true);
     }
 
+    RefPtr<ImWindow> GUIApplication::findWindow(const std::string &title) {
+        auto it = std::find_if(m_windows.begin(), m_windows.end(), [&title](const auto& window) {
+            return window->title() == title;
+        });
+        return it != m_windows.end() ? *it : nullptr;
+    }
+
     void GUIApplication::registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
                                                 SceneWindow::render_layer_cb cb) {
       auto scene_window_it = std::find_if(

@@ -34,6 +34,7 @@ namespace Toolbox::UI {
 
             for (size_t i = 0; i < link_nodes.size(); ++i) {
                 std::vector<char> target_nodes;
+
                 for (size_t j = 0; j < 3; ++j) {
                     if (link_nodes[i].m_infos[j].isSentinelNode()) {
                         continue;
@@ -41,7 +42,10 @@ namespace Toolbox::UI {
 
                     target_nodes.push_back(link_nodes[i].m_infos[j].m_next_link);
                 }
-                link_combos['A' + i] = std::move(target_nodes);
+
+                if (!target_nodes.empty()) {
+                    link_combos['A' + i] = std::move(target_nodes);
+                }
             }
 
             link_combos['A' + link_nodes.size()] = {};

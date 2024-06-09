@@ -56,6 +56,7 @@ namespace Toolbox {
         }
 
         const std::vector<RefPtr<ImWindow>> &getWindows() const { return m_windows; }
+        RefPtr<ImWindow> findWindow(const std::string &name);
 
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> &getSceneObjectClipboard() {
             return m_hierarchy_clipboard;
