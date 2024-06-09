@@ -43,30 +43,104 @@ namespace Toolbox {
         inline TRY(Result<_Res, _Err> &&result) : m_result(std::move(result)) {}
         inline ~TRY() = default;
 
-        inline TRY &ok(std::function<void(const _Res &)> &&cb) {
+        template <typename _Fn>
+        inline TRY &ok(_Fn &&cb)
+        requires std::invocable<_Fn, _Res>
+        {
             if (m_result) {
-                if constexpr (std::is_void_v<_Res>) {
-                    cb();
-                } else {
-                    cb(m_result.value());
-                }
+                std::invoke(std::forward<_Fn>(cb), m_result.value());
             }
             return *this;
         }
 
-        inline TRY &err(std::function<void(const _Err &)> &&cb) {
+        template <typename _Fn>
+        inline TRY &err(_Fn &&cb)
+        requires std::invocable<_Fn, _Err>
+        {
             if (!m_result) {
-                if constexpr (std::is_void_v<_Err>) {
-                    cb();
-                } else {
-                    cb(m_result.error());
-                }
+                std::invoke(std::forward<_Fn>(cb), m_result.error());
             }
             return *this;
         }
 
     private:
         Result<_Res, _Err> m_result;
+
+    public:
+        TRY()                       = delete;
+        TRY(const TRY &)            = delete;
+        TRY(TRY &&)                 = delete;
+        TRY &operator=(const TRY &) = delete;
+        TRY &operator=(TRY &&)      = delete;
+    };
+
+    template <typename _Res> class TRY<_Res, void> {
+    public:
+        static_assert(!std::is_void_v<_Res>, "TRY<void, void> is not allowed.");
+
+        inline TRY(Result<_Res, void> &&result) : m_result(std::move(result)) {}
+        inline ~TRY() = default;
+
+        template <typename _Fn>
+        inline TRY &ok(_Fn &&cb)
+        requires std::invocable<_Fn, _Res>
+        {
+            if (m_result) {
+                std::invoke(std::forward<_Fn>(cb), m_result.value());
+            }
+            return *this;
+        }
+
+        template <typename _Fn>
+        inline TRY &err(_Fn &&cb)
+        requires std::invocable<_Fn>
+        {
+            if (!m_result) {
+                std::invoke(std::forward<_Fn>(cb));
+            }
+            return *this;
+        }
+
+    private:
+        Result<_Res, void> m_result;
+
+    public:
+        TRY()                       = delete;
+        TRY(const TRY &)            = delete;
+        TRY(TRY &&)                 = delete;
+        TRY &operator=(const TRY &) = delete;
+        TRY &operator=(TRY &&)      = delete;
+    };
+
+    template <typename _Err> class TRY<void, _Err> {
+    public:
+        static_assert(!std::is_void_v<_Err>, "TRY<void, void> is not allowed.");
+
+        inline TRY(Result<void, _Err> &&result) : m_result(std::move(result)) {}
+        inline ~TRY() = default;
+
+        template <typename _Fn>
+        inline TRY &ok(_Fn &&cb)
+        requires std::invocable<_Fn>
+        {
+            if (m_result) {
+                std::invoke(std::forward<_Fn>(cb));
+            }
+            return *this;
+        }
+
+        template <typename _Fn>
+        inline TRY &err(_Fn &&cb)
+        requires std::invocable<_Fn, _Err>
+        {
+            if (!m_result) {
+                std::invoke(std::forward<_Fn>(cb), m_result.error());
+            }
+            return *this;
+        }
+
+    private:
+        Result<void, _Err> m_result;
 
     public:
         TRY()                       = delete;

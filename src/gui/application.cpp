@@ -162,8 +162,8 @@ namespace Toolbox {
 
         // glEnable(GL_MULTISAMPLE);
 
-        TRY(TemplateFactory::initialize()).err([](auto error) { LogError(error); });
-        TRY(ThemeManager::instance().initialize()).err([](auto error) { LogError(error); });
+        TRY(TemplateFactory::initialize()).err([](const FSError &error) { LogError(error); });
+        TRY(ThemeManager::instance().initialize()).err([](const FSError &error) { LogError(error); });
 
         createWindow<LoggingWindow>("Application Log");
 
