@@ -162,8 +162,10 @@ namespace Toolbox {
 
         // glEnable(GL_MULTISAMPLE);
 
-        TRY(TemplateFactory::initialize()).err([](const FSError &error) { LogError(error); });
-        TRY(ThemeManager::instance().initialize()).err([](const FSError &error) { LogError(error); });
+        TRY(TemplateFactory::initialize()).error([](const FSError &error) { LogError(error); });
+        TRY(ThemeManager::instance().initialize()).error([](const FSError &error) {
+            LogError(error);
+        });
 
         createWindow<LoggingWindow>("Application Log");
 
@@ -201,14 +203,6 @@ namespace Toolbox {
             render(delta_time);
 
             Input::PostUpdateInputState();
-        }
-
-        // Check for context updates
-        {
-            if (m_opening_options_window) {
-                createWindow<SettingsWindow>("Application Settings");
-                m_opening_options_window = false;
-            }
         }
     }
 
@@ -318,7 +312,6 @@ namespace Toolbox {
     }
 
     void GUIApplication::renderMenuBar() {
-        m_opening_options_window = false;
         ImGui::BeginMainMenuBar();
 
         if (ImGui::BeginMenu("File")) {
@@ -348,7 +341,7 @@ namespace Toolbox {
 
         if (ImGui::BeginMenu("Edit")) {
             if (ImGui::MenuItem(ICON_FK_COG " Settings")) {
-                m_opening_options_window = true;
+                createWindow<SettingsWindow>("Application Settings");
             }
             ImGui::EndMenu();
         }
@@ -364,7 +357,7 @@ namespace Toolbox {
 
         if (ImGui::BeginMenu(ICON_FK_QUESTION_CIRCLE)) {
             if (ImGui::MenuItem("About")) {
-                m_opening_options_window = true;
+                // TODO: Create about window
             }
             ImGui::EndMenu();
         }
@@ -506,19 +499,19 @@ namespace Toolbox {
     }
 
     bool GUIApplication::determineEnvironmentConflicts() {
-        auto service_result = Platform::IsServiceRunning("NahimicService");
-        if (!service_result) {
-            LogError(service_result.error());
-            return true;
-        }
+        bool conflicts_found = false;
 
-        if (service_result.value()) {
-            TOOLBOX_WARN("Found Nahimic service running on this system, this could cause "
-                         "crashes to occur on window resize!");
-            return false;
-        }
+        TRY(Platform::IsServiceRunning("NahimicService"))
+            .err([](const BaseError &error) { LogError(error); })
+            .ok([&conflicts_found](bool running) {
+                if (running) {
+                    TOOLBOX_WARN("Found Nahimic service running on this system, this could cause "
+                                 "crashes to occur on window resize!");
+                    conflicts_found = true;
+                }
+            });
 
-        return true;
+        return conflicts_found;
     }
 
     void GUIApplication::gcClosedWindows() {

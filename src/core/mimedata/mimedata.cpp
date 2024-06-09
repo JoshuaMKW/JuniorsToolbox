@@ -59,7 +59,7 @@ namespace Toolbox {
         Buffer &data_buf = m_data_map["application/x-color"];
 
         Color::RGBAShader rgba_color;
-        TRY(Deserializer::BytesToObject(data_buf, rgba_color)).err([&rgba_color](const BaseError &error) {
+        TRY(Deserializer::BytesToObject(data_buf, rgba_color)).error([&rgba_color](const BaseError &error) {
             UI::LogError(error);
             rgba_color.setColor(0.0f, 0.0f, 0.0f);
         });
@@ -69,8 +69,8 @@ namespace Toolbox {
     void MimeData::set_color(const Color::RGBAShader &data) {
         Buffer _tmp;
         TRY(Serializer::ObjectToBytes(data, _tmp))
-            .ok([this, &_tmp]() { set_data("application/x-color", std::move(_tmp)); })
-            .err([](const SerialError &error) { UI::LogError(error); });
+            .then([this, &_tmp]() { set_data("application/x-color", std::move(_tmp)); })
+            .error([](const SerialError &error) { UI::LogError(error); });
     }
 
     [[nodiscard]] std::optional<std::string> MimeData::get_html() const {

@@ -40,7 +40,7 @@ namespace Toolbox {
         std::string_view filepath() const { return m_file_path; }
 
         template <typename _S, std::endian E = std::endian::native>
-        static Result<void, SerialError> ObjectToBytes(const _S &_s, Buffer &buf_out) {
+        static Result<void, SerialError> ObjectToBytes(const _S &_s, Buffer &buf_out, size_t offset = 0) {
             std::streampos startpos = 0;
             std::streampos endpos;
 
@@ -48,6 +48,11 @@ namespace Toolbox {
 
             std::stringstream strstream;
             Serializer sout(strstream.rdbuf());
+            
+            // Write padding bytes
+            for (size_t i = 0; i < offset; ++i) {
+                sout.write<u8>(0);
+            }
 
             sout.pushBreakpoint();
             {
@@ -193,13 +198,10 @@ namespace Toolbox {
         std::string_view filepath() const { return m_file_path; }
 
         template <typename _S, std::endian E = std::endian::native>
-        static Result<void, SerialError> BytesToObject(Buffer &serial_data, _S &obj) {
-            std::stringstream str_in;
-            std::stringbuf buf;
-            buf.pubsetbuf(serial_data.buf<char>(), serial_data.size());
-            str_in.set_rdbuf(&buf);
+        static Result<void, SerialError> BytesToObject(Buffer &serial_data, _S &obj, size_t offset = 0) {
+            std::stringstream str_in(std::string(serial_data.buf<char>() + offset, serial_data.size() - offset));
 
-            Deserializer in(&buf);
+            Deserializer in(str_in.rdbuf());
             return obj.deserialize(in);
         }
 

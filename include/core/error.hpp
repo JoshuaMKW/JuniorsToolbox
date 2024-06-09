@@ -120,7 +120,7 @@ namespace Toolbox {
         inline ~TRY() = default;
 
         template <typename _Fn>
-        inline TRY &ok(_Fn &&cb)
+        inline TRY &then(_Fn &&cb)
         requires std::invocable<_Fn>
         {
             if (m_result) {
@@ -130,7 +130,7 @@ namespace Toolbox {
         }
 
         template <typename _Fn>
-        inline TRY &err(_Fn &&cb)
+        inline TRY &error(_Fn &&cb)
         requires std::invocable<_Fn, _Err>
         {
             if (!m_result) {

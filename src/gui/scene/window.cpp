@@ -1109,6 +1109,59 @@ void SceneWindow::renderRailEditor() {
                     bool is_node_open =
                         ImGui::TreeNodeEx(node_uid_str.c_str(), node_flags, is_rail_node_selected);
 
+                    if (ImGui::BeginDragDropSource()) {
+                        int drag_from_index = i;
+
+                        Toolbox::Buffer buffer;
+
+                        TRY(Serializer::ObjectToBytes(*node, buffer, 4))
+                            .error([](const SerialError &error) { LogError(error); })
+                            .then([&]() {
+                                buffer.set<bool>(0, true);            // Internal
+                                buffer.set<u16>(1, drag_from_index);  // Index
+                                ImGui::SetDragDropPayload("toolbox/scene/railnode", buffer.buf(),
+                                                          buffer.size(), ImGuiCond_Once);
+                            });
+
+                        ImGui::EndDragDropSource();
+                    }
+
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
+                                "toolbox/scene/railnode", ImGuiDragDropFlags_AcceptBeforeDelivery);
+                            payload && payload->IsDelivery()) {
+                            int drag_to_index = i;
+                            int drag_from_index = -1;
+
+                            Rail::RailNode new_node;
+
+                            Toolbox::Buffer buffer;
+                            buffer.setBuf(payload->Data, payload->DataSize);
+
+                            buffer.get<bool>(0);
+                            drag_from_index = buffer.get<u16>(1);
+
+                            // Try to deserialize the payload
+                            TRY(Deserializer::BytesToObject(buffer, new_node, 4))
+                                .error([](const SerialError &error) { LogError(error); })
+                                .then([&]() {
+                                    // Try to remove the stale node from the rail
+                                    TRY(rail->removeNode(drag_from_index))
+                                        .error([](const MetaError &error) { LogError(error); })
+                                        .then([&]() {
+                                            // Try to insert the new node into the rail
+                                            TRY(rail->insertNode(
+                                                    drag_to_index,
+                                                    make_referable<RailNode>(new_node)))
+                                                .error([](const MetaError &error) {
+                                                    LogError(error);
+                                                });
+                                        });
+                                });
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+
                     if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
                         ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
@@ -1137,8 +1190,6 @@ void SceneWindow::renderRailEditor() {
                 ImGui::TreePop();
             }
         }
-        /*}
-        ImGui::EndChild();*/
     }
     ImGui::End();
 
@@ -1240,7 +1291,8 @@ void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
     }
 
     ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 + cmd_button_size.x);
-    if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size, ImGuiButtonFlags_None, 5.0f, ImDrawFlags_RoundCornersBottomRight)) {
+    if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
+                             ImDrawFlags_RoundCornersBottomRight)) {
         DolphinHookManager::instance().stopProcess();
     }
 
@@ -1299,7 +1351,8 @@ void SceneWindow::renderDolphin(TimeStep delta_time) {
                 (ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight())};
 
         ImVec2 cursor_pos = ImGui::GetCursorPos() + ImGui::GetStyle().FramePadding;
-        //ImGui::PushClipRect(window_pos + cursor_pos, window_pos + cursor_pos + render_size, true);
+        // ImGui::PushClipRect(window_pos + cursor_pos, window_pos + cursor_pos + render_size,
+        // true);
 
         // Render the Dolphin view and overlays
         {
@@ -1324,7 +1377,7 @@ void SceneWindow::renderDolphin(TimeStep delta_time) {
             }
         }
 
-        //ImGui::PopClipRect();
+        // ImGui::PopClipRect();
 
         renderPlaybackButtons(delta_time);
     }

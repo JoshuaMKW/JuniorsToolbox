@@ -32,11 +32,7 @@ namespace Toolbox::Dolphin {
 
             {
                 std::unique_lock<std::mutex> lk(m_mutex);
-                DolphinHookManager &manager = DolphinHookManager::instance();
-                auto result                 = manager.refresh();
-                if (!result) {
-                    LogError(result.error());
-                }
+                DolphinHookManager::instance().refresh();
                 m_hook_flag.store(false);
             }
 

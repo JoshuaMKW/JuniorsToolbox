@@ -23,7 +23,7 @@ namespace Toolbox {
         m_profile_path = cwd_result.value() / "Profiles";
 
         bool result = true;
-        TRY(loadProfiles()).err([&result](const SerialError &error) {
+        TRY(loadProfiles()).error([&result](const SerialError &error) {
             UI::LogError(error);
             result = false;
         });
@@ -32,7 +32,7 @@ namespace Toolbox {
 
     bool SettingsManager::save() {
         bool result = true;
-        TRY(saveProfiles()).err([&result](const SerialError &error) {
+        TRY(saveProfiles()).error([&result](const SerialError &error) {
             UI::LogError(error);
             result = false;
         });
@@ -41,7 +41,7 @@ namespace Toolbox {
 
     bool SettingsManager::saveProfile(std::string_view name) {
         bool result = true;
-        TRY(saveProfile(name, getProfile(name))).err([&result](const SerialError &error) {
+        TRY(saveProfile(name, getProfile(name))).error([&result](const SerialError &error) {
             UI::LogError(error);
             result = false;
         });
