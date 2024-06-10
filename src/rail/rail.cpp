@@ -32,8 +32,9 @@ namespace Toolbox::Rail {
             if (!result) {
                 return std::unexpected(result.error());
             }
-            m_nodes.push_back(node);
+            addNode(node);
         }
+        return {};
     }
 
     glm::vec3 Rail::getCenteroid() const {
@@ -95,7 +96,7 @@ namespace Toolbox::Rail {
     }
 
     void Rail::addNode(node_ptr_t node) {
-        node->m_rail = this;
+        node->m_rail_uuid = getUUID();
         m_nodes.push_back(node);
     }
 
@@ -103,7 +104,7 @@ namespace Toolbox::Rail {
         if (index > m_nodes.size()) {
             return make_meta_error<void>("Error inserting node", index, m_nodes.size());
         }
-        node->m_rail = this;
+        node->m_rail_uuid = getUUID();
         m_nodes.insert(m_nodes.begin() + index, node);
         return {};
     }
@@ -121,7 +122,7 @@ namespace Toolbox::Rail {
         if (it == m_nodes.end()) {
             return false;
         }
-        (*it)->m_rail = nullptr;
+        (*it)->m_rail_uuid = 0;
         m_nodes.erase(it);
         return true;
     }

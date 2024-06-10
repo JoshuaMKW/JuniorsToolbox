@@ -90,15 +90,15 @@ namespace Toolbox::UI {
         return node_name;
     }
 
-    static std::string getNodeUID(RefPtr<Rail::Rail> node) {
-        std::string node_name = std::format("{}###{}", node->name(), node->getUUID());
-        return node_name;
+    static std::string getNodeUID(RefPtr<Rail::Rail> rail) {
+        return std::format("{}###{}", rail->name(), rail->getUUID());
     }
 
-    static std::string getNodeUID(RefPtr<Rail::RailNode> node) {
-        std::string node_name =
-            std::format("Node {}###{}", node->rail()->getNodeIndex(node).value(), node->getUUID());
-        return node_name;
+    static std::string getNodeUID(RefPtr<Rail::Rail> rail, size_t node_index) {
+        if (node_index >= rail->nodes().size()) {
+            return std::format("(orphan)###{}", node_index);
+        }
+        return std::format("Node {}###{}", node_index, rail->nodes()[node_index]->getUUID());
     }
 
     SceneCreateRailEvent::SceneCreateRailEvent(const UUID64 &target_id, const Rail::Rail &rail)
@@ -125,25 +125,34 @@ namespace Toolbox::UI {
                 return false;
             }
 
-            m_resource_cache.m_model.clear();
-            m_resource_cache.m_material.clear();
+            bool result = true;
 
-            auto scene_result = SceneInstance::FromPath(path);
-            if (!scene_result) {
-                LogError(scene_result.error());
-                return false;
-            } else {
-                m_current_scene = std::move(scene_result.value());
-                if (m_current_scene != nullptr) {
+            SceneInstance::FromPath(path)
+                .and_then([&](ScopePtr<SceneInstance> &&scene) {
+                    m_current_scene = std::move(scene);
                     m_renderer.initializeData(*m_current_scene);
-                }
-            }
 
-            if (task_communicator.isSceneLoaded(1, 2)) {
-                reassignAllActorPtrs(0);
-            }
+                    m_resource_cache.m_model.clear();
+                    m_resource_cache.m_material.clear();
 
-            return true;
+                    // Initialize the rail visibility map
+                    for (RefPtr<Rail::Rail> rail : m_current_scene->getRailData().rails()) {
+                        m_rail_visible_map[rail->getUUID()] = true;
+                    }
+
+                    if (task_communicator.isSceneLoaded(1, 2)) {
+                        reassignAllActorPtrs(0);
+                    }
+
+                    return Result<void, SerialError>();
+                })
+                .or_else([&result](const SerialError &error) {
+                    LogError(error);
+                    result = false;
+                    return Result<void, SerialError>();
+                });
+
+            return result;
         }
 
         // TODO: Implement opening from archives.
@@ -240,130 +249,25 @@ namespace Toolbox::UI {
         }
 
         if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
-            auto render_obj = std::get<RefPtr<ISceneObject>>(selection);
-            if (render_obj) {
-                std::string node_uid_str = getNodeUID(render_obj);
-                ImGuiID tree_node_id     = static_cast<ImGuiID>(render_obj->getUUID());
-
-                bool is_object_selected = std::any_of(
-                    m_hierarchy_selected_nodes.begin(), m_hierarchy_selected_nodes.end(),
-                    [&](auto &info) { return info.m_node_id == tree_node_id; });
-
-                SelectionNodeInfo<Object::ISceneObject> node_info = {
-                    .m_selected      = render_obj,
-                    .m_node_id       = tree_node_id,
-                    .m_parent_synced = true,
-                    .m_scene_synced  = true};  // Only spacial objects get scene selection
-
-                if (multi_select) {
-                    m_selected_properties.clear();
-                    if (!is_object_selected)
-                        m_hierarchy_selected_nodes.push_back(node_info);
-                } else {
-                    m_hierarchy_selected_nodes.clear();
-                    m_hierarchy_selected_nodes.push_back(node_info);
-                    for (auto &member : render_obj->getMembers()) {
-                        member->syncArray();
-                        auto prop = createProperty(member);
-                        if (prop) {
-                            m_selected_properties.push_back(std::move(prop));
-                        }
-                    }
-                }
-
-                Transform obj_transform = render_obj->getTransform().value();
-                // BoundingBox obj_bb      = render_obj->getBoundingBox().value();
-
-                glm::mat4x4 gizmo_transform =
-                    glm::translate(glm::identity<glm::mat4x4>(), obj_transform.m_translation);
-
-                /*glm::mat4x4 obb_rot_mtx =
-                    glm::eulerAngleXYZ(glm::radians(obj_transform.m_rotation.x),
-                   glm::radians(obj_transform.m_rotation.y),
-                                       glm::radians(obj_transform.m_rotation.z));*/
-
-                // TODO: Figure out why this rotation composes wrong.
-                glm::mat4x4 obb_rot_mtx = glm::toMat4(glm::quat(obj_transform.m_rotation));
-                gizmo_transform         = gizmo_transform * obb_rot_mtx;
-
-                gizmo_transform = glm::scale(gizmo_transform, obj_transform.m_scale);
-                m_renderer.setGizmoTransform(gizmo_transform);
-
-                m_properties_render_handler = renderObjectProperties;
-
-                TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", render_obj->type(),
-                                    render_obj->getNameRef().name());
-            }
+            RefPtr<ISceneObject> obj = std::get<RefPtr<ISceneObject>>(selection);
+            processObjectSelection(obj, multi_select);
         } else if (std::holds_alternative<RefPtr<Rail::RailNode>>(selection)) {
-            auto node = std::get<RefPtr<Rail::RailNode>>(selection);
-            if (node) {
-                RefPtr<Rail::Rail> rail = get_shared_ptr(*node->rail());
-                ImGuiID rail_id         = static_cast<ImGuiID>(rail->getUUID());
+            RefPtr<Rail::RailNode> node = std::get<RefPtr<Rail::RailNode>>(selection);
 
-                // In this circumstance, select the whole rail
-                if (Input::GetKey(KeyCode::KEY_LEFTALT)) {
-                    bool is_rail_selected = std::any_of(
-                        m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
-                        [&](auto &info) { return info.m_node_id == rail_id; });
+            // In this circumstance, select the whole rail
+            bool rail_selection_mode = Input::GetKey(KeyCode::KEY_LEFTALT);
+            if (rail_selection_mode) {
+                RailData &rail_data = m_current_scene->getRailData();
 
-                    SelectionNodeInfo<Rail::Rail> rail_info = {.m_selected      = rail,
-                                                               .m_node_id       = rail_id,
-                                                               .m_parent_synced = true,
-                                                               .m_scene_synced  = false};
-
-                    if (multi_select) {
-                        m_selected_properties.clear();
-                        if (!is_rail_selected)
-                            m_rail_list_selected_nodes.push_back(rail_info);
-                    } else {
-                        m_rail_list_selected_nodes.clear();
-                        m_rail_list_selected_nodes.push_back(rail_info);
-                    }
-
-                    // Since a rail is selected, we should clear the rail nodes
-                    m_rail_node_list_selected_nodes.clear();
-
-                    glm::mat4x4 gizmo_transform =
-                        glm::translate(glm::identity<glm::mat4x4>(), rail->getCenteroid());
-                    m_renderer.setGizmoTransform(gizmo_transform);
-
-                    m_properties_render_handler = renderRailProperties;
-
-                    TOOLBOX_DEBUG_LOG_V("Hit rail \"{}\"", rail->name());
-                } else {
-                    ImGuiID node_id = static_cast<ImGuiID>(node->getUUID());
-
-                    bool is_rail_node_selected =
-                        std::any_of(m_rail_node_list_selected_nodes.begin(),
-                                    m_rail_node_list_selected_nodes.end(),
-                                    [&](auto &info) { return info.m_node_id == node_id; });
-
-                    SelectionNodeInfo<Rail::RailNode> node_info = {.m_selected      = node,
-                                                                   .m_node_id       = node_id,
-                                                                   .m_parent_synced = true,
-                                                                   .m_scene_synced  = false};
-
-                    if (multi_select) {
-                        m_selected_properties.clear();
-                        if (!is_rail_node_selected)
-                            m_rail_node_list_selected_nodes.push_back(node_info);
-                    } else {
-                        m_rail_node_list_selected_nodes.clear();
-                        m_rail_node_list_selected_nodes.push_back(node_info);
-                    }
-
-                    // Since a rail node is selected, we should clear the rails
-                    m_rail_list_selected_nodes.clear();
-
-                    glm::mat4x4 gizmo_transform =
-                        glm::translate(glm::identity<glm::mat4x4>(), node->getPosition());
-                    m_renderer.setGizmoTransform(gizmo_transform);
-
-                    m_properties_render_handler = renderRailNodeProperties;
-
-                    TOOLBOX_DEBUG_LOG_V("Hit node {} of rail \"{}\"",
-                                        rail->getNodeIndex(node).value(), rail->name());
+                RefPtr<Rail::Rail> rail = rail_data.getRail(node->getRailUUID());
+                if (!rail) {
+                    TOOLBOX_ERROR("Failed to find rail for node.");
+                    return;
                 }
+
+                processRailSelection(rail, multi_select);
+            } else {
+                processRailNodeSelection(node, multi_select);
             }
         }
 
@@ -412,6 +316,23 @@ namespace Toolbox::UI {
             }
         }
 
+        if (m_object_drop_target != -1) {
+            loadMimeObject(m_drop_target_buffer, m_object_drop_target, m_object_parent_uuid);
+            m_object_drop_target = -1;
+            m_object_parent_uuid = 0;
+        }
+
+        if (m_rail_drop_target != -1) {
+            loadMimeRail(m_drop_target_buffer, m_rail_drop_target);
+            m_rail_drop_target = -1;
+        }
+
+        if (m_rail_node_drop_target != -1) {
+            loadMimeRailNode(m_drop_target_buffer, m_rail_node_drop_target, m_rail_node_rail_uuid);
+            m_rail_node_drop_target = -1;
+            m_rail_node_rail_uuid   = 0;
+        }
+
         m_update_render_objs = true;
     }
 
@@ -420,76 +341,9 @@ namespace Toolbox::UI {
     static std::unordered_set<std::string> s_scene_mime_formats = {
         "toolbox/scene/object", "toolbox/scene/rail", "toolbox/scene/railnode"};
 
-    void SceneWindow::onDragEvent(RefPtr<DragEvent> ev) {
-        DragAction &action = ev->getDragAction();
-        MimeData mime      = action.getMimeData();
+    void SceneWindow::onDragEvent(RefPtr<DragEvent> ev) {}
 
-        // Check for early exit
-        bool is_valid_format =
-            std::any_of(s_scene_mime_formats.begin(), s_scene_mime_formats.end(),
-                        [&](const std::string &format) { return mime.has_format(format); });
-        if (!is_valid_format) {
-            ev->ignore();
-            return;
-        }
-
-        if (ev->getType() == EVENT_DRAG_ENTER) {
-        } else if (ev->getType() == EVENT_DRAG_LEAVE) {
-        } else if (ev->getType() == EVENT_DRAG_MOVE) {
-        }
-    }
-
-    void SceneWindow::onDropEvent(RefPtr<DropEvent> ev) {
-        MimeData mime = ev->getMimeData();
-
-        // Check for early exit
-        bool is_valid_format =
-            std::any_of(s_scene_mime_formats.begin(), s_scene_mime_formats.end(),
-                        [&](const std::string &format) { return mime.has_format(format); });
-        if (!is_valid_format) {
-            ev->ignore();
-            return;
-        }
-
-        ImVec2 drop_pos    = ev->getGlobalPoint();
-        DropType drop_type = ev->getDropType();
-
-        ImVec2 window_pos  = getPos();
-        ImVec2 window_size = getSize();
-
-        ImVec2 local_pos = {drop_pos.x - window_pos.x, drop_pos.y - window_pos.y};
-
-        if (mime.has_format("toolbox/scene/object")) {
-            Buffer obj_data = mime.get_data("toolbox/scene/object").value();
-
-            RefPtr<ISceneObject> parent_obj;
-            size_t child_index = 0;
-
-            // TODO: Implement dropping objects into the scene hierarchy (and also in scene view?)
-
-            loadMimeObject(obj_data, parent_obj, child_index);
-            return;
-        }
-
-        if (mime.has_format("toolbox/scene/rail")) {
-            Buffer rail_data = mime.get_data("toolbox/scene/rail").value();
-
-            size_t child_index = 0;
-
-            loadMimeRail(rail_data, child_index);
-            return;
-        }
-
-        if (mime.has_format("toolbox/scene/railnode")) {
-            Buffer node_data = mime.get_data("toolbox/scene/railnode").value();
-
-            RefPtr<Rail::Rail> parent_rail;
-            size_t child_index = 0;
-
-            loadMimeRailNode(node_data, parent_rail, child_index);
-            return;
-        }
-    }
+    void SceneWindow::onDropEvent(RefPtr<DropEvent> ev) {}
 
     void SceneWindow::onEvent(RefPtr<BaseEvent> ev) {
         ImWindow::onEvent(ev);
@@ -501,9 +355,7 @@ namespace Toolbox::UI {
             auto event = std::static_pointer_cast<SceneCreateRailEvent>(ev);
             if (event) {
                 const Rail::Rail &rail = event->getRail();
-                RailData data          = m_current_scene->getRailData();
-                data.addRail(rail);
-                m_current_scene->setRailData(data);
+                m_current_scene->getRailData().addRail(rail);
                 m_rail_visible_map[rail.getUUID()] = true;
                 ev->accept();
             }
@@ -774,8 +626,8 @@ bool SceneWindow::renderRailNodeProperties(SceneWindow &window) {
 
     const float label_width = ImGui::CalcTextSize("ConnectionCount").x;
 
-    auto &node = window.m_rail_node_list_selected_nodes[0].m_selected;
-    auto *rail = node->rail();
+    RefPtr<Rail::RailNode> node = window.m_rail_node_list_selected_nodes[0].m_selected;
+    RefPtr<Rail::Rail> rail = window.m_current_scene->getRailData().getRail(node->getRailUUID());
 
     bool is_updated = false;
 
@@ -1035,7 +887,10 @@ void SceneWindow::renderRailEditor() {
             m_focused_window = EditorWindow::RAIL_TREE;
         }
 
-        for (auto &rail : m_current_scene->getRailData()) {
+        const RailData &rail_data = m_current_scene->getRailData();
+        for (size_t i = 0; i < rail_data.rails().size(); ++i) {
+            RefPtr<Rail::Rail> rail = rail_data.rails()[i];
+
             std::string uid_str = getNodeUID(rail);
             ImGuiID rail_id     = static_cast<ImGuiID>(rail->getUUID());
 
@@ -1062,6 +917,40 @@ void SceneWindow::renderRailEditor() {
 
             bool is_rail_open =
                 ImGui::TreeNodeEx(uid_str.data(), rail_flags, is_rail_selected, &is_rail_visible);
+
+            // Drag and drop for RAIL
+            {
+                ImVec2 mouse_pos = ImGui::GetMousePos();
+                ImVec2 item_size = ImGui::GetItemRectSize();
+                ImVec2 item_pos  = ImGui::GetItemRectMin();
+
+                if (ImGui::BeginDragDropSource()) {
+                    Toolbox::Buffer buffer;
+                    saveMimeRail(buffer, i);
+                    ImGui::SetDragDropPayload("toolbox/scene/rail", buffer.buf(), buffer.size(),
+                                              ImGuiCond_Once);
+                    ImGui::Text("Rail: %s", rail->name().c_str());
+                    ImGui::EndDragDropSource();
+                }
+
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
+                            "toolbox/scene/rail", ImGuiDragDropFlags_AcceptBeforeDelivery |
+                                                      ImGuiDragDropFlags_SourceNoHoldToOpenOthers);
+                        payload && payload->IsDelivery()) {
+                        Toolbox::Buffer buffer;
+                        buffer.setBuf(payload->Data, payload->DataSize);
+                        buffer.copyTo(m_drop_target_buffer);
+
+                        // Calculate index based on position relative to center
+                        m_rail_drop_target = i;
+                        if (mouse_pos.y > item_pos.y + (item_size.y / 2)) {
+                            m_rail_drop_target++;
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+            }
 
             if (rail_visibility != is_rail_visible) {
                 rail_visibility = is_rail_visible;
@@ -1091,9 +980,9 @@ void SceneWindow::renderRailEditor() {
             renderRailContextMenu(rail->name(), rail_info);
 
             if (is_rail_open) {
-                for (size_t i = 0; i < rail->nodes().size(); ++i) {
-                    RefPtr<Rail::RailNode> node = rail->nodes()[i];
-                    std::string node_uid_str    = getNodeUID(node);
+                for (size_t j = 0; j < rail->nodes().size(); ++j) {
+                    RefPtr<Rail::RailNode> node = rail->nodes()[j];
+                    std::string node_uid_str    = getNodeUID(rail, j);
                     ImGuiID node_id             = static_cast<ImGuiID>(node->getUUID());
 
                     bool is_rail_node_selected =
@@ -1109,57 +998,52 @@ void SceneWindow::renderRailEditor() {
                     bool is_node_open =
                         ImGui::TreeNodeEx(node_uid_str.c_str(), node_flags, is_rail_node_selected);
 
-                    if (ImGui::BeginDragDropSource()) {
-                        int drag_from_index = i;
+                    // Drag and drop for RAIL NODE
+                    {
+                        ImVec2 mouse_pos = ImGui::GetMousePos();
+                        ImVec2 item_size = ImGui::GetItemRectSize();
+                        ImVec2 item_pos  = ImGui::GetItemRectMin();
 
-                        Toolbox::Buffer buffer;
-
-                        TRY(Serializer::ObjectToBytes(*node, buffer, 4))
-                            .error([](const SerialError &error) { LogError(error); })
-                            .then([&]() {
-                                buffer.set<bool>(0, true);            // Internal
-                                buffer.set<u16>(1, drag_from_index);  // Index
-                                ImGui::SetDragDropPayload("toolbox/scene/railnode", buffer.buf(),
-                                                          buffer.size(), ImGuiCond_Once);
-                            });
-
-                        ImGui::EndDragDropSource();
-                    }
-
-                    if (ImGui::BeginDragDropTarget()) {
-                        if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
-                                "toolbox/scene/railnode", ImGuiDragDropFlags_AcceptBeforeDelivery);
-                            payload && payload->IsDelivery()) {
-                            int drag_to_index = i;
-                            int drag_from_index = -1;
-
-                            Rail::RailNode new_node;
+                        if (ImGui::BeginDragDropSource()) {
+                            int drag_from_index = j;
 
                             Toolbox::Buffer buffer;
-                            buffer.setBuf(payload->Data, payload->DataSize);
+                            saveMimeRailNode(buffer, j, rail);
+                            ImGui::SetDragDropPayload("toolbox/scene/railnode", buffer.buf(),
+                                                      buffer.size(), ImGuiCond_Once);
 
-                            buffer.get<bool>(0);
-                            drag_from_index = buffer.get<u16>(1);
+                            /*ImVec2 mouse_pos = ImGui::GetMousePos();
 
-                            // Try to deserialize the payload
-                            TRY(Deserializer::BytesToObject(buffer, new_node, 4))
-                                .error([](const SerialError &error) { LogError(error); })
-                                .then([&]() {
-                                    // Try to remove the stale node from the rail
-                                    TRY(rail->removeNode(drag_from_index))
-                                        .error([](const MetaError &error) { LogError(error); })
-                                        .then([&]() {
-                                            // Try to insert the new node into the rail
-                                            TRY(rail->insertNode(
-                                                    drag_to_index,
-                                                    make_referable<RailNode>(new_node)))
-                                                .error([](const MetaError &error) {
-                                                    LogError(error);
-                                                });
-                                        });
-                                });
+                            DragAction action(getUUID());
+                            action.setHotSpot(mouse_pos);
+                            action.setPayload(ImGui::GetDragDropPayload());
+
+                            GUIApplication::instance().dispatchEvent<DragEvent, false>(
+                                EVENT_DRAG_MOVE, mouse_pos.x, mouse_pos.y, std::move(action));*/
+
+                            ImGui::Text("Node %d (%s)", j, rail->name().c_str());
+
+                            ImGui::EndDragDropSource();
                         }
-                        ImGui::EndDragDropTarget();
+
+                        if (ImGui::BeginDragDropTarget()) {
+                            if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
+                                    "toolbox/scene/railnode",
+                                    ImGuiDragDropFlags_AcceptBeforeDelivery);
+                                payload && payload->IsDelivery()) {
+                                Toolbox::Buffer buffer;
+                                buffer.setBuf(payload->Data, payload->DataSize);
+                                buffer.copyTo(m_drop_target_buffer);
+                                m_rail_node_rail_uuid = node->getRailUUID();
+
+                                // Calculate index based on position relative to center
+                                m_rail_node_drop_target = j;
+                                if (mouse_pos.y > item_pos.y + (item_size.y / 2)) {
+                                    m_rail_node_drop_target++;
+                                }
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
                     }
 
                     if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
@@ -1917,7 +1801,7 @@ void SceneWindow::buildContextMenuRail() {
         [this](SelectionNodeInfo<Rail::Rail> info) {
             auto nodes = GUIApplication::instance().getSceneRailClipboard().getData();
             if (nodes.size() > 0) {
-                RailData data         = m_current_scene->getRailData();
+                RailData &data        = m_current_scene->getRailData();
                 size_t selected_index = data.getRailCount();
                 auto result           = data.getRailIndex(info.m_selected->name());
                 if (result) {
@@ -1933,21 +1817,18 @@ void SceneWindow::buildContextMenuRail() {
                     data.insertRail(selected_index + 1, new_rail);
                     selected_index += 1;
                 }
-                m_current_scene->setRailData(data);
             }
             m_update_render_objs = true;
             return;
         });
 
-    m_rail_list_single_node_menu.addOption("Delete", {KeyCode::KEY_DELETE},
-                                           [this](SelectionNodeInfo<Rail::Rail> info) {
-                                               m_rail_visible_map.erase(info.m_node_id);
-                                               RailData data = m_current_scene->getRailData();
-                                               data.removeRail(*info.m_selected);
-                                               m_current_scene->setRailData(data);
-                                               m_update_render_objs = true;
-                                               return;
-                                           });
+    m_rail_list_single_node_menu.addOption(
+        "Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Rail::Rail> info) {
+            m_rail_visible_map.erase(info.m_node_id);
+            m_current_scene->getRailData().removeRail(info.m_selected->getUUID());
+            m_update_render_objs = true;
+            return;
+        });
 }
 
 void SceneWindow::buildContextMenuMultiRail() {
@@ -1968,7 +1849,7 @@ void SceneWindow::buildContextMenuMultiRail() {
         [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
             auto nodes = GUIApplication::instance().getSceneRailClipboard().getData();
             if (nodes.size() > 0) {
-                RailData data         = m_current_scene->getRailData();
+                RailData &data        = m_current_scene->getRailData();
                 size_t selected_index = data.getRailCount();
                 auto result           = data.getRailIndex(info[0].m_selected->name());
                 if (result) {
@@ -1984,7 +1865,6 @@ void SceneWindow::buildContextMenuMultiRail() {
                     data.insertRail(selected_index + 1, new_rail);
                     selected_index += 1;
                 }
-                m_current_scene->setRailData(data);
             }
             m_update_render_objs = true;
             return;
@@ -1992,12 +1872,11 @@ void SceneWindow::buildContextMenuMultiRail() {
 
     m_rail_list_multi_node_menu.addOption("Delete", {KeyCode::KEY_DELETE},
                                           [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
-                                              RailData data = m_current_scene->getRailData();
+                                              RailData &data = m_current_scene->getRailData();
                                               for (auto &select : info) {
                                                   m_rail_visible_map.erase(select.m_node_id);
-                                                  data.removeRail(*select.m_selected);
+                                                  data.removeRail(select.m_selected->getUUID());
                                               }
-                                              m_current_scene->setRailData(data);
                                               m_update_render_objs = true;
                                               return;
                                           });
@@ -2018,7 +1897,6 @@ void SceneWindow::buildContextMenuRailNode() {
     m_rail_node_list_single_node_menu.addOption(
         "View in Scene", {KeyCode::KEY_LEFTALT, KeyCode::KEY_V},
         [this](SelectionNodeInfo<Rail::RailNode> info) {
-            Rail::Rail *rail      = info.m_selected->rail();
             glm::vec3 translation = info.m_selected->getPosition();
 
             m_renderer.setCameraOrientation({0, 1, 0}, translation,
@@ -2030,7 +1908,8 @@ void SceneWindow::buildContextMenuRailNode() {
     m_rail_node_list_single_node_menu.addOption(
         "Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
         [this](SelectionNodeInfo<Rail::RailNode> info) {
-            Rail::Rail *rail = info.m_selected->rail();
+            RefPtr<Rail::Rail> rail =
+                m_current_scene->getRailData().getRail(info.m_selected->getRailUUID());
 
             glm::vec3 translation;
             m_renderer.getCameraTranslation(translation);
@@ -2058,7 +1937,8 @@ void SceneWindow::buildContextMenuRailNode() {
     m_rail_node_list_single_node_menu.addOption(
         "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
         [this](SelectionNodeInfo<Rail::RailNode> info) {
-            Rail::Rail *rail      = info.m_selected->rail();
+            RefPtr<Rail::Rail> rail =
+                m_current_scene->getRailData().getRail(info.m_selected->getRailUUID());
             size_t selected_index = rail->getNodeCount();
             auto result           = rail->getNodeIndex(info.m_selected);
             if (result) {
@@ -2073,13 +1953,14 @@ void SceneWindow::buildContextMenuRailNode() {
             return Result<void>();
         });
 
-    m_rail_node_list_single_node_menu.addOption("Delete", {KeyCode::KEY_DELETE},
-                                                [this](SelectionNodeInfo<Rail::RailNode> info) {
-                                                    Rail::Rail *rail = info.m_selected->rail();
-                                                    rail->removeNode(info.m_selected);
-                                                    m_update_render_objs = true;
-                                                    return Result<void>();
-                                                });
+    m_rail_node_list_single_node_menu.addOption(
+        "Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Rail::RailNode> info) {
+            RefPtr<Rail::Rail> rail =
+                m_current_scene->getRailData().getRail(info.m_selected->getRailUUID());
+            rail->removeNode(info.m_selected);
+            m_update_render_objs = true;
+            return Result<void>();
+        });
 }
 
 void SceneWindow::buildContextMenuMultiRailNode() {
@@ -2099,7 +1980,8 @@ void SceneWindow::buildContextMenuMultiRailNode() {
     m_rail_node_list_multi_node_menu.addOption(
         "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
         [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
-            Rail::Rail *rail      = info[0].m_selected->rail();
+            RefPtr<Rail::Rail> rail =
+                m_current_scene->getRailData().getRail(info[0].m_selected->getRailUUID());
             size_t selected_index = rail->getNodeCount();
             auto result           = rail->getNodeIndex(info[0].m_selected);
             if (result) {
@@ -2118,7 +2000,8 @@ void SceneWindow::buildContextMenuMultiRailNode() {
         "Delete", {KeyCode::KEY_DELETE},
         [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
             for (auto &select : info) {
-                Rail::Rail *rail = select.m_selected->rail();
+                RefPtr<Rail::Rail> rail =
+                    m_current_scene->getRailData().getRail(select.m_selected->getRailUUID());
                 rail->removeNode(select.m_selected);
             }
             m_update_render_objs = true;
@@ -2164,7 +2047,7 @@ void SceneWindow::buildCreateObjDialog() {
                 return;
             }
 
-            RefPtr<ISceneObject> object = this_parent->getChild(std::string(name)).value();
+            RefPtr<ISceneObject> object = this_parent->getChild(std::string(name));
 
             Game::TaskCommunicator &task_communicator =
                 GUIApplication::instance().getTaskCommunicator();
@@ -2201,8 +2084,6 @@ void SceneWindow::buildCreateRailDialog() {
                 LogError(result.error());
                 return;
             }
-
-            RailData rail_data = m_current_scene->getRailData();
 
             f64 angle      = 0;
             f64 angle_step = node_count == 0 ? 0 : (M_PI * 2) / node_count;
@@ -2255,10 +2136,9 @@ void SceneWindow::buildCreateRailDialog() {
                 }
             }
 
-            rail_data.addRail(new_rail);
+            m_current_scene->getRailData().addRail(new_rail);
 
-            m_current_scene->setRailData(rail_data);
-            m_renderer.updatePaths(rail_data, m_rail_visible_map);
+            m_renderer.updatePaths(m_current_scene->getRailData(), m_rail_visible_map);
             m_update_render_objs = true;
         });
 }
@@ -2278,52 +2158,299 @@ void SceneWindow::buildRenameRailDialog() {
     m_rename_rail_dialog.setActionOnReject([](SelectionNodeInfo<Rail::Rail>) {});
 }
 
-void SceneWindow::loadMimeObject(Buffer &buffer, RefPtr<ISceneObject> parent, size_t child_index) {
+void SceneWindow::saveMimeObject(Buffer &buffer, size_t index, RefPtr<ISceneObject> parent) {
+    if (index >= parent->getChildren().size()) {
+        LogError(make_error<void>("Scene Hierarchy", "Failed to get child object").error());
+        return;
+    }
+
+    TRY(Serializer::ObjectToBytes(*parent->getChildren()[index], buffer, 32))
+        .error([](const SerialError &err) { LogError(err); });
+}
+
+void SceneWindow::saveMimeRail(Buffer &buffer, size_t index) {
+    RefPtr<Rail::Rail> rail = m_current_scene->getRailData().getRail(index);
+    if (!rail) {
+        LogError(make_error<void>("Scene Hierarchy", "Failed to get rail").error());
+        return;
+    }
+
+    TRY(Serializer::ObjectToBytes(*rail, buffer, 4))
+        .error([](const SerialError &err) { LogError(err); })
+        .then([&]() {
+            buffer.set<bool>(0, true);  // Internal
+            buffer.set<u16>(1, index);  // Index
+        });
+}
+
+void SceneWindow::saveMimeRailNode(Buffer &buffer, size_t index, RefPtr<Rail::Rail> parent) {
+    if (index >= parent->nodes().size()) {
+        LogError(make_error<void>("Scene Hierarchy", "Failed to get rail node").error());
+        return;
+    }
+
+    TRY(Serializer::ObjectToBytes(*parent->nodes()[index], buffer, 32))
+        .error([](const SerialError &err) { LogError(err); })
+        .then([&]() {
+            buffer.set<bool>(0, true);  // Internal
+            buffer.set<u16>(1, index);  // Index
+            buffer.set<u64>(3, parent->getUUID());
+        });
+}
+
+void SceneWindow::loadMimeObject(Buffer &buffer, size_t index, UUID64 parent_id) {
     std::stringbuf str_buf;
     Deserializer in(buffer, &str_buf);
 
-    auto result = Object::ObjectFactory::create(in);
+    bool is_internal = in.read<bool>();  // Internal
+
+    u16 orig_index          = in.read<u16>();  // Index
+    UUID64 orig_parent_uuid = in.read<UUID64>();
+
+    // Get to the object data
+    in.seek(32, std::ios::beg);
+
+    auto result = ObjectFactory::create(in);
     if (!result) {
         LogError(result.error());
         return;
     }
 
-    RefPtr<Object::ISceneObject> obj = std::move(result.value());
+    RefPtr<ISceneObject> obj = std::move(result.value());
     if (!obj) {
         LogError(make_error<void>("Scene Hierarchy", "Failed to create object").error());
         return;
     }
 
-    parent->insertChild(child_index, obj);
+    if (is_internal) {
+        RefPtr<ISceneObject> orig_parent =
+            m_current_scene->getObjHierarchy().findObject(orig_parent_uuid);
+        if (orig_parent) {
+            TRY(orig_parent->removeChild(orig_index)).error([](const ObjectGroupError &err) {
+                LogError(err);
+            });
+        }
+    }
+
+    RefPtr<ISceneObject> orig_parent =
+        m_current_scene->getObjHierarchy().findObject(orig_parent_uuid);
+    if (orig_parent) {
+        TRY(orig_parent->insertChild(index, obj)).error([](const ObjectGroupError &err) {
+            LogError(err);
+        });
+    }
+
     m_update_render_objs = true;
 }
 
 void SceneWindow::loadMimeRail(Buffer &buffer, size_t index) {
     Rail::Rail rail("((null))");
 
-    auto result = Deserializer::BytesToObject(buffer, rail);
+    bool is_internal = buffer.get<bool>(0);  // Internal
+    u16 orig_index   = buffer.get<u16>(1);   // Index
+
+    auto result = Deserializer::BytesToObject(buffer, rail, 4);
     if (!result) {
         LogError(result.error());
         return;
     }
 
-    RailData data = m_current_scene->getRailData();
-    data.insertRail(index, rail);
-    m_current_scene->setRailData(data);
+    m_current_scene->getRailData().insertRail(index, rail);
     m_update_render_objs = true;
 }
 
-void SceneWindow::loadMimeRailNode(Buffer &buffer, RefPtr<Rail::Rail> rail, size_t node_index) {
+void SceneWindow::loadMimeRailNode(Buffer &buffer, size_t index, UUID64 rail_id) {
     Rail::RailNode node;
 
-    auto result = Deserializer::BytesToObject(buffer, node);
-    if (!result) {
-        LogError(result.error());
+    bool is_internal = buffer.get<bool>(0);  // Internal
+
+    u16 orig_index          = buffer.get<u16>(1);  // Index
+    UUID64 orig_parent_uuid = buffer.get<UUID64>(3);
+
+    Deserializer::BytesToObject(buffer, node, 32)
+        .and_then([&]() {
+            _moveNode(node, index, rail_id, orig_index, orig_parent_uuid, is_internal);
+            m_update_render_objs = true;
+            return Result<void, SerialError>();
+        })
+        .or_else([](const SerialError &error) {
+            LogError(error);
+            return Result<void, SerialError>();
+        });
+}
+
+void Toolbox::UI::SceneWindow::processObjectSelection(RefPtr<Object::ISceneObject> node,
+                                                      bool is_multi) {
+    if (!node) {
+        TOOLBOX_DEBUG_LOG("Hit object is null");
         return;
     }
 
-    rail->insertNode(node_index, make_referable<Rail::RailNode>(node));
-    m_update_render_objs = true;
+    std::string node_uid_str = getNodeUID(node);
+    ImGuiID tree_node_id     = static_cast<ImGuiID>(node->getUUID());
+
+    bool is_object_selected =
+        std::any_of(m_hierarchy_selected_nodes.begin(), m_hierarchy_selected_nodes.end(),
+                    [&](auto &info) { return info.m_node_id == tree_node_id; });
+
+    SelectionNodeInfo<Object::ISceneObject> node_info = {
+        .m_selected      = node,
+        .m_node_id       = tree_node_id,
+        .m_parent_synced = true,
+        .m_scene_synced  = true};  // Only spacial objects get scene selection
+
+    if (is_multi) {
+        m_selected_properties.clear();
+        if (!is_object_selected)
+            m_hierarchy_selected_nodes.push_back(node_info);
+    } else {
+        m_hierarchy_selected_nodes.clear();
+        m_hierarchy_selected_nodes.push_back(node_info);
+        for (auto &member : node->getMembers()) {
+            member->syncArray();
+            auto prop = createProperty(member);
+            if (prop) {
+                m_selected_properties.push_back(std::move(prop));
+            }
+        }
+    }
+
+    Transform obj_transform = node->getTransform().value();
+    // BoundingBox obj_bb      = node->getBoundingBox().value();
+
+    glm::mat4x4 gizmo_transform =
+        glm::translate(glm::identity<glm::mat4x4>(), obj_transform.m_translation);
+
+    /*glm::mat4x4 obb_rot_mtx =
+        glm::eulerAngleXYZ(glm::radians(obj_transform.m_rotation.x),
+       glm::radians(obj_transform.m_rotation.y),
+                           glm::radians(obj_transform.m_rotation.z));*/
+
+    // TODO: Figure out why this rotation composes wrong.
+    glm::mat4x4 obb_rot_mtx = glm::toMat4(glm::quat(obj_transform.m_rotation));
+    gizmo_transform         = gizmo_transform * obb_rot_mtx;
+
+    gizmo_transform = glm::scale(gizmo_transform, obj_transform.m_scale);
+    m_renderer.setGizmoTransform(gizmo_transform);
+
+    m_properties_render_handler = renderObjectProperties;
+
+    TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", node->type(), node->getNameRef().name());
+}
+
+void Toolbox::UI::SceneWindow::processRailSelection(RefPtr<Rail::Rail> node, bool is_multi) {
+    ImGuiID rail_id = static_cast<ImGuiID>(node->getUUID());
+
+    bool is_rail_selected =
+        std::any_of(m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
+                    [&](auto &info) { return info.m_node_id == rail_id; });
+
+    SelectionNodeInfo<Rail::Rail> rail_info = {
+        .m_selected = node, .m_node_id = rail_id, .m_parent_synced = true, .m_scene_synced = false};
+
+    if (is_multi) {
+        m_selected_properties.clear();
+        if (!is_rail_selected)
+            m_rail_list_selected_nodes.push_back(rail_info);
+    } else {
+        m_rail_list_selected_nodes.clear();
+        m_rail_list_selected_nodes.push_back(rail_info);
+    }
+
+    // Since a rail is selected, we should clear the rail nodes
+    m_rail_node_list_selected_nodes.clear();
+
+    glm::mat4x4 gizmo_transform =
+        glm::translate(glm::identity<glm::mat4x4>(), node->getCenteroid());
+    m_renderer.setGizmoTransform(gizmo_transform);
+
+    m_properties_render_handler = renderRailProperties;
+
+    TOOLBOX_DEBUG_LOG_V("Hit rail \"{}\"", node->name());
+}
+
+void Toolbox::UI::SceneWindow::processRailNodeSelection(RefPtr<Rail::RailNode> node,
+                                                        bool is_multi) {
+    ImGuiID node_id = static_cast<ImGuiID>(node->getUUID());
+
+    bool is_rail_node_selected =
+        std::any_of(m_rail_node_list_selected_nodes.begin(), m_rail_node_list_selected_nodes.end(),
+                    [&](auto &info) { return info.m_node_id == node_id; });
+
+    SelectionNodeInfo<Rail::RailNode> node_info = {
+        .m_selected = node, .m_node_id = node_id, .m_parent_synced = true, .m_scene_synced = false};
+
+    if (is_multi) {
+        m_selected_properties.clear();
+        if (!is_rail_node_selected)
+            m_rail_node_list_selected_nodes.push_back(node_info);
+    } else {
+        m_rail_node_list_selected_nodes.clear();
+        m_rail_node_list_selected_nodes.push_back(node_info);
+    }
+
+    // Since a rail node is selected, we should clear the rails
+    m_rail_list_selected_nodes.clear();
+
+    glm::mat4x4 gizmo_transform = glm::translate(glm::identity<glm::mat4x4>(), node->getPosition());
+    m_renderer.setGizmoTransform(gizmo_transform);
+
+    m_properties_render_handler = renderRailNodeProperties;
+
+    // Debug log
+    {
+        RailData &rail_data = m_current_scene->getRailData();
+
+        RefPtr<Rail::Rail> rail = rail_data.getRail(node->getRailUUID());
+        if (!rail) {
+            TOOLBOX_ERROR("Failed to find rail for node.");
+            return;
+        }
+
+        TOOLBOX_DEBUG_LOG_V("Hit node {} of rail \"{}\"", rail->getNodeIndex(node).value(),
+                            rail->name());
+    }
+}
+
+void Toolbox::UI::SceneWindow::_moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id,
+                                         size_t orig_index, UUID64 orig_id, bool is_internal) {
+    RailData &data                        = m_current_scene->getRailData();
+    std::vector<RefPtr<Rail::Rail>> rails = data.rails();
+
+    auto new_rail_it = std::find_if(rails.begin(), rails.end(), [&](RefPtr<Rail::Rail> rail) {
+        return rail->getUUID() == rail_id;
+    });
+
+    if (new_rail_it == rails.end()) {
+        LogError(
+            make_error<void>("Scene Hierarchy", "Failed to find rail to move node to").error());
+        return;
+    }
+
+    if (is_internal) {
+        auto orig_rail_it = std::find_if(rails.begin(), rails.end(), [&](RefPtr<Rail::Rail> rail) {
+            return rail->getUUID() == orig_id;
+        });
+
+        if (orig_rail_it != rails.end()) {
+            // The node is being moved forward in the same rail
+            if (orig_index < index && orig_rail_it == new_rail_it) {
+                index -= 1;
+            }
+
+            (*orig_rail_it)->removeNode(orig_index).or_else([](const MetaError &err) {
+                LogError(err);
+                return Result<void, MetaError>();
+            });
+        }
+    }
+
+    (*new_rail_it)
+        ->insertNode(index, make_referable<Rail::RailNode>(node))
+        .or_else([](const MetaError &err) {
+            LogError(err);
+            return Result<void, MetaError>();
+        });
 }
 
 ImGuiID SceneWindow::onBuildDockspace() {

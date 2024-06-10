@@ -354,17 +354,47 @@ namespace Toolbox::Object {
         return it->get()->removeChild(QualifiedName(name.begin() + 1, name.end()));
     }
 
+    Result<void, ObjectGroupError> GroupSceneObject::removeChild(size_t index) {
+        if (index >= m_children.size()) {
+            ObjectGroupError err = {
+                std::format("Index {} is out of bounds (end: {})", index, m_children.size()),
+                std::stacktrace::current(), this};
+            return std::unexpected(err);
+        }
+
+        m_children.erase(m_children.begin() + index);
+        updateGroupSize();
+        return {};
+    }
+
     std::vector<RefPtr<ISceneObject>> GroupSceneObject::getChildren() { return m_children; }
 
-    std::optional<RefPtr<ISceneObject>> GroupSceneObject::getChild(const QualifiedName &name) {
+    RefPtr<ISceneObject> GroupSceneObject::getChild(const QualifiedName &name) {
         auto scope = name[0];
         auto it    = std::find_if(m_children.begin(), m_children.end(),
                                   [&](const auto &ptr) { return ptr->getNameRef().name() == scope; });
         if (it == m_children.end())
-            return {};
+            return nullptr;
         if (name.depth() == 1)
             return *it;
         return it->get()->getChild(QualifiedName(name.begin() + 1, name.end()));
+    }
+
+    // Not recommended if you know the object key
+    RefPtr<ISceneObject> GroupSceneObject::getChild(UUID64 id) {
+        for (RefPtr<ISceneObject> child : getChildren()) {
+            if (!child) {
+                continue;
+            }
+            if (child->getUUID() == id) {
+                return child;
+            }
+            RefPtr<ISceneObject> result = child->getChild(id);
+            if (result) {
+                return result;
+            }
+        }
+        return nullptr;
     }
 
     Result<void, ObjectError> GroupSceneObject::performScene(float delta_time, bool animate,

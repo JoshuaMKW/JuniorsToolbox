@@ -69,6 +69,7 @@ namespace ImGui {
                            ImU32 fill_color = IM_COL32_BLACK_TRANS, float thickness = 1.0f);
     bool DrawConcavePolygon(const ImVec2 *points, int num_points, ImU32 color,
                             ImU32 fill_color = IM_COL32_BLACK_TRANS, float thickness = 1.0f);
+    bool IsDragDropSource(ImGuiDragDropFlags flags = ImGuiDragDropFlags_None);
 
 }  // namespace ImGui
 

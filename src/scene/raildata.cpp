@@ -16,15 +16,6 @@ namespace Toolbox {
         return (size + 31) & ~31;
     }
 
-    std::optional<size_t> RailData::getRailIndex(const Rail::Rail &rail) const {
-        for (size_t i = 0; i < m_rails.size(); ++i) {
-            if (m_rails[i]->getSiblingID() == rail.getSiblingID()) {
-                return i;
-            }
-        }
-        return {};
-    }
-
     std::optional<size_t> RailData::getRailIndex(std::string_view name) const {
         for (size_t i = 0; i < m_rails.size(); ++i) {
             if (m_rails[i]->name() == name) {
@@ -34,16 +25,32 @@ namespace Toolbox {
         return {};
     }
 
+    std::optional<size_t> RailData::getRailIndex(UUID64 id) const {
+        for (size_t i = 0; i < m_rails.size(); ++i) {
+            if (m_rails[i]->getUUID() == id) {
+                return i;
+            }
+        }
+        return {};
+    }
+
     RailData::rail_ptr_t RailData::getRail(size_t index) const {
         if (index >= m_rails.size())
-            return {};
+            return nullptr;
         return m_rails[index];
     }
 
     RailData::rail_ptr_t RailData::getRail(std::string_view name) const {
         auto index = getRailIndex(name);
         if (!index)
-            return {};
+            return nullptr;
+        return m_rails[index.value()];
+    }
+
+    RailData::rail_ptr_t RailData::getRail(UUID64 id) const {
+        auto index = getRailIndex(id);
+        if (!index)
+            return nullptr;
         return m_rails[index.value()];
     }
 
@@ -72,8 +79,8 @@ namespace Toolbox {
             return;
         m_rails.erase(m_rails.begin() + index.value());
     }
-    void RailData::removeRail(const Rail::Rail &rail) {
-        auto index = getRailIndex(rail);
+    void RailData::removeRail(UUID64 id) {
+        auto index = getRailIndex(id);
         if (!index)
             return;
         m_rails.erase(m_rails.begin() + index.value());

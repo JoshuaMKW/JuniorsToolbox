@@ -96,14 +96,15 @@ namespace Toolbox::Object {
                                                      int index) const                           = 0;
         [[nodiscard]] virtual size_t getMemberSize(const QualifiedName &name, int index) const  = 0;
 
-        virtual Result<void, ObjectGroupError> addChild(RefPtr<ISceneObject> child)    = 0;
+        virtual Result<void, ObjectGroupError> addChild(RefPtr<ISceneObject> child)     = 0;
         virtual Result<void, ObjectGroupError> insertChild(size_t index,
-                                                           RefPtr<ISceneObject> child) = 0;
-        virtual Result<void, ObjectGroupError> removeChild(RefPtr<ISceneObject> name)  = 0;
-        virtual Result<void, ObjectGroupError> removeChild(const QualifiedName &name)  = 0;
-        [[nodiscard]] virtual std::vector<RefPtr<ISceneObject>> getChildren()          = 0;
-        [[nodiscard]] virtual std::optional<RefPtr<ISceneObject>>
-        getChild(const QualifiedName &name) = 0;
+                                                           RefPtr<ISceneObject> child)  = 0;
+        virtual Result<void, ObjectGroupError> removeChild(RefPtr<ISceneObject> object) = 0;
+        virtual Result<void, ObjectGroupError> removeChild(const QualifiedName &name)   = 0;
+        virtual Result<void, ObjectGroupError> removeChild(size_t index)                = 0;
+        [[nodiscard]] virtual std::vector<RefPtr<ISceneObject>> getChildren()           = 0;
+        [[nodiscard]] virtual RefPtr<ISceneObject> getChild(const QualifiedName &name)  = 0;
+        [[nodiscard]] virtual RefPtr<ISceneObject> getChild(UUID64 id)                  = 0;
 
         [[nodiscard]] virtual std::optional<Transform> getTransform() const      = 0;
         virtual Result<void, MetaError> setTransform(const Transform &transform) = 0;
@@ -136,7 +137,7 @@ namespace Toolbox::Object {
     public:
         [[nodiscard]] QualifiedName getQualifiedName() const;
 
-        [[nodiscard]] std::optional<RefPtr<ISceneObject>> getChild(const std::string &name) {
+        [[nodiscard]] RefPtr<ISceneObject> getChild(const std::string &name) {
             return getChild(QualifiedName(name));
         }
 
@@ -255,11 +256,17 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override { return {}; }
-        [[nodiscard]] std::optional<RefPtr<ISceneObject>>
-        getChild(const QualifiedName &name) override {
-            return {};
+        Result<void, ObjectGroupError> removeChild(size_t index) override {
+            ObjectGroupError err = {"Cannot remove a child from a non-group object.",
+                                    std::stacktrace::current(), this};
+            return std::unexpected(err);
         }
+
+        [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override { return {}; }
+        [[nodiscard]] RefPtr<ISceneObject> getChild(const QualifiedName &name) override {
+            return nullptr;
+        }
+        [[nodiscard]] RefPtr<ISceneObject> getChild(UUID64 id) override { return nullptr; }
 
         [[nodiscard]] std::optional<Transform> getTransform() const override { return {}; }
         Result<void, MetaError> setTransform(const Transform &transform) override { return {}; }
@@ -384,9 +391,10 @@ namespace Toolbox::Object {
                                                    RefPtr<ISceneObject> child) override;
         Result<void, ObjectGroupError> removeChild(RefPtr<ISceneObject> child) override;
         Result<void, ObjectGroupError> removeChild(const QualifiedName &name) override;
+        Result<void, ObjectGroupError> removeChild(size_t index) override;
         [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override;
-        [[nodiscard]] std::optional<RefPtr<ISceneObject>>
-        getChild(const QualifiedName &name) override;
+        [[nodiscard]] RefPtr<ISceneObject> getChild(const QualifiedName &name) override;
+        [[nodiscard]] RefPtr<ISceneObject> getChild(UUID64 id) override;
 
         [[nodiscard]] bool getCanPerform() const { return true; }
         [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
@@ -559,11 +567,17 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        std::vector<RefPtr<ISceneObject>> getChildren() override { return {}; }
-        [[nodiscard]] std::optional<RefPtr<ISceneObject>>
-        getChild(const QualifiedName &name) override {
+        Result<void, ObjectGroupError> removeChild(size_t index) override {
+            ObjectGroupError err = {"Cannot remove a child from a non-group object.",
+                                    std::stacktrace::current(), this};
+            return std::unexpected(err);
+        }
+
+        [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override { return {}; }
+        [[nodiscard]] RefPtr<ISceneObject> getChild(const QualifiedName &name) override {
             return {};
         }
+        [[nodiscard]] RefPtr<ISceneObject> getChild(UUID64 id) override { return nullptr; }
 
         [[nodiscard]] std::optional<Transform> getTransform() const override { return m_transform; }
         Result<void, MetaError> setTransform(const Transform &transform) override {

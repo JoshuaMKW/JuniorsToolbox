@@ -121,9 +121,21 @@ namespace Toolbox::UI {
         void buildCreateRailDialog();
         void buildRenameRailDialog();
 
-        void loadMimeObject(Buffer &buffer, RefPtr<ISceneObject> parent, size_t child_index);
+        void saveMimeObject(Buffer &buffer, size_t index, RefPtr<ISceneObject> parent);
+        void saveMimeRail(Buffer &buffer, size_t index);
+        void saveMimeRailNode(Buffer &buffer, size_t index, RefPtr<Rail::Rail> parent);
+
+        void loadMimeObject(Buffer &buffer, size_t index, UUID64 parent_id);
         void loadMimeRail(Buffer &buffer, size_t index);
-        void loadMimeRailNode(Buffer &buffer, RefPtr<Rail::Rail> rail, size_t node_index);
+        void loadMimeRailNode(Buffer &buffer, size_t index, UUID64 rail_id);
+
+        void processObjectSelection(RefPtr<Object::ISceneObject> node, bool is_multi);
+        void processRailSelection(RefPtr<Rail::Rail> node, bool is_multi);
+        void processRailNodeSelection(RefPtr<Rail::RailNode> node, bool is_multi);
+
+    private:
+        void _moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id, size_t orig_index,
+                       UUID64 orig_id, bool is_internal);
 
     public:
         ImGuiWindowFlags flags() const override {
@@ -197,7 +209,7 @@ namespace Toolbox::UI {
         RenameObjDialog m_rename_obj_dialog;
 
         // Render view
-        bool m_update_render_objs = false;
+        bool m_update_render_objs    = false;
         bool m_is_render_window_open = false;
         Renderer m_renderer;
         std::vector<ISceneObject::RenderInfo> m_renderables = {};
@@ -210,8 +222,8 @@ namespace Toolbox::UI {
         ImGuiID m_dock_node_down_left_id = 0;
 
         // Rail editor
-        std::unordered_map<UUID64, bool> m_rail_visible_map                   = {};
-        bool m_connections_open                                               = true;
+        std::unordered_map<UUID64, bool> m_rail_visible_map = {};
+        bool m_connections_open                             = true;
 
         std::vector<SelectionNodeInfo<Rail::Rail>> m_rail_list_selected_nodes = {};
         ContextMenu<SelectionNodeInfo<Rail::Rail>> m_rail_list_single_node_menu;
@@ -249,5 +261,16 @@ namespace Toolbox::UI {
 
         // Event Stuff
         bool m_control_disable_requested = false;
+
+        // Drag drop stuff
+        UUID64 m_object_parent_uuid;
+        int m_object_drop_target = -1;
+
+        int m_rail_drop_target = -1;
+
+        UUID64 m_rail_node_rail_uuid;
+        int m_rail_node_drop_target = -1;
+
+        Toolbox::Buffer m_drop_target_buffer;
     };
 }  // namespace Toolbox::UI

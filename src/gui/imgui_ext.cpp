@@ -1250,6 +1250,81 @@ bool ImGui::DrawConcavePolygon(const ImVec2 *points, int num_points, ImU32 color
     return true;
 }
 
+bool ImGui::IsDragDropSource(ImGuiDragDropFlags flags) {
+    ImGuiContext &g     = *GImGui;
+    ImGuiWindow *window = g.CurrentWindow;
+
+    // FIXME-DRAGDROP: While in the common-most "drag from non-zero active id" case we can tell the
+    // mouse button, in both SourceExtern and id==0 cases we may requires something else (explicit
+    // flags or some heuristic).
+    ImGuiMouseButton mouse_button = ImGuiMouseButton_Left;
+
+    bool source_drag_active  = false;
+    ImGuiID source_id        = 0;
+    ImGuiID source_parent_id = 0;
+    if (!(flags & ImGuiDragDropFlags_SourceExtern)) {
+        source_id = g.LastItemData.ID;
+        if (source_id != 0) {
+            // Common path: items with ID
+            if (g.ActiveId != source_id)
+                return false;
+            if (g.ActiveIdMouseButton != -1)
+                mouse_button = g.ActiveIdMouseButton;
+            if (g.IO.MouseDown[mouse_button] == false || window->SkipItems)
+                return false;
+            g.ActiveIdAllowOverlap = false;
+        } else {
+            // Uncommon path: items without ID
+            if (g.IO.MouseDown[mouse_button] == false || window->SkipItems)
+                return false;
+            if ((g.LastItemData.StatusFlags & ImGuiItemStatusFlags_HoveredRect) == 0 &&
+                (g.ActiveId == 0 || g.ActiveIdWindow != window))
+                return false;
+
+            // If you want to use BeginDragDropSource() on an item with no unique identifier for
+            // interaction, such as Text() or Image(), you need to: A) Read the explanation below,
+            // B) Use the ImGuiDragDropFlags_SourceAllowNullID flag.
+            if (!(flags & ImGuiDragDropFlags_SourceAllowNullID)) {
+                IM_ASSERT(0);
+                return false;
+            }
+
+            // Magic fallback to handle items with no assigned ID, e.g. Text(), Image()
+            // We build a throwaway ID based on current ID stack + relative AABB of items in window.
+            // THE IDENTIFIER WON'T SURVIVE ANY REPOSITIONING/RESIZINGG OF THE WIDGET, so if your
+            // widget moves your dragging operation will be canceled. We don't need to maintain/call
+            // ClearActiveID() as releasing the button will early out this function and trigger
+            // !ActiveIdIsAlive. Rely on keeping other window->LastItemXXX fields intact.
+            source_id = g.LastItemData.ID = window->GetIDFromRectangle(g.LastItemData.Rect);
+            KeepAliveID(source_id);
+            bool is_hovered = ItemHoverable(g.LastItemData.Rect, source_id, g.LastItemData.InFlags);
+            if (is_hovered && g.IO.MouseClicked[mouse_button]) {
+                SetActiveID(source_id, window);
+                FocusWindow(window);
+            }
+            if (g.ActiveId ==
+                source_id)  // Allow the underlying widget to display/return hovered during the
+                            // mouse release frame, else we would get a flicker.
+                g.ActiveIdAllowOverlap = is_hovered;
+        }
+        if (g.ActiveId != source_id)
+            return false;
+        source_parent_id   = window->IDStack.back();
+        source_drag_active = IsMouseDragging(mouse_button);
+
+        // Disable navigation and key inputs while dragging + cancel existing request if any
+        SetActiveIdUsingAllKeyboardKeys();
+    } else {
+        window             = NULL;
+        source_id          = ImHashStr("#SourceExtern");
+        source_drag_active = true;
+    }
+
+    IM_ASSERT(g.DragDropWithinTarget ==
+              false);  // Can't nest BeginDragDropSource() and BeginDragDropTarget()
+    return source_drag_active;
+}
+
 bool ImGui::TreeNodeEx(const char *label, ImGuiTreeNodeFlags flags, bool focused, bool *visible) {
     ImGuiWindow *window = ImGui::GetCurrentWindow();
     if (window->SkipItems)

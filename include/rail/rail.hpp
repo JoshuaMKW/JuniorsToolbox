@@ -23,7 +23,7 @@ namespace Toolbox::Rail {
         explicit Rail(std::string_view name) : m_name(name) {}
         Rail(std::string_view name, std::vector<node_ptr_t> nodes) : m_name(name), m_nodes(nodes) {
             for (auto &node : m_nodes) {
-                node->m_rail = this;
+                node->m_rail_uuid = getUUID();
             }
         }
         Rail(const Rail &other) = default;

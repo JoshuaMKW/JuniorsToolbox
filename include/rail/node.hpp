@@ -29,9 +29,9 @@ namespace Toolbox::Rail {
         RailNode(RailNode &&other)      = default;
         ~RailNode()                     = default;
 
-        [[nodiscard]] Rail *rail() const { return m_rail; }
-
         [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
+
+        [[nodiscard]] UUID64 getRailUUID() const { return m_rail_uuid; }
 
         [[nodiscard]] glm::vec3 getPosition() const;
         [[nodiscard]] void getPosition(s16 &x, s16 &y, s16 &z) const;
@@ -76,7 +76,7 @@ namespace Toolbox::Rail {
         Result<void, MetaError> setConnectionDistance(size_t connection, f32 distance);
 
     private:
-        Rail *m_rail;
+        UUID64 m_rail_uuid;
 
         UUID64 m_UUID64;
 

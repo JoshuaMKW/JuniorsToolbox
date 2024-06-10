@@ -105,24 +105,24 @@ namespace Toolbox {
             m_size = size;
         }
 
-        template <typename T> T &get(size_t at) {
+        template <typename T> T &get(size_t ofs) {
             TOOLBOX_CORE_ASSERT(m_buf);
-            return *reinterpret_cast<std::decay_t<T> *>(reinterpret_cast<char *>(m_buf) + at);
+            return *reinterpret_cast<std::decay_t<T> *>(reinterpret_cast<char *>(m_buf) + ofs);
         }
 
-        template <typename T> T get(size_t at) const {
+        template <typename T> T get(size_t ofs) const {
             TOOLBOX_CORE_ASSERT(m_buf);
-            return *reinterpret_cast<std::decay_t<T> *>(reinterpret_cast<char *>(m_buf) + at);
+            return *reinterpret_cast<std::decay_t<T> *>(reinterpret_cast<char *>(m_buf) + ofs);
         }
 
-        template <typename T> void set(size_t at, const T &value) {
+        template <typename T> void set(size_t ofs, const T &value) {
             TOOLBOX_CORE_ASSERT(m_buf);
-            *reinterpret_cast<std::decay_t<T> *>(reinterpret_cast<char *>(m_buf) + at) = value;
+            *reinterpret_cast<std::decay_t<T> *>(reinterpret_cast<char *>(m_buf) + ofs) = value;
         }
 
-        template <typename T> void set(size_t at, T &&value) {
+        template <typename T> void set(size_t ofs, T &&value) {
             TOOLBOX_CORE_ASSERT(m_buf);
-            *reinterpret_cast<std::decay_t<T> *>(reinterpret_cast<char *>(m_buf) + at) = value;
+            *reinterpret_cast<std::decay_t<T> *>(reinterpret_cast<char *>(m_buf) + ofs) = value;
         }
 
         template <typename T> bool goodFor() { return sizeof(T) <= m_size && m_buf != nullptr; }
