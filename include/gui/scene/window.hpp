@@ -86,7 +86,7 @@ namespace Toolbox::UI {
         void onRenderBody(TimeStep delta_time) override;
 
         void renderHierarchy();
-        void renderTree(RefPtr<Object::ISceneObject> node);
+        void renderTree(size_t node_index, RefPtr<Object::ISceneObject> node);
         void renderRailEditor();
         void renderScene(TimeStep delta_time);
         void renderDolphin(TimeStep delta_time);

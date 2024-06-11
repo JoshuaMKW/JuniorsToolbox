@@ -34,14 +34,25 @@ namespace Toolbox {
         void setRoot(RefPtr<Object::GroupSceneObject> root) { m_root = root; }
 
         RefPtr<Object::ISceneObject> findObject(std::string_view name) const {
+            if (m_root->getNameRef().name() == name) {
+                return m_root;
+            }
             return m_root->getChild(name);
         }
 
         RefPtr<Object::ISceneObject> findObject(const QualifiedName &name) const {
+            if (m_root->getQualifiedName() == name) {
+                return m_root;
+            }
             return m_root->getChild(name);
         }
 
-        RefPtr<Object::ISceneObject> findObject(UUID64 id) const { return m_root->getChild(id); }
+        RefPtr<Object::ISceneObject> findObject(UUID64 id) const {
+            if (m_root->getUUID() == id) {
+                return m_root;
+            }
+            return m_root->getChild(id);
+        }
 
         Result<void, SerialError> serialize(Serializer &out) const override {
             return m_root->serialize(out);

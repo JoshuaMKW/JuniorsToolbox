@@ -21,6 +21,8 @@
 #include "gui/settings.hpp"
 #include "gui/util.hpp"
 
+#include "gui/imgui_ext.hpp"
+
 #include "platform/capture.hpp"
 
 #include <lib/bStream/bstream.h>
@@ -418,7 +420,7 @@ void SceneWindow::renderHierarchy() {
 
         if (m_current_scene != nullptr) {
             auto root = m_current_scene->getObjHierarchy().getRoot();
-            renderTree(root);
+            renderTree(0, root);
         }
 
         ImGui::Spacing();
@@ -427,7 +429,7 @@ void SceneWindow::renderHierarchy() {
 
         if (m_current_scene != nullptr) {
             auto root = m_current_scene->getTableHierarchy().getRoot();
-            renderTree(root);
+            renderTree(0, root);
         }
     }
     ImGui::End();
@@ -438,7 +440,7 @@ void SceneWindow::renderHierarchy() {
     }
 }
 
-void SceneWindow::renderTree(RefPtr<Toolbox::Object::ISceneObject> node) {
+void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneObject> node) {
     constexpr auto dir_flags = ImGuiTreeNodeFlags_OpenOnArrow |
                                ImGuiTreeNodeFlags_OpenOnDoubleClick |
                                ImGuiTreeNodeFlags_SpanFullWidth;
@@ -476,10 +478,8 @@ void SceneWindow::renderTree(RefPtr<Toolbox::Object::ISceneObject> node) {
 
     if (node->isGroupObject()) {
         if (is_filtered_out) {
-            auto objects =
-                std::static_pointer_cast<Toolbox::Object::GroupSceneObject>(node)->getChildren();
-            for (auto &object : objects) {
-                renderTree(object);
+            for (size_t i = 0; i < node->getChildren().size(); ++i) {
+                renderTree(i, node->getChildren()[i]);
             }
         } else {
             if (node_visibility) {
@@ -494,6 +494,71 @@ void SceneWindow::renderTree(RefPtr<Toolbox::Object::ISceneObject> node) {
                 node_open = ImGui::TreeNodeEx(node_uid_str.c_str(),
                                               node->getParent() ? dir_flags : node_flags,
                                               node_already_clicked);
+            }
+
+            // Drag and drop for OBJECT
+            {
+                ImVec2 mouse_pos = ImGui::GetMousePos();
+                ImVec2 item_size = ImGui::GetItemRectSize();
+                ImVec2 item_pos  = ImGui::GetItemRectMin();
+
+                if (ImGui::BeginDragDropSource()) {
+                    Toolbox::Buffer buffer;
+                    saveMimeObject(buffer, node_index, get_shared_ptr(*node->getParent()));
+                    ImGui::SetDragDropPayload("toolbox/scene/object", buffer.buf(), buffer.size(),
+                                              ImGuiCond_Once);
+                    ImGui::Text("Object: %s", node->getNameRef().name().data());
+                    ImGui::EndDragDropSource();
+                }
+
+                ImGuiDropFlags drop_flags = ImGuiDropFlags_None;
+                if (mouse_pos.y < item_pos.y + (item_size.y / 4)) {
+                    drop_flags = ImGuiDropFlags_InsertBefore;
+                } else if (mouse_pos.y > item_pos.y + 3 * (item_size.y / 4)) {
+                    drop_flags = ImGuiDropFlags_InsertAfter;
+                } else {
+                    drop_flags = ImGuiDropFlags_InsertChild;
+                }
+
+                if (node->getParent() == nullptr) {
+                    drop_flags = ImGuiDropFlags_InsertChild;
+                }
+
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
+                            "toolbox/scene/object",
+                            ImGuiDragDropFlags_AcceptBeforeDelivery |
+                                ImGuiDragDropFlags_AcceptNoDrawDefaultRect |
+                                ImGuiDragDropFlags_SourceNoHoldToOpenOthers)) {
+
+                        ImGui::RenderDragDropTargetRect(
+                            ImGui::GetCurrentContext()->DragDropTargetRect,
+                            ImGui::GetCurrentContext()->DragDropTargetClipRect, drop_flags);
+
+                        if (payload->IsDelivery()) {
+                            Toolbox::Buffer buffer;
+                            buffer.setBuf(payload->Data, payload->DataSize);
+                            buffer.copyTo(m_drop_target_buffer);
+
+                            // Calculate index based on position relative to center
+                            switch (drop_flags) {
+                            case ImGuiDropFlags_InsertBefore:
+                                m_object_drop_target = node_index;
+                                m_object_parent_uuid = node->getParent()->getUUID();
+                                break;
+                            case ImGuiDropFlags_InsertAfter:
+                                m_object_drop_target = node_index + 1;
+                                m_object_parent_uuid = node->getParent()->getUUID();
+                                break;
+                            case ImGuiDropFlags_InsertChild:
+                                m_object_drop_target = node->getChildren().size();
+                                m_object_parent_uuid = node->getUUID();
+                                break;
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+                }
             }
 
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
@@ -523,10 +588,8 @@ void SceneWindow::renderTree(RefPtr<Toolbox::Object::ISceneObject> node) {
             renderHierarchyContextMenu(node_uid_str, node_info);
 
             if (node_open) {
-                auto objects = std::static_pointer_cast<Toolbox::Object::GroupSceneObject>(node)
-                                   ->getChildren();
-                for (auto &object : objects) {
-                    renderTree(object);
+                for (size_t i = 0; i < node->getChildren().size(); ++i) {
+                    renderTree(i, node->getChildren()[i]);
                 }
                 ImGui::TreePop();
             }
@@ -543,6 +606,56 @@ void SceneWindow::renderTree(RefPtr<Toolbox::Object::ISceneObject> node) {
             } else {
                 node_open =
                     ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_already_clicked);
+            }
+
+            // Drag and drop for OBJECT
+            {
+                ImVec2 mouse_pos = ImGui::GetMousePos();
+                ImVec2 item_size = ImGui::GetItemRectSize();
+                ImVec2 item_pos  = ImGui::GetItemRectMin();
+
+                if (ImGui::BeginDragDropSource()) {
+                    Toolbox::Buffer buffer;
+                    saveMimeObject(buffer, node_index, get_shared_ptr(*node->getParent()));
+                    ImGui::SetDragDropPayload("toolbox/scene/object", buffer.buf(), buffer.size(),
+                                              ImGuiCond_Once);
+                    ImGui::Text("Object: %s", node->getNameRef().name().data());
+                    ImGui::EndDragDropSource();
+                }
+
+                ImGuiDropFlags drop_flags = ImGuiDropFlags_None;
+                if (mouse_pos.y < item_pos.y + (item_size.y / 2)) {
+                    drop_flags = ImGuiDropFlags_InsertBefore;
+                } else {
+                    drop_flags = ImGuiDropFlags_InsertAfter;
+                }
+
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
+                            "toolbox/scene/object",
+                            ImGuiDragDropFlags_AcceptBeforeDelivery |
+                                ImGuiDragDropFlags_AcceptNoDrawDefaultRect |
+                                ImGuiDragDropFlags_SourceNoHoldToOpenOthers)) {
+
+                        ImGui::RenderDragDropTargetRect(
+                            ImGui::GetCurrentContext()->DragDropTargetRect,
+                            ImGui::GetCurrentContext()->DragDropTargetClipRect, drop_flags);
+
+                        if (payload->IsDelivery()) {
+                            Toolbox::Buffer buffer;
+                            buffer.setBuf(payload->Data, payload->DataSize);
+                            buffer.copyTo(m_drop_target_buffer);
+
+                            // Calculate index based on position relative to center
+                            m_object_drop_target = node_index;
+                            if (drop_flags == ImGuiDropFlags_InsertAfter) {
+                                m_object_drop_target++;
+                            }
+                            m_object_parent_uuid = node->getParent()->getUUID();
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
             }
 
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
@@ -2164,8 +2277,13 @@ void SceneWindow::saveMimeObject(Buffer &buffer, size_t index, RefPtr<ISceneObje
         return;
     }
 
-    TRY(Serializer::ObjectToBytes(*parent->getChildren()[index], buffer, 32))
-        .error([](const SerialError &err) { LogError(err); });
+    buffer.alloc(32);
+    buffer.set<bool>(0, true);  // Internal
+    buffer.set<u16>(1, index);  // Index
+    buffer.set<u64>(3, parent->getUUID());
+
+    /*TRY(Serializer::ObjectToBytes(*parent->getChildren()[index], buffer, 32))
+        .error([](const SerialError &err) { LogError(err); });*/
 }
 
 void SceneWindow::saveMimeRail(Buffer &buffer, size_t index) {
@@ -2199,48 +2317,75 @@ void SceneWindow::saveMimeRailNode(Buffer &buffer, size_t index, RefPtr<Rail::Ra
 }
 
 void SceneWindow::loadMimeObject(Buffer &buffer, size_t index, UUID64 parent_id) {
-    std::stringbuf str_buf;
-    Deserializer in(buffer, &str_buf);
+    bool is_internal = buffer.get<bool>(0);  // Internal
 
-    bool is_internal = in.read<bool>();  // Internal
+    u16 orig_index          = buffer.get<u16>(1);  // Index
+    UUID64 orig_parent_uuid = buffer.get<UUID64>(3);
 
-    u16 orig_index          = in.read<u16>();  // Index
-    UUID64 orig_parent_uuid = in.read<UUID64>();
-
-    // Get to the object data
-    in.seek(32, std::ios::beg);
-
-    auto result = ObjectFactory::create(in);
-    if (!result) {
-        LogError(result.error());
-        return;
-    }
-
-    RefPtr<ISceneObject> obj = std::move(result.value());
-    if (!obj) {
-        LogError(make_error<void>("Scene Hierarchy", "Failed to create object").error());
+    RefPtr<ISceneObject> parent = m_current_scene->getObjHierarchy().findObject(parent_id);
+    if (!parent) {
+        LogError(make_error<void>("Scene Hierarchy", "Failed to get parent object").error());
         return;
     }
 
     if (is_internal) {
         RefPtr<ISceneObject> orig_parent =
             m_current_scene->getObjHierarchy().findObject(orig_parent_uuid);
-        if (orig_parent) {
-            TRY(orig_parent->removeChild(orig_index)).error([](const ObjectGroupError &err) {
-                LogError(err);
-            });
+        if (!orig_parent) {
+            LogError(make_error<void>("Scene Hierarchy", "Failed to get original parent object")
+                         .error());
+            return;
         }
+        RefPtr<ISceneObject> obj = orig_parent->getChildren()[orig_index];
+        orig_parent->removeChild(orig_index)
+            .and_then([&]() {
+                parent->insertChild(index, obj);
+                return Result<void, ObjectGroupError>();
+            })
+            .or_else([](const ObjectGroupError &err) {
+                LogError(err);
+                return Result<void, ObjectGroupError>();
+            });
+        return;
     }
 
-    RefPtr<ISceneObject> orig_parent =
-        m_current_scene->getObjHierarchy().findObject(orig_parent_uuid);
-    if (orig_parent) {
-        TRY(orig_parent->insertChild(index, obj)).error([](const ObjectGroupError &err) {
-            LogError(err);
-        });
-    }
+    LogError(make_error<void>("Scene Hierarchy", "External object unsupported.").error());
 
     m_update_render_objs = true;
+    return;
+
+    //// Get to the object data
+    // in.seek(32, std::ios::beg);
+
+    // auto result = ObjectFactory::create(in);
+    // if (!result) {
+    //     LogError(result.error());
+    //     return;
+    // }
+
+    // RefPtr<ISceneObject> obj = std::move(result.value());
+    // if (!obj) {
+    //     LogError(make_error<void>("Scene Hierarchy", "Failed to create object").error());
+    //     return;
+    // }
+
+    // if (is_internal) {
+    //     RefPtr<ISceneObject> orig_parent =
+    //         m_current_scene->getObjHierarchy().findObject(orig_parent_uuid);
+    //     if (orig_parent) {
+    //         TRY(orig_parent->removeChild(orig_index)).error([](const ObjectGroupError &err) {
+    //             LogError(err);
+    //         });
+    //     }
+    // }
+
+    // RefPtr<ISceneObject> orig_parent =
+    //     m_current_scene->getObjHierarchy().findObject(orig_parent_uuid);
+    // if (orig_parent) {
+    //     TRY(orig_parent->insertChild(index, obj)).error([](const ObjectGroupError &err) {
+    //         LogError(err);
+    //     });
+    // }
 }
 
 void SceneWindow::loadMimeRail(Buffer &buffer, size_t index) {

@@ -1325,6 +1325,35 @@ bool ImGui::IsDragDropSource(ImGuiDragDropFlags flags) {
     return source_drag_active;
 }
 
+
+void ImGui::RenderDragDropTargetRect(const ImRect &bb, const ImRect &item_clip_rect, ImGuiDropFlags flags) {
+    ImGuiContext &g     = *GImGui;
+    ImGuiWindow *window = g.CurrentWindow;
+    ImRect bb_display   = bb;
+    bb_display.ClipWith(item_clip_rect);  // Clip THEN expand so we have a way to visualize that
+                                          // target is not entirely visible.
+    bb_display.Expand(3.5f);
+    bool push_clip_rect = !window->ClipRect.Contains(bb_display);
+    if (push_clip_rect)
+        window->DrawList->PushClipRectFullScreen();
+
+    if (flags == ImGuiDropFlags_None || flags == ImGuiDropFlags_InsertChild) {
+        window->DrawList->AddRect(bb_display.Min, bb_display.Max,
+                                  GetColorU32(ImGuiCol_DragDropTarget), 0.0f, ImDrawFlags_None, 2.0f);
+    } else if (flags == ImGuiDropFlags_InsertBefore) {
+        float y = bb_display.Min.y;
+        window->DrawList->AddLine(ImVec2(bb_display.Min.x, y), ImVec2(bb_display.Max.x, y),
+                                  GetColorU32(ImGuiCol_DragDropTarget), 2.0f);
+    } else if (flags == ImGuiDropFlags_InsertAfter) {
+        float y = bb_display.Max.y;
+        window->DrawList->AddLine(ImVec2(bb_display.Min.x, y), ImVec2(bb_display.Max.x, y),
+                                  GetColorU32(ImGuiCol_DragDropTarget), 2.0f);
+    }
+
+    if (push_clip_rect)
+        window->DrawList->PopClipRect();
+}
+
 bool ImGui::TreeNodeEx(const char *label, ImGuiTreeNodeFlags flags, bool focused, bool *visible) {
     ImGuiWindow *window = ImGui::GetCurrentWindow();
     if (window->SkipItems)
