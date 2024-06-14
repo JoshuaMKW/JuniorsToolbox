@@ -60,7 +60,7 @@ namespace Toolbox::UI {
     class SceneWindow final : public ImWindow {
     public:
         SceneWindow(const std::string &name);
-        ~SceneWindow();
+        ~SceneWindow() = default;
 
         enum class EditorWindow {
             NONE,

@@ -110,8 +110,6 @@ namespace Toolbox::UI {
         return make_scoped<SceneCreateRailEvent>(*this);
     }
 
-    SceneWindow::~SceneWindow() = default;
-
     SceneWindow::SceneWindow(const std::string &name) : ImWindow(name) {}
 
     bool SceneWindow::onLoadData(const std::filesystem::path &path) {
@@ -208,6 +206,21 @@ namespace Toolbox::UI {
         if (unsaved()) {
             TOOLBOX_WARN_V("[SCENE_WINDOW] Scene closed with unsaved changes ({}).", context());
         }
+
+        m_hierarchy_filter.Clear();
+        m_hierarchy_selected_nodes.clear();
+        m_selected_properties.clear();
+        m_properties_render_handler = renderEmptyProperties;
+
+        m_renderables.clear();
+        m_resource_cache = {};
+
+        m_rail_visible_map.clear();
+        m_rail_list_selected_nodes.clear();
+        m_rail_node_list_selected_nodes.clear();
+
+        m_drop_target_buffer.free();
+        m_current_scene.reset();
     }
 
     void SceneWindow::onImGuiUpdate(TimeStep delta_time) {
