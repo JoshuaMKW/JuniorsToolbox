@@ -2,11 +2,11 @@
 
 #include <array>
 #include <functional>
-#include <vector>
 #include <imgui.h>
+#include <vector>
 
+#include "core/error.hpp"
 #include "core/memory.hpp"
-#include "error.hpp"
 #include "gui/scene/nodeinfo.hpp"
 #include "objlib/template.hpp"
 
@@ -14,13 +14,21 @@ namespace Toolbox::UI {
 
     class CreateObjDialog {
     public:
-        using action_t = std::function<void(size_t,
-            std::string_view, const Object::Template &, std::string_view, SelectionNodeInfo<Object::ISceneObject>)>;
+        enum class InsertPolicy {
+            INSERT_BEFORE,
+            INSERT_AFTER,
+            INSERT_CHILD,
+        };
+
+        using action_t =
+            std::function<void(size_t, std::string_view, const Object::Template &, std::string_view,
+                               InsertPolicy, SelectionNodeInfo<Object::ISceneObject>)>;
         using cancel_t = std::function<void(SelectionNodeInfo<Object::ISceneObject>)>;
 
         CreateObjDialog()  = default;
         ~CreateObjDialog() = default;
 
+        void setInsertPolicy(InsertPolicy policy) { m_insert_policy = policy; }
         void setActionOnAccept(action_t on_accept) { m_on_accept = on_accept; }
         void setActionOnReject(cancel_t on_reject) { m_on_reject = on_reject; }
 
@@ -33,7 +41,7 @@ namespace Toolbox::UI {
         void render(SelectionNodeInfo<Object::ISceneObject> node_info);
 
     private:
-        bool m_open = false;
+        bool m_open    = false;
         bool m_opening = false;
 
         int m_template_index = -1;
@@ -44,6 +52,8 @@ namespace Toolbox::UI {
 
         std::array<char, 128> m_object_name = {};
 
+        InsertPolicy m_insert_policy = InsertPolicy::INSERT_BEFORE;
+
         action_t m_on_accept;
         cancel_t m_on_reject;
 
@@ -52,7 +62,8 @@ namespace Toolbox::UI {
 
     class RenameObjDialog {
     public:
-        using action_t = std::function<void(std::string_view, SelectionNodeInfo<Object::ISceneObject>)>;
+        using action_t =
+            std::function<void(std::string_view, SelectionNodeInfo<Object::ISceneObject>)>;
         using cancel_t = std::function<void(SelectionNodeInfo<Object::ISceneObject>)>;
 
         RenameObjDialog()  = default;
@@ -67,7 +78,7 @@ namespace Toolbox::UI {
             std::copy(cropped_name.begin(), cropped_name.end(), m_original_name.begin());
             std::copy(cropped_name.begin(), cropped_name.end(), m_object_name.begin());
             m_original_name.at(end_pos) = '\0';
-            m_object_name.at(end_pos) = '\0';
+            m_object_name.at(end_pos)   = '\0';
         }
 
         void setup();

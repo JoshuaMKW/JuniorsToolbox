@@ -7,7 +7,7 @@
 
 namespace Toolbox::Platform {
 
-    std::expected<bool, BaseError> IsServiceRunning(std::string_view name) {
+    Result<bool, BaseError> IsServiceRunning(std::string_view name) {
         // Open the Service Control Manager
         SC_HANDLE scm_handle = OpenSCManager(nullptr, nullptr, SC_MANAGER_ENUMERATE_SERVICE);
         if (!scm_handle) {

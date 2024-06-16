@@ -57,8 +57,8 @@ namespace Toolbox {
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override;
-        std::expected<void, SerialError> deserialize(Deserializer &in) override;
+        Result<void, SerialError> serialize(Serializer &out) const override;
+        Result<void, SerialError> deserialize(Deserializer &in) override;
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 

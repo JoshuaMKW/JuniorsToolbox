@@ -15,7 +15,7 @@
 
 #include "core/log.hpp"
 #include "core/types.hpp"
-#include "gui/clipboard.hpp"
+#include "core/clipboard.hpp"
 #include "gui/property/property.hpp"
 #include "gui/window.hpp"
 
@@ -25,9 +25,12 @@
 namespace Toolbox::UI {
 
     class LoggingWindow final : public SimpleWindow {
+    protected:
+        void appendMessageToPool(const Log::AppLogger::LogMessage &message);
+
     public:
         LoggingWindow() {
-            TOOLBOX_LOG_CALLBACK(appendMessageToPool);
+            TOOLBOX_LOG_CALLBACK(std::bind(&LoggingWindow::appendMessageToPool, this, std::placeholders::_1));
             TOOLBOX_INFO("Logger successfully started!");
         }
         ~LoggingWindow() = default;
@@ -37,8 +40,6 @@ namespace Toolbox::UI {
         }
 
     protected:
-        static void appendMessageToPool(const Log::AppLogger::LogMessage &message);
-
         void renderMenuBar() override;
         void renderBody(f32 delta_time) override;
 
@@ -82,5 +83,6 @@ namespace Toolbox::UI {
     private:
         Log::ReportLevel m_logging_level = Log::ReportLevel::INFO;
         uint32_t m_dock_space_id         = 0;
+        bool m_scroll_requested          = false;
     };
 }  // namespace Toolbox::UI

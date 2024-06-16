@@ -224,6 +224,37 @@ void ImGui::EndChildPanel() {
     s_panel_stack.pop_back();
 }
 
+bool ImGui::AlignedButton(const char *label, ImVec2 size, ImGuiButtonFlags flags) {
+    ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
+    ImVec2 text_size     = ImGui::CalcTextSize(label);
+
+    bool clicked = false;
+
+    ImGui::PushID(label);
+    {
+        ImVec2 button_pos = ImGui::GetCursorPos();
+        clicked = ImGui::ButtonEx("##button", size, flags);
+        ImVec2 button_end_pos = ImGui::GetCursorPos();
+        ImVec2 button_size = ImGui::GetItemRectSize();
+
+        ImGui::SameLine();
+
+        ImGui::SetCursorPos({
+            button_pos.x + button_size.x * 0.5f - text_size.x * 0.5f,
+            button_pos.y + button_size.y * 0.5f - text_size.y * 0.5f - frame_padding.y * 0.5f
+        });
+        if (GImGui->DisabledStackSize > 0) {
+            ImGui::TextDisabled(label);
+        } else {
+            ImGui::Text(label);
+        }
+        ImGui::SetCursorPos(button_end_pos);
+    }
+    ImGui::PopID();
+
+    return clicked;
+}
+
 static inline ImGuiInputTextFlags InputScalar_DefaultCharsFilter(ImGuiDataType data_type,
                                                                  const char *format) {
     if (data_type == ImGuiDataType_Float || data_type == ImGuiDataType_Double)

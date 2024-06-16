@@ -4,7 +4,7 @@
 #include <functional>
 #include <vector>
 
-#include "error.hpp"
+#include "core/error.hpp"
 #include "gui/scene/nodeinfo.hpp"
 #include "rail/rail.hpp"
 #include <imgui.h>

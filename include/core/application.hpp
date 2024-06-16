@@ -13,11 +13,22 @@
 #include "gui/window.hpp"
 
 #include "clipboard.hpp"
+#include "dolphin/process.hpp"
 
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#undef GLFW_INCLUDE_NONE
+
 #include <thread>
 
-namespace Toolbox::UI {
+using namespace Toolbox::Dolphin;
+
+#define EXIT_CODE_OK 0
+#define EXIT_CODE_FAILED_RUNTIME  (1 << 28) | 1
+#define EXIT_CODE_FAILED_SETUP    (1 << 28) | 2
+#define EXIT_CODE_FAILED_TEARDOWN (1 << 28) | 3
+
+namespace Toolbox {
 
     class MainApplication {
     protected:
@@ -43,6 +54,12 @@ namespace Toolbox::UI {
         }
         TypedDataClipboard<SelectionNodeInfo<Rail::RailNode>> &getSceneRailNodeClipboard() {
             return m_rail_node_clipboard;
+        }
+
+        DolphinCommunicator &getDolphinCommunicator() { return m_dolphin_communicator; }
+
+        std::filesystem::path getProjectRoot() const {
+            return m_project_root;
         }
 
         ImVec2 windowScreenPos() {
@@ -75,6 +92,10 @@ namespace Toolbox::UI {
         TypedDataClipboard<SelectionNodeInfo<Rail::Rail>> m_rail_clipboard;
         TypedDataClipboard<SelectionNodeInfo<Rail::RailNode>> m_rail_node_clipboard;
 
+        std::filesystem::path m_project_root = std::filesystem::current_path();
+        std::filesystem::path m_load_path = std::filesystem::current_path();
+        std::filesystem::path m_save_path = std::filesystem::current_path();
+
         GLFWwindow *m_render_window;
         std::vector<RefPtr<IWindow>> m_windows;
 
@@ -87,6 +108,7 @@ namespace Toolbox::UI {
         bool m_is_dir_dialog_open  = false;
 
         std::thread m_thread_templates_init;
+        DolphinCommunicator m_dolphin_communicator;
     };
 
-}  // namespace Toolbox::UI
+}  // namespace Toolbox

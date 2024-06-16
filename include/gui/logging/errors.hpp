@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error.hpp"
+#include "core/error.hpp"
 #include "core/log.hpp"
 #include "objlib/errors.hpp"
 #include "objlib/meta/errors.hpp"

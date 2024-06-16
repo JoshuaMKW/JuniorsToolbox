@@ -28,6 +28,14 @@ file(GLOB TOOLBOX_SRC
     "include/bti/*.hpp"
     "src/core/*.cpp"
     "include/core/*.hpp"
+    "src/dolphin/*.cpp"
+    "include/dolphin/*.hpp"
+    "src/dolphin/interpreter/*.cpp"
+    "include/dolphin/interpreter/*.hpp"
+    "src/dolphin/interpreter/instructions/*.cpp"
+    "include/dolphin/interpreter/instructions/*.hpp"
+    "src/game/*.cpp"
+    "include/game/*.hpp"
     "src/objlib/*.cpp"
     "include/objlib/*.hpp"
     "src/platform/*.cpp"
@@ -90,7 +98,7 @@ if (WIN32)
     target_link_libraries(JuniorsToolbox PRIVATE Advapi32)
 endif()
 
-target_compile_definitions(JuniorsToolbox PRIVATE IMGUI_DEFINE_MATH_OPERATORS)
+target_compile_definitions(JuniorsToolbox PRIVATE NOMINMAX IMGUI_DEFINE_MATH_OPERATORS)
 
 target_include_directories(JuniorsToolbox PRIVATE "include" "lib" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/libbti" "lib/ImGuiFileDialog" "lib/glfw")
 

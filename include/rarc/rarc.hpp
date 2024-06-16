@@ -2,7 +2,7 @@
 
 #include "core/memory.hpp"
 #include "smart_resource.hpp"
-#include "error.hpp"
+#include "core/error.hpp"
 #include "fsystem.hpp"
 #include "serial.hpp"
 #include <array>
@@ -84,7 +84,7 @@ namespace Toolbox::RARC {
 
     public:
         static bool isMagicValid(u32 magic);
-        static std::expected<ResourceArchive, FSError>
+        static Result<ResourceArchive, FSError>
         createFromPath(const std::filesystem::path root);
 
         [[nodiscard]] bool isMatchingOutput() const { return m_keep_matching; }
@@ -106,34 +106,34 @@ namespace Toolbox::RARC {
         [[nodiscard]] node_it findNode(const std::filesystem::path &path);
         [[nodiscard]] const_node_it findNode(const std::filesystem::path &path) const;
 
-        std::expected<void, FSError> extractToPath(const std::filesystem::path &path) const;
+        Result<void, FSError> extractToPath(const std::filesystem::path &path) const;
 
-        std::expected<void, FSError> importFiles(const std::vector<std::filesystem::path> &files,
+        Result<void, FSError> importFiles(const std::vector<std::filesystem::path> &files,
                                                  node_it parent);
-        std::expected<void, FSError> importFolder(const std::filesystem::path &folder,
+        Result<void, FSError> importFolder(const std::filesystem::path &folder,
                                                   node_it parent);
 
-        std::expected<node_it, BaseError> createFolder(node_it parent, std::string_view name);
-        std::expected<node_it, BaseError> createFile(node_it parent, std::string_view name,
+        Result<node_it, BaseError> createFolder(node_it parent, std::string_view name);
+        Result<node_it, BaseError> createFile(node_it parent, std::string_view name,
                                                      std::span<const char> data);
 
-        std::expected<void, BaseError> removeNodes(std::vector<Node> &nodes);
-        std::expected<node_it, FSError> replaceNode(node_it old_node, const std::filesystem::path &path);
+        Result<void> removeNodes(std::vector<Node> &nodes);
+        Result<node_it, FSError> replaceNode(node_it old_node, const std::filesystem::path &path);
 
-        std::expected<void, FSError> extractNodeToFolder(const_node_it node,
+        Result<void, FSError> extractNodeToFolder(const_node_it node,
                                                          const std::filesystem::path &folder);
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const;
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override;
-        std::expected<void, SerialError> deserialize(Deserializer &in) override;
+        Result<void, SerialError> serialize(Serializer &out) const override;
+        Result<void, SerialError> deserialize(Deserializer &in) override;
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
     protected:
-        std::expected<void, BaseError> recalculateIDs();
+        Result<void> recalculateIDs();
 
     private:
         std::string m_name        = "(null)";

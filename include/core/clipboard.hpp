@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "error.hpp"
+#include "core/error.hpp"
 #include "tristate.hpp"
 
 namespace Toolbox::UI {
@@ -12,7 +12,7 @@ namespace Toolbox::UI {
     struct ClipboardError : public BaseError {};
 
     template <typename _Ret>
-    inline std::expected<_Ret, ClipboardError> make_clipboard_error(std::string_view reason) {
+    inline Result<_Ret, ClipboardError> make_clipboard_error(std::string_view reason) {
         if (reason.empty()) {
             reason = "Unknown error occured";
         }
@@ -35,8 +35,8 @@ namespace Toolbox::UI {
             return s_clipboard;
         }
 
-        std::expected<std::string, ClipboardError> getText();
-        std::expected<void, ClipboardError> setText(const std::string &text);
+        Result<std::string, ClipboardError> getText();
+        Result<void, ClipboardError> setText(const std::string &text);
     };
 
     class DataClipboard {
@@ -61,18 +61,18 @@ namespace Toolbox::UI {
             if (m_target_state.first != target) {
                 return false;
             }
-            m_target_state.second = TriState::TRUE;
+            m_target_state.second = TriState::TS_TRUE;
         }
 
         [[nodiscard]] bool rejectTarget(std::string_view target) {
             if (m_target_state.first != target) {
                 return false;
             }
-            m_target_state.second = TriState::FALSE;
+            m_target_state.second = TriState::TS_FALSE;
         }
 
         void setTarget(std::string_view target) {
-            m_target_state = {std::string(target), TriState::INDETERMINATE};
+            m_target_state = {std::string(target), TriState::TS_INDETERMINATE};
         }
 
         void setData(void *data) {
@@ -101,18 +101,18 @@ namespace Toolbox::UI {
             if (m_target_state.first != target) {
                 return false;
             }
-            m_target_state.second = TriState::TRUE;
+            m_target_state.second = TriState::TS_TRUE;
         }
 
         [[nodiscard]] bool rejectTarget(std::string_view target) {
             if (m_target_state.first != target) {
                 return false;
             }
-            m_target_state.second = TriState::FALSE;
+            m_target_state.second = TriState::TS_FALSE;
         }
 
         void setTarget(std::string_view target) {
-            m_target_state = {std::string(target), TriState::INDETERMINATE};
+            m_target_state = {std::string(target), TriState::TS_INDETERMINATE};
         }
 
         void setData(const _DataT &data) { m_data = {data}; }

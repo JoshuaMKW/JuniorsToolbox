@@ -8,7 +8,10 @@ namespace Toolbox::UI {
 
     class SettingsWindow : public SimpleWindow {
     public:
-        SettingsWindow() : SimpleWindow() {}
+        SettingsWindow() : SimpleWindow() {
+            m_dolphin_path_input.fill('\0');
+            m_profile_create_input.fill('\0');
+        }
         ~SettingsWindow() override = default;
 
         ImGuiWindowFlags flags() const override {
@@ -52,7 +55,10 @@ namespace Toolbox::UI {
     private:
         bool m_is_making_profile = false;
         bool m_is_profile_focused_yet = false;
+        bool m_is_path_dialog_opening = false;
+        bool m_is_path_dialog_open    = false;
         std::array<char, 128> m_profile_create_input;
+        std::array<char, 512> m_dolphin_path_input;
     };
 
 }  // namespace Toolbox::UI

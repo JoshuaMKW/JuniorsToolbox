@@ -79,7 +79,9 @@ namespace Toolbox::UI {
                                             return template_type == better_obj;
                                         });
                         if (is_better_object) {
-                            m_template_index = -1;
+                            if (is_selected) {
+                                m_template_index = -1;
+                            }
                             continue;
                         }
                     }
@@ -182,9 +184,9 @@ namespace Toolbox::UI {
             }
 
             if (ImGui::Button("Create")) {
-                m_on_accept(0, proposed_name, *m_templates.at(m_template_index),
+                m_on_accept(node_info.m_selection_index, proposed_name, *m_templates.at(m_template_index),
                             m_templates.at(m_template_index)->wizards().at(m_wizard_index).m_name,
-                            node_info);
+                            m_insert_policy, node_info);
                 m_open = false;
             }
 
@@ -215,7 +217,7 @@ namespace Toolbox::UI {
             ImVec4 name_state_color    = {0.2f, 0.8f, 0.2f, 1.0f};
 
             if (this_parent) {
-                auto children = std::move(this_parent->getChildren().value());
+                auto children = std::move(this_parent->getChildren());
                 auto sibling_it =
                     std::find_if(children.begin(), children.end(), [&](const auto &child) {
                         return child->getNameRef().name() == proposed_name;

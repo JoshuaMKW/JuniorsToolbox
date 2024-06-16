@@ -27,7 +27,7 @@ namespace Toolbox {
     }
 
     bool SettingsManager::save() {
-        auto result       = saveProfiles();
+        auto result = saveProfiles();
         if (!result) {
             UI::logSerialError(result.error());
             return false;
@@ -46,8 +46,7 @@ namespace Toolbox {
         return true;
     }
 
-    std::expected<void, SerialError>
-    SettingsManager::loadProfiles() {
+    Result<void, SerialError> SettingsManager::loadProfiles() {
         auto path_result = Toolbox::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
             return {};
@@ -93,6 +92,8 @@ namespace Toolbox {
                 settings.m_far_plane            = j["Camera Far Plane"];
 
                 // Advanced
+                settings.m_dolphin_path              = std::filesystem::path(std::string(j["Dolphin Path"]));
+                settings.m_dolphin_refresh_rate      = j["Dolphin Refresh Rate"];
                 settings.m_is_template_cache_allowed = j["Cache Object Templates"];
                 settings.m_log_to_cout_cerr          = j["Log To Terminal"];
             });
@@ -118,8 +119,7 @@ namespace Toolbox {
         return {};
     }
 
-    std::expected<void, SerialError>
-    SettingsManager::saveProfiles() {
+    Result<void, SerialError> SettingsManager::saveProfiles() {
         auto path_result = Toolbox::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
             TOOLBOX_WARN("Folder \"Profiles\" not found, generating the folder now.");
@@ -131,48 +131,7 @@ namespace Toolbox {
         }
 
         for (auto &[key, value] : m_settings_profiles) {
-            std::filesystem::path child_path = m_profile_path / (key + ".json");
-            std::ofstream out_stream(child_path, std::ios::out);
-
-            json_t profile_json;
-            auto result = tryJSON(profile_json, [&](json_t &j) {
-                // General
-                j["Include Better Objects"] = value.m_is_better_obj_allowed;
-                j["Backup File On Save"]    = value.m_is_file_backup_allowed;
-
-                // Control
-                j["Gizmo Translate Mode"] =
-                    UI::KeyBindToString(value.m_gizmo_translate_mode_keybind);
-                j["Gizmo Rotate Mode"] = UI::KeyBindToString(value.m_gizmo_rotate_mode_keybind);
-                j["Gizmo Scale Mode"]  = UI::KeyBindToString(value.m_gizmo_scale_mode_keybind);
-
-                // UI
-                j["App Theme"]   = value.m_gui_theme;
-                j["Font Family"] = value.m_font_family;
-                j["Font Size"]   = value.m_font_size;
-
-                // Preview
-                j["Simple Rendering"]   = value.m_is_rendering_simple;
-                j["Show Origin Point"]  = value.m_is_show_origin_point;
-                j["Unique Rail Colors"] = value.m_is_unique_rail_color;
-                j["Camera FOV"]         = value.m_camera_fov;
-                j["Camera Speed"]       = value.m_camera_speed;
-                j["Camera Sensitivity"] = value.m_camera_sensitivity;
-                j["Camera Near Plane"]  = value.m_near_plane;
-                j["Camera Far Plane"]   = value.m_far_plane;
-
-                // Advanced
-                j["Cache Object Templates"] = value.m_is_template_cache_allowed;
-                j["Log To Terminal"]        = value.m_log_to_cout_cerr;
-            });
-
-            if (!result) {
-                JSONError &err = result.error();
-                return make_serial_error<void>(err.m_message, err.m_reason, err.m_byte,
-                                               child_path.string());
-            }
-
-            out_stream << profile_json;
+            saveProfile(key, value);
         }
 
         std::filesystem::path child_path = m_profile_path / "profile.txt";
@@ -182,13 +141,13 @@ namespace Toolbox {
         return {};
     }
 
-    std::expected<void, SerialError> SettingsManager::addProfile(std::string_view name,
-                                                                 const AppSettings &profile) {
+    Result<void, SerialError> SettingsManager::addProfile(std::string_view name,
+                                                          const AppSettings &profile) {
         m_settings_profiles[std::string(name)] = profile;
         return saveProfile(name, profile);
     }
 
-    std::expected<void, SerialError> SettingsManager::removeProfile(std::string_view name) {
+    Result<void, SerialError> SettingsManager::removeProfile(std::string_view name) {
         m_settings_profiles.erase(std::string(name));
 
         auto path_result = Toolbox::is_directory(m_profile_path);
@@ -202,7 +161,7 @@ namespace Toolbox {
         }
 
         std::filesystem::path child_path = m_profile_path / (std::string(name) + ".json");
-        auto result = Toolbox::remove(child_path);
+        auto result                      = Toolbox::remove(child_path);
         if (!result) {
             TOOLBOX_ERROR("Failed to remove deleted profile from Folder \"Profiles\"");
         }
@@ -212,7 +171,8 @@ namespace Toolbox {
         return {};
     }
 
-    std::expected<void, SerialError> SettingsManager::saveProfile(std::string_view name, const AppSettings &profile) {
+    Result<void, SerialError> SettingsManager::saveProfile(std::string_view name,
+                                                           const AppSettings &profile) {
         auto path_result = Toolbox::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
             TOOLBOX_WARN("Folder \"Profiles\" not found, generating the folder now.");
@@ -253,6 +213,8 @@ namespace Toolbox {
             j["Camera Far Plane"]   = profile.m_far_plane;
 
             // Advanced
+            j["Dolphin Path"]           = profile.m_dolphin_path.string();
+            j["Dolphin Refresh Rate"]   = profile.m_dolphin_refresh_rate;
             j["Cache Object Templates"] = profile.m_is_template_cache_allowed;
             j["Log To Terminal"]        = profile.m_log_to_cout_cerr;
         });

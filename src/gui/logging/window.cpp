@@ -1,5 +1,7 @@
-#include "gui/logging/window.hpp"
+#include <cmath>
+
 #include "gui/font.hpp"
+#include "gui/logging/window.hpp"
 
 static std::string s_message_pool;
 
@@ -23,14 +25,15 @@ namespace Toolbox::UI {
                                           message.m_indentation * 4 + message.m_message.size());
             break;
         }
+        m_scroll_requested = (int)m_logging_level <= (int)message.m_level;
     }
 
     void LoggingWindow::renderMenuBar() {
         auto &logger = Log::AppLogger::instance();
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("Verbosity", true)) {
-                bool info_active = m_logging_level == Log::ReportLevel::INFO;
-                bool warn_active = m_logging_level == Log::ReportLevel::WARNING;
+                bool info_active  = m_logging_level == Log::ReportLevel::INFO;
+                bool warn_active  = m_logging_level == Log::ReportLevel::WARNING;
                 bool error_active = m_logging_level == Log::ReportLevel::ERROR;
                 if (ImGui::Checkbox("Info", &info_active)) {
                     m_logging_level = Log::ReportLevel::INFO;
@@ -89,9 +92,15 @@ namespace Toolbox::UI {
             ImGui::PushFont(mono_font);
         }
 
-        if (ImGui::BeginChild(getWindowChildUID(*this, "Log View").c_str(), {},
-                              false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
-            for (auto &message : Log::AppLogger::instance().messages()) {
+        if (ImGui::BeginChild(getWindowChildUID(*this, "Log View").c_str(), {}, false,
+                              ImGuiWindowFlags_AlwaysUseWindowPadding)) {
+            bool is_auto_scroll_mode = ImGui::GetScrollMaxY() - ImGui::GetScrollY() < 12.0f;
+
+            auto &messages           = Log::AppLogger::instance().messages();
+            size_t begin             = (size_t)std::max<s64>(
+                0, messages.size() - 5000);  // Have up to 5000 messages at once displayed
+            for (size_t i = begin; i < messages.size(); ++i) {
+                auto &message = messages[i];
                 switch (message.m_level) {
                 case Log::ReportLevel::LOG:
                     if (m_logging_level != Log::ReportLevel::LOG)
@@ -117,6 +126,12 @@ namespace Toolbox::UI {
                                        message.m_message.c_str());
                     break;
                 }
+            }
+
+            if (m_scroll_requested) {
+                if (is_auto_scroll_mode)
+                    ImGui::SetScrollHereY(1.0f);
+                m_scroll_requested = false;
             }
         }
         ImGui::EndChild();

@@ -1,4 +1,4 @@
-#include "gui/application.hpp"
+#include "core/application.hpp"
 #include "gui/IconsForkAwesome.h"
 #include "gui/font.hpp"
 #include "gui/input.hpp"
@@ -25,11 +25,12 @@
 #include <imgui_internal.h>
 
 #include "core/core.hpp"
+#include "dolphin/hook.hpp"
 #include "gui/scene/ImGuizmo.h"
 
 // void ImGuiSetupTheme(bool, float);
 
-namespace Toolbox::UI {
+namespace Toolbox {
 
     int MainApplication::run() {
         Clock::time_point lastFrameTime, thisFrameTime;
@@ -179,6 +180,8 @@ namespace Toolbox::UI {
 
         determineEnvironmentConflicts();
 
+        m_dolphin_communicator.start();
+
         return true;
     }
 
@@ -193,6 +196,8 @@ namespace Toolbox::UI {
         J3DUniformBufferObject::DestroyUBO();
 
         m_windows.clear();
+
+        m_dolphin_communicator.kill();
 
         return true;
     }
@@ -336,8 +341,8 @@ namespace Toolbox::UI {
         ImGui::EndMainMenuBar();
 
         if (m_is_dir_dialog_open) {
-            ImGuiFileDialog::Instance()->OpenDialog("OpenDirDialog", "Choose Directory", nullptr,
-                                                    "", "");
+            ImGuiFileDialog::Instance()->OpenDialog("OpenDirDialog", "Choose Project Path", nullptr,
+                                                    m_load_path.string(), "");
         }
 
         if (ImGuiFileDialog::Instance()->Display("OpenDirDialog")) {
@@ -356,6 +361,8 @@ namespace Toolbox::UI {
                     return;
                 }
 
+                m_load_path = path;
+
                 if (path.filename() == "scene") {
                     auto scene_window = make_referable<SceneWindow>();
 
@@ -373,6 +380,19 @@ namespace Toolbox::UI {
                     }
                     scene_window->open();
                     m_windows.push_back(scene_window);
+                } else {
+                    auto sys_path   = std::filesystem::path(path) / "sys";
+                    auto files_path = std::filesystem::path(path) / "files";
+
+                    auto sys_result   = Toolbox::is_directory(sys_path);
+                    auto files_result = Toolbox::is_directory(files_path);
+
+                    if ((sys_result && sys_result.value()) &&
+                        (files_result && files_result.value())) {
+                        // TODO: Open project folder view
+                        m_project_root = path;
+                        TOOLBOX_INFO_V("Project root: {}", m_project_root.string());
+                    }
                 }
             }
         }
@@ -395,6 +415,7 @@ namespace Toolbox::UI {
                 if (!file_result.value()) {
                     return;
                 }
+                m_load_path = path.parent_path();
 
                 if (path.extension() == ".szs" || path.extension() == ".arc") {
                     auto scene_window = make_referable<SceneWindow>();
@@ -480,7 +501,7 @@ namespace Toolbox::UI {
         return true;
     }
 
-}  // namespace Toolbox::UI
+}  // namespace Toolbox
 
 // void ImGuiSetupTheme(bool bStyleDark_, float alpha_) {
 //     ImGuiStyle &style = ImGui::GetStyle();

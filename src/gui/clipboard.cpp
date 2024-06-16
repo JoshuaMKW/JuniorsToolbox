@@ -1,4 +1,4 @@
-#include "gui/clipboard.hpp"
+#include "core/clipboard.hpp"
 
 #ifdef WIN32
 #include <Windows.h>
@@ -11,7 +11,7 @@ namespace Toolbox::UI {
     SystemClipboard::SystemClipboard() {}
     SystemClipboard::~SystemClipboard() {}
 
-    std::expected<std::string, ClipboardError> SystemClipboard::getText() {
+    Result<std::string, ClipboardError> SystemClipboard::getText() {
 #ifdef WIN32
         if (!OpenClipboard(nullptr)) {
             return make_clipboard_error<std::string>("Failed to open the clipboard!");
@@ -41,7 +41,7 @@ namespace Toolbox::UI {
 #else
 #endif
     }
-    std::expected<void, ClipboardError> SystemClipboard::setText(const std::string &text) {
+    Result<void, ClipboardError> SystemClipboard::setText(const std::string &text) {
 #ifdef WIN32
         if (!OpenClipboard(nullptr)) {
             return make_clipboard_error<void>("Failed to open the clipboard!");

@@ -38,16 +38,16 @@ namespace Toolbox::Rail {
 
         [[nodiscard]] u32 getFlags() const;
 
-        [[nodiscard]] std::expected<s16, MetaError> getValue(size_t index) const;
+        [[nodiscard]] Result<s16, MetaError> getValue(size_t index) const;
 
         [[nodiscard]] size_t getDataSize() const { return 68; }
 
         [[nodiscard]] u16 getConnectionCount() const;
-        [[nodiscard]] std::expected<s16, MetaError> getConnectionValue(size_t index) const;
-        [[nodiscard]] std::expected<f32, MetaError> getConnectionDistance(size_t index) const;
+        [[nodiscard]] Result<s16, MetaError> getConnectionValue(size_t index) const;
+        [[nodiscard]] Result<f32, MetaError> getConnectionDistance(size_t index) const;
 
-        std::expected<void, SerialError> serialize(Serializer &out) const override;
-        std::expected<void, SerialError> deserialize(Deserializer &in) override;
+        Result<void, SerialError> serialize(Serializer &out) const override;
+        Result<void, SerialError> deserialize(Deserializer &in) override;
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
@@ -63,17 +63,17 @@ namespace Toolbox::Rail {
     protected:
         void setFlags(u32 flags);
 
-        std::expected<void, MetaError> setValue(size_t index, s16 value);
+        Result<void, MetaError> setValue(size_t index, s16 value);
 
         void setPosition(const glm::vec3 &position);
         void setPosition(s16 x, s16 y, s16 z) { setPosition({x, y, z}); }
 
         void setConnectionCount(u16 count);
-        std::expected<void, MetaError> setConnectionValue(size_t index, s16 value);
+        Result<void, MetaError> setConnectionValue(size_t index, s16 value);
 
-        std::expected<void, MetaError> setConnectionDistance(size_t connection,
+        Result<void, MetaError> setConnectionDistance(size_t connection,
                                                              const glm::vec3 &to_pos);
-        std::expected<void, MetaError> setConnectionDistance(size_t connection, f32 distance);
+        Result<void, MetaError> setConnectionDistance(size_t connection, f32 distance);
 
     private:
         Rail *m_rail;

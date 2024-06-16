@@ -45,9 +45,9 @@ namespace Toolbox::Object {
         }
     }
 
-    std::expected<void, SerialError> Template::serialize(Serializer &out) const { return {}; }
+    Result<void, SerialError> Template::serialize(Serializer &out) const { return {}; }
 
-    std::expected<void, SerialError> Template::deserialize(Deserializer &in) {
+    Result<void, SerialError> Template::deserialize(Deserializer &in) {
         json_t template_json;
 
         auto result = tryJSON(template_json, [&](json_t &j) {
@@ -82,7 +82,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::expected<void, JSONError> Template::loadFromJSON(const json_t &the_json) {
+    Result<void, JSONError> Template::loadFromJSON(const json_t &the_json) {
         auto result = tryJSON(the_json, [&](const json_t &j) {
             const json_t &member_data = j["Members"];
             const json_t &struct_data = j["Structs"];
@@ -442,7 +442,7 @@ namespace Toolbox::Object {
         return;
     }
 
-    std::expected<void, FSError> TemplateFactory::initialize() {
+    Result<void, FSError> TemplateFactory::initialize() {
         auto cwd_result = Toolbox::current_path();
         if (!cwd_result) {
             return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
@@ -476,7 +476,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::expected<void, FSError> TemplateFactory::loadFromCacheBlob() {
+    Result<void, FSError> TemplateFactory::loadFromCacheBlob() {
         auto cwd_result = Toolbox::current_path();
         if (!cwd_result) {
             return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
@@ -514,7 +514,7 @@ namespace Toolbox::Object {
 
     static std::mutex s_templates_mutex;
 
-    std::expected<void, FSError> TemplateFactory::saveToCacheBlob() {
+    Result<void, FSError> TemplateFactory::saveToCacheBlob() {
         auto cwd_result = Toolbox::current_path();
         if (!cwd_result) {
             return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});

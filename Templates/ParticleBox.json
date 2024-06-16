@@ -45,35 +45,37 @@
       }
     },
     "Wizard": {
-      "Transform": [
-        [
-          0,
-          0,
-          0
+      "Default": {
+        "Transform": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ]
         ],
-        [
-          0,
-          0,
-          0
-        ],
-        [
-          1,
-          1,
-          1
-        ]
-      ],
-      "Character": "",
-      "LightCount": 0,
-      "LightArray": {
-        "ID": 0,
-        "Name": "LightX"
-      },
-      "ParticleName": "((null))",
-      "ParticleID": -1,
-      "SpawnRate": 15,
-      "SpawnScale": 1.0,
-      "Shape": 0,
-      "Strict": false
+        "Character": "",
+        "LightCount": 0,
+        "LightArray": {
+          "ID": 0,
+          "Name": "LightX"
+        },
+        "ParticleName": "((null))",
+        "ParticleID": -1,
+        "SpawnRate": 15,
+        "SpawnScale": 1.0,
+        "Shape": 0,
+        "Strict": false
+      }
     },
     "Rendering": {}
   }
