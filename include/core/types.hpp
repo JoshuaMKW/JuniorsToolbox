@@ -63,6 +63,11 @@ namespace Toolbox {
     static_assert(sizeof(endian_swapped_t<f32>) == sizeof(f32));
     static_assert(sizeof(endian_swapped_t<f64>) == sizeof(f64));
 
+    template <typename _Enum>
+    constexpr auto raw_enum(_Enum e) -> decltype(auto) {
+        return static_cast<std::underlying_type_t<_Enum>>(e);
+    }
+
 }  // namespace Toolbox
 
 #define TOOLBOX_BITWISE_ENUM(EnumType)                                                             \

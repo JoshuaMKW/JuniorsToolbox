@@ -67,7 +67,7 @@ namespace Toolbox::Platform {
             std::string window_name;
             window_name.resize(256);
 
-            if (GetWindowText(hwnd, window_name.data(), window_name.size()) == 0) {
+            if (GetWindowText(hwnd, window_name.data(), (int)window_name.size()) == 0) {
                 continue;
             }
 

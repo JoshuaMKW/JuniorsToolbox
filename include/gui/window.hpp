@@ -19,96 +19,49 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "gui/layer/imlayer.hpp"
+
 namespace Toolbox::UI {
 
-    class IWindow : public IUnique {
+    class ImWindow : public ImProcessLayer {
     protected:
-        static ImGuiID s_next_window_uid;
-
-        virtual void renderMenuBar()            = 0;
-        virtual void renderBody(f32 delta_time) = 0;
-
-        virtual void onDeleteKey()   = 0;
-        virtual void onPageDownKey() = 0;
-        virtual void onPageUpKey()   = 0;
-        virtual void onHomeKey()     = 0;
+        virtual ImGuiID onBuildDockspace() { return std::numeric_limits<ImGuiID>::max(); }
+        virtual void onRenderDockspace();
+        virtual void onRenderMenuBar() {}
+        virtual void onRenderBody(TimeStep delta_time) {}
 
     public:
-        virtual ~IWindow() = default;
+        explicit ImWindow(const std::string &name) : ImProcessLayer(name) {}
+        ImWindow(const std::string &name, std::optional<ImVec2> default_size)
+            : ImProcessLayer(name), m_default_size(default_size) {}
+        ImWindow(const std::string &name, std::optional<ImVec2> min_size,
+                 std::optional<ImVec2> max_size)
+            : ImProcessLayer(name), m_min_size(min_size), m_max_size(max_size) {}
+        ImWindow(const std::string &name, std::optional<ImVec2> default_size,
+                 std::optional<ImVec2> min_size, std::optional<ImVec2> max_size)
+            : ImProcessLayer(name), m_default_size(default_size), m_min_size(min_size),
+              m_max_size(max_size) {}
+        ImWindow(const std::string &name, std::optional<ImVec2> default_size,
+                 std::optional<ImVec2> min_size, std::optional<ImVec2> max_size,
+                 ImGuiWindowClass window_class)
+            : ImProcessLayer(name), m_default_size(default_size), m_min_size(min_size),
+              m_max_size(max_size), m_window_class(window_class) {}
+        ImWindow(const std::string &name, std::optional<ImVec2> default_size,
+                 std::optional<ImVec2> min_size, std::optional<ImVec2> max_size,
+                 ImGuiWindowClass window_class, ImGuiWindowFlags flags)
+            : ImProcessLayer(name), m_default_size(default_size), m_min_size(min_size),
+              m_max_size(max_size), m_window_class(window_class), m_flags(flags) {}
 
-        virtual void open() = 0;
+        virtual ~ImWindow() = default;
 
-        [[nodiscard]] virtual IWindow *parent() const = 0;
-        virtual void setParent(IWindow *parent)       = 0;
+        [[nodiscard]] virtual ImWindow *parent() const { return m_parent; }
+        virtual void setParent(ImWindow *parent) { m_parent = parent; }
 
-        virtual const ImGuiWindowClass *windowClass() const = 0;
-
-        virtual ImGuiWindowFlags flags() const = 0;
-
-        [[nodiscard]] virtual std::optional<ImVec2> defaultSize() const = 0;
-        [[nodiscard]] virtual std::optional<ImVec2> size() const        = 0;
-        [[nodiscard]] virtual std::optional<ImVec2> minSize() const     = 0;
-        [[nodiscard]] virtual std::optional<ImVec2> maxSize() const     = 0;
-
-        [[nodiscard]] virtual std::string context() const = 0;
-        [[nodiscard]] virtual std::string name() const    = 0;
-        [[nodiscard]] virtual bool unsaved() const        = 0;
-
-        // Returns the supported file type, or empty if designed for a folder.
-        [[nodiscard]] virtual std::vector<std::string> extensions() const = 0;
-
-        [[nodiscard]] virtual bool loadData(const std::filesystem::path &path)         = 0;
-        [[nodiscard]] virtual bool saveData(std::optional<std::filesystem::path> path) = 0;
-
-        [[nodiscard]] virtual bool update(f32 delta_time)     = 0;
-        [[nodiscard]] virtual bool postUpdate(f32 delta_time) = 0;
-
-        [[nodiscard]] virtual std::string title() const = 0;
-
-        virtual void render(f32 delta_time) = 0;
-    };
-
-    class SimpleWindow : public IWindow {
-    protected:
-        void renderMenuBar() override {}
-        void renderBody(f32 delta_time) override {}
-
-        void onDeleteKey() override {}
-        void onPageDownKey() override {}
-        void onPageUpKey() override {}
-        void onHomeKey() override {}
-
-    public:
-        SimpleWindow() = default;
-        SimpleWindow(std::optional<ImVec2> default_size) : m_default_size(default_size) {}
-        SimpleWindow(std::optional<ImVec2> min_size, std::optional<ImVec2> max_size)
-            : m_min_size(min_size), m_max_size(max_size) {}
-        SimpleWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
-                     std::optional<ImVec2> max_size)
-            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size) {}
-        SimpleWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
-                     std::optional<ImVec2> max_size, ImGuiWindowClass window_class)
-            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
-              m_window_class(window_class) {}
-        SimpleWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
-                     std::optional<ImVec2> max_size, ImGuiWindowClass window_class,
-                     ImGuiWindowFlags flags)
-            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
-              m_window_class(window_class), m_flags(flags) {}
-        ~SimpleWindow() override = default;
-
-        void open() override { m_is_open = true; }
-
-        [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
-
-        [[nodiscard]] IWindow *parent() const override { return m_parent; }
-        void setParent(IWindow *parent) override { m_parent = parent; }
-
-        const ImGuiWindowClass *windowClass() const override {
+        virtual const ImGuiWindowClass *windowClass() const {
             return m_parent ? m_parent->windowClass() : &m_window_class;
         }
 
-        ImGuiWindowFlags flags() const override {
+        virtual ImGuiWindowFlags flags() const {
             ImGuiWindowFlags flags_ = m_flags;
 #ifdef IMGUI_ENABLE_VIEWPORT_WORKAROUND
             if (m_viewport && m_viewport->ID != ImGui::GetMainViewport()->ID) {
@@ -118,235 +71,74 @@ namespace Toolbox::UI {
             return flags_;
         }
 
-        [[nodiscard]] std::optional<ImVec2> defaultSize() const override { return m_default_size; }
-        [[nodiscard]] std::optional<ImVec2> size() const override { return m_size; }
-        [[nodiscard]] std::optional<ImVec2> minSize() const override { return m_min_size; }
-        [[nodiscard]] std::optional<ImVec2> maxSize() const override { return m_max_size; }
+        [[nodiscard]] void setSize(const ImVec2 &size) noexcept override {
+            m_next_size  = size;
+            m_is_resized = true;
+        }
+        [[nodiscard]] void setPos(const ImVec2 &pos) noexcept override {
+            m_next_pos        = pos;
+            m_is_repositioned = true;
+        }
 
-        [[nodiscard]] std::string context() const override { return "(OVERRIDE THIS)"; }
-        [[nodiscard]] std::string name() const override { return "Base Window"; }
-        [[nodiscard]] bool unsaved() const override { return false; }
+        [[nodiscard]] virtual std::optional<ImVec2> defaultSize() const { return m_default_size; }
+        [[nodiscard]] virtual std::optional<ImVec2> minSize() const { return m_min_size; }
+        [[nodiscard]] virtual std::optional<ImVec2> maxSize() const { return m_max_size; }
+
+        [[nodiscard]] virtual std::string context() const { return "(OVERRIDE THIS)"; }
+        [[nodiscard]] virtual bool unsaved() const { return false; }
 
         // Returns the supported file type, or empty if designed for a folder.
-        [[nodiscard]] std::vector<std::string> extensions() const override { return {}; }
+        [[nodiscard]] virtual std::vector<std::string> extensions() const { return {}; }
 
-        [[nodiscard]] bool loadData(const std::filesystem::path &path) override { return false; }
-        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override {
+        void close();
+        void defocus();
+        void focus();
+        void open();
+
+        void hide();
+        void show();
+
+        [[nodiscard]] virtual bool onLoadData(const std::filesystem::path &path) { return false; }
+        [[nodiscard]] virtual bool onSaveData(std::optional<std::filesystem::path> path) {
             return false;
         }
 
-        [[nodiscard]] bool update(f32 delta_time) override { return true; }
-        [[nodiscard]] bool postUpdate(f32 delta_time) override { return true; }
+        void onAttach() override;
+        void onImGuiRender(TimeStep delta_time) override final;
+        void onWindowEvent(RefPtr<WindowEvent> ev) override;
 
-        [[nodiscard]] std::string title() const override {
-            std::string ctx = context();
-            std::string t;
-            if (ctx != "") {
-                t = std::format("{} - {}", name(), ctx);
-            } else {
-                t = name();
-            }
-            return t;
-        }
-
-        void render(f32 delta_time) override final {
-            if (!m_is_open)
-                return;
-
-            if (defaultSize())
-                ImGui::SetNextWindowSize(defaultSize().value(), ImGuiCond_Once);
-
-            ImVec2 default_min = {0, 0};
-            ImVec2 default_max = {FLT_MAX, FLT_MAX};
-            ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
-                                                maxSize() ? maxSize().value() : default_max);
-
-            std::string window_name = std::format("{}###{}", title(), getUUID());
-
-            ImGuiWindowFlags flags_ = flags();
-            if (unsaved()) {
-                flags_ |= ImGuiWindowFlags_UnsavedDocument;
-            }
-
-            /*const ImGuiWindowClass *window_class = windowClass();
-            if (window_class)
-                ImGui::SetNextWindowClass(window_class);*/
-
-            if (ImGui::Begin(window_name.c_str(), &m_is_open, flags_)) {
-                m_size     = ImGui::GetWindowSize();
-                m_viewport = ImGui::GetWindowViewport();
-                renderMenuBar();
-                renderBody(delta_time);
-            } else {
-                m_viewport = nullptr;
-            }
-            ImGui::End();
-        }
+        [[nodiscard]] std::string title() const;
 
     protected:
+        void setLayerSize(const ImVec2 &size) noexcept { ImProcessLayer::setSize(size); }
+        void setLayerPos(const ImVec2 &pos) noexcept { ImProcessLayer::setPos(pos); }
+
         UUID64 m_UUID64;
         ImGuiID m_sibling_id = 0;
 
-        IWindow *m_parent = nullptr;
+        ImWindow *m_parent = nullptr;
 
-        bool m_is_open                          = false;
         ImGuiViewport *m_viewport               = nullptr;
         ImGuiWindowFlags m_flags                = 0;
         mutable ImGuiWindowClass m_window_class = ImGuiWindowClass();
 
-        bool m_is_docking_set_up = false;
-
         std::optional<ImVec2> m_default_size = {};
-        std::optional<ImVec2> m_size         = {};
         std::optional<ImVec2> m_min_size     = {};
         std::optional<ImVec2> m_max_size     = {};
-    };
 
-    class DockWindow : public IWindow {
-    protected:
-        virtual void buildDockspace(ImGuiID dockspace_id){};
-
-        void renderDockspace();
-        void renderMenuBar() override {}
-        void renderBody(f32 delta_time) override {}
-
-        void onDeleteKey() override {}
-        void onPageDownKey() override {}
-        void onPageUpKey() override {}
-        void onHomeKey() override {}
-
-    public:
-        DockWindow() = default;
-        explicit DockWindow(std::optional<ImVec2> default_size) : m_default_size(default_size) {}
-        DockWindow(std::optional<ImVec2> min_size, std::optional<ImVec2> max_size)
-            : m_min_size(min_size), m_max_size(max_size) {}
-        DockWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
-                   std::optional<ImVec2> max_size)
-            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size) {}
-        DockWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
-                   std::optional<ImVec2> max_size, ImGuiWindowClass window_class)
-            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
-              m_window_class(window_class) {}
-        DockWindow(std::optional<ImVec2> default_size, std::optional<ImVec2> min_size,
-                   std::optional<ImVec2> max_size, ImGuiWindowClass window_class,
-                   ImGuiWindowFlags flags)
-            : m_default_size(default_size), m_min_size(min_size), m_max_size(max_size),
-              m_window_class(window_class), m_flags(flags) {}
-        ~DockWindow() override = default;
-
-        void open() override { m_is_open = true; }
-
-        [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
-
-        [[nodiscard]] IWindow *parent() const override { return m_parent; }
-        void setParent(IWindow *parent) override { m_parent = parent; }
-
-        const ImGuiWindowClass *windowClass() const override {
-            return m_parent ? m_parent->windowClass() : &m_window_class;
-        }
-
-        ImGuiWindowFlags flags() const override {
-            ImGuiWindowFlags flags_ = m_flags;
-#ifdef IMGUI_ENABLE_VIEWPORT_WORKAROUND
-            if (m_viewport && m_viewport->ID != ImGui::GetMainViewport()->ID) {
-                flags_ |= (ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
-            }
-#endif
-            return flags_;
-        }
-
-        [[nodiscard]] std::optional<ImVec2> defaultSize() const override { return m_default_size; }
-        [[nodiscard]] std::optional<ImVec2> size() const override { return m_size; }
-        [[nodiscard]] std::optional<ImVec2> minSize() const override { return m_min_size; }
-        [[nodiscard]] std::optional<ImVec2> maxSize() const override { return m_max_size; }
-
-        [[nodiscard]] std::string context() const override { return "(OVERRIDE THIS)"; }
-        [[nodiscard]] std::string name() const override { return "Base Window"; }
-        [[nodiscard]] bool unsaved() const override { return false; }
-
-        // Returns the supported file type, or empty if designed for a folder.
-        [[nodiscard]] std::vector<std::string> extensions() const override { return {}; }
-
-        [[nodiscard]] bool loadData(const std::filesystem::path &path) override { return false; }
-        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override {
-            return false;
-        }
-
-        [[nodiscard]] bool update(f32 delta_time) override { return true; }
-        [[nodiscard]] bool postUpdate(f32 delta_time) override { return true; }
-
-        [[nodiscard]] std::string title() const override {
-            std::string ctx = context();
-            std::string t;
-            if (ctx != "") {
-                t = std::format("{} - {}", name(), ctx);
-            } else {
-                t = name();
-            }
-            return t;
-        }
-
-        void render(f32 delta_time) override final {
-            if (!m_is_open)
-                return;
-
-            if (defaultSize())
-                ImGui::SetNextWindowSize(defaultSize().value(), ImGuiCond_Once);
-
-            ImVec2 default_min = {0, 0};
-            ImVec2 default_max = {FLT_MAX, FLT_MAX};
-            ImGui::SetNextWindowSizeConstraints(minSize() ? minSize().value() : default_min,
-                                                maxSize() ? maxSize().value() : default_max);
-
-            std::string window_name = std::format("{}###{}", title(), getUUID());
-
-            ImGuiWindowFlags flags_ = flags();
-            if (unsaved()) {
-                flags_ |= ImGuiWindowFlags_UnsavedDocument;
-            }
-
-            /*const ImGuiWindowClass *window_class = windowClass();
-            if (window_class)
-                ImGui::SetNextWindowClass(window_class);*/
-
-            if (ImGui::Begin(window_name.c_str(), &m_is_open, flags_)) {
-                m_size     = ImGui::GetWindowSize();
-                m_viewport = ImGui::GetWindowViewport();
-
-                renderDockspace();
-                renderMenuBar();
-                renderBody(delta_time);
-            } else {
-                m_viewport = nullptr;
-            }
-            ImGui::End();
-        }
-
-    protected:
-        UUID64 m_UUID64;
-
-        IWindow *m_parent = nullptr;
-
-        bool m_is_open                          = false;
-        ImGuiViewport *m_viewport               = nullptr;
-        ImGuiWindowFlags m_flags                = 0;
-        mutable ImGuiWindowClass m_window_class = ImGuiWindowClass();
-
-        ImGuiID m_dockspace_id = 0;
+    private:
+        ImGuiID m_dockspace_id   = std::numeric_limits<ImGuiID>::max();
         bool m_is_docking_set_up = false;
+        bool m_is_resized        = false;
+        bool m_is_repositioned   = false;
 
-        std::optional<ImVec2> m_default_size = {};
-        std::optional<ImVec2> m_size         = {};
-        std::optional<ImVec2> m_min_size     = {};
-        std::optional<ImVec2> m_max_size     = {};
+        ImVec2 m_next_size = {};
+        ImVec2 m_next_pos  = {};
     };
 
-    inline std::string getWindowUID(const IWindow &window) {
-        return std::to_string(window.getUUID());
-    }
-
-    inline std::string getWindowChildUID(const IWindow &window, const std::string &child_name) {
-        return std::format("{}##{}", child_name, getWindowUID(window));
+    inline std::string ImWindowComponentTitle(const ImWindow &window_layer,
+                                              const std::string &component_name) {
+        return std::format("{}##{}", component_name, window_layer.getUUID());
     }
 
 }  // namespace Toolbox::UI

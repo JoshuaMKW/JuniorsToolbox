@@ -12,7 +12,7 @@ namespace Toolbox {
 
     Result<ScopePtr<SceneInstance>, SerialError>
     SceneInstance::FromPath(const std::filesystem::path &root) {
-        auto scene         = make_scoped<SceneInstance>();
+        ScopePtr<SceneInstance> scene         = make_scoped<SceneInstance>();
         scene->m_root_path = root;
 
         auto scene_bin   = root / "map/scene.bin";

@@ -29,16 +29,17 @@ namespace Toolbox {
 
         [[nodiscard]] size_t getDataSize() const;
         [[nodiscard]] size_t getRailCount() const { return m_rails.size(); }
-        [[nodiscard]] std::optional<size_t> getRailIndex(const Rail::Rail &rail) const;
         [[nodiscard]] std::optional<size_t> getRailIndex(std::string_view name) const;
+        [[nodiscard]] std::optional<size_t> getRailIndex(UUID64 id) const;
         [[nodiscard]] rail_ptr_t getRail(size_t index) const;
         [[nodiscard]] rail_ptr_t getRail(std::string_view name) const;
+        [[nodiscard]] rail_ptr_t getRail(UUID64 id) const;
 
         void addRail(const Rail::Rail &rail);
         void insertRail(size_t index, const Rail::Rail &rail);
         void removeRail(size_t index);
         void removeRail(std::string_view name);
-        void removeRail(const Rail::Rail &rail);
+        void removeRail(UUID64 id);
 
         [[nodiscard]] std::vector<rail_ptr_t>::const_iterator begin() const {
             return m_rails.begin();

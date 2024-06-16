@@ -1,7 +1,6 @@
 #include "gui/scene/billboard.hpp"
 #include <filesystem>
 #include <gui/scene/renderer.hpp>
-#define STB_IMAGE_IMPLEMENTATION
 #include "gui/stb_image.h"
 #include <glad/glad.h>
 

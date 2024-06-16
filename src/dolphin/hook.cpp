@@ -4,7 +4,7 @@
 #include <string_view>
 #include <thread>
 
-#include "core/application.hpp"
+#include "gui/application.hpp"
 #include "gui/settings.hpp"
 
 #include "dolphin/hook.hpp"
@@ -35,6 +35,10 @@ namespace Toolbox::Dolphin {
         Platform::ProcessID pid = std::numeric_limits<Platform::ProcessID>::max();
         do {
             if (strcmp(pe32.szExeFile, process_file.data()) == 0) {
+                // Sometimes dead processes are still in the list
+                if (pe32.cntThreads == 0) {
+                    continue;
+                }
                 pid = pe32.th32ProcessID;
                 break;
             }
@@ -76,6 +80,11 @@ namespace Toolbox::Dolphin {
         return {};
     }
 
+    static bool IsHandleOpen(Platform::LowHandle handle) {
+        DCB flags;
+        return GetCommState(handle, &flags);
+    }
+
 #elif TOOLBOX_PLATFORM_LINUX
     static Result<Platform::ProcessID, BaseError> FindProcessPID(std::string_view process_name) {
         return make_error<Platform::ProcessID>("Linux support unimplemented!");
@@ -95,23 +104,27 @@ namespace Toolbox::Dolphin {
     static Result<void> CloseMemoryView(void *memory_view) { return {}; }
 #endif
 
+    DolphinHookManager &DolphinHookManager::instance() {
+        static DolphinHookManager _instance;
+        return _instance;
+    }
+
     bool DolphinHookManager::isProcessRunning() {
         return Platform::IsExProcessRunning(m_proc_info);
     }
 
     Result<void> DolphinHookManager::startProcess() {
-        AppSettings &settings        = SettingsManager::instance().getCurrentProfile();
-        MainApplication &application = MainApplication::instance();
+        AppSettings &settings       = SettingsManager::instance().getCurrentProfile();
+        GUIApplication &application = GUIApplication::instance();
 
         if (isProcessRunning()) {
             return {};
         }
 
-        std::string dolphin_args = std::format(
-            "-e {}/sys/main.dol -d -c -a HLE", application.getProjectRoot().string());
+        std::string dolphin_args =
+            std::format("-e {}/sys/main.dol -d -c -a HLE", application.getProjectRoot().string());
 
-        auto process_result = Platform::CreateExProcess(
-            settings.m_dolphin_path, dolphin_args);
+        auto process_result = Platform::CreateExProcess(settings.m_dolphin_path, dolphin_args);
         if (!process_result) {
             return std::unexpected(process_result.error());
         }
@@ -214,27 +227,62 @@ namespace Toolbox::Dolphin {
         return {};
     }
 
+    Result<bool> DolphinHookManager::refresh() {
+        if (!Platform::IsExProcessRunning(m_proc_info)) {
+            auto unhook_result = unhook();
+            if (!unhook_result) {
+                return std::unexpected(unhook_result.error());
+            }
+        }
+
+        /*if (m_mem_view) {
+          m_memory_mutex.lock();
+            CloseMemoryView(m_mem_view);
+            auto view_result = OpenMemoryView(m_mem_handle);
+            if (!view_result || view_result.value() == nullptr) {
+                CloseProcessMemory(m_mem_handle);
+                m_mem_handle = nullptr;
+                m_mem_view   = nullptr;
+                m_memory_mutex.unlock();
+                return std::unexpected(view_result.error());
+            }
+            m_memory_mutex.unlock();
+        }*/
+
+        return hook();
+    }
+
     Result<void> DolphinHookManager::readBytes(char *buf, u32 address, size_t size) {
-        if (!m_mem_view)
+        std::unique_lock lock(m_memory_mutex);
+        if (!m_mem_view) {
             return make_error<void>("SHARED_MEMORY",
                                     "Tried to read bytes without a memory handle!");
+        }
 
-        m_memory_mutex.lock();
+        if ((address & 0x7FFFFFFF) >= 0x1800000) {
+            return make_error<void>("SHARED_MEMORY",
+                                    "Tried to read bytes to a protected memory region!");
+        }
+
         const char *true_address = static_cast<const char *>(m_mem_view) + (address & 0x7FFFFFFF);
         memcpy(buf, true_address, size);
-        m_memory_mutex.unlock();
         return {};
     }
 
     Result<void> DolphinHookManager::writeBytes(const char *buf, u32 address, size_t size) {
-        if (!m_mem_view)
+        std::unique_lock lock(m_memory_mutex);
+        if (!m_mem_view) {
             return make_error<void>("SHARED_MEMORY",
                                     "Tried to write bytes without a memory handle!");
+        }
 
-        m_memory_mutex.lock();
+        if ((address & 0x7FFFFFFF) >= 0x1800000) {
+            return make_error<void>("SHARED_MEMORY",
+                                    "Tried to write bytes to a protected memory region!");
+        }
+
         char *true_address = static_cast<char *>(m_mem_view) + (address & 0x7FFFFFFF);
         memcpy(true_address, buf, size);
-        m_memory_mutex.unlock();
         return {};
     }
 

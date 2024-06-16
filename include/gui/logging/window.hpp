@@ -13,37 +13,32 @@
 #include "scene/scene.hpp"
 #include "smart_resource.hpp"
 
+#include "core/clipboard.hpp"
 #include "core/log.hpp"
 #include "core/types.hpp"
-#include "core/clipboard.hpp"
+#include "gui/context_menu.hpp"
 #include "gui/property/property.hpp"
 #include "gui/window.hpp"
 
-#include <gui/context_menu.hpp>
 #include <imgui.h>
 
 namespace Toolbox::UI {
 
-    class LoggingWindow final : public SimpleWindow {
+    class LoggingWindow final : public ImWindow {
     protected:
         void appendMessageToPool(const Log::AppLogger::LogMessage &message);
 
     public:
-        LoggingWindow() {
-            TOOLBOX_LOG_CALLBACK(std::bind(&LoggingWindow::appendMessageToPool, this, std::placeholders::_1));
+        LoggingWindow(const std::string &name) : ImWindow(name) {
+            TOOLBOX_LOG_CALLBACK(TOOLBOX_BIND_EVENT_FN(LoggingWindow::appendMessageToPool));
             TOOLBOX_INFO("Logger successfully started!");
         }
         ~LoggingWindow() = default;
 
         ImGuiWindowFlags flags() const override {
-            return SimpleWindow::flags() | ImGuiWindowFlags_MenuBar;
+            return ImWindow::flags() | ImGuiWindowFlags_MenuBar;
         }
 
-    protected:
-        void renderMenuBar() override;
-        void renderBody(f32 delta_time) override;
-
-    public:
         const ImGuiWindowClass *windowClass() const override {
             if (parent() && parent()->windowClass()) {
                 return parent()->windowClass();
@@ -66,22 +61,22 @@ namespace Toolbox::UI {
         std::optional<ImVec2> maxSize() const override { return std::nullopt; }
 
         [[nodiscard]] std::string context() const override { return ""; }
-        [[nodiscard]] std::string name() const override { return "Application Log"; }
         [[nodiscard]] bool unsaved() const override { return false; }
 
         // Returns the supported file types, empty string is designed for a folder.
         [[nodiscard]] std::vector<std::string> extensions() const override { return {}; }
 
-        [[nodiscard]] bool loadData(const std::filesystem::path &path) override { return false; }
-        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override {
+        [[nodiscard]] bool onLoadData(const std::filesystem::path &path) override { return false; }
+        [[nodiscard]] bool onSaveData(std::optional<std::filesystem::path> path) override {
             return false;
         }
 
-        bool update(f32 delta_time) override;
-        bool postUpdate(f32 delta_time) override { return true; }
+    protected:
+        void onRenderMenuBar() override;
+        void onRenderBody(TimeStep delta_time) override;
 
     private:
-        Log::ReportLevel m_logging_level = Log::ReportLevel::INFO;
+        Log::ReportLevel m_logging_level = Log::ReportLevel::REPORT_INFO;
         uint32_t m_dock_space_id         = 0;
         bool m_scroll_requested          = false;
     };

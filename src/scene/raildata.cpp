@@ -16,15 +16,6 @@ namespace Toolbox {
         return (size + 31) & ~31;
     }
 
-    std::optional<size_t> RailData::getRailIndex(const Rail::Rail &rail) const {
-        for (size_t i = 0; i < m_rails.size(); ++i) {
-            if (m_rails[i]->getSiblingID() == rail.getSiblingID()) {
-                return i;
-            }
-        }
-        return {};
-    }
-
     std::optional<size_t> RailData::getRailIndex(std::string_view name) const {
         for (size_t i = 0; i < m_rails.size(); ++i) {
             if (m_rails[i]->name() == name) {
@@ -34,16 +25,32 @@ namespace Toolbox {
         return {};
     }
 
+    std::optional<size_t> RailData::getRailIndex(UUID64 id) const {
+        for (size_t i = 0; i < m_rails.size(); ++i) {
+            if (m_rails[i]->getUUID() == id) {
+                return i;
+            }
+        }
+        return {};
+    }
+
     RailData::rail_ptr_t RailData::getRail(size_t index) const {
         if (index >= m_rails.size())
-            return {};
+            return nullptr;
         return m_rails[index];
     }
 
     RailData::rail_ptr_t RailData::getRail(std::string_view name) const {
         auto index = getRailIndex(name);
         if (!index)
-            return {};
+            return nullptr;
+        return m_rails[index.value()];
+    }
+
+    RailData::rail_ptr_t RailData::getRail(UUID64 id) const {
+        auto index = getRailIndex(id);
+        if (!index)
+            return nullptr;
         return m_rails[index.value()];
     }
 
@@ -52,6 +59,16 @@ namespace Toolbox {
     void RailData::insertRail(size_t index, const Rail::Rail &rail) {
         auto new_rail = make_referable<Rail::Rail>(rail);
         new_rail->setSiblingID(m_next_sibling_id++);
+        auto rail_it = std::find_if(m_rails.begin(), m_rails.end(), [&](const rail_ptr_t& r) {
+            return r->name() == rail.name();
+        });
+        size_t existing_index = rail_it - m_rails.begin();
+        if (rail_it != m_rails.end()) {
+            m_rails.erase(rail_it);
+        }
+        if (index > existing_index) {
+            --index;
+        }
         m_rails.insert(m_rails.begin() + index, std::move(new_rail));
     }
 
@@ -62,8 +79,8 @@ namespace Toolbox {
             return;
         m_rails.erase(m_rails.begin() + index.value());
     }
-    void RailData::removeRail(const Rail::Rail &rail) {
-        auto index = getRailIndex(rail);
+    void RailData::removeRail(UUID64 id) {
+        auto index = getRailIndex(id);
         if (!index)
             return;
         m_rails.erase(m_rails.begin() + index.value());

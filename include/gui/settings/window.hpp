@@ -6,16 +6,18 @@
 
 namespace Toolbox::UI {
 
-    class SettingsWindow : public SimpleWindow {
+    class SettingsWindow : public ImWindow {
     public:
-        SettingsWindow() : SimpleWindow() {
+        SettingsWindow(const std::string &name) : ImWindow(name) {
             m_dolphin_path_input.fill('\0');
             m_profile_create_input.fill('\0');
         }
         ~SettingsWindow() override = default;
 
+        [[nodiscard]] bool destroyOnClose() const noexcept override { return false; }
+
         ImGuiWindowFlags flags() const override {
-            return SimpleWindow::flags() | ImGuiWindowFlags_NoResize;
+            return ImWindow::flags() | ImGuiWindowFlags_NoResize;
         }
 
         std::optional<ImVec2> minSize() const override {
@@ -26,7 +28,6 @@ namespace Toolbox::UI {
         std::optional<ImVec2> maxSize() const override { return minSize(); }
 
         [[nodiscard]] std::string context() const override { return ""; }
-        [[nodiscard]] std::string name() const override { return "Application Settings"; }
 
         const ImGuiWindowClass *windowClass() const override {
             if (parent() && parent()->windowClass()) {
@@ -42,15 +43,15 @@ namespace Toolbox::UI {
             return &m_window_class;
         }
 
-        void renderBody(f32 delta_time) override;
+        void onRenderBody(TimeStep delta_time) override;
 
     protected:
-        void renderProfileBar(f32 delta_time);
-        void renderSettingsGeneral(f32 delta_time);
-        void renderSettingsControl(f32 delta_time);
-        void renderSettingsUI(f32 delta_time);
-        void renderSettingsPreview(f32 delta_time);
-        void renderSettingsAdvanced(f32 delta_time);
+        void renderProfileBar(TimeStep delta_time);
+        void renderSettingsGeneral(TimeStep delta_time);
+        void renderSettingsControl(TimeStep delta_time);
+        void renderSettingsUI(TimeStep delta_time);
+        void renderSettingsPreview(TimeStep delta_time);
+        void renderSettingsAdvanced(TimeStep delta_time);
 
     private:
         bool m_is_making_profile = false;

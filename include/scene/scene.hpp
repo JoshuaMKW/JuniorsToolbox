@@ -1,17 +1,17 @@
 #pragma once
 
 #include "bmg/bmg.hpp"
-#include "smart_resource.hpp"
 #include "objlib/object.hpp"
 #include "rail/rail.hpp"
 #include "raildata.hpp"
+#include "smart_resource.hpp"
+#include <entt.hpp>
 #include <memory>
 #include <ostream>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-#include <entt.hpp>
 
 namespace Toolbox {
 
@@ -33,13 +33,25 @@ namespace Toolbox {
         RefPtr<Object::GroupSceneObject> getRoot() const { return m_root; }
         void setRoot(RefPtr<Object::GroupSceneObject> root) { m_root = root; }
 
-        std::optional<RefPtr<Object::ISceneObject>>
-        findObject(std::string_view name) const {
+        RefPtr<Object::ISceneObject> findObject(std::string_view name) const {
+            if (m_root->getNameRef().name() == name) {
+                return m_root;
+            }
             return m_root->getChild(name);
         }
-        std::optional<RefPtr<Object::ISceneObject>>
-        findObject(const QualifiedName &name) const {
+
+        RefPtr<Object::ISceneObject> findObject(const QualifiedName &name) const {
+            if (m_root->getQualifiedName() == name) {
+                return m_root;
+            }
             return m_root->getChild(name);
+        }
+
+        RefPtr<Object::ISceneObject> findObject(UUID64 id) const {
+            if (m_root->getUUID() == id) {
+                return m_root;
+            }
+            return m_root->getChild(id);
         }
 
         Result<void, SerialError> serialize(Serializer &out) const override {
@@ -81,7 +93,6 @@ namespace Toolbox {
     public:
         ~SceneInstance();
 
-        
         static Result<ScopePtr<SceneInstance>, SerialError>
         FromPath(const std::filesystem::path &root);
 
@@ -93,15 +104,15 @@ namespace Toolbox {
 
         [[nodiscard]] std::optional<std::filesystem::path> rootPath() const { return m_root_path; }
 
-        [[nodiscard]] entt::registry &registry() { return m_registry; }
-
         [[nodiscard]] ObjectHierarchy getObjHierarchy() const { return m_map_objects; }
         void setObjHierarchy(const ObjectHierarchy &obj_root) { m_map_objects = obj_root; }
 
         [[nodiscard]] ObjectHierarchy getTableHierarchy() const { return m_table_objects; }
         void setTableHierarchy(const ObjectHierarchy &table_root) { m_table_objects = table_root; }
-        [[nodiscard]] RailData getRailData() const { return m_rail_info; }
-        void setRailData(RailData &rails) { m_rail_info = rails; }
+
+        [[nodiscard]] RailData &getRailData() { return m_rail_info; }
+        [[nodiscard]] const RailData &getRailData() const { return m_rail_info; }
+        void setRailData(const RailData &data) { m_rail_info = data; }
 
         [[nodiscard]] BMG::MessageData getMessageData() const { return m_message_data; }
         void setMessageData(BMG::MessageData &message_data) { m_message_data = message_data; }
@@ -114,9 +125,6 @@ namespace Toolbox {
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
-    protected:
-        entt::registry m_registry;
-
     private:
         std::optional<std::filesystem::path> m_root_path = {};
         ObjectHierarchy m_map_objects;
@@ -125,4 +133,4 @@ namespace Toolbox {
         BMG::MessageData m_message_data;
     };
 
-}  // namespace Toolbox::Scene
+}  // namespace Toolbox

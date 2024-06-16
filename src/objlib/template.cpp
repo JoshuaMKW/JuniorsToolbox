@@ -415,6 +415,7 @@ namespace Toolbox::Object {
         }
     }
 
+    static std::mutex s_templates_mutex;
     std::unordered_map<std::string, Template> g_template_cache;
 
     void Template::threadLoadTemplate(const std::string &type) {
@@ -425,7 +426,9 @@ namespace Toolbox::Object {
             TOOLBOX_ERROR(e.what());
             return;
         }
+        s_templates_mutex.lock();
         g_template_cache[type] = template_;
+        s_templates_mutex.unlock();
         return;
     }
 
@@ -438,7 +441,9 @@ namespace Toolbox::Object {
             TOOLBOX_ERROR(e.what());
             return;
         }
+        s_templates_mutex.lock();
         g_template_cache[type] = template_;
+        s_templates_mutex.unlock();
         return;
     }
 
@@ -511,8 +516,6 @@ namespace Toolbox::Object {
 
         return {};
     }
-
-    static std::mutex s_templates_mutex;
 
     Result<void, FSError> TemplateFactory::saveToCacheBlob() {
         auto cwd_result = Toolbox::current_path();

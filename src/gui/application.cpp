@@ -1,7 +1,6 @@
-#include "core/application.hpp"
-#include "gui/IconsForkAwesome.h"
+#include "IconsForkAwesome.h"
+#include "core/input/input.hpp"
 #include "gui/font.hpp"
-#include "gui/input.hpp"
 #include "gui/settings/window.hpp"
 #include "gui/themes.hpp"
 #include "gui/util.hpp"
@@ -22,35 +21,21 @@
 #include <gui/logging/errors.hpp>
 #include <gui/logging/window.hpp>
 #include <imgui.h>
+#include <imgui_impl_glfw.h>
 #include <imgui_internal.h>
+
+#include "gui/imgui_ext.hpp"
 
 #include "core/core.hpp"
 #include "dolphin/hook.hpp"
+#include "gui/application.hpp"
+#include "gui/pad/window.hpp"
 #include "gui/scene/ImGuizmo.h"
+#include "gui/scene/window.hpp"
 
 // void ImGuiSetupTheme(bool, float);
 
 namespace Toolbox {
-
-    int MainApplication::run() {
-        Clock::time_point lastFrameTime, thisFrameTime;
-
-        while (true) {
-            lastFrameTime = thisFrameTime;
-            thisFrameTime = Util::GetTime();
-
-            f32 delta_time = Util::GetDeltaTime(lastFrameTime, thisFrameTime);
-
-            if (!execute(delta_time))
-                break;
-
-            render(delta_time);
-
-            postRender(delta_time);
-        }
-
-        return 0;
-    }
 
     void DealWithGLErrors(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                           const GLchar *message, const void *userParam) {
@@ -68,17 +53,25 @@ namespace Toolbox {
         }
     }
 
-    MainApplication::MainApplication() {
+    GUIApplication::GUIApplication() {
         m_dockspace_built = false;
         m_dockspace_id    = ImGuiID();
         m_render_window   = nullptr;
         m_windows         = {};
     }
 
-    bool MainApplication::setup() {
+    GUIApplication &GUIApplication::instance() {
+        static GUIApplication _inst;
+        return _inst;
+    }
+
+    void GUIApplication::onInit(int argc, const char **argv) {
         // Initialize GLFW
-        if (!glfwInit())
-            return false;
+        if (!glfwInit()) {
+            setExitCode(EXIT_CODE_FAILED_SETUP);
+            stop();
+            return;
+        }
 
         // TODO: Load application settings
         //
@@ -92,13 +85,16 @@ namespace Toolbox {
 #else
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
 #endif
+        glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
         glfwWindowHint(GLFW_DEPTH_BITS, 32);
         glfwWindowHint(GLFW_SAMPLES, 4);
 
         m_render_window = glfwCreateWindow(1280, 720, "Junior's Toolbox", nullptr, nullptr);
         if (m_render_window == nullptr) {
             glfwTerminate();
-            return false;
+            setExitCode(EXIT_CODE_FAILED_SETUP);
+            stop();
+            return;
         }
 
         glfwSetCharCallback(m_render_window, ImGui_ImplGlfw_CharCallback);
@@ -117,6 +113,7 @@ namespace Toolbox {
 
         // Initialize imgui
         ImGui::CreateContext();
+
         ImGuiIO &io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -148,64 +145,42 @@ namespace Toolbox {
         ImGui_ImplGlfw_InitForOpenGL(m_render_window, false);
         ImGui_ImplOpenGL3_Init("#version 150");
 
-        auto &settings_manager = SettingsManager::instance();
-        settings_manager.initialize();
+        ImGuiPlatformIO &platform_io      = ImGui::GetPlatformIO();
+        platform_io.Platform_CreateWindow = ImGui_ImplGlfw_CreateWindow_Ex;
+        platform_io.Renderer_RenderWindow = ImGui_ImplOpenGL3_RenderWindow_Ex;
+
+        if (!SettingsManager::instance().initialize()) {
+            TOOLBOX_ERROR("[INIT] Failed to initialize settings manager!");
+        }
 
         auto &font_manager = FontManager::instance();
-        font_manager.initialize();
-        font_manager.setCurrentFont("NotoSansJP-Regular", 16.0f);
+        if (!font_manager.initialize()) {
+            TOOLBOX_ERROR("[INIT] Failed to initialize font manager!");
+        } else {
+            font_manager.setCurrentFont("NotoSansJP-Regular", 16.0f);
+        }
 
         // glEnable(GL_MULTISAMPLE);
 
-        {
-            auto result = Object::TemplateFactory::initialize();
-            if (!result) {
-                logFSError(result.error());
-            }
-        }
+        TRY(TemplateFactory::initialize()).error([](const FSError &error) { LogError(error); });
+        TRY(ThemeManager::instance().initialize()).error([](const FSError &error) {
+            LogError(error);
+        });
 
-        {
-            auto result = ThemeManager::instance().initialize();
-            if (!result) {
-                logFSError(result.error());
-            }
-        }
-
-        auto settings_window = make_referable<SettingsWindow>();
-        m_windows.push_back(settings_window);
-
-        auto logging_window = make_referable<LoggingWindow>();
-        logging_window->open();
-        m_windows.push_back(logging_window);
+        createWindow<LoggingWindow>("Application Log");
 
         determineEnvironmentConflicts();
 
-        m_dolphin_communicator.start();
-
-        return true;
+        m_dolphin_communicator.tStart(false, nullptr);
+        m_task_communicator.tStart(false, nullptr);
     }
 
-    bool MainApplication::teardown() {
-        ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
-        ImGui::DestroyContext();
-
-        glfwDestroyWindow(m_render_window);
-        glfwTerminate();
-
-        J3DUniformBufferObject::DestroyUBO();
-
-        m_windows.clear();
-
-        m_dolphin_communicator.kill();
-
-        return true;
-    }
-
-    bool MainApplication::execute(f32 delta_time) {
+    void GUIApplication::onUpdate(TimeStep delta_time) {
         // Try to make sure we return an error if anything's fucky
-        if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window))
-            return false;
+        if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window)) {
+            stop();
+            return;
+        }
 
         // Apply input callbacks to detached viewports
         if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)) {
@@ -220,20 +195,71 @@ namespace Toolbox {
             }
         }
 
-        glfwPollEvents();
-        Input::UpdateInputState();
+        // Render logic
+        {
+            glfwPollEvents();
+            Input::UpdateInputState();
 
-        // Update viewer context
-        for (auto &window : m_windows) {
-            if (!window->update(delta_time)) {
-                return false;
-            }
+            render(delta_time);
+
+            Input::PostUpdateInputState();
         }
-
-        return true;
     }
 
-    void MainApplication::render(f32 delta_time) {  // Begin actual rendering
+    void GUIApplication::onExit() {
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+
+        glfwDestroyWindow(m_render_window);
+        glfwTerminate();
+
+        J3DUniformBufferObject::DestroyUBO();
+
+        m_windows.clear();
+
+        m_dolphin_communicator.tKill(true);
+        m_task_communicator.tKill(true);
+    }
+
+    RefPtr<ImWindow> GUIApplication::findWindow(UUID64 uuid) {
+        auto it = std::find_if(m_windows.begin(), m_windows.end(),
+                               [&uuid](const auto &window) { return window->getUUID() == uuid; });
+        return it != m_windows.end() ? *it : nullptr;
+    }
+
+    RefPtr<ImWindow> GUIApplication::findWindow(const std::string &title,
+                                                const std::string &context) {
+        auto it = std::find_if(m_windows.begin(), m_windows.end(),
+                               [&title, &context](const auto &window) {
+                                   return window->title() == title && window->context() == context;
+                               });
+        return it != m_windows.end() ? *it : nullptr;
+    }
+
+    std::vector<RefPtr<ImWindow>> GUIApplication::findWindows(const std::string &title) {
+        std::vector<RefPtr<ImWindow>> result;
+        std::copy_if(m_windows.begin(), m_windows.end(), std::back_inserter(result),
+                     [&title](RefPtr<ImWindow> window) { return window->title() == title; });
+        return result;
+    }
+
+    void GUIApplication::registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
+                                                SceneWindow::render_layer_cb cb) {
+        RefPtr<SceneWindow> scene_window = ref_cast<SceneWindow>(findWindow(scene_uuid));
+        if (scene_window) {
+            scene_window->registerOverlay(name, cb);
+        }
+    }
+
+    void GUIApplication::deregisterDolphinOverlay(UUID64 scene_uuid, const std::string &name) {
+        RefPtr<SceneWindow> scene_window = ref_cast<SceneWindow>(findWindow(scene_uuid));
+        if (scene_window) {
+            scene_window->deregisterOverlay(name);
+        }
+    }
+
+    void GUIApplication::render(TimeStep delta_time) {  // Begin actual rendering
         glfwMakeContextCurrent(m_render_window);
 
         // The context renders both the ImGui elements and the background elements.
@@ -261,44 +287,31 @@ namespace Toolbox {
 #endif
 
         renderMenuBar();
-        renderWindows(delta_time);
 
-        // Render imgui
-        ImGui::Render();
-
-        // Update buffer size
-        int width, height;
-        glfwGetFramebufferSize(m_render_window, &width, &height);
-        glViewport(0, 0, width, height);
-        glClearColor(0.100f, 0.261f, 0.402f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-        ImGuiStyle &style = ImGui::GetStyle();
-        ImGuiIO &io       = ImGui::GetIO();
-
-        if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)) {
-#ifndef IMGUI_ENABLE_VIEWPORT_WORKAROUND
-            style.WindowRounding              = 0.0f;
-            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-#endif
-
-            GLFWwindow *backup_window = glfwGetCurrentContext();
-            {
-                ImGui::UpdatePlatformWindows();
-                ImGui::RenderPlatformWindowsDefault();
+        // Update dock context
+        for (auto &window : m_windows) {
+            if (!m_dockspace_built && !m_docked_map[window->getUUID()]) {
+                std::string window_name =
+                    std::format("{}###{}", window->title(), window->getUUID());
+                ImGui::DockBuilderDockWindow(window_name.c_str(), m_dockspace_id);
+                m_docked_map[window->getUUID()] = true;
             }
-            glfwMakeContextCurrent(backup_window);
-            m_render_window = backup_window;
         }
 
-        // Swap buffers
-        glfwSwapBuffers(m_render_window);
+        // UPDATE LOOP: We update layers here so the ImGui dockspaces can take effect first.
+        {
+            CoreApplication::onUpdate(delta_time);
+            gcClosedWindows();
+        }
+
+        // Render imgui frame
+        {
+            ImGui::Render();
+            finalizeFrame();
+        }
     }
 
-    void MainApplication::renderMenuBar() {
-        m_options_open = false;
+    void GUIApplication::renderMenuBar() {
         ImGui::BeginMainMenuBar();
 
         if (ImGui::BeginMenu("File")) {
@@ -313,7 +326,7 @@ namespace Toolbox {
 
             if (ImGui::MenuItem(ICON_FK_FLOPPY_O " Save All")) {
                 for (auto &window : m_windows) {
-                    (void)window->saveData(std::nullopt);
+                    (void)window->onSaveData(std::nullopt);
                 }
             }
 
@@ -325,15 +338,26 @@ namespace Toolbox {
 
             ImGui::EndMenu();
         }
+
         if (ImGui::BeginMenu("Edit")) {
             if (ImGui::MenuItem(ICON_FK_COG " Settings")) {
-                m_options_open = true;
+                createWindow<SettingsWindow>("Application Settings");
             }
             ImGui::EndMenu();
         }
+
+        if (ImGui::BeginMenu("Window")) {
+            if (ImGui::MenuItem("BMG")) {
+            }
+            if (ImGui::MenuItem("PAD")) {
+                createWindow<PadInputWindow>("Pad Recorder");
+            }
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu(ICON_FK_QUESTION_CIRCLE)) {
             if (ImGui::MenuItem("About")) {
-                m_options_open = true;
+                // TODO: Create about window
             }
             ImGui::EndMenu();
         }
@@ -364,22 +388,16 @@ namespace Toolbox {
                 m_load_path = path;
 
                 if (path.filename() == "scene") {
-                    auto scene_window = make_referable<SceneWindow>();
-
-                    for (auto window : m_windows) {
-                        if (window->name() == scene_window->name() &&
-                            window->context() == path.string()) {
-                            window->open();
-                            ImGui::SetWindowFocus(window->title().c_str());
-                            return;
+                    RefPtr<ImWindow> existing_editor = findWindow("Scene Editor", path.string());
+                    if (existing_editor) {
+                        existing_editor->focus();
+                    } else {
+                        RefPtr<SceneWindow> scene_window =
+                            createWindow<SceneWindow, true>("Scene Editor");
+                        if (!scene_window->onLoadData(path)) {
+                            scene_window->close();
                         }
                     }
-
-                    if (!scene_window->loadData(path)) {
-                        return;
-                    }
-                    scene_window->open();
-                    m_windows.push_back(scene_window);
                 } else {
                     auto sys_path   = std::filesystem::path(path) / "sys";
                     auto files_path = std::filesystem::path(path) / "files";
@@ -409,21 +427,21 @@ namespace Toolbox {
 
                 auto file_result = Toolbox::is_regular_file(path);
                 if (!file_result) {
+                    ImGuiFileDialog::Instance()->Close();
                     return;
                 }
 
                 if (!file_result.value()) {
+                    ImGuiFileDialog::Instance()->Close();
                     return;
                 }
                 m_load_path = path.parent_path();
 
                 if (path.extension() == ".szs" || path.extension() == ".arc") {
-                    auto scene_window = make_referable<SceneWindow>();
-                    if (!scene_window->loadData(path)) {
-                        return;
+                    RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
+                    if (!window->onLoadData(path)) {
+                        window->close();
                     }
-                    scene_window->open();
-                    m_windows.push_back(scene_window);
                 }
             }
 
@@ -441,64 +459,74 @@ namespace Toolbox {
             }
             ImGui::EndPopup();
         }
-
-        if (m_options_open) {
-            auto settings_window_it =
-                std::find_if(m_windows.begin(), m_windows.end(),
-                             [](auto window) { return window->name() == "Application Settings"; });
-            if (settings_window_it != m_windows.end()) {
-                (*settings_window_it)->open();
-            }
-        }
     }
 
-    void MainApplication::renderWindows(f32 delta_time) {
-        // Render viewer context
-        for (auto &window : m_windows) {
-            if (!m_dockspace_built && !m_docked_map[window->getUUID()]) {
-                std::string window_name =
-                    std::format("{}###{}", window->title(), window->getUUID());
-                ImGui::DockBuilderDockWindow(window_name.c_str(), m_dockspace_id);
-                m_docked_map[window->getUUID()] = true;
-            }
+    void GUIApplication::finalizeFrame() {
+        // Update buffer size
+        {
+            int width, height;
+            glfwGetFramebufferSize(m_render_window, &width, &height);
+            glViewport(0, 0, width, height);
         }
 
-        for (auto &window : m_windows) {
-            window->render(delta_time);
+        // Clear the buffer
+        glClearColor(0.100f, 0.261f, 0.402f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiIO &io       = ImGui::GetIO();
+
+        // Update backend framework
+        if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)) {
+#ifndef IMGUI_ENABLE_VIEWPORT_WORKAROUND
+            style.WindowRounding              = 0.0f;
+            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+#endif
+
+            GLFWwindow *backup_window = glfwGetCurrentContext();
+            {
+                ImGui::UpdatePlatformWindows();
+                ImGui::RenderPlatformWindowsDefault();
+            }
+            glfwMakeContextCurrent(backup_window);
+            m_render_window = backup_window;
         }
+
+        // Swap buffers to reset context for next frame
+        glfwSwapBuffers(m_render_window);
     }
 
-    bool MainApplication::postRender(f32 delta_time) {
-        // Try to make sure we return an error if anything's fucky
-        if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window))
-            return false;
+    bool GUIApplication::determineEnvironmentConflicts() {
+        bool conflicts_found = false;
 
-        // Update viewer context
-        for (auto &window : m_windows) {
-            if (!window->postUpdate(delta_time)) {
-                return false;
-            }
-        }
+        TRY(Platform::IsServiceRunning("NahimicService"))
+            .err([](const BaseError &error) { LogError(error); })
+            .ok([&conflicts_found](bool running) {
+                if (running) {
+                    TOOLBOX_WARN("Found Nahimic service running on this system, this could cause "
+                                 "crashes to occur on window resize!");
+                    conflicts_found = true;
+                }
+            });
 
-        Input::PostUpdateInputState();
-
-        return true;
+        return conflicts_found;
     }
 
-    bool MainApplication::determineEnvironmentConflicts() {
-        auto service_result = Platform::IsServiceRunning("NahimicService");
-        if (!service_result) {
-            logError(service_result.error());
-            return true;
+    void GUIApplication::gcClosedWindows() {
+        // Check for closed windows that need destroyed
+        for (auto it = m_windows.begin(); it != m_windows.end();) {
+            RefPtr<ImWindow> win = *it;
+            if (win->isClosed()) {
+                win->onDetach();
+                if (win->destroyOnClose()) {
+                    it = m_windows.erase(it);
+                    continue;
+                }
+            }
+            ++it;
         }
-
-        if (service_result.value()) {
-            TOOLBOX_WARN("Found Nahimic service running on this system, this could cause "
-                         "crashes to occur on window resize!");
-            return false;
-        }
-
-        return true;
     }
 
 }  // namespace Toolbox

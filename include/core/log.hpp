@@ -11,7 +11,13 @@
 
 namespace Toolbox::Log {
 
-    enum class ReportLevel { INFO, LOG = INFO, WARNING, ERROR, DEBUG };
+    enum class ReportLevel {
+        REPORT_INFO,
+        REPORT_LOG = REPORT_INFO,
+        REPORT_WARNING,
+        REPORT_ERROR,
+        REPORT_DEBUG
+    };
 
     class AppLogger {
     public:
@@ -30,10 +36,7 @@ namespace Toolbox::Log {
     public:
         ~AppLogger() = default;
 
-        static AppLogger &instance() {
-            static AppLogger s_logger;
-            return s_logger;
-        }
+        static AppLogger &instance();
 
         void pushStack() { m_indentation++; }
         void popStack() {
@@ -43,27 +46,19 @@ namespace Toolbox::Log {
 
         void clear() { m_messages.clear(); }
 
-        void log(const std::string &message) {
-            log(ReportLevel::LOG, message);
-        }
+        void log(const std::string &message) { log(ReportLevel::REPORT_LOG, message); }
 
         void debugLog(const std::string &message) {
 #ifdef TOOLBOX_DEBUG
-            log(ReportLevel::DEBUG, message);
+            log(ReportLevel::REPORT_DEBUG, message);
 #endif
         }
 
-        void info(const std::string &message) {
-            log(ReportLevel::INFO, message);
-        }
+        void info(const std::string &message) { log(ReportLevel::REPORT_INFO, message); }
 
-        void warn(const std::string &message) {
-            log(ReportLevel::WARNING, message);
-        }
+        void warn(const std::string &message) { log(ReportLevel::REPORT_WARNING, message); }
 
-        void error(const std::string &message) {
-            log(ReportLevel::ERROR, message);
-        }
+        void error(const std::string &message) { log(ReportLevel::REPORT_ERROR, message); }
 
         void trace(const std::stacktrace &stack) {
 #ifdef TOOLBOX_DEBUG
@@ -93,27 +88,22 @@ namespace Toolbox::Log {
 #define TOOLBOX_FORMAT_FN std::format
 
 #define TOOLBOX_TRACE(stacktrace) ::Toolbox::Log::AppLogger::instance().trace(stacktrace)
-#define TOOLBOX_INFO_V(fmt, ...)                                                                     \
+#define TOOLBOX_INFO_V(fmt, ...)                                                                   \
     ::Toolbox::Log::AppLogger::instance().info(TOOLBOX_FORMAT_FN(fmt, ##__VA_ARGS__))
-#define TOOLBOX_WARN_V(fmt, ...)                                                                     \
+#define TOOLBOX_WARN_V(fmt, ...)                                                                   \
     ::Toolbox::Log::AppLogger::instance().warn(TOOLBOX_FORMAT_FN(fmt, ##__VA_ARGS__))
-#define TOOLBOX_ERROR_V(fmt, ...)                                                                    \
+#define TOOLBOX_ERROR_V(fmt, ...)                                                                  \
     ::Toolbox::Log::AppLogger::instance().error(TOOLBOX_FORMAT_FN(fmt, ##__VA_ARGS__))
-#define TOOLBOX_DEBUG_LOG_V(fmt, ...)                                                                \
+#define TOOLBOX_DEBUG_LOG_V(fmt, ...)                                                              \
     ::Toolbox::Log::AppLogger::instance().debugLog(TOOLBOX_FORMAT_FN(fmt, ##__VA_ARGS__))
-#define TOOLBOX_LOG_V(level, fmt, ...)                                                               \
+#define TOOLBOX_LOG_V(level, fmt, ...)                                                             \
     ::Toolbox::Log::AppLogger::instance().log(level, TOOLBOX_FORMAT_FN(fmt, ##__VA_ARGS__))
 
-#define TOOLBOX_INFO(msg)                                                                   \
-    ::Toolbox::Log::AppLogger::instance().info(msg)
-#define TOOLBOX_WARN(msg)                                                                   \
-    ::Toolbox::Log::AppLogger::instance().warn(msg)
-#define TOOLBOX_ERROR(msg)                                                                  \
-    ::Toolbox::Log::AppLogger::instance().error(msg)
-#define TOOLBOX_DEBUG_LOG(msg)                                                              \
-    ::Toolbox::Log::AppLogger::instance().debugLog(msg)
-#define TOOLBOX_LOG(level, msg)                                                             \
-    ::Toolbox::Log::AppLogger::instance().log(level, msg)
+#define TOOLBOX_INFO(msg)       ::Toolbox::Log::AppLogger::instance().info(msg)
+#define TOOLBOX_WARN(msg)       ::Toolbox::Log::AppLogger::instance().warn(msg)
+#define TOOLBOX_ERROR(msg)      ::Toolbox::Log::AppLogger::instance().error(msg)
+#define TOOLBOX_DEBUG_LOG(msg)  ::Toolbox::Log::AppLogger::instance().debugLog(msg)
+#define TOOLBOX_LOG(level, msg) ::Toolbox::Log::AppLogger::instance().log(level, msg)
 
 #define TOOLBOX_LOG_SCOPE_PUSH() ::Toolbox::Log::AppLogger::instance().pushStack()
 #define TOOLBOX_LOG_SCOPE_POP()  ::Toolbox::Log::AppLogger::instance().popStack()

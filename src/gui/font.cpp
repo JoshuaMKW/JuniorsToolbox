@@ -1,6 +1,10 @@
 #include "gui/font.hpp"
 
 namespace Toolbox::UI {
+    FontManager &FontManager::instance() {
+        static FontManager _inst;
+        return _inst;
+    }
 
     bool FontManager::initialize() {
         auto cwd_result = Toolbox::current_path();

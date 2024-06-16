@@ -5,10 +5,11 @@
 #include <iostream>
 #include <unordered_set>
 
-#include "core/application.hpp"
-#include "gui/input.hpp"
-#include "gui/logging/errors.hpp"
+#include "core/input/input.hpp"
 #include "core/log.hpp"
+
+#include "gui/application.hpp"
+#include "gui/logging/errors.hpp"
 #include "gui/scene/renderer.hpp"
 #include "gui/settings.hpp"
 #include "gui/util.hpp"
@@ -188,7 +189,7 @@ namespace Toolbox::UI {
                     BaseError error =
                         make_error<void>("Compile failure in vertex shader:", gl_error_log_buffer)
                             .error();
-                    logError(error);
+                    LogError(error);
 
                     return false;
                 }
@@ -214,7 +215,7 @@ namespace Toolbox::UI {
                     BaseError error =
                         make_error<void>("Compile failure in geometry shader:", gl_error_log_buffer)
                             .error();
-                    logError(error);
+                    LogError(error);
 
                     return false;
                 }
@@ -240,7 +241,7 @@ namespace Toolbox::UI {
                     BaseError error =
                         make_error<void>("Compile failure in fragment shader:", gl_error_log_buffer)
                             .error();
-                    logError(error);
+                    LogError(error);
 
                     return false;
                 }
@@ -260,7 +261,7 @@ namespace Toolbox::UI {
 
                 BaseError error =
                     make_error<void>("Linking failure in shaders:", gl_error_log_buffer).error();
-                logError(error);
+                LogError(error);
 
                 return false;
             }
@@ -310,7 +311,7 @@ namespace Toolbox::UI {
         glDeleteTextures(1, &m_tex_id);
     }
 
-    void Renderer::render(std::vector<ISceneObject::RenderInfo> renderables, f32 delta_time) {
+    void Renderer::render(std::vector<ISceneObject::RenderInfo> renderables, TimeStep delta_time) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         ImVec2 window_pos = ImGui::GetWindowPos();
@@ -334,8 +335,8 @@ namespace Toolbox::UI {
         m_is_window_hovered = ImGui::IsWindowHovered();
         m_is_window_focused = ImGui::IsWindowFocused();
 
-        bool right_click      = Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT);
-        bool right_click_down = Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT);
+        bool right_click      = Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT);
+        bool right_click_down = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
 
         if (m_render_rect.Contains(mouse_pos)) {
             if (right_click) {
@@ -348,7 +349,7 @@ namespace Toolbox::UI {
         }
 
         if (m_is_window_focused && m_is_view_manipulating &&
-            Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {  // Mouse wrap
+            Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {  // Mouse wrap
             bool wrapped = false;
 
             if (mouse_pos.x < m_render_rect.Min.x) {
@@ -368,7 +369,7 @@ namespace Toolbox::UI {
             }
 
             if (wrapped) {
-                Input::SetMousePosition(mouse_pos, false);
+                Input::SetMousePosition(mouse_pos.x, mouse_pos.y, false);
             }
         } else {
             m_is_view_manipulating = false;
@@ -474,25 +475,19 @@ namespace Toolbox::UI {
                      {0.0f, 1.0f}, {1.0f, 0.0f});
 
         if (m_render_gizmo) {
-            bool shift_held = Input::GetKey(GLFW_KEY_LEFT_SHIFT);
-            bool ctrl_held  = Input::GetKey(GLFW_KEY_LEFT_CONTROL);
+            bool shift_held = Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT);
+            bool ctrl_held  = Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL);
 
             float snap[3];
             if ((m_gizmo_op & (ImGuizmo::OPERATION::SCALE | ImGuizmo::OPERATION::SCALEU))) {
-                if (ctrl_held)
-                    TOOLBOX_DEBUG_LOG("Scale Held");
                 snap[0] = 0.1f;
                 snap[1] = 0.1f;
                 snap[2] = 0.1f;
             } else if ((m_gizmo_op & ImGuizmo::OPERATION::ROTATE)) {
-                if (ctrl_held)
-                    TOOLBOX_DEBUG_LOG("Rotate Held");
                 snap[0] = 15.0f;
                 snap[1] = 15.0f;
                 snap[2] = 15.0f;
             } else if ((m_gizmo_op & ImGuizmo::OPERATION::TRANSLATE)) {
-                if (ctrl_held)
-                    TOOLBOX_DEBUG_LOG("Translate Held");
                 snap[0] = 50.0f;
                 snap[1] = 50.0f;
                 snap[2] = 50.0f;
@@ -571,23 +566,24 @@ namespace Toolbox::UI {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    bool Renderer::inputUpdate(f32 delta_time) {
+    bool Renderer::inputUpdate(TimeStep delta_time) {
         const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
 
-        if (m_is_view_manipulating && Input::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT)) {
-            ImVec2 mouse_delta = Input::GetMouseDelta();
+        if (m_is_view_manipulating && Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {
+            double delta_x, delta_y;
+            Input::GetMouseDelta(delta_x, delta_y);
 
-            m_camera.turnLeftRight(-mouse_delta.x * settings.m_camera_sensitivity * delta_time * 0.25f);
-            m_camera.tiltUpDown(-mouse_delta.y * settings.m_camera_sensitivity * delta_time * 0.25f);
+            m_camera.turnLeftRight(-delta_x * settings.m_camera_sensitivity * delta_time * 0.25f);
+            m_camera.tiltUpDown(-delta_y * settings.m_camera_sensitivity * delta_time * 0.25f);
 
             m_is_view_dirty = true;
         }
 
         if (m_is_window_focused) {
             AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-            bool translate_held   = KeyBindHeld(settings.m_gizmo_translate_mode_keybind);
-            bool rotate_held      = KeyBindHeld(settings.m_gizmo_rotate_mode_keybind);
-            bool scale_held       = KeyBindHeld(settings.m_gizmo_scale_mode_keybind);
+            bool translate_held   = settings.m_gizmo_translate_mode_keybind.isInputMatching();
+            bool rotate_held      = settings.m_gizmo_rotate_mode_keybind.isInputMatching();
+            bool scale_held       = settings.m_gizmo_scale_mode_keybind.isInputMatching();
 
             if (translate_held) {
                 m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
@@ -600,29 +596,32 @@ namespace Toolbox::UI {
             // Camera movement
             {
                 float lr_delta = 0, ud_delta = 0;
-                if (Input::GetKey(GLFW_KEY_A)) {
+                if (Input::GetKey(Input::KeyCode::KEY_A)) {
                     lr_delta -= 1;
                 }
-                if (Input::GetKey(GLFW_KEY_D)) {
+                if (Input::GetKey(Input::KeyCode::KEY_D)) {
                     lr_delta += 1;
                 }
-                if (Input::GetKey(GLFW_KEY_W)) {
+                if (Input::GetKey(Input::KeyCode::KEY_W)) {
                     ud_delta += 1;
                 }
-                if (Input::GetKey(GLFW_KEY_S)) {
+                if (Input::GetKey(Input::KeyCode::KEY_S)) {
                     ud_delta -= 1;
                 }
-                if (Input::GetKey(GLFW_KEY_LEFT_SHIFT)) {
-                    lr_delta *= 10;
-                    ud_delta *= 10;
+                if (Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT)) {
+                    lr_delta *= 10.0f;
+                    ud_delta *= 10.0f;
                 }
 
                 if (m_is_window_hovered) {
-                    ud_delta += Input::GetMouseScrollDelta() * 10.0f;
+                    double delta_x, delta_y;
+                    Input::GetMouseScrollDelta(delta_x, delta_y);
+                    lr_delta += static_cast<float>(delta_x * 10.0f);
+                    ud_delta += static_cast<float>(delta_y * 10.0f);
                 }
 
-                lr_delta *= settings.m_camera_speed * delta_time * 500.0f;
-                ud_delta *= settings.m_camera_speed * delta_time * 500.0f;
+                lr_delta *= static_cast<float>(settings.m_camera_speed * delta_time * 500.0f);
+                ud_delta *= static_cast<float>(settings.m_camera_speed * delta_time * 500.0f);
 
                 m_camera.translateLeftRight(-lr_delta);
                 m_camera.translateFwdBack(ud_delta);
@@ -655,8 +654,8 @@ namespace Toolbox::UI {
             return std::nullopt;
         }
 
-        const bool left_click  = Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_LEFT);
-        const bool right_click = Input::GetMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT);
+        const bool left_click  = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
+        const bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
 
         // Mouse pos is absolute
         ImVec2 mouse_pos = ImGui::GetMousePos();

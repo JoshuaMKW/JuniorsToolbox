@@ -8,6 +8,7 @@
 #include "core/core.hpp"
 #include "core/error.hpp"
 #include "core/memory.hpp"
+#include "image/imagehandle.hpp"
 #include "platform/process.hpp"
 
 #include "unique.hpp"
@@ -23,13 +24,16 @@ namespace Toolbox::Dolphin {
 
     class DolphinHookManager {
     public:
-        static DolphinHookManager &instance() {
-            static DolphinHookManager _instance;
-            return _instance;
-        }
+        static DolphinHookManager &instance();
 
     protected:
-        DolphinHookManager() = default;
+        DolphinHookManager()                                      = default;
+
+    public:
+        DolphinHookManager(const DolphinHookManager &)            = delete;
+        DolphinHookManager(DolphinHookManager &&)                 = delete;
+        DolphinHookManager &operator=(const DolphinHookManager &) = delete;
+        DolphinHookManager &operator=(DolphinHookManager &&)      = delete;
 
     public:
         // Check if a specific UUID owns the lock
@@ -64,22 +68,11 @@ namespace Toolbox::Dolphin {
         Result<void> startProcess();
         Result<void> stopProcess();
 
-        bool isHooked() const {
-            return m_mem_view && Platform::IsExProcessRunning(m_proc_info);
-        }
+        bool isHooked() const { return m_mem_view && Platform::IsExProcessRunning(m_proc_info); }
 
         Result<bool> hook();
         Result<bool> unhook();
-        Result<bool> refresh() {
-            if (!Platform::IsExProcessRunning(m_proc_info)) {
-                auto unhook_result = unhook();
-                if (!unhook_result) {
-                    return std::unexpected(unhook_result.error());
-                }
-            }
-
-            return hook();
-        }
+        Result<bool> refresh();
 
         void *getMemoryView() const { return isHooked() ? m_mem_view : nullptr; }
         size_t getMemorySize() const { return isHooked() ? 0x1800000 : 0; }
@@ -87,7 +80,8 @@ namespace Toolbox::Dolphin {
         Result<void> readBytes(char *buf, u32 address, size_t size);
         Result<void> writeBytes(const char *buf, u32 address, size_t size);
 
-        u32 captureXFBAsTexture(int width, int height, u32 xfb_start, int xfb_width, int xfb_height);
+        ImageHandle captureXFBAsTexture(int width, int height, u32 xfb_start, int xfb_width,
+                                        int xfb_height);
 
     private:
         Platform::ProcessInformation m_proc_info;

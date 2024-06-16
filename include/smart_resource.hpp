@@ -7,7 +7,7 @@ namespace Toolbox {
     // ISmartResource provides std::enable_shared_from_this
     // necessarily, due to the needs of preserving the shared
     // functionality through the clone process.
-    class ISmartResource : public std::enable_shared_from_this<ISmartResource> {
+    class ISmartResource : public Referable<ISmartResource> {
     public:
         virtual ~ISmartResource() = default;
 

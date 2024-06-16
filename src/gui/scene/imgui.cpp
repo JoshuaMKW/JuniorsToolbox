@@ -1,5 +1,5 @@
 #include "gui/imgui_ext.hpp"
-#include <gui/IconsForkAwesome.h>
+#include <IconsForkAwesome.h>
 
 namespace Toolbox::UI {
 

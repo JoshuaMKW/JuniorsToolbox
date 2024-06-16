@@ -6,7 +6,7 @@
 #include <>
 #endif
 
-namespace Toolbox::UI {
+namespace Toolbox {
 
     SystemClipboard::SystemClipboard() {}
     SystemClipboard::~SystemClipboard() {}

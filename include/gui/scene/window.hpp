@@ -8,14 +8,15 @@
 #include <vector>
 
 #include "core/memory.hpp"
-#include "smart_resource.hpp"
 #include "fsystem.hpp"
 #include "objlib/object.hpp"
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"
+#include "smart_resource.hpp"
 
 #include "core/clipboard.hpp"
 #include "game/task.hpp"
+#include "gui/image/imagepainter.hpp"
 #include "gui/property/property.hpp"
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
@@ -31,10 +32,35 @@
 
 namespace Toolbox::UI {
 
-    class SceneWindow final : public DockWindow {
+#define SCENE_CREATE_RAIL_EVENT     100
+#define SCENE_DISABLE_CONTROL_EVENT 101
+#define SCENE_ENABLE_CONTROL_EVENT  102
+
+    class SceneCreateRailEvent : public BaseEvent {
+    private:
+        SceneCreateRailEvent() = default;
+
     public:
-        SceneWindow();
-        ~SceneWindow();
+        SceneCreateRailEvent(const SceneCreateRailEvent &)     = default;
+        SceneCreateRailEvent(SceneCreateRailEvent &&) noexcept = default;
+
+        SceneCreateRailEvent(const UUID64 &target_id, const Rail::Rail &rail);
+
+        [[nodiscard]] const Rail::Rail &getRail() const noexcept { return m_rail; }
+
+        ScopePtr<ISmartResource> clone(bool deep) const override;
+
+        SceneCreateRailEvent &operator=(const SceneCreateRailEvent &)     = default;
+        SceneCreateRailEvent &operator=(SceneCreateRailEvent &&) noexcept = default;
+
+    private:
+        Rail::Rail m_rail;
+    };
+
+    class SceneWindow final : public ImWindow {
+    public:
+        SceneWindow(const std::string &name);
+        ~SceneWindow() = default;
 
         enum class EditorWindow {
             NONE,
@@ -44,17 +70,28 @@ namespace Toolbox::UI {
             RENDER_VIEW,
         };
 
+        using render_layer_cb =
+            std::function<void(TimeStep delta_time, std::string_view layer_name, int width,
+                               int height, const glm::mat4x4 &vp_mtx, UUID64 window_uuid)>;
+
+        void registerOverlay(const std::string &layer_name, render_layer_cb cb) {
+            m_render_layers[layer_name] = cb;
+        }
+
+        void deregisterOverlay(const std::string &layer_name) { m_render_layers.erase(layer_name); }
+
     protected:
-        void buildDockspace(ImGuiID dockspace_id) override;
-        void renderMenuBar() override;
-        void renderBody(f32 delta_time) override;
+        ImGuiID onBuildDockspace() override;
+        void onRenderMenuBar() override;
+        void onRenderBody(TimeStep delta_time) override;
+
         void renderHierarchy();
-        void renderTree(RefPtr<Object::ISceneObject> node);
+        void renderTree(size_t node_index, RefPtr<Object::ISceneObject> node);
         void renderRailEditor();
-        void renderScene(f32 delta_time);
-        void renderDolphin(f32 delta_time);
-        void renderPlaybackButtons(f32 delta_time);
-        void renderScenePeripherals(f32 delta_time);
+        void renderScene(TimeStep delta_time);
+        void renderDolphin(TimeStep delta_time);
+        void renderPlaybackButtons(TimeStep delta_time);
+        void renderScenePeripherals(TimeStep delta_time);
         void renderHierarchyContextMenu(std::string str_id,
                                         SelectionNodeInfo<Object::ISceneObject> &info);
         void renderRailContextMenu(std::string str_id, SelectionNodeInfo<Rail::Rail> &info);
@@ -66,6 +103,7 @@ namespace Toolbox::UI {
         static bool renderRailProperties(SceneWindow &window);
         static bool renderRailNodeProperties(SceneWindow &window);
 
+        void calcDolphinVPMatrix();
         void reassignAllActorPtrs(u32 param);
 
         void buildContextMenuVirtualObj();
@@ -83,24 +121,37 @@ namespace Toolbox::UI {
         void buildCreateRailDialog();
         void buildRenameRailDialog();
 
-        void onDeleteKey() override;
-        void onPageDownKey() override;
-        void onPageUpKey() override;
-        void onHomeKey() override;
+        void saveMimeObject(Buffer &buffer, size_t index, RefPtr<ISceneObject> parent);
+        void saveMimeRail(Buffer &buffer, size_t index);
+        void saveMimeRailNode(Buffer &buffer, size_t index, RefPtr<Rail::Rail> parent);
+
+        void loadMimeObject(Buffer &buffer, size_t index, UUID64 parent_id);
+        void loadMimeRail(Buffer &buffer, size_t index);
+        void loadMimeRailNode(Buffer &buffer, size_t index, UUID64 rail_id);
+
+        void processObjectSelection(RefPtr<Object::ISceneObject> node, bool is_multi);
+        void processRailSelection(RefPtr<Rail::Rail> node, bool is_multi);
+        void processRailNodeSelection(RefPtr<Rail::RailNode> node, bool is_multi);
+
+    private:
+        void _moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id, size_t orig_index,
+                       UUID64 orig_id, bool is_internal);
 
     public:
-        ImGuiWindowFlags flags() const override { return DockWindow::flags() | ImGuiWindowFlags_MenuBar; }
+        ImGuiWindowFlags flags() const override {
+            return ImWindow::flags() | ImGuiWindowFlags_MenuBar;
+        }
 
         const ImGuiWindowClass *windowClass() const override {
             if (parent() && parent()->windowClass()) {
                 return parent()->windowClass();
             }
 
-            ImGuiWindow *currentWindow              = ImGui::GetCurrentWindow();
-            m_window_class.ClassId                  = (ImGuiID)getUUID();
-            m_window_class.ParentViewportId         = currentWindow->ViewportId;
-            m_window_class.DockingAllowUnclassed    = true;
-            m_window_class.DockingAlwaysTabBar      = false;
+            ImGuiWindow *currentWindow           = ImGui::GetCurrentWindow();
+            m_window_class.ClassId               = (ImGuiID)getUUID();
+            m_window_class.ParentViewportId      = currentWindow->ViewportId;
+            m_window_class.DockingAllowUnclassed = true;
+            m_window_class.DockingAlwaysTabBar   = false;
             return nullptr;
         }
 
@@ -117,7 +168,6 @@ namespace Toolbox::UI {
             return m_current_scene->rootPath() ? m_current_scene->rootPath().value().string()
                                                : "(unknown)";
         }
-        [[nodiscard]] std::string name() const override { return "Scene Editor"; }
         [[nodiscard]] bool unsaved() const override { return false; }
 
         // Returns the supported file types, empty string is designed for a folder.
@@ -125,11 +175,18 @@ namespace Toolbox::UI {
             return {"", "arc", "szs"};
         }
 
-        [[nodiscard]] bool loadData(const std::filesystem::path &path) override;
-        [[nodiscard]] bool saveData(std::optional<std::filesystem::path> path) override;
+        [[nodiscard]] bool onLoadData(const std::filesystem::path &path) override;
+        [[nodiscard]] bool onSaveData(std::optional<std::filesystem::path> path) override;
 
-        bool update(f32 delta_time) override;
-        bool postUpdate(f32 delta_time) override;
+        void onAttach() override;
+        void onDetach() override;
+
+        void onImGuiUpdate(TimeStep delta_time) override;
+        void onImGuiPostUpdate(TimeStep delta_time) override;
+        void onContextMenuEvent(RefPtr<ContextMenuEvent> ev) override;
+        void onDragEvent(RefPtr<DragEvent> ev) override;
+        void onDropEvent(RefPtr<DropEvent> ev) override;
+        void onEvent(RefPtr<BaseEvent> ev) override;
 
     private:
         ScopePtr<Toolbox::SceneInstance> m_current_scene;
@@ -152,10 +209,10 @@ namespace Toolbox::UI {
         RenameObjDialog m_rename_obj_dialog;
 
         // Render view
-        bool m_update_render_objs;
-        bool m_is_render_window_open;
+        bool m_update_render_objs    = false;
+        bool m_is_render_window_open = false;
         Renderer m_renderer;
-        std::vector<ISceneObject::RenderInfo> m_renderables;
+        std::vector<ISceneObject::RenderInfo> m_renderables = {};
         ResourceCache m_resource_cache;
 
         // Docking facilities
@@ -165,11 +222,13 @@ namespace Toolbox::UI {
         ImGuiID m_dock_node_down_left_id = 0;
 
         // Rail editor
-        std::unordered_map<UUID64, bool> m_rail_visible_map                  = {};
-        bool m_connections_open                                               = true;
+        std::unordered_map<UUID64, bool> m_rail_visible_map = {};
+        bool m_connections_open                             = true;
+
         std::vector<SelectionNodeInfo<Rail::Rail>> m_rail_list_selected_nodes = {};
         ContextMenu<SelectionNodeInfo<Rail::Rail>> m_rail_list_single_node_menu;
         ContextMenu<std::vector<SelectionNodeInfo<Rail::Rail>>> m_rail_list_multi_node_menu;
+
         std::vector<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_selected_nodes = {};
         ContextMenu<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_single_node_menu;
         ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>>
@@ -181,20 +240,37 @@ namespace Toolbox::UI {
 
         EditorWindow m_focused_window = EditorWindow::NONE;
 
-        ImGuiWindow *m_hierarchy_window;
-        ImGuiWindow *m_rail_list_window;
+        ImGuiWindow *m_hierarchy_window = nullptr;
+        ImGuiWindow *m_rail_list_window = nullptr;
 
         std::string m_selected_add_zone{""};
 
         bool m_options_open = false;
 
-        bool m_is_save_default_ready = false;
+        bool m_is_save_default_ready  = false;
         bool m_is_save_as_dialog_open = false;
-        bool m_is_verify_open = false;
+        bool m_is_verify_open         = false;
 
         bool m_is_game_edit_mode = false;
 
-        Game::TaskCommunicator m_communicator;
-        u32 m_dolphin_texture_id;
+        ImageHandle m_dolphin_image;
+        ImagePainter m_dolphin_painter;
+
+        glm::mat4x4 m_dolphin_vp_mtx = {};
+        std::map<std::string, render_layer_cb> m_render_layers;
+
+        // Event Stuff
+        bool m_control_disable_requested = false;
+
+        // Drag drop stuff
+        UUID64 m_object_parent_uuid;
+        int m_object_drop_target = -1;
+
+        int m_rail_drop_target = -1;
+
+        UUID64 m_rail_node_rail_uuid;
+        int m_rail_node_drop_target = -1;
+
+        Toolbox::Buffer m_drop_target_buffer;
     };
 }  // namespace Toolbox::UI

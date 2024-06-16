@@ -173,15 +173,17 @@ namespace Toolbox::BMG {
             bracket_l = m_message_data.find('{', bracket_r);
 
             // If no more commands, return the end
-            if (bracket_l == std::string::npos && (bracket_r + 1) < m_message_data.size()) {
-                parts.push_back(m_message_data.substr(bracket_r + 1));
+            if (bracket_l == std::string::npos) {
+                if ((bracket_r + 1) < m_message_data.size()) {
+                    parts.push_back(m_message_data.substr(bracket_r + 1));
+                }
                 break;
             }
 
             std::string text = m_message_data.substr(bracket_r, bracket_l);
 
             bracket_r      = m_message_data.find('}', bracket_l);
-            next_bracket_l = m_message_data.find('{', bracket_l);
+            next_bracket_l = m_message_data.find('{', bracket_l + 1);
 
             const bool isCommandEnclosed =
                 bracket_r < next_bracket_l && bracket_r != std::string::npos;
@@ -204,7 +206,7 @@ namespace Toolbox::BMG {
                 continue;
             }
 
-            std::string command = m_message_data.substr(bracket_l, bracket_r);
+            std::string command = m_message_data.substr(bracket_l, bracket_r + 1);
             if (!command.empty())
                 parts.push_back(command);
         }

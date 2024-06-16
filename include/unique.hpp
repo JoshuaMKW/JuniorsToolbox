@@ -12,7 +12,7 @@ namespace Toolbox {
         using engine      = std::mt19937_64;
         using distributor = std::uniform_int_distribution<u64>;
 
-        UUID64() { m_UUID64 = _generate(); }
+        UUID64() { _generate(); }
         UUID64(u64 _UUID64) : m_UUID64(_UUID64) {}
 
         operator u64() const { return m_UUID64; }
@@ -34,7 +34,9 @@ namespace Toolbox {
 namespace std {
 
     template <> struct hash<Toolbox::UUID64> {
-        size_t operator()(const Toolbox::UUID64 &UUID64) const { return hash<Toolbox::u64>()((Toolbox::u64)UUID64); }
+        Toolbox::u64 operator()(const Toolbox::UUID64 &UUID64) const {
+            return hash<Toolbox::u64>()((Toolbox::u64)UUID64);
+        }
     };
 
     template <> struct formatter<Toolbox::UUID64> : formatter<Toolbox::u64> {

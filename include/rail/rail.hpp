@@ -14,7 +14,8 @@ using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
 
-    class Rail : public ISmartResource, public IUnique {
+    // NOTE: Serialization is for Toolbox UI only. Use RalData for actual game data.
+    class Rail : public ISerializable, public ISmartResource, public IUnique {
     public:
         using node_ptr_t = RefPtr<RailNode>;
 
@@ -22,7 +23,7 @@ namespace Toolbox::Rail {
         explicit Rail(std::string_view name) : m_name(name) {}
         Rail(std::string_view name, std::vector<node_ptr_t> nodes) : m_name(name), m_nodes(nodes) {
             for (auto &node : m_nodes) {
-                node->m_rail = this;
+                node->m_rail_uuid = getUUID();
             }
         }
         Rail(const Rail &other) = default;
@@ -32,6 +33,9 @@ namespace Toolbox::Rail {
 
         Rail &operator=(const Rail &other) = default;
         Rail &operator=(Rail &&other)      = default;
+
+        Result<void, SerialError> serialize(Serializer &out) const override;
+        Result<void, SerialError> deserialize(Deserializer &in) override;
 
         [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
 
@@ -68,6 +72,8 @@ namespace Toolbox::Rail {
         // Node API
 
         [[nodiscard]] size_t getNodeCount() const { return m_nodes.size(); }
+
+        void clearNodes() { m_nodes.clear(); }
 
         void addNode(node_ptr_t node);
 

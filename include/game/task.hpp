@@ -29,8 +29,10 @@ namespace Toolbox::Game {
 
         bool isSceneLoaded();
         bool isSceneLoaded(u8 stage, u8 scenario);
+        bool getLoadedScene(u8 &stage, u8 &scenario);
 
         u32 getActorPtr(RefPtr<ISceneObject> actor);
+        u32 getActorPtr(const std::string &name);
 
         Result<void> taskLoadScene(u8 stage, u8 scenario,
                                    transact_complete_cb complete_cb = nullptr);
@@ -55,12 +57,16 @@ namespace Toolbox::Game {
 
         Result<void> setCameraTransformToGameCamera(Camera &camera);
 
-        Result<void> setMarioToCameraTransform(const Transform &camera_transform);
+        Result<void> getMarioTranslation(glm::vec3 &translation);
+        Result<void> setMarioTranslation(const glm::vec3 &translation, bool warp_camera);
+
+        Result<void> getMarioTransform(Transform &transform);
+        Result<void> setMarioTransform(const Transform &transform, bool warp_camera);
 
         Result<void> setObjectTransform(RefPtr<PhysicalSceneObject> object,
                                         const Transform &transform);
 
-        u32 captureXFBAsTexture(int width, int height);
+        ImageHandle captureXFBAsTexture(int width, int height);
 
         ScopePtr<Interpreter::SystemDolphin> createInterpreter();
         ScopePtr<Interpreter::SystemDolphin> createInterpreterUnchecked();
@@ -88,6 +94,14 @@ namespace Toolbox::Game {
 
         u32 allocGameMemory(u32 heap_ptr, u32 size, u32 alignment);
 
+        bool constructThread(u32 thread_ptr, u32 func, u32 parameter, u32 stack, u32 stackSize,
+                             u32 priority, u16 attributes);
+
+        // Blocking
+        void waitMutex(u32 mutex_ptr);
+        void lockMutex(u32 thread_id, u32 mutex_ptr);
+        void unlockMutex(u32 thread_id, u32 mutex_ptr);
+
         u32 listInsert(u32 list_ptr, u32 iter_at, u32 item_ptr);
         u32 listBegin(u32 list_ptr) const;
         u32 listEnd(u32 list_ptr) const;
@@ -100,7 +114,7 @@ namespace Toolbox::Game {
         u32 vectorEnd(u32 vector_ptr) const;
         u32 vectorNext(u32 iter, u32 item_size) const;
         u32 vectorItem(u32 iter) const;
-        void vectorForEach(u32 vector_ptr, size_t item_size,
+        void vectorForEach(u32 vector_ptr, u32 item_size,
                            std::function<void(DolphinCommunicator &, u32)> fn);
 
         bool checkForAcquiredStackFrameAndBuffer();
@@ -119,9 +133,6 @@ namespace Toolbox::Game {
         std::mutex m_interpreter_mutex;
 
         std::atomic<bool> m_hook_flag;
-
-        std::atomic<bool> m_kill_flag;
-        std::condition_variable m_kill_condition;
     };
 
 }  // namespace Toolbox::Game

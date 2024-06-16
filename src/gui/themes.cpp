@@ -16,7 +16,7 @@ namespace Toolbox::UI {
         : m_name(name), m_style(theme), m_load_ok(true) {}
 
     bool ConfigTheme::apply() {
-        if (!m_load_ok)
+        if (!m_load_ok || true)
             return false;
         auto &style  = ImGui::GetStyle();
         for (size_t i = 0; i < ImGuiCol_COUNT; ++i) {
@@ -37,6 +37,11 @@ namespace Toolbox::UI {
         std::ofstream out(path, std::ios::binary | std::ios::out | std::ios::ate);
 
         out.write(reinterpret_cast<const char *>(&m_style), sizeof(m_style));
+    }
+
+    ThemeManager &ThemeManager::instance() {
+        static ThemeManager instance_;
+        return instance_;
     }
 
     Result<void, FSError> ThemeManager::initialize() {

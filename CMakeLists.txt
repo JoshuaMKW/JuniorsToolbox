@@ -8,10 +8,10 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Enable Hot Reload for MSVC compilers if supported.
-# if (POLICY CMP0141)
-#   cmake_policy(SET CMP0141 NEW)
-#   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
-# endif()
+if (POLICY CMP0141)
+  cmake_policy(SET CMP0141 NEW)
+  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+endif()
 
 project(JuniorsToolbox)
 
@@ -28,6 +28,18 @@ file(GLOB TOOLBOX_SRC
     "include/bti/*.hpp"
     "src/core/*.cpp"
     "include/core/*.hpp"
+    "src/core/application/*.cpp"
+    "include/core/application/*.hpp"
+    "src/core/event/*.cpp"
+    "include/core/event/*.hpp"
+    "src/core/input/*.cpp"
+    "include/core/input/*.hpp"
+    "src/core/mimedata/*.cpp"
+    "include/core/mimedata/*.hpp"
+    "src/core/keybind/*.cpp"
+    "include/core/keybind/*.hpp"
+    "src/core/time/*.cpp"
+    "include/core/time/*.hpp"
     "src/dolphin/*.cpp"
     "include/dolphin/*.hpp"
     "src/dolphin/interpreter/*.cpp"
@@ -36,8 +48,26 @@ file(GLOB TOOLBOX_SRC
     "include/dolphin/interpreter/instructions/*.hpp"
     "src/game/*.cpp"
     "include/game/*.hpp"
+    "src/gui/dolphin/*.cpp"
+    "include/gui/dolphin/*.hpp"
+    "src/gui/event/*.cpp"
+    "include/gui/event/*.hpp"
+    "src/gui/dragdrop/*.cpp"
+    "include/gui/dragdrop/*.hpp"
+    "src/gui/image/*.cpp"
+    "include/gui/image/*.hpp"
+    "src/gui/layer/*.cpp"
+    "include/gui/layer/*.hpp"
+    "src/gui/pad/*.cpp"
+    "include/gui/pad/*.hpp"
+    "src/gui/widget/*.cpp"
+    "include/gui/widget/*.hpp"
+    "src/image/*.cpp"
+    "include/image/*.hpp"
     "src/objlib/*.cpp"
     "include/objlib/*.hpp"
+    "src/pad/*.cpp"
+    "include/pad/*.hpp"
     "src/platform/*.cpp"
     "include/platform/*.hpp"
     "src/rail/*.cpp"
@@ -76,7 +106,7 @@ add_subdirectory(lib/glfw)
 
 if(MSVC)
     # target_compile_options(j3dultra PRIVATE /w)
-    target_compile_options(JuniorsToolbox PRIVATE /FS)
+    target_compile_options(JuniorsToolbox PRIVATE /FS /MP)
 else()
     # target_compile_options(j3dultra PRIVATE -w)
 endif()

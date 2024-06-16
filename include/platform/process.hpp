@@ -17,9 +17,11 @@ namespace Toolbox::Platform {
 #ifdef TOOLBOX_PLATFORM_WINDOWS
     typedef HANDLE LowHandle;
     typedef DWORD ProcessID;
+    typedef HWND LowWindow;
 #elif TOOLBOX_PLATFORM_LINUX
-    typedef void *MemoryHandle;
+    typedef void *LowHandle;
     typedef pid_t ProcessID;
+    typedef void *LowWindow;
 #endif
 
     struct ProcessInformation {
@@ -35,4 +37,15 @@ namespace Toolbox::Platform {
     Result<void> KillExProcess(const ProcessInformation &process,
                                size_t max_wait = std::numeric_limits<ProcessID>::max());
     bool IsExProcessRunning(const ProcessInformation &process);
+
+    std::vector<LowWindow> FindWindowsOfProcess(const ProcessInformation &process);
+
+    std::string GetWindowTitle(LowWindow window);
+    bool GetWindowClientRect(LowWindow window, int &x, int &y, int &width, int &height);
+
+    bool ForceWindowToFront(LowWindow window);
+    bool ForceWindowToFront(LowWindow window, LowWindow target);
+
+    bool SetWindowTransparency(LowWindow window, uint8_t alpha);
+
 }  // namespace Toolbox::Platform

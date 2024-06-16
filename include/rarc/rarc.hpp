@@ -90,7 +90,7 @@ namespace Toolbox::RARC {
         [[nodiscard]] bool isMatchingOutput() const { return m_keep_matching; }
         void setMatchingOutput(bool matching) { m_keep_matching = matching; }
 
-        [[nodiscard]] std::string_view getName() const { return m_name; }
+        [[nodiscard]] std::string_view name() const { return m_name; }
         [[nodiscard]] std::vector<Node> &getNodes() { return m_nodes; }
         [[nodiscard]] const std::vector<Node> &getNodes() const { return m_nodes; }
 

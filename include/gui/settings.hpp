@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/assert.hpp"
+#include "core/keybind/keybind.hpp"
 #include "core/types.hpp"
 #include "fsystem.hpp"
 #include "json.hpp"
@@ -17,6 +18,8 @@
 #undef GLFW_INCLUDE_NONE
 
 namespace Toolbox {
+
+    using namespace Input;
 
     struct AppSettings {
         // General
@@ -42,9 +45,9 @@ namespace Toolbox {
         float m_far_plane           = 500000.0f;
 
         // Control
-        std::vector<int> m_gizmo_translate_mode_keybind = {GLFW_KEY_1};
-        std::vector<int> m_gizmo_rotate_mode_keybind    = {GLFW_KEY_2};
-        std::vector<int> m_gizmo_scale_mode_keybind     = {GLFW_KEY_3};
+        KeyBind m_gizmo_translate_mode_keybind = KeyBind({KeyCode::KEY_D1});
+        KeyBind m_gizmo_rotate_mode_keybind    = KeyBind({KeyCode::KEY_D2});
+        KeyBind m_gizmo_scale_mode_keybind     = KeyBind({KeyCode::KEY_D3});
 
         // Advanced
         std::filesystem::path m_dolphin_path = "";
@@ -59,10 +62,7 @@ namespace Toolbox {
 
         SettingsManager() = default;
 
-        static SettingsManager &instance() {
-            static SettingsManager _inst;
-            return _inst;
-        }
+        static SettingsManager &instance();
 
         bool initialize();
         bool save();

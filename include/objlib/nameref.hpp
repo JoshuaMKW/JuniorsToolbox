@@ -47,7 +47,7 @@ namespace Toolbox::Object {
             if (!str_result) {
                 return make_serial_error<void>(in, str_result.error().m_message[0]);
             }
-            m_name      = str_result.value();
+            m_name = str_result.value();
             return {};
         }
 
@@ -58,6 +58,28 @@ namespace Toolbox::Object {
             }
             return code & 0xFFFF;
         }
+
+        NameRef &operator=(const NameRef &other) {
+            m_name_hash = other.m_name_hash;
+            m_name      = other.m_name;
+            return *this;
+        }
+
+        NameRef &operator=(const std::string &name) {
+            setName(name);
+            return *this;
+        }
+
+        NameRef &operator=(std::string_view name) {
+            setName(name);
+            return *this;
+        }
+
+        bool operator==(const NameRef &other) const {
+            return m_name_hash == other.m_name_hash && m_name == other.m_name;
+        }
+
+        bool operator!=(const NameRef &other) const { return !(*this == other); }
 
     private:
         u16 m_name_hash    = calcKeyCode("(null)");
