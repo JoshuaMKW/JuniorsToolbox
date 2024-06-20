@@ -553,19 +553,17 @@ namespace Toolbox {
     }
 
     void PadRecorder::clearLink(char from_link, char to_link) {
-        m_mutex.lock();
-        {
-            auto remove_it =
-                std::find_if(m_pad_datas.begin(), m_pad_datas.end(),
-                             [from_link, to_link](const PadDataLinkInfo &info) {
-                                 return info.m_from_link == from_link && info.m_to_link == to_link;
-                             });
-            if (remove_it != m_pad_datas.end()) {
-                m_pad_datas.erase(remove_it);
-            }
-            m_link_data->removeLinkNode(from_link, to_link);
+        std::scoped_lock lock(m_mutex);
+
+        auto remove_it =
+            std::find_if(m_pad_datas.begin(), m_pad_datas.end(),
+                          [from_link, to_link](const PadDataLinkInfo &info) {
+                              return info.m_from_link == from_link && info.m_to_link == to_link;
+                          });
+        if (remove_it != m_pad_datas.end()) {
+            m_pad_datas.erase(remove_it);
         }
-        m_mutex.unlock();
+        m_link_data->removeLinkNode(from_link, to_link);
     }
 
     Result<PadRecorder::PadFrameData> PadRecorder::readPadFrameData(PadSourceType source) {

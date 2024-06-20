@@ -1035,15 +1035,17 @@ namespace Toolbox::Game {
                                     "Failed to set mario transform in scene (nullptr)!");
         }
 
-        communicator.write<f32>(mario_ptr + 0x10, transform.m_translation.x);
-        communicator.write<f32>(mario_ptr + 0x14, transform.m_translation.y);
-        communicator.write<f32>(mario_ptr + 0x18, transform.m_translation.z);
-
-        u32 gpr_args[2] = {mario_ptr, mario_ptr + 0x10};
-        f64 fpr_args[1] = {transform.m_rotation.y};
-
         // Call function TMario::warpRequest(TVec3f<float> *, float)
         if (warp_camera) {
+            u32 vec_ptr = 0x800001F0;
+
+            communicator.write<f32>(vec_ptr + 0x0, transform.m_translation.x);
+            communicator.write<f32>(vec_ptr + 0x4, transform.m_translation.y);
+            communicator.write<f32>(vec_ptr + 0x8, transform.m_translation.z);
+
+            u32 gpr_args[2] = {mario_ptr, vec_ptr};
+            f64 fpr_args[1] = {transform.m_rotation.y};
+
             m_game_interpreter.evaluateFunction(0x8025599C, 2, gpr_args, 1, fpr_args);
             return {};
         }
