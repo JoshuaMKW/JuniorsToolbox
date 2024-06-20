@@ -968,7 +968,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u64>(destination, m_fpr[frs].ps0AsU64());
+        storage.set<u64>(destination, std::byteswap(m_fpr[frs].ps0AsU64()));
     }
 
     void FloatingPointProcessor::stfdu(u8 frs, s16 d, u8 ra, Register::GPR gpr[32],
@@ -987,7 +987,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u64>(destination, m_fpr[frs].ps0AsU64());
+        storage.set<u64>(destination, std::byteswap(m_fpr[frs].ps0AsU64()));
         gpr[ra] += d;
     }
 
@@ -1007,7 +1007,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u64>(destination, m_fpr[frs].ps0AsU64());
+        storage.set<u64>(destination, std::byteswap(m_fpr[frs].ps0AsU64()));
     }
 
     void FloatingPointProcessor::stfdux(u8 frs, u8 ra, u8 rb, Register::GPR gpr[32],
@@ -1026,7 +1026,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u64>(destination, m_fpr[frs].ps0AsU64());
+        storage.set<u64>(destination, std::byteswap(m_fpr[frs].ps0AsU64()));
         gpr[ra] += gpr[rb];
     }
 
@@ -1046,7 +1046,7 @@ namespace Toolbox::Interpreter {
             m_exception_cb(ExceptionCause::EXCEPTION_DSI);
             return;
         }
-        storage.set<u32>(destination, m_fpr[frs].ps0AsU32());
+        storage.set<u32>(destination, std::byteswap(m_fpr[frs].ps0AsU32()));
     }
 
     // Move
