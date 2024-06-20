@@ -172,10 +172,9 @@ namespace Toolbox::RARC {
         getSortedDirectoryListR(root, sorted_fs_tree);
 
         for (auto &path : sorted_fs_tree) {
-            auto dir_result = Toolbox::is_directory(path);
+            auto dir_result = Toolbox::Filesystem::is_directory(path);
             if (!dir_result) {
-                return make_fs_error<ResourceArchive>(
-                    dir_result.error(), {"CREATE: Failed to check if {} is a directory"});
+                return std::unexpected(dir_result.error());
             }
             bool folder = dir_result.value();
             if (err) {
@@ -191,10 +190,9 @@ namespace Toolbox::RARC {
                 fstrm.read(data.data(), data.size());
             }
 
-            auto path_result = Toolbox::relative(path, root);
+            auto path_result = Toolbox::Filesystem::relative(path, root);
             if (!path_result) {
-                return make_fs_error<ResourceArchive>(
-                    path_result.error(), {"CREATE: Failed to get relative path of {}"});
+                return std::unexpected(path_result.error());
             }
             path = std::filesystem::path(".") / path_result.value();
 
@@ -403,9 +401,9 @@ namespace Toolbox::RARC {
             std::transform(file_name.begin(), file_name.end(), file_name.begin(),
                            [](char c) { return std::tolower(c); });
 
-            auto result = Toolbox::file_size(file);
+            auto result = Toolbox::Filesystem::file_size(file);
             if (!result) {
-                return make_fs_error<void>(result.error());
+                return std::unexpected(result.error());
             }
 
             std::ifstream fin = std::ifstream(file, std::ios::binary | std::ios::in);
@@ -670,9 +668,9 @@ namespace Toolbox::RARC {
     Result<ResourceArchive::node_it, FSError>
     ResourceArchive::replaceNode(node_it old_node, const std::filesystem::path &path) {
         {
-            auto result = Toolbox::exists(path);
+            auto result = Toolbox::Filesystem::exists(path);
             if (!result)
-                return make_fs_error<node_it>(result.error());
+                return std::unexpected(result.error());
             if (!result.value())
                 return make_fs_error<node_it>(std::error_code(), {"REPLACE: Path does not exist."});
         }
@@ -682,9 +680,9 @@ namespace Toolbox::RARC {
 
         if (old_node->is_folder()) {
             {
-                auto result = Toolbox::is_directory(path);
+                auto result = Toolbox::Filesystem::is_directory(path);
                 if (!result)
-                    return make_fs_error<node_it>(result.error());
+                    return std::unexpected(result.error());
                 if (!result.value())
                     return make_fs_error<node_it>(std::error_code(), {"REPLACE: Not a directory!"});
             }
@@ -752,16 +750,16 @@ namespace Toolbox::RARC {
         }
 
         {
-            auto result = Toolbox::is_regular_file(path);
+            auto result = Toolbox::Filesystem::is_regular_file(path);
             if (!result)
-                return make_fs_error<node_it>(result.error());
+                return std::unexpected(result.error());
             if (!result.value())
                 return make_fs_error<node_it>(std::error_code(), {"REPLACE: Not a file!"});
         }
 
         auto in = std::ifstream(path.string(), std::ios::binary | std::ios::in);
 
-        auto size_result = Toolbox::file_size(path);
+        auto size_result = Toolbox::Filesystem::file_size(path);
         if (!size_result) {
             return make_fs_error<node_it>(std::error_code(),
                                           {"REPLACE: Failed to fetch file size"});
@@ -781,9 +779,9 @@ namespace Toolbox::RARC {
             return make_fs_error<void>(std::error_code(), {"EXTRACT: Target node not found!"});
 
         {
-            auto result = Toolbox::is_directory(folder);
+            auto result = Toolbox::Filesystem::is_directory(folder);
             if (!result)
-                return make_fs_error<void>(result.error());
+                return std::unexpected(result.error());
             if (!result.value())
                 return make_fs_error<void>(std::error_code(), {"EXTRACT: Not a directory!"});
         }

@@ -831,7 +831,7 @@ namespace Toolbox::Object {
         std::transform(model_name.begin(), model_name.end(), model_name.begin(), ::tolower);
 
         if (resource_cache.m_model.count(model_name) == 0) {
-            auto model_path_exists_res = Toolbox::is_regular_file(model_path);
+            auto model_path_exists_res = Toolbox::Filesystem::is_regular_file(model_path);
             if (!model_path_exists_res || !model_path_exists_res.value()) {
                 return {};
             }
@@ -855,7 +855,7 @@ namespace Toolbox::Object {
         std::string mat_name           = mat_path.stem().string();
         std::transform(mat_name.begin(), mat_name.end(), mat_name.begin(), ::tolower);
 
-        auto mat_path_exists_res = Toolbox::is_regular_file(mat_path);
+        auto mat_path_exists_res = Toolbox::Filesystem::is_regular_file(mat_path);
         if (mat_path_exists_res && mat_path_exists_res.value()) {
             bStream::CFileStream mat_stream(mat_path.string(), bStream::Endianess::Big,
                                             bStream::OpenMode::In);
@@ -892,7 +892,7 @@ namespace Toolbox::Object {
             std::filesystem::path anim_path = asset_path / anim_file;
             std::string anim_name           = anim_path.stem().string();
 
-            auto anim_path_exists_res = Toolbox::is_regular_file(anim_path);
+            auto anim_path_exists_res = Toolbox::Filesystem::is_regular_file(anim_path);
             if (anim_path_exists_res && anim_path_exists_res.value()) {
                 J3DAnimationLoader anmLoader;
                 bStream::CFileStream anim_stream(anim_path.string(), bStream::Endianess::Big,

@@ -202,7 +202,8 @@ static const std::vector<ImVec2> s_lr_button_points = {
 
 namespace Toolbox::UI {
 
-    PadInputWindow::PadInputWindow(const std::string &name) : ImWindow(name), m_pad_rail("mariomodoki") {}
+    PadInputWindow::PadInputWindow(const std::string &name)
+        : ImWindow(name), m_pad_rail("mariomodoki") {}
 
     PadInputWindow::~PadInputWindow() {}
 
@@ -518,8 +519,8 @@ namespace Toolbox::UI {
                 point.y += 7.0f * (frame_data.m_trigger_l / 150.0f) * scale;
             }
 
-            ImGui::DrawConvexPolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK, l_button_color,
-                                     2.0f);
+            ImGui::DrawConvexPolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK,
+                                     l_button_color, 2.0f);
         }
 
         // R button
@@ -540,8 +541,8 @@ namespace Toolbox::UI {
                 point.y += 7.0f * (frame_data.m_trigger_r / 150.0f) * scale;
             }
 
-            ImGui::DrawConvexPolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK, r_button_color,
-                                     2.0f);
+            ImGui::DrawConvexPolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK,
+                                     r_button_color, 2.0f);
         }
 
         // Z button
@@ -569,8 +570,8 @@ namespace Toolbox::UI {
                 point += z_button_position;
             }
 
-            ImGui::DrawConvexPolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK, z_button_color,
-                                     2.0f);
+            ImGui::DrawConvexPolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK,
+                                     z_button_color, 2.0f);
         }
 
         bool is_rumble_active = rumble_position.x != 0.0f && rumble_position.y != 0.0f;
@@ -587,8 +588,8 @@ namespace Toolbox::UI {
                 point += controller_position;
             }
 
-            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK,
-                                      controller_color, 2.0f);
+            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()),
+                                      IM_COL32_BLACK, controller_color, 2.0f);
         }
 
         // Controller form l
@@ -605,8 +606,8 @@ namespace Toolbox::UI {
                 point += controller_position;
             }
 
-            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK,
-                                      controller_color, 2.0f);
+            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()),
+                                      IM_COL32_BLACK, controller_color, 2.0f);
         }
 
         // Controller form r
@@ -623,8 +624,8 @@ namespace Toolbox::UI {
                 point += controller_position;
             }
 
-            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK,
-                                      controller_color, 2.0f);
+            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()),
+                                      IM_COL32_BLACK, controller_color, 2.0f);
         }
 
         // Control stick
@@ -705,8 +706,8 @@ namespace Toolbox::UI {
                 point += x_button_position;
             }
 
-            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK, x_button_color,
-                                      2.0f);
+            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()),
+                                      IM_COL32_BLACK, x_button_color, 2.0f);
         }
 
         // Y button
@@ -724,8 +725,8 @@ namespace Toolbox::UI {
                 point += y_button_position;
             }
 
-            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()), IM_COL32_BLACK, y_button_color,
-                                      2.0f);
+            ImGui::DrawConcavePolygon(points.data(), static_cast<int>(points.size()),
+                                      IM_COL32_BLACK, y_button_color, 2.0f);
         }
 
         // Start button
@@ -912,26 +913,28 @@ namespace Toolbox::UI {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
 
-                auto file_result = Toolbox::is_directory(path);
-                if (!file_result) {
-                    ImGuiFileDialog::Instance()->Close();
-                    return;
-                }
+                Toolbox::Filesystem::is_directory(path)
+                    .and_then([&path, this](bool is_dir) {
+                        if (!is_dir) {
+                            return make_fs_error<bool>(std::error_code(),
+                                                       {"Path is not a directory."});
+                        }
 
-                if (!file_result.value()) {
-                    ImGuiFileDialog::Instance()->Close();
-                    return;
-                }
+                        m_load_path = path;
 
-                m_load_path = path;
+                        m_pad_recorder.resetRecording();
+                        if (m_attached_scene_uuid) {
+                            GUIApplication::instance().dispatchEvent<BaseEvent, true>(
+                                m_attached_scene_uuid, SCENE_ENABLE_CONTROL_EVENT);
+                        }
 
-                m_pad_recorder.resetRecording();
-                if (m_attached_scene_uuid) {
-                    GUIApplication::instance().dispatchEvent<BaseEvent, true>(
-                        m_attached_scene_uuid, SCENE_ENABLE_CONTROL_EVENT);
-                }
-
-                m_pad_recorder.loadFromFolder(*m_load_path);
+                        m_pad_recorder.loadFromFolder(*m_load_path);
+                        return Result<bool, FSError>(true);
+                    })
+                    .or_else([](const FSError &error) {
+                        LogError(error);
+                        return Result<bool, FSError>(false);
+                    });
 
                 ImGuiFileDialog::Instance()->Close();
                 return;
@@ -1341,6 +1344,8 @@ namespace Toolbox::UI {
             f32 m_player_distance;
         };
 
+        bool is_node_recording = m_pad_recorder.isRecording(m_cur_from_link, m_cur_to_link);
+
         // Transform each rail node into screen space
         std::vector<NodeData> node_datas;
 
@@ -1379,11 +1384,13 @@ namespace Toolbox::UI {
                 continue;
             }
 
+            bool should_highlight = m_cur_to_link == ('A' + i) && is_node_recording;
+
             ImVec2 node_position = node_datas[i].m_screen_position;
             f32 node_size        = 20000.0f / node_datas[i].m_screen_depth;
             node_size            = std::clamp(node_size, 2.0f, 10000.0f);
-            ImU32 node_color     = m_cur_to_link == ('A' + i) ? IM_COL32(0, 255, 0, 200)
-                                                              : IM_COL32(255, 0, 0, 200);
+            ImU32 node_color     = should_highlight ? IM_COL32(0, 255, 0, 200)
+                                                    : IM_COL32(255, 0, 0, 200);
             ImGui::DrawCircle(node_position, node_size, IM_COL32_BLACK, node_color, 2.0f);
 
             std::string distance_text =
@@ -1407,7 +1414,7 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::onCreateLinkNode(char from_link, char to_link) {
-        RefPtr<ReplayLinkData> link_data = m_pad_recorder.linkData();
+        RefPtr<ReplayLinkData> link_data        = m_pad_recorder.linkData();
         std::vector<ReplayLinkNode> &link_nodes = link_data->linkNodes();
 
         if (from_link - 'A' < link_nodes.size()) {
@@ -1423,7 +1430,7 @@ namespace Toolbox::UI {
                     return;
                 }
             }
-            
+
             TOOLBOX_ERROR("[PAD RECORD] Link {} is full.", from_link);
             return;
         }
@@ -1481,7 +1488,7 @@ namespace Toolbox::UI {
     }
 
     bool PadInputWindow::onLoadData(const std::filesystem::path &path) {
-        auto file_result = Toolbox::is_directory(path);
+        auto file_result = Toolbox::Filesystem::is_directory(path);
         if (!file_result) {
             return false;
         }
@@ -1490,7 +1497,7 @@ namespace Toolbox::UI {
             return false;
         }
 
-        if (Toolbox::is_directory(path)) {
+        if (Toolbox::Filesystem::is_directory(path)) {
             if (!path.filename().string().starts_with("pad")) {
                 return false;
             }

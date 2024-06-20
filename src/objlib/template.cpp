@@ -448,9 +448,9 @@ namespace Toolbox::Object {
     }
 
     Result<void, FSError> TemplateFactory::initialize() {
-        auto cwd_result = Toolbox::current_path();
+        auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
-            return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
+            return std::unexpected(cwd_result.error());
         }
 
         AppSettings &settings = SettingsManager::instance().getCurrentProfile();
@@ -482,17 +482,17 @@ namespace Toolbox::Object {
     }
 
     Result<void, FSError> TemplateFactory::loadFromCacheBlob() {
-        auto cwd_result = Toolbox::current_path();
+        auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
-            return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
+            return std::unexpected(cwd_result.error());
         }
 
         auto &cwd      = cwd_result.value();
         auto blob_path = cwd / "Templates/.cache/blob.json";
 
-        auto path_result = Toolbox::is_regular_file(blob_path);
+        auto path_result = Toolbox::Filesystem::is_regular_file(blob_path);
         if (!path_result) {
-            return make_fs_error<void>(path_result.error());
+            return std::unexpected(path_result.error());
         }
 
         if (!path_result.value()) {
@@ -518,9 +518,9 @@ namespace Toolbox::Object {
     }
 
     Result<void, FSError> TemplateFactory::saveToCacheBlob() {
-        auto cwd_result = Toolbox::current_path();
+        auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
-            return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
+            return std::unexpected(cwd_result.error());
         }
 
         Template::json_t blob_json;
@@ -562,15 +562,15 @@ namespace Toolbox::Object {
 
         auto &cwd                = cwd_result.value();
         auto blob_path           = cwd / "Templates/.cache/blob.json";
-        auto cache_folder_result = Toolbox::is_directory(blob_path.parent_path());
+        auto cache_folder_result = Toolbox::Filesystem::is_directory(blob_path.parent_path());
         if (!cache_folder_result) {
-            return make_fs_error<void>(cache_folder_result.error());
+            return std::unexpected(cache_folder_result.error());
         }
 
         if (!cache_folder_result.value()) {
-            auto result = Toolbox::create_directory(blob_path.parent_path());
+            auto result = Toolbox::Filesystem::create_directory(blob_path.parent_path());
             if (!result) {
-                return make_fs_error<void>(result.error());
+                return std::unexpected(result.error());
             }
         }
 

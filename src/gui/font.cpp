@@ -7,13 +7,13 @@ namespace Toolbox::UI {
     }
 
     bool FontManager::initialize() {
-        auto cwd_result = Toolbox::current_path();
+        auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
             return false;
         }
 
         auto font_path   = cwd_result.value() / "Fonts";
-        auto path_result = Toolbox::is_directory(font_path);
+        auto path_result = Toolbox::Filesystem::is_directory(font_path);
         if (!path_result || !path_result.value()) {
             return false;
         }
@@ -31,7 +31,7 @@ namespace Toolbox::UI {
 
     bool FontManager::addFontOTF(const std::string_view name, const ImFontConfig *font_cfg_template,
                                  const ImWchar *glyph_ranges) {
-        auto cwd_result = Toolbox::current_path();
+        auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
             return false;
         }
@@ -42,7 +42,7 @@ namespace Toolbox::UI {
 
     bool FontManager::addFontTTF(const std::string_view name, const ImFontConfig *font_cfg_template,
                                  const ImWchar *glyph_ranges) {
-        auto cwd_result = Toolbox::current_path();
+        auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
             return false;
         }
@@ -65,7 +65,7 @@ namespace Toolbox::UI {
 
     bool FontManager::addFont(const std::filesystem::path &font_path,
                               const ImFontConfig *font_cfg_template, const ImWchar *glyph_ranges) {
-        auto cwd_result = Toolbox::current_path();
+        auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
             return false;
         }

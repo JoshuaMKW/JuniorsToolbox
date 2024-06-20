@@ -5,7 +5,7 @@
 
 namespace Toolbox::UI {
     ConfigTheme::ConfigTheme(std::string_view name) : m_name(name) {
-        auto cwd_result = Toolbox::current_path();
+        auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
             return;
         }
@@ -18,7 +18,7 @@ namespace Toolbox::UI {
     bool ConfigTheme::apply() {
         if (!m_load_ok || true)
             return false;
-        auto &style  = ImGui::GetStyle();
+        auto &style = ImGui::GetStyle();
         for (size_t i = 0; i < ImGuiCol_COUNT; ++i) {
             style.Colors[i] = m_style.Colors[i];
         }
@@ -45,26 +45,21 @@ namespace Toolbox::UI {
     }
 
     Result<void, FSError> ThemeManager::initialize() {
-        auto cwd_result = Toolbox::current_path();
-        if (!cwd_result) {
-            return make_fs_error<void>(cwd_result.error(), {"Failed to get the cwd"});
-        }
-
-        auto &cwd = cwd_result.value();
-        for (auto &subpath : std::filesystem::directory_iterator{cwd / "Themes"}) {
-            try {
-                auto theme = make_referable<ConfigTheme>(subpath.path().stem().string());
-                if (theme->name() == "Default") {
-                    theme->apply();
-                    m_active_theme = m_themes.size();
+        return Toolbox::Filesystem::current_path().and_then([this](std::filesystem::path &&cwd) {
+            for (auto &subpath : Toolbox::Filesystem::directory_iterator{cwd / "Themes"}) {
+                try {
+                    auto theme = make_referable<ConfigTheme>(subpath.path().stem().string());
+                    if (theme->name() == "Default") {
+                        theme->apply();
+                        m_active_theme = m_themes.size();
+                    }
+                    m_themes.emplace_back(theme);
+                } catch (std::runtime_error &e) {
+                    return make_fs_error<void>(std::error_code(), {e.what()});
                 }
-                m_themes.emplace_back(theme);
-            } catch (std::runtime_error &e) {
-                return make_fs_error<void>(std::error_code(), {e.what()});
             }
-        }
-
-        return {};
+            return Result<void, FSError>();
+        });
     }
 
 }  // namespace Toolbox::UI

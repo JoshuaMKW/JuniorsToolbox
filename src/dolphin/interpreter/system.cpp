@@ -73,7 +73,7 @@ namespace Toolbox::Interpreter {
         }
 
         for (u8 fpr_arg = 0; fpr_arg < fpr_argc; ++fpr_arg) {
-            m_float_proc.m_fpr[fpr_arg + 3].fill(fpr_argv[fpr_arg]);
+            m_float_proc.m_fpr[fpr_arg + 1].fill(fpr_argv[fpr_arg]);
         }
 
         m_evaluating = true;

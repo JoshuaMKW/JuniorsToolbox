@@ -15,7 +15,7 @@ namespace Toolbox {
     }
 
     bool SettingsManager::initialize() {
-        auto cwd_result = Toolbox::current_path();
+        auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
             return false;
         }
@@ -49,7 +49,7 @@ namespace Toolbox {
     }
 
     Result<void, SerialError> SettingsManager::loadProfiles() {
-        auto path_result = Toolbox::is_directory(m_profile_path);
+        auto path_result = Toolbox::Filesystem::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
             return {};
         }
@@ -121,10 +121,10 @@ namespace Toolbox {
     }
 
     Result<void, SerialError> SettingsManager::saveProfiles() {
-        auto path_result = Toolbox::is_directory(m_profile_path);
+        auto path_result = Toolbox::Filesystem::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
             TOOLBOX_WARN("[SETTINGS] Folder \"Profiles\" not found, generating the folder now.");
-            auto result = Toolbox::create_directory(m_profile_path);
+            auto result = Toolbox::Filesystem::create_directory(m_profile_path);
             if (!result) {
                 TOOLBOX_ERROR("[SETTINGS] Folder \"Profiles\" failed to create!");
                 return {};
@@ -154,10 +154,10 @@ namespace Toolbox {
     Result<void, SerialError> SettingsManager::removeProfile(std::string_view name) {
         m_settings_profiles.erase(std::string(name));
 
-        auto path_result = Toolbox::is_directory(m_profile_path);
+        auto path_result = Toolbox::Filesystem::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
             TOOLBOX_WARN("[SETTINGS] Folder \"Profiles\" not found, generating the folder now.");
-            auto result = Toolbox::create_directory(m_profile_path);
+            auto result = Toolbox::Filesystem::create_directory(m_profile_path);
             if (!result) {
                 TOOLBOX_ERROR("[SETTINGS] Folder \"Profiles\" failed to create!");
                 return {};
@@ -165,7 +165,7 @@ namespace Toolbox {
         }
 
         std::filesystem::path child_path = m_profile_path / (std::string(name) + ".json");
-        auto result                      = Toolbox::remove(child_path);
+        auto result                      = Toolbox::Filesystem::remove(child_path);
         if (!result) {
             TOOLBOX_ERROR("[SETTINGS] Failed to remove deleted profile from Folder \"Profiles\"");
         }
@@ -177,10 +177,10 @@ namespace Toolbox {
 
     Result<void, SerialError> SettingsManager::saveProfile(std::string_view name,
                                                            const AppSettings &profile) {
-        auto path_result = Toolbox::is_directory(m_profile_path);
+        auto path_result = Toolbox::Filesystem::is_directory(m_profile_path);
         if (!path_result || !path_result.value()) {
             TOOLBOX_WARN("[SETTINGS] Folder \"Profiles\" not found, generating the folder now.");
-            auto result = Toolbox::create_directory(m_profile_path);
+            auto result = Toolbox::Filesystem::create_directory(m_profile_path);
             if (!result) {
                 TOOLBOX_ERROR("[SETTINGS] Folder \"Profiles\" failed to create!");
                 return {};

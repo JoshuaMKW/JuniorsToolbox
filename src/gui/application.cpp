@@ -376,7 +376,7 @@ namespace Toolbox {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
 
-                auto dir_result = Toolbox::is_directory(path);
+                auto dir_result = Toolbox::Filesystem::is_directory(path);
                 if (!dir_result) {
                     return;
                 }
@@ -402,8 +402,8 @@ namespace Toolbox {
                     auto sys_path   = std::filesystem::path(path) / "sys";
                     auto files_path = std::filesystem::path(path) / "files";
 
-                    auto sys_result   = Toolbox::is_directory(sys_path);
-                    auto files_result = Toolbox::is_directory(files_path);
+                    auto sys_result   = Toolbox::Filesystem::is_directory(sys_path);
+                    auto files_result = Toolbox::Filesystem::is_directory(files_path);
 
                     if ((sys_result && sys_result.value()) &&
                         (files_result && files_result.value())) {
@@ -425,7 +425,7 @@ namespace Toolbox {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
 
-                auto file_result = Toolbox::is_regular_file(path);
+                auto file_result = Toolbox::Filesystem::is_regular_file(path);
                 if (!file_result) {
                     ImGuiFileDialog::Instance()->Close();
                     return;

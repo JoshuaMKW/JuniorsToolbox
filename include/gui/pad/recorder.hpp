@@ -123,6 +123,8 @@ namespace Toolbox {
         void tRun(void *param) override;
         void sleep();
 
+        Result<void> processCurrentFrame(PadFrameData &&frame_data);
+
         void initNextInputData();
         void initNextInputData(char from_link, char to_link);
         void applyInputChunk();
@@ -134,6 +136,9 @@ namespace Toolbox {
         void initNewLinkData();
 
         bool setPlayerTransRot(const glm::vec3 &pos, f32 rotY);
+
+        Result<bool, FSError> loadFromFolder_(const std::filesystem::path &folder_path);
+        Result<bool, FSError> saveToFolder_(const std::filesystem::path &folder_path);
 
         s32 getFrameStep() const;
 

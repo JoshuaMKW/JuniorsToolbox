@@ -359,18 +359,18 @@ namespace Toolbox::UI {
         ImGui::Checkbox("Pipe Logs To Terminal", &settings.m_log_to_cout_cerr);
 
         if (ImGui::Button("Clear Cache")) {
-            auto cwd_result = Toolbox::current_path();
+            auto cwd_result = Toolbox::Filesystem::current_path();
             if (!cwd_result) {
-                TOOLBOX_ERROR("(Settings) Failed to get cwd!");
+                LogError(cwd_result.error());
                 return;
             }
-            auto cwd = cwd_result.value();
 
-            auto template_cache_result = Toolbox::remove_all(cwd / "Templates/.cache");
+            Toolbox::fs_path cwd = cwd_result.value();
+
+            auto template_cache_result = Toolbox::Filesystem::remove_all(cwd / "Templates/.cache");
             if (!template_cache_result) {
-                TOOLBOX_ERROR("(Settings) Failed to clear Template cache!");
-                TOOLBOX_ERROR_V("              Reason: {}",
-                                template_cache_result.error().message());
+                LogError(template_cache_result.error());
+                return;
             }
 
             TOOLBOX_INFO("(Settings) Cleared Template cache successfully!");
@@ -391,7 +391,7 @@ namespace Toolbox::UI {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
 
-                auto file_result = Toolbox::is_regular_file(path);
+                auto file_result = Toolbox::Filesystem::is_regular_file(path);
                 if (!file_result) {
                     return;
                 }

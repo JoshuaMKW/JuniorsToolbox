@@ -113,14 +113,14 @@ namespace Toolbox::UI {
     SceneWindow::SceneWindow(const std::string &name) : ImWindow(name) {}
 
     bool SceneWindow::onLoadData(const std::filesystem::path &path) {
-        if (!Toolbox::exists(path)) {
+        if (!Toolbox::Filesystem::exists(path)) {
             return false;
         }
 
         Game::TaskCommunicator &task_communicator =
             GUIApplication::instance().getTaskCommunicator();
 
-        if (Toolbox::is_directory(path)) {
+        if (Toolbox::Filesystem::is_directory(path)) {
             if (path.filename() != "scene") {
                 return false;
             }
@@ -2675,7 +2675,7 @@ void SceneWindow::onRenderMenuBar() {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
 
-            auto dir_result = Toolbox::is_directory(path);
+            auto dir_result = Toolbox::Filesystem::is_directory(path);
             if (!dir_result) {
                 return;
             }
