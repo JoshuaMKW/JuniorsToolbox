@@ -31,6 +31,8 @@
 #include "gui/window.hpp"
 
 #include "gui/imgui_ext.hpp"
+#include "gui/stb_image.h"
+
 #include <ImGuiFileDialog.h>
 #include <imgui.h>
 
@@ -1565,6 +1567,8 @@ namespace Toolbox::UI {
 
         m_dolphin_logo = GUIApplication::instance().getResourcePath("Images/dolphin_logo.png");
         m_image_painter.setTintColor({0.0f, 0.0f, 0.0f, 0.5f});
+
+        setIcon("controller_64.png");
     }
 
     void PadInputWindow::onDetach() { m_pad_recorder.tKill(true); }

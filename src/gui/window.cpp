@@ -4,16 +4,12 @@
 
 #include <lib/bStream/bstream.h>
 
+#include <ImGuiFileDialog.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include <ImGuiFileDialog.h>
-
-#include <IconsForkAwesome.h>
-#include <gui/modelcache.hpp>
-
-#include "gui/window.hpp"
 #include <iconv.h>
+#include <stb/stb_image.h>
 
 namespace Toolbox::UI {
 
@@ -29,6 +25,33 @@ namespace Toolbox::UI {
         if (is_dockspace_avail) {
             ImGui::DockSpace(m_dockspace_id, {}, ImGuiDockNodeFlags_None, nullptr);
         }
+    }
+
+    void ImWindow::setIcon(const std::string &icon_name) {
+        fs_path res_path = GUIApplication::instance().getResourcePath("Images/Icons/" + icon_name);
+
+        std::ifstream in(res_path, std::ios::in | std::ios::binary);
+
+        Buffer data_buf;
+        int width, height, channels;
+
+        // Load image data
+        {
+            stbi_uc *data = stbi_load(res_path.string().c_str(), &width, &height, &channels, 4);
+
+            data_buf.alloc(static_cast<size_t>(width * height * channels));
+            std::memcpy(data_buf.buf<u8>(), data, data_buf.size());
+
+            stbi_image_free(data);
+        }
+
+        setIcon(std::move(data_buf), ImVec2(width, height));
+    }
+
+    void ImWindow::setIcon(Buffer &&icon_data, const ImVec2 &icon_size) {
+        m_is_new_icon = true;
+        m_icon_data   = std::move(icon_data);
+        m_icon_size   = icon_size;
     }
 
     void ImWindow::close() {
@@ -87,7 +110,16 @@ namespace Toolbox::UI {
 
     void ImWindow::onImGuiRender(TimeStep delta_time) {
         std::string window_name = std::format("{}###{}", title(), getUUID());
-        ImGuiWindow *window = ImGui::FindWindowByName(window_name.c_str());
+        ImGuiWindow *window     = ImGui::FindWindowByName(window_name.c_str());
+
+        if (m_is_new_icon) {
+            if (window && window->Viewport && window->Viewport->PlatformHandle) {
+                GLFWwindow *glfw_window = (GLFWwindow *)window->Viewport->PlatformHandle;
+                GLFWimage icon          = {m_icon_size.x, m_icon_size.y, m_icon_data.buf<u8>()};
+                glfwSetWindowIcon(glfw_window, 1, &icon);
+                m_is_new_icon = false;
+            }
+        }
 
         bool is_focused = isFocused();
         bool is_hidden  = window ? (window->Hidden || window->Collapsed) : false;
@@ -98,8 +130,8 @@ namespace Toolbox::UI {
         bool was_open    = is_open;
 
         if (is_open) {
-            ImVec2 pos         = getPos();
-            ImVec2 size        = getSize();
+            ImVec2 pos  = getPos();
+            ImVec2 size = getSize();
 
             ImVec2 default_min = {0, 0};
             ImVec2 default_max = {FLT_MAX, FLT_MAX};
@@ -157,7 +189,6 @@ namespace Toolbox::UI {
                 m_viewport = nullptr;
             }
             ImGui::End();
-
         }
 
         // Handle open/close and focus/defocus

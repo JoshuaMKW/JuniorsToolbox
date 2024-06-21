@@ -80,6 +80,9 @@ namespace Toolbox::UI {
             m_is_repositioned = true;
         }
 
+        void setIcon(const std::string &icon_name);
+        void setIcon(Buffer &&icon_data, const ImVec2 &icon_size);
+
         [[nodiscard]] virtual std::optional<ImVec2> defaultSize() const { return m_default_size; }
         [[nodiscard]] virtual std::optional<ImVec2> minSize() const { return m_min_size; }
         [[nodiscard]] virtual std::optional<ImVec2> maxSize() const { return m_max_size; }
@@ -128,9 +131,14 @@ namespace Toolbox::UI {
 
     private:
         ImGuiID m_dockspace_id   = std::numeric_limits<ImGuiID>::max();
+
         bool m_is_docking_set_up = false;
         bool m_is_resized        = false;
         bool m_is_repositioned   = false;
+
+        bool m_is_new_icon       = false;
+        ImVec2 m_icon_size       = {};
+        Buffer m_icon_data       = {};
 
         ImVec2 m_next_size = {};
         ImVec2 m_next_pos  = {};

@@ -1,10 +1,4 @@
-#include "IconsForkAwesome.h"
-#include "core/input/input.hpp"
-#include "gui/font.hpp"
-#include "gui/settings/window.hpp"
-#include "gui/themes.hpp"
-#include "gui/util.hpp"
-#include "platform/service.hpp"
+#include <IconsForkAwesome.h>
 
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 
@@ -12,26 +6,32 @@
 #include <string>
 #include <thread>
 
-#include <GLFW/glfw3.h>
-#include <glad/glad.h>
+//#include <GLFW/glfw3.h>
+//#include <glad/glad.h>
 
 #include <ImGuiFileDialog.h>
 #include <J3D/J3DModelLoader.hpp>
 #include <bstream.h>
-#include <gui/logging/errors.hpp>
-#include <gui/logging/window.hpp>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_internal.h>
-
-#include "gui/imgui_ext.hpp"
+#include <stb/stb_image.h>
 
 #include "core/core.hpp"
+#include "core/input/input.hpp"
 #include "dolphin/hook.hpp"
 #include "gui/application.hpp"
+#include "gui/font.hpp"
+#include "gui/imgui_ext.hpp"
+#include "gui/logging/errors.hpp"
+#include "gui/logging/window.hpp"
 #include "gui/pad/window.hpp"
 #include "gui/scene/ImGuizmo.h"
 #include "gui/scene/window.hpp"
+#include "gui/settings/window.hpp"
+#include "gui/themes.hpp"
+#include "gui/util.hpp"
+#include "platform/service.hpp"
 
 // void ImGuiSetupTheme(bool, float);
 
@@ -96,6 +96,9 @@ namespace Toolbox {
             stop();
             return;
         }
+
+        // Set window icon
+        initializeIcon();
 
         glfwSetCharCallback(m_render_window, ImGui_ImplGlfw_CharCallback);
         glfwSetKeyCallback(m_render_window, Input::GLFWKeyCallback);
@@ -264,6 +267,25 @@ namespace Toolbox {
         RefPtr<SceneWindow> scene_window = ref_cast<SceneWindow>(findWindow(scene_uuid));
         if (scene_window) {
             scene_window->deregisterOverlay(name);
+        }
+    }
+
+    void GUIApplication::initializeIcon() {
+        fs_path res_path =
+            GUIApplication::instance().getResourcePath("Images/Icons/toolbox.png");
+
+        std::ifstream in(res_path, std::ios::in | std::ios::binary);
+
+        int width, height, channels;
+
+        // Load image data
+        {
+            stbi_uc *data  = stbi_load(res_path.string().c_str(), &width, &height, &channels, 4);
+
+            GLFWimage icon = {width, height, data};
+            glfwSetWindowIcon(m_render_window, 1, &icon);
+
+            stbi_image_free(data);
         }
     }
 

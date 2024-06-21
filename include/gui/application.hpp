@@ -137,6 +137,8 @@ namespace Toolbox {
         }
 
     protected:
+        void initializeIcon();
+
         void render(TimeStep delta_time);
         void renderMenuBar();
         void finalizeFrame();
