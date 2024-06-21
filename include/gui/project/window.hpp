@@ -63,9 +63,7 @@ namespace Toolbox::UI {
         }
 
         [[nodiscard]] std::string context() const override {
-            if (!m_project_root)
-                return "(unknown)";
-            return m_project_root->string();
+            return m_project_root.string();
         }
 
         [[nodiscard]] bool unsaved() const override { return false; }
