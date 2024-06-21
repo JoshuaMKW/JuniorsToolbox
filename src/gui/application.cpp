@@ -222,6 +222,14 @@ namespace Toolbox {
         m_task_communicator.tKill(true);
     }
 
+    Toolbox::fs_path GUIApplication::getResourcePath(const Toolbox::fs_path &path) const & {
+        return Toolbox::Filesystem::current_path().value_or(".") / path;
+    }
+
+    Toolbox::fs_path GUIApplication::getResourcePath(Toolbox::fs_path &&path) const && {
+        return Toolbox::Filesystem::current_path().value_or(".") / std::move(path);
+    }
+
     RefPtr<ImWindow> GUIApplication::findWindow(UUID64 uuid) {
         auto it = std::find_if(m_windows.begin(), m_windows.end(),
                                [&uuid](const auto &window) { return window->getUUID() == uuid; });

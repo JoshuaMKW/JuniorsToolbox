@@ -15,8 +15,8 @@ using namespace Toolbox::Object;
 namespace Toolbox {
 
     struct ReplayNodeInfo {
-        u16 m_unk_0;
-        u8 m_next_link;
+        u16 m_unk_0 = 1;
+        u8 m_next_link = '*';
 
         [[nodiscard]] bool isSentinelNode() const noexcept { return m_next_link == '*'; }
     };
@@ -24,7 +24,7 @@ namespace Toolbox {
     struct ReplayLinkNode {
         NameRef m_link_name = {"Link"};
         NameRef m_node_name = {"(null)"};
-        ReplayNodeInfo m_infos[3];
+        ReplayNodeInfo m_infos[3] = {};
     };
 
     class ReplayLinkData : public ISerializable {

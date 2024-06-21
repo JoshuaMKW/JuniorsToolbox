@@ -336,6 +336,8 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::renderControlButtons() {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
         const ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
         const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
 
@@ -348,7 +350,9 @@ namespace Toolbox::UI {
 
         ImGui::SetNextItemWidth(130.0f);
 
-        bool is_selection_invalid = (m_is_viewing_shadow_mario && m_shadow_mario_ptr == 0) ||
+        bool is_communicator_hooked = communicator.manager().isHooked();
+        bool is_selection_invalid   = !is_communicator_hooked ||
+                                    (m_is_viewing_shadow_mario && m_shadow_mario_ptr == 0) ||
                                     (m_is_viewing_piantissimo && m_piantissimo_ptr == 0);
         if (is_selection_invalid) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.0f, 0.0f, 0.4f));
@@ -397,7 +401,7 @@ namespace Toolbox::UI {
 
         bool is_recording = m_pad_recorder.isRecording();
 
-        if (is_recording) {
+        if (is_recording || !is_communicator_hooked) {
             ImGui::BeginDisabled();
         }
 
@@ -417,7 +421,7 @@ namespace Toolbox::UI {
 
         ImGui::PopStyleColor(3);
 
-        if (is_recording) {
+        if (is_recording || !is_communicator_hooked) {
             ImGui::EndDisabled();
         }
 
@@ -427,7 +431,7 @@ namespace Toolbox::UI {
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.7f, 0.2f, 0.2f, 0.9f});
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.7f, 0.2f, 0.2f, 1.0f});
 
-        if (!is_recording) {
+        if (!is_recording || !is_communicator_hooked) {
             ImGui::BeginDisabled();
         }
 
@@ -439,7 +443,7 @@ namespace Toolbox::UI {
             m_cur_to_link   = '*';
         }
 
-        if (!is_recording) {
+        if (!is_recording || !is_communicator_hooked) {
             ImGui::EndDisabled();
         }
 
@@ -451,11 +455,19 @@ namespace Toolbox::UI {
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.2f, 0.4f, 0.8f, 0.9f});
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.4f, 0.8f, 1.0f});
 
+        if (!is_communicator_hooked) {
+            ImGui::BeginDisabled();
+        }
+
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
         if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
                                  ImDrawFlags_RoundCornersLeft)) {
             m_pad_recorder.resetRecording();
             m_pad_rail.clearNodes();
+        }
+
+        if (!is_communicator_hooked) {
+            ImGui::EndDisabled();
         }
 
         ImGui::PopStyleColor(3);
@@ -464,7 +476,11 @@ namespace Toolbox::UI {
     void PadInputWindow::renderControllerOverlay(const ImVec2 &center, f32 scale, u8 alpha) {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
-            ImGui::Text("Dolphin not connected.");
+            ImVec2 image_pos = ImGui::GetContentRegionAvail() / 2.0f;
+            image_pos.x -= 100.0f;
+            image_pos.y -= 100.0f;
+            m_image_painter.render(m_dolphin_logo, ImGui::GetWindowPos() + image_pos,
+                                   {200.0f, 200.0f});
             return;
         }
 
@@ -814,17 +830,28 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::renderRecordedInputData() {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
         ImGui::SeparatorText("Record Links");
         {
             if (ImGui::BeginChild("##Record Link Controls", ImVec2(0, 0),
                                   ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize)) {
-                if (ImGui::Button("Add Link")) {
+                if (!communicator.manager().isHooked()) {
+                    ImGui::BeginDisabled();
+                }
+
+                float button_width = ImGui::GetContentRegionAvail().x;
+                if (ImGui::Button("Make New Connection", {button_width, 0})) {
                     m_create_link_dialog.setActionOnAccept([this](char from_link, char to_link) {
                         onCreateLinkNode(from_link, to_link);
                     });
                     m_create_link_dialog.setActionOnReject([](char from_link, char to_link) {});
                     m_create_link_dialog.setLinkData(m_pad_recorder.linkData());
                     m_create_link_dialog.open();
+                }
+
+                if (!communicator.manager().isHooked()) {
+                    ImGui::EndDisabled();
                 }
             }
             ImGui::EndChild();
@@ -881,7 +908,6 @@ namespace Toolbox::UI {
             }
 
             f32 cursor_pos_x = ImGui::GetWindowSize().x - ImGui::CalcTextSize("Apply Rail").x -
-                               ImGui::GetStyle().FramePadding.x * 2.0f -
                                ImGui::GetStyle().WindowPadding.x;
             ImGui::SetCursorPosX(cursor_pos_x);
 
@@ -1437,7 +1463,7 @@ namespace Toolbox::UI {
 
         ReplayLinkNode node{};
         {
-            node.m_node_name = std::format("Link{}", from_link);
+            node.m_node_name = std::format("Node{}", from_link);
 
             ReplayNodeInfo node_info{};
             node_info.m_next_link = to_link;
@@ -1447,6 +1473,22 @@ namespace Toolbox::UI {
         }
 
         link_nodes.push_back(std::move(node));
+
+#if TOOLBOX_ENABLE_FUTURE_PAD_LINKS
+        // If the link references a future node we should
+        // go ahead and make it in advance.
+        if (to_link >= 'A' + link_nodes.size()) {
+            ReplayLinkNode to_node{};
+            to_node.m_node_name = std::format("Node{}", to_link);
+
+            link_nodes.push_back(std::move(to_node));
+        }
+#else
+        if (to_link >= 'A' + link_nodes.size()) {
+            TOOLBOX_ERROR("[PAD RECORD] Link {} -> {} references a future node.", from_link,
+                          to_link);
+        }
+#endif
     }
 
     void PadInputWindow::signalPadPlayback(char from_link, char to_link) {
@@ -1520,6 +1562,9 @@ namespace Toolbox::UI {
         m_pad_recorder.onCreateLink(
             [this](const ReplayLinkNode &node) { tryReuseOrCreateRailNode(node); });
         m_pad_recorder.tStart(false, nullptr);
+
+        m_dolphin_logo = GUIApplication::instance().getResourcePath("Images/dolphin_logo.png");
+        m_image_painter.setTintColor({0.0f, 0.0f, 0.0f, 0.5f});
     }
 
     void PadInputWindow::onDetach() { m_pad_recorder.tKill(true); }

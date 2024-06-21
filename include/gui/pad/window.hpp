@@ -152,6 +152,9 @@ namespace Toolbox::UI {
         std::vector<std::function<void()>> m_update_tasks;
 
         CreateLinkDialog m_create_link_dialog;
+
+        ImageHandle m_dolphin_logo;
+        ImagePainter m_image_painter;
     };
 
 }  // namespace Toolbox::UI

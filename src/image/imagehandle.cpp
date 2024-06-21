@@ -29,7 +29,7 @@ namespace Toolbox {
         Buffer data_buf;
         data_buf.setBuf(data, static_cast<size_t>(width * height * channels));
 
-        ImageHandle(data_buf, channels, width, height);
+        loadGL(data_buf, channels, width, height);
 
         stbi_image_free(data);
     }

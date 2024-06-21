@@ -45,6 +45,9 @@ namespace Toolbox {
         virtual void onUpdate(TimeStep delta_time) override;
         virtual void onExit() override;
 
+        Toolbox::fs_path getResourcePath(const Toolbox::fs_path &path) const &;
+        Toolbox::fs_path getResourcePath(Toolbox::fs_path &&path) const &&;
+
         void addWindow(RefPtr<ImWindow> window) {
             addLayer(window);
             m_windows.push_back(window);
@@ -55,7 +58,7 @@ namespace Toolbox {
             std::erase(m_windows, window);
         }
 
-        const std::vector<RefPtr<ImWindow>> &getWindows() const { return m_windows; }
+        const std::vector<RefPtr<ImWindow>> &getWindows() const & { return m_windows; }
 
         // Find a window by its UUID
         RefPtr<ImWindow> findWindow(UUID64 uuid);

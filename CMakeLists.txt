@@ -135,10 +135,13 @@ target_include_directories(JuniorsToolbox PRIVATE "include" "lib" "lib/imgui" "l
 
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
+                       ${CMAKE_SOURCE_DIR}/Fonts/ $<TARGET_FILE_DIR:JuniorsToolbox>/Fonts/)
+add_custom_command(TARGET JuniorsToolbox PRE_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory
+                       ${CMAKE_SOURCE_DIR}/Images/ $<TARGET_FILE_DIR:JuniorsToolbox>/Images/)
+add_custom_command(TARGET JuniorsToolbox PRE_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory
                        ${CMAKE_SOURCE_DIR}/Templates/ $<TARGET_FILE_DIR:JuniorsToolbox>/Templates/)
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
                        ${CMAKE_SOURCE_DIR}/Themes/ $<TARGET_FILE_DIR:JuniorsToolbox>/Themes/)
-add_custom_command(TARGET JuniorsToolbox PRE_BUILD
-                   COMMAND ${CMAKE_COMMAND} -E copy_directory
-                       ${CMAKE_SOURCE_DIR}/Fonts/ $<TARGET_FILE_DIR:JuniorsToolbox>/Fonts/)

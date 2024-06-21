@@ -23,14 +23,18 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowSize({window_width, 0});
 
         if (m_opening) {
-            ImGui::OpenPopup("Create Link");
+            ImGui::OpenPopup("Connect Nodes");
             m_opening = false;
         }
 
-        if (ImGui::BeginPopupModal("Create Link", &m_open, window_flags)) {
+        if (ImGui::BeginPopupModal("Connect Nodes", &m_open, window_flags)) {
             const std::vector<ReplayLinkNode> &link_nodes = m_link_data->linkNodes();
 
             std::unordered_map<char, std::vector<char>> link_combos;
+
+            if (m_from_link == m_to_link) {
+                m_to_link = '*';
+            }
 
             for (size_t i = 0; i < link_nodes.size(); ++i) {
                 std::vector<char> target_nodes;
@@ -48,16 +52,18 @@ namespace Toolbox::UI {
                 }
             }
 
+#if TOOLBOX_ENABLE_FUTURE_PAD_LINKS
             link_combos['A' + link_nodes.size()] = {};
+#endif
 
             char selected_from_str[2] = {m_from_link, '\0'};
-            char selected_to_str[2] = {m_to_link, '\0'};
+            char selected_to_str[2]   = {m_to_link, '\0'};
 
             ImGui::SetNextItemWidth(100.0f);
             if (ImGui::BeginCombo("Source Node", selected_from_str,
                                   ImGuiComboFlags_PopupAlignLeft)) {
                 for (auto &[from_link, targets] : link_combos) {
-                    bool selected = from_link == m_from_link;
+                    bool selected         = from_link == m_from_link;
                     char from_link_str[2] = {from_link, '\0'};
                     if (ImGui::Selectable(from_link_str, &selected)) {
                         m_from_link = from_link;
@@ -73,8 +79,13 @@ namespace Toolbox::UI {
                     if (!is_source) {
                         continue;
                     }
+
+                    // Add existing nodes as targets
                     for (size_t i = 0; i < link_nodes.size(); ++i) {
-                        char to_link = 'A' + i;
+                        char to_link  = 'A' + i;
+                        if (to_link == m_from_link) {
+                            continue;
+                        }
 
                         bool is_taken =
                             std::any_of(targets.begin(), targets.end(),
@@ -89,6 +100,29 @@ namespace Toolbox::UI {
                             m_to_link = to_link;
                         }
                     }
+
+#if TOOLBOX_ENABLE_FUTURE_PAD_LINKS
+                    // Add a future node as a target
+                    {
+                        char to_link = 'A' + link_nodes.size();
+                        if (to_link == m_from_link) {
+                            continue;
+                        }
+
+                        bool is_taken =
+                            std::any_of(targets.begin(), targets.end(),
+                                        [to_link](char target) { return target == to_link; });
+                        if (is_taken) {
+                            continue;
+                        }
+
+                        bool selected       = to_link == m_to_link;
+                        char to_link_str[2] = {to_link, '\0'};
+                        if (ImGui::Selectable(to_link_str, &selected)) {
+                            m_to_link = to_link;
+                        }
+                    }
+#endif
                 }
                 ImGui::EndCombo();
             }
@@ -109,15 +143,15 @@ namespace Toolbox::UI {
                 ImGui::BeginDisabled();
             }
 
-            ImVec2 create_size = ImGui::CalcTextSize("Create") + ImGui::GetStyle().FramePadding * 2;
+            ImVec2 create_size = ImGui::CalcTextSize("Connect") + ImGui::GetStyle().FramePadding * 2;
             ImVec2 cancel_size = ImGui::CalcTextSize("Cancel") + ImGui::GetStyle().FramePadding * 2;
 
             ImVec2 window_size = ImGui::GetWindowSize();
 
-            ImGui::SetCursorPosX(window_size.x - (create_size.x + cancel_size.x) - style.WindowPadding.x -
-                                 style.ItemSpacing.x);
+            ImGui::SetCursorPosX(window_size.x - (create_size.x + cancel_size.x) -
+                                 style.WindowPadding.x - style.ItemSpacing.x);
 
-            if (ImGui::Button("Create")) {
+            if (ImGui::Button("Connect")) {
                 ImGui::CloseCurrentPopup();
                 m_on_accept(m_from_link, m_to_link);
                 m_open = false;
@@ -143,7 +177,7 @@ namespace Toolbox::UI {
         }
     }
 
-    bool CreateLinkDialog::isValidForCreate(char from_link, char to_link) const { 
+    bool CreateLinkDialog::isValidForCreate(char from_link, char to_link) const {
         if (from_link == '*' || to_link == '*') {
             return false;
         }
