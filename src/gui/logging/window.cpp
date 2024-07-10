@@ -2,7 +2,7 @@
 
 #include "gui/font.hpp"
 #include "gui/logging/window.hpp"
-#include "window.hpp"
+#include "gui/window.hpp"
 
 static std::string s_message_pool;
 
