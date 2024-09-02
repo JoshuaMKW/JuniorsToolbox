@@ -15,7 +15,7 @@
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
-#elif TOOLBOX_PLATFORM_LINUX
+#elifdef TOOLBOX_PLATFORM_LINUX
 #endif
 
 using namespace Toolbox;

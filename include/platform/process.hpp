@@ -7,7 +7,7 @@
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
-#elif TOOLBOX_PLATFORM_LINUX
+#elifdef TOOLBOX_PLATFORM_LINUX
 #include <sys/types.h>
 #include <unistd.h>
 #endif
@@ -18,7 +18,7 @@ namespace Toolbox::Platform {
     typedef HANDLE LowHandle;
     typedef DWORD ProcessID;
     typedef HWND LowWindow;
-#elif TOOLBOX_PLATFORM_LINUX
+#elifdef TOOLBOX_PLATFORM_LINUX
     typedef void *LowHandle;
     typedef pid_t ProcessID;
     typedef void *LowWindow;

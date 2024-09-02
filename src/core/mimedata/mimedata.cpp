@@ -143,7 +143,7 @@ namespace Toolbox {
     FORMATETC MimeData::FormatForMime(std::string_view mimetype) { return FORMATETC(); }
 
     std::string MimeData::MimeForFormat(FORMATETC format) { return std::string(); }
-#elif TOOLBOX_PLATFORM_LINUX
+#elifdef TOOLBOX_PLATFORM_LINUX
     static std::unordered_map<std::string, std::string> s_uti_to_mime = {
         {"public.utf8-plain-text",               "text/plain"            },
         {"public.utf16-plain-text",              "text/plain"            },

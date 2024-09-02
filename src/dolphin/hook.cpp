@@ -85,7 +85,7 @@ namespace Toolbox::Dolphin {
         return GetCommState(handle, &flags);
     }
 
-#elif TOOLBOX_PLATFORM_LINUX
+#elifdef TOOLBOX_PLATFORM_LINUX
     static Result<Platform::ProcessID, BaseError> FindProcessPID(std::string_view process_name) {
         return make_error<Platform::ProcessID>("Linux support unimplemented!");
     }
