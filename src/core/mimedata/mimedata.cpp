@@ -164,8 +164,8 @@ namespace Toolbox {
         {"application/x-qt-image", "public.tiff"},
     };
 
-    std::string MimeData::UTIForMime(std::string_view mimetype) { return s_mime_to_uti[mimetype]; }
-    std::string MimeData::MimeForUTI(std::string_view uti) { return s_uti_to_mime[uti]; }
+    std::string MimeData::UTIForMime(std::string_view mimetype) { return s_mime_to_uti[std::string(mimetype)]; }
+    std::string MimeData::MimeForUTI(std::string_view uti) { return s_uti_to_mime[std::string(uti)]; }
 #endif
 
 }  // namespace Toolbox
