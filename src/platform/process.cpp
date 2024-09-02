@@ -188,7 +188,7 @@ namespace Toolbox::Platform {
     std::string GetLastErrorMessage() { return strerror(errno); }
 
     Result<ProcessInformation> CreateExProcess(const std::filesystem::path &program_path,
-                                               const std::string &cmdargs) {
+                                               std::string_view cmdargs) {
         std::string true_cmdargs =
             std::format("\"{}\" {}", program_path.string().c_str(), cmdargs.data());
 
