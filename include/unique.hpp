@@ -26,7 +26,7 @@ namespace Toolbox {
 
     class IUnique {
     public:
-        virtual [[nodiscard]] UUID64 getUUID() const = 0;
+        [[nodiscard]] virtual UUID64 getUUID() const = 0;
     };
 
 }  // namespace Toolbox
