@@ -337,39 +337,11 @@ namespace Toolbox::Object {
         [[nodiscard]] MetaType type() const { return m_type; }
 
         template <typename T> [[nodiscard]] Result<T, std::string> get() const {
-            if (m_type != map_to_type_enum<T>::value)
-                return std::unexpected("Type record mismatch");
-            return m_value_buf.get<T>(0);
-        }
-
-        template <> [[nodiscard]] Result<std::string, std::string> get() const {
-            std::string out;
-            for (size_t i = 0; i < m_value_buf.size(); ++i) {
-                char ch = m_value_buf.get<char>(i);
-                if (ch == '\0')
-                    break;
-
-                out.push_back(ch);
-            }
-            return out;
+            return getBuf<T>(m_type, m_value_buf);
         }
 
         template <typename T> bool set(const T &value) {
-            m_type = map_to_type_enum<T>::value;
-            m_value_buf.set<T>(0, value);
-            return true;
-        }
-
-        template <> bool set(const std::string &value) {
-            m_type = MetaType::STRING;
-            if (value.size() > m_value_buf.size() + 1) {
-                m_value_buf.resize(static_cast<size_t>(value.size() * 1.5f));
-            }
-            m_value_buf.initTo('\0');
-            for (size_t i = 0; i < value.size(); ++i) {
-                m_value_buf.set<char>(i, value[i]);
-            }
-            return true;
+            return setBuf(m_type, m_value_buf, value);
         }
 
         Result<void, JSONError> loadJSON(const nlohmann::json &json_value);
@@ -385,6 +357,46 @@ namespace Toolbox::Object {
         Buffer m_value_buf;
         MetaType m_type = MetaType::UNKNOWN;
     };
+
+    template <typename T> [[nodiscard]]
+    inline Result<T, std::string> getBuf(const MetaType &m_type, const Buffer &m_value_buf) {
+        if (m_type != map_to_type_enum<T>::value)
+            return std::unexpected("Type record mismatch");
+        return m_value_buf.get<T>(0);
+    }
+    template <> [[nodiscard]]
+    inline Result<std::string, std::string> getBuf(const MetaType &m_type,
+                                                  const Buffer &m_value_buf) {
+        std::string out;
+        for (size_t i = 0; i < m_value_buf.size(); ++i) {
+            char ch = m_value_buf.get<char>(i);
+            if (ch == '\0')
+                break;
+
+            out.push_back(ch);
+        }
+        return out;
+    }
+    template <typename T> [[nodiscard]]
+    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, const T &value) {
+        m_type = map_to_type_enum<T>::value;
+        m_value_buf.set<T>(0, value);
+        return true;
+    }
+    template <> [[nodiscard]]
+    inline bool setBuf(MetaType &m_type,
+                       Buffer &m_value_buf,
+                       const std::string &value) {
+        m_type = MetaType::STRING;
+        if (value.size() > m_value_buf.size() + 1) {
+            m_value_buf.resize(static_cast<size_t>(value.size() * 1.5f));
+        }
+        m_value_buf.initTo('\0');
+        for (size_t i = 0; i < value.size(); ++i) {
+            m_value_buf.set<char>(i, value[i]);
+        }
+        return true;
+    }
 
     inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, bool value,
                                                 MetaType type) {
