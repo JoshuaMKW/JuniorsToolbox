@@ -105,7 +105,7 @@ namespace Toolbox::Object {
     };
 
     template <typename T, bool comment = false>
-    static constexpr MetaType template_type_v = map_to_type_enum<T, comment>::value;
+    static constexpr MetaType template_type_v = map_to_type_enum<T>::value;
 
     template <MetaType T> struct meta_type_info {
         static constexpr std::string_view name = "unknown";

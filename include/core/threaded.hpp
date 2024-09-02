@@ -94,7 +94,7 @@ namespace Toolbox {
         std::condition_variable _m_kill_condition;
 
         std::function<void()> _m_start_cb;
-        std::function<void(_ExitT)> _m_exit_cb;
+        std::function<void()> _m_exit_cb;
     };
 
     template <typename _ExitT> class TaskThread : public Threaded<_ExitT> {
