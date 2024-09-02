@@ -62,7 +62,8 @@ namespace Toolbox::Log {
 
         void trace(const std::stacktrace &stack) {
 #ifdef TOOLBOX_DEBUG
-            for (size_t i = 0; i < std::min(m_max_trace, stack.size()); ++i) {
+            for (size_t i = 0; i < std::min(m_max_trace,
+                                            (size_t)stack.size()); ++i) {
                 debugLog(
                     std::format("{} at line {}", stack[i].source_file(), stack[i].source_line()));
             }
