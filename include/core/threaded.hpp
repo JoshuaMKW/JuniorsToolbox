@@ -121,7 +121,7 @@ namespace Toolbox {
             _m_progress = progress;
             if (_m_prog_flag.load()) {
                 if (_m_progress_out) {
-                    _m_progress_out = progress;
+                    *_m_progress_out = progress;
                 }
                 _m_prog_condition.notify_all();
                 if (progress == 1.0) {
