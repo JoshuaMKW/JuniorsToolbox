@@ -283,7 +283,7 @@ namespace Toolbox::UI {
     }
 
     template <typename _T> DropTargetInfo ImTreeWidget<_T>::getDropTarget(const ImVec2 &pos) const {
-        return recursiveFindTarget(pos, m_root_node->getUUID());
+        return recursiveFindTarget(pos, m_root_node);
     }
 
     template <typename _T> void ImTreeWidget<_T>::onAttach() { ImWidget::onAttach(); }
