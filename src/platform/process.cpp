@@ -198,7 +198,8 @@ namespace Toolbox::Platform {
             return make_error<ProcessInformation>("PROCESS", GetLastErrorMessage());
         } else if (pid > 0) {
             // Parent process
-            return ProcessInformation{program_path.stem().string(), pid};
+            return ProcessInformation{.m_process_name=program_path.stem().string(),
+                                      .m_process_id=pid};
         } else {
             // Child process
             execl(program_path.c_str(), true_cmdargs.c_str(), (char *)NULL);
