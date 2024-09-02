@@ -90,16 +90,16 @@ namespace Toolbox::Dolphin {
         return make_error<Platform::ProcessID>("Linux support unimplemented!");
     }
 
-    static Result<Platform::MemoryHandle, BaseError>
+    static Result<Platform::LowHandle, BaseError>
     OpenProcessMemory(std::string_view memory_name) {
         return nullptr;
     }
 
-    static Result<void *, BaseError> OpenMemoryView(Platform::MemoryHandle memory_handle) {
+    static Result<void *, BaseError> OpenMemoryView(Platform::LowHandle memory_handle) {
         return nullptr;
     }
 
-    static Result<void> CloseProcessMemory(Platform::MemoryHandle memory_handle) { return {}; }
+    static Result<void> CloseProcessMemory(Platform::LowHandle memory_handle) { return {}; }
 
     static Result<void> CloseMemoryView(void *memory_view) { return {}; }
 #endif
