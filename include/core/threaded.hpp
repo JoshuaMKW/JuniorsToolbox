@@ -4,6 +4,7 @@
 #include <functional>
 #include <mutex>
 #include <thread>
+#include <condition_variable>
 
 namespace Toolbox {
 
