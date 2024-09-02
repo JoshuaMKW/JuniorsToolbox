@@ -12,7 +12,7 @@
 #include <Windows.h>
 #elifdef TOOLBOX_PLATFORM_LINUX
 #include <limits>
-#include <process.h>
+#include <string.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -185,7 +185,7 @@ namespace Toolbox::Platform {
     }
 
 #elifdef TOOLBOX_PLATFORM_LINUX
-    std::string GetLastErrorMessage() { return std::strerror(errno); }
+    std::string GetLastErrorMessage() { return strerror(errno); }
 
     Result<ProcessInformation> CreateExProcess(const std::filesystem::path &program_path,
                                                const std::string &cmdargs) {
