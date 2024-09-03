@@ -17,6 +17,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
 #endif
 
 namespace Toolbox::Platform {
@@ -262,8 +264,60 @@ namespace Toolbox::Platform {
         height = 0;
         return true;
     }
+    void searchWindowsOfProcess(const Window w, Display* display,
+                                const Atom PIDAtom, const int pid,
+                                std::vector<LowWindow> &result);
     std::vector<LowWindow> FindWindowsOfProcess(const ProcessInformation &process) {
-        return std::vector<LowWindow>(); // TODO: Implement this
+        Display* display = XOpenDisplay(0);
+        Atom PIDAtom = XInternAtom(display, "_NET_WM_PID", True);
+
+        if(PIDAtom == None)
+        {
+            return std::vector<LowWindow>();
+        }
+        std::vector<LowWindow> result;
+        searchWindowsOfProcess(XDefaultRootWindow(display), display,
+                               PIDAtom, process.m_process_id,
+                               result);
+        return result;
+    }
+    void searchWindowsOfProcess(const Window w, Display* display,
+                                const Atom PIDAtom, const int pid,
+                                std::vector<LowWindow> &result) {
+        // A bunch of output parameter storage, but we're only going
+        // to use the last one.
+        Atom           type;
+        int            format;
+        unsigned long  nItems;
+        unsigned long  bytesAfter;
+        // The storage for the PID of the window we're looking at.
+        unsigned char *propPID = 0;
+        if (XGetWindowProperty(display, w, PIDAtom,
+                               0 /*offset*/,
+                               1 /* length in words */,
+                               False, XA_CARDINAL,
+                               &type, &format, &nItems, &bytesAfter,
+                               &propPID) == Success) {
+            if (propPID != 0) {
+                // If the result pointer isn't null, and it points to
+                // something matching the PID we're looking for, add
+                // it to our list.
+                if (pid == *((unsigned long*)propPID))
+                    result.push_back((void*)w);
+                // Clean up some X structures
+                XFree(propPID);
+            }
+        }
+        // Now, get the tree structure so that we can recurse on children
+        Window wRoot;
+        Window wParent;
+        Window *wChildren;
+        unsigned int nChildren;
+        if (XQueryTree(display, w, &wRoot, &wParent, &wChildren, &nChildren) != 0) {
+            for(unsigned int i = 0; i < nChildren; ++i) {
+                searchWindowsOfProcess(wChildren[i], display, PIDAtom, pid, result);
+            }
+        }
     }
 #endif
 }  // namespace Toolbox::Platform
