@@ -272,10 +272,15 @@ namespace Toolbox::Platform {
         return true;
     }
     bool GetWindowClientRect(LowWindow window, int &x, int &y, int &width, int &height) {
-        x = 0; // TODO: Implement this
-        y = 0;
-        width = 0;
-        height = 0;
+        XWindowAttributes attribs;
+        Display* display = XOpenDisplay(0);
+        if (!XGetWindowAttributes(display, (Window)window, &attribs)) {
+            return false;
+        }
+        x = attribs.x;
+        y = attribs.y;
+        width = attribs.width;
+        height = attribs.height;
         return true;
     }
     void searchWindowsOfProcess(const Window w, Display* display,
