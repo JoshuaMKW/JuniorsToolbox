@@ -246,5 +246,24 @@ namespace Toolbox::Platform {
 
         return true;
     }
+    std::string GetWindowTitle(LowWindow window) {
+        return ""; // TODO: Implement this
+    }
+    bool ForceWindowToFront(LowWindow window) {
+        return true; // TODO: Implement this
+    }
+    bool ForceWindowToFront(LowWindow window, LowWindow target) {
+        return true;
+    }
+    bool GetWindowClientRect(LowWindow window, int &x, int &y, int &width, int &height) {
+        x = 0; // TODO: Implement this
+        y = 0;
+        width = 0;
+        height = 0;
+        return true;
+    }
+    std::vector<LowWindow> FindWindowsOfProcess(const ProcessInformation &process) {
+        return std::vector<LowWindow>(); // TODO: Implement this
+    }
 #endif
 }  // namespace Toolbox::Platform
