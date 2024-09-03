@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <X11/Xutil.h>
 #endif
 
 namespace Toolbox::Platform {
@@ -249,7 +250,20 @@ namespace Toolbox::Platform {
         return true;
     }
     std::string GetWindowTitle(LowWindow window) {
-        return ""; // TODO: Implement this
+        Display* display = XOpenDisplay(0);
+        XTextProperty title;
+        XGetWMName(display, (Window)window, &title);
+        char** stringList;
+        int numStrings;
+        if (!XTextPropertyToStringList(&title, &stringList, &numStrings)) {
+            return "";
+        }
+        if (numStrings < 1){
+            return "";
+        }
+        std::string stringTitle(stringList[0]);
+        XFreeStringList(stringList);
+        return stringList[0];
     }
     bool ForceWindowToFront(LowWindow window) {
         return true; // TODO: Implement this
