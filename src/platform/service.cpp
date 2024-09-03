@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "platform/service.hpp"
+#include "core/core.hpp"
 
 namespace Toolbox::Platform {
 
@@ -45,6 +46,12 @@ namespace Toolbox::Platform {
 
         return isRunning;
     }
+#elifdef TOOLBOX_PLATFORM_LINUX
+    Result<bool, BaseError> IsServiceRunning(std::string_view name) {
+      return true;
+    }
+#else
+  #error "Unsupported OS"
 #endif
 
 }  // namespace Toolbox::Platform
