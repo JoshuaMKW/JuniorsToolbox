@@ -14,4 +14,4 @@
 	url = https://github.com/glfw/glfw.git
 [submodule "lib/libbti"]
 	path = lib/libbti
-	url = https://github.com/Sage-of-Mirrors/libbti.git
+	url = https://github.com/HazardousPeach/libbti.git
