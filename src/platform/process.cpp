@@ -286,12 +286,12 @@ namespace Toolbox::Platform {
                                 std::vector<LowWindow> &result) {
         // A bunch of output parameter storage, but we're only going
         // to use the last one.
-        Atom           type;
-        int            format;
-        unsigned long  nItems;
-        unsigned long  bytesAfter;
+        Atom type;
+        int format;
+        unsigned long nItems;
+        unsigned long bytesAfter;
         // The storage for the PID of the window we're looking at.
-        unsigned char *propPID = 0;
+        unsigned char* propPID = 0;
         if (XGetWindowProperty(display, w, PIDAtom,
                                0 /*offset*/,
                                1 /* length in words */,
