@@ -562,17 +562,17 @@ namespace Toolbox::Object {
 
         auto &cwd                = cwd_result.value();
         auto blob_path           = cwd / "Templates/.cache/blob.json";
-        auto cache_folder_result = Toolbox::Filesystem::is_directory(blob_path.parent_path());
-        if (!cache_folder_result) {
-            return std::unexpected(cache_folder_result.error());
-        }
-
-        if (!cache_folder_result.value()) {
+        if (!std::filesystem::exists(blob_path.parent_path())) {
             auto result = Toolbox::Filesystem::create_directory(blob_path.parent_path());
             if (!result) {
                 return std::unexpected(result.error());
             }
         }
+        auto cache_folder_result = Toolbox::Filesystem::is_directory(blob_path.parent_path());
+        if (!cache_folder_result) {
+            return std::unexpected(cache_folder_result.error());
+        }
+
 
         std::ofstream file(blob_path, std::ios::out);
         if (!file.is_open()) {
