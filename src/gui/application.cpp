@@ -6,8 +6,8 @@
 #include <string>
 #include <thread>
 
-//#include <GLFW/glfw3.h>
-//#include <glad/glad.h>
+// #include <GLFW/glfw3.h>
+// #include <glad/glad.h>
 
 #include <ImGuiFileDialog.h>
 #include <J3D/J3DModelLoader.hpp>
@@ -271,8 +271,7 @@ namespace Toolbox {
     }
 
     void GUIApplication::initializeIcon() {
-        fs_path res_path =
-            GUIApplication::instance().getResourcePath("Images/Icons/toolbox.png");
+        fs_path res_path = GUIApplication::instance().getResourcePath("Images/Icons/toolbox.png");
 
         std::ifstream in(res_path, std::ios::in | std::ios::binary);
 
@@ -280,7 +279,7 @@ namespace Toolbox {
 
         // Load image data
         {
-            stbi_uc *data  = stbi_load(res_path.string().c_str(), &width, &height, &channels, 4);
+            stbi_uc *data = stbi_load(res_path.string().c_str(), &width, &height, &channels, 4);
 
             GLFWimage icon = {width, height, data};
             glfwSetWindowIcon(m_render_window, 1, &icon);
@@ -439,7 +438,30 @@ namespace Toolbox {
                         (files_result && files_result.value())) {
                         // TODO: Open project folder view
                         m_project_root = path;
-                        TOOLBOX_INFO_V("Project root: {}", m_project_root.string());
+
+                        // Process the stageArc.bin
+                        fs_path layout_path = path / "files" / "data" / "stageArc.bin";
+
+                        Toolbox::Filesystem::is_regular_file(layout_path)
+                            .and_then([this, &layout_path](bool exists) {
+                                if (!exists) {
+                                    return make_fs_error<bool>(
+                                        std::error_code(),
+                                        {std::format("[PAD RECORD] File `{}' does not exist.",
+                                                     layout_path.string())});
+                                }
+
+                                std::ifstream in_str =
+                                    std::ifstream(layout_path, std::ios::in | std::ios::binary);
+                                Deserializer in = Deserializer(in_str.rdbuf());
+                                m_stage_layout  = make_scoped<ObjectHierarchy>();
+                                m_stage_layout->deserialize(in);
+                                return Result<bool, FSError>();
+                            })
+                            .error_or([](const FSError &error) {
+                                LogError(error);
+                                return Result<bool, FSError>();
+                            });
                     }
                 }
             }
