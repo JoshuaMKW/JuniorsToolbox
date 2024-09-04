@@ -266,13 +266,18 @@ namespace Toolbox::UI {
                 return false;
             }
 
-            glDetachShader(pid, vs);
-            glDetachShader(pid, gs);
-            glDetachShader(pid, fs);
-
-            glDeleteShader(vs);
-            glDeleteShader(gs);
-            glDeleteShader(fs);
+            if (vertex_shader_src) {
+                glDetachShader(pid, vs);
+                glDeleteShader(vs);
+            }
+            if (geometry_shader_src) {
+                glDeleteShader(gs);
+                glDetachShader(pid, gs);
+            }
+            if (fragment_shader_src) {
+                glDeleteShader(fs);
+                glDetachShader(pid, fs);
+            }
 
             return true;
         }
