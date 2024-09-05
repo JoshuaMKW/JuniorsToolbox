@@ -333,10 +333,12 @@ namespace Toolbox {
 
         Toolbox::Filesystem::create_directories(folder_path)
             .and_then([&](bool created) {
+                #if 0
                 if (!created) {
                     return make_fs_error<bool>(std::error_code(),
-                                               {"[PAD RECORD] Failed to create folder."});
+                                               {"[PAD RECORD] Folder already exists."});
                 }
+                #endif
                 return saveToFolder_(folder_path);
             })
             .and_then([&](bool success) {
