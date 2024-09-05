@@ -76,7 +76,8 @@ namespace Toolbox::Object {
 
         if (!result) {
             JSONError &err = result.error();
-            return make_serial_error<void>(err.m_message, err.m_reason, err.m_byte, in.filepath());
+            return make_serial_error<void>(err.m_message[0], err.m_reason, err.m_byte,
+                                           in.filepath());
         }
 
         return {};

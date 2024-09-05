@@ -225,7 +225,7 @@ namespace Toolbox::Object {
                 return make_serial_error<void>(in, error.m_message[0]);
             } else {
                 auto error = std::get<JSONError>(error_v);
-                return make_serial_error<void>(in, error.m_message);
+                return make_serial_error<void>(in, error.m_message[0]);
             }
         }
 
@@ -538,7 +538,7 @@ namespace Toolbox::Object {
                 return make_serial_error<void>(in, error.m_message[0]);
             } else {
                 auto error = std::get<JSONError>(error_v);
-                return make_serial_error<void>(in, error.m_message);
+                return make_serial_error<void>(in, error.m_message[0]);
             }
         }
 
@@ -999,7 +999,7 @@ namespace Toolbox::Object {
                 return make_serial_error<void>(in, error.m_message[0]);
             } else {
                 auto error = std::get<JSONError>(error_v);
-                return make_serial_error<void>(in, error.m_message);
+                return make_serial_error<void>(in, error.m_message[0]);
             }
         }
 

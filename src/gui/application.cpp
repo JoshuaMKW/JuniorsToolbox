@@ -458,7 +458,7 @@ namespace Toolbox {
                                 m_stage_layout->deserialize(in);
                                 return Result<bool, FSError>();
                             })
-                            .error_or([](const FSError &error) {
+                            .or_else([](const FSError &error) {
                                 LogError(error);
                                 return Result<bool, FSError>();
                             });
