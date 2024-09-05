@@ -672,7 +672,7 @@ namespace Toolbox::UI {
                                      mouse_pos.y - m_window_rect.Min.y, 0};
 
         if (!left_click && !right_click) {
-            return {};
+            return std::nullopt;
         }
 
         should_reset = true;
