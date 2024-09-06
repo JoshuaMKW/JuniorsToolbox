@@ -48,7 +48,7 @@ namespace Toolbox::Platform {
     }
 #elifdef TOOLBOX_PLATFORM_LINUX
     Result<bool, BaseError> IsServiceRunning(std::string_view name) {
-      return true;
+      return false;
     }
 #else
   #error "Unsupported OS"
