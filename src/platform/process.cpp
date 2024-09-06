@@ -270,9 +270,9 @@ namespace Toolbox::Platform {
         return XRaiseWindow(display, (Window)window);
     }
     bool ForceWindowToFront(LowWindow window, LowWindow target) {
-        // TODO: Is this the right behavior? Not exactly sure how this
-        // is supposed to work.
-        return ForceWindowToFront(window) && ForceWindowToFront(target);
+        // Not ideal behavior, this should move just in front of
+        // target, but I don't know how to do that.
+        return ForceWindowToFront(window);
     }
     bool GetWindowClientRect(LowWindow window, int &x, int &y, int &width, int &height) {
         XWindowAttributes attribs;
