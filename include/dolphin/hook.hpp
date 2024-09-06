@@ -86,7 +86,7 @@ namespace Toolbox::Dolphin {
     private:
         Platform::ProcessInformation m_proc_info;
 
-        Platform::LowHandle m_mem_handle{};
+        Platform::MemHandle m_mem_handle{};
         void *m_mem_view = nullptr;
 
         std::mutex m_memory_mutex;
