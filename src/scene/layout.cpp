@@ -341,4 +341,173 @@ namespace Toolbox::Scene {
         return root->getChildren().size() - 1;
     }
 
+    bool SceneLayoutManager::moveScene(size_t src_scene, size_t dst_scene) {
+        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        if (!root) {
+            LogError(make_error<std::optional<size_t>>("SCENE_LAYOUT",
+                                                       "stageArc.bin root doesn't exist!")
+                         .error());
+            return 0;
+        }
+
+        if (src_scene == dst_scene) {
+            return true;
+        }
+
+        bool result = true;
+
+        if (src_scene >= root->getChildren().size() || dst_scene >= root->getChildren().size()) {
+            LogError(make_error<bool>("SCENE_LAYOUT", "Invalid scene index!").error());
+            return false;
+        }
+
+        if (src_scene < dst_scene) {
+            dst_scene -= 1;
+        }
+
+        RefPtr<ISceneObject> scene = root->getChildren()[src_scene];
+        root->removeChild(src_scene)
+            .and_then([&]() {
+                root->insertChild(dst_scene, scene).or_else([&](const ObjectGroupError &error) {
+                    result = false;
+                    LogError(error);
+                    return Result<void, ObjectGroupError>();
+                });
+                return Result<void, ObjectGroupError>();
+            })
+            .or_else([&](const ObjectGroupError &error) {
+                result = false;
+                LogError(error);
+                return Result<void, ObjectGroupError>();
+            });
+
+        return result;
+    }
+
+    bool SceneLayoutManager::moveScenario(size_t src_scene, size_t src_scenario, size_t dst_scene,
+                                          size_t dst_scenario) {
+        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        if (!root) {
+            LogError(make_error<std::optional<size_t>>("SCENE_LAYOUT",
+                                                       "stageArc.bin root doesn't exist!")
+                         .error());
+            return 0;
+        }
+
+        if (src_scene == dst_scene && src_scenario == dst_scenario) {
+            return true;
+        }
+
+        bool result = true;
+
+        if (src_scene >= root->getChildren().size() || dst_scene >= root->getChildren().size()) {
+            LogError(make_error<bool>("SCENE_LAYOUT", "Invalid scene index!").error());
+            return false;
+        }
+
+        RefPtr<ISceneObject> src_scene_obj                  = root->getChildren()[src_scene];
+        std::vector<RefPtr<ISceneObject>> src_scenario_list = src_scene_obj->getChildren();
+
+        if (src_scenario >= src_scenario_list.size()) {
+            LogError(make_error<bool>("SCENE_LAYOUT", "Invalid scenario index!").error());
+            return false;
+        }
+
+        RefPtr<ISceneObject> dst_scene_obj = root->getChildren()[dst_scene];
+        std::vector<RefPtr<ISceneObject>> dst_scenario_list;
+        if (src_scene == dst_scene) {
+            dst_scenario_list = src_scenario_list;
+        } else {
+            dst_scenario_list = root->getChildren()[dst_scene]->getChildren();
+        }
+
+        if (dst_scenario >= dst_scenario_list.size()) {
+            LogError(make_error<bool>("SCENE_LAYOUT", "Invalid scenario index!").error());
+            return false;
+        }
+
+        RefPtr<ISceneObject> scenario = src_scenario_list[src_scenario];
+        if (src_scene == dst_scene) {
+            if (src_scenario < dst_scenario) {
+                dst_scenario -= 1;
+            }
+        }
+
+        src_scene_obj->removeChild(src_scenario)
+            .and_then([&]() {
+                dst_scene_obj->insertChild(dst_scenario, scenario)
+                    .or_else([&](const ObjectGroupError &error) {
+                        result = false;
+                        LogError(error);
+                        return Result<void, ObjectGroupError>();
+                    });
+                return Result<void, ObjectGroupError>();
+            })
+            .or_else([&](const ObjectGroupError &error) {
+                result = false;
+                LogError(error);
+                return Result<void, ObjectGroupError>();
+            });
+
+        return result;
+    }
+
+    bool SceneLayoutManager::removeScene(size_t scene) {
+        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        if (!root) {
+            LogError(make_error<std::optional<size_t>>("SCENE_LAYOUT",
+                                                       "stageArc.bin root doesn't exist!")
+                         .error());
+            return 0;
+        }
+
+        if (scene >= root->getChildren().size()) {
+            LogError(make_error<bool>("SCENE_LAYOUT", "Invalid scene index!").error());
+            return false;
+        }
+
+        bool result;
+
+        root->removeChild(scene).or_else([&](const ObjectGroupError &error) {
+            result = false;
+            LogError(error);
+            return Result<void, ObjectGroupError>();
+        });
+
+        return result;
+    }
+
+    bool SceneLayoutManager::removeScenario(size_t scene, size_t scenario) {
+        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        if (!root) {
+            LogError(make_error<std::optional<size_t>>("SCENE_LAYOUT",
+                                                       "stageArc.bin root doesn't exist!")
+                         .error());
+            return 0;
+        }
+
+        if (scene >= root->getChildren().size()) {
+            LogError(make_error<bool>("SCENE_LAYOUT", "Invalid scene index!").error());
+            return false;
+        }
+
+        RefPtr<ISceneObject> scene_obj = root->getChildren()[scene];
+        std::vector<RefPtr<ISceneObject>> scenario_list = scene_obj->getChildren();
+
+        if (scenario >= scenario_list.size()) {
+            LogError(make_error<bool>("SCENE_LAYOUT", "Invalid scenario index!").error());
+            return false;
+        }
+
+        bool result;
+
+        scene_obj->removeChild(scenario).or_else([&](const ObjectGroupError &error) {
+            result = false;
+            LogError(error);
+            return Result<void, ObjectGroupError>();
+        });
+
+        return result;
+    }
+
 }  // namespace Toolbox::Scene

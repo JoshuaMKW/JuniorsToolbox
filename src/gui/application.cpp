@@ -32,6 +32,7 @@
 #include "gui/themes.hpp"
 #include "gui/util.hpp"
 #include "platform/service.hpp"
+#include "scene/layout.hpp"
 
 // void ImGuiSetupTheme(bool, float);
 
@@ -441,27 +442,8 @@ namespace Toolbox {
 
                         // Process the stageArc.bin
                         fs_path layout_path = path / "files" / "data" / "stageArc.bin";
-
-                        Toolbox::Filesystem::is_regular_file(layout_path)
-                            .and_then([this, &layout_path](bool exists) {
-                                if (!exists) {
-                                    return make_fs_error<bool>(
-                                        std::error_code(),
-                                        {std::format("[PAD RECORD] File `{}' does not exist.",
-                                                     layout_path.string())});
-                                }
-
-                                std::ifstream in_str =
-                                    std::ifstream(layout_path, std::ios::in | std::ios::binary);
-                                Deserializer in = Deserializer(in_str.rdbuf());
-                                m_stage_layout  = make_scoped<ObjectHierarchy>();
-                                m_stage_layout->deserialize(in);
-                                return Result<bool, FSError>();
-                            })
-                            .or_else([](const FSError &error) {
-                                LogError(error);
-                                return Result<bool, FSError>();
-                            });
+                        m_scene_layout_manager
+                            ->loadFromPath(layout_path);
                     }
                 }
             }

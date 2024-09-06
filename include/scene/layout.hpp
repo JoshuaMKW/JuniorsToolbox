@@ -29,6 +29,9 @@ namespace Toolbox::Scene {
         bool moveScenario(size_t src_scene, size_t src_scenario, size_t dst_scene,
                           size_t dst_scenario);
 
+        bool removeScene(size_t scene);
+        bool removeScenario(size_t scene, size_t scenario);
+
         SceneLayoutManager &operator=(const SceneLayoutManager &) = default;
         SceneLayoutManager &operator=(SceneLayoutManager &&)      = default;
 

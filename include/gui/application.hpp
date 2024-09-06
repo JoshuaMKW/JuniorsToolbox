@@ -22,6 +22,8 @@
 #include "core/clipboard.hpp"
 #include "dolphin/process.hpp"
 
+#include "scene/layout.hpp"
+
 using namespace Toolbox::Dolphin;
 
 namespace Toolbox {
@@ -157,7 +159,7 @@ namespace Toolbox {
         std::filesystem::path m_load_path    = std::filesystem::current_path();
         std::filesystem::path m_save_path    = std::filesystem::current_path();
 
-        ScopePtr<ObjectHierarchy> m_stage_layout = nullptr;
+        ScopePtr<Scene::SceneLayoutManager> m_scene_layout_manager;
 
         GLFWwindow *m_render_window;
         std::vector<RefPtr<ImWindow>> m_windows;
