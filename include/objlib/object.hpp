@@ -398,7 +398,7 @@ namespace Toolbox::Object {
 
         [[nodiscard]] bool getCanPerform() const { return true; }
         [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
-        void w(bool performing) { m_is_performing = performing; }
+        void setIsPerforming(bool performing) { m_is_performing = performing; }
 
         Result<void, ObjectError> performScene(float delta_time, bool animate,
                                                std::vector<RenderInfo> &renderables,
