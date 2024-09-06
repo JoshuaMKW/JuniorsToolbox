@@ -22,6 +22,8 @@
 #include "core/clipboard.hpp"
 #include "dolphin/process.hpp"
 
+#include "scene/layout.hpp"
+
 using namespace Toolbox::Dolphin;
 
 namespace Toolbox {
@@ -115,6 +117,7 @@ namespace Toolbox {
         Game::TaskCommunicator &getTaskCommunicator() { return m_task_communicator; }
 
         std::filesystem::path getProjectRoot() const { return m_project_root; }
+        
 
         void registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
                                     SceneWindow::render_layer_cb cb);
@@ -155,6 +158,8 @@ namespace Toolbox {
         std::filesystem::path m_project_root = std::filesystem::current_path();
         std::filesystem::path m_load_path    = std::filesystem::current_path();
         std::filesystem::path m_save_path    = std::filesystem::current_path();
+
+        ScopePtr<Scene::SceneLayoutManager> m_scene_layout_manager;
 
         GLFWwindow *m_render_window;
         std::vector<RefPtr<ImWindow>> m_windows;

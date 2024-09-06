@@ -5,18 +5,23 @@
 #include <stacktrace>
 #include <string>
 
-#include "json.hpp"
 #include "core/error.hpp"
+#include "json.hpp"
 
 using json = nlohmann::json;
 
-struct JSONError {
-    std::string m_message;
+struct JSONError : public Toolbox::BaseError {
     std::string m_reason;
     std::size_t m_byte;
-    std::stacktrace m_trace;
 };
 
+template <typename T>
+inline Toolbox::Result<T, JSONError> make_json_error(const std::string &context,
+                                                     const std::string &reason, std::size_t byte) {
+    JSONError json_err = {std::vector<std::string>({context}), std::stacktrace(), reason, byte};
+    return std::unexpected(json_err);
+}
+
 // Pass a callback function that operates on a json object and potentially returns a value.
 template <class _JsonT, class _Func>
 inline auto tryJSON(_JsonT &j, _Func json_op)
@@ -25,25 +30,20 @@ inline auto tryJSON(_JsonT &j, _Func json_op)
     try {
         return json_op(j);
     } catch (json::type_error &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<decltype(json_op(j))>("Error while parsing template JSON.",
+                                                     err.what(), 0);
     } catch (json::parse_error &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), err.byte,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<decltype(json_op(j))>("Error while parsing template JSON.",
+                                                     err.what(), err.byte);
     } catch (json::out_of_range &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<decltype(json_op(j))>("Error while parsing template JSON.",
+                                                     err.what(), 0);
     } catch (json::invalid_iterator &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<decltype(json_op(j))>("Error while parsing template JSON.",
+                                                     err.what(), 0);
     } catch (json::other_error &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<decltype(json_op(j))>("Error while parsing template JSON.",
+                                                     err.what(), 0);
     }
 }
 
@@ -56,25 +56,15 @@ inline auto tryJSON(_JsonT &j, _Func json_op)
         json_op(j);
         return {};
     } catch (json::type_error &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
     } catch (json::parse_error &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), err.byte,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), err.byte);
     } catch (json::out_of_range &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
     } catch (json::invalid_iterator &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
     } catch (json::other_error &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
     }
 }
 
@@ -86,25 +76,20 @@ inline auto tryJSON(const _JsonT &j, _Func json_op)
     try {
         return json_op(j);
     } catch (json::type_error &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<decltype(json_op(j))>("Error while parsing template JSON.",
+                                                     err.what(), 0);
     } catch (json::parse_error &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), err.byte,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<decltype(json_op(j))>("Error while parsing template JSON.",
+                                                     err.what(), err.byte);
     } catch (json::out_of_range &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<decltype(json_op(j))>("Error while parsing template JSON.",
+                                                     err.what(), 0);
     } catch (json::invalid_iterator &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<decltype(json_op(j))>("Error while parsing template JSON.",
+                                                     err.what(), 0);
     } catch (json::other_error &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<decltype(json_op(j))>("Error while parsing template JSON.",
+                                                     err.what(), 0);
     }
 }
 
@@ -117,24 +102,14 @@ inline auto tryJSON(const _JsonT &j, _Func json_op)
         json_op(j);
         return {};
     } catch (json::type_error &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
     } catch (json::parse_error &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), err.byte,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), err.byte);
     } catch (json::out_of_range &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
     } catch (json::invalid_iterator &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
     } catch (json::other_error &err) {
-        JSONError json_err = {"Error while parsing template JSON.", err.what(), 0,
-                              std::stacktrace()};
-        return std::unexpected(json_err);
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
     }
 }

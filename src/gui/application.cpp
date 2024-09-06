@@ -6,8 +6,8 @@
 #include <string>
 #include <thread>
 
-//#include <GLFW/glfw3.h>
-//#include <glad/glad.h>
+// #include <GLFW/glfw3.h>
+// #include <glad/glad.h>
 
 #include <ImGuiFileDialog.h>
 #include <J3D/J3DModelLoader.hpp>
@@ -32,6 +32,7 @@
 #include "gui/themes.hpp"
 #include "gui/util.hpp"
 #include "platform/service.hpp"
+#include "scene/layout.hpp"
 
 // void ImGuiSetupTheme(bool, float);
 
@@ -271,8 +272,7 @@ namespace Toolbox {
     }
 
     void GUIApplication::initializeIcon() {
-        fs_path res_path =
-            GUIApplication::instance().getResourcePath("Images/Icons/toolbox.png");
+        fs_path res_path = GUIApplication::instance().getResourcePath("Images/Icons/toolbox.png");
 
         std::ifstream in(res_path, std::ios::in | std::ios::binary);
 
@@ -280,7 +280,7 @@ namespace Toolbox {
 
         // Load image data
         {
-            stbi_uc *data  = stbi_load(res_path.string().c_str(), &width, &height, &channels, 4);
+            stbi_uc *data = stbi_load(res_path.string().c_str(), &width, &height, &channels, 4);
 
             GLFWimage icon = {width, height, data};
             glfwSetWindowIcon(m_render_window, 1, &icon);
@@ -439,7 +439,11 @@ namespace Toolbox {
                         (files_result && files_result.value())) {
                         // TODO: Open project folder view
                         m_project_root = path;
-                        TOOLBOX_INFO_V("Project root: {}", m_project_root.string());
+
+                        // Process the stageArc.bin
+                        fs_path layout_path = path / "files" / "data" / "stageArc.bin";
+                        m_scene_layout_manager
+                            ->loadFromPath(layout_path);
                     }
                 }
             }

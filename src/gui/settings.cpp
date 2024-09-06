@@ -101,7 +101,7 @@ namespace Toolbox {
 
             if (!result) {
                 JSONError &err = result.error();
-                return make_serial_error<void>(err.m_message, err.m_reason, err.m_byte,
+                return make_serial_error<void>(err.m_message[0], err.m_reason, err.m_byte,
                                                child_path.path().string());
             }
 
@@ -225,7 +225,7 @@ namespace Toolbox {
 
         if (!result) {
             JSONError &err = result.error();
-            return make_serial_error<void>(err.m_message, err.m_reason, err.m_byte,
+            return make_serial_error<void>(err.m_message[0], err.m_reason, err.m_byte,
                                            child_path.string());
         }
 
