@@ -122,7 +122,8 @@ namespace Toolbox::Dolphin {
         }
 
         std::string dolphin_args =
-            std::format("-e \"{}/sys/main.dol\" -d -c -a HLE", application.getProjectRoot().string());
+            std::format("-e \"{}/sys/main.dol\" -d -c -a HLE",
+                        application.getProjectManager().getProjectFolder().string());
 
         auto process_result = Platform::CreateExProcess(settings.m_dolphin_path, dolphin_args);
         if (!process_result) {

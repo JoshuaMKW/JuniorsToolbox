@@ -72,6 +72,8 @@ file(GLOB TOOLBOX_SRC
     "include/pad/*.hpp"
     "src/platform/*.cpp"
     "include/platform/*.hpp"
+    "src/project/*.cpp"
+    "include/project/*.hpp"
     "src/rail/*.cpp"
     "include/rail/*.hpp"
     "src/rarc/*.cpp"

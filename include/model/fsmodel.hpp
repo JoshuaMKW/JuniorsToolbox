@@ -109,7 +109,7 @@ namespace Toolbox {
         std::vector<std::string> getSupportedMimeTypes() const;
 
         bool canFetchMore(const ModelIndex &index);
-        void fetchMore(const ModelIndex &index););
+        void fetchMore(const ModelIndex &index);
 
         void sort(int64_t column, ModelSortOrder order = ModelSortOrder::SORT_ASCENDING);
 

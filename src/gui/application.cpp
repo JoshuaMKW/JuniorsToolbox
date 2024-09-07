@@ -429,21 +429,8 @@ namespace Toolbox {
                         }
                     }
                 } else {
-                    auto sys_path   = std::filesystem::path(path) / "sys";
-                    auto files_path = std::filesystem::path(path) / "files";
-
-                    auto sys_result   = Toolbox::Filesystem::is_directory(sys_path);
-                    auto files_result = Toolbox::Filesystem::is_directory(files_path);
-
-                    if ((sys_result && sys_result.value()) &&
-                        (files_result && files_result.value())) {
-                        // TODO: Open project folder view
-                        m_project_root = path;
-
-                        // Process the stageArc.bin
-                        fs_path layout_path = path / "files" / "data" / "stageArc.bin";
-                        m_scene_layout_manager
-                            ->loadFromPath(layout_path);
+                    if (m_project_manager.loadProjectFolder(path)) {
+                        TOOLBOX_INFO_V("Loaded project folder: {}", path.string());
                     }
                 }
             }

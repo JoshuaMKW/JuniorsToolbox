@@ -6,15 +6,17 @@
 
 #include <glm/glm.hpp>
 
-#include "objlib/template.hpp"
 #include "color.hpp"
-#include "gui/settings.hpp"
 #include "jsonlib.hpp"
 #include "magic_enum.hpp"
+#include "core/log.hpp"
+#include "gui/settings.hpp"
 #include "objlib/meta/enum.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/struct.hpp"
+#include "objlib/template.hpp"
 #include "objlib/transform.hpp"
+#include "gui/logging/errors.hpp"
 
 namespace Toolbox::Object {
 
@@ -561,30 +563,32 @@ namespace Toolbox::Object {
             }
         }
 
-        auto &cwd                = cwd_result.value();
-        auto blob_path           = cwd / "Templates/.cache/blob.json";
-        auto cache_folder_result = Toolbox::Filesystem::is_directory(blob_path.parent_path());
-        if (!cache_folder_result) {
-            return std::unexpected(cache_folder_result.error());
-        }
+        auto &cwd      = cwd_result.value();
+        auto blob_path = cwd / "Templates/.cache/blob.json";
+        Toolbox::Filesystem::is_directory(blob_path.parent_path())
+            .and_then([&](bool is_dir) {
+                if (!is_dir) {
+                    return Toolbox::Filesystem::create_directory(blob_path.parent_path());
+                }
+                return Result<bool, FSError>();
+            })
+            .and_then([&](bool result) {
+                std::ofstream file(blob_path, std::ios::out);
+                if (!file.is_open()) {
+                    return make_fs_error<bool>(std::error_code(),
+                                               {"(TemplateFactory) failed to open cache blob!"});
+                }
 
-        if (!cache_folder_result.value()) {
-            auto result = Toolbox::Filesystem::create_directory(blob_path.parent_path());
-            if (!result) {
-                return std::unexpected(result.error());
-            }
-        }
+                Serializer out(file.rdbuf());
+                out.stream() << blob_json;
 
-        std::ofstream file(blob_path, std::ios::out);
-        if (!file.is_open()) {
-            return make_fs_error<void>(std::error_code(),
-                                       {"(TemplateFactory) failed to open cache blob!"});
-        }
-
-        Serializer out(file.rdbuf());
-        out.stream() << blob_json;
-
-        file.close();
+                file.close();
+                return Result<bool, FSError>();
+            })
+            .or_else([](const FSError &error) {
+                Toolbox::UI::LogError(error);
+                return Result<bool, FSError>();
+            });
 
         return {};
     }

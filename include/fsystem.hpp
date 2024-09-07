@@ -380,7 +380,7 @@ namespace Toolbox {
             if (result) {
                 return result;
             }
-            if (ec) {
+            if (ec && ec != std::errc::no_such_file_or_directory) {
                 return make_fs_error<bool>(ec);
             }
             return result;

@@ -38,7 +38,7 @@ namespace Toolbox::Scene {
         bool operator==(const SceneLayoutManager &) const = default;
 
     private:
-        ScopePtr<ObjectHierarchy> m_scene_layout;
+        ObjectHierarchy m_scene_layout;
     };
 
 }  // namespace Toolbox::Scene
