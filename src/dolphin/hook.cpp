@@ -189,7 +189,7 @@ namespace Toolbox::Dolphin {
     }
 
     Result<void> DolphinHookManager::stopProcess() {
-        auto process_result = Platform::KillExProcess(m_proc_info);
+        auto process_result = Platform::KillExProcess(m_proc_info, 100);
         if (!process_result) {
             return std::unexpected(process_result.error());
         }
