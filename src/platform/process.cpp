@@ -235,7 +235,9 @@ namespace Toolbox::Platform {
         ProcessID result = waitpid(process.m_process_id, &status, WNOHANG);
         if (result == 0) {
             // Process is still running, try to wait for max_wait time
-            sleep(max_wait);
+            usleep(max_wait * 1000); // usleep sleeps for
+                                     // microseconds, so multiply the
+                                     // milliseconds by 1000
             result = waitpid(process.m_process_id, &status, WNOHANG);
             if (result == 0) {
                 // Process is still running, force kill it
