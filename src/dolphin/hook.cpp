@@ -174,6 +174,10 @@ namespace Toolbox::Dolphin {
 
         std::string dolphin_args =
             std::format("-e {}/sys/main.dol -d -c -a HLE", application.getProjectRoot().string());
+#ifdef TOOLBOX_PLATFORM_LINUX
+        // Force dolphin to run on X11 instead of Wayland if running on Linux
+        putenv("QT_QPA_PLATFORM=xcb");
+#endif
 
         auto process_result = Platform::CreateExProcess(settings.m_dolphin_path, dolphin_args);
         if (!process_result) {
