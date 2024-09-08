@@ -192,9 +192,6 @@ namespace Toolbox::Platform {
 
     Result<ProcessInformation> CreateExProcess(const std::filesystem::path &program_path,
                                                std::string_view cmdargs) {
-        std::string true_cmdargs =
-            std::format("\"{}\" {}", program_path.string().c_str(), cmdargs.data());
-
         ProcessID pid = fork();  // Fork the current process
         if (pid == -1) {
             // Handle error
@@ -204,8 +201,26 @@ namespace Toolbox::Platform {
             return ProcessInformation{.m_process_name=program_path.stem().string(),
                                       .m_process_id=pid};
         } else {
+            // Split the argument string into components by spaces
+            std::stringstream argsstream(cmdargs.data());
+            std::vector<std::string> string_arg_parts;
+            string_arg_parts.push_back(program_path.string());
+            std::string s_next;
+            while (std::getline(argsstream, s_next, ' ')) {
+                string_arg_parts.push_back(s_next);
+            }
+            // Convert the string vector into a vector of c strings
+            std::vector<const char*> cstr_arg_parts;
+            for(int i = 0; i < string_arg_parts.size(); ++i) {
+                cstr_arg_parts.push_back(string_arg_parts[i].c_str());
+            }
+            // Terminate the argument vector with a null pointer
+            cstr_arg_parts.push_back(nullptr);
+
             // Child process
-            execl(program_path.c_str(), true_cmdargs.c_str(), (char *)NULL);
+            execv(program_path.c_str(), const_cast<char* const*>(&cstr_arg_parts[0]));
+            // If we get here, we probably want to know about it.
+            std::perror("Error executing dolphin process");
             // execl only returns on error
             _exit(EXIT_FAILURE);
         }
