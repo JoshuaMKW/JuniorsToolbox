@@ -19,6 +19,9 @@
 #include "gui/event/event.hpp"
 #include "gui/image/imagepainter.hpp"
 #include "gui/window.hpp"
+#include "gui/project/asset.hpp"
+
+#include "model/fsmodel.hpp"
 
 #include <imgui.h>
 
@@ -37,6 +40,9 @@ namespace Toolbox::UI {
         void renderProjectFolderView();
         void renderProjectFolderButton();
         void renderProjectFileButton();
+
+        void renderFolderTree(const ModelIndex &index);
+        void initFolderAssets(const ModelIndex &index);
 
     public:
         ImGuiWindowFlags flags() const override {
@@ -75,6 +81,12 @@ namespace Toolbox::UI {
 
         [[nodiscard]] bool onLoadData(const std::filesystem::path& path) override {
             m_project_root = path;
+            m_file_system_model = make_referable<FileSystemModel>();
+            m_file_system_model->setRoot(m_project_root);
+            m_tree_proxy.setSourceModel(m_file_system_model);
+            m_tree_proxy.setDirsOnly(true);
+            m_view_proxy.setSourceModel(m_file_system_model);
+            m_view_index = m_view_proxy.getIndex(0, 0);
             return true;
         }
         [[nodiscard]] bool onSaveData(std::optional<std::filesystem::path> path) override {
@@ -92,6 +104,14 @@ namespace Toolbox::UI {
         fs_path m_project_root;
 
         // TODO: Have filesystem model.
+        FileSystemModelSortFilterProxy m_tree_proxy;
+        FileSystemModelSortFilterProxy m_view_proxy;
+        RefPtr<FileSystemModel> m_file_system_model;
+
+        std::vector<ModelIndex> m_selected_indices;
+        std::vector<ProjectAsset> m_view_assets;
+        ModelIndex m_view_index;
+
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;
     };

@@ -26,6 +26,7 @@
 #include "gui/logging/errors.hpp"
 #include "gui/logging/window.hpp"
 #include "gui/pad/window.hpp"
+#include "gui/project/window.hpp"
 #include "gui/scene/ImGuizmo.h"
 #include "gui/scene/window.hpp"
 #include "gui/settings/window.hpp"
@@ -431,6 +432,12 @@ namespace Toolbox {
                 } else {
                     if (m_project_manager.loadProjectFolder(path)) {
                         TOOLBOX_INFO_V("Loaded project folder: {}", path.string());
+                        RefPtr<ProjectViewWindow> project_window =
+                            createWindow<ProjectViewWindow>("Project View");
+                        if (!project_window->onLoadData(path)) {
+                            TOOLBOX_ERROR("Failed to open project folder view!");
+                            project_window->close();
+                        }
                     }
                 }
             }
