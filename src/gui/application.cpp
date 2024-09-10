@@ -16,6 +16,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_internal.h>
 #include <stb/stb_image.h>
+#include <nfd.h>
 
 #include "core/core.hpp"
 #include "core/input/input.hpp"
@@ -395,42 +396,28 @@ namespace Toolbox {
         ImGui::EndMainMenuBar();
 
         if (m_is_dir_dialog_open) {
-            ImGuiFileDialog::Instance()->OpenDialog("OpenDirDialog", "Choose Project Path", nullptr,
-                                                    m_load_path.string(), "");
-        }
-
-        if (ImGuiFileDialog::Instance()->Display("OpenDirDialog")) {
-            ImGuiFileDialog::Instance()->Close();
+            nfdchar_t* outPath = nullptr;
+            nfdresult_t result = NFD_PickFolder(m_load_path.string().c_str(),
+                                                &outPath);
             m_is_dir_dialog_open = false;
-
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
-
-                auto dir_result = Toolbox::Filesystem::is_directory(path);
-                if (!dir_result) {
-                    return;
-                }
-
-                if (!dir_result.value()) {
-                    return;
-                }
-
-                m_load_path = path;
-
-                if (path.filename() == "scene") {
-                    RefPtr<ImWindow> existing_editor = findWindow("Scene Editor", path.string());
+            if (result == NFD_OKAY) {
+                std::filesystem::path selected_path = outPath;
+                std::cout << "Selected path is " << outPath << std::endl;
+                if (selected_path.filename() == "scene") {
+                    RefPtr<ImWindow> existing_editor =
+                        findWindow("Scene Editor", selected_path.string());
                     if (existing_editor) {
                         existing_editor->focus();
                     } else {
                         RefPtr<SceneWindow> scene_window =
                             createWindow<SceneWindow, true>("Scene Editor");
-                        if (!scene_window->onLoadData(path)) {
+                        if (!scene_window->onLoadData(selected_path)) {
                             scene_window->close();
                         }
                     }
                 } else {
-                    auto sys_path   = std::filesystem::path(path) / "sys";
-                    auto files_path = std::filesystem::path(path) / "files";
+                    auto sys_path   = std::filesystem::path(selected_path) / "sys";
+                    auto files_path = std::filesystem::path(selected_path) / "files";
 
                     auto sys_result   = Toolbox::Filesystem::is_directory(sys_path);
                     auto files_result = Toolbox::Filesystem::is_directory(files_path);
@@ -438,10 +425,11 @@ namespace Toolbox {
                     if ((sys_result && sys_result.value()) &&
                         (files_result && files_result.value())) {
                         // TODO: Open project folder view
-                        m_project_root = path;
+                        m_project_root = selected_path;
 
                         // Process the stageArc.bin
-                        fs_path layout_path = path / "files" / "data" / "stageArc.bin";
+                        fs_path layout_path = selected_path / "files" /
+                            "data" / "stageArc.bin";
                         m_scene_layout_manager
                             ->loadFromPath(layout_path);
                     }
@@ -450,36 +438,20 @@ namespace Toolbox {
         }
 
         if (m_is_file_dialog_open) {
-            ImGuiFileDialog::Instance()->OpenDialog("OpenFileDialog", "Choose File", nullptr, "",
-                                                    "");
-        }
-
-        if (ImGuiFileDialog::Instance()->Display("OpenFileDialog")) {
+            nfdchar_t* outPath = nullptr;
+            nfdresult_t result = NFD_OpenDialog(NULL, m_project_root.string().c_str(), &outPath);
             m_is_file_dialog_open = false;
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
+            if (result == NFD_OKAY) {
+                std::filesystem::path selected_path = outPath;
+                if (selected_path.extension() == ".szs" ||
+                    selected_path.extension() == ".arg") {
+                     RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
+                     if (!window->onLoadData(selected_path)) {
+                         window->close();
+                     }
 
-                auto file_result = Toolbox::Filesystem::is_regular_file(path);
-                if (!file_result) {
-                    ImGuiFileDialog::Instance()->Close();
-                    return;
-                }
-
-                if (!file_result.value()) {
-                    ImGuiFileDialog::Instance()->Close();
-                    return;
-                }
-                m_load_path = path.parent_path();
-
-                if (path.extension() == ".szs" || path.extension() == ".arc") {
-                    RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
-                    if (!window->onLoadData(path)) {
-                        window->close();
-                    }
                 }
             }
-
-            ImGuiFileDialog::Instance()->Close();
         }
 
         if (ImGui::BeginPopupModal("Scene Load Error", NULL,
