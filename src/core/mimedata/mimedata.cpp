@@ -143,7 +143,7 @@ namespace Toolbox {
     FORMATETC MimeData::FormatForMime(std::string_view mimetype) { return FORMATETC(); }
 
     std::string MimeData::MimeForFormat(FORMATETC format) { return std::string(); }
-#elif TOOLBOX_PLATFORM_LINUX
+#elifdef TOOLBOX_PLATFORM_LINUX
     static std::unordered_map<std::string, std::string> s_uti_to_mime = {
         {"public.utf8-plain-text",               "text/plain"            },
         {"public.utf16-plain-text",              "text/plain"            },
@@ -164,8 +164,8 @@ namespace Toolbox {
         {"application/x-qt-image", "public.tiff"},
     };
 
-    std::string MimeData::UTIForMime(std::string_view mimetype) { return s_mime_to_uti[mimetype]; }
-    std::string MimeData::MimeForUTI(std::string_view uti) { return s_uti_to_mime[uti]; }
+    std::string MimeData::UTIForMime(std::string_view mimetype) { return s_mime_to_uti[std::string(mimetype)]; }
+    std::string MimeData::MimeForUTI(std::string_view uti) { return s_uti_to_mime[std::string(uti)]; }
 #endif
 
 }  // namespace Toolbox

@@ -1,7 +1,7 @@
 [submodule "lib/J3DUltra"]
 	path = lib/J3DUltra
 	url = https://github.com/JoshuaMKW/J3DUltra.git
-    branch = aabb-support
+        branch = main
 [submodule "lib/imgui"]
 	path = lib/imgui
 	url = https://github.com/ocornut/imgui.git
@@ -14,4 +14,4 @@
 	url = https://github.com/glfw/glfw.git
 [submodule "lib/libbti"]
 	path = lib/libbti
-	url = https://github.com/Sage-of-Mirrors/libbti.git
+	url = https://github.com/HazardousPeach/libbti.git

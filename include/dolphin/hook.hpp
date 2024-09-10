@@ -15,7 +15,7 @@
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
-#elif TOOLBOX_PLATFORM_LINUX
+#elifdef TOOLBOX_PLATFORM_LINUX
 #endif
 
 using namespace Toolbox;
@@ -86,7 +86,7 @@ namespace Toolbox::Dolphin {
     private:
         Platform::ProcessInformation m_proc_info;
 
-        Platform::LowHandle m_mem_handle{};
+        Platform::MemHandle m_mem_handle{};
         void *m_mem_view = nullptr;
 
         std::mutex m_memory_mutex;

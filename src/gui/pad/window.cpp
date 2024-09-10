@@ -1449,7 +1449,7 @@ namespace Toolbox::UI {
             ReplayLinkNode &link_node = link_nodes[from_link - 'A'];
             for (size_t i = 0; i < 3; ++i) {
                 if (link_node.m_infos[i].m_next_link == to_link) {
-                    TOOLBOX_ERROR("[PAD RECORD] Link {} -> {} already exists.", from_link, to_link);
+                    TOOLBOX_ERROR_V("[PAD RECORD] Link {} -> {} already exists.", from_link, to_link);
                     return;
                 }
 
@@ -1459,7 +1459,7 @@ namespace Toolbox::UI {
                 }
             }
 
-            TOOLBOX_ERROR("[PAD RECORD] Link {} is full.", from_link);
+            TOOLBOX_ERROR_V("[PAD RECORD] Link {} is full.", from_link);
             return;
         }
 
@@ -1487,7 +1487,7 @@ namespace Toolbox::UI {
         }
 #else
         if (to_link >= 'A' + link_nodes.size()) {
-            TOOLBOX_ERROR("[PAD RECORD] Link {} -> {} references a future node.", from_link,
+            TOOLBOX_ERROR_V("[PAD RECORD] Link {} -> {} references a future node.", from_link,
                           to_link);
         }
 #endif
@@ -1495,7 +1495,7 @@ namespace Toolbox::UI {
 
     void PadInputWindow::signalPadPlayback(char from_link, char to_link) {
         if (m_pad_recorder.getPadFrameCount(from_link, to_link) == 0) {
-            TOOLBOX_ERROR("[PAD RECORD] No pad data found for link {} -> {}", from_link, to_link);
+            TOOLBOX_ERROR_V("[PAD RECORD] No pad data found for link {} -> {}", from_link, to_link);
             return;
         }
 

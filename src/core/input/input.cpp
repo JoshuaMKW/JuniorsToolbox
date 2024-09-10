@@ -43,8 +43,8 @@ namespace {
     static bool s_mouse_buttons_down[c_buttons_max]      = {false};
     static bool s_prev_mouse_buttons_down[c_buttons_max] = {false};
 
-    static bool GetKeyState(KeyCode key) { return s_keys_down[raw_enum(key)]; }
-    static void SetKeyState(KeyCode key, bool state) { s_keys_down[raw_enum(key)] = state; }
+    static bool GetKeyState(Toolbox::Input::KeyCode key) { return s_keys_down[raw_enum(key)]; }
+    static void SetKeyState(Toolbox::Input::KeyCode key, bool state) { s_keys_down[raw_enum(key)] = state; }
 
     static bool GetMouseButtonState(MouseButton button) {
         return s_mouse_buttons_down[raw_enum(button)];
