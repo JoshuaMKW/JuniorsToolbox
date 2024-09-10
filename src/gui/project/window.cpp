@@ -33,7 +33,7 @@ namespace Toolbox::UI {
             return;
         }
 
-        if (ImGui::BeginChild("Folder View", { 400, 0 }, true,
+        if (ImGui::BeginChild("Folder View", {400, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
             if (m_view_proxy.hasChildren(m_view_index)) {
                 if (m_view_proxy.canFetchMore(m_view_index)) {
@@ -45,13 +45,12 @@ namespace Toolbox::UI {
                     if (ImGui::BeginChild(child_index.getUUID(), {160, 180}, true,
                                           ImGuiWindowFlags_ChildWindow |
                                               ImGuiWindowFlags_NoDecoration)) {
-                        const ImageHandle &icon = m_view_proxy.getIcon(child_index);
+                        const ImageHandle &icon = m_view_proxy.getDecoration(child_index);
                         m_icon_painter.render(icon, {140, 140});
 
                         ImGui::RenderTextEllipsis(
                             ImGui::GetWindowDrawList(), {10, 150}, {130, 170}, 120.0f, 150.0f,
-                            m_view_proxy.getPath(child_index).filename().string().c_str(), nullptr,
-                            nullptr);
+                            m_view_proxy.getDisplayText(child_index).c_str(), nullptr, nullptr);
                     }
                     ImGui::EndChild();
                 }
@@ -87,7 +86,9 @@ namespace Toolbox::UI {
             if (is_open) {
                 for (size_t i = 0; i < m_tree_proxy.getRowCount(index); ++i) {
                     ModelIndex child_index = m_tree_proxy.getIndex(i, 0, index);
-                    renderFolderTree(child_index);
+                    if (m_tree_proxy.validateIndex(child_index)) {
+                        renderFolderTree(child_index);
+                    }
                 }
                 ImGui::TreePop();
             }

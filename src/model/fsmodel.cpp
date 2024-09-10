@@ -147,110 +147,124 @@ namespace Toolbox {
         return index.data<_FileSystemIndexData>()->m_type == _FileSystemIndexData::Type::ARCHIVE;
     }
 
-    size_t FileSystemModel::getFileSize(const ModelIndex &index) {
+    size_t FileSystemModel::getFileSize(const ModelIndex &index) const {
         if (!isFile(index)) {
             return 0;
         }
         return index.data<_FileSystemIndexData>()->m_size;
     }
 
-    size_t FileSystemModel::getDirSize(const ModelIndex &index, bool recursive) {
+    size_t FileSystemModel::getDirSize(const ModelIndex &index, bool recursive) const {
         if (!(isDirectory(index) || isArchive(index))) {
             return 0;
         }
         return index.data<_FileSystemIndexData>()->m_size;
     }
 
-    const ImageHandle &FileSystemModel::getIcon(const ModelIndex &index) const & {
+    std::any FileSystemModel::getData(const ModelIndex &index, int role) const {
         if (!validateIndex(index)) {
-            return TypeMap().at("_Invalid").m_icon;
+            return {};
         }
 
-        if (isDirectory(index)) {
-            return TypeMap().at("_Folder").m_icon;
+        switch (role) {
+        case ModelDataRole::DATA_ROLE_DISPLAY:
+            if (!validateIndex(index)) {
+                return "Invalid";
+            }
+            return index.data<_FileSystemIndexData>()->m_path.filename().string();
+        case ModelDataRole::DATA_ROLE_TOOLTIP:
+            return "Tooltip unimplemented!";
+        case ModelDataRole::DATA_ROLE_DECORATION: {
+            if (!validateIndex(index)) {
+                return TypeMap().at("_Invalid").m_icon;
+            }
+
+            if (isDirectory(index)) {
+                return TypeMap().at("_Folder").m_icon;
+            }
+
+            if (isArchive(index)) {
+                return TypeMap().at("_Archive").m_icon;
+            }
+
+            std::string ext = index.data<_FileSystemIndexData>()->m_path.extension().string();
+            if (ext.empty()) {
+                return TypeMap().at("_Folder").m_icon;
+            }
+
+            if (TypeMap().find(ext) == TypeMap().end()) {
+                return TypeMap().at("_File").m_icon;
+            }
+
+            return TypeMap().at(ext).m_icon;
         }
+        case FileSystemDataRole::FS_DATA_ROLE_DATE: {
+            if (!validateIndex(index)) {
+                return Filesystem::file_time_type();
+            }
 
-        if (isArchive(index)) {
-            return TypeMap().at("_Archive").m_icon;
+            Filesystem::file_time_type result = Filesystem::file_time_type();
+
+            Filesystem::last_write_time(index.data<_FileSystemIndexData>()->m_path)
+                .and_then([&](Filesystem::file_time_type &&time) {
+                    result = std::move(time);
+                    return Result<Filesystem::file_time_type, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to get last write time: {}",
+                                    error.m_message[0]);
+                    return Result<Filesystem::file_time_type, FSError>();
+                });
+
+            return result;
         }
+        case FileSystemDataRole::FS_DATA_ROLE_STATUS: {
+            if (!validateIndex(index)) {
+                return Filesystem::file_status();
+            }
 
-        std::string ext = index.data<_FileSystemIndexData>()->m_path.extension().string();
-        if (ext.empty()) {
-            return TypeMap().at("_Folder").m_icon;
+            Filesystem::file_status result = Filesystem::file_status();
+
+            Filesystem::status(index.data<_FileSystemIndexData>()->m_path)
+                .and_then([&](Filesystem::file_status &&status) {
+                    result = std::move(status);
+                    return Result<Filesystem::file_status, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to get last write status: {}",
+                                    error.m_message[0]);
+                    return Result<Filesystem::file_status, FSError>();
+                });
+
+            return result;
         }
+        case FileSystemDataRole::FS_DATA_ROLE_TYPE: {
+            if (!validateIndex(index)) {
+                return TypeMap().at("_Invalid").m_name;
+            }
 
-        if (TypeMap().find(ext) == TypeMap().end()) {
-            return TypeMap().at("_File").m_icon;
+            if (isDirectory(index)) {
+                return TypeMap().at("_Folder").m_name;
+            }
+
+            if (isArchive(index)) {
+                return TypeMap().at("_Archive").m_name;
+            }
+
+            std::string ext = index.data<_FileSystemIndexData>()->m_path.extension().string();
+            if (ext.empty()) {
+                return TypeMap().at("_Folder").m_name;
+            }
+
+            if (TypeMap().find(ext) == TypeMap().end()) {
+                return TypeMap().at("_File").m_name;
+            }
+
+            return TypeMap().at(ext).m_name;
         }
-
-        return TypeMap().at(ext).m_icon;
-    }
-
-    Filesystem::file_time_type FileSystemModel::getLastModified(const ModelIndex &index) const {
-        if (!validateIndex(index)) {
-            return Filesystem::file_time_type();
+        default:
+            return std::any();
         }
-
-        Filesystem::file_time_type result = Filesystem::file_time_type();
-
-        Filesystem::last_write_time(index.data<_FileSystemIndexData>()->m_path)
-            .and_then([&](Filesystem::file_time_type &&time) {
-                result = std::move(time);
-                return Result<Filesystem::file_time_type, FSError>();
-            })
-            .or_else([&](const FSError &error) {
-                TOOLBOX_ERROR_V("[FileSystemModel] Failed to get last write time: {}",
-                                error.m_message[0]);
-                return Result<Filesystem::file_time_type, FSError>();
-            });
-
-        return result;
-    }
-
-    Filesystem::file_status FileSystemModel::getStatus(const ModelIndex &index) const {
-        if (!validateIndex(index)) {
-            return Filesystem::file_status();
-        }
-
-        Filesystem::file_status result = Filesystem::file_status();
-
-        Filesystem::status(index.data<_FileSystemIndexData>()->m_path)
-            .and_then([&](Filesystem::file_status &&status) {
-                result = std::move(status);
-                return Result<Filesystem::file_status, FSError>();
-            })
-            .or_else([&](const FSError &error) {
-                TOOLBOX_ERROR_V("[FileSystemModel] Failed to get last write status: {}",
-                                error.m_message[0]);
-                return Result<Filesystem::file_status, FSError>();
-            });
-
-        return result;
-    }
-
-    std::string FileSystemModel::getType(const ModelIndex &index) const & {
-        if (!validateIndex(index)) {
-            return TypeMap().at("_Invalid").m_name;
-        }
-
-        if (isDirectory(index)) {
-            return TypeMap().at("_Folder").m_name;
-        }
-
-        if (isArchive(index)) {
-            return TypeMap().at("_Archive").m_name;
-        }
-
-        std::string ext = index.data<_FileSystemIndexData>()->m_path.extension().string();
-        if (ext.empty()) {
-            return TypeMap().at("_Folder").m_name;
-        }
-
-        if (TypeMap().find(ext) == TypeMap().end()) {
-            return TypeMap().at("_File").m_name;
-        }
-
-        return TypeMap().at(ext).m_name;
     }
 
     ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &name) {
@@ -591,10 +605,6 @@ namespace Toolbox {
         return s_type_map;
     }
 
-    bool FileSystemModel::validateIndex(const ModelIndex &index) const {
-        return index.isValid() && index.getModelUUID() == getUUID();
-    }
-
     ModelIndex FileSystemModel::makeIndex(const fs_path &path, int64_t row,
                                           const ModelIndex &parent) {
         _FileSystemIndexData *parent_data = nullptr;
@@ -717,8 +727,12 @@ namespace Toolbox {
         m_sort_order = order;
     }
 
-    ModelSortRole FileSystemModelSortFilterProxy::getSortRole() const { return m_sort_role; }
-    void FileSystemModelSortFilterProxy::setSortRole(ModelSortRole role) { m_sort_role = role; }
+    FileSystemModelSortRole FileSystemModelSortFilterProxy::getSortRole() const {
+        return m_sort_role;
+    }
+    void FileSystemModelSortFilterProxy::setSortRole(FileSystemModelSortRole role) {
+        m_sort_role = role;
+    }
 
     const std::string &FileSystemModelSortFilterProxy::getFilter() const & { return m_filter; }
     void FileSystemModelSortFilterProxy::setFilter(const std::string &filter) { m_filter = filter; }
@@ -782,15 +796,6 @@ namespace Toolbox {
         return m_source_model->getDirSize(source_index, recursive);
     }
 
-    const ImageHandle &FileSystemModelSortFilterProxy::getIcon(const ModelIndex &index) const & {
-        if (!m_source_model) {
-            return FileSystemModel::InvalidIcon();
-        }
-
-        ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->getIcon(source_index);
-    }
-
     Filesystem::file_time_type
     FileSystemModelSortFilterProxy::getLastModified(const ModelIndex &index) const {
         if (!m_source_model) {
@@ -811,13 +816,22 @@ namespace Toolbox {
         return m_source_model->getStatus(source_index);
     }
 
-    std::string FileSystemModelSortFilterProxy::getType(const ModelIndex &index) const & {
+    std::string FileSystemModelSortFilterProxy::getType(const ModelIndex &index) const {
         if (!m_source_model) {
             return "Invalid";
         }
 
         ModelIndex &&source_index = toSourceIndex(index);
         return m_source_model->getType(source_index);
+    }
+
+    std::any FileSystemModelSortFilterProxy::getData(const ModelIndex &index, int role) const {
+        if (!m_source_model) {
+            return std::any();
+        }
+
+        ModelIndex &&source_index = toSourceIndex(index);
+        return m_source_model->getData(source_index, role);
     }
 
     ModelIndex FileSystemModelSortFilterProxy::mkdir(const ModelIndex &parent,
@@ -1013,10 +1027,6 @@ namespace Toolbox {
         m_source_model->fetchMore(source_index);
     }
 
-    bool FileSystemModelSortFilterProxy::validateIndex(const ModelIndex &index) const {
-        return index.isValid() && index.getModelUUID() == getUUID();
-    }
-
     ModelIndex FileSystemModelSortFilterProxy::toSourceIndex(const ModelIndex &index) const {
         if (!m_source_model) {
             return ModelIndex();
@@ -1053,14 +1063,20 @@ namespace Toolbox {
             return proxy_index;
         }
 
-        std::vector<UUID64> children = parent.data<_FileSystemIndexData>()->m_children;
-        std::copy_if(children.begin(), children.end(), children.begin(), [&](const UUID64 &uuid) {
+        const std::vector<UUID64> &children = parent.data<_FileSystemIndexData>()->m_children;
+        if (children.empty()) {
+            return ModelIndex();
+        }
+
+        std::vector<UUID64> filtered_children(children.size());
+        std::copy_if(children.begin(), children.end(), filtered_children.begin(),
+                     [&](const UUID64 &uuid) {
             ModelIndex child_index = m_source_model->getIndex(uuid);
             if (!child_index.isValid()) {
                 return false;
             }
 
-            if (m_dirs_only && m_source_model->isFile(child_index)) {
+            if (isDirsOnly() && m_source_model->isFile(child_index)) {
                 return false;
             }
 
@@ -1069,35 +1085,41 @@ namespace Toolbox {
         });
 
         switch (m_sort_role) {
-        case ModelSortRole::SORT_ROLE_NAME: {
-            std::sort(children.begin(), children.end(), [&](const UUID64 &lhs, const UUID64 &rhs) {
-                return _FileSystemIndexDataCompareByName(
-                    *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
-                    *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(), m_sort_order);
-            });
+        case FileSystemModelSortRole::SORT_ROLE_NAME: {
+            std::sort(filtered_children.begin(), filtered_children.end(),
+                      [&](const UUID64 &lhs, const UUID64 &rhs) {
+                          return _FileSystemIndexDataCompareByName(
+                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
+                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
+                              m_sort_order);
+                      });
             break;
         }
-        case ModelSortRole::SORT_ROLE_SIZE: {
-            std::sort(children.begin(), children.end(), [&](const UUID64 &lhs, const UUID64 &rhs) {
-                return _FileSystemIndexDataCompareBySize(
-                    *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
-                    *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(), m_sort_order);
-            });
+        case FileSystemModelSortRole::SORT_ROLE_SIZE: {
+            std::sort(filtered_children.begin(), filtered_children.end(),
+                      [&](const UUID64 &lhs, const UUID64 &rhs) {
+                          return _FileSystemIndexDataCompareBySize(
+                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
+                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
+                              m_sort_order);
+                      });
             break;
         }
-        case ModelSortRole::SORT_ROLE_DATE:
-            std::sort(children.begin(), children.end(), [&](const UUID64 &lhs, const UUID64 &rhs) {
-                return _FileSystemIndexDataCompareByDate(
-                    *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
-                    *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(), m_sort_order);
-            });
+        case FileSystemModelSortRole::SORT_ROLE_DATE:
+            std::sort(filtered_children.begin(), filtered_children.end(),
+                      [&](const UUID64 &lhs, const UUID64 &rhs) {
+                          return _FileSystemIndexDataCompareByDate(
+                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
+                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
+                              m_sort_order);
+                      });
             break;
         default:
             break;
         }
 
-        for (size_t i = 0; i < children.size(); i++) {
-            if (children[i] == index.getUUID()) {
+        for (size_t i = 0; i < filtered_children.size(); i++) {
+            if (filtered_children[i] == index.getUUID()) {
                 ModelIndex proxy_index = ModelIndex(getUUID());
                 proxy_index.setData(index.data<_FileSystemIndexData>());
                 return proxy_index;
