@@ -1,6 +1,6 @@
 [submodule "lib/J3DUltra"]
 	path = lib/J3DUltra
-	url = https://github.com/HazardousPeach/J3DUltra.git
+	url = https://github.com/JoshuaMKW/J3DUltra.git
         branch = main
 [submodule "lib/imgui"]
 	path = lib/imgui
