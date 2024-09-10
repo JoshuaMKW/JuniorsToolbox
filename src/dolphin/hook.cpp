@@ -114,11 +114,12 @@ namespace Toolbox::Dolphin {
 
     static Result<Platform::MemHandle, BaseError>
     OpenProcessMemory(std::string_view memory_name) {
-        char* memory_name_owned = new char[memory_name.size() + 1];
-        std::memcpy(memory_name_owned, memory_name.data(), memory_name.size());
-        memory_name_owned[memory_name.size()] = '\0';
-        int fd = shm_open(memory_name_owned, O_RDWR, 0666);
-        if (fd) {
+        char* memory_name_owned = new char[1 + memory_name.size() + 1];
+        memory_name_owned[0] = '/';
+        std::memcpy(memory_name_owned + 1, memory_name.data(), memory_name.size());
+        memory_name_owned[memory_name.size() + 1] = '\0';
+        int fd = shm_open(memory_name_owned, O_RDWR, 0600);
+        if (fd == -1) {
             return make_error<Platform::MemHandle>(
                 "SHARED_MEMORY",
                 std::format("Failed to find shared process memory handle \"{}\".", memory_name));
