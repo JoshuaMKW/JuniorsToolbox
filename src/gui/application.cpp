@@ -450,7 +450,7 @@ namespace Toolbox {
                 std::filesystem::path selected_path =
                     FileDialog::Instance()->GetFilenameResult();
                 if (selected_path.extension() == ".szs" ||
-                    selected_path.extension() == ".arg") {
+                    selected_path.extension() == ".arc") {
                      RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
                      if (!window->onLoadData(selected_path)) {
                          window->close();
