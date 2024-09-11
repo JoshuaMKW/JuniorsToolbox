@@ -2,6 +2,7 @@
 #include <compare>
 #include <set>
 
+#include "gui/application.hpp"
 #include "model/fsmodel.hpp"
 
 namespace Toolbox {
@@ -15,12 +16,15 @@ namespace Toolbox {
         };
 
         UUID64 m_parent                = 0;
+        UUID64 m_self_uuid             = 0;
         std::vector<UUID64> m_children = {};
 
         Type m_type = Type::UNKNOWN;
         fs_path m_path;
         size_t m_size = 0;
         Filesystem::file_time_type m_date;
+
+        RefPtr<const ImageHandle> m_icon = nullptr;
 
         bool hasChild(UUID64 uuid) const {
             return std::find(m_children.begin(), m_children.end(), uuid) != m_children.end();
@@ -166,6 +170,9 @@ namespace Toolbox {
             return {};
         }
 
+        fs_path fs_icon_path =
+            GUIApplication::instance().getResourcePath("Images/Icons/Filesystem/");
+
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY:
             if (!validateIndex(index)) {
@@ -176,27 +183,9 @@ namespace Toolbox {
             return "Tooltip unimplemented!";
         case ModelDataRole::DATA_ROLE_DECORATION: {
             if (!validateIndex(index)) {
-                return TypeMap().at("_Invalid").m_icon;
+                return RefPtr<ImageHandle>(nullptr);
             }
-
-            if (isDirectory(index)) {
-                return TypeMap().at("_Folder").m_icon;
-            }
-
-            if (isArchive(index)) {
-                return TypeMap().at("_Archive").m_icon;
-            }
-
-            std::string ext = index.data<_FileSystemIndexData>()->m_path.extension().string();
-            if (ext.empty()) {
-                return TypeMap().at("_Folder").m_icon;
-            }
-
-            if (TypeMap().find(ext) == TypeMap().end()) {
-                return TypeMap().at("_File").m_icon;
-            }
-
-            return TypeMap().at(ext).m_icon;
+            return index.data<_FileSystemIndexData>()->m_icon;
         }
         case FileSystemDataRole::FS_DATA_ROLE_DATE: {
             if (!validateIndex(index)) {
@@ -516,6 +505,9 @@ namespace Toolbox {
     }
 
     bool FileSystemModel::hasChildren(const ModelIndex &parent) const {
+        if (getRowCount(parent) > 0) {
+            return true;
+        }
         return pollChildren(parent) > 0;
     }
 
@@ -564,42 +556,42 @@ namespace Toolbox {
     const std::unordered_map<std::string, FileSystemModel::FSTypeInfo> &FileSystemModel::TypeMap() {
         // clang-format off
         static std::unordered_map<std::string, FileSystemModel::FSTypeInfo> s_type_map = {
-            {"_Invalid", FSTypeInfo("Invalid",                  ImageHandle("Images/Icons/Filesystem/fs_invalid.png"))},
-            {"_Folder",  FSTypeInfo("Folder",                   ImageHandle("Images/Icons/Filesystem/fs_generic_folder.png")) },
-            {"_Archive", FSTypeInfo("Archive",                  ImageHandle("Images/Icons/Filesystem/fs_arc.png"))},
-            {"_File",    FSTypeInfo("File",                     ImageHandle("Images/Icons/Filesystem/fs_generic_file.png"))   },
-            {".txt",     FSTypeInfo("Text",                     ImageHandle("Images/Icons/Filesystem/fs_txt.png"))    },
-            {".md",      FSTypeInfo("Markdown",                 ImageHandle("Images/Icons/Filesystem/fs_md.png"))     },
-            {".c",       FSTypeInfo("C",                        ImageHandle("Images/Icons/Filesystem/fs_c.png"))      },
-            {".h",       FSTypeInfo("Header",                   ImageHandle("Images/Icons/Filesystem/fs_h.png"))      },
-            {".cpp",     FSTypeInfo("C++",                      ImageHandle("Images/Icons/Filesystem/fs_cpp.png"))    },
-            {".hpp",     FSTypeInfo("Header",                   ImageHandle("Images/Icons/Filesystem/fs_hpp.png"))    },
-            {".cxx",     FSTypeInfo("C++",                      ImageHandle("Images/Icons/Filesystem/fs_cpp.png"))    },
-            {".hxx",     FSTypeInfo("Header",                   ImageHandle("Images/Icons/Filesystem/fs_hpp.png"))    },
-            {".c++",     FSTypeInfo("C++",                      ImageHandle("Images/Icons/Filesystem/fs_cpp.png"))    },
-            {".h++",     FSTypeInfo("Header",                   ImageHandle("Images/Icons/Filesystem/fs_hpp.png"))    },
-            {".cc",      FSTypeInfo("C++",                      ImageHandle("Images/Icons/Filesystem/fs_cpp.png"))    },
-            {".hh",      FSTypeInfo("Header",                   ImageHandle("Images/Icons/Filesystem/fs_hpp.png"))    },
-            {".arc",     FSTypeInfo("Archive",                  ImageHandle("Images/Icons/Filesystem/fs_arc.png"))    },
-            {".bas",     FSTypeInfo("JAudio Sequence",          ImageHandle("Images/Icons/Filesystem/fs_bas.png"))    },
-            {".bck",     FSTypeInfo("J3D Bone Animation",       ImageHandle("Images/Icons/Filesystem/fs_bck.png"))    },
-            {".bdl",     FSTypeInfo("J3D Model Data",           ImageHandle("Images/Icons/Filesystem/fs_bdl.png"))    },
-            {".blo",     FSTypeInfo("J2D Screen Layout",        ImageHandle("Images/Icons/Filesystem/fs_blo.png"))    },
-            {".bmd",     FSTypeInfo("J3D Model Data",           ImageHandle("Images/Icons/Filesystem/fs_bmd.png"))    },
-            {".bmg",     FSTypeInfo("Message Data",             ImageHandle("Images/Icons/Filesystem/fs_bmg.png"))    },
-            {".bmt",     FSTypeInfo("J3D Material Table",       ImageHandle("Images/Icons/Filesystem/fs_bmt.png"))    },
-            {".brk",     FSTypeInfo("J3D Color Register Anim",  ImageHandle("Images/Icons/Filesystem/fs_brk.png"))    },
-            {".bti",     FSTypeInfo("J2D Texture Image",        ImageHandle("Images/Icons/Filesystem/fs_bti.png"))    },
-            {".btk",     FSTypeInfo("J2D Texture Animation",    ImageHandle("Images/Icons/Filesystem/fs_btk.png"))    },
-            {".btp",     FSTypeInfo("J2D Texture Pattern Anim", ImageHandle("Images/Icons/Filesystem/fs_btp.png"))    },
-            {".col",     FSTypeInfo("SMS Collision Data",       ImageHandle("Images/Icons/Filesystem/fs_col.png"))    },
-            {".jpa",     FSTypeInfo("JParticle Data",           ImageHandle("Images/Icons/Filesystem/fs_jpa.png"))    },
-            {".map",     FSTypeInfo("Executable Symbol Map",    ImageHandle("Images/Icons/Filesystem/fs_map.png"))    },
-            {".me",      FSTypeInfo("Marked For Delete",        ImageHandle("Images/Icons/Filesystem/fs_me.png"))     },
-            {".prm",     FSTypeInfo("SMS Parameter Data",       ImageHandle("Images/Icons/Filesystem/fs_prm.png"))    },
-            {".sb",      FSTypeInfo("Sunscript",                ImageHandle("Images/Icons/Filesystem/fs_sb.png"))     },
-            {".szs",     FSTypeInfo("Yaz0 Compressed Data",     ImageHandle("Images/Icons/Filesystem/fs_szs.png"))    },
-            {".thp",     FSTypeInfo("DolphinOS Movie Data",     ImageHandle("Images/Icons/Filesystem/fs_thp.png"))    },
+            {"_Invalid", FSTypeInfo("Invalid",                  "fs_invalid.png")       },
+            {"_Folder",  FSTypeInfo("Folder",                   "fs_generic_folder.png")},
+            {"_Archive", FSTypeInfo("Archive",                  "fs_arc.png")           },
+            {"_File",    FSTypeInfo("File",                     "fs_generic_file.png")  },
+            {".txt",     FSTypeInfo("Text",                     "fs_txt.png")           },
+            {".md",      FSTypeInfo("Markdown",                 "fs_md.png")            },
+            {".c",       FSTypeInfo("C",                        "fs_c.png")             },
+            {".h",       FSTypeInfo("Header",                   "fs_h.png")             },
+            {".cpp",     FSTypeInfo("C++",                      "fs_cpp.png")           },
+            {".hpp",     FSTypeInfo("Header",                   "fs_hpp.png")           },
+            {".cxx",     FSTypeInfo("C++",                      "fs_cpp.png")           },
+            {".hxx",     FSTypeInfo("Header",                   "fs_hpp.png")           },
+            {".c++",     FSTypeInfo("C++",                      "fs_cpp.png")           },
+            {".h++",     FSTypeInfo("Header",                   "fs_hpp.png")           },
+            {".cc",      FSTypeInfo("C++",                      "fs_cpp.png")           },
+            {".hh",      FSTypeInfo("Header",                   "fs_hpp.png")           },
+            {".arc",     FSTypeInfo("Archive",                  "fs_arc.png")           },
+            {".bas",     FSTypeInfo("JAudio Sequence",          "fs_bas.png")           },
+            {".bck",     FSTypeInfo("J3D Bone Animation",       "fs_bck.png")           },
+            {".bdl",     FSTypeInfo("J3D Model Data",           "fs_bdl.png")           },
+            {".blo",     FSTypeInfo("J2D Screen Layout",        "fs_blo.png")           },
+            {".bmd",     FSTypeInfo("J3D Model Data",           "fs_bmd.png")           },
+            {".bmg",     FSTypeInfo("Message Data",             "fs_bmg.png")           },
+            {".bmt",     FSTypeInfo("J3D Material Table",       "fs_bmt.png")           },
+            {".brk",     FSTypeInfo("J3D Color Register Anim",  "fs_brk.png")           },
+            {".bti",     FSTypeInfo("J2D Texture Image",        "fs_bti.png")           },
+            {".btk",     FSTypeInfo("J2D Texture Animation",    "fs_btk.png")           },
+            {".btp",     FSTypeInfo("J2D Texture Pattern Anim", "fs_btp.png")           },
+            {".col",     FSTypeInfo("SMS Collision Data",       "fs_col.png")           },
+            {".jpa",     FSTypeInfo("JParticle Data",           "fs_jpa.png")           },
+            {".map",     FSTypeInfo("Executable Symbol Map",    "fs_map.png")           },
+            {".me",      FSTypeInfo("Marked For Delete",        "fs_me.png")            },
+            {".prm",     FSTypeInfo("SMS Parameter Data",       "fs_prm.png")           },
+            {".sb",      FSTypeInfo("Sunscript",                "fs_sb.png")            },
+            {".szs",     FSTypeInfo("Yaz0 Compressed Data",     "fs_szs.png")           },
+            {".thp",     FSTypeInfo("DolphinOS Movie Data",     "fs_thp.png")           },
         };
         // clang-format on
         return s_type_map;
@@ -651,6 +643,36 @@ namespace Toolbox {
             });
 
         ModelIndex index = ModelIndex(getUUID());
+
+        // Establish icon
+        {
+            fs_path fs_icon_path =
+                GUIApplication::instance().getResourcePath("Images/Icons/Filesystem/");
+
+            std::string ext = data->m_path.extension().string();
+
+            if (!validateIndex(index)) {
+                data->m_icon = make_referable<const ImageHandle>(
+                    fs_icon_path / TypeMap().at("_Invalid").m_image_name);
+            } else if (data->m_type == _FileSystemIndexData::Type::DIRECTORY) {
+                data->m_icon = make_referable<const ImageHandle>(
+                    fs_icon_path / TypeMap().at("_Folder").m_image_name);
+            } else if (data->m_type == _FileSystemIndexData::Type::ARCHIVE) {
+                data->m_icon = make_referable<const ImageHandle>(
+                    fs_icon_path / TypeMap().at("_Archive").m_image_name);
+            } else if (ext.empty()) {
+                data->m_icon = make_referable<const ImageHandle>(
+                    fs_icon_path / TypeMap().at("_Folder").m_image_name);
+            } else if (TypeMap().find(ext) == TypeMap().end()) {
+                data->m_icon = make_referable<const ImageHandle>(
+                    fs_icon_path / TypeMap().at("_File").m_image_name);
+            } else {
+                data->m_icon = make_referable<const ImageHandle>(fs_icon_path /
+                                                                 TypeMap().at(ext).m_image_name);
+            }
+        }
+
+        data->m_self_uuid = index.getUUID();
 
         if (!validateIndex(parent)) {
             index.setData(data);
@@ -737,156 +759,88 @@ namespace Toolbox {
     const std::string &FileSystemModelSortFilterProxy::getFilter() const & { return m_filter; }
     void FileSystemModelSortFilterProxy::setFilter(const std::string &filter) { m_filter = filter; }
 
-    bool FileSystemModelSortFilterProxy::isReadOnly() const {
-        if (!m_source_model) {
-            return true;
-        }
-        return m_source_model->isReadOnly();
-    }
+    bool FileSystemModelSortFilterProxy::isReadOnly() const { return m_source_model->isReadOnly(); }
 
     void FileSystemModelSortFilterProxy::setReadOnly(bool read_only) {
-        if (!m_source_model) {
-            return;
-        }
         m_source_model->setReadOnly(read_only);
     }
 
     bool FileSystemModelSortFilterProxy::isDirectory(const ModelIndex &index) const {
-        if (!m_source_model) {
-            return false;
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->isDirectory(source_index);
+        return m_source_model->isDirectory(std::move(source_index));
     }
 
     bool FileSystemModelSortFilterProxy::isFile(const ModelIndex &index) const {
-        if (!m_source_model) {
-            return false;
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->isFile(source_index);
+        return m_source_model->isFile(std::move(source_index));
     }
 
     bool FileSystemModelSortFilterProxy::isArchive(const ModelIndex &index) const {
-        if (!m_source_model) {
-            return false;
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->isArchive(source_index);
+        return m_source_model->isArchive(std::move(source_index));
     }
 
     size_t FileSystemModelSortFilterProxy::getFileSize(const ModelIndex &index) {
-        if (!m_source_model) {
-            return 0;
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->getFileSize(source_index);
+        return m_source_model->getFileSize(std::move(source_index));
     }
 
     size_t FileSystemModelSortFilterProxy::getDirSize(const ModelIndex &index, bool recursive) {
-        if (!m_source_model) {
-            return 0;
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->getDirSize(source_index, recursive);
+        return m_source_model->getDirSize(std::move(source_index), recursive);
     }
 
     Filesystem::file_time_type
     FileSystemModelSortFilterProxy::getLastModified(const ModelIndex &index) const {
-        if (!m_source_model) {
-            return Filesystem::file_time_type();
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->getLastModified(source_index);
+        return m_source_model->getLastModified(std::move(source_index));
     }
 
     Filesystem::file_status
     FileSystemModelSortFilterProxy::getStatus(const ModelIndex &index) const {
-        if (!m_source_model) {
-            return Filesystem::file_status();
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->getStatus(source_index);
+        return m_source_model->getStatus(std::move(source_index));
     }
 
     std::string FileSystemModelSortFilterProxy::getType(const ModelIndex &index) const {
-        if (!m_source_model) {
-            return "Invalid";
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->getType(source_index);
+        return m_source_model->getType(std::move(source_index));
     }
 
     std::any FileSystemModelSortFilterProxy::getData(const ModelIndex &index, int role) const {
-        if (!m_source_model) {
-            return std::any();
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->getData(source_index, role);
+        return m_source_model->getData(std::move(source_index), role);
     }
 
     ModelIndex FileSystemModelSortFilterProxy::mkdir(const ModelIndex &parent,
                                                      const std::string &name) {
-        if (!m_source_model) {
-            return ModelIndex();
-        }
-
         ModelIndex &&source_index = toSourceIndex(parent);
-        return m_source_model->mkdir(source_index, name);
+        return m_source_model->mkdir(std::move(source_index), name);
     }
 
     ModelIndex FileSystemModelSortFilterProxy::touch(const ModelIndex &parent,
                                                      const std::string &name) {
-        if (!m_source_model) {
-            return ModelIndex();
-        }
-
         ModelIndex &&source_index = toSourceIndex(parent);
-        return m_source_model->touch(source_index, name);
+        return m_source_model->touch(std::move(source_index), name);
     }
 
     bool FileSystemModelSortFilterProxy::rmdir(const ModelIndex &index) {
-        if (!m_source_model) {
-            return false;
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->rmdir(source_index);
+        return m_source_model->rmdir(std::move(source_index));
     }
 
     bool FileSystemModelSortFilterProxy::remove(const ModelIndex &index) {
-        if (!m_source_model) {
-            return false;
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->remove(source_index);
+        return m_source_model->remove(std::move(source_index));
     }
 
     ModelIndex FileSystemModelSortFilterProxy::getIndex(const fs_path &path) const {
         ModelIndex index = m_source_model->getIndex(path);
-        if (!index.isValid()) {
-            return ModelIndex();
-        }
-
         return toProxyIndex(index);
     }
 
     ModelIndex FileSystemModelSortFilterProxy::getIndex(const UUID64 &uuid) const {
         ModelIndex index = m_source_model->getIndex(uuid);
-        if (!index.isValid()) {
-            return ModelIndex();
-        }
-
         return toProxyIndex(index);
     }
 
@@ -895,98 +849,42 @@ namespace Toolbox {
         ModelIndex parent_src = toSourceIndex(parent);
 
         ModelIndex index = m_source_model->getIndex(row, column, parent_src);
-        if (!index.isValid()) {
-            return ModelIndex();
-        }
-
         return toProxyIndex(index);
     }
 
     fs_path FileSystemModelSortFilterProxy::getPath(const ModelIndex &index) const {
-        if (!m_source_model) {
-            return fs_path();
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        if (!source_index.isValid()) {
-            return fs_path();
-        }
-
-        return m_source_model->getPath(source_index);
+        return m_source_model->getPath(std::move(source_index));
     }
 
     ModelIndex FileSystemModelSortFilterProxy::getParent(const ModelIndex &index) const {
-        if (!m_source_model) {
-            return ModelIndex();
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        if (!source_index.isValid()) {
-            return ModelIndex();
-        }
-
-        return toProxyIndex(m_source_model->getParent(source_index));
+        return toProxyIndex(m_source_model->getParent(std::move(source_index)));
     }
 
     ModelIndex FileSystemModelSortFilterProxy::getSibling(int64_t row, int64_t column,
                                                           const ModelIndex &index) const {
-        if (!m_source_model) {
-            return ModelIndex();
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        if (!source_index.isValid()) {
-            return ModelIndex();
-        }
-
         return toProxyIndex(m_source_model->getSibling(row, column, source_index));
     }
 
     size_t FileSystemModelSortFilterProxy::getColumnCount(const ModelIndex &index) const {
-        if (!m_source_model) {
-            return 0;
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        if (!source_index.isValid()) {
-            return 0;
-        }
-
         return m_source_model->getColumnCount(source_index);
     }
 
     size_t FileSystemModelSortFilterProxy::getRowCount(const ModelIndex &index) const {
-        if (!m_source_model) {
-            return 0;
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        if (!source_index.isValid()) {
-            return 0;
-        }
-
         return m_source_model->getRowCount(source_index);
     }
 
     bool FileSystemModelSortFilterProxy::hasChildren(const ModelIndex &parent) const {
-        if (!m_source_model) {
-            return false;
-        }
-
         ModelIndex &&source_index = toSourceIndex(parent);
-        if (!source_index.isValid()) {
-            return false;
-        }
-
         return m_source_model->hasChildren(source_index);
     }
 
     ScopePtr<MimeData>
     FileSystemModelSortFilterProxy::createMimeData(const std::vector<ModelIndex> &indexes) const {
-        if (!m_source_model) {
-            return ScopePtr<MimeData>();
-        }
-
         std::vector<ModelIndex> indexes_copy = indexes;
         std::transform(indexes.begin(), indexes.end(), indexes_copy.begin(),
                        [&](const ModelIndex &index) { return toSourceIndex(index); });
@@ -995,43 +893,20 @@ namespace Toolbox {
     }
 
     std::vector<std::string> FileSystemModelSortFilterProxy::getSupportedMimeTypes() const {
-        if (!m_source_model) {
-            return std::vector<std::string>();
-        }
         return m_source_model->getSupportedMimeTypes();
     }
 
     bool FileSystemModelSortFilterProxy::canFetchMore(const ModelIndex &index) {
-        if (!m_source_model) {
-            return false;
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        if (!source_index.isValid()) {
-            return false;
-        }
-
-        return m_source_model->canFetchMore(source_index);
+        return m_source_model->canFetchMore(std::move(source_index));
     }
 
     void FileSystemModelSortFilterProxy::fetchMore(const ModelIndex &index) {
-        if (!m_source_model) {
-            return;
-        }
-
         ModelIndex &&source_index = toSourceIndex(index);
-        if (!source_index.isValid()) {
-            return;
-        }
-
-        m_source_model->fetchMore(source_index);
+        m_source_model->fetchMore(std::move(source_index));
     }
 
     ModelIndex FileSystemModelSortFilterProxy::toSourceIndex(const ModelIndex &index) const {
-        if (!m_source_model) {
-            return ModelIndex();
-        }
-
         if (m_source_model->validateIndex(index)) {
             return index;
         }
@@ -1040,14 +915,10 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        return m_source_model->getIndex(index.data<_FileSystemIndexData>()->m_path);
+        return m_source_model->getIndex(index.data<_FileSystemIndexData>()->m_self_uuid);
     }
 
     ModelIndex FileSystemModelSortFilterProxy::toProxyIndex(const ModelIndex &index) const {
-        if (!m_source_model) {
-            return ModelIndex();
-        }
-
         if (validateIndex(index)) {
             return index;
         }
@@ -1063,63 +934,45 @@ namespace Toolbox {
             return proxy_index;
         }
 
-        const std::vector<UUID64> &children = parent.data<_FileSystemIndexData>()->m_children;
+        std::vector<UUID64> children = parent.data<_FileSystemIndexData>()->m_children;
         if (children.empty()) {
             return ModelIndex();
         }
 
-        std::vector<UUID64> filtered_children(children.size());
-        std::copy_if(children.begin(), children.end(), filtered_children.begin(),
-                     [&](const UUID64 &uuid) {
-            ModelIndex child_index = m_source_model->getIndex(uuid);
-            if (!child_index.isValid()) {
-                return false;
-            }
-
-            if (isDirsOnly() && m_source_model->isFile(child_index)) {
-                return false;
-            }
-
-            fs_path path = child_index.data<_FileSystemIndexData>()->m_path;
-            return path.filename().string().starts_with(m_filter);
-        });
-
         switch (m_sort_role) {
         case FileSystemModelSortRole::SORT_ROLE_NAME: {
-            std::sort(filtered_children.begin(), filtered_children.end(),
-                      [&](const UUID64 &lhs, const UUID64 &rhs) {
-                          return _FileSystemIndexDataCompareByName(
-                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
-                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
-                              m_sort_order);
-                      });
+            std::sort(children.begin(), children.end(), [&](const UUID64 &lhs, const UUID64 &rhs) {
+                return _FileSystemIndexDataCompareByName(
+                    *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
+                    *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(), m_sort_order);
+            });
             break;
         }
         case FileSystemModelSortRole::SORT_ROLE_SIZE: {
-            std::sort(filtered_children.begin(), filtered_children.end(),
-                      [&](const UUID64 &lhs, const UUID64 &rhs) {
-                          return _FileSystemIndexDataCompareBySize(
-                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
-                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
-                              m_sort_order);
-                      });
+            std::sort(children.begin(), children.end(), [&](const UUID64 &lhs, const UUID64 &rhs) {
+                return _FileSystemIndexDataCompareBySize(
+                    *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
+                    *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(), m_sort_order);
+            });
             break;
         }
         case FileSystemModelSortRole::SORT_ROLE_DATE:
-            std::sort(filtered_children.begin(), filtered_children.end(),
-                      [&](const UUID64 &lhs, const UUID64 &rhs) {
-                          return _FileSystemIndexDataCompareByDate(
-                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
-                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
-                              m_sort_order);
-                      });
+            std::sort(children.begin(), children.end(), [&](const UUID64 &lhs, const UUID64 &rhs) {
+                return _FileSystemIndexDataCompareByDate(
+                    *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
+                    *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(), m_sort_order);
+            });
             break;
         default:
             break;
         }
 
-        for (size_t i = 0; i < filtered_children.size(); i++) {
-            if (filtered_children[i] == index.getUUID()) {
+        for (size_t i = 0; i < children.size(); i++) {
+            if (isFiltered(children[i])) {
+                continue;
+            }
+
+            if (children[i] == index.getUUID()) {
                 ModelIndex proxy_index = ModelIndex(getUUID());
                 proxy_index.setData(index.data<_FileSystemIndexData>());
                 return proxy_index;
@@ -1128,6 +981,16 @@ namespace Toolbox {
 
         // Should never reach here
         return ModelIndex();
+    }
+
+    bool FileSystemModelSortFilterProxy::isFiltered(const UUID64 &uuid) const {
+        ModelIndex child_index = m_source_model->getIndex(uuid);
+        if (isDirsOnly() && m_source_model->isFile(child_index)) {
+            return true;
+        }
+
+        fs_path path = child_index.data<_FileSystemIndexData>()->m_path;
+        return !path.filename().string().starts_with(m_filter);
     }
 
 }  // namespace Toolbox

@@ -2,6 +2,7 @@
 #include "model/fsmodel.hpp"
 
 #include <imgui/imgui.h>
+#include <cmath>
 
 namespace Toolbox::UI {
 
@@ -20,7 +21,7 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::renderProjectTreeView() {
-        if (ImGui::BeginChild("Tree View", {160, 0}, true,
+        if (ImGui::BeginChild("Tree View", {300, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
             ModelIndex index = m_tree_proxy.getIndex(0, 0);
             renderFolderTree(index);
@@ -29,31 +30,61 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::renderProjectFolderView() {
-        if (!m_view_index.isValid()) {
+        if (!m_view_proxy.validateIndex(m_view_index)) {
             return;
         }
 
-        if (ImGui::BeginChild("Folder View", {400, 0}, true,
+        if (ImGui::BeginChild("Folder View", {0, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
             if (m_view_proxy.hasChildren(m_view_index)) {
                 if (m_view_proxy.canFetchMore(m_view_index)) {
                     m_view_proxy.fetchMore(m_view_index);
                 }
+
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2, 2});
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+                ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
+
+                ImVec2 size = ImGui::GetContentRegionAvail();
+
+                size_t x_count = (size_t)(size.x / 80);
+                if (x_count == 0) {
+                    x_count = 1;
+                }
+
                 for (size_t i = 0; i < m_view_proxy.getRowCount(m_view_index); ++i) {
                     ModelIndex child_index = m_view_proxy.getIndex(i, 0, m_view_index);
 
-                    if (ImGui::BeginChild(child_index.getUUID(), {160, 180}, true,
+                    if (ImGui::BeginChild(child_index.getUUID(), {76, 92}, true,
                                           ImGuiWindowFlags_ChildWindow |
                                               ImGuiWindowFlags_NoDecoration)) {
-                        const ImageHandle &icon = m_view_proxy.getDecoration(child_index);
-                        m_icon_painter.render(icon, {140, 140});
+
+                        m_icon_painter.render(*m_view_proxy.getDecoration(child_index), {72, 72});
+
+                        std::string text = m_view_proxy.getDisplayText(child_index);
+                        ImVec2 text_size = ImGui::CalcTextSize(text.c_str());
+
+                        ImVec2 pos = ImGui::GetCursorScreenPos();
+                        pos.x += std::max<float>(36.0f - (text_size.x / 2.0f), 0.0);
+                        pos.y += 72.0f;
+                        //pos.x += i * size.x / 4.0f;
 
                         ImGui::RenderTextEllipsis(
-                            ImGui::GetWindowDrawList(), {10, 150}, {130, 170}, 120.0f, 150.0f,
-                            m_view_proxy.getDisplayText(child_index).c_str(), nullptr, nullptr);
+                            ImGui::GetWindowDrawList(), pos, pos + ImVec2(72, 20), pos.x + 72.0f,
+                            pos.x + 76.0f, m_view_proxy.getDisplayText(child_index).c_str(),
+                            nullptr, nullptr);
                     }
                     ImGui::EndChild();
+
+                    // ImGui::Text("%s", m_view_proxy.getDisplayText(child_index).c_str());
+
+                    if ((i + 1) % x_count != 0) {
+                        ImGui::SameLine(i * size.x / 4.0f);
+                    }
                 }
+
+                ImGui::PopStyleVar(4);
             }
         }
         ImGui::EndChild();

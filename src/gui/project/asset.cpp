@@ -11,7 +11,7 @@ namespace Toolbox::UI {
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {3, 3});
 
         if (m_model) {
-            m_painter.render(m_model->getDecoration(m_index));
+            m_painter.render(*m_model->getDecoration(m_index));
             ImGui::Text("%s", m_model->getDisplayText(m_index).c_str());
         }
 

@@ -17,9 +17,11 @@ namespace Toolbox::UI {
         if (!image) {
             return false;
         }
+        ImVec2 orig_pos = ImGui::GetCursorScreenPos();
         ImGui::SetCursorScreenPos(pos);
         ImGui::Image((ImTextureID)image.m_image_handle, size, m_uv0, m_uv1, m_tint_color,
                      m_border_color);
+        ImGui::SetCursorScreenPos(orig_pos);
         return true;
     }
 

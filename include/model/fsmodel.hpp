@@ -42,7 +42,7 @@ namespace Toolbox {
     public:
         struct FSTypeInfo {
             std::string m_name;
-            ImageHandle m_icon;
+            std::string m_image_name;
         };
 
     public:
@@ -209,6 +209,8 @@ namespace Toolbox {
     protected:
         [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;
+
+        [[nodiscard]] bool isFiltered(const UUID64 &uuid) const;
 
         ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) {
             return ModelIndex();

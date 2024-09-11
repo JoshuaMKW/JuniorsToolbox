@@ -40,8 +40,6 @@ namespace Toolbox {
             : m_uuid(other.m_uuid), m_model_uuid(other.m_model_uuid),
               m_user_data(other.m_user_data) {}
 
-        bool isValid() const { return m_model_uuid != 0; }
-
         template <typename T = void> [[nodiscard]] T *data() const {
             return reinterpret_cast<T *>(m_user_data);
         }
@@ -49,8 +47,6 @@ namespace Toolbox {
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
         [[nodiscard]] UUID64 getModelUUID() const { return m_model_uuid; }
-
-        operator bool() const { return isValid(); }
 
         ModelIndex &operator=(const ModelIndex &other) {
             m_uuid       = other.m_uuid;
@@ -73,7 +69,7 @@ namespace Toolbox {
     class IDataModel : public IUnique {
     public:
         [[nodiscard]] virtual bool validateIndex(const ModelIndex &index) const {
-            return index.isValid() && index.getModelUUID() == getUUID();
+            return index.getModelUUID() == getUUID();
         }
 
         [[nodiscard]] virtual std::string getDisplayText(const ModelIndex &index) const {
@@ -84,8 +80,8 @@ namespace Toolbox {
             return std::any_cast<std::string>(getData(index, ModelDataRole::DATA_ROLE_TOOLTIP));
         }
 
-        [[nodiscard]] virtual ImageHandle getDecoration(const ModelIndex &index) const {
-            return std::any_cast<ImageHandle>(getData(index, ModelDataRole::DATA_ROLE_DECORATION));
+        [[nodiscard]] virtual RefPtr<const ImageHandle> getDecoration(const ModelIndex &index) const {
+            return std::any_cast<RefPtr<const ImageHandle>>(getData(index, ModelDataRole::DATA_ROLE_DECORATION));
         }
 
         [[nodiscard]] virtual std::any getData(const ModelIndex &index, int role) const = 0;
