@@ -441,7 +441,10 @@ namespace Toolbox {
         }
 
         if (m_is_file_dialog_open) {
-            FileDialog::Instance()->OpenDialog(m_load_path, false);
+            std::vector<std::pair<const char*, const char*>> filters;
+            filters.push_back({"Nintendo Scene Archive", "szs,arc"});
+            FileDialog::Instance()->OpenDialog(m_load_path, false,
+                                               filters);
             m_is_file_dialog_open = false;
         }
         if (FileDialog::Instance()->isDone()) {
@@ -542,18 +545,32 @@ namespace Toolbox {
     }
 
     void FileDialog::OpenDialog(std::filesystem::path starting_path,
-                                bool is_directory) {
+                                bool is_directory,
+                                std::optional<std::vector<std::pair<
+                                  const char*, const char*>>> maybe_filters) {
         if (m_thread_initialized) {
             m_thread.join();
         } else {
             m_thread_initialized = true;
         }
-        auto fn = [is_directory, this, starting_path]
+        auto fn = [this, is_directory, starting_path, maybe_filters]
                                () {
+            int num_filters = 0;
+            nfdu8filteritem_t* nfd_filters = nullptr;
+            if(maybe_filters) {
+                auto filters = maybe_filters.value();
+                num_filters = filters.size();
+                nfd_filters = new nfdu8filteritem_t[num_filters];
+                for(int i = 0; i < num_filters; ++i) {
+                    nfd_filters[i] = {std::get<0>(filters[i]),
+                                      std::get<1>(filters[i])};
+                }
+            }
             if(is_directory){
                 m_result = NFD_PickFolder(&m_selected_path, starting_path.string().c_str());
             } else {
-                m_result = NFD_OpenDialog(&m_selected_path, NULL, 0, starting_path.string().c_str());
+                m_result = NFD_OpenDialog(&m_selected_path, nfd_filters, num_filters,
+                                          starting_path.string().c_str());
             }
             m_thread_finished = true;
         };
