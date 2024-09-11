@@ -543,6 +543,11 @@ namespace Toolbox {
 
     void FileDialog::OpenDialog(std::filesystem::path starting_path,
                                 bool is_directory) {
+        if (m_thread_initialized) {
+            m_thread.join();
+        } else {
+            m_thread_initialized = true;
+        }
         auto fn = [is_directory, this, starting_path]
                                () {
             if(is_directory){

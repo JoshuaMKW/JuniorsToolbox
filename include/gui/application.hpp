@@ -194,7 +194,8 @@ namespace Toolbox {
         nfdchar_t* m_selected_path;
         nfdresult_t m_result;
         std::thread m_thread;
-        bool m_thread_finished;
+        bool m_thread_initialized = false;
+        bool m_thread_finished = false;
         bool m_closed = false;
     };
 
