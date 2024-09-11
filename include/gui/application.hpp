@@ -188,6 +188,7 @@ namespace Toolbox {
                         bool is_directory = false,
                         std::optional<std::vector<std::pair<
                         const char*, const char*>>> maybe_filters = std::nullopt);
+        bool isAlreadyOpen() { return not m_thread_finished; }
         bool isDone() { return m_thread_finished && not m_closed; }
         bool isOk() { return m_result == NFD_OKAY; }
         std::filesystem::path GetFilenameResult() { return m_selected_path; }

@@ -397,7 +397,9 @@ namespace Toolbox {
         ImGui::EndMainMenuBar();
 
         if (m_is_dir_dialog_open) {
-            FileDialog::Instance()->OpenDialog(m_load_path, true);
+            if (!FileDialog::Instance()->isAlreadyOpen()) {
+                FileDialog::Instance()->OpenDialog(m_load_path, true);
+            }
             m_is_dir_dialog_open = false;
         }
         if (FileDialog::Instance()->isDone()) {
@@ -441,10 +443,12 @@ namespace Toolbox {
         }
 
         if (m_is_file_dialog_open) {
-            std::vector<std::pair<const char*, const char*>> filters;
-            filters.push_back({"Nintendo Scene Archive", "szs,arc"});
-            FileDialog::Instance()->OpenDialog(m_load_path, false,
-                                               filters);
+            if (!FileDialog::Instance()->isAlreadyOpen()) {
+                std::vector<std::pair<const char*, const char*>> filters;
+                filters.push_back({"Nintendo Scene Archive", "szs,arc"});
+                FileDialog::Instance()->OpenDialog(m_load_path, false,
+                                                   filters);
+            }
             m_is_file_dialog_open = false;
         }
         if (FileDialog::Instance()->isDone()) {
@@ -553,6 +557,7 @@ namespace Toolbox {
         } else {
             m_thread_initialized = true;
         }
+        m_thread_finished = false;
         auto fn = [this, is_directory, starting_path, maybe_filters]
                                () {
             int num_filters = 0;
