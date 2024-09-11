@@ -209,6 +209,8 @@ namespace Toolbox {
     protected:
         [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;
+        [[nodiscard]] ModelIndex toProxyIndex(int64_t row, int64_t column,
+                                              const ModelIndex &parent = ModelIndex()) const;
 
         [[nodiscard]] bool isFiltered(const UUID64 &uuid) const;
 

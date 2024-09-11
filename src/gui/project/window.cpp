@@ -68,10 +68,9 @@ namespace Toolbox::UI {
                         ImVec2 pos = ImGui::GetCursorScreenPos();
                         pos.x += std::max<float>(36.0f - (text_size.x / 2.0f), 0.0);
                         pos.y += 72.0f;
-                        //pos.x += i * size.x / 4.0f;
 
                         ImGui::RenderTextEllipsis(
-                            ImGui::GetWindowDrawList(), pos, pos + ImVec2(72, 20), pos.x + 72.0f,
+                            ImGui::GetWindowDrawList(), pos, pos + ImVec2(64, 20), pos.x + 64.0f,
                             pos.x + 76.0f, m_view_proxy.getDisplayText(child_index).c_str(),
                             nullptr, nullptr);
                     }
@@ -80,7 +79,7 @@ namespace Toolbox::UI {
                     // ImGui::Text("%s", m_view_proxy.getDisplayText(child_index).c_str());
 
                     if ((i + 1) % x_count != 0) {
-                        ImGui::SameLine(i * size.x / 4.0f);
+                        ImGui::SameLine();
                     }
                 }
 
@@ -112,7 +111,7 @@ namespace Toolbox::UI {
             if (m_tree_proxy.canFetchMore(index)) {
                 m_tree_proxy.fetchMore(index);
             }
-            is_open = ImGui::TreeNodeEx(m_tree_proxy.getPath(index).filename().string().c_str(),
+            is_open = ImGui::TreeNodeEx(m_tree_proxy.getDisplayText(index).c_str(),
                                         ImGuiTreeNodeFlags_OpenOnArrow);
             if (is_open) {
                 for (size_t i = 0; i < m_tree_proxy.getRowCount(index); ++i) {
@@ -124,7 +123,7 @@ namespace Toolbox::UI {
                 ImGui::TreePop();
             }
         } else {
-            if (ImGui::TreeNodeEx(m_tree_proxy.getPath(index).filename().string().c_str(),
+            if (ImGui::TreeNodeEx(m_tree_proxy.getDisplayText(index).c_str(),
                                   ImGuiTreeNodeFlags_Leaf)) {
                 ImGui::TreePop();
             }

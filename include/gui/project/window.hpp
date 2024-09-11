@@ -86,6 +86,7 @@ namespace Toolbox::UI {
             m_tree_proxy.setSourceModel(m_file_system_model);
             m_tree_proxy.setDirsOnly(true);
             m_view_proxy.setSourceModel(m_file_system_model);
+            m_view_proxy.setSortRole(FileSystemModelSortRole::SORT_ROLE_NAME);
             m_view_index = m_view_proxy.getIndex(0, 0);
             return true;
         }

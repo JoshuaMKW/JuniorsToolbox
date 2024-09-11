@@ -304,7 +304,7 @@ namespace Toolbox {
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
         ImGui::SetNextWindowViewport(viewport->ID);
-        m_dockspace_id = ImGui::DockSpaceOverViewport(viewport);
+        m_dockspace_id = ImGui::DockSpaceOverViewport(0, viewport);
 
         m_dockspace_built = ImGui::DockBuilderGetNode(m_dockspace_id);
         if (!m_dockspace_built) {
