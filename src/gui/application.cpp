@@ -16,7 +16,6 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_internal.h>
 #include <stb/stb_image.h>
-#include <nfd.h>
 
 #include "core/core.hpp"
 #include "core/input/input.hpp"
@@ -74,6 +73,8 @@ namespace Toolbox {
             stop();
             return;
         }
+
+        NFD_Init();
 
         // TODO: Load application settings
         //
@@ -396,13 +397,15 @@ namespace Toolbox {
         ImGui::EndMainMenuBar();
 
         if (m_is_dir_dialog_open) {
-            nfdchar_t* outPath = nullptr;
-            nfdresult_t result = NFD_PickFolder(m_load_path.string().c_str(),
-                                                &outPath);
+            FileDialog::Instance()->OpenDialog(m_load_path, true);
             m_is_dir_dialog_open = false;
-            if (result == NFD_OKAY) {
-                std::filesystem::path selected_path = outPath;
-                std::cout << "Selected path is " << outPath << std::endl;
+        }
+        if (FileDialog::Instance()->isDone()) {
+            FileDialog::Instance()->Close();
+            if (FileDialog::Instance()->isOk()) {
+                std::filesystem::path selected_path =
+                    FileDialog::Instance()->GetFilenameResult();
+                std::cout << "Selected path is " << selected_path.string() << std::endl;
                 if (selected_path.filename() == "scene") {
                     RefPtr<ImWindow> existing_editor =
                         findWindow("Scene Editor", selected_path.string());
@@ -438,11 +441,14 @@ namespace Toolbox {
         }
 
         if (m_is_file_dialog_open) {
-            nfdchar_t* outPath = nullptr;
-            nfdresult_t result = NFD_OpenDialog(NULL, m_project_root.string().c_str(), &outPath);
+            FileDialog::Instance()->OpenDialog(m_load_path, false);
             m_is_file_dialog_open = false;
-            if (result == NFD_OKAY) {
-                std::filesystem::path selected_path = outPath;
+        }
+        if (FileDialog::Instance()->isDone()) {
+            FileDialog::Instance()->Close();
+            if (FileDialog::Instance()->isOk()) {
+                std::filesystem::path selected_path =
+                    FileDialog::Instance()->GetFilenameResult();
                 if (selected_path.extension() == ".szs" ||
                     selected_path.extension() == ".arg") {
                      RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
@@ -533,6 +539,20 @@ namespace Toolbox {
             }
             ++it;
         }
+    }
+
+    void FileDialog::OpenDialog(std::filesystem::path starting_path,
+                                bool is_directory) {
+        auto fn = [is_directory, this, starting_path]
+                               () {
+            if(is_directory){
+                m_result = NFD_PickFolder(&m_selected_path, starting_path.string().c_str());
+            } else {
+                m_result = NFD_OpenDialog(&m_selected_path, NULL, 0, starting_path.string().c_str());
+            }
+            m_thread_finished = true;
+        };
+        m_thread = std::thread(fn);
     }
 
 }  // namespace Toolbox

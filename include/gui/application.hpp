@@ -23,6 +23,7 @@
 #include "dolphin/process.hpp"
 
 #include "scene/layout.hpp"
+#include <nfd.h>
 
 using namespace Toolbox::Dolphin;
 
@@ -175,6 +176,26 @@ namespace Toolbox {
         std::thread m_thread_templates_init;
         DolphinCommunicator m_dolphin_communicator;
         Game::TaskCommunicator m_task_communicator;
+    };
+
+    class FileDialog {
+    public:
+        static FileDialog* Instance() {
+            static FileDialog _instance;
+            return &_instance;
+        }
+        void OpenDialog(std::filesystem::path starting_path,
+                        bool is_directory = false);
+        bool isDone() { return m_thread_finished && not m_closed; }
+        bool isOk() { return m_result == NFD_OKAY; }
+        std::filesystem::path GetFilenameResult() { return m_selected_path; }
+        void Close() { m_closed = true;}
+    private:
+        nfdchar_t* m_selected_path;
+        nfdresult_t m_result;
+        std::thread m_thread;
+        bool m_thread_finished;
+        bool m_closed = false;
     };
 
 }  // namespace Toolbox
