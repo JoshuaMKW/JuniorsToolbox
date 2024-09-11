@@ -572,6 +572,9 @@ namespace Toolbox {
                 m_result = NFD_OpenDialog(&m_selected_path, nfd_filters, num_filters,
                                           starting_path.string().c_str());
             }
+            if(maybe_filters) {
+                delete[] nfd_filters;
+            }
             m_thread_finished = true;
         };
         m_thread = std::thread(fn);
