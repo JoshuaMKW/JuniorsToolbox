@@ -194,11 +194,21 @@ namespace Toolbox {
         std::filesystem::path GetFilenameResult() { return m_selected_path; }
         void Close() { m_closed = true;}
     private:
+        // The result of the last dialog box.
         nfdchar_t* m_selected_path;
         nfdresult_t m_result;
+        // The thread that we run the dialog in. If
+        // m_thread_initialized is true, this should be an initialized
+        // thread object.
         std::thread m_thread;
+        // For tracking whether we've launched any threads so far. If
+        // so, we'll join them before launching another.
         bool m_thread_initialized = false;
+        // For tracking whether the thread is still running a dialog
+        // box.
         bool m_thread_finished = false;
+        // For checking whether the user has called Close. If so, stop
+        // returning true for isDone().
         bool m_closed = false;
     };
 
