@@ -185,6 +185,7 @@ namespace Toolbox {
             return &_instance;
         }
         void OpenDialog(std::filesystem::path starting_path,
+                        GLFWwindow* parent_window,
                         bool is_directory = false,
                         std::optional<std::vector<std::pair<
                         const char*, const char*>>> maybe_filters = std::nullopt);

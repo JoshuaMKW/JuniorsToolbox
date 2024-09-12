@@ -33,6 +33,7 @@
 #include "gui/util.hpp"
 #include "platform/service.hpp"
 #include "scene/layout.hpp"
+#include <nfd_glfw3.h>
 
 // void ImGuiSetupTheme(bool, float);
 
@@ -400,7 +401,7 @@ namespace Toolbox {
 
         if (m_is_dir_dialog_open) {
             if (!FileDialog::Instance()->isAlreadyOpen()) {
-                FileDialog::Instance()->OpenDialog(m_load_path, true);
+                FileDialog::Instance()->OpenDialog(m_load_path, m_render_window, true);
             }
             m_is_dir_dialog_open = false;
         }
@@ -448,7 +449,7 @@ namespace Toolbox {
             if (!FileDialog::Instance()->isAlreadyOpen()) {
                 std::vector<std::pair<const char*, const char*>> filters;
                 filters.push_back({"Nintendo Scene Archive", "szs,arc"});
-                FileDialog::Instance()->OpenDialog(m_load_path, false,
+                FileDialog::Instance()->OpenDialog(m_load_path, m_render_window, false,
                                                    filters);
             }
             m_is_file_dialog_open = false;
@@ -551,6 +552,7 @@ namespace Toolbox {
     }
 
     void FileDialog::OpenDialog(std::filesystem::path starting_path,
+                                GLFWwindow* parent_window,
                                 bool is_directory,
                                 std::optional<std::vector<std::pair<
                                   const char*, const char*>>> maybe_filters) {
@@ -560,27 +562,35 @@ namespace Toolbox {
             m_thread_initialized = true;
         }
         m_thread_running = true;
-        auto fn = [this, is_directory, starting_path, maybe_filters]
+        auto fn = [this, starting_path, parent_window, is_directory, maybe_filters]
                                () {
-            int num_filters = 0;
-            nfdu8filteritem_t* nfd_filters = nullptr;
-            if(maybe_filters) {
-                auto filters = maybe_filters.value();
-                num_filters = filters.size();
-                nfd_filters = new nfdu8filteritem_t[num_filters];
-                for(int i = 0; i < num_filters; ++i) {
-                    nfd_filters[i] = {std::get<0>(filters[i]),
-                                      std::get<1>(filters[i])};
-                }
-            }
             if(is_directory){
-                m_result = NFD_PickFolder(&m_selected_path, starting_path.string().c_str());
+                // nfdpickfoldernargs_t args;
+                // args.defaultPath = starting_path.string().c_str();
+                // NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
+                // m_result = NFD_PickFolderN_With(&m_selected_path, &args);
+                m_result = NFD_PickFolderN(&m_selected_path, starting_path.string().c_str());
             } else {
-                m_result = NFD_OpenDialog(&m_selected_path, nfd_filters, num_filters,
-                                          starting_path.string().c_str());
-            }
-            if(maybe_filters) {
-                delete[] nfd_filters;
+                int num_filters = 0;
+                nfdu8filteritem_t* nfd_filters = nullptr;
+                if(maybe_filters) {
+                    auto filters = maybe_filters.value();
+                    num_filters = filters.size();
+                    nfd_filters = new nfdu8filteritem_t[num_filters];
+                    for(int i = 0; i < num_filters; ++i) {
+                        nfd_filters[i] = {std::get<0>(filters[i]),
+                                          std::get<1>(filters[i])};
+                    }
+                }
+                nfdopendialognargs_t args;
+                args.filterList = nfd_filters;
+                args.filterCount = num_filters;
+                args.defaultPath = starting_path.string().c_str();
+                // NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
+                m_result = NFD_OpenDialogN_With(&m_selected_path, &args);
+                if(maybe_filters) {
+                    delete[] nfd_filters;
+                }
             }
             m_thread_running = false;
         };
