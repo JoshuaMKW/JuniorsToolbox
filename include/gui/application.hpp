@@ -118,7 +118,7 @@ namespace Toolbox {
         Game::TaskCommunicator &getTaskCommunicator() { return m_task_communicator; }
 
         std::filesystem::path getProjectRoot() const { return m_project_root; }
-        
+
 
         void registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
                                     SceneWindow::render_layer_cb cb);
@@ -188,8 +188,8 @@ namespace Toolbox {
                         bool is_directory = false,
                         std::optional<std::vector<std::pair<
                         const char*, const char*>>> maybe_filters = std::nullopt);
-        bool isAlreadyOpen() { return not m_thread_finished; }
-        bool isDone() { return m_thread_finished && not m_closed; }
+        bool isAlreadyOpen() { return m_thread_running; }
+        bool isDone() { return !m_thread_running && not m_closed; }
         bool isOk() { return m_result == NFD_OKAY; }
         std::filesystem::path GetFilenameResult() { return m_selected_path; }
         void Close() { m_closed = true;}
@@ -206,7 +206,7 @@ namespace Toolbox {
         bool m_thread_initialized = false;
         // For tracking whether the thread is still running a dialog
         // box.
-        bool m_thread_finished = false;
+        bool m_thread_running = false;
         // For checking whether the user has called Close. If so, stop
         // returning true for isDone().
         bool m_closed = false;

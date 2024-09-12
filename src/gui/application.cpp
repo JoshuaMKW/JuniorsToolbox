@@ -559,7 +559,7 @@ namespace Toolbox {
         } else {
             m_thread_initialized = true;
         }
-        m_thread_finished = false;
+        m_thread_running = true;
         auto fn = [this, is_directory, starting_path, maybe_filters]
                                () {
             int num_filters = 0;
@@ -582,7 +582,7 @@ namespace Toolbox {
             if(maybe_filters) {
                 delete[] nfd_filters;
             }
-            m_thread_finished = true;
+            m_thread_running = false;
         };
         m_thread = std::thread(fn);
     }
