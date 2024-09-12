@@ -226,6 +226,8 @@ namespace Toolbox {
 
         m_dolphin_communicator.tKill(true);
         m_task_communicator.tKill(true);
+
+        NFD_Quit();
     }
 
     Toolbox::fs_path GUIApplication::getResourcePath(const Toolbox::fs_path &path) const & {
