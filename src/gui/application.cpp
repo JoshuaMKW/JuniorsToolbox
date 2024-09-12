@@ -565,11 +565,11 @@ namespace Toolbox {
         auto fn = [this, starting_path, parent_window, is_directory, maybe_filters]
                                () {
             if(is_directory){
-                // nfdpickfoldernargs_t args;
-                // args.defaultPath = starting_path.string().c_str();
-                // NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
-                // m_result = NFD_PickFolderN_With(&m_selected_path, &args);
-                m_result = NFD_PickFolderN(&m_selected_path, starting_path.string().c_str());
+                nfdpickfoldernargs_t args;
+                args.defaultPath = starting_path.string().c_str();
+                NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
+                m_result = NFD_PickFolderN_With(&m_selected_path, &args);
+                //m_result = NFD_PickFolderN(&m_selected_path, starting_path.string().c_str());
             } else {
                 int num_filters = 0;
                 nfdu8filteritem_t* nfd_filters = nullptr;
@@ -586,7 +586,7 @@ namespace Toolbox {
                 args.filterList = nfd_filters;
                 args.filterCount = num_filters;
                 args.defaultPath = starting_path.string().c_str();
-                // NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
+                NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
                 m_result = NFD_OpenDialogN_With(&m_selected_path, &args);
                 if(maybe_filters) {
                     delete[] nfd_filters;
