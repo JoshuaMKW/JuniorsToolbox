@@ -17,4 +17,4 @@
 	url = https://github.com/HazardousPeach/libbti.git
 [submodule "lib/nativefiledialog-extended"]
 	path = lib/nativefiledialog-extended
-	url = git@github.com:btzy/nativefiledialog-extended.git
+	url = https://github.com/btzy/nativefiledialog-extended.git
