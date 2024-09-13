@@ -1,8 +1,8 @@
 #include "gui/project/window.hpp"
 #include "model/fsmodel.hpp"
 
-#include <imgui/imgui.h>
 #include <cmath>
+#include <imgui/imgui.h>
 
 namespace Toolbox::UI {
 
@@ -30,15 +30,15 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::renderProjectFolderView() {
-        if (!m_view_proxy.validateIndex(m_view_index)) {
+        if (!m_file_system_model->validateIndex(m_view_index)) {
             return;
         }
 
         if (ImGui::BeginChild("Folder View", {0, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
-            if (m_view_proxy.hasChildren(m_view_index)) {
-                if (m_view_proxy.canFetchMore(m_view_index)) {
-                    m_view_proxy.fetchMore(m_view_index);
+            if (m_file_system_model->hasChildren(m_view_index)) {
+                if (m_file_system_model->canFetchMore(m_view_index)) {
+                    m_file_system_model->fetchMore(m_view_index);
                 }
 
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2, 2});
@@ -53,16 +53,16 @@ namespace Toolbox::UI {
                     x_count = 1;
                 }
 
-                for (size_t i = 0; i < m_view_proxy.getRowCount(m_view_index); ++i) {
-                    ModelIndex child_index = m_view_proxy.getIndex(i, 0, m_view_index);
+                for (size_t i = 0; i < m_file_system_model->getRowCount(m_view_index); ++i) {
+                    ModelIndex child_index = m_file_system_model->getIndex(i, 0, m_view_index);
 
                     if (ImGui::BeginChild(child_index.getUUID(), {76, 92}, true,
                                           ImGuiWindowFlags_ChildWindow |
                                               ImGuiWindowFlags_NoDecoration)) {
 
-                        m_icon_painter.render(*m_view_proxy.getDecoration(child_index), {72, 72});
+                        m_icon_painter.render(*m_file_system_model->getDecoration(child_index), {72, 72});
 
-                        std::string text = m_view_proxy.getDisplayText(child_index);
+                        std::string text = m_file_system_model->getDisplayText(child_index);
                         ImVec2 text_size = ImGui::CalcTextSize(text.c_str());
 
                         ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -71,7 +71,7 @@ namespace Toolbox::UI {
 
                         ImGui::RenderTextEllipsis(
                             ImGui::GetWindowDrawList(), pos, pos + ImVec2(64, 20), pos.x + 64.0f,
-                            pos.x + 76.0f, m_view_proxy.getDisplayText(child_index).c_str(),
+                            pos.x + 76.0f, m_file_system_model->getDisplayText(child_index).c_str(),
                             nullptr, nullptr);
                     }
                     ImGui::EndChild();
@@ -113,6 +113,11 @@ namespace Toolbox::UI {
             }
             is_open = ImGui::TreeNodeEx(m_tree_proxy.getDisplayText(index).c_str(),
                                         ImGuiTreeNodeFlags_OpenOnArrow);
+
+            if (ImGui::IsItemClicked()) {
+                m_view_index = m_tree_proxy.toSourceIndex(index);
+            }
+
             if (is_open) {
                 for (size_t i = 0; i < m_tree_proxy.getRowCount(index); ++i) {
                     ModelIndex child_index = m_tree_proxy.getIndex(i, 0, index);

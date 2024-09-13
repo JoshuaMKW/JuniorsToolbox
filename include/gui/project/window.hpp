@@ -82,6 +82,7 @@ namespace Toolbox::UI {
         [[nodiscard]] bool onLoadData(const std::filesystem::path& path) override {
             m_project_root = path;
             m_file_system_model = make_referable<FileSystemModel>();
+            m_file_system_model->initialize();
             m_file_system_model->setRoot(m_project_root);
             m_tree_proxy.setSourceModel(m_file_system_model);
             m_tree_proxy.setDirsOnly(true);

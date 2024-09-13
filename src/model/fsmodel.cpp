@@ -110,6 +110,22 @@ namespace Toolbox {
         }
     }
 
+    void FileSystemModel::initialize() {
+        m_icon_map.clear();
+        m_index_map.clear();
+        m_root_path  = fs_path();
+        m_root_index = 0;
+        m_options    = FileSystemModelOptions();
+        m_read_only  = false;
+
+        fs_path fs_icon_path =
+            GUIApplication::instance().getResourcePath("Images/Icons/Filesystem/");
+
+        for (auto &[key, value] : TypeMap()) {
+            m_icon_map[key] = make_referable<const ImageHandle>(fs_icon_path / value.m_image_name);
+        }
+    }
+
     const fs_path &FileSystemModel::getRoot() const & { return m_root_path; }
 
     void FileSystemModel::setRoot(const fs_path &path) {
@@ -384,8 +400,9 @@ namespace Toolbox {
                                                           parent_data->m_children.end(),
                                                           index.getUUID()),
                                               parent_data->m_children.end());
-                m_index_map.erase(index.getUUID());
             }
+            delete index.data<_FileSystemIndexData>();
+            m_index_map.erase(index.getUUID());
         }
 
         return result;
@@ -428,8 +445,9 @@ namespace Toolbox {
                                                           parent_data->m_children.end(),
                                                           index.getUUID()),
                                               parent_data->m_children.end());
-                m_index_map.erase(index.getUUID());
             }
+            delete index.data<_FileSystemIndexData>();
+            m_index_map.erase(index.getUUID());
         }
 
         return result;
@@ -449,12 +467,7 @@ namespace Toolbox {
         return ModelIndex();
     }
 
-    ModelIndex FileSystemModel::getIndex(const UUID64 &uuid) const {
-        if (m_index_map.find(uuid) == m_index_map.end()) {
-            return ModelIndex();
-        }
-        return m_index_map.at(uuid);
-    }
+    ModelIndex FileSystemModel::getIndex(const UUID64 &uuid) const { return m_index_map.at(uuid); }
 
     ModelIndex FileSystemModel::getIndex(int64_t row, int64_t column,
                                          const ModelIndex &parent) const {
@@ -668,23 +681,17 @@ namespace Toolbox {
             std::string ext = data->m_path.extension().string();
 
             if (!validateIndex(index)) {
-                data->m_icon = make_referable<const ImageHandle>(
-                    fs_icon_path / TypeMap().at("_Invalid").m_image_name);
+                data->m_icon = m_icon_map["_Invalid"];
             } else if (data->m_type == _FileSystemIndexData::Type::DIRECTORY) {
-                data->m_icon = make_referable<const ImageHandle>(
-                    fs_icon_path / TypeMap().at("_Folder").m_image_name);
+                data->m_icon = m_icon_map["_Folder"];
             } else if (data->m_type == _FileSystemIndexData::Type::ARCHIVE) {
-                data->m_icon = make_referable<const ImageHandle>(
-                    fs_icon_path / TypeMap().at("_Archive").m_image_name);
+                data->m_icon = m_icon_map["_Archive"];
             } else if (ext.empty()) {
-                data->m_icon = make_referable<const ImageHandle>(
-                    fs_icon_path / TypeMap().at("_Folder").m_image_name);
-            } else if (TypeMap().find(ext) == TypeMap().end()) {
-                data->m_icon = make_referable<const ImageHandle>(
-                    fs_icon_path / TypeMap().at("_File").m_image_name);
+                data->m_icon = m_icon_map["_Folder"];
+            } else if (m_icon_map.find(ext) == m_icon_map.end()) {
+                data->m_icon = m_icon_map["_File"];
             } else {
-                data->m_icon = make_referable<const ImageHandle>(fs_icon_path /
-                                                                 TypeMap().at(ext).m_image_name);
+                data->m_icon = m_icon_map[ext];
             }
         }
 
@@ -707,11 +714,6 @@ namespace Toolbox {
 
         return index;
     }
-
-    void FileSystemModel::cacheIndex(ModelIndex &index) {}
-    void FileSystemModel::cacheFolder(ModelIndex &index) {}
-    void FileSystemModel::cacheFile(ModelIndex &index) {}
-    void FileSystemModel::cacheArchive(ModelIndex &index) {}
 
     ModelIndex FileSystemModel::getParentArchive(const ModelIndex &index) const {
         ModelIndex parent = getParent(index);
@@ -866,19 +868,36 @@ namespace Toolbox {
     }
 
     fs_path FileSystemModelSortFilterProxy::getPath(const ModelIndex &index) const {
-        ModelIndex &&source_index = toSourceIndex(index);
+        ModelIndex source_index = toSourceIndex(index);
         return m_source_model->getPath(std::move(source_index));
     }
 
     ModelIndex FileSystemModelSortFilterProxy::getParent(const ModelIndex &index) const {
-        ModelIndex &&source_index = toSourceIndex(index);
+        ModelIndex source_index = toSourceIndex(index);
         return toProxyIndex(m_source_model->getParent(std::move(source_index)));
     }
 
     ModelIndex FileSystemModelSortFilterProxy::getSibling(int64_t row, int64_t column,
                                                           const ModelIndex &index) const {
-        ModelIndex &&source_index = toSourceIndex(index);
-        return toProxyIndex(m_source_model->getSibling(row, column, source_index));
+        ModelIndex source_index       = toSourceIndex(index);
+        ModelIndex src_parent         = getParent(source_index);
+        const UUID64 &src_parent_uuid = src_parent.getUUID();
+
+        u64 map_key = src_parent_uuid;
+        if (!m_source_model->validateIndex(src_parent)) {
+            map_key = 0;
+        }
+
+        if (m_row_map.find(map_key) == m_row_map.end()) {
+            cacheIndex(src_parent);
+        }
+
+        if (row < m_row_map[map_key].size()) {
+            int64_t the_row = m_row_map[map_key][row];
+            return toProxyIndex(m_source_model->getIndex(the_row, column, src_parent));
+        }
+
+        return ModelIndex();
     }
 
     size_t FileSystemModelSortFilterProxy::getColumnCount(const ModelIndex &index) const {
@@ -888,6 +907,11 @@ namespace Toolbox {
 
     size_t FileSystemModelSortFilterProxy::getRowCount(const ModelIndex &index) const {
         ModelIndex &&source_index = toSourceIndex(index);
+
+        if (m_row_map.find(source_index.getUUID()) != m_row_map.end()) {
+            return m_row_map[source_index.getUUID()].size();
+        }
+
         return m_source_model->getRowCount(source_index);
     }
 
@@ -943,72 +967,20 @@ namespace Toolbox {
 
     ModelIndex FileSystemModelSortFilterProxy::toProxyIndex(int64_t row, int64_t column,
                                                             const ModelIndex &src_parent) const {
-        std::vector<UUID64> filtered_children = {};
+        const UUID64 &src_parent_uuid = src_parent.getUUID();
 
+        u64 map_key = src_parent_uuid;
         if (!m_source_model->validateIndex(src_parent)) {
-            size_t i          = 0;
-            ModelIndex root_s = m_source_model->getIndex(i++, 0);
-            while (m_source_model->validateIndex(root_s)) {
-                filtered_children.push_back(root_s.getUUID());
-                root_s = m_source_model->getIndex(i++, 0);
-            }
-        } else {
-            const std::vector<UUID64> &children =
-                src_parent.data<_FileSystemIndexData>()->m_children;
-            if (children.empty()) {
-                return ModelIndex();
-            }
-
-            filtered_children = children;
+            map_key = 0;
         }
 
-        if (row >= filtered_children.size()) {
-            return ModelIndex();
+        if (m_row_map.find(map_key) == m_row_map.end()) {
+            cacheIndex(src_parent);
         }
 
-        switch (m_sort_role) {
-        case FileSystemModelSortRole::SORT_ROLE_NAME: {
-            std::sort(filtered_children.begin(), filtered_children.end(),
-                      [&](const UUID64 &lhs, const UUID64 &rhs) {
-                          return _FileSystemIndexDataCompareByName(
-                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
-                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
-                              m_sort_order);
-                      });
-            break;
-        }
-        case FileSystemModelSortRole::SORT_ROLE_SIZE: {
-            std::sort(filtered_children.begin(), filtered_children.end(),
-                      [&](const UUID64 &lhs, const UUID64 &rhs) {
-                          return _FileSystemIndexDataCompareBySize(
-                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
-                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
-                              m_sort_order);
-                      });
-            break;
-        }
-        case FileSystemModelSortRole::SORT_ROLE_DATE:
-            std::sort(filtered_children.begin(), filtered_children.end(),
-                      [&](const UUID64 &lhs, const UUID64 &rhs) {
-                          return _FileSystemIndexDataCompareByDate(
-                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
-                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
-                              m_sort_order);
-                      });
-            break;
-        default:
-            break;
-        }
-
-        size_t i = 0;
-        for (const UUID64 &uuid : filtered_children) {
-            if (isFiltered(uuid)) {
-                continue;
-            }
-            if (i++ == row) {
-                ModelIndex src_index = m_source_model->getIndex(uuid);
-                return toProxyIndex(src_index);
-            }
+        if (row < m_row_map[map_key].size()) {
+            int64_t the_row = m_row_map[map_key][row];
+            return toProxyIndex(m_source_model->getIndex(the_row, column, src_parent));
         }
 
         return ModelIndex();
@@ -1025,6 +997,95 @@ namespace Toolbox {
 
         const std::string &name = child_index.data<_FileSystemIndexData>()->m_name;
         return !name.starts_with(m_filter);
+    }
+
+    void FileSystemModelSortFilterProxy::cacheIndex(const ModelIndex &dir_index) const {
+        std::vector<UUID64> orig_children  = {};
+        std::vector<UUID64> proxy_children = {};
+
+        const UUID64 &src_parent_uuid = dir_index.getUUID();
+
+        u64 map_key = src_parent_uuid;
+        if (!m_source_model->validateIndex(dir_index)) {
+            map_key = 0;
+        }
+
+        if (m_row_map.find(map_key) != m_row_map.end()) {
+            return;
+        }
+
+        if (!m_source_model->validateIndex(dir_index)) {
+            size_t i          = 0;
+            ModelIndex root_s = m_source_model->getIndex(i++, 0);
+            while (m_source_model->validateIndex(root_s)) {
+                orig_children.push_back(root_s.getUUID());
+                if (isFiltered(root_s.getUUID())) {
+                    root_s = m_source_model->getIndex(i++, 0);
+                    continue;
+                }
+                proxy_children.push_back(root_s.getUUID());
+                root_s = m_source_model->getIndex(i++, 0);
+            }
+        } else {
+            orig_children = dir_index.data<_FileSystemIndexData>()->m_children;
+            if (orig_children.empty()) {
+                return;
+            }
+
+            std::copy_if(orig_children.begin(), orig_children.end(),
+                         std::back_inserter(proxy_children),
+                         [&](const UUID64 &uuid) { return !isFiltered(uuid); });
+        }
+
+        if (proxy_children.empty()) {
+            return;
+        }
+
+        switch (m_sort_role) {
+        case FileSystemModelSortRole::SORT_ROLE_NAME: {
+            std::sort(proxy_children.begin(), proxy_children.end(),
+                      [&](const UUID64 &lhs, const UUID64 &rhs) {
+                          return _FileSystemIndexDataCompareByName(
+                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
+                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
+                              m_sort_order);
+                      });
+            break;
+        }
+        case FileSystemModelSortRole::SORT_ROLE_SIZE: {
+            std::sort(proxy_children.begin(), proxy_children.end(),
+                      [&](const UUID64 &lhs, const UUID64 &rhs) {
+                          return _FileSystemIndexDataCompareBySize(
+                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
+                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
+                              m_sort_order);
+                      });
+            break;
+        }
+        case FileSystemModelSortRole::SORT_ROLE_DATE:
+            std::sort(proxy_children.begin(), proxy_children.end(),
+                      [&](const UUID64 &lhs, const UUID64 &rhs) {
+                          return _FileSystemIndexDataCompareByDate(
+                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
+                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
+                              m_sort_order);
+                      });
+            break;
+        default:
+            break;
+        }
+
+        // Build the row map
+        m_row_map[map_key] = {};
+        m_row_map[map_key].resize(proxy_children.size());
+        for (size_t i = 0; i < proxy_children.size(); i++) {
+            for (size_t j = 0; j < orig_children.size(); j++) {
+                if (proxy_children[i] == orig_children[j]) {
+                    m_row_map[map_key][i] = j;
+                    break;
+                }
+            }
+        }
     }
 
 }  // namespace Toolbox

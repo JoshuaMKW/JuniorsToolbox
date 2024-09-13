@@ -118,6 +118,7 @@ namespace Toolbox {
     }
 
     void ImageHandle::moveGL(ImageHandle &&image) {
+        unloadGL();
         m_image_handle       = image.m_image_handle;
         m_image_format       = image.m_image_format;
         m_image_width        = image.m_image_width;

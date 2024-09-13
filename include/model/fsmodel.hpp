@@ -49,6 +49,8 @@ namespace Toolbox {
         FileSystemModel()  = default;
         ~FileSystemModel() = default;
 
+        void initialize();
+
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
         [[nodiscard]] const fs_path &getRoot() const &;
@@ -138,6 +140,7 @@ namespace Toolbox {
         UUID64 m_root_index;
 
         mutable std::unordered_map<UUID64, ModelIndex> m_index_map;
+        mutable std::unordered_map<std::string, RefPtr<const ImageHandle>> m_icon_map;
     };
 
     class FileSystemModelSortFilterProxy : public IDataModel {
@@ -206,13 +209,15 @@ namespace Toolbox {
         [[nodiscard]] bool canFetchMore(const ModelIndex &index);
         void fetchMore(const ModelIndex &index);
 
-    protected:
         [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;
+
+    protected:
         [[nodiscard]] ModelIndex toProxyIndex(int64_t row, int64_t column,
                                               const ModelIndex &parent = ModelIndex()) const;
 
         [[nodiscard]] bool isFiltered(const UUID64 &uuid) const;
+        void cacheIndex(const ModelIndex &index) const;
 
         ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) {
             return ModelIndex();
@@ -227,6 +232,9 @@ namespace Toolbox {
         std::string m_filter                   = "";
 
         bool m_dirs_only = false;
+
+        mutable std::unordered_map<UUID64, bool> m_filter_map;
+        mutable std::unordered_map<UUID64, std::vector<int64_t>> m_row_map;
     };
 
 }  // namespace Toolbox
