@@ -563,8 +563,6 @@ namespace Toolbox {
                 args.defaultPath = m_starting_path.c_str();
                 NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
                 m_result = NFD_PickFolderN_With(&m_selected_path, &args);
-                TOOLBOX_INFO_V("Selected path: {}", std::filesystem::path(m_selected_path).string());
-                TOOLBOX_INFO_V("Result: {}", int(m_result));
                 // m_result = NFD_PickFolderN(&m_selected_path, starting_path.string().c_str());
             } else {
                 int num_filters               = 0;
