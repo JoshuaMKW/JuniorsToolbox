@@ -42,8 +42,6 @@ jobs:
       - name: Install dependencies
         if: runner.os == 'Linux'
         run: |
-          sudo apt update
-          sudo apt install libxrandrdev libxinerama-dev libxcursor-dev libxi-dev mesa-common-dev
       - name: Set up MSVC for Windows
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
