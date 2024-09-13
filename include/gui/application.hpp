@@ -185,7 +185,7 @@ namespace Toolbox {
         void addFilter(const std::string &label, const std::string &csv_filters);
         bool hasFilter(const std::string &label) const;
         int numFilters() const { return m_filters.size(); };
-        void writeFiltersU8(nfdu8filteritem_t *&out) const;
+        void copyFiltersOutU8(std::vector<std::pair<std::string, std::string>> &out_filters) const;
 
     private:
         std::vector<std::pair<std::string, std::string>> m_filters;

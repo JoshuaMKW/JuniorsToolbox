@@ -556,7 +556,6 @@ namespace Toolbox {
         m_closed         = false;
         auto fn          = [this, starting_path, parent_window, is_directory, maybe_filters]() {
             m_starting_path = starting_path.string();
-            m_filters.clear();
             if (is_directory) {
                 nfdpickfolderu8args_t args;
                 args.defaultPath = m_starting_path.c_str();
@@ -567,9 +566,12 @@ namespace Toolbox {
                 nfdu8filteritem_t *nfd_filters = nullptr;
                 if (maybe_filters) {
                     auto filters = maybe_filters.value();
-                    num_filters  = filters.numFilters();
-                    nfd_filters  = new nfdu8filteritem_t[num_filters];
-                    filters.writeFiltersU8(nfd_filters);
+                    num_filters = filters.numFilters();
+                    filters.copyFiltersOutU8(m_filters);
+                    nfd_filters = new nfdu8filteritem_t[num_filters];
+                    for (int i = 0; i < filters.numFilters(); ++i){
+                        nfd_filters[i] = {m_filters[i].first.c_str(), m_filters[i].second.c_str()};
+                    }
                 }
                 nfdopendialogu8args_t args;
                 args.filterList  = const_cast<const nfdu8filteritem_t *>(nfd_filters);
@@ -595,14 +597,9 @@ namespace Toolbox {
                                 return p.first == label;
                             }) != m_filters.end();
     }
-    void FileDialogFilter::writeFiltersU8(nfdu8filteritem_t *&out) const {
-        for(int i = 0; i < m_filters.size(); ++i) {
-            char* name = new char[m_filters[i].first.length()];
-            char* spec = new char[m_filters[i].second.length()];
-            std::strcpy(name, m_filters[i].first.c_str());
-            std::strcpy(spec, m_filters[i].second.c_str());
-            out[i] = {name, spec};
-        }
+
+    void FileDialogFilter::copyFiltersOutU8(std::vector<std::pair<std::string, std::string>> &out_filters) const {
+        out_filters = m_filters;
     }
 }  // namespace Toolbox
 
