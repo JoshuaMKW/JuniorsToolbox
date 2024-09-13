@@ -25,16 +25,16 @@ jobs:
             architecture: x64
             artifact: linux
             upload_path_suffix: '/*'
-    
+
     runs-on: ${{ matrix.os }}
-    
+
     defaults:
       run:
         shell: bash
-    
+
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-    
+
     steps:
       - uses: actions/checkout@v3
         with:
@@ -43,7 +43,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt update
-          sudo apt install libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev mesa-common-dev gcc-13 g++-13 libgcc-13-dev libstdc++-13-dev
+          sudo apt install libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev mesa-common-dev gcc g++
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 --slave /usr/bin/g++ g++ /usr/bin/g++-13 --slave /usr/bin/gcov gcov /usr/bin/gcov-13
           sudo update-alternatives --set gcc /usr/bin/gcc-13
       - name: Set up MSVC for Windows
