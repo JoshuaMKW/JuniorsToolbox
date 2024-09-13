@@ -444,9 +444,9 @@ namespace Toolbox {
 
         if (m_is_file_dialog_open) {
             if (!FileDialog::Instance()->IsAlreadyOpen()) {
-                std::vector<std::pair<std::string, std::string>> filters;
-                filters.push_back({"Nintendo Scene Archive", "szs,arc"});
-                FileDialog::Instance()->OpenDialog(m_load_path, m_render_window, false, filters);
+                FileDialogFilter filter;
+                filter.AddFilter("Nintendo Scene Archive", "szs,arc");
+                FileDialog::Instance()->OpenDialog(m_load_path, m_render_window, false, filter);
             }
             m_is_file_dialog_open = false;
         }
@@ -547,7 +547,7 @@ namespace Toolbox {
 #ifdef TOOLBOX_PLATFORM_WINDOWS
     void FileDialog::OpenDialog(
         std::filesystem::path starting_path, GLFWwindow *parent_window, bool is_directory,
-        std::optional<std::vector<std::pair<std::string, std::string>>> maybe_filters) {
+        std::optional<FileDialogFilter> maybe_filters) {
         if (m_thread_initialized) {
             m_thread.join();
         } else {
@@ -563,22 +563,14 @@ namespace Toolbox {
                 args.defaultPath = m_starting_path.c_str();
                 NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
                 m_result = NFD_PickFolderN_With(&m_selected_path, &args);
-                // m_result = NFD_PickFolderN(&m_selected_path, starting_path.string().c_str());
             } else {
                 int num_filters               = 0;
                 nfdnfilteritem_t *nfd_filters = nullptr;
                 if (maybe_filters) {
                     auto filters = maybe_filters.value();
-                    num_filters  = filters.size();
+                    num_filters  = filters.NumFilters();
                     nfd_filters  = new nfdnfilteritem_t[num_filters];
-                    for (int i = 0; i < num_filters; ++i) {
-                        std::wstring filter_name =
-                            std::wstring(filters[i].first.begin(), filters[i].first.end());
-                        std::wstring filter_ext =
-                            std::wstring(filters[i].second.begin(), filters[i].second.end());
-                        m_filters.push_back({filter_name, filter_ext});
-                        nfd_filters[i] = {m_filters[i].first.c_str(), m_filters[i].second.c_str()};
-                    }
+                    filters.WriteFiltersN(nfd_filters);
                 }
                 nfdopendialognargs_t args;
                 args.filterList  = const_cast<const nfdnfilteritem_t *>(nfd_filters);
@@ -597,7 +589,7 @@ namespace Toolbox {
 #else
     void FileDialog::OpenDialog(
         std::filesystem::path starting_path, GLFWwindow *parent_window, bool is_directory,
-        std::optional<std::vector<std::pair<std::string, std::string>>> maybe_filters) {
+        std::optional<FileDialogFilter> maybe_filters) {
         if (m_thread_initialized) {
             m_thread.join();
         } else {
@@ -619,12 +611,11 @@ namespace Toolbox {
                 nfdnfilteritem_t *nfd_filters = nullptr;
                 if (maybe_filters) {
                     auto filters = maybe_filters.value();
-                    num_filters  = filters.size();
+                    num_filters  = filters.NumFilters();
                     nfd_filters  = new nfdnfilteritem_t[num_filters];
-                    for (int i = 0; i < num_filters; ++i) {
-                        m_filters.push_back({filters[i].first, filters[i].second});
-                        nfd_filters[i] = {m_filters[i].first.c_str(), m_filters[i].second.c_str()};
-                    }
+                    filters.WriteFiltersN(nfd_filters);
+                    std::cout << "First filter name is " << nfd_filters[0].name << std::endl;
+                    std::cout << "First filter spec is " << nfd_filters[0].spec << std::endl;
                 }
                 nfdopendialognargs_t args;
                 args.filterList  = const_cast<const nfdnfilteritem_t *>(nfd_filters);
@@ -641,6 +632,36 @@ namespace Toolbox {
         m_thread = std::thread(fn);
     }
     #endif
+
+    void FileDialogFilter::AddFilter(const std::string &label, const std::string &csv_filters){
+        m_filters.push_back({std::string(label), std::string(csv_filters)});
+    }
+    bool FileDialogFilter::HasFilter(const std::string &label) const {
+        return std::find_if(m_filters.begin(), m_filters.end(),
+                            [label](std::pair<std::string, std::string> p){
+                                return p.first == label;
+                            }) != m_filters.end();
+    }
+    void FileDialogFilter::WriteFiltersU8(nfdu8filteritem_t *&out) const {
+        for(int i = 0; i < m_filters.size(); ++i) {
+            out[i] = {m_filters[i].first.c_str(), m_filters[i].second.c_str()};
+        }
+    }
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+    void FileDialogFilter::WriteFiltersN(nfdnfilteritem_t *&out) const {
+        for(int i = 0; i < m_filters.size(); ++i) {
+            out[i] = {new wchar_t[m_filters[i].first.length()],
+                      new wchar_t[m_filters[i].second.length()]};
+            std::mbstowcs(out[i].name, m_filters[i].first.c_str(), m_filters[i].first.length());
+            std::mbstowcs(out[i].spec, m_filters[i].second.c_str(), m_filters[i].second.length());
+
+        }
+    }
+#elif defined(TOOLBOX_PLATFORM_LINUX)
+    void FileDialogFilter::WriteFiltersN(nfdnfilteritem_t *&out) const {
+        WriteFiltersU8(out);
+    }
+#endif
 
 }  // namespace Toolbox
 

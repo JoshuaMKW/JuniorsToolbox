@@ -177,6 +177,21 @@ namespace Toolbox {
         Game::TaskCommunicator m_task_communicator;
     };
 
+    class FileDialogFilter {
+    public:
+        FileDialogFilter() = default;
+        ~FileDialogFilter() = default;
+
+        void AddFilter(const std::string &label, const std::string &csv_filters);
+        bool HasFilter(const std::string &label) const;
+        int NumFilters() const { return m_filters.size(); };
+        void WriteFiltersU8(nfdu8filteritem_t *&out) const;
+        void WriteFiltersN(nfdnfilteritem_t *&out) const;
+
+    private:
+        std::vector<std::pair<std::string, std::string>> m_filters;
+    };
+
     class FileDialog {
     public:
         FileDialog() = default;
@@ -192,7 +207,7 @@ namespace Toolbox {
         }
         void OpenDialog(std::filesystem::path starting_path, GLFWwindow *parent_window,
                         bool is_directory = false,
-                        std::optional<std::vector<std::pair<std::string, std::string>>>
+                        std::optional<FileDialogFilter>
                             maybe_filters = std::nullopt);
         bool IsAlreadyOpen() { return m_thread_running; }
         bool IsDone() { return !m_thread_running && !m_closed && m_thread_initialized; }
