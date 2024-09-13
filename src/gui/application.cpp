@@ -644,7 +644,11 @@ namespace Toolbox {
     }
     void FileDialogFilter::WriteFiltersU8(nfdu8filteritem_t *&out) const {
         for(int i = 0; i < m_filters.size(); ++i) {
-            out[i] = {m_filters[i].first.c_str(), m_filters[i].second.c_str()};
+            char* name = new char[m_filters[i].first.length()];
+            char* spec = new char[m_filters[i].second.length()];
+            std::strcpy(name, m_filters[i].first.c_str());
+            std::strcpy(spec, m_filters[i].second.c_str());
+            out[i] = {name, spec};
         }
     }
 #ifdef TOOLBOX_PLATFORM_WINDOWS
