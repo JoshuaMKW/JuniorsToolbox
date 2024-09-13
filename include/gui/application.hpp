@@ -220,7 +220,7 @@ namespace Toolbox {
         std::vector<std::pair<std::string, std::string>> m_filters;
 
         // The result of the last dialog box.
-        nfdnchar_t *m_selected_path;
+        nfdu8char_t *m_selected_path;
         nfdresult_t m_result;
         // The thread that we run the dialog in. If
         // m_thread_initialized is true, this should be an initialized
