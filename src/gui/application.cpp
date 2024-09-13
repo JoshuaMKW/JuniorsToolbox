@@ -606,7 +606,7 @@ namespace Toolbox {
         m_thread_running = true;
         m_closed         = false;
         auto fn          = [this, starting_path, parent_window, is_directory, maybe_filters]() {
-            m_starting_path = starting_path.wstring();
+            m_starting_path = starting_path.string();
             m_filters.clear();
             if (is_directory) {
                 nfdpickfoldernargs_t args;
