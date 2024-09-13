@@ -47,6 +47,7 @@ jobs:
           which c++
           c++ --version
           sudo apt install g++-13 libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev mesa-common-dev
+          sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-13 30
           sudo update-alternatives --set c++ /usr/bin/g++-13
           which c++
           c++ --version
