@@ -93,7 +93,7 @@ namespace Toolbox::Dolphin {
         return GetCommState(handle, &flags);
     }
 
-#elifdef TOOLBOX_PLATFORM_LINUX
+#elif defined(TOOLBOX_PLATFORM_LINUX)
     static Result<Platform::ProcessID, BaseError> FindProcessPID(std::string_view process_name) {
         std::array<char, 128> buffer;
         std::string pidof_cmd = "pidof ";

@@ -408,8 +408,7 @@ namespace Toolbox {
         if (FileDialog::Instance()->isDone()) {
             FileDialog::Instance()->Close();
             if (FileDialog::Instance()->isOk()) {
-                std::filesystem::path selected_path =
-                    FileDialog::Instance()->GetFilenameResult();
+                std::filesystem::path selected_path = FileDialog::Instance()->GetFilenameResult();
                 std::cout << "Selected path is " << selected_path.string() << std::endl;
                 if (selected_path.filename() == "scene") {
                     RefPtr<ImWindow> existing_editor =
@@ -436,10 +435,8 @@ namespace Toolbox {
                         m_project_root = selected_path;
 
                         // Process the stageArc.bin
-                        fs_path layout_path = selected_path / "files" /
-                            "data" / "stageArc.bin";
-                        m_scene_layout_manager
-                            ->loadFromPath(layout_path);
+                        fs_path layout_path = selected_path / "files" / "data" / "stageArc.bin";
+                        m_scene_layout_manager->loadFromPath(layout_path);
                     }
                 }
             }
@@ -447,25 +444,21 @@ namespace Toolbox {
 
         if (m_is_file_dialog_open) {
             if (!FileDialog::Instance()->isAlreadyOpen()) {
-                std::vector<std::pair<const char*, const char*>> filters;
+                std::vector<std::pair<std::string, std::string>> filters;
                 filters.push_back({"Nintendo Scene Archive", "szs,arc"});
-                FileDialog::Instance()->OpenDialog(m_load_path, m_render_window, false,
-                                                   filters);
+                FileDialog::Instance()->OpenDialog(m_load_path, m_render_window, false, filters);
             }
             m_is_file_dialog_open = false;
         }
         if (FileDialog::Instance()->isDone()) {
             FileDialog::Instance()->Close();
             if (FileDialog::Instance()->isOk()) {
-                std::filesystem::path selected_path =
-                    FileDialog::Instance()->GetFilenameResult();
-                if (selected_path.extension() == ".szs" ||
-                    selected_path.extension() == ".arc") {
-                     RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
-                     if (!window->onLoadData(selected_path)) {
-                         window->close();
-                     }
-
+                std::filesystem::path selected_path = FileDialog::Instance()->GetFilenameResult();
+                if (selected_path.extension() == ".szs" || selected_path.extension() == ".arc") {
+                    RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
+                    if (!window->onLoadData(selected_path)) {
+                        window->close();
+                    }
                 }
             }
         }
@@ -551,44 +544,51 @@ namespace Toolbox {
         }
     }
 
-    void FileDialog::OpenDialog(std::filesystem::path starting_path,
-                                GLFWwindow* parent_window,
-                                bool is_directory,
-                                std::optional<std::vector<std::pair<
-                                  const char*, const char*>>> maybe_filters) {
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+    void FileDialog::OpenDialog(
+        std::filesystem::path starting_path, GLFWwindow *parent_window, bool is_directory,
+        std::optional<std::vector<std::pair<std::string, std::string>>> maybe_filters) {
         if (m_thread_initialized) {
             m_thread.join();
         } else {
             m_thread_initialized = true;
         }
         m_thread_running = true;
-        auto fn = [this, starting_path, parent_window, is_directory, maybe_filters]
-                               () {
-            if(is_directory){
+        m_closed         = false;
+        auto fn          = [this, starting_path, parent_window, is_directory, maybe_filters]() {
+            m_starting_path = starting_path.wstring();
+            m_filters.clear();
+            if (is_directory) {
                 nfdpickfoldernargs_t args;
-                args.defaultPath = starting_path.string().c_str();
+                args.defaultPath = m_starting_path.c_str();
                 NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
                 m_result = NFD_PickFolderN_With(&m_selected_path, &args);
-                //m_result = NFD_PickFolderN(&m_selected_path, starting_path.string().c_str());
+                TOOLBOX_INFO_V("Selected path: {}", std::filesystem::path(m_selected_path).string());
+                TOOLBOX_INFO_V("Result: {}", int(m_result));
+                // m_result = NFD_PickFolderN(&m_selected_path, starting_path.string().c_str());
             } else {
-                int num_filters = 0;
-                nfdu8filteritem_t* nfd_filters = nullptr;
-                if(maybe_filters) {
+                int num_filters               = 0;
+                nfdnfilteritem_t *nfd_filters = nullptr;
+                if (maybe_filters) {
                     auto filters = maybe_filters.value();
-                    num_filters = filters.size();
-                    nfd_filters = new nfdu8filteritem_t[num_filters];
-                    for(int i = 0; i < num_filters; ++i) {
-                        nfd_filters[i] = {std::get<0>(filters[i]),
-                                          std::get<1>(filters[i])};
+                    num_filters  = filters.size();
+                    nfd_filters  = new nfdnfilteritem_t[num_filters];
+                    for (int i = 0; i < num_filters; ++i) {
+                        std::wstring filter_name =
+                            std::wstring(filters[i].first.begin(), filters[i].first.end());
+                        std::wstring filter_ext =
+                            std::wstring(filters[i].second.begin(), filters[i].second.end());
+                        m_filters.push_back({filter_name, filter_ext});
+                        nfd_filters[i] = {m_filters[i].first.c_str(), m_filters[i].second.c_str()};
                     }
                 }
                 nfdopendialognargs_t args;
-                args.filterList = nfd_filters;
+                args.filterList  = const_cast<const nfdnfilteritem_t *>(nfd_filters);
                 args.filterCount = num_filters;
-                args.defaultPath = starting_path.string().c_str();
+                args.defaultPath = m_starting_path.c_str();
                 NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
                 m_result = NFD_OpenDialogN_With(&m_selected_path, &args);
-                if(maybe_filters) {
+                if (maybe_filters) {
                     delete[] nfd_filters;
                 }
             }
@@ -596,6 +596,53 @@ namespace Toolbox {
         };
         m_thread = std::thread(fn);
     }
+#else
+    void FileDialog::OpenDialog(
+        std::filesystem::path starting_path, GLFWwindow *parent_window, bool is_directory,
+        std::optional<std::vector<std::pair<std::string, std::string>>> maybe_filters) {
+        if (m_thread_initialized) {
+            m_thread.join();
+        } else {
+            m_thread_initialized = true;
+        }
+        m_thread_running = true;
+        m_closed         = false;
+        auto fn          = [this, starting_path, parent_window, is_directory, maybe_filters]() {
+            m_starting_path = starting_path.wstring();
+            m_filters.clear();
+            if (is_directory) {
+                nfdpickfoldernargs_t args;
+                args.defaultPath = m_starting_path.c_str();
+                NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
+                m_result = NFD_PickFolderN_With(&m_selected_path, &args);
+                // m_result = NFD_PickFolderN(&m_selected_path, starting_path.string().c_str());
+            } else {
+                int num_filters               = 0;
+                nfdnfilteritem_t *nfd_filters = nullptr;
+                if (maybe_filters) {
+                    auto filters = maybe_filters.value();
+                    num_filters  = filters.size();
+                    nfd_filters  = new nfdnfilteritem_t[num_filters];
+                    for (int i = 0; i < num_filters; ++i) {
+                        m_filters.push_back({filters[i].first, filters[i].second});
+                        nfd_filters[i] = {m_filters[i].first.c_str(), m_filters[i].second.c_str()};
+                    }
+                }
+                nfdopendialognargs_t args;
+                args.filterList  = const_cast<const nfdnfilteritem_t *>(nfd_filters);
+                args.filterCount = num_filters;
+                args.defaultPath = m_starting_path.c_str();
+                NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
+                m_result = NFD_OpenDialogN_With(&m_selected_path, &args);
+                if (maybe_filters) {
+                    delete[] nfd_filters;
+                }
+            }
+            m_thread_running = false;
+        };
+        m_thread = std::thread(fn);
+    }
+    #endif
 
 }  // namespace Toolbox
 

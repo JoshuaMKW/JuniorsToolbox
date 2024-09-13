@@ -10,7 +10,7 @@
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <TlHelp32.h>
 #include <Windows.h>
-#elifdef TOOLBOX_PLATFORM_LINUX
+#elif defined(TOOLBOX_PLATFORM_LINUX)
 #include <limits>
 #include <string.h>
 #include <signal.h>
@@ -187,7 +187,7 @@ namespace Toolbox::Platform {
         return UpdateWindow(window);
     }
 
-#elifdef TOOLBOX_PLATFORM_LINUX
+#elif defined(TOOLBOX_PLATFORM_LINUX)
     std::string GetLastErrorMessage() { return strerror(errno); }
 
     Result<ProcessInformation> CreateExProcess(const std::filesystem::path &program_path,

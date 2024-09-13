@@ -119,7 +119,6 @@ namespace Toolbox {
 
         std::filesystem::path getProjectRoot() const { return m_project_root; }
 
-
         void registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
                                     SceneWindow::render_layer_cb cb);
         void deregisterDolphinOverlay(UUID64 scene_uuid, const std::string &name);
@@ -169,9 +168,9 @@ namespace Toolbox {
         ImGuiID m_dockspace_id;
         bool m_dockspace_built;
 
-        bool m_opening_options_window        = false;
-        bool m_is_file_dialog_open = false;
-        bool m_is_dir_dialog_open  = false;
+        bool m_opening_options_window = false;
+        bool m_is_file_dialog_open    = false;
+        bool m_is_dir_dialog_open     = false;
 
         std::thread m_thread_templates_init;
         DolphinCommunicator m_dolphin_communicator;
@@ -180,23 +179,38 @@ namespace Toolbox {
 
     class FileDialog {
     public:
-        static FileDialog* Instance() {
+        FileDialog() = default;
+        ~FileDialog() {
+            if (m_thread_initialized) {
+                m_thread.join();
+            }
+        }
+
+        static FileDialog *Instance() {
             static FileDialog _instance;
             return &_instance;
         }
-        void OpenDialog(std::filesystem::path starting_path,
-                        GLFWwindow* parent_window,
+        void OpenDialog(std::filesystem::path starting_path, GLFWwindow *parent_window,
                         bool is_directory = false,
-                        std::optional<std::vector<std::pair<
-                        const char*, const char*>>> maybe_filters = std::nullopt);
+                        std::optional<std::vector<std::pair<std::string, std::string>>>
+                            maybe_filters = std::nullopt);
         bool isAlreadyOpen() { return m_thread_running; }
-        bool isDone() { return !m_thread_running && not m_closed; }
+        bool isDone() { return !m_thread_running && !m_closed && m_thread_initialized; }
         bool isOk() { return m_result == NFD_OKAY; }
         std::filesystem::path GetFilenameResult() { return m_selected_path; }
-        void Close() { m_closed = true;}
+        void Close() { m_closed = true; }
+
     private:
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+        std::wstring m_starting_path;
+        std::vector<std::pair<std::wstring, std::wstring>> m_filters;
+#else
+        std::string m_starting_path;
+        std::vector<std::pair<std::string, std::string>> m_filters;
+#endif
+
         // The result of the last dialog box.
-        nfdchar_t* m_selected_path;
+        nfdnchar_t *m_selected_path;
         nfdresult_t m_result;
         // The thread that we run the dialog in. If
         // m_thread_initialized is true, this should be an initialized
