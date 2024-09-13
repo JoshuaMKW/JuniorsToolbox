@@ -216,13 +216,8 @@ namespace Toolbox {
         void Close() { m_closed = true; }
 
     private:
-#ifdef TOOLBOX_PLATFORM_WINDOWS
-        std::wstring m_starting_path;
-        std::vector<std::pair<std::wstring, std::wstring>> m_filters;
-#else
         std::string m_starting_path;
         std::vector<std::pair<std::string, std::string>> m_filters;
-#endif
 
         // The result of the last dialog box.
         nfdnchar_t *m_selected_path;
