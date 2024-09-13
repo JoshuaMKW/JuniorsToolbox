@@ -400,15 +400,15 @@ namespace Toolbox {
         ImGui::EndMainMenuBar();
 
         if (m_is_dir_dialog_open) {
-            if (!FileDialog::Instance()->IsAlreadyOpen()) {
-                FileDialog::Instance()->OpenDialog(m_load_path, m_render_window, true);
+            if (!FileDialog::instance()->isAlreadyOpen()) {
+                FileDialog::instance()->openDialog(m_load_path, m_render_window, true);
             }
             m_is_dir_dialog_open = false;
         }
-        if (FileDialog::Instance()->IsDone()) {
-            FileDialog::Instance()->Close();
-            if (FileDialog::Instance()->IsOk()) {
-                std::filesystem::path selected_path = FileDialog::Instance()->GetFilenameResult();
+        if (FileDialog::instance()->isDone()) {
+            FileDialog::instance()->close();
+            if (FileDialog::instance()->isOk()) {
+                std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();
                 std::cout << "Selected path is " << selected_path.string() << std::endl;
                 if (selected_path.filename() == "scene") {
                     RefPtr<ImWindow> existing_editor =
@@ -443,17 +443,17 @@ namespace Toolbox {
         }
 
         if (m_is_file_dialog_open) {
-            if (!FileDialog::Instance()->IsAlreadyOpen()) {
+            if (!FileDialog::instance()->isAlreadyOpen()) {
                 FileDialogFilter filter;
-                filter.AddFilter("Nintendo Scene Archive", "szs,arc");
-                FileDialog::Instance()->OpenDialog(m_load_path, m_render_window, false, filter);
+                filter.addFilter("Nintendo Scene Archive", "szs,arc");
+                FileDialog::instance()->openDialog(m_load_path, m_render_window, false, filter);
             }
             m_is_file_dialog_open = false;
         }
-        if (FileDialog::Instance()->IsDone()) {
-            FileDialog::Instance()->Close();
-            if (FileDialog::Instance()->IsOk()) {
-                std::filesystem::path selected_path = FileDialog::Instance()->GetFilenameResult();
+        if (FileDialog::instance()->isDone()) {
+            FileDialog::instance()->close();
+            if (FileDialog::instance()->isOk()) {
+                std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();
                 if (selected_path.extension() == ".szs" || selected_path.extension() == ".arc") {
                     RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
                     if (!window->onLoadData(selected_path)) {
@@ -544,7 +544,7 @@ namespace Toolbox {
         }
     }
 
-    void FileDialog::OpenDialog(
+    void FileDialog::openDialog(
         std::filesystem::path starting_path, GLFWwindow *parent_window, bool is_directory,
         std::optional<FileDialogFilter> maybe_filters) {
         if (m_thread_initialized) {
@@ -567,9 +567,9 @@ namespace Toolbox {
                 nfdu8filteritem_t *nfd_filters = nullptr;
                 if (maybe_filters) {
                     auto filters = maybe_filters.value();
-                    num_filters  = filters.NumFilters();
+                    num_filters  = filters.numFilters();
                     nfd_filters  = new nfdu8filteritem_t[num_filters];
-                    filters.WriteFiltersU8(nfd_filters);
+                    filters.writeFiltersU8(nfd_filters);
                 }
                 nfdopendialogu8args_t args;
                 args.filterList  = const_cast<const nfdu8filteritem_t *>(nfd_filters);
@@ -586,16 +586,16 @@ namespace Toolbox {
         m_thread = std::thread(fn);
     }
 
-    void FileDialogFilter::AddFilter(const std::string &label, const std::string &csv_filters){
+    void FileDialogFilter::addFilter(const std::string &label, const std::string &csv_filters){
         m_filters.push_back({std::string(label), std::string(csv_filters)});
     }
-    bool FileDialogFilter::HasFilter(const std::string &label) const {
+    bool FileDialogFilter::hasFilter(const std::string &label) const {
         return std::find_if(m_filters.begin(), m_filters.end(),
                             [label](std::pair<std::string, std::string> p){
                                 return p.first == label;
                             }) != m_filters.end();
     }
-    void FileDialogFilter::WriteFiltersU8(nfdu8filteritem_t *&out) const {
+    void FileDialogFilter::writeFiltersU8(nfdu8filteritem_t *&out) const {
         for(int i = 0; i < m_filters.size(); ++i) {
             char* name = new char[m_filters[i].first.length()];
             char* spec = new char[m_filters[i].second.length()];

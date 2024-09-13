@@ -182,11 +182,10 @@ namespace Toolbox {
         FileDialogFilter() = default;
         ~FileDialogFilter() = default;
 
-        void AddFilter(const std::string &label, const std::string &csv_filters);
-        bool HasFilter(const std::string &label) const;
-        int NumFilters() const { return m_filters.size(); };
-        void WriteFiltersU8(nfdu8filteritem_t *&out) const;
-        void WriteFiltersN(nfdnfilteritem_t *&out) const;
+        void addFilter(const std::string &label, const std::string &csv_filters);
+        bool hasFilter(const std::string &label) const;
+        int numFilters() const { return m_filters.size(); };
+        void writeFiltersU8(nfdu8filteritem_t *&out) const;
 
     private:
         std::vector<std::pair<std::string, std::string>> m_filters;
@@ -201,19 +200,19 @@ namespace Toolbox {
             }
         }
 
-        static FileDialog *Instance() {
+        static FileDialog *instance() {
             static FileDialog _instance;
             return &_instance;
         }
-        void OpenDialog(std::filesystem::path starting_path, GLFWwindow *parent_window,
+        void openDialog(std::filesystem::path starting_path, GLFWwindow *parent_window,
                         bool is_directory = false,
                         std::optional<FileDialogFilter>
                             maybe_filters = std::nullopt);
-        bool IsAlreadyOpen() { return m_thread_running; }
-        bool IsDone() { return !m_thread_running && !m_closed && m_thread_initialized; }
-        bool IsOk() { return m_result == NFD_OKAY; }
-        std::filesystem::path GetFilenameResult() { return m_selected_path; }
-        void Close() { m_closed = true; }
+        bool isAlreadyOpen() { return m_thread_running; }
+        bool isDone() { return !m_thread_running && !m_closed && m_thread_initialized; }
+        bool isOk() { return m_result == NFD_OKAY; }
+        std::filesystem::path getFilenameResult() { return m_selected_path; }
+        void close() { m_closed = true; }
 
     private:
         std::string m_starting_path;
