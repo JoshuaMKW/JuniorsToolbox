@@ -2,6 +2,9 @@
 # and include sub-projects here.
 #
 cmake_minimum_required (VERSION 3.8)
+if (POLICY CMP0025)
+  cmake_policy(SET CMP0025 NEW)
+endif ()
 
 # Require C++23 for stacktrace etc
 set(CMAKE_CXX_STANDARD 23)
