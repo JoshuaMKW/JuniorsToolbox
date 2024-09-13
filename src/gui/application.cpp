@@ -400,14 +400,14 @@ namespace Toolbox {
         ImGui::EndMainMenuBar();
 
         if (m_is_dir_dialog_open) {
-            if (!FileDialog::Instance()->isAlreadyOpen()) {
+            if (!FileDialog::Instance()->IsAlreadyOpen()) {
                 FileDialog::Instance()->OpenDialog(m_load_path, m_render_window, true);
             }
             m_is_dir_dialog_open = false;
         }
-        if (FileDialog::Instance()->isDone()) {
+        if (FileDialog::Instance()->IsDone()) {
             FileDialog::Instance()->Close();
-            if (FileDialog::Instance()->isOk()) {
+            if (FileDialog::Instance()->IsOk()) {
                 std::filesystem::path selected_path = FileDialog::Instance()->GetFilenameResult();
                 std::cout << "Selected path is " << selected_path.string() << std::endl;
                 if (selected_path.filename() == "scene") {
@@ -443,16 +443,16 @@ namespace Toolbox {
         }
 
         if (m_is_file_dialog_open) {
-            if (!FileDialog::Instance()->isAlreadyOpen()) {
+            if (!FileDialog::Instance()->IsAlreadyOpen()) {
                 std::vector<std::pair<std::string, std::string>> filters;
                 filters.push_back({"Nintendo Scene Archive", "szs,arc"});
                 FileDialog::Instance()->OpenDialog(m_load_path, m_render_window, false, filters);
             }
             m_is_file_dialog_open = false;
         }
-        if (FileDialog::Instance()->isDone()) {
+        if (FileDialog::Instance()->IsDone()) {
             FileDialog::Instance()->Close();
-            if (FileDialog::Instance()->isOk()) {
+            if (FileDialog::Instance()->IsOk()) {
                 std::filesystem::path selected_path = FileDialog::Instance()->GetFilenameResult();
                 if (selected_path.extension() == ".szs" || selected_path.extension() == ".arc") {
                     RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
