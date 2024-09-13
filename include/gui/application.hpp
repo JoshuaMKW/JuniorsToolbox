@@ -23,6 +23,7 @@
 #include "dolphin/process.hpp"
 
 #include "scene/layout.hpp"
+#include <nfd.h>
 
 using namespace Toolbox::Dolphin;
 
@@ -117,7 +118,6 @@ namespace Toolbox {
         Game::TaskCommunicator &getTaskCommunicator() { return m_task_communicator; }
 
         std::filesystem::path getProjectRoot() const { return m_project_root; }
-        
 
         void registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
                                     SceneWindow::render_layer_cb cb);
@@ -168,13 +168,72 @@ namespace Toolbox {
         ImGuiID m_dockspace_id;
         bool m_dockspace_built;
 
-        bool m_opening_options_window        = false;
-        bool m_is_file_dialog_open = false;
-        bool m_is_dir_dialog_open  = false;
+        bool m_opening_options_window = false;
+        bool m_is_file_dialog_open    = false;
+        bool m_is_dir_dialog_open     = false;
 
         std::thread m_thread_templates_init;
         DolphinCommunicator m_dolphin_communicator;
         Game::TaskCommunicator m_task_communicator;
+    };
+
+    class FileDialogFilter {
+    public:
+        FileDialogFilter() = default;
+        ~FileDialogFilter() = default;
+
+        void addFilter(const std::string &label, const std::string &csv_filters);
+        bool hasFilter(const std::string &label) const;
+        int numFilters() const { return m_filters.size(); };
+        void copyFiltersOutU8(std::vector<std::pair<std::string, std::string>> &out_filters) const;
+
+    private:
+        std::vector<std::pair<std::string, std::string>> m_filters;
+    };
+
+    class FileDialog {
+    public:
+        FileDialog() = default;
+        ~FileDialog() {
+            if (m_thread_initialized) {
+                m_thread.join();
+            }
+        }
+
+        static FileDialog *instance() {
+            static FileDialog _instance;
+            return &_instance;
+        }
+        void openDialog(std::filesystem::path starting_path, GLFWwindow *parent_window,
+                        bool is_directory = false,
+                        std::optional<FileDialogFilter>
+                            maybe_filters = std::nullopt);
+        bool isAlreadyOpen() { return m_thread_running; }
+        bool isDone() { return !m_thread_running && !m_closed && m_thread_initialized; }
+        bool isOk() { return m_result == NFD_OKAY; }
+        std::filesystem::path getFilenameResult() { return m_selected_path; }
+        void close() { m_closed = true; }
+
+    private:
+        std::string m_starting_path;
+        std::vector<std::pair<std::string, std::string>> m_filters;
+
+        // The result of the last dialog box.
+        nfdu8char_t *m_selected_path;
+        nfdresult_t m_result;
+        // The thread that we run the dialog in. If
+        // m_thread_initialized is true, this should be an initialized
+        // thread object.
+        std::thread m_thread;
+        // For tracking whether we've launched any threads so far. If
+        // so, we'll join them before launching another.
+        bool m_thread_initialized = false;
+        // For tracking whether the thread is still running a dialog
+        // box.
+        bool m_thread_running = false;
+        // For checking whether the user has called Close. If so, stop
+        // returning true for isDone().
+        bool m_closed = false;
     };
 
 }  // namespace Toolbox

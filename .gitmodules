@@ -15,3 +15,6 @@
 [submodule "lib/libbti"]
 	path = lib/libbti
 	url = https://github.com/HazardousPeach/libbti.git
+[submodule "lib/nativefiledialog-extended"]
+	path = lib/nativefiledialog-extended
+	url = https://github.com/btzy/nativefiledialog-extended.git

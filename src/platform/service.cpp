@@ -46,7 +46,7 @@ namespace Toolbox::Platform {
 
         return isRunning;
     }
-#elifdef TOOLBOX_PLATFORM_LINUX
+#elif defined(TOOLBOX_PLATFORM_LINUX)
     Result<bool, BaseError> IsServiceRunning(std::string_view name) {
       return false;
     }

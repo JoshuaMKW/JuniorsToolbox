@@ -5,7 +5,7 @@
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <glfw/glfw3.h>
-#elifdef TOOLBOX_PLATFORM_LINUX
+#elif defined(TOOLBOX_PLATFORM_LINUX)
 #include <GLFW/glfw3.h>
 #endif
 #include <imgui_impl_glfw.cpp>

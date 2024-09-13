@@ -33,6 +33,7 @@
 #include "gui/util.hpp"
 #include "platform/service.hpp"
 #include "scene/layout.hpp"
+#include <nfd_glfw3.h>
 
 // void ImGuiSetupTheme(bool, float);
 
@@ -73,6 +74,8 @@ namespace Toolbox {
             stop();
             return;
         }
+
+        NFD_Init();
 
         // TODO: Load application settings
         //
@@ -224,6 +227,8 @@ namespace Toolbox {
 
         m_dolphin_communicator.tKill(true);
         m_task_communicator.tKill(true);
+
+        NFD_Quit();
     }
 
     Toolbox::fs_path GUIApplication::getResourcePath(const Toolbox::fs_path &path) const & {
@@ -395,42 +400,31 @@ namespace Toolbox {
         ImGui::EndMainMenuBar();
 
         if (m_is_dir_dialog_open) {
-            ImGuiFileDialog::Instance()->OpenDialog("OpenDirDialog", "Choose Project Path", nullptr,
-                                                    m_load_path.string(), "");
-        }
-
-        if (ImGuiFileDialog::Instance()->Display("OpenDirDialog")) {
-            ImGuiFileDialog::Instance()->Close();
+            if (!FileDialog::instance()->isAlreadyOpen()) {
+                FileDialog::instance()->openDialog(m_load_path, m_render_window, true);
+            }
             m_is_dir_dialog_open = false;
-
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
-
-                auto dir_result = Toolbox::Filesystem::is_directory(path);
-                if (!dir_result) {
-                    return;
-                }
-
-                if (!dir_result.value()) {
-                    return;
-                }
-
-                m_load_path = path;
-
-                if (path.filename() == "scene") {
-                    RefPtr<ImWindow> existing_editor = findWindow("Scene Editor", path.string());
+        }
+        if (FileDialog::instance()->isDone()) {
+            FileDialog::instance()->close();
+            if (FileDialog::instance()->isOk()) {
+                std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();
+                std::cout << "Selected path is " << selected_path.string() << std::endl;
+                if (selected_path.filename() == "scene") {
+                    RefPtr<ImWindow> existing_editor =
+                        findWindow("Scene Editor", selected_path.string());
                     if (existing_editor) {
                         existing_editor->focus();
                     } else {
                         RefPtr<SceneWindow> scene_window =
                             createWindow<SceneWindow, true>("Scene Editor");
-                        if (!scene_window->onLoadData(path)) {
+                        if (!scene_window->onLoadData(selected_path)) {
                             scene_window->close();
                         }
                     }
                 } else {
-                    auto sys_path   = std::filesystem::path(path) / "sys";
-                    auto files_path = std::filesystem::path(path) / "files";
+                    auto sys_path   = std::filesystem::path(selected_path) / "sys";
+                    auto files_path = std::filesystem::path(selected_path) / "files";
 
                     auto sys_result   = Toolbox::Filesystem::is_directory(sys_path);
                     auto files_result = Toolbox::Filesystem::is_directory(files_path);
@@ -438,48 +432,35 @@ namespace Toolbox {
                     if ((sys_result && sys_result.value()) &&
                         (files_result && files_result.value())) {
                         // TODO: Open project folder view
-                        m_project_root = path;
+                        m_project_root = selected_path;
 
                         // Process the stageArc.bin
-                        fs_path layout_path = path / "files" / "data" / "stageArc.bin";
-                        m_scene_layout_manager
-                            ->loadFromPath(layout_path);
+                        fs_path layout_path = selected_path / "files" / "data" / "stageArc.bin";
+                        m_scene_layout_manager->loadFromPath(layout_path);
                     }
                 }
             }
         }
 
         if (m_is_file_dialog_open) {
-            ImGuiFileDialog::Instance()->OpenDialog("OpenFileDialog", "Choose File", nullptr, "",
-                                                    "");
-        }
-
-        if (ImGuiFileDialog::Instance()->Display("OpenFileDialog")) {
+            if (!FileDialog::instance()->isAlreadyOpen()) {
+                FileDialogFilter filter;
+                filter.addFilter("Nintendo Scene Archive", "szs,arc");
+                FileDialog::instance()->openDialog(m_load_path, m_render_window, false, filter);
+            }
             m_is_file_dialog_open = false;
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
-
-                auto file_result = Toolbox::Filesystem::is_regular_file(path);
-                if (!file_result) {
-                    ImGuiFileDialog::Instance()->Close();
-                    return;
-                }
-
-                if (!file_result.value()) {
-                    ImGuiFileDialog::Instance()->Close();
-                    return;
-                }
-                m_load_path = path.parent_path();
-
-                if (path.extension() == ".szs" || path.extension() == ".arc") {
+        }
+        if (FileDialog::instance()->isDone()) {
+            FileDialog::instance()->close();
+            if (FileDialog::instance()->isOk()) {
+                std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();
+                if (selected_path.extension() == ".szs" || selected_path.extension() == ".arc") {
                     RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
-                    if (!window->onLoadData(path)) {
+                    if (!window->onLoadData(selected_path)) {
                         window->close();
                     }
                 }
             }
-
-            ImGuiFileDialog::Instance()->Close();
         }
 
         if (ImGui::BeginPopupModal("Scene Load Error", NULL,
@@ -563,6 +544,63 @@ namespace Toolbox {
         }
     }
 
+    void FileDialog::openDialog(
+        std::filesystem::path starting_path, GLFWwindow *parent_window, bool is_directory,
+        std::optional<FileDialogFilter> maybe_filters) {
+        if (m_thread_initialized) {
+            m_thread.join();
+        } else {
+            m_thread_initialized = true;
+        }
+        m_thread_running = true;
+        m_closed         = false;
+        auto fn          = [this, starting_path, parent_window, is_directory, maybe_filters]() {
+            m_starting_path = starting_path.string();
+            if (is_directory) {
+                nfdpickfolderu8args_t args;
+                args.defaultPath = m_starting_path.c_str();
+                NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
+                m_result = NFD_PickFolderU8_With(&m_selected_path, &args);
+            } else {
+                int num_filters               = 0;
+                nfdu8filteritem_t *nfd_filters = nullptr;
+                if (maybe_filters) {
+                    auto filters = maybe_filters.value();
+                    num_filters = filters.numFilters();
+                    filters.copyFiltersOutU8(m_filters);
+                    nfd_filters = new nfdu8filteritem_t[num_filters];
+                    for (int i = 0; i < filters.numFilters(); ++i){
+                        nfd_filters[i] = {m_filters[i].first.c_str(), m_filters[i].second.c_str()};
+                    }
+                }
+                nfdopendialogu8args_t args;
+                args.filterList  = const_cast<const nfdu8filteritem_t *>(nfd_filters);
+                args.filterCount = num_filters;
+                args.defaultPath = m_starting_path.c_str();
+                NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
+                m_result = NFD_OpenDialogU8_With(&m_selected_path, &args);
+                if (maybe_filters) {
+                    delete[] nfd_filters;
+                }
+            }
+            m_thread_running = false;
+        };
+        m_thread = std::thread(fn);
+    }
+
+    void FileDialogFilter::addFilter(const std::string &label, const std::string &csv_filters){
+        m_filters.push_back({std::string(label), std::string(csv_filters)});
+    }
+    bool FileDialogFilter::hasFilter(const std::string &label) const {
+        return std::find_if(m_filters.begin(), m_filters.end(),
+                            [label](std::pair<std::string, std::string> p){
+                                return p.first == label;
+                            }) != m_filters.end();
+    }
+
+    void FileDialogFilter::copyFiltersOutU8(std::vector<std::pair<std::string, std::string>> &out_filters) const {
+        out_filters = m_filters;
+    }
 }  // namespace Toolbox
 
 // void ImGuiSetupTheme(bool bStyleDark_, float alpha_) {
