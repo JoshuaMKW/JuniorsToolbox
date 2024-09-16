@@ -21,7 +21,7 @@ jobs:
             artifact: windows
             upload_path_suffix: '/*'
           - name: Linux Build
-            os: ubuntu-latest
+            os: ubuntu-24.04
             architecture: x64
             artifact: linux
             upload_path_suffix: '/*'
@@ -43,9 +43,9 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt update
-          sudo apt install libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev mesa-common-dev gcc g++
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 --slave /usr/bin/g++ g++ /usr/bin/g++-13 --slave /usr/bin/gcov gcov /usr/bin/gcov-13
-          sudo update-alternatives --set gcc /usr/bin/gcc-13
+          sudo apt install libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev mesa-common-dev
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 --slave /usr/bin/g++ g++ /usr/bin/g++-14 --slave /usr/bin/gcov gcov /usr/bin/gcov-14
+          sudo update-alternatives --set gcc /usr/bin/gcc-14
       - name: Set up MSVC for Windows
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
