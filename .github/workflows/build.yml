@@ -72,7 +72,7 @@ jobs:
           ## limits ssh access and adds the ssh public key for the user which triggered the workflow
           limit-access-to-actor: true
       - name: Check for windows vcpkg
-      - if: runner.os == "Windows"
+        if: runner.os == "Windows"
         run: |
           ls ${{ github.workspace }}/
           ls ${{ github.workspace }}/vcpkg
