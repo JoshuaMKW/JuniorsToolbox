@@ -75,7 +75,7 @@ jobs:
         run: |
           mkdir juniors-toolbox-build
           cp -r res juniors-toolbox-build/res
-          cp build/juniors-toolbox juniors-toolbox-build/juniors-toolbox
+          cp build/JuniorsToolbox juniors-toolbox-build/JuniorsToolbox
       - name: Create App Package Windows
         if: runner.os == 'Windows'
         run: |
