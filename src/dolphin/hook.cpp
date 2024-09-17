@@ -15,6 +15,8 @@
 #include <sys/stat.h>
 #endif
 
+using std::string_view_literals::operator""sv;
+
 namespace Toolbox::Dolphin {
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
@@ -174,7 +176,14 @@ namespace Toolbox::Dolphin {
         }
 
         std::string dolphin_args =
-            std::format("-e {}/sys/main.dol -d -c -a HLE", application.getProjectRoot().string());
+            std::format("-e {}/sys/main.dol -a HLE", application.getProjectRoot().string());
+
+        std::string dolphin_path = std::string(settings.m_dolphin_path);
+        size_t last_not_null = dolphin_path.find_last_not_of('\000');
+        std::string used_substr = dolphin_path.substr(last_not_null - 5, last_not_null);
+        if (!used_substr.starts_with("-nogui"sv)){
+          dolphin_args += "-d -c";
+        }
 #ifdef TOOLBOX_PLATFORM_LINUX
         // Force dolphin to run on X11 instead of Wayland if running on Linux
         putenv("QT_QPA_PLATFORM=xcb");
