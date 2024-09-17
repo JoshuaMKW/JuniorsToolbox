@@ -4,6 +4,7 @@
 #include <functional>
 #include <mutex>
 #include <thread>
+#include <condition_variable>
 
 namespace Toolbox {
 
@@ -93,7 +94,7 @@ namespace Toolbox {
         std::condition_variable _m_kill_condition;
 
         std::function<void()> _m_start_cb;
-        std::function<void(_ExitT)> _m_exit_cb;
+        std::function<void()> _m_exit_cb;
     };
 
     template <typename _ExitT> class TaskThread : public Threaded<_ExitT> {
@@ -121,7 +122,7 @@ namespace Toolbox {
             _m_progress = progress;
             if (_m_prog_flag.load()) {
                 if (_m_progress_out) {
-                    _m_progress_out = progress;
+                    *_m_progress_out = progress;
                 }
                 _m_prog_condition.notify_all();
                 if (progress == 1.0) {

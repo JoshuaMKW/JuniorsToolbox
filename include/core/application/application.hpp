@@ -16,7 +16,7 @@
 #define EXIT_CODE_FAILED_SETUP    (1 << 28) | 2
 #define EXIT_CODE_FAILED_TEARDOWN (1 << 28) | 3
 
-#elif TOOLBOX_PLATFORM_LINUX
+#elif defined(TOOLBOX_PLATFORM_LINUX)
 
 #define EXIT_CODE_OK              0
 #define EXIT_CODE_FAILED_RUNTIME  1

@@ -42,6 +42,11 @@ namespace Toolbox::Scene {
                 std::ifstream file(path, std::ios::binary);
                 Deserializer in(file.rdbuf());
 
+                // if (&m_scene_layout == nullptr) {
+                //     TOOLBOX_INFO("Failed to load from path because m_scene_layout "
+                //                  "was never initialized");
+                //     return Result<bool, FSError>();
+                // }
                 m_scene_layout.deserialize(in).or_else([&](const SerialError &error) {
                     result = false;
                     LogError(error);

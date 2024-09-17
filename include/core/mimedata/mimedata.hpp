@@ -12,7 +12,7 @@
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
-#elif TOOLBOX_PLATFORM_LINUX
+#elif defined(TOOLBOX_PLATFORM_LINUX)
 
 #else
 #error "Unsupported OS"
@@ -70,7 +70,7 @@ namespace Toolbox {
 #ifdef TOOLBOX_PLATFORM_WINDOWS
         static FORMATETC FormatForMime(std::string_view mimetype);
         static std::string MimeForFormat(FORMATETC format);
-#elif TOOLBOX_PLATFORM_LINUX
+#elif defined(TOOLBOX_PLATFORM_LINUX)
         static std::string UTIForMime(std::string_view mimetype);
         static std::string MimeForUTI(std::string_view uti);
 #endif

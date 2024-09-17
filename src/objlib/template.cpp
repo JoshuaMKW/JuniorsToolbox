@@ -565,6 +565,12 @@ namespace Toolbox::Object {
 
         auto &cwd      = cwd_result.value();
         auto blob_path = cwd / "Templates/.cache/blob.json";
+        if (!std::filesystem::exists(blob_path.parent_path())) {
+            auto result = Toolbox::Filesystem::create_directory(blob_path.parent_path());
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
         Toolbox::Filesystem::is_directory(blob_path.parent_path())
             .and_then([&](bool is_dir) {
                 if (!is_dir) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <cstring>
 
 #include "core/assert.hpp"
 #include "core/types.hpp"

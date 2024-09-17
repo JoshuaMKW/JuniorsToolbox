@@ -10,13 +10,16 @@
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <TlHelp32.h>
 #include <Windows.h>
-#elif TOOLBOX_PLATFORM_LINUX
+#elif defined(TOOLBOX_PLATFORM_LINUX)
 #include <limits>
-#include <process.h>
+#include <string.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <X11/Xutil.h>
 #endif
 
 namespace Toolbox::Platform {
@@ -184,24 +187,40 @@ namespace Toolbox::Platform {
         return UpdateWindow(window);
     }
 
-#elif TOOLBOX_PLATFORM_LINUX
-    std::string GetLastErrorMessage() { return std::strerror(errno); }
+#elif defined(TOOLBOX_PLATFORM_LINUX)
+    std::string GetLastErrorMessage() { return strerror(errno); }
 
     Result<ProcessInformation> CreateExProcess(const std::filesystem::path &program_path,
-                                               const std::string &cmdargs) {
-        std::string true_cmdargs =
-            std::format("\"{}\" {}", program_path.string().c_str(), cmdargs.data());
-
+                                               std::string_view cmdargs) {
         ProcessID pid = fork();  // Fork the current process
         if (pid == -1) {
             // Handle error
             return make_error<ProcessInformation>("PROCESS", GetLastErrorMessage());
         } else if (pid > 0) {
             // Parent process
-            return ProcessInformation{program_path.stem().string(), pid};
+            return ProcessInformation{.m_process_name=program_path.stem().string(),
+                                      .m_process_id=pid};
         } else {
+            // Split the argument string into components by spaces
+            std::stringstream argsstream(cmdargs.data());
+            std::vector<std::string> string_arg_parts;
+            string_arg_parts.push_back(program_path.string());
+            std::string s_next;
+            while (std::getline(argsstream, s_next, ' ')) {
+                string_arg_parts.push_back(s_next);
+            }
+            // Convert the string vector into a vector of c strings
+            std::vector<const char*> cstr_arg_parts;
+            for(int i = 0; i < string_arg_parts.size(); ++i) {
+                cstr_arg_parts.push_back(string_arg_parts[i].c_str());
+            }
+            // Terminate the argument vector with a null pointer
+            cstr_arg_parts.push_back(nullptr);
+
             // Child process
-            execl(program_path.c_str(), true_cmdargs.c_str(), (char *)NULL);
+            execv(program_path.c_str(), const_cast<char* const*>(&cstr_arg_parts[0]));
+            // If we get here, we probably want to know about it.
+            std::perror("Error executing dolphin process");
             // execl only returns on error
             _exit(EXIT_FAILURE);
         }
@@ -216,7 +235,9 @@ namespace Toolbox::Platform {
         ProcessID result = waitpid(process.m_process_id, &status, WNOHANG);
         if (result == 0) {
             // Process is still running, try to wait for max_wait time
-            sleep(max_wait);
+            usleep(max_wait * 1000); // usleep sleeps for
+                                     // microseconds, so multiply the
+                                     // milliseconds by 1000
             result = waitpid(process.m_process_id, &status, WNOHANG);
             if (result == 0) {
                 // Process is still running, force kill it
@@ -244,6 +265,98 @@ namespace Toolbox::Platform {
         }
 
         return true;
+    }
+    std::string GetWindowTitle(LowWindow window) {
+        Display* display = XOpenDisplay(0);
+        XTextProperty title;
+        XGetWMName(display, (Window)window, &title);
+        char** stringList;
+        int numStrings;
+        if (!XTextPropertyToStringList(&title, &stringList, &numStrings)) {
+            return "";
+        }
+        if (numStrings < 1){
+            return "";
+        }
+        std::string stringTitle(stringList[0]);
+        XFreeStringList(stringList);
+        return stringList[0];
+    }
+    bool ForceWindowToFront(LowWindow window) {
+        Display* display = XOpenDisplay(0);
+        return XRaiseWindow(display, (Window)window);
+    }
+    bool ForceWindowToFront(LowWindow window, LowWindow target) {
+        // Not ideal behavior, this should move just in front of
+        // target, but I don't know how to do that.
+        return ForceWindowToFront(window);
+    }
+    bool GetWindowClientRect(LowWindow window, int &x, int &y, int &width, int &height) {
+        XWindowAttributes attribs;
+        Display* display = XOpenDisplay(0);
+        if (!XGetWindowAttributes(display, (Window)window, &attribs)) {
+            return false;
+        }
+        x = attribs.x;
+        y = attribs.y;
+        width = attribs.width;
+        height = attribs.height;
+        return true;
+    }
+    void searchWindowsOfProcess(const Window w, Display* display,
+                                const Atom PIDAtom, const int pid,
+                                std::vector<LowWindow> &result);
+    std::vector<LowWindow> FindWindowsOfProcess(const ProcessInformation &process) {
+        Display* display = XOpenDisplay(0);
+        Atom PIDAtom = XInternAtom(display, "_NET_WM_PID", True);
+
+        if(PIDAtom == None)
+        {
+            return std::vector<LowWindow>();
+        }
+        std::vector<LowWindow> result;
+        searchWindowsOfProcess(XDefaultRootWindow(display), display,
+                               PIDAtom, process.m_process_id,
+                               result);
+        return result;
+    }
+    void searchWindowsOfProcess(const Window w, Display* display,
+                                const Atom PIDAtom, const int pid,
+                                std::vector<LowWindow> &result) {
+        // A bunch of output parameter storage, but we're only going
+        // to use the last one.
+        Atom type;
+        int format;
+        unsigned long nItems;
+        unsigned long bytesAfter;
+        // The storage for the PID of the window we're looking at.
+        unsigned char* propPID = 0;
+        if (XGetWindowProperty(display, w, PIDAtom,
+                               0 /*offset*/,
+                               1 /* length in words */,
+                               False, XA_CARDINAL,
+                               &type, &format, &nItems, &bytesAfter,
+                               &propPID) == Success) {
+            if (propPID != 0) {
+                // If the result pointer isn't null, and it points to
+                // something matching the PID we're looking for, add
+                // it to our list.
+                if (pid == *((unsigned long*)propPID))
+                    result.push_back((void*)w);
+                // Clean up some X structures
+                XFree(propPID);
+            }
+        }
+        // Now, get the tree structure so that we can recurse on children
+        Window wRoot;
+        Window wParent;
+        Window *wChildren;
+        unsigned int nChildren;
+        if (XQueryTree(display, w, &wRoot, &wParent, &wChildren, &nChildren) != 0) {
+            for(unsigned int i = 0; i < nChildren; ++i) {
+                searchWindowsOfProcess(wChildren[i], display, PIDAtom, pid, result);
+            }
+        }
     }
 #endif
 }  // namespace Toolbox::Platform

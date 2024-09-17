@@ -105,7 +105,7 @@ namespace Toolbox::Platform {
 
         return texture_id;
     }
-#elif TOOLBOX_PLATFORM_LINUX
+#elif defined(TOOLBOX_PLATFORM_LINUX)
 #endif
 
 }  // namespace Toolbox::Platform

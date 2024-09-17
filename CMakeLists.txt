@@ -109,6 +109,7 @@ include(lib/imgui.cmake)
 add_subdirectory(lib/J3DUltra)
 add_subdirectory(lib/libbti)
 add_subdirectory(lib/glfw)
+add_subdirectory(lib/nativefiledialog-extended)
 
 if(MSVC)
     # target_compile_options(j3dultra PRIVATE /w)
@@ -121,12 +122,22 @@ endif()
 find_package(Iconv REQUIRED)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-#  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ICU::uc ICU::i18n stdc++_libbacktrace)
-  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ${ICONV_LIBRARIES} stdc++_libbacktrace)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(GTK REQUIRED gtk+-3.0)
+  include_directories(${GTK_INCLUDE_DIRS})
+  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ${ICONV_LIBRARIES} tbb X11 GL ${GTK_LIBRARIES})
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 14)
+    target_link_libraries(JuniorsToolbox PRIVATE stdc++exp)
+  else()
+    target_link_libraries(JuniorsToolbox PRIVATE stdc++_libbacktrace)
+  endif()
 else()
 #  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ICU::uc ICU::i18n)
   target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw Iconv::Iconv)
 endif()
+
+
+target_link_libraries(JuniorsToolbox PRIVATE nfd)
 
 if (WIN32)
 #  link this library so we can find Nahimic service
@@ -136,7 +147,7 @@ endif()
 
 target_compile_definitions(JuniorsToolbox PRIVATE NOMINMAX IMGUI_DEFINE_MATH_OPERATORS)
 
-target_include_directories(JuniorsToolbox PRIVATE "include" "lib" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/libbti" "lib/ImGuiFileDialog" "lib/glfw")
+target_include_directories(JuniorsToolbox PRIVATE "include" "lib" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/libbti" "lib/ImGuiFileDialog" "lib/glfw" "lib/nativefiledialog-extended/src/include")
 
 
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
