@@ -178,7 +178,7 @@ namespace Toolbox::Dolphin {
         std::string dolphin_args =
             std::format("-e {}/sys/main.dol -a HLE", application.getProjectRoot().string());
 
-        std::string dolphin_path = std::string(settings.m_dolphin_path);
+        std::string dolphin_path = settings.m_dolphin_path.string();
         size_t last_not_null = dolphin_path.find_last_not_of('\000');
         std::string used_substr = dolphin_path.substr(last_not_null - 5, last_not_null);
         if (!used_substr.starts_with("-nogui"sv)){
