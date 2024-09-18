@@ -31,6 +31,8 @@ namespace Toolbox {
 
             return Result<bool, FSError>();
         });
+
+        return true;
     }
 
     fs_path ProjectManager::getProjectFolder() const { return m_project_folder; }
