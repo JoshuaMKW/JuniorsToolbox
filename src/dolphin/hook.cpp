@@ -180,8 +180,12 @@ namespace Toolbox::Dolphin {
 
         std::string dolphin_path = settings.m_dolphin_path.string();
         size_t last_not_null = dolphin_path.find_last_not_of('\000');
-        std::string used_substr = dolphin_path.substr(last_not_null - 5, last_not_null);
-        if (!used_substr.starts_with("-nogui"sv)){
+        bool is_nogui = false;
+        if (last_not_null != std::string::npos && last_not_null > 5) {
+          std::string used_substr = dolphin_path.substr(last_not_null - 5, last_not_null);
+          is_nogui = used_substr.starts_with("-nogui"sv);
+        }
+        if (!is_nogui){
           dolphin_args += "-d -c";
         }
 #ifdef TOOLBOX_PLATFORM_LINUX
