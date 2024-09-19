@@ -47,7 +47,7 @@ namespace Toolbox {
 
     public:
         FileSystemModel()  = default;
-        ~FileSystemModel() = default;
+        ~FileSystemModel();
 
         void initialize();
 

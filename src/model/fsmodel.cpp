@@ -110,6 +110,12 @@ namespace Toolbox {
         }
     }
 
+    FileSystemModel::~FileSystemModel() {
+        for (auto &[key, value] : m_index_map) {
+            delete value.data<_FileSystemIndexData>();
+        }
+    }
+
     void FileSystemModel::initialize() {
         m_icon_map.clear();
         m_index_map.clear();
