@@ -193,27 +193,15 @@ namespace Toolbox {
             return {};
         }
 
-        fs_path fs_icon_path =
-            GUIApplication::instance().getResourcePath("Images/Icons/Filesystem/");
-
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY:
-            if (!validateIndex(index)) {
-                return "Invalid";
-            }
             return index.data<_FileSystemIndexData>()->m_name;
         case ModelDataRole::DATA_ROLE_TOOLTIP:
             return "Tooltip unimplemented!";
         case ModelDataRole::DATA_ROLE_DECORATION: {
-            if (!validateIndex(index)) {
-                return RefPtr<ImageHandle>(nullptr);
-            }
             return index.data<_FileSystemIndexData>()->m_icon;
         }
         case FileSystemDataRole::FS_DATA_ROLE_DATE: {
-            if (!validateIndex(index)) {
-                return Filesystem::file_time_type();
-            }
 
             Filesystem::file_time_type result = Filesystem::file_time_type();
 
@@ -232,9 +220,6 @@ namespace Toolbox {
             return result;
         }
         case FileSystemDataRole::FS_DATA_ROLE_STATUS: {
-            if (!validateIndex(index)) {
-                return Filesystem::file_status();
-            }
 
             Filesystem::file_status result = Filesystem::file_status();
 
@@ -253,9 +238,6 @@ namespace Toolbox {
             return result;
         }
         case FileSystemDataRole::FS_DATA_ROLE_TYPE: {
-            if (!validateIndex(index)) {
-                return TypeMap().at("_Invalid").m_name;
-            }
 
             if (isDirectory(index)) {
                 return TypeMap().at("_Folder").m_name;
