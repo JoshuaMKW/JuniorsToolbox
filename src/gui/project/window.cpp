@@ -131,6 +131,9 @@ namespace Toolbox::UI {
             }
             ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
 
+            if (m_view_index == m_tree_proxy.toSourceIndex(index)){
+                flags |= ImGuiTreeNodeFlags_Selected;
+            }
             if (isViewedAncestor(index)) {
                 flags |= ImGuiTreeNodeFlags_DefaultOpen;
             }
