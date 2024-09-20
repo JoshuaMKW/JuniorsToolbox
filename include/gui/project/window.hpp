@@ -41,6 +41,7 @@ namespace Toolbox::UI {
         void renderProjectFolderButton();
         void renderProjectFileButton();
 
+        bool isViewedAncestor(const ModelIndex &index);
         void renderFolderTree(const ModelIndex &index);
         void initFolderAssets(const ModelIndex &index);
 

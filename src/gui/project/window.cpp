@@ -68,6 +68,11 @@ namespace Toolbox::UI {
                         ImVec2 pos = ImGui::GetCursorScreenPos();
                         pos.x += std::max<float>(36.0f - (text_size.x / 2.0f), 0.0);
                         pos.y += 72.0f;
+                        if (ImGui::IsMouseDoubleClicked(0) &&
+                            ImGui::IsItemHovered(ImGuiHoveredFlags_None) &&
+                            m_file_system_model->isDirectory(child_index)) {
+                            m_view_index = m_tree_proxy.toSourceIndex(child_index);
+                        }
 
                         ImGui::RenderTextEllipsis(
                             ImGui::GetWindowDrawList(), pos, pos + ImVec2(64, 20), pos.x + 64.0f,
@@ -105,14 +110,32 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::onDropEvent(RefPtr<DropEvent> ev) {}
 
+    bool ProjectViewWindow::isViewedAncestor(const ModelIndex &index) {
+        if (m_view_index == m_tree_proxy.toSourceIndex(index)) {
+            return true;
+        }
+        for (size_t i = 0; i < m_tree_proxy.getRowCount(index); ++i) {
+            ModelIndex child_index = m_tree_proxy.getIndex(i, 0, index);
+            if (isViewedAncestor(child_index)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void ProjectViewWindow::renderFolderTree(const ModelIndex &index) {
         bool is_open = false;
         if (m_tree_proxy.hasChildren(index)) {
             if (m_tree_proxy.canFetchMore(index)) {
                 m_tree_proxy.fetchMore(index);
             }
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
+
+            if (isViewedAncestor(index)) {
+                flags |= ImGuiTreeNodeFlags_DefaultOpen;
+            }
             is_open = ImGui::TreeNodeEx(m_tree_proxy.getDisplayText(index).c_str(),
-                                        ImGuiTreeNodeFlags_OpenOnArrow);
+                                        flags);
 
             if (ImGui::IsItemClicked()) {
                 m_view_index = m_tree_proxy.toSourceIndex(index);
