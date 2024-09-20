@@ -55,8 +55,12 @@ namespace Toolbox::UI {
 
                 for (size_t i = 0; i < m_file_system_model->getRowCount(m_view_index); ++i) {
                     ModelIndex child_index = m_file_system_model->getIndex(i, 0, m_view_index);
+                    bool is_selected =
+                        std::find(m_selected_indices.begin(), m_selected_indices.end(),
+                                  m_tree_proxy.toSourceIndex(child_index)) !=
+                        m_selected_indices.end();
 
-                    if (m_selected_index == m_tree_proxy.toSourceIndex(child_index)){
+                    if (is_selected) {
                         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_TabSelected)));
                     } else {
                         ImGui::PushStyleColor(ImGuiCol_ChildBg,
@@ -79,12 +83,14 @@ namespace Toolbox::UI {
                             ImGui::IsItemHovered(ImGuiHoveredFlags_None) &&
                             m_file_system_model->isDirectory(child_index)) {
                             m_view_index = m_tree_proxy.toSourceIndex(child_index);
-                        }
-                        else if (ImGui::IsItemClicked()) {
-                            m_selected_index = m_tree_proxy.toSourceIndex(child_index);
-                        } else if (ImGui::IsMouseClicked(0) &&
-                                   m_selected_index == m_tree_proxy.toSourceIndex(child_index)) {
-                            m_selected_index = ModelIndex();
+                        } else if (ImGui::IsItemClicked()) {
+                            if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+                                m_selected_indices.clear();
+                            }
+                            m_selected_indices.push_back(m_tree_proxy.toSourceIndex(child_index));
+                        } else if (ImGui::IsMouseClicked(0) && is_selected &&
+                                   !ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+                            m_selected_indices.clear();
                         }
 
                         ImGui::RenderTextEllipsis(
