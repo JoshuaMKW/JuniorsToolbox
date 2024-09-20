@@ -71,7 +71,7 @@ namespace Toolbox::UI {
 
                         ImGui::RenderTextEllipsis(
                             ImGui::GetWindowDrawList(), pos, pos + ImVec2(64, 20), pos.x + 64.0f,
-                            pos.x + 76.0f, m_file_system_model->getDisplayText(child_index).c_str(),
+                            pos.x + 76.0f, text.c_str(),
                             nullptr, nullptr);
                     }
                     ImGui::EndChild();
