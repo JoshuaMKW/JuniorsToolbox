@@ -114,6 +114,7 @@ namespace Toolbox::UI {
         std::vector<ModelIndex> m_selected_indices;
         std::vector<ProjectAsset> m_view_assets;
         ModelIndex m_view_index;
+        ModelIndex m_selected_index;
 
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;

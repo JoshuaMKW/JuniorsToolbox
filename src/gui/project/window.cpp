@@ -56,6 +56,13 @@ namespace Toolbox::UI {
                 for (size_t i = 0; i < m_file_system_model->getRowCount(m_view_index); ++i) {
                     ModelIndex child_index = m_file_system_model->getIndex(i, 0, m_view_index);
 
+                    if (m_selected_index == m_tree_proxy.toSourceIndex(child_index)){
+                        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_TabSelected)));
+                    } else {
+                        ImGui::PushStyleColor(ImGuiCol_ChildBg,
+                                              ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_ChildBg)));
+
+                    }
                     if (ImGui::BeginChild(child_index.getUUID(), {76, 92}, true,
                                           ImGuiWindowFlags_ChildWindow |
                                               ImGuiWindowFlags_NoDecoration)) {
@@ -73,6 +80,12 @@ namespace Toolbox::UI {
                             m_file_system_model->isDirectory(child_index)) {
                             m_view_index = m_tree_proxy.toSourceIndex(child_index);
                         }
+                        else if (ImGui::IsItemClicked()) {
+                            m_selected_index = m_tree_proxy.toSourceIndex(child_index);
+                        } else if (ImGui::IsMouseClicked(0) &&
+                                   m_selected_index == m_tree_proxy.toSourceIndex(child_index)) {
+                            m_selected_index = ModelIndex();
+                        }
 
                         ImGui::RenderTextEllipsis(
                             ImGui::GetWindowDrawList(), pos, pos + ImVec2(64, 20), pos.x + 64.0f,
@@ -80,6 +93,7 @@ namespace Toolbox::UI {
                             nullptr, nullptr);
                     }
                     ImGui::EndChild();
+                    ImGui::PopStyleColor(1);
 
                     // ImGui::Text("%s", m_view_proxy.getDisplayText(child_index).c_str());
 
