@@ -559,11 +559,11 @@ namespace Toolbox {
                 int num_filters               = 0;
                 nfdu8filteritem_t *nfd_filters = nullptr;
                 if (maybe_filters) {
-                    auto filters = maybe_filters.value();
+                    FileDialogFilter filters = std::move(maybe_filters.value());
                     num_filters = filters.numFilters();
                     filters.copyFiltersOutU8(m_filters);
                     nfd_filters = new nfdu8filteritem_t[num_filters];
-                    for (int i = 0; i < filters.numFilters(); ++i){
+                    for (int i = 0; i < num_filters; ++i) {
                         nfd_filters[i] = {m_filters[i].first.c_str(), m_filters[i].second.c_str()};
                     }
                 }
