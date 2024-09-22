@@ -211,10 +211,10 @@ namespace Toolbox {
                         bool is_directory = false,
                         std::optional<FileDialogFilter>
                             maybe_filters = std::nullopt);
-        bool isAlreadyOpen() { return m_thread_running; }
-        bool isDone() { return !m_thread_running && !m_closed && m_thread_initialized; }
-        bool isOk() { return m_result == NFD_OKAY; }
-        std::filesystem::path getFilenameResult() { return m_selected_path; }
+        bool isAlreadyOpen() const { return m_thread_running; }
+        bool isDone() const { return !m_thread_running && !m_closed && m_thread_initialized; }
+        bool isOk() const { return m_result == NFD_OKAY; }
+        std::filesystem::path getFilenameResult() const { return m_selected_path; }
         void close() { m_closed = true; }
 
     private:
@@ -222,8 +222,8 @@ namespace Toolbox {
         std::vector<std::pair<std::string, std::string>> m_filters;
 
         // The result of the last dialog box.
-        nfdu8char_t *m_selected_path;
-        nfdresult_t m_result;
+        nfdu8char_t *m_selected_path = nullptr;
+        nfdresult_t m_result = NFD_OKAY;
         // The thread that we run the dialog in. If
         // m_thread_initialized is true, this should be an initialized
         // thread object.
