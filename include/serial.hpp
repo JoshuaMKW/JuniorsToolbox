@@ -191,6 +191,8 @@ namespace Toolbox {
         Deserializer(std::streambuf *in) : m_in(in) {}
         Deserializer(std::streambuf *in, std::string_view file_path)
             : m_in(in), m_file_path(file_path) {}
+        Deserializer(std::fstream &&in, std::string_view file_path)
+            : m_in(in), m_file_path(file_path) {}
         Deserializer(const Deserializer &) = default;
         Deserializer(Deserializer &&)      = default;
 
