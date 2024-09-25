@@ -147,7 +147,7 @@ namespace Toolbox {
         }
 
         if (m_data_preload_cache.find(path) != m_data_preload_cache.end()) {
-            const ResourceData &data   = m_data_preload_cache[path];
+            const ResourceData &data = m_data_preload_cache[path];
 
             std::span<u8> data_span(static_cast<u8 *>(data.m_data_ptr), data.m_data_size);
             RefPtr<ImageHandle> handle = make_referable<ImageHandle>(data_span);
@@ -261,8 +261,6 @@ namespace Toolbox {
             return make_fs_error<std::span<u8>>(std::error_code(), {"Resource path not found"});
         }
 
-        fs_path resource_path;
-
         fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
         fs_path abs_path      = resource_path / path;
 
@@ -305,8 +303,6 @@ namespace Toolbox {
         if (!hasDataPath(path, resource_path_uuid)) {
             return make_fs_error<std::span<u8>>(std::error_code(), {"Resource path not found"});
         }
-
-        fs_path resource_path;
 
         fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
         fs_path abs_path      = resource_path / path;
@@ -388,8 +384,8 @@ namespace Toolbox {
 
     void ResourceManager::preloadData(const fs_path &resource_path) const {
         std::for_each(
-            std::execution::par_unseq, Filesystem::directory_iterator(resource_path),
-            Filesystem::directory_iterator(), [this](const fs_path &file) {
+            Filesystem::directory_iterator(resource_path), Filesystem::directory_iterator(),
+            [this](const fs_path &file) {
                 Filesystem::is_regular_file(file).and_then([this, &file](bool is_regular_file) {
                     if (!is_regular_file) {
                         return Result<bool, FSError>();
@@ -402,7 +398,7 @@ namespace Toolbox {
 
                         void *buffer = std::malloc(file_size);
                         if (!buffer) {
-                            return make_fs_error<bool>(
+                            return make_fs_error<uintmax_t>(
                                 std::error_code(), {"Failed to allocate memory for file buffer"});
                         }
 
@@ -412,7 +408,7 @@ namespace Toolbox {
 
                         m_data_preload_cache[file] = {file_size, buffer};
 
-                        return Result<bool, FSError>();
+                        return Result<uintmax_t, FSError>();
                     });
 
                     return Result<bool, FSError>();

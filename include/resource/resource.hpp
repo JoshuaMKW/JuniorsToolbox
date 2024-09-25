@@ -26,6 +26,12 @@ namespace Toolbox {
 
         [[nodiscard]] UUID64 getUUID() const { return m_uuid; }
 
+        ResourcePath &operator=(const ResourcePath &other) {
+            m_path = other.m_path;
+            m_uuid = other.m_uuid;
+            return *this;
+        }
+
     private:
         UUID64 m_uuid;
         fs_path m_path;
@@ -60,7 +66,8 @@ namespace Toolbox {
         [[nodiscard]] bool hasResourcePath(fs_path &&path) const;
         [[nodiscard]] bool hasResourcePath(const UUID64 &path_uuid) const;
 
-        [[nodiscard]] bool hasDataPath(const fs_path &path, const UUID64 &resource_path_uuid = 0) const;
+        [[nodiscard]] bool hasDataPath(const fs_path &path,
+                                       const UUID64 &resource_path_uuid = 0) const;
         [[nodiscard]] bool hasDataPath(fs_path &&path, const UUID64 &resource_path_uuid = 0) const;
 
         [[nodiscard]] Result<RefPtr<ImageHandle>, FSError>
@@ -83,6 +90,7 @@ namespace Toolbox {
         std::optional<fs_path> findResourcePath(const fs_path &sub_path) const;
 
         void preloadData(const fs_path &resource_path) const;
+
     private:
         UUID64 m_uuid;
         std::vector<ResourcePath> m_resource_paths;
