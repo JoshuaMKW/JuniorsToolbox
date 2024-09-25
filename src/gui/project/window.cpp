@@ -79,19 +79,6 @@ namespace Toolbox::UI {
                         ImVec2 pos = ImGui::GetCursorScreenPos();
                         pos.x += std::max<float>(36.0f - (text_size.x / 2.0f), 0.0);
                         pos.y += 72.0f;
-                        if (ImGui::IsMouseDoubleClicked(0) &&
-                            ImGui::IsItemHovered(ImGuiHoveredFlags_None) &&
-                            m_file_system_model->isDirectory(child_index)) {
-                            m_view_index = m_tree_proxy.toSourceIndex(child_index);
-                        } else if (ImGui::IsItemClicked()) {
-                            if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
-                                m_selected_indices.clear();
-                            }
-                            m_selected_indices.push_back(m_tree_proxy.toSourceIndex(child_index));
-                        } else if (ImGui::IsMouseClicked(0) && is_selected &&
-                                   !ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
-                            m_selected_indices.clear();
-                        }
 
                         ImGui::RenderTextEllipsis(
                             ImGui::GetWindowDrawList(), pos, pos + ImVec2(64, 20), pos.x + 64.0f,
@@ -100,6 +87,19 @@ namespace Toolbox::UI {
                     }
                     ImGui::EndChild();
                     ImGui::PopStyleColor(1);
+                    if (ImGui::IsMouseDoubleClicked(0) &&
+                        ImGui::IsItemHovered(ImGuiHoveredFlags_None) &&
+                        m_file_system_model->isDirectory(child_index)) {
+                        m_view_index = m_tree_proxy.toSourceIndex(child_index);
+                    } else if (ImGui::IsItemClicked()) {
+                        if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+                            m_selected_indices.clear();
+                        }
+                        m_selected_indices.push_back(m_tree_proxy.toSourceIndex(child_index));
+                    } else if (ImGui::IsMouseClicked(0) && is_selected &&
+                               !ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+                        m_selected_indices.clear();
+                    }
 
                     // ImGui::Text("%s", m_view_proxy.getDisplayText(child_index).c_str());
 
