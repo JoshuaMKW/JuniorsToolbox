@@ -1,6 +1,7 @@
 #include <fstream>
 
 #include "fsystem.hpp"
+#include "gui/application.hpp"
 #include "gui/themes.hpp"
 
 namespace Toolbox::UI {
@@ -39,13 +40,27 @@ namespace Toolbox::UI {
         out.write(reinterpret_cast<const char *>(&m_style), sizeof(m_style));
     }
 
-    ThemeManager &ThemeManager::instance() {
-        static ThemeManager instance_;
-        return instance_;
-    }
-
     Result<void, FSError> ThemeManager::initialize() {
-        return Toolbox::Filesystem::current_path().and_then([this](std::filesystem::path &&cwd) {
+        const ResourceManager &manager = GUIApplication::instance().getResourceManager();
+        UUID64 themes_uuid             = ResourceManager::getResourcePathUUID("Themes");
+        if (!manager.hasResourcePath(themes_uuid)) {
+            return make_fs_error<void>(std::error_code(), {"Themes not found"});
+        }
+
+        for (auto &subpath : Toolbox::Filesystem::directory_iterator{"Themes"}) {
+            try {
+                auto theme = make_referable<ConfigTheme>(subpath.path().stem().string());
+                if (theme->name() == "Default") {
+                    theme->apply();
+                    m_active_theme = m_themes.size();
+                }
+                m_themes.emplace_back(theme);
+            } catch (std::runtime_error &e) {
+                return make_fs_error<void>(std::error_code(), {e.what()});
+            }
+        }
+
+        /*return Toolbox::Filesystem::current_path().and_then([this](std::filesystem::path &&cwd) {
             for (auto &subpath : Toolbox::Filesystem::directory_iterator{cwd / "Themes"}) {
                 try {
                     auto theme = make_referable<ConfigTheme>(subpath.path().stem().string());
@@ -59,7 +74,7 @@ namespace Toolbox::UI {
                 }
             }
             return Result<void, FSError>();
-        });
+        });*/
     }
 
 }  // namespace Toolbox::UI

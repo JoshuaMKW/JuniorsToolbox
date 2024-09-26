@@ -2,10 +2,12 @@
 #include "core/keybind/keybind.hpp"
 #include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
+#include "gui/logging/errors.hpp"
 #include "gui/settings.hpp"
 #include "gui/themes.hpp"
+#include "gui/application.hpp"
+
 #include <ImGuiFileDialog.h>
-#include <gui/logging/errors.hpp>
 
 namespace Toolbox::UI {
 
@@ -88,7 +90,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderProfileBar(TimeStep delta_time) {
-        SettingsManager &manager = SettingsManager::instance();
+        SettingsManager &manager = GUIApplication::instance().getSettingsManager();
 
         ImGui::Text("Current Profile");
 
@@ -190,13 +192,13 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsGeneral(TimeStep delta_time) {
-        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
         ImGui::Checkbox("Include BetterSMS Objects", &settings.m_is_better_obj_allowed);
         ImGui::Checkbox("Enable File Backup on Save", &settings.m_is_file_backup_allowed);
     }
 
     void SettingsWindow::renderSettingsControl(TimeStep delta_time) {
-        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
 
         static KeyBind s_gizmo_translate_keybind = {};
         static KeyBind s_gizmo_rotate_keybind    = {};
@@ -255,7 +257,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsUI(TimeStep delta_time) {
-        auto &manager = ThemeManager::instance();
+        ThemeManager &manager = GUIApplication::instance().getThemeManager();
 
         auto themes = manager.themes();
 
@@ -274,7 +276,7 @@ namespace Toolbox::UI {
             }
             ImGui::EndCombo();
         }
-        auto &font_manager = FontManager::instance();
+        FontManager &font_manager = GUIApplication::instance().getFontManager();
 
         float current_font_size         = font_manager.getCurrentFontSize();
         std::string current_font_family = font_manager.getCurrentFontFamily();
@@ -301,7 +303,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsPreview(TimeStep delta_time) {
-        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
 
         ImGui::Checkbox("Use Simple Rendering", &settings.m_is_rendering_simple);
         ImGui::Checkbox("Show Origin Point", &settings.m_is_show_origin_point);
@@ -327,7 +329,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsAdvanced(TimeStep delta_time) {
-        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
 
         if (ImGui::BeginGroupPanel("Dolphin Integration", nullptr, {})) {
             s64 min = 1;

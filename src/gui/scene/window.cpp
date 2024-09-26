@@ -1210,7 +1210,8 @@ void SceneWindow::renderRailEditor() {
 }
 
 void SceneWindow::renderScene(TimeStep delta_time) {
-    const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+    const AppSettings &settings =
+        GUIApplication::instance().getSettingsManager().getCurrentProfile();
 
     std::vector<J3DLight> lights;
 
@@ -2136,6 +2137,9 @@ void SceneWindow::buildContextMenuMultiRailNode() {
 }
 
 void SceneWindow::buildCreateObjDialog() {
+    AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
+
+    m_create_obj_dialog.setExtendedMode(settings.m_is_better_obj_allowed);
     m_create_obj_dialog.setup();
     m_create_obj_dialog.setActionOnAccept(
         [this](size_t sibling_index, std::string_view name, const Object::Template &template_,

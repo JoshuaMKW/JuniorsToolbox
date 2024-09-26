@@ -375,11 +375,18 @@ namespace Toolbox {
     }
 
     UUID64 ResourceManager::getResourcePathUUID(const fs_path &path) {
+        if (!path.is_absolute()) {
+            fs_path abs_path = Filesystem::weakly_canonical(path).value_or(path);
+            return UUID64(std::hash<fs_path>{}(abs_path));
+        }
         return UUID64(std::hash<fs_path>{}(path));
     }
 
     UUID64 ResourceManager::getResourcePathUUID(fs_path &&path) {
-        return UUID64(std::hash<fs_path>{}(std::move(path)));
+        if (!path.is_absolute()) {
+            path = Filesystem::weakly_canonical(path).value_or(path);
+        }
+        return UUID64(std::hash<fs_path>{}(path));
     }
 
     void ResourceManager::preloadData(const fs_path &resource_path) const {

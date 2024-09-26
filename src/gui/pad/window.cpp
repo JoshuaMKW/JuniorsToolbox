@@ -30,7 +30,7 @@
 #include "gui/scene/renderer.hpp"
 #include "gui/window.hpp"
 
-#include "gui/imgui_ext.hpp"
+#include "gui/logging/errors.hpp"
 #include "gui/stb_image.h"
 
 #include <ImGuiFileDialog.h>
@@ -481,8 +481,11 @@ namespace Toolbox::UI {
             ImVec2 image_pos = ImGui::GetContentRegionAvail() / 2.0f;
             image_pos.x -= 100.0f;
             image_pos.y -= 100.0f;
-            m_image_painter.render(m_dolphin_logo, ImGui::GetWindowPos() + image_pos,
-                                   {200.0f, 200.0f});
+
+            if (m_dolphin_logo) {
+                m_image_painter.render(*m_dolphin_logo, ImGui::GetWindowPos() + image_pos,
+                                       {200.0f, 200.0f});
+            }
             return;
         }
 
@@ -960,7 +963,7 @@ namespace Toolbox::UI {
                         return Result<bool, FSError>(true);
                     })
                     .or_else([](const FSError &error) {
-                        LogError(error);
+                        UI::LogError(error);
                         return Result<bool, FSError>(false);
                     });
 
@@ -1449,7 +1452,8 @@ namespace Toolbox::UI {
             ReplayLinkNode &link_node = link_nodes[from_link - 'A'];
             for (size_t i = 0; i < 3; ++i) {
                 if (link_node.m_infos[i].m_next_link == to_link) {
-                    TOOLBOX_ERROR_V("[PAD RECORD] Link {} -> {} already exists.", from_link, to_link);
+                    TOOLBOX_ERROR_V("[PAD RECORD] Link {} -> {} already exists.", from_link,
+                                    to_link);
                     return;
                 }
 
@@ -1488,7 +1492,7 @@ namespace Toolbox::UI {
 #else
         if (to_link >= 'A' + link_nodes.size()) {
             TOOLBOX_ERROR_V("[PAD RECORD] Link {} -> {} references a future node.", from_link,
-                          to_link);
+                            to_link);
         }
 #endif
     }
@@ -1561,11 +1565,18 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::onAttach() {
+        ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
+        UUID64 images_dir            = res_manager.getResourcePathUUID("Images");
+
         m_pad_recorder.onCreateLink(
             [this](const ReplayLinkNode &node) { tryReuseOrCreateRailNode(node); });
         m_pad_recorder.tStart(false, nullptr);
 
-        m_dolphin_logo = GUIApplication::instance().getResourcePath("Images/dolphin_logo.png");
+        auto result = res_manager.getImageHandle("dolphin_logo.png", images_dir);
+        if (result) {
+            m_dolphin_logo = result.value();
+        }
+
         m_image_painter.setTintColor({0.0f, 0.0f, 0.0f, 0.5f});
 
         setIcon("controller_64.png");

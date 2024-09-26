@@ -1,10 +1,6 @@
 #include "gui/font.hpp"
 
 namespace Toolbox::UI {
-    FontManager &FontManager::instance() {
-        static FontManager _inst;
-        return _inst;
-    }
 
     bool FontManager::initialize() {
         auto cwd_result = Toolbox::Filesystem::current_path();
@@ -53,7 +49,7 @@ namespace Toolbox::UI {
 
     void FontManager::finalize() { ImGui::GetIO().Fonts->Build(); }
 
-    ImFont *FontManager::getFont(std::string_view name, float size) {
+    ImFont *FontManager::getFont(std::string_view name, float size) const {
         for (auto font = m_loaded_fonts.find(std::string(name)); font != m_loaded_fonts.end();
              font++) {
             if (font->second->FontSize == size) {
@@ -97,21 +93,18 @@ namespace Toolbox::UI {
     }
 
     void FontManager::setCurrentFont(std::string_view name, float size) {
-        AppSettings &settings      = SettingsManager::instance().getCurrentProfile();
-        settings.m_font_family     = name;
-        settings.m_font_size       = size;
+        m_current_font_family     = name;
+        m_current_font_size       = size;
         ImGui::GetIO().FontDefault = getCurrentFont();
     }
 
     void FontManager::setCurrentFontFamily(std::string_view name) {
-        AppSettings &settings      = SettingsManager::instance().getCurrentProfile();
-        settings.m_font_family     = name;
+        m_current_font_family     = name;
         ImGui::GetIO().FontDefault = getCurrentFont();
     }
 
     void FontManager::setCurrentFontSize(float size) {
-        AppSettings &settings      = SettingsManager::instance().getCurrentProfile();
-        settings.m_font_size       = size;
+        m_current_font_size       = size;
         ImGui::GetIO().FontDefault = getCurrentFont();
     }
 }  // namespace Toolbox::UI

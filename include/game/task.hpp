@@ -13,7 +13,9 @@
 #include "dolphin/process.hpp"
 #include "gui/scene/camera.hpp"
 #include "objlib/object.hpp"
+
 using namespace Toolbox::Dolphin;
+using namespace Toolbox::Object;
 
 using namespace Toolbox;
 

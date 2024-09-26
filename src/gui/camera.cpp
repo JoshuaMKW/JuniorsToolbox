@@ -45,12 +45,12 @@ namespace Toolbox {
         this->vPos = inPos;
     };
 
-// The projection matrix
-void Camera::privUpdateProjectionMatrix(void) {
-    if (aspectRatio <= 0)
-        return;
-    this->projMatrix = glm::perspective(fovy, aspectRatio, nearDist, farDist);
-};
+    // The projection matrix
+    void Camera::privUpdateProjectionMatrix(void) {
+        if (aspectRatio <= 0)
+            return;
+        this->projMatrix = glm::perspective(fovy, aspectRatio, nearDist, farDist);
+    };
 
     void Camera::privUpdateViewMatrix(void) {
         this->viewMatrix = glm::lookAt(vPos, vPos + vDir, vUp);
@@ -79,6 +79,14 @@ void Camera::privUpdateProjectionMatrix(void) {
 
     void Camera::getRight(glm::vec3 &outRight) const { outRight = this->vRight; }
 
+    float Camera::getNearDist() const { return this->nearDist; }
+
+    float Camera::getFarDist() const { return this->farDist; }
+
+    float Camera::getFOV() const { return this->fovy; }
+
+    float Camera::getAspectRatio() const { return this->aspectRatio; }
+
     void Camera::translateLeftRight(float delta) { vPos += vRight * delta; }
 
     void Camera::translateFwdBack(float delta) { vPos += vDir * delta; }
@@ -97,6 +105,12 @@ void Camera::privUpdateProjectionMatrix(void) {
         setOrientAndPosition(vUp, vPos - vDir, vPos);
     }
 
-    void Camera::setAspect(float aspect) { this->aspectRatio = aspect; }
+    void Camera::setNearDist(float nearDist) { this->nearDist = nearDist; }
+
+    void Camera::setFarDist(float farDist) { this->farDist = farDist; }
+
+    void Camera::setAspectRatio(float aspect) { this->aspectRatio = aspect; }
+
+    void Camera::setFOV(float fov) { this->fovy = fov; }
 
 }  // namespace Toolbox

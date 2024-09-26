@@ -15,17 +15,15 @@ namespace Toolbox::UI {
 
     class ITheme {
     public:
-        virtual ~ITheme() = default;
-
         virtual std::string_view name() const = 0;
         virtual bool apply()                  = 0;
     };
 
-    class ConfigTheme : public ITheme {
+    class ConfigTheme final : public ITheme {
     public:
         ConfigTheme(std::string_view name);
         ConfigTheme(std::string_view name, const ImGuiStyle &theme);
-        ~ConfigTheme() override = default;
+        ~ConfigTheme() = default;
 
         std::string_view name() const override { return m_name; }
         bool apply() override;
@@ -44,8 +42,6 @@ namespace Toolbox::UI {
     public:
         ThemeManager() = default;
         ~ThemeManager() = default;
-
-        static ThemeManager &instance();
 
         void addTheme(RefPtr<ITheme> theme) { m_themes.push_back(theme); }
         std::vector<RefPtr<ITheme>> themes() const { return m_themes; }

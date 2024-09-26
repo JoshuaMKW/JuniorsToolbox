@@ -62,8 +62,6 @@ namespace Toolbox {
 
         SettingsManager() = default;
 
-        static SettingsManager &instance();
-
         bool initialize();
         bool save();
 

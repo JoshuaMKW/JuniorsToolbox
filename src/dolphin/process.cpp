@@ -12,8 +12,6 @@
 
 #include "dolphin/process.hpp"
 
-#include "gui/settings.hpp"
-
 using namespace Toolbox;
 using namespace Toolbox::UI;
 
@@ -21,8 +19,6 @@ namespace Toolbox::Dolphin {
 
     void DolphinCommunicator::tRun(void *param) {
         while (!tIsSignalKill()) {
-            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-
             if (!m_hook_flag.load()) {
 #if 0
                     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -36,7 +32,7 @@ namespace Toolbox::Dolphin {
                 m_hook_flag.store(false);
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
+            std::this_thread::sleep_for(std::chrono::milliseconds(m_refresh_rate));
         }
     }
 
