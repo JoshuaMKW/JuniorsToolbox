@@ -257,26 +257,30 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsUI(TimeStep delta_time) {
-        ThemeManager &manager = GUIApplication::instance().getThemeManager();
+        FontManager &font_manager         = GUIApplication::instance().getFontManager();
+        ThemeManager &themes_manager = GUIApplication::instance().getThemeManager();
+        SettingsManager &settings_manager = GUIApplication::instance().getSettingsManager();
+        AppSettings &settings             = settings_manager.getCurrentProfile();
 
-        auto themes = manager.themes();
+        auto themes = themes_manager.themes();
 
-        size_t selected_index         = manager.getActiveThemeIndex();
-        RefPtr<ITheme> selected_theme = themes.at(manager.getActiveThemeIndex());
+        size_t selected_index         = themes_manager.getActiveThemeIndex();
+        std::string_view selected_theme_name = themes.size() > 0 ? themes[selected_index]->name()
+                                                                 : ""; 
 
-        if (ImGui::BeginCombo("Theme", selected_theme->name().data())) {
+        if (ImGui::BeginCombo("Theme", selected_theme_name.data())) {
             for (size_t i = 0; i < themes.size(); ++i) {
                 auto theme    = themes.at(i);
                 bool selected = i == selected_index;
                 if (ImGui::Selectable(theme->name().data(), selected,
                                       ImGuiSelectableFlags_AllowDoubleClick)) {
                     selected_index = i;
-                    manager.applyTheme(theme->name());
+                    themes_manager.applyTheme(theme->name());
+                    settings.m_gui_theme = theme->name();
                 }
             }
             ImGui::EndCombo();
         }
-        FontManager &font_manager = GUIApplication::instance().getFontManager();
 
         float current_font_size         = font_manager.getCurrentFontSize();
         std::string current_font_family = font_manager.getCurrentFontFamily();
@@ -286,6 +290,7 @@ namespace Toolbox::UI {
                 bool selected = family == current_font_family;
                 if (ImGui::Selectable(std::format("{}", family).c_str(), selected)) {
                     font_manager.setCurrentFontFamily(family);
+                    settings.m_font_family = family;
                 }
             }
             ImGui::EndCombo();
@@ -296,6 +301,7 @@ namespace Toolbox::UI {
                 bool selected = size == current_font_size;
                 if (ImGui::Selectable(std::format("{}", size).c_str(), selected)) {
                     font_manager.setCurrentFontSize(size);
+                    settings.m_font_size = size;
                 }
             }
             ImGui::EndCombo();

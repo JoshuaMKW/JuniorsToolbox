@@ -31,7 +31,7 @@ namespace Toolbox {
         // where bold italic etc are all in the same
         // family for markdown etc (NotoSansJP)
         float m_font_size         = 16;
-        std::string m_font_family = "NotoSansJP-Bold";
+        std::string m_font_family = "NotoSansJP-Regular";
         std::string m_gui_theme   = "Default";
 
         // Preview

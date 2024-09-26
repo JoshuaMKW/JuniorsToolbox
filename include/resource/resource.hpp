@@ -55,6 +55,9 @@ namespace Toolbox {
         static UUID64 getResourcePathUUID(const fs_path &path);
         static UUID64 getResourcePathUUID(fs_path &&path);
 
+        const std::vector<ResourcePath> &getResourcePaths() const & { return m_resource_paths; }
+        std::optional<fs_path> getResourcePath(const UUID64 &path_uuid) const;
+
         void includeResourcePath(const fs_path &path, bool preload_files);
         void includeResourcePath(fs_path &&path, bool preload_files);
 
@@ -75,18 +78,25 @@ namespace Toolbox {
         [[nodiscard]] Result<RefPtr<ImageHandle>, FSError>
         getImageHandle(fs_path &&path, const UUID64 &resource_path_uuid = 0) const;
 
-        [[nodiscard]] Result<std::ifstream, FSError>
-        getSerialData(const fs_path &path, const UUID64 &resource_path_uuid = 0) const;
-        [[nodiscard]] Result<std::ifstream, FSError>
-        getSerialData(fs_path &&path, const UUID64 &resource_path_uuid = 0) const;
+        [[nodiscard]] Result<void, FSError>
+        getSerialData(std::ifstream &in, const fs_path &path,
+                      const UUID64 &resource_path_uuid = 0) const;
+        [[nodiscard]] Result<void, FSError>
+        getSerialData(std::ifstream &in, fs_path &&path,
+                      const UUID64 &resource_path_uuid = 0) const;
 
         [[nodiscard]] Result<std::span<u8>, FSError>
         getRawData(const fs_path &path, const UUID64 &resource_path_uuid = 0) const;
         [[nodiscard]] Result<std::span<u8>, FSError>
         getRawData(fs_path &&path, const UUID64 &resource_path_uuid = 0) const;
 
+        using PathIterator          = Filesystem::directory_iterator;
+        using RecursivePathIterator = Filesystem::recursive_directory_iterator;
+
+        PathIterator walkIterator(UUID64 resource_path_uuid) const;
+        RecursivePathIterator walkIteratorRecursive(UUID64 resource_path_uuid) const;
+
     protected:
-        std::optional<fs_path> getResourcePath(const UUID64 &path_uuid) const;
         std::optional<fs_path> findResourcePath(const fs_path &sub_path) const;
 
         void preloadData(const fs_path &resource_path) const;

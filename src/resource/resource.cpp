@@ -146,6 +146,11 @@ namespace Toolbox {
             return Result<RefPtr<ImageHandle>, FSError>(m_image_handle_cache[path]);
         }
 
+        if (!hasDataPath(path, resource_path_uuid)) {
+            return make_fs_error<RefPtr<ImageHandle>>(std::error_code(),
+                                                      {"Resource path not found"});
+        }
+
         if (m_data_preload_cache.find(path) != m_data_preload_cache.end()) {
             const ResourceData &data = m_data_preload_cache[path];
 
@@ -159,11 +164,6 @@ namespace Toolbox {
 
             m_image_handle_cache[path] = handle;
             return handle;
-        }
-
-        if (!hasDataPath(path, resource_path_uuid)) {
-            return make_fs_error<RefPtr<ImageHandle>>(std::error_code(),
-                                                      {"Resource path not found"});
         }
 
         fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
@@ -184,6 +184,11 @@ namespace Toolbox {
             return Result<RefPtr<ImageHandle>, FSError>(m_image_handle_cache[path]);
         }
 
+        if (!hasDataPath(path, resource_path_uuid)) {
+            return make_fs_error<RefPtr<ImageHandle>>(std::error_code(),
+                                                      {"Resource path not found"});
+        }
+
         if (m_data_preload_cache.find(path) != m_data_preload_cache.end()) {
             const ResourceData &data = m_data_preload_cache[path];
 
@@ -199,11 +204,6 @@ namespace Toolbox {
             return handle;
         }
 
-        if (!hasDataPath(path, resource_path_uuid)) {
-            return make_fs_error<RefPtr<ImageHandle>>(std::error_code(),
-                                                      {"Resource path not found"});
-        }
-
         fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
         fs_path abs_path      = resource_path / path;
 
@@ -216,49 +216,49 @@ namespace Toolbox {
         return handle;
     }
 
-    Result<std::ifstream, FSError>
-    ResourceManager::getSerialData(const fs_path &path, const UUID64 &resource_path_uuid) const {
+    Result<void, FSError> ResourceManager::getSerialData(std::ifstream &in, const fs_path &path,
+                                                         const UUID64 &resource_path_uuid) const {
         if (!hasDataPath(path, resource_path_uuid)) {
-            return make_fs_error<std::ifstream>(std::error_code(), {"Resource path not found"});
+            return make_fs_error<void>(std::error_code(), {"Resource path not found"});
         }
 
         fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
         fs_path abs_path      = resource_path / path;
 
-        std::ifstream in(abs_path, std::ios::in | std::ios::binary);
+        in.open(abs_path);
         if (!in.is_open()) {
-            return make_fs_error<std::ifstream>(std::error_code(), {"Failed to open file"});
+            return make_fs_error<void>(std::error_code(), {"Failed to open file"});
         }
 
-        return in;
+        return {};
     }
 
-    Result<std::ifstream, FSError>
-    ResourceManager::getSerialData(fs_path &&path, const UUID64 &resource_path_uuid) const {
+    Result<void, FSError> ResourceManager::getSerialData(std::ifstream &in, fs_path &&path,
+                                                         const UUID64 &resource_path_uuid) const {
         if (!hasDataPath(path, resource_path_uuid)) {
-            return make_fs_error<std::ifstream>(std::error_code(), {"Resource path not found"});
+            return make_fs_error<void>(std::error_code(), {"Resource path not found"});
         }
 
         fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
         fs_path abs_path      = resource_path / path;
 
-        std::ifstream in(abs_path, std::ios::in | std::ios::binary);
+        in.open(abs_path);
         if (!in.is_open()) {
-            return make_fs_error<std::ifstream>(std::error_code(), {"Failed to open file"});
+            return make_fs_error<void>(std::error_code(), {"Failed to open file"});
         }
 
-        return in;
+        return {};
     }
 
     Result<std::span<u8>, FSError>
     ResourceManager::getRawData(const fs_path &path, const UUID64 &resource_path_uuid) const {
+        if (!hasDataPath(path, resource_path_uuid)) {
+            return make_fs_error<std::span<u8>>(std::error_code(), {"Resource path not found"});
+        }
+
         if (m_data_preload_cache.find(path) != m_data_preload_cache.end()) {
             const ResourceData &data = m_data_preload_cache[path];
             return std::span<u8>(static_cast<u8 *>(data.m_data_ptr), data.m_data_size);
-        }
-
-        if (!hasDataPath(path, resource_path_uuid)) {
-            return make_fs_error<std::span<u8>>(std::error_code(), {"Resource path not found"});
         }
 
         fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
@@ -295,13 +295,13 @@ namespace Toolbox {
 
     Result<std::span<u8>, FSError>
     ResourceManager::getRawData(fs_path &&path, const UUID64 &resource_path_uuid) const {
+        if (!hasDataPath(path, resource_path_uuid)) {
+            return make_fs_error<std::span<u8>>(std::error_code(), {"Resource path not found"});
+        }
+
         if (m_data_preload_cache.find(path) != m_data_preload_cache.end()) {
             const ResourceData &data = m_data_preload_cache[path];
             return std::span<u8>(static_cast<u8 *>(data.m_data_ptr), data.m_data_size);
-        }
-
-        if (!hasDataPath(path, resource_path_uuid)) {
-            return make_fs_error<std::span<u8>>(std::error_code(), {"Resource path not found"});
         }
 
         fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
@@ -334,6 +334,17 @@ namespace Toolbox {
 
         m_data_preload_cache[abs_path] = {file_size, buffer};
         return std::span<u8>(static_cast<u8 *>(buffer), file_size);
+    }
+
+    ResourceManager::PathIterator ResourceManager::walkIterator(UUID64 resource_path_uuid) const {
+        fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
+        return PathIterator(resource_path);
+    }
+
+    ResourceManager::RecursivePathIterator
+    ResourceManager::walkIteratorRecursive(UUID64 resource_path_uuid) const {
+        fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
+        return RecursivePathIterator(resource_path);
     }
 
     std::optional<fs_path> ResourceManager::getResourcePath(const UUID64 &path_uuid) const {
@@ -375,14 +386,17 @@ namespace Toolbox {
     }
 
     UUID64 ResourceManager::getResourcePathUUID(const fs_path &path) {
+        fs_path norm_path = path;
+        norm_path.make_preferred();
         if (!path.is_absolute()) {
-            fs_path abs_path = Filesystem::weakly_canonical(path).value_or(path);
-            return UUID64(std::hash<fs_path>{}(abs_path));
+            norm_path = Filesystem::weakly_canonical(norm_path).value_or(norm_path);
+            return UUID64(std::hash<fs_path>{}(norm_path));
         }
-        return UUID64(std::hash<fs_path>{}(path));
+        return UUID64(std::hash<fs_path>{}(norm_path));
     }
 
     UUID64 ResourceManager::getResourcePathUUID(fs_path &&path) {
+        path.make_preferred();
         if (!path.is_absolute()) {
             path = Filesystem::weakly_canonical(path).value_or(path);
         }

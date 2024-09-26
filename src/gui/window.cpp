@@ -29,7 +29,7 @@ namespace Toolbox::UI {
 
     void ImWindow::setIcon(const std::string &icon_name) {
         ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
-        UUID64 icon_dir              = res_manager.getResourcePathUUID(fs_path("Images") / "Icons");
+        UUID64 icon_dir              = res_manager.getResourcePathUUID("Images/Icons");
 
         auto result = res_manager.getRawData(icon_name, icon_dir);
         if (!result) {
