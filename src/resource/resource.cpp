@@ -4,7 +4,16 @@
 
 namespace Toolbox {
 
-    ResourceManager::~ResourceManager() {}
+    ResourceManager::~ResourceManager() {
+        m_resource_paths.clear();
+        m_image_handle_cache.clear();
+
+        for (auto& [_, data] : m_data_preload_cache) {
+            std::free(data.m_data_ptr);
+        }
+
+        m_data_preload_cache.clear();
+    }
 
     void ResourceManager::includeResourcePath(const fs_path &path, bool preload_files) {
         if (hasResourcePath(path)) {
