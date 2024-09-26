@@ -178,6 +178,7 @@ namespace Toolbox::Dolphin {
         if (!used_substr.starts_with("-nogui"sv)) {
             dolphin_args += "-d -c";
         }
+      
 #ifdef TOOLBOX_PLATFORM_LINUX
         // Force dolphin to run on X11 instead of Wayland if running on Linux
         putenv("QT_QPA_PLATFORM=xcb");
