@@ -117,24 +117,18 @@ namespace Toolbox::UI {
                                 }
                                 m_is_renaming = false;
                             } else if (ImGui::IsMouseClicked(0)) {
-                                TOOLBOX_INFO("Got a click on item");
                                 if (is_selected){
-                                    TOOLBOX_INFO("Item was already selected");
                                     if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
                                         m_selected_indices.erase(std::find(
                                             m_selected_indices.begin(), m_selected_indices.end(),
                                             child_index));
                                         m_is_renaming = false;
                                     } else {
-                                        TOOLBOX_INFO("Control key is not down");
                                         m_is_renaming = true;
                                         std::strncpy(m_rename_buffer, text.c_str(),
                                                      IM_ARRAYSIZE(m_rename_buffer));
                                     }
                                 } else {
-                                    TOOLBOX_INFO("Item wasn't already selected, selecting now.");
-                                    TOOLBOX_INFO_V("There are {} selected indices",
-                                                   m_selected_indices.size());
                                     if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
                                         m_selected_indices.clear();
                                     }
