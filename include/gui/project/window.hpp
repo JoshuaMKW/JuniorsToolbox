@@ -119,6 +119,8 @@ namespace Toolbox::UI {
 
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;
+
+        std::unordered_map<UUID64, ImVec2> m_text_sizes;
     };
 
 }  // namespace Toolbox::UI

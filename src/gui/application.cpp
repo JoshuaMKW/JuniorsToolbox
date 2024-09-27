@@ -88,7 +88,8 @@ namespace Toolbox {
             m_resource_manager.includeResourcePath(cwd / "Fonts", true);
             m_resource_manager.includeResourcePath(cwd / "Images", true);
             m_resource_manager.includeResourcePath(cwd / "Images", true);
-            m_resource_manager.includeResourcePath(cwd / fs_path("Images") / "Icons", true);
+            m_resource_manager.includeResourcePath(cwd / "Images/Icons", true);
+            m_resource_manager.includeResourcePath(cwd / "Images/Icons/Filesystem", true);
             m_resource_manager.includeResourcePath(cwd / "Templates", false);
             m_resource_manager.includeResourcePath(cwd / "Themes", true);
         }
@@ -189,7 +190,6 @@ namespace Toolbox {
         m_dolphin_communicator.tStart(false, nullptr);
 
         m_task_communicator.tStart(false, nullptr);
-
 
         createWindow<LoggingWindow>("Application Log");
 
@@ -580,7 +580,7 @@ namespace Toolbox {
                 nfdu8filteritem_t *nfd_filters = nullptr;
                 if (maybe_filters) {
                     FileDialogFilter filters = std::move(maybe_filters.value());
-                    num_filters = filters.numFilters();
+                    num_filters              = filters.numFilters();
                     filters.copyFiltersOutU8(m_filters);
                     nfd_filters = new nfdu8filteritem_t[num_filters];
                     for (int i = 0; i < num_filters; ++i) {

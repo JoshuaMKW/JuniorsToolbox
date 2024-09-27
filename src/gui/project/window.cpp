@@ -53,32 +53,37 @@ namespace Toolbox::UI {
                     x_count = 1;
                 }
 
-                for (size_t i = 0; i < m_file_system_model->getRowCount(m_view_index); ++i) {
-                    ModelIndex child_index = m_file_system_model->getIndex(i, 0, m_view_index);
+                ModelIndex view_index = m_view_proxy.toProxyIndex(m_view_index);
+
+                for (size_t i = 0; i < m_view_proxy.getRowCount(m_view_index); ++i) {
+                    ModelIndex child_index = m_view_proxy.getIndex(i, 0, view_index);
                     bool is_selected =
                         std::find(m_selected_indices.begin(), m_selected_indices.end(),
                                   m_tree_proxy.toSourceIndex(child_index)) !=
                         m_selected_indices.end();
 
                     if (is_selected) {
-                        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_TabSelected)));
+                        ImGui::PushStyleColor(ImGuiCol_ChildBg,
+                                              ImGui::ColorConvertFloat4ToU32(
+                                                  ImGui::GetStyleColorVec4(ImGuiCol_TabSelected)));
                     } else {
                         ImGui::PushStyleColor(ImGuiCol_ChildBg,
-                                              ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_ChildBg)));
-
+                                              ImGui::ColorConvertFloat4ToU32(
+                                                  ImGui::GetStyleColorVec4(ImGuiCol_ChildBg)));
                     }
-                    if (ImGui::BeginChild(child_index.getUUID(), {76, 92}, true,
-                    bool inputTextHovered = false;
 
+                    bool inputTextHovered = false;
+                    std::string text      = m_view_proxy.getDisplayText(child_index);
+                    //ImVec2 text_size      = ImGui::CalcTextSize(text.c_str());
+                    ImVec2 text_size = {50.0f, 20.0f};
+
+                    if (ImGui::BeginChild(m_view_proxy.getSourceUUID(child_index), {76, 92}, true,
                                           ImGuiWindowFlags_ChildWindow |
                                               ImGuiWindowFlags_NoDecoration)) {
 
-                        m_icon_painter.render(*m_file_system_model->getDecoration(child_index), {72, 72});
+                        m_icon_painter.render(*m_view_proxy.getDecoration(child_index), {72, 72});
 
-                        std::string text = m_file_system_model->getDisplayText(child_index);
-                        ImVec2 text_size = ImGui::CalcTextSize(text.c_str());
-
-                        ImVec2 pos = ImGui::GetCursorScreenPos();
+                        ImVec2 pos    = ImGui::GetCursorScreenPos();
                         ImVec2 newPos = pos;
                         newPos.x += std::max<float>(36.0f - (text_size.x / 2.0f), 0.0);
                         newPos.y += 72.0f;
@@ -87,17 +92,17 @@ namespace Toolbox::UI {
                             ImGui::SetKeyboardFocusHere();
                             bool done = ImGui::InputText("##", m_rename_buffer,
                                                          IM_ARRAYSIZE(m_rename_buffer),
-                                                         ImGuiInputTextFlags_AutoSelectAll
-                                                         | ImGuiInputTextFlags_EnterReturnsTrue);
+                                                         ImGuiInputTextFlags_AutoSelectAll |
+                                                             ImGuiInputTextFlags_EnterReturnsTrue);
                             if (done) {
-                                m_file_system_model->rename(child_index, m_rename_buffer);
+                                m_file_system_model->rename(m_view_proxy.toSourceIndex(child_index),
+                                                            m_rename_buffer);
                             }
                             ImGui::SetCursorScreenPos(pos);
                         } else {
                             ImGui::RenderTextEllipsis(
-                                ImGui::GetWindowDrawList(), newPos, newPos + ImVec2(64, 20), pos.x + 64.0f,
-                                newPos.x + 76.0f, text.c_str(),
-                                nullptr, nullptr);
+                                ImGui::GetWindowDrawList(), newPos, newPos + ImVec2(64, 20),
+                                pos.x + 64.0f, newPos.x + 76.0f, text.c_str(), nullptr, nullptr);
                         }
                         inputTextHovered = ImGui::IsItemHovered();
                     }
@@ -107,10 +112,10 @@ namespace Toolbox::UI {
                     // Handle click responses
                     if (ImGui::IsMouseDoubleClicked(0) &&
                         ImGui::IsWindowHovered(ImGuiHoveredFlags_None) &&
-                        m_file_system_model->isDirectory(child_index)) {
+                        m_view_proxy.isDirectory(child_index)) {
                         m_view_index = m_tree_proxy.toSourceIndex(child_index);
                     } else if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
-                        if (is_selected){
+                        if (is_selected) {
                             m_is_renaming = true;
                             std::strncpy(m_rename_buffer, text.c_str(),
                                          IM_ARRAYSIZE(m_rename_buffer));
@@ -177,14 +182,13 @@ namespace Toolbox::UI {
             }
             ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
 
-            if (m_view_index == m_tree_proxy.toSourceIndex(index)){
+            if (m_view_index == m_tree_proxy.toSourceIndex(index)) {
                 flags |= ImGuiTreeNodeFlags_Selected;
             }
             if (isViewedAncestor(index)) {
                 flags |= ImGuiTreeNodeFlags_DefaultOpen;
             }
-            is_open = ImGui::TreeNodeEx(m_tree_proxy.getDisplayText(index).c_str(),
-                                        flags);
+            is_open = ImGui::TreeNodeEx(m_tree_proxy.getDisplayText(index).c_str(), flags);
 
             if (ImGui::IsItemClicked()) {
                 m_view_index = m_tree_proxy.toSourceIndex(index);

@@ -213,6 +213,8 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;
 
+        [[nodiscard]] UUID64 getSourceUUID(const ModelIndex &index) const;
+
     protected:
         [[nodiscard]] ModelIndex toProxyIndex(int64_t row, int64_t column,
                                               const ModelIndex &parent = ModelIndex()) const;

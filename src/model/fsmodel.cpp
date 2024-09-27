@@ -124,11 +124,16 @@ namespace Toolbox {
         m_options    = FileSystemModelOptions();
         m_read_only  = false;
 
-        fs_path fs_icon_path =
-            GUIApplication::instance().getResourcePath("Images/Icons/Filesystem/");
+        const ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
+        UUID64 fs_icons_uuid = res_manager.getResourcePathUUID("Images/Icons/Filesystem");
 
         for (auto &[key, value] : TypeMap()) {
-            m_icon_map[key] = make_referable<const ImageHandle>(fs_icon_path / value.m_image_name);
+            auto result = res_manager.getImageHandle(value.m_image_name, fs_icons_uuid);
+            if (result) {
+                m_icon_map[key] = result.value();
+            } else {
+                TOOLBOX_ERROR_V("[FileSystemModel] Failed to load icon: {}", value.m_image_name);
+            }
         }
     }
 
@@ -441,7 +446,7 @@ namespace Toolbox {
         return result;
     }
 
-    ModelIndex FileSystemModel::rename(const ModelIndex &file, const std::string &new_name){
+    ModelIndex FileSystemModel::rename(const ModelIndex &file, const std::string &new_name) {
         if (!validateIndex(file)) {
             return ModelIndex();
         }
@@ -449,22 +454,21 @@ namespace Toolbox {
             TOOLBOX_ERROR("[FileSystemModel] Not a directory or file!");
             return ModelIndex();
         }
-        fs_path from = file.data<_FileSystemIndexData>()->m_path;
-        fs_path to = from.parent_path() / new_name;
-        ModelIndex parent = getParent(file);
+        fs_path from                      = file.data<_FileSystemIndexData>()->m_path;
+        fs_path to                        = from.parent_path() / new_name;
+        ModelIndex parent                 = getParent(file);
         _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
 
-        int dest_index =
-            std::find(parent_data->m_children.begin(), parent_data->m_children.end(), file.getUUID()) -
-            parent_data->m_children.begin();
+        int dest_index = std::find(parent_data->m_children.begin(), parent_data->m_children.end(),
+                                   file.getUUID()) -
+                         parent_data->m_children.begin();
 
         Filesystem::rename(from, to);
 
         delete file.data<_FileSystemIndexData>();
         m_index_map.erase(file.getUUID());
         parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
-                                                  parent_data->m_children.end(),
-                                                  file.getUUID()),
+                                                  parent_data->m_children.end(), file.getUUID()),
                                       parent_data->m_children.end());
         return makeIndex(to, dest_index, parent);
     }
@@ -691,9 +695,6 @@ namespace Toolbox {
 
         // Establish icon
         {
-            fs_path fs_icon_path =
-                GUIApplication::instance().getResourcePath("Images/Icons/Filesystem/");
-
             std::string ext = data->m_path.extension().string();
 
             if (!validateIndex(index)) {
@@ -1000,6 +1001,14 @@ namespace Toolbox {
         }
 
         return ModelIndex();
+    }
+
+    UUID64 FileSystemModelSortFilterProxy::getSourceUUID(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return 0;
+        }
+
+        return index.data<_FileSystemIndexData>()->m_self_uuid;
     }
 
     bool FileSystemModelSortFilterProxy::isFiltered(const UUID64 &uuid) const {
