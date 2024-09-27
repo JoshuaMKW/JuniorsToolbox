@@ -284,9 +284,8 @@ namespace Toolbox::UI {
     }  // namespace Render
 
     Renderer::Renderer() {
-        const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-        m_camera.setPerspective(glm::radians(settings.m_camera_fov), 16 / 9, settings.m_near_plane,
-                                settings.m_far_plane);
+        m_camera.setPerspective(glm::radians(70.0f), 16.0f / 9.0f, 10.0f,
+                                100000.0f);
         m_camera.setOrientAndPosition({0, 1, 0}, {0, 0, 1}, {0, 0, 0});
         m_camera.updateCamera();
         J3D::Rendering::SetSortFunction(Render::PacketSort);
@@ -572,7 +571,8 @@ namespace Toolbox::UI {
     }
 
     bool Renderer::inputUpdate(TimeStep delta_time) {
-        const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+        const AppSettings &settings =
+            GUIApplication::instance().getSettingsManager().getCurrentProfile();
 
         if (m_is_view_manipulating && Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {
             double delta_x, delta_y;
@@ -585,7 +585,6 @@ namespace Toolbox::UI {
         }
 
         if (m_is_window_focused) {
-            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
             bool translate_held   = settings.m_gizmo_translate_mode_keybind.isInputMatching();
             bool rotate_held      = settings.m_gizmo_rotate_mode_keybind.isInputMatching();
             bool scale_held       = settings.m_gizmo_scale_mode_keybind.isInputMatching();

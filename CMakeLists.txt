@@ -80,6 +80,8 @@ file(GLOB TOOLBOX_SRC
     "include/rail/*.hpp"
     "src/rarc/*.cpp"
     "include/rarc/*.hpp"
+    "src/resource/*.cpp"
+    "include/resource/*.hpp"
     "src/scene/*.cpp"
     "include/scene/*.hpp"
     "src/window/*.cpp"

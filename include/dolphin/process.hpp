@@ -6,25 +6,16 @@
 #include <thread>
 
 #include "core/core.hpp"
-#include "core/types.hpp"
+#include "core/error.hpp"
 #include "core/threaded.hpp"
+#include "core/types.hpp"
 
 #include "dolphin/hook.hpp"
-
-#include "gui/logging/errors.hpp"
-#include "gui/settings.hpp"
 
 using namespace Toolbox;
 using namespace Toolbox::UI;
 
 namespace Toolbox::Dolphin {
-
-    inline std::chrono::milliseconds GetSleepDuration(f32 framerate) {
-        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-        return std::min(
-            std::chrono::milliseconds(settings.m_dolphin_refresh_rate),
-            std::chrono::milliseconds(static_cast<u32>(1000 / framerate)));
-    }
 
     class DolphinCommunicator : public Threaded<void> {
     public:
@@ -33,6 +24,9 @@ namespace Toolbox::Dolphin {
         DolphinHookManager &manager() const { return DolphinHookManager::instance(); }
 
         void signalHook() { m_hook_flag.store(true); }
+
+        s64 getRefreshRate() const { return m_refresh_rate; }
+        void setRefreshRate(s64 milliseconds) { m_refresh_rate = milliseconds; }
 
         template <typename T> Result<T, BaseError> read(u32 address) {
             T data;
@@ -74,6 +68,8 @@ namespace Toolbox::Dolphin {
         std::thread m_thread;
 
         std::atomic<bool> m_hook_flag;
+
+        s64 m_refresh_rate = 100;
     };
 
 }  // namespace Toolbox::Dolphin

@@ -44,6 +44,24 @@ namespace Toolbox::UI {
             m_camera.updateCamera();
         }
 
+        f32 getCameraFOV() const { return m_camera_fov; }
+        void setCameraFOV(f32 fov) {
+            m_camera_fov = fov;
+            m_camera.setFOV(fov);
+        }
+
+        f32 getCameraNearPlane() const { return m_camera_near_plane; }
+        void setCameraNearPlane(f32 near_plane) {
+            m_camera_near_plane = near_plane;
+            m_camera.setNearDist(near_plane);
+        }
+
+        f32 getCameraFarPlane() const { return m_camera_far_plane; }
+        void setCameraFarPlane(f32 far_plane) {
+            m_camera_far_plane = far_plane;
+            m_camera.setFarDist(far_plane);
+        }
+
         void setGizmoVisible(bool visible) { m_render_gizmo = visible; }
         bool isGizmoManipulated() const { return m_gizmo_updated; }
         glm::mat4x4 getGizmoTransform() const { return m_gizmo_matrix; }
@@ -93,5 +111,9 @@ namespace Toolbox::UI {
         ImGuizmo::MODE m_gizmo_mode = ImGuizmo::MODE::WORLD;
         ImGuizmo::OPERATION m_gizmo_op;
         glm::mat4x4 m_gizmo_matrix;
+
+        f32 m_camera_fov;
+        f32 m_camera_near_plane;
+        f32 m_camera_far_plane;
     };
 }  // namespace Toolbox::UI

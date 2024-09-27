@@ -11,6 +11,7 @@
 #include "game/task.hpp"
 
 #include "gui/application.hpp"
+#include "gui/logging/errors.hpp"
 #include "gui/settings.hpp"
 
 using namespace Toolbox;
@@ -87,8 +88,6 @@ namespace Toolbox::Game {
         m_game_interpreter.setGlobalsPointerRW(0x804141C0);
 
         while (!tIsSignalKill()) {
-            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-
             DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
 
             m_game_interpreter.setMemoryBuffer(communicator.manager().getMemoryView(),
@@ -103,10 +102,10 @@ namespace Toolbox::Game {
                     m_task_queue.pop();
                 }
                 std::this_thread::sleep_for(
-                    std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
+                    std::chrono::milliseconds(communicator.getRefreshRate()));
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
+            std::this_thread::sleep_for(std::chrono::milliseconds(communicator.getRefreshRate()));
         }
     }
 
@@ -156,18 +155,16 @@ namespace Toolbox::Game {
     void TaskCommunicator::waitMutex(u32 mutex_ptr) {
         while (true) {
             DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
-            AppSettings &settings             = SettingsManager::instance().getCurrentProfile();
             u32 mutex_lock_count              = communicator.read<u32>(mutex_ptr + 0xC).value();
             if (mutex_lock_count == 0) {
                 return;
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
+            std::this_thread::sleep_for(std::chrono::milliseconds(communicator.getRefreshRate()));
         }
     }
 
     void TaskCommunicator::lockMutex(u32 thread_ptr, u32 mutex_ptr) {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
-        AppSettings &settings             = SettingsManager::instance().getCurrentProfile();
 
         while (true) {
             u32 mutex_thread_ptr = communicator.read<u32>(mutex_ptr + 0x8).value();
@@ -190,7 +187,7 @@ namespace Toolbox::Game {
                 return;
             }
             communicator.write<u32>(thread_ptr + 0x2F0, mutex_ptr);
-            std::this_thread::sleep_for(std::chrono::milliseconds(settings.m_dolphin_refresh_rate));
+            std::this_thread::sleep_for(std::chrono::milliseconds(communicator.getRefreshRate()));
             communicator.write<u32>(thread_ptr + 0x2F0, 0);
         }
     }
@@ -463,13 +460,13 @@ namespace Toolbox::Game {
 
         auto game_stage_result = communicator.read<u8>(application_addr + 0xE);
         if (!game_stage_result) {
-            LogError(game_stage_result.error());
+            UI::LogError(game_stage_result.error());
             return false;
         }
 
         auto game_scenario_result = communicator.read<u8>(application_addr + 0xF);
         if (!game_scenario_result) {
-            LogError(game_scenario_result.error());
+            UI::LogError(game_scenario_result.error());
             return false;
         }
 
@@ -516,13 +513,13 @@ namespace Toolbox::Game {
 
         auto game_stage_result = communicator.read<u8>(application_addr + 0xE);
         if (!game_stage_result) {
-            LogError(game_stage_result.error());
+            UI::LogError(game_stage_result.error());
             return false;
         }
 
         auto game_scenario_result = communicator.read<u8>(application_addr + 0xF);
         if (!game_scenario_result) {
-            LogError(game_scenario_result.error());
+            UI::LogError(game_scenario_result.error());
             return false;
         }
 
@@ -549,13 +546,13 @@ namespace Toolbox::Game {
 
                 auto game_stage_result = communicator.read<u8>(application_addr + 0xE);
                 if (!game_stage_result) {
-                    LogError(game_stage_result.error());
+                    UI::LogError(game_stage_result.error());
                     return true;
                 }
 
                 auto game_scenario_result = communicator.read<u8>(application_addr + 0xF);
                 if (!game_scenario_result) {
-                    LogError(game_scenario_result.error());
+                    UI::LogError(game_scenario_result.error());
                     return true;
                 }
 

@@ -31,13 +31,20 @@ namespace Toolbox {
         void getUp(glm::vec3 &outUp) const;
         void getLookAt(glm::vec3 &outLookAt) const;
         void getRight(glm::vec3 &outRight) const;
+        float getNearDist() const;
+        float getFarDist() const;
+        float getFOV() const;
+        float getAspectRatio() const;
 
         void translateLeftRight(float delta);
         void translateFwdBack(float delta);
         void tiltUpDown(float ang);
         void turnLeftRight(float ang);
 
-        void setAspect(float aspect);
+        void setNearDist(float nearDist);
+        void setFarDist(float farDist);
+        void setFOV(float FOV);
+        void setAspectRatio(float aspect);
 
         // Why no SETS for Pos, Dir, Up, LookAt and Right?
         //   They have to be adjusted _together_ in setOrientAndPosition()

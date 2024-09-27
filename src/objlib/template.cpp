@@ -456,10 +456,8 @@ namespace Toolbox::Object {
             return std::unexpected(cwd_result.error());
         }
 
-        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-
         bool templates_preloaded = false;
-        if (settings.m_is_template_cache_allowed) {
+        if (isCacheMode()) {
             templates_preloaded = loadFromCacheBlob().has_value();
         }
 
@@ -475,10 +473,10 @@ namespace Toolbox::Object {
             for (auto &th : threads) {
                 th.join();
             }
-        }
 
-        if (settings.m_is_template_cache_allowed && !templates_preloaded) {
-            return saveToCacheBlob();
+            if (isCacheMode()) {
+                return saveToCacheBlob();
+            }
         }
 
         return {};
@@ -598,6 +596,12 @@ namespace Toolbox::Object {
 
         return {};
     }
+
+    static bool s_cache_mode = false;
+
+    bool TemplateFactory::isCacheMode() { return s_cache_mode; }
+
+    void TemplateFactory::setCacheMode(bool mode) { s_cache_mode = mode; }
 
     TemplateFactory::create_t TemplateFactory::create(std::string_view type) {
         auto type_str = std::string(type);

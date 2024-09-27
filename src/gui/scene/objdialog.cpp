@@ -70,8 +70,7 @@ namespace Toolbox::UI {
                     bool is_selected               = i == m_template_index;
                     std::string_view template_type = m_templates.at(i)->type();
 
-                    const AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-                    if (!settings.m_is_better_obj_allowed) {
+                    if (!m_extended_mode) {
                         // Selectively remove extended objects for naive user sake
                         bool is_better_object =
                             std::any_of(s_better_sms_objects.begin(), s_better_sms_objects.end(),

@@ -36,6 +36,9 @@ namespace Toolbox::Dolphin {
         DolphinHookManager &operator=(DolphinHookManager &&)      = delete;
 
     public:
+        fs_path getDolphinPath() const { return m_dolphin_path; }
+        void setDolphinPath(const fs_path &path) { m_dolphin_path = path; }
+
         // Check if a specific UUID owns the lock
         bool hasLock(const UUID64 &uuid) const {
             return m_owner.has_value() && m_owner.value() == uuid;
@@ -84,6 +87,8 @@ namespace Toolbox::Dolphin {
                                         int xfb_height);
 
     private:
+        fs_path m_dolphin_path;
+
         Platform::ProcessInformation m_proc_info;
 
         Platform::MemHandle m_mem_handle{};

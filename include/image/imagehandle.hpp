@@ -3,6 +3,7 @@
 #include "core/memory.hpp"
 #include "fsystem.hpp"
 #include <imgui/imgui.h>
+#include <span>
 
 namespace Toolbox {
 
@@ -20,6 +21,11 @@ namespace Toolbox {
         ~ImageHandle();
 
         ImageHandle(const std::filesystem::path &res_path);
+
+        ImageHandle(std::span<u8> data);
+        ImageHandle(std::span<u8> data, int channels, int dx, int dy);
+
+        ImageHandle(const Buffer &data);
 
         // Data should be a valid RED, RGB, or RGBA image as loaded by stbi
         ImageHandle(const Buffer &data, int channels, int dx, int dy);

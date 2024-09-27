@@ -28,6 +28,7 @@ namespace Toolbox::UI {
         CreateObjDialog()  = default;
         ~CreateObjDialog() = default;
 
+        void setExtendedMode(bool extended) { m_extended_mode = extended; }
         void setInsertPolicy(InsertPolicy policy) { m_insert_policy = policy; }
         void setActionOnAccept(action_t on_accept) { m_on_accept = on_accept; }
         void setActionOnReject(cancel_t on_reject) { m_on_reject = on_reject; }
@@ -43,6 +44,8 @@ namespace Toolbox::UI {
     private:
         bool m_open    = false;
         bool m_opening = false;
+
+        bool m_extended_mode = false;
 
         int m_template_index = -1;
         int m_wizard_index   = -1;

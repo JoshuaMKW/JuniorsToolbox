@@ -1,5 +1,6 @@
 #include <cmath>
 
+#include "gui/application.hpp"
 #include "gui/font.hpp"
 #include "gui/logging/window.hpp"
 #include "gui/window.hpp"
@@ -8,6 +9,14 @@ static std::string s_message_pool;
 
 namespace Toolbox::UI {
     void LoggingWindow::appendMessageToPool(const Log::AppLogger::LogMessage &message) {
+        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
+        if (settings.m_log_to_cout_cerr) {
+            if (message.m_level == Log::ReportLevel::REPORT_ERROR)
+                std::cerr << message.m_message << std::endl;
+            else
+                std::cout << message.m_message << std::endl;
+        }
+
         switch (message.m_level) {
         case Log::ReportLevel::REPORT_LOG:
             s_message_pool += std::format("[LOG]     - {:>{}}", message.m_message,
@@ -88,7 +97,8 @@ namespace Toolbox::UI {
     }
 
     void LoggingWindow::onRenderBody(TimeStep delta_time) {
-        ImFont *mono_font = FontManager::instance().getFont("NanumGothicCoding-Bold", 12.0f);
+        ImFont *mono_font =
+            GUIApplication::instance().getFontManager().getFont("NanumGothicCoding-Bold", 12.0f);
         if (mono_font) {
             ImGui::PushFont(mono_font);
         }
@@ -97,8 +107,8 @@ namespace Toolbox::UI {
                               ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             bool is_auto_scroll_mode = ImGui::GetScrollMaxY() - ImGui::GetScrollY() < 12.0f;
 
-            auto &messages           = Log::AppLogger::instance().messages();
-            size_t begin             = (size_t)std::max<s64>(
+            auto &messages = Log::AppLogger::instance().messages();
+            size_t begin   = (size_t)std::max<s64>(
                 0, messages.size() - 5000);  // Have up to 5000 messages at once displayed
             for (size_t i = begin; i < messages.size(); ++i) {
                 auto &message = messages[i];

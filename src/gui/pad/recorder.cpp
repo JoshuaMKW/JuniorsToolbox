@@ -3,6 +3,7 @@
 
 #include "gui/application.hpp"
 #include "gui/pad/recorder.hpp"
+#include "gui/logging/errors.hpp"
 
 namespace Toolbox {
 
@@ -316,7 +317,7 @@ namespace Toolbox {
                 return Result<bool, FSError>();
             })
             .or_else([](const FSError &error) {
-                LogError(error);
+                UI::LogError(error);
                 return Result<bool, FSError>();
             });
 

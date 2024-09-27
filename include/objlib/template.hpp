@@ -134,6 +134,9 @@ namespace Toolbox::Object {
 
         static Result<void, FSError> loadFromCacheBlob();
         static Result<void, FSError> saveToCacheBlob();
+
+        static bool isCacheMode();
+        static void setCacheMode(bool mode);
     };
 
 }  // namespace Toolbox::Object
