@@ -122,24 +122,18 @@ namespace Toolbox::UI {
                                 }
                                 m_is_renaming = false;
                             } else if (ImGui::IsMouseClicked(0)) {
-                                TOOLBOX_INFO("Got a click on item");
-                                if (is_selected) {
-                                    TOOLBOX_INFO("Item was already selected");
+                                if (is_selected){
                                     if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
                                         m_selected_indices.erase(
                                             std::find(m_selected_indices.begin(),
                                                       m_selected_indices.end(), child_index));
                                         m_is_renaming = false;
                                     } else {
-                                        TOOLBOX_INFO("Control key is not down");
                                         m_is_renaming = true;
                                         std::strncpy(m_rename_buffer, text.c_str(),
                                                      IM_ARRAYSIZE(m_rename_buffer));
                                     }
                                 } else {
-                                    TOOLBOX_INFO("Item wasn't already selected, selecting now.");
-                                    TOOLBOX_INFO_V("There are {} selected indices",
-                                                   m_selected_indices.size());
                                     if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
                                         m_selected_indices.clear();
                                     }
@@ -159,12 +153,56 @@ namespace Toolbox::UI {
                     }
                 }
 
-                // Clearing the selection
-                if (!any_items_hovered && ImGui::IsMouseClicked(0)) {
-                    TOOLBOX_INFO("No items are hovered and there was a click, clearing selection");
-                    m_selected_indices.clear();
-                    m_is_renaming = false;
+                ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+                ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+                static bool dont_ask_for_deletes = false;
+                if (ImGui::BeginPopupModal("Delete?", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    std::string message = "";
+
+                    if (m_selected_indices.size() == 1) {
+                        message = TOOLBOX_FORMAT_FN(
+                            "Are you sure you want to delete {}?",
+                            m_file_system_model->getDisplayText(m_selected_indices[0]));
+                    } else if (m_selected_indices.size() > 1) {
+                        message = TOOLBOX_FORMAT_FN(
+                            "Are you sure you want to delete the {} selected files?",
+                            m_selected_indices.size());
+                    } else {
+                        TOOLBOX_ERROR("Selected 0 files to delete!");
+                    }
+                    ImGui::Text(message.c_str());
+                    ImGui::Separator();
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+                    ImGui::Checkbox("Don't ask me next time", &dont_ask_for_deletes);
+                    ImGui::PopStyleVar();
+                    if (ImGui::Button("OK", ImVec2(120, 0))) {
+                        for (auto &item_index : m_selected_indices) {
+                            m_file_system_model->remove(item_index);
+                        }
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::SetItemDefaultFocus();
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
+                    ImGui::EndPopup();
+                } else {
+                    // Clearing the selection
+                    if (!any_items_hovered && ImGui::IsMouseClicked(0)) {
+                        m_selected_indices.clear();
+                        m_is_renaming = false;
+                    }
+                    // Delete stuff
+                    if (ImGui::IsKeyPressed(ImGuiKey_Delete) && !m_selected_indices.empty()) {
+                        if (dont_ask_for_deletes) {
+                            for (auto &item_index : m_selected_indices) {
+                                m_file_system_model->remove(item_index);
+                            }
+                        } else {
+                            ImGui::OpenPopup("Delete?");
+                        }
+                    }
                 }
+
                 ImGui::PopStyleVar(4);
             }
         }
