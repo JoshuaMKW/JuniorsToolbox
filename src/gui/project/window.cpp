@@ -4,15 +4,6 @@
 #include <cmath>
 #include <imgui/imgui.h>
 
-#if defined(__linux__)
-inline int max(int x, int y){
-    return x < y ? y : x;
-}
-inline int min(int x, int y){
-    return x < y ? x : y;
-}
-#endif
-
 namespace Toolbox::UI {
 
     ProjectViewWindow::ProjectViewWindow(const std::string &name) : ImWindow(name) {}
@@ -81,7 +72,7 @@ namespace Toolbox::UI {
                     ImVec2 text_size = ImGui::CalcTextSize(text.c_str());
                     ImVec2 rename_size = ImGui::CalcTextSize(m_rename_buffer);
 
-                    int box_width = m_is_renaming && is_selected ? max(rename_size.x,76) : 76;
+                    int box_width = m_is_renaming && is_selected ? std::max(rename_size.x,76.0f) : 76;
                     if (ImGui::BeginChild(child_index.getUUID(), {box_width, 92}, true,
                                           ImGuiWindowFlags_ChildWindow |
                                           ImGuiWindowFlags_NoDecoration)) {
@@ -94,14 +85,14 @@ namespace Toolbox::UI {
                         ImVec2 newPos = pos;
                         newPos.x += std::max<float>(
                             36.0f -
-                            (((m_is_renaming && is_selected) ? max(rename_size.x, 40) : text_size.x) /
+                            (((m_is_renaming && is_selected) ? std::max(rename_size.x, 40.0f) : text_size.x) /
                                  2.0f),
                             0.0);
                         newPos.y += 72.0f;
                         if (m_is_renaming && is_selected) {
                             ImGui::SetCursorScreenPos(newPos);
                             ImGui::SetKeyboardFocusHere();
-                            ImGui::PushItemWidth(max(rename_size.x, 40));
+                            ImGui::PushItemWidth(std::max(rename_size.x, 40.0f));
                             bool done = ImGui::InputText("##rename", m_rename_buffer,
                                                          IM_ARRAYSIZE(m_rename_buffer),
                                                          ImGuiInputTextFlags_AutoSelectAll
