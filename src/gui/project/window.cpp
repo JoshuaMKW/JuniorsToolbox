@@ -78,8 +78,7 @@ namespace Toolbox::UI {
 
                     float box_width = m_is_renaming && is_selected ? std::max(rename_size.x, 76.0f)
                                                                    : 76.0f;
-                    if (ImGui::BeginChild(
-                            m_view_proxy.getSourceUUID(child_index), {box_width, 92.0f}, true,
+                    if (ImGui::BeginChild(child_index.getUUID(), {box_width, 92.0f}, true,
                             ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
 
                         m_icon_painter.render(*m_view_proxy.getDecoration(child_index), {72.0f, 72.0f});
@@ -117,10 +116,13 @@ namespace Toolbox::UI {
                         // Handle click responses
                         if (ImGui::IsWindowHovered(ImGuiHoveredFlags_None)) {
                             if (ImGui::IsMouseDoubleClicked(0)) {
-                                if (m_view_proxy.isDirectory(child_index)) {
-                                    m_view_index = m_tree_proxy.toSourceIndex(child_index);
-                                }
                                 m_is_renaming = false;
+                                if (m_view_proxy.isDirectory(child_index)) {
+                                    m_view_index = m_view_proxy.toSourceIndex(child_index);
+                                    ImGui::EndChild();
+                                    ImGui::PopStyleColor(1);
+                                    break;
+                                }
                             } else if (ImGui::IsMouseClicked(0)) {
                                 if (is_selected){
                                     if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {

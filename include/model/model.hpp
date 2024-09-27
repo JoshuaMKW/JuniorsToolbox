@@ -34,6 +34,8 @@ namespace Toolbox {
 
     class ModelIndex final : public IUnique {
     public:
+        friend class IDataModel;
+
         ModelIndex() = default;
         ModelIndex(UUID64 model_uuid) : m_model_uuid(model_uuid) {}
         ModelIndex(const ModelIndex &other)
@@ -109,6 +111,8 @@ namespace Toolbox {
     protected:
         virtual ModelIndex makeIndex(const fs_path &path, int64_t row,
                                      const ModelIndex &parent) = 0;
+
+        static void setIndexUUID(ModelIndex &index, UUID64 uuid) { index.m_uuid = uuid; }
     };
 
 }  // namespace Toolbox

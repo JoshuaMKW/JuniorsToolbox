@@ -979,6 +979,9 @@ namespace Toolbox {
 
         ModelIndex proxy_index = ModelIndex(getUUID());
         proxy_index.setData(index.data<_FileSystemIndexData>());
+        
+        IDataModel::setIndexUUID(proxy_index, index.getUUID());
+
         return proxy_index;
     }
 
