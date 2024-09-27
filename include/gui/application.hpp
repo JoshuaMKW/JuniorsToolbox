@@ -22,7 +22,11 @@
 #include "core/clipboard.hpp"
 #include "dolphin/process.hpp"
 
+#include "gui/font.hpp"
+#include "gui/settings.hpp"
+#include "resource/resource.hpp"
 #include "scene/layout.hpp"
+#include "themes.hpp"
 #include <nfd.h>
 
 using namespace Toolbox::Dolphin;
@@ -47,9 +51,6 @@ namespace Toolbox {
         virtual void onInit(int argc, const char **argv) override;
         virtual void onUpdate(TimeStep delta_time) override;
         virtual void onExit() override;
-
-        Toolbox::fs_path getResourcePath(const Toolbox::fs_path &path) const &;
-        Toolbox::fs_path getResourcePath(Toolbox::fs_path &&path) const &&;
 
         void addWindow(RefPtr<ImWindow> window) {
             addLayer(window);
@@ -118,6 +119,10 @@ namespace Toolbox {
         Game::TaskCommunicator &getTaskCommunicator() { return m_task_communicator; }
 
         std::filesystem::path getProjectRoot() const { return m_project_root; }
+        ResourceManager &getResourceManager() { return m_resource_manager; }
+        ThemeManager &getThemeManager() { return m_theme_manager; }
+        SettingsManager &getSettingsManager() { return m_settings_manager; }
+        FontManager &getFontManager() { return m_font_manager; }
 
         void registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
                                     SceneWindow::render_layer_cb cb);
@@ -160,6 +165,11 @@ namespace Toolbox {
         std::filesystem::path m_save_path    = std::filesystem::current_path();
 
         ScopePtr<Scene::SceneLayoutManager> m_scene_layout_manager;
+        ResourceManager m_resource_manager;
+        FontManager m_font_manager;
+        ThemeManager m_theme_manager;
+        SettingsManager m_settings_manager;
+        TemplateFactory m_template_factory;
 
         GLFWwindow *m_render_window;
         std::vector<RefPtr<ImWindow>> m_windows;

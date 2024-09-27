@@ -21,8 +21,6 @@ namespace Toolbox {
     ImageHandle::ImageHandle(ImageHandle &&other) noexcept { moveGL(std::move(other)); }
 
     ImageHandle::ImageHandle(const std::filesystem::path &res_path) {
-        std::ifstream in(res_path, std::ios::in | std::ios::binary);
-
         int width, height, channels;
         stbi_uc *data = stbi_load(res_path.string().c_str(), &width, &height, &channels, 0);
 
@@ -32,6 +30,39 @@ namespace Toolbox {
         loadGL(data_buf, channels, width, height);
 
         stbi_image_free(data);
+    }
+
+    ImageHandle::ImageHandle(std::span<u8> data) {
+        int width, height, channels;
+        stbi_uc *stbi_buf =
+            stbi_load_from_memory(data.data(), data.size(), &width, &height, &channels, 0);
+
+        Buffer data_buf;
+        data_buf.setBuf(stbi_buf, static_cast<size_t>(width * height * channels));
+
+        loadGL(data_buf, channels, width, height);
+
+        stbi_image_free(stbi_buf);
+    }
+
+    ImageHandle::ImageHandle(std::span<u8> data, int channels, int dx, int dy) {
+        Buffer data_buf;
+        data_buf.setBuf(data.data(), data.size());
+
+        loadGL(data_buf, channels, dx, dy);
+    }
+
+    ImageHandle::ImageHandle(const Buffer &data) {
+        int width, height, channels;
+        stbi_uc *stbi_buf =
+            stbi_load_from_memory(data.buf<u8>(), data.size(), &width, &height, &channels, 0);
+
+        Buffer data_buf;
+        data_buf.setBuf(stbi_buf, static_cast<size_t>(width * height * channels));
+
+        loadGL(data_buf, channels, width, height);
+
+        stbi_image_free(stbi_buf);
     }
 
     ImageHandle::ImageHandle(const Buffer &data, int channels, int dx, int dy) {
@@ -108,7 +139,7 @@ namespace Toolbox {
             m_image_handle = (u64)handle;
             m_image_format = image.m_image_format;
             m_image_width  = image.m_image_width;
-            m_image_height  = image.m_image_height;
+            m_image_height = image.m_image_height;
         } else {
             m_image_handle = std::numeric_limits<u64>::max();
             m_image_format = 0;
@@ -138,4 +169,4 @@ namespace Toolbox {
         m_image_height = 0;
     }
 
-}  // namespace Toolbox::UI
+}  // namespace Toolbox

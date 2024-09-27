@@ -10,8 +10,8 @@
 #include "dolphin/hook.hpp"
 
 #ifdef TOOLBOX_PLATFORM_LINUX
-#include <sys/mman.h>
 #include <fcntl.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #endif
 
@@ -57,8 +57,7 @@ namespace Toolbox::Dolphin {
         return pid;
     }
 
-    static Result<Platform::MemHandle, BaseError>
-    OpenProcessMemory(std::string_view memory_name) {
+    static Result<Platform::MemHandle, BaseError> OpenProcessMemory(std::string_view memory_name) {
         Platform::MemHandle memory_handle =
             OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, memory_name.data());
         if (!memory_handle) {
@@ -80,7 +79,7 @@ namespace Toolbox::Dolphin {
     }
 
     static Result<void> CloseProcessMemory(Platform::MemHandle memory_handle,
-                                           const char* dolphin_memory_name) {
+                                           const char *dolphin_memory_name) {
         CloseHandle(memory_handle);
         return {};
     }
@@ -105,7 +104,7 @@ namespace Toolbox::Dolphin {
         if (!pipe) {
             return make_error<Platform::ProcessID>("popen() failed!");
         }
-        while(fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr) {
+        while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr) {
             pidof_result += buffer.data();
         }
         if (pidof_result.length() == 0) {
@@ -114,13 +113,12 @@ namespace Toolbox::Dolphin {
         return std::stoi(pidof_result);
     }
 
-    static Result<Platform::MemHandle, BaseError>
-    OpenProcessMemory(std::string_view memory_name) {
-        char* memory_name_owned = new char[1 + memory_name.size() + 1];
-        memory_name_owned[0] = '/';
+    static Result<Platform::MemHandle, BaseError> OpenProcessMemory(std::string_view memory_name) {
+        char *memory_name_owned = new char[1 + memory_name.size() + 1];
+        memory_name_owned[0]    = '/';
         std::memcpy(memory_name_owned + 1, memory_name.data(), memory_name.size());
         memory_name_owned[memory_name.size() + 1] = '\0';
-        int fd = shm_open(memory_name_owned, O_RDWR, 0600);
+        int fd                                    = shm_open(memory_name_owned, O_RDWR, 0600);
         if (fd == -1) {
             return make_error<Platform::MemHandle>(
                 "SHARED_MEMORY",
@@ -131,8 +129,7 @@ namespace Toolbox::Dolphin {
     }
 
     static Result<void *, BaseError> OpenMemoryView(Platform::MemHandle memory_handle) {
-        void *ptr = mmap(NULL, 0x1800000, PROT_READ | PROT_WRITE, MAP_SHARED,
-                         memory_handle, 0);
+        void *ptr = mmap(NULL, 0x1800000, PROT_READ | PROT_WRITE, MAP_SHARED, memory_handle, 0);
         if (ptr == MAP_FAILED) {
             return make_error<void *>("SHARED_MEMORY",
                                       "Failed to get view of shared process memory handle.");
@@ -141,7 +138,7 @@ namespace Toolbox::Dolphin {
     }
 
     static Result<void> CloseProcessMemory(Platform::MemHandle memory_handle,
-                                           const char* dolphin_memory_name) {
+                                           const char *dolphin_memory_name) {
         if (shm_unlink(dolphin_memory_name) != 0) {
             return make_error<void>("SHARED_MEMORY",
                                     "Failed to close handle to shared memory object");
@@ -151,8 +148,7 @@ namespace Toolbox::Dolphin {
 
     static Result<void> CloseMemoryView(void *memory_view) {
         if (munmap(memory_view, 0x1800000) != 0) {
-            return make_error<void>("SHARED_MEMORY",
-                                    "Failed to close memory view");
+            return make_error<void>("SHARED_MEMORY", "Failed to close memory view");
         }
         return {};
     }
@@ -168,7 +164,6 @@ namespace Toolbox::Dolphin {
     }
 
     Result<void> DolphinHookManager::startProcess() {
-        AppSettings &settings       = SettingsManager::instance().getCurrentProfile();
         GUIApplication &application = GUIApplication::instance();
 
         if (isProcessRunning()) {
@@ -178,22 +173,18 @@ namespace Toolbox::Dolphin {
         std::string dolphin_args =
             std::format("-e {}/sys/main.dol -a HLE", application.getProjectRoot().string());
 
-        std::string dolphin_path = settings.m_dolphin_path.string();
-        size_t last_not_null = dolphin_path.find_last_not_of('\000');
-        bool is_nogui = false;
-        if (last_not_null != std::string::npos && last_not_null > 5) {
-          std::string used_substr = dolphin_path.substr(last_not_null - 5, last_not_null);
-          is_nogui = used_substr.starts_with("-nogui"sv);
+        size_t last_not_null    = m_dolphin_path.string().find_last_not_of('\000');
+        std::string used_substr = m_dolphin_path.string().substr(last_not_null - 5, last_not_null);
+        if (!used_substr.starts_with("-nogui"sv)) {
+            dolphin_args += "-d -c";
         }
-        if (!is_nogui){
-          dolphin_args += "-d -c";
-        }
+      
 #ifdef TOOLBOX_PLATFORM_LINUX
         // Force dolphin to run on X11 instead of Wayland if running on Linux
         putenv("QT_QPA_PLATFORM=xcb");
 #endif
 
-        auto process_result = Platform::CreateExProcess(settings.m_dolphin_path, dolphin_args);
+        auto process_result = Platform::CreateExProcess(m_dolphin_path, dolphin_args);
         if (!process_result) {
             return std::unexpected(process_result.error());
         }
@@ -246,8 +237,7 @@ namespace Toolbox::Dolphin {
             m_proc_info.m_process_id   = pid;
         }
 
-        std::string dolphin_memory_name = std::format("dolphin-emu.{}",
-                                                      m_proc_info.m_process_id);
+        std::string dolphin_memory_name = std::format("dolphin-emu.{}", m_proc_info.m_process_id);
 
         auto handle_result = OpenProcessMemory(dolphin_memory_name);
         if (!handle_result || handle_result.value() == NULL_MEMHANDLE) {
@@ -289,8 +279,7 @@ namespace Toolbox::Dolphin {
         }
         m_mem_view = nullptr;
 
-        std::string dolphin_memory_name = std::format("dolphin-emu.{}",
-                                                      m_proc_info.m_process_id);
+        std::string dolphin_memory_name = std::format("dolphin-emu.{}", m_proc_info.m_process_id);
         auto handle_result = CloseProcessMemory(m_mem_handle, dolphin_memory_name.data());
         if (!handle_result) {
             return std::unexpected(view_result.error());

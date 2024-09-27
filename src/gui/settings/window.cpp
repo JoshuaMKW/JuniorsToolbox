@@ -2,10 +2,12 @@
 #include "core/keybind/keybind.hpp"
 #include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
+#include "gui/logging/errors.hpp"
 #include "gui/settings.hpp"
 #include "gui/themes.hpp"
+#include "gui/application.hpp"
+
 #include <ImGuiFileDialog.h>
-#include <gui/logging/errors.hpp>
 
 namespace Toolbox::UI {
 
@@ -88,7 +90,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderProfileBar(TimeStep delta_time) {
-        SettingsManager &manager = SettingsManager::instance();
+        SettingsManager &manager = GUIApplication::instance().getSettingsManager();
 
         ImGui::Text("Current Profile");
 
@@ -190,13 +192,13 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsGeneral(TimeStep delta_time) {
-        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
         ImGui::Checkbox("Include BetterSMS Objects", &settings.m_is_better_obj_allowed);
         ImGui::Checkbox("Enable File Backup on Save", &settings.m_is_file_backup_allowed);
     }
 
     void SettingsWindow::renderSettingsControl(TimeStep delta_time) {
-        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
 
         static KeyBind s_gizmo_translate_keybind = {};
         static KeyBind s_gizmo_rotate_keybind    = {};
@@ -255,26 +257,30 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsUI(TimeStep delta_time) {
-        auto &manager = ThemeManager::instance();
+        FontManager &font_manager         = GUIApplication::instance().getFontManager();
+        ThemeManager &themes_manager = GUIApplication::instance().getThemeManager();
+        SettingsManager &settings_manager = GUIApplication::instance().getSettingsManager();
+        AppSettings &settings             = settings_manager.getCurrentProfile();
 
-        auto themes = manager.themes();
+        auto themes = themes_manager.themes();
 
-        size_t selected_index         = manager.getActiveThemeIndex();
-        RefPtr<ITheme> selected_theme = themes.at(manager.getActiveThemeIndex());
+        size_t selected_index         = themes_manager.getActiveThemeIndex();
+        std::string_view selected_theme_name = themes.size() > 0 ? themes[selected_index]->name()
+                                                                 : ""; 
 
-        if (ImGui::BeginCombo("Theme", selected_theme->name().data())) {
+        if (ImGui::BeginCombo("Theme", selected_theme_name.data())) {
             for (size_t i = 0; i < themes.size(); ++i) {
                 auto theme    = themes.at(i);
                 bool selected = i == selected_index;
                 if (ImGui::Selectable(theme->name().data(), selected,
                                       ImGuiSelectableFlags_AllowDoubleClick)) {
                     selected_index = i;
-                    manager.applyTheme(theme->name());
+                    themes_manager.applyTheme(theme->name());
+                    settings.m_gui_theme = theme->name();
                 }
             }
             ImGui::EndCombo();
         }
-        auto &font_manager = FontManager::instance();
 
         float current_font_size         = font_manager.getCurrentFontSize();
         std::string current_font_family = font_manager.getCurrentFontFamily();
@@ -284,6 +290,7 @@ namespace Toolbox::UI {
                 bool selected = family == current_font_family;
                 if (ImGui::Selectable(std::format("{}", family).c_str(), selected)) {
                     font_manager.setCurrentFontFamily(family);
+                    settings.m_font_family = family;
                 }
             }
             ImGui::EndCombo();
@@ -294,6 +301,7 @@ namespace Toolbox::UI {
                 bool selected = size == current_font_size;
                 if (ImGui::Selectable(std::format("{}", size).c_str(), selected)) {
                     font_manager.setCurrentFontSize(size);
+                    settings.m_font_size = size;
                 }
             }
             ImGui::EndCombo();
@@ -301,7 +309,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsPreview(TimeStep delta_time) {
-        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
 
         ImGui::Checkbox("Use Simple Rendering", &settings.m_is_rendering_simple);
         ImGui::Checkbox("Show Origin Point", &settings.m_is_show_origin_point);
@@ -327,7 +335,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsAdvanced(TimeStep delta_time) {
-        AppSettings &settings = SettingsManager::instance().getCurrentProfile();
+        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
 
         if (ImGui::BeginGroupPanel("Dolphin Integration", nullptr, {})) {
             s64 min = 1;

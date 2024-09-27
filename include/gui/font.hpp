@@ -15,11 +15,11 @@
 namespace Toolbox::UI {
 
     class FontManager {
+        std::string m_current_font_family;
+        float m_current_font_size;
         std::multimap<std::string, ImFont *> m_loaded_fonts;
 
     public:
-        static FontManager &instance();
-
         std::set<float> fontSizes() {
             static std::set<float> s_font_sizes = {12.0f, 16.0f, 24.0f};
             return s_font_sizes;
@@ -40,19 +40,18 @@ namespace Toolbox::UI {
                         const ImWchar *glyph_ranges);
         void finalize();
 
-        ImFont *getFont(std::string_view name, float size);
+        ImFont *getFont(std::string_view name, float size) const;
 
-        ImFont *getCurrentFont() {
-            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-            return getFont(settings.m_font_family, settings.m_font_size);
+        ImFont *getCurrentFont() const {
+            return getFont(m_current_font_family, m_current_font_size);
         }
-        std::string getCurrentFontFamily() {
-            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-            return settings.m_font_family;
+
+        std::string getCurrentFontFamily() const {
+            return m_current_font_family;
         }
-        float getCurrentFontSize() {
-            AppSettings &settings = SettingsManager::instance().getCurrentProfile();
-            return settings.m_font_size;
+
+        float getCurrentFontSize() const {
+            return m_current_font_size;
         }
 
         void setCurrentFont(std::string_view name, float size);

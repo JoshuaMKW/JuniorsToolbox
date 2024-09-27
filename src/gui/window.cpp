@@ -28,16 +28,21 @@ namespace Toolbox::UI {
     }
 
     void ImWindow::setIcon(const std::string &icon_name) {
-        fs_path res_path = GUIApplication::instance().getResourcePath("Images/Icons/" + icon_name);
+        ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
+        UUID64 icon_dir              = res_manager.getResourcePathUUID("Images/Icons");
 
-        std::ifstream in(res_path, std::ios::in | std::ios::binary);
+        auto result = res_manager.getRawData(icon_name, icon_dir);
+        if (!result) {
+            return;
+        }
 
         Buffer data_buf;
         int width, height, channels;
 
         // Load image data
         {
-            stbi_uc *data = stbi_load(res_path.string().c_str(), &width, &height, &channels, 4);
+            stbi_uc *data =
+                stbi_load_from_memory(result.value().data(), result.value().size(), &width, &height, &channels, 4);
 
             data_buf.alloc(static_cast<size_t>(width * height * channels));
             std::memcpy(data_buf.buf<u8>(), data, data_buf.size());

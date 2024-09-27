@@ -3,6 +3,7 @@
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 
 #include <iostream>
+#include <span>
 #include <string>
 #include <thread>
 
@@ -78,8 +79,18 @@ namespace Toolbox {
         NFD_Init();
 
         // TODO: Load application settings
-        //
-        // ----
+
+        // Initialize the resource manager
+        {
+            fs_path cwd = Filesystem::current_path().value();
+
+            m_resource_manager.includeResourcePath(cwd / "Fonts", true);
+            m_resource_manager.includeResourcePath(cwd / "Images", true);
+            m_resource_manager.includeResourcePath(cwd / "Images", true);
+            m_resource_manager.includeResourcePath(cwd / fs_path("Images") / "Icons", true);
+            m_resource_manager.includeResourcePath(cwd / "Templates", false);
+            m_resource_manager.includeResourcePath(cwd / "Themes", true);
+        }
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -156,30 +167,32 @@ namespace Toolbox {
         platform_io.Platform_CreateWindow = ImGui_ImplGlfw_CreateWindow_Ex;
         platform_io.Renderer_RenderWindow = ImGui_ImplOpenGL3_RenderWindow_Ex;
 
-        if (!SettingsManager::instance().initialize()) {
+        if (!m_settings_manager.initialize()) {
             TOOLBOX_ERROR("[INIT] Failed to initialize settings manager!");
         }
 
-        auto &font_manager = FontManager::instance();
-        if (!font_manager.initialize()) {
+        const AppSettings &settings = m_settings_manager.getCurrentProfile();
+
+        if (!m_font_manager.initialize()) {
             TOOLBOX_ERROR("[INIT] Failed to initialize font manager!");
         } else {
-            font_manager.setCurrentFont("NotoSansJP-Regular", 16.0f);
+            m_font_manager.setCurrentFont(settings.m_font_family, settings.m_font_size);
         }
 
-        // glEnable(GL_MULTISAMPLE);
-
         TRY(TemplateFactory::initialize()).error([](const FSError &error) { LogError(error); });
-        TRY(ThemeManager::instance().initialize()).error([](const FSError &error) {
-            LogError(error);
-        });
+        TRY(m_theme_manager.initialize()).error([](const FSError &error) { LogError(error); });
+
+        DolphinHookManager::instance().setDolphinPath(settings.m_dolphin_path);
+
+        m_dolphin_communicator.setRefreshRate(settings.m_dolphin_refresh_rate);
+        m_dolphin_communicator.tStart(false, nullptr);
+
+        m_task_communicator.tStart(false, nullptr);
+
 
         createWindow<LoggingWindow>("Application Log");
 
         determineEnvironmentConflicts();
-
-        m_dolphin_communicator.tStart(false, nullptr);
-        m_task_communicator.tStart(false, nullptr);
     }
 
     void GUIApplication::onUpdate(TimeStep delta_time) {
@@ -211,6 +224,17 @@ namespace Toolbox {
 
             Input::PostUpdateInputState();
         }
+
+        // Update settings
+        {
+            const AppSettings &settings = m_settings_manager.getCurrentProfile();
+
+            DolphinHookManager::instance().setDolphinPath(settings.m_dolphin_path);
+            m_dolphin_communicator.setRefreshRate(settings.m_dolphin_refresh_rate);
+            m_font_manager.setCurrentFont(settings.m_font_family, settings.m_font_size);
+
+            TemplateFactory::setCacheMode(settings.m_is_template_cache_allowed);
+        }
     }
 
     void GUIApplication::onExit() {
@@ -229,14 +253,6 @@ namespace Toolbox {
         m_task_communicator.tKill(true);
 
         NFD_Quit();
-    }
-
-    Toolbox::fs_path GUIApplication::getResourcePath(const Toolbox::fs_path &path) const & {
-        return Toolbox::Filesystem::current_path().value_or(".") / path;
-    }
-
-    Toolbox::fs_path GUIApplication::getResourcePath(Toolbox::fs_path &&path) const && {
-        return Toolbox::Filesystem::current_path().value_or(".") / std::move(path);
     }
 
     RefPtr<ImWindow> GUIApplication::findWindow(UUID64 uuid) {
@@ -277,15 +293,20 @@ namespace Toolbox {
     }
 
     void GUIApplication::initializeIcon() {
-        fs_path res_path = GUIApplication::instance().getResourcePath("Images/Icons/toolbox.png");
+        auto result = m_resource_manager.getRawData(
+            "toolbox.png", m_resource_manager.getResourcePathUUID(fs_path("Images") / "Icons"));
+        if (!result) {
+            TOOLBOX_ERROR("Failed to load toolbox icon!");
+            return;
+        }
 
-        std::ifstream in(res_path, std::ios::in | std::ios::binary);
-
-        int width, height, channels;
+        std::span<u8> data_span = std::move(result.value());
 
         // Load image data
         {
-            stbi_uc *data = stbi_load(res_path.string().c_str(), &width, &height, &channels, 4);
+            int width, height, channels;
+            stbi_uc *data = stbi_load_from_memory(data_span.data(), data_span.size(), &width,
+                                                  &height, &channels, 4);
 
             GLFWimage icon = {width, height, data};
             glfwSetWindowIcon(m_render_window, 1, &icon);
@@ -308,7 +329,7 @@ namespace Toolbox {
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
         ImGui::SetNextWindowViewport(viewport->ID);
-        m_dockspace_id = ImGui::DockSpaceOverViewport(viewport);
+        m_dockspace_id = ImGui::DockSpaceOverViewport(0, viewport);
 
         m_dockspace_built = ImGui::DockBuilderGetNode(m_dockspace_id);
         if (!m_dockspace_built) {
@@ -544,9 +565,8 @@ namespace Toolbox {
         }
     }
 
-    void FileDialog::openDialog(
-        std::filesystem::path starting_path, GLFWwindow *parent_window, bool is_directory,
-        std::optional<FileDialogFilter> maybe_filters) {
+    void FileDialog::openDialog(std::filesystem::path starting_path, GLFWwindow *parent_window,
+                                bool is_directory, std::optional<FileDialogFilter> maybe_filters) {
         if (m_thread_initialized) {
             m_thread.join();
         } else {
@@ -562,14 +582,14 @@ namespace Toolbox {
                 NFD_GetNativeWindowFromGLFWWindow(parent_window, &args.parentWindow);
                 m_result = NFD_PickFolderU8_With(&m_selected_path, &args);
             } else {
-                int num_filters               = 0;
+                int num_filters                = 0;
                 nfdu8filteritem_t *nfd_filters = nullptr;
                 if (maybe_filters) {
                     auto filters = maybe_filters.value();
-                    num_filters = filters.numFilters();
+                    num_filters  = filters.numFilters();
                     filters.copyFiltersOutU8(m_filters);
                     nfd_filters = new nfdu8filteritem_t[num_filters];
-                    for (int i = 0; i < filters.numFilters(); ++i){
+                    for (int i = 0; i < filters.numFilters(); ++i) {
                         nfd_filters[i] = {m_filters[i].first.c_str(), m_filters[i].second.c_str()};
                     }
                 }
@@ -588,17 +608,18 @@ namespace Toolbox {
         m_thread = std::thread(fn);
     }
 
-    void FileDialogFilter::addFilter(const std::string &label, const std::string &csv_filters){
+    void FileDialogFilter::addFilter(const std::string &label, const std::string &csv_filters) {
         m_filters.push_back({std::string(label), std::string(csv_filters)});
     }
     bool FileDialogFilter::hasFilter(const std::string &label) const {
         return std::find_if(m_filters.begin(), m_filters.end(),
-                            [label](std::pair<std::string, std::string> p){
+                            [label](std::pair<std::string, std::string> p) {
                                 return p.first == label;
                             }) != m_filters.end();
     }
 
-    void FileDialogFilter::copyFiltersOutU8(std::vector<std::pair<std::string, std::string>> &out_filters) const {
+    void FileDialogFilter::copyFiltersOutU8(
+        std::vector<std::pair<std::string, std::string>> &out_filters) const {
         out_filters = m_filters;
     }
 }  // namespace Toolbox
