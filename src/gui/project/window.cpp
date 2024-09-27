@@ -61,12 +61,12 @@ namespace Toolbox::UI {
                 if (x_count == 0) {
                     x_count = 1;
                 }
+                bool any_items_hovered = false;
 
                 for (size_t i = 0; i < m_file_system_model->getRowCount(m_view_index); ++i) {
                     ModelIndex child_index = m_file_system_model->getIndex(i, 0, m_view_index);
                     bool is_selected =
-                        std::find(m_selected_indices.begin(), m_selected_indices.end(),
-                                  m_tree_proxy.toSourceIndex(child_index)) !=
+                        std::find(m_selected_indices.begin(), m_selected_indices.end(), child_index) !=
                         m_selected_indices.end();
 
                     if (is_selected) {
@@ -82,8 +82,6 @@ namespace Toolbox::UI {
                     ImVec2 rename_size = ImGui::CalcTextSize(m_rename_buffer);
 
                     int box_width = m_is_renaming && is_selected ? max(rename_size.x,76) : 76;
-                    bool inputTextHovered = false;
-
                     if (ImGui::BeginChild(child_index.getUUID(), {box_width, 92}, true,
                                           ImGuiWindowFlags_ChildWindow |
                                           ImGuiWindowFlags_NoDecoration)) {
@@ -119,33 +117,45 @@ namespace Toolbox::UI {
                                 newPos.x + 76.0f, text.c_str(),
                                 nullptr, nullptr);
                         }
-                        inputTextHovered = ImGui::IsItemHovered();
+                        any_items_hovered = any_items_hovered || ImGui::IsItemHovered() || ImGui::IsWindowHovered(ImGuiHoveredFlags_None);
+                        // Handle click responses
+                        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_None)) {
+                            if (ImGui::IsMouseDoubleClicked(0)) {
+                                if (m_file_system_model->isDirectory(child_index)) {
+                                    m_view_index = m_tree_proxy.toSourceIndex(child_index);
+                                }
+                                m_is_renaming = false;
+                            } else if (ImGui::IsMouseClicked(0)) {
+                                TOOLBOX_INFO("Got a click on item");
+                                if (is_selected){
+                                    TOOLBOX_INFO("Item was already selected");
+                                    if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+                                        m_selected_indices.erase(std::find(
+                                            m_selected_indices.begin(), m_selected_indices.end(),
+                                            child_index));
+                                        m_is_renaming = false;
+                                    } else {
+                                        TOOLBOX_INFO("Control key is not down");
+                                        m_is_renaming = true;
+                                        std::strncpy(m_rename_buffer, text.c_str(),
+                                                     IM_ARRAYSIZE(m_rename_buffer));
+                                    }
+                                } else {
+                                    TOOLBOX_INFO("Item wasn't already selected, selecting now.");
+                                    TOOLBOX_INFO_V("There are {} selected indices",
+                                                   m_selected_indices.size());
+                                    if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+                                        m_selected_indices.clear();
+                                    }
+                                    m_selected_indices.push_back(
+                                        child_index);
+                                    m_is_renaming = false;
+                                }
+                            }
+                        }
                     }
                     ImGui::EndChild();
                     ImGui::PopStyleColor(1);
-
-                    // Handle click responses
-                    if (ImGui::IsMouseDoubleClicked(0) &&
-                        ImGui::IsWindowHovered(ImGuiHoveredFlags_None) &&
-                        m_file_system_model->isDirectory(child_index)) {
-                        m_view_index = m_tree_proxy.toSourceIndex(child_index);
-                    } else if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
-                        if (is_selected){
-                            m_is_renaming = true;
-                            std::strncpy(m_rename_buffer, text.c_str(),
-                                         IM_ARRAYSIZE(m_rename_buffer));
-                        } else {
-                            if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
-                                m_selected_indices.clear();
-                            }
-                            m_is_renaming = false;
-                            m_selected_indices.push_back(m_tree_proxy.toSourceIndex(child_index));
-                        }
-                    } else if (ImGui::IsMouseClicked(0) && is_selected &&
-                               !ImGui::IsKeyDown(ImGuiMod_Ctrl) && !inputTextHovered) {
-                        m_is_renaming = false;
-                        m_selected_indices.clear();
-                    }
 
                     // ImGui::Text("%s", m_view_proxy.getDisplayText(child_index).c_str());
 
@@ -154,6 +164,12 @@ namespace Toolbox::UI {
                     }
                 }
 
+                // Clearing the selection
+                if (!any_items_hovered && ImGui::IsMouseClicked(0)) {
+                    TOOLBOX_INFO("No items are hovered and there was a click, clearing selection");
+                    m_selected_indices.clear();
+                    m_is_renaming = false;
+                }
                 ImGui::PopStyleVar(4);
             }
         }
