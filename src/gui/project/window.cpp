@@ -67,15 +67,14 @@ namespace Toolbox::UI {
                                               ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_ChildBg)));
 
                     }
-                    if (ImGui::BeginChild(child_index.getUUID(), {76, 92}, true,
                     bool inputTextHovered = false;
-
+                    std::string text = m_file_system_model->getDisplayText(child_index);
+                    if (ImGui::BeginChild(child_index.getUUID(), {76, 92}, true,
                                           ImGuiWindowFlags_ChildWindow |
-                                              ImGuiWindowFlags_NoDecoration)) {
+                                          ImGuiWindowFlags_NoDecoration)) {
 
                         m_icon_painter.render(*m_file_system_model->getDecoration(child_index), {72, 72});
 
-                        std::string text = m_file_system_model->getDisplayText(child_index);
                         ImVec2 text_size = ImGui::CalcTextSize(text.c_str());
 
                         ImVec2 pos = ImGui::GetCursorScreenPos();
