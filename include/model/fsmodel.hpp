@@ -87,6 +87,7 @@ namespace Toolbox {
 
         ModelIndex mkdir(const ModelIndex &parent, const std::string &name);
         ModelIndex touch(const ModelIndex &parent, const std::string &name);
+        ModelIndex rename(const ModelIndex &file, const std::string &new_name);
 
         bool rmdir(const ModelIndex &index);
         bool remove(const ModelIndex &index);

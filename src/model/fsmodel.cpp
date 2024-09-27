@@ -441,6 +441,34 @@ namespace Toolbox {
         return result;
     }
 
+    ModelIndex FileSystemModel::rename(const ModelIndex &file, const std::string &new_name){
+        if (!validateIndex(file)) {
+            return ModelIndex();
+        }
+        if (!isDirectory(file) && !isFile(file)) {
+            TOOLBOX_ERROR("[FileSystemModel] Not a directory or file!");
+            return ModelIndex();
+        }
+        fs_path from = file.data<_FileSystemIndexData>()->m_path;
+        fs_path to = from.parent_path() / new_name;
+        ModelIndex parent = getParent(file);
+        _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
+
+        int dest_index =
+            std::find(parent_data->m_children.begin(), parent_data->m_children.end(), file.getUUID()) -
+            parent_data->m_children.begin();
+
+        Filesystem::rename(from, to);
+
+        delete file.data<_FileSystemIndexData>();
+        m_index_map.erase(file.getUUID());
+        parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
+                                                  parent_data->m_children.end(),
+                                                  file.getUUID()),
+                                      parent_data->m_children.end());
+        return makeIndex(to, dest_index, parent);
+    }
+
     ModelIndex FileSystemModel::getIndex(const fs_path &path) const {
         if (m_index_map.empty()) {
             return ModelIndex();

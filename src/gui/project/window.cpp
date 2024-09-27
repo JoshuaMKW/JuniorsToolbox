@@ -68,6 +68,8 @@ namespace Toolbox::UI {
 
                     }
                     if (ImGui::BeginChild(child_index.getUUID(), {76, 92}, true,
+                    bool inputTextHovered = false;
+
                                           ImGuiWindowFlags_ChildWindow |
                                               ImGuiWindowFlags_NoDecoration)) {
 
@@ -77,27 +79,51 @@ namespace Toolbox::UI {
                         ImVec2 text_size = ImGui::CalcTextSize(text.c_str());
 
                         ImVec2 pos = ImGui::GetCursorScreenPos();
-                        pos.x += std::max<float>(36.0f - (text_size.x / 2.0f), 0.0);
-                        pos.y += 72.0f;
-
-                        ImGui::RenderTextEllipsis(
-                            ImGui::GetWindowDrawList(), pos, pos + ImVec2(64, 20), pos.x + 64.0f,
-                            pos.x + 76.0f, text.c_str(),
-                            nullptr, nullptr);
+                        ImVec2 newPos = pos;
+                        newPos.x += std::max<float>(36.0f - (text_size.x / 2.0f), 0.0);
+                        newPos.y += 72.0f;
+                        if (m_is_renaming && is_selected) {
+                            ImGui::SetCursorScreenPos(newPos);
+                            ImGui::SetKeyboardFocusHere();
+                            bool done = ImGui::InputText("##", m_rename_buffer,
+                                                         IM_ARRAYSIZE(m_rename_buffer),
+                                                         ImGuiInputTextFlags_AutoSelectAll
+                                                         | ImGuiInputTextFlags_EnterReturnsTrue);
+                            if (done) {
+                                m_file_system_model->rename(child_index, m_rename_buffer);
+                            }
+                            ImGui::SetCursorScreenPos(pos);
+                        } else {
+                            ImGui::RenderTextEllipsis(
+                                ImGui::GetWindowDrawList(), newPos, newPos + ImVec2(64, 20), pos.x + 64.0f,
+                                newPos.x + 76.0f, text.c_str(),
+                                nullptr, nullptr);
+                        }
+                        inputTextHovered = ImGui::IsItemHovered();
                     }
                     ImGui::EndChild();
                     ImGui::PopStyleColor(1);
+
+                    // Handle click responses
                     if (ImGui::IsMouseDoubleClicked(0) &&
-                        ImGui::IsItemHovered(ImGuiHoveredFlags_None) &&
+                        ImGui::IsWindowHovered(ImGuiHoveredFlags_None) &&
                         m_file_system_model->isDirectory(child_index)) {
                         m_view_index = m_tree_proxy.toSourceIndex(child_index);
-                    } else if (ImGui::IsItemClicked()) {
-                        if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
-                            m_selected_indices.clear();
+                    } else if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
+                        if (is_selected){
+                            m_is_renaming = true;
+                            std::strncpy(m_rename_buffer, text.c_str(),
+                                         IM_ARRAYSIZE(m_rename_buffer));
+                        } else {
+                            if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+                                m_selected_indices.clear();
+                            }
+                            m_is_renaming = false;
+                            m_selected_indices.push_back(m_tree_proxy.toSourceIndex(child_index));
                         }
-                        m_selected_indices.push_back(m_tree_proxy.toSourceIndex(child_index));
                     } else if (ImGui::IsMouseClicked(0) && is_selected &&
-                               !ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+                               !ImGui::IsKeyDown(ImGuiMod_Ctrl) && !inputTextHovered) {
+                        m_is_renaming = false;
                         m_selected_indices.clear();
                     }
 

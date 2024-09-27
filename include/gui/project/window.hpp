@@ -114,6 +114,8 @@ namespace Toolbox::UI {
         std::vector<ModelIndex> m_selected_indices;
         std::vector<ProjectAsset> m_view_assets;
         ModelIndex m_view_index;
+        bool m_is_renaming = false;
+        char m_rename_buffer[128];
 
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;
