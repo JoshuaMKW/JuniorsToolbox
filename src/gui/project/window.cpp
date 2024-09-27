@@ -52,6 +52,7 @@ namespace Toolbox::UI {
                 if (x_count == 0) {
                     x_count = 1;
                 }
+                bool any_items_hovered = false;
 
                 ModelIndex view_index = m_view_proxy.toProxyIndex(m_view_index);
 
@@ -59,8 +60,7 @@ namespace Toolbox::UI {
                     ModelIndex child_index = m_view_proxy.getIndex(i, 0, view_index);
                     bool is_selected =
                         std::find(m_selected_indices.begin(), m_selected_indices.end(),
-                                  m_tree_proxy.toSourceIndex(child_index)) !=
-                        m_selected_indices.end();
+                                  child_index) != m_selected_indices.end();
 
                     if (is_selected) {
                         ImGui::PushStyleColor(ImGuiCol_ChildBg,
@@ -71,26 +71,33 @@ namespace Toolbox::UI {
                                               ImGui::ColorConvertFloat4ToU32(
                                                   ImGui::GetStyleColorVec4(ImGuiCol_ChildBg)));
                     }
+                    // Get the label and it's size
+                    std::string text   = m_view_proxy.getDisplayText(child_index);
+                    ImVec2 text_size   = ImGui::CalcTextSize(text.c_str());
+                    ImVec2 rename_size = ImGui::CalcTextSize(m_rename_buffer);
 
-                    bool inputTextHovered = false;
-                    std::string text      = m_view_proxy.getDisplayText(child_index);
-                    //ImVec2 text_size      = ImGui::CalcTextSize(text.c_str());
-                    ImVec2 text_size = {50.0f, 20.0f};
+                    float box_width = m_is_renaming && is_selected ? std::max(rename_size.x, 76.0f)
+                                                                   : 76.0f;
+                    if (ImGui::BeginChild(
+                            m_view_proxy.getSourceUUID(child_index), {box_width, 92.0f}, true,
+                            ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
 
-                    if (ImGui::BeginChild(m_view_proxy.getSourceUUID(child_index), {76, 92}, true,
-                                          ImGuiWindowFlags_ChildWindow |
-                                              ImGuiWindowFlags_NoDecoration)) {
+                        m_icon_painter.render(*m_view_proxy.getDecoration(child_index), {72.0f, 72.0f});
 
-                        m_icon_painter.render(*m_view_proxy.getDecoration(child_index), {72, 72});
-
+                        // Render the label
                         ImVec2 pos    = ImGui::GetCursorScreenPos();
                         ImVec2 newPos = pos;
-                        newPos.x += std::max<float>(36.0f - (text_size.x / 2.0f), 0.0);
+                        newPos.x += std::max<float>(36.0f - (((m_is_renaming && is_selected)
+                                                                  ? std::max(rename_size.x, 40.0f)
+                                                                  : text_size.x) /
+                                                             2.0f),
+                                                    0.0);
                         newPos.y += 72.0f;
                         if (m_is_renaming && is_selected) {
                             ImGui::SetCursorScreenPos(newPos);
                             ImGui::SetKeyboardFocusHere();
-                            bool done = ImGui::InputText("##", m_rename_buffer,
+                            ImGui::PushItemWidth(std::max(rename_size.x, 40.0f));
+                            bool done = ImGui::InputText("##rename", m_rename_buffer,
                                                          IM_ARRAYSIZE(m_rename_buffer),
                                                          ImGuiInputTextFlags_AutoSelectAll |
                                                              ImGuiInputTextFlags_EnterReturnsTrue);
@@ -99,38 +106,51 @@ namespace Toolbox::UI {
                                                             m_rename_buffer);
                             }
                             ImGui::SetCursorScreenPos(pos);
+                            ImGui::PopItemWidth();
                         } else {
                             ImGui::RenderTextEllipsis(
                                 ImGui::GetWindowDrawList(), newPos, newPos + ImVec2(64, 20),
                                 pos.x + 64.0f, newPos.x + 76.0f, text.c_str(), nullptr, nullptr);
                         }
-                        inputTextHovered = ImGui::IsItemHovered();
+                        any_items_hovered = any_items_hovered || ImGui::IsItemHovered() ||
+                                            ImGui::IsWindowHovered(ImGuiHoveredFlags_None);
+                        // Handle click responses
+                        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_None)) {
+                            if (ImGui::IsMouseDoubleClicked(0)) {
+                                if (m_view_proxy.isDirectory(child_index)) {
+                                    m_view_index = m_tree_proxy.toSourceIndex(child_index);
+                                }
+                                m_is_renaming = false;
+                            } else if (ImGui::IsMouseClicked(0)) {
+                                TOOLBOX_INFO("Got a click on item");
+                                if (is_selected) {
+                                    TOOLBOX_INFO("Item was already selected");
+                                    if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+                                        m_selected_indices.erase(
+                                            std::find(m_selected_indices.begin(),
+                                                      m_selected_indices.end(), child_index));
+                                        m_is_renaming = false;
+                                    } else {
+                                        TOOLBOX_INFO("Control key is not down");
+                                        m_is_renaming = true;
+                                        std::strncpy(m_rename_buffer, text.c_str(),
+                                                     IM_ARRAYSIZE(m_rename_buffer));
+                                    }
+                                } else {
+                                    TOOLBOX_INFO("Item wasn't already selected, selecting now.");
+                                    TOOLBOX_INFO_V("There are {} selected indices",
+                                                   m_selected_indices.size());
+                                    if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+                                        m_selected_indices.clear();
+                                    }
+                                    m_selected_indices.push_back(child_index);
+                                    m_is_renaming = false;
+                                }
+                            }
+                        }
                     }
                     ImGui::EndChild();
                     ImGui::PopStyleColor(1);
-
-                    // Handle click responses
-                    if (ImGui::IsMouseDoubleClicked(0) &&
-                        ImGui::IsWindowHovered(ImGuiHoveredFlags_None) &&
-                        m_view_proxy.isDirectory(child_index)) {
-                        m_view_index = m_tree_proxy.toSourceIndex(child_index);
-                    } else if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
-                        if (is_selected) {
-                            m_is_renaming = true;
-                            std::strncpy(m_rename_buffer, text.c_str(),
-                                         IM_ARRAYSIZE(m_rename_buffer));
-                        } else {
-                            if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
-                                m_selected_indices.clear();
-                            }
-                            m_is_renaming = false;
-                            m_selected_indices.push_back(m_tree_proxy.toSourceIndex(child_index));
-                        }
-                    } else if (ImGui::IsMouseClicked(0) && is_selected &&
-                               !ImGui::IsKeyDown(ImGuiMod_Ctrl) && !inputTextHovered) {
-                        m_is_renaming = false;
-                        m_selected_indices.clear();
-                    }
 
                     // ImGui::Text("%s", m_view_proxy.getDisplayText(child_index).c_str());
 
@@ -139,6 +159,12 @@ namespace Toolbox::UI {
                     }
                 }
 
+                // Clearing the selection
+                if (!any_items_hovered && ImGui::IsMouseClicked(0)) {
+                    TOOLBOX_INFO("No items are hovered and there was a click, clearing selection");
+                    m_selected_indices.clear();
+                    m_is_renaming = false;
+                }
                 ImGui::PopStyleVar(4);
             }
         }
