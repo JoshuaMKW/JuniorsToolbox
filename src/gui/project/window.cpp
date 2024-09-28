@@ -79,9 +79,11 @@ namespace Toolbox::UI {
                     float box_width = m_is_renaming && is_selected ? std::max(rename_size.x, 76.0f)
                                                                    : 76.0f;
                     if (ImGui::BeginChild(child_index.getUUID(), {box_width, 92.0f}, true,
-                            ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
+                                          ImGuiWindowFlags_ChildWindow |
+                                              ImGuiWindowFlags_NoDecoration)) {
 
-                        m_icon_painter.render(*m_view_proxy.getDecoration(child_index), {72.0f, 72.0f});
+                        m_icon_painter.render(*m_view_proxy.getDecoration(child_index),
+                                              {72.0f, 72.0f});
 
                         // Render the label
                         ImVec2 pos    = ImGui::GetCursorScreenPos();
@@ -119,12 +121,13 @@ namespace Toolbox::UI {
                                 m_is_renaming = false;
                                 if (m_view_proxy.isDirectory(child_index)) {
                                     m_view_index = m_view_proxy.toSourceIndex(child_index);
+                                    m_fs_watchdog.addPath(m_file_system_model->getPath(m_view_index));
                                     ImGui::EndChild();
                                     ImGui::PopStyleColor(1);
                                     break;
                                 }
                             } else if (ImGui::IsMouseClicked(0)) {
-                                if (is_selected){
+                                if (is_selected) {
                                     if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
                                         m_selected_indices.erase(
                                             std::find(m_selected_indices.begin(),
@@ -185,7 +188,9 @@ namespace Toolbox::UI {
                     }
                     ImGui::SetItemDefaultFocus();
                     ImGui::SameLine();
-                    if (ImGui::Button("Cancel", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
+                    if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                        ImGui::CloseCurrentPopup();
+                    }
                     ImGui::EndPopup();
                 } else {
                     // Clearing the selection
@@ -215,9 +220,50 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::renderProjectFileButton() {}
 
-    void ProjectViewWindow::onAttach() {}
+    bool ProjectViewWindow::onLoadData(const std::filesystem::path &path) {
+        m_project_root      = path;
+        m_file_system_model = make_referable<FileSystemModel>();
+        m_file_system_model->initialize();
+        m_file_system_model->setRoot(m_project_root);
+        m_tree_proxy.setSourceModel(m_file_system_model);
+        m_tree_proxy.setDirsOnly(true);
+        m_view_proxy.setSourceModel(m_file_system_model);
+        m_view_proxy.setSortRole(FileSystemModelSortRole::SORT_ROLE_NAME);
+        m_view_index = m_view_proxy.getIndex(0, 0);
+        m_fs_watchdog.reset();
+        m_fs_watchdog.addPath(m_project_root);
+        m_fs_watchdog.onFileRemoved([this](const fs_path &path) {
+            TOOLBOX_INFO_V("File removed: {}", path.string());
+            //m_file_system_model->removeIndex(m_file_system_model->getIndex(path));
+        });
+        m_fs_watchdog.onFileAdded(
+            [this](const fs_path &path) {
+            TOOLBOX_INFO_V("File added: {}", path.string());
+            fs_path parent = path.parent_path();
+            /*m_file_system_model->addIndex(;*/
+        });
+        m_fs_watchdog.onFileModified([this](const fs_path& path) {
+            TOOLBOX_INFO_V("File modified: {}", path.string());
+            //m_file_system_model->updateIndex(m_file_system_model->getIndex(path));
+        });
+        m_fs_watchdog.onDirAdded([this](const fs_path& path) {
+            TOOLBOX_INFO_V("Dir added: {}", path.string());
+            //m_file_system_model->addIndex(m_file_system_model->getIndex(path));
+        });
+        m_fs_watchdog.onDirModified([this](const fs_path& path) {
+            TOOLBOX_INFO_V("Dir modified: {}", path.string());
+            //m_file_system_model->updateIndex(m_file_system_model->getIndex(path));
+        });
+        m_fs_watchdog.onDirRemoved([this](const fs_path &path) {
+            TOOLBOX_INFO_V("Dir removed: {}", path.string());
+            //m_file_system_model->renameIndex(m_file_system_model->getIndex(old_path), new_path);
+        });
+        return true;
+    }
 
-    void ProjectViewWindow::onDetach() {}
+    void ProjectViewWindow::onAttach() { m_fs_watchdog.tStart(false, nullptr); }
+
+    void ProjectViewWindow::onDetach() { m_fs_watchdog.tKill(true); }
 
     void ProjectViewWindow::onImGuiUpdate(TimeStep delta_time) {}
 
@@ -258,6 +304,7 @@ namespace Toolbox::UI {
 
             if (ImGui::IsItemClicked()) {
                 m_view_index = m_tree_proxy.toSourceIndex(index);
+                m_fs_watchdog.addPath(m_file_system_model->getPath(m_view_index));
             }
 
             if (is_open) {

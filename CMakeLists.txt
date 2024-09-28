@@ -88,6 +88,8 @@ file(GLOB TOOLBOX_SRC
     "include/window/*.hpp"
     "src/objlib/meta/*.cpp"
     "include/objlib/meta/*.hpp"
+    "src/watchdog/*.cpp"
+    "include/watchdog/*.hpp"
     "src/io/*.cpp"
     "src/gui/*.cpp"
     "include/gui/*.hpp"

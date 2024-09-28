@@ -22,6 +22,7 @@
 #include "gui/project/asset.hpp"
 
 #include "model/fsmodel.hpp"
+#include "watchdog/fswatchdog.hpp"
 
 #include <imgui.h>
 
@@ -80,18 +81,8 @@ namespace Toolbox::UI {
             return {};
         }
 
-        [[nodiscard]] bool onLoadData(const std::filesystem::path& path) override {
-            m_project_root = path;
-            m_file_system_model = make_referable<FileSystemModel>();
-            m_file_system_model->initialize();
-            m_file_system_model->setRoot(m_project_root);
-            m_tree_proxy.setSourceModel(m_file_system_model);
-            m_tree_proxy.setDirsOnly(true);
-            m_view_proxy.setSourceModel(m_file_system_model);
-            m_view_proxy.setSortRole(FileSystemModelSortRole::SORT_ROLE_NAME);
-            m_view_index = m_view_proxy.getIndex(0, 0);
-            return true;
-        }
+        [[nodiscard]] bool onLoadData(const std::filesystem::path &path) override;
+
         [[nodiscard]] bool onSaveData(std::optional<std::filesystem::path> path) override {
             return true;
         }
@@ -105,6 +96,8 @@ namespace Toolbox::UI {
 
     private:
         fs_path m_project_root;
+
+        FileSystemWatchdog m_fs_watchdog;
 
         // TODO: Have filesystem model.
         FileSystemModelSortFilterProxy m_tree_proxy;
