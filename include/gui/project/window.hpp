@@ -16,10 +16,11 @@
 
 #include "core/clipboard.hpp"
 #include "game/task.hpp"
+#include "gui/context_menu.hpp"
 #include "gui/event/event.hpp"
 #include "gui/image/imagepainter.hpp"
-#include "gui/window.hpp"
 #include "gui/project/asset.hpp"
+#include "gui/window.hpp"
 
 #include "model/fsmodel.hpp"
 
@@ -69,16 +70,12 @@ namespace Toolbox::UI {
             };
         }
 
-        [[nodiscard]] std::string context() const override {
-            return m_project_root.string();
-        }
+        [[nodiscard]] std::string context() const override { return m_project_root.string(); }
 
         [[nodiscard]] bool unsaved() const override { return false; }
 
         // Returns the supported file types, empty string is designed for a folder.
-        [[nodiscard]] std::vector<std::string> extensions() const override {
-            return {};
-        }
+        [[nodiscard]] std::vector<std::string> extensions() const override { return {}; }
 
         [[nodiscard]] bool onLoadData(const std::filesystem::path &path) override;
 
@@ -92,6 +89,12 @@ namespace Toolbox::UI {
         void onContextMenuEvent(RefPtr<ContextMenuEvent> ev) override;
         void onDragEvent(RefPtr<DragEvent> ev) override;
         void onDropEvent(RefPtr<DropEvent> ev) override;
+
+        void buildContextMenu();
+
+        // Selection actions
+        void actionDeleteIndexes(std::vector<ModelIndex> &indices);
+        void actionOpenIndexes(const std::vector<ModelIndex> &indices);
 
     private:
         fs_path m_project_root;
@@ -110,7 +113,10 @@ namespace Toolbox::UI {
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;
 
-        std::unordered_map<UUID64, ImVec2> m_text_sizes;
+        ContextMenu<ModelIndex> m_context_menu;
+        std::vector<ModelIndex> m_selected_indices_ctx;
+        bool m_delete_without_request = false;
+        bool m_delete_requested     = false;
     };
 
 }  // namespace Toolbox::UI

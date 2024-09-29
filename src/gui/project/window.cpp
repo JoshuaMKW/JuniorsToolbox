@@ -18,6 +18,7 @@ namespace Toolbox::UI {
         renderProjectFolderView();
         renderProjectFolderButton();
         renderProjectFileButton();
+        m_context_menu.render("Project View", m_view_index);
     }
 
     void ProjectViewWindow::renderProjectTreeView() {
@@ -63,9 +64,11 @@ namespace Toolbox::UI {
                         continue;
                     }
 
+                    ModelIndex source_child_index = m_view_proxy.toSourceIndex(child_index);
+
                     bool is_selected =
                         std::find(m_selected_indices.begin(), m_selected_indices.end(),
-                                  child_index) != m_selected_indices.end();
+                                  source_child_index) != m_selected_indices.end();
 
                     if (is_selected) {
                         ImGui::PushStyleColor(ImGuiCol_ChildBg,
@@ -126,7 +129,6 @@ namespace Toolbox::UI {
                                 m_is_renaming = false;
                                 if (m_view_proxy.isDirectory(child_index)) {
                                     m_view_index = m_view_proxy.toSourceIndex(child_index);
-                                    // m_fs_watchdog.addPath(m_file_system_model->getPath(m_view_index));
                                     ImGui::EndChild();
                                     ImGui::PopStyleColor(1);
                                     break;
@@ -134,9 +136,9 @@ namespace Toolbox::UI {
                             } else if (ImGui::IsMouseClicked(0)) {
                                 if (is_selected) {
                                     if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
-                                        m_selected_indices.erase(
-                                            std::find(m_selected_indices.begin(),
-                                                      m_selected_indices.end(), child_index));
+                                        m_selected_indices.erase(std::find(
+                                            m_selected_indices.begin(), m_selected_indices.end(),
+                                            source_child_index));
                                         m_is_renaming = false;
                                     } else {
                                         m_is_renaming = true;
@@ -147,7 +149,7 @@ namespace Toolbox::UI {
                                     if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
                                         m_selected_indices.clear();
                                     }
-                                    m_selected_indices.push_back(child_index);
+                                    m_selected_indices.push_back(source_child_index);
                                     m_is_renaming = false;
                                 }
                             }
@@ -165,30 +167,28 @@ namespace Toolbox::UI {
 
                 ImVec2 center = ImGui::GetMainViewport()->GetCenter();
                 ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-                static bool dont_ask_for_deletes = false;
+
                 if (ImGui::BeginPopupModal("Delete?", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
                     std::string message = "";
 
-                    if (m_selected_indices.size() == 1) {
+                    if (m_selected_indices_ctx.size() == 1) {
                         message = TOOLBOX_FORMAT_FN(
                             "Are you sure you want to delete {}?",
                             m_file_system_model->getDisplayText(m_selected_indices[0]));
-                    } else if (m_selected_indices.size() > 1) {
+                    } else if (m_selected_indices_ctx.size() > 1) {
                         message = TOOLBOX_FORMAT_FN(
                             "Are you sure you want to delete the {} selected files?",
-                            m_selected_indices.size());
+                            m_selected_indices_ctx.size());
                     } else {
                         TOOLBOX_ERROR("Selected 0 files to delete!");
                     }
                     ImGui::Text(message.c_str());
                     ImGui::Separator();
                     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-                    ImGui::Checkbox("Don't ask me next time", &dont_ask_for_deletes);
+                    ImGui::Checkbox("Don't ask me next time", &m_delete_without_request);
                     ImGui::PopStyleVar();
                     if (ImGui::Button("OK", ImVec2(120, 0))) {
-                        for (auto &item_index : m_selected_indices) {
-                            m_file_system_model->remove(item_index);
-                        }
+                        actionDeleteIndexes(m_selected_indices_ctx);
                         ImGui::CloseCurrentPopup();
                     }
                     ImGui::SetItemDefaultFocus();
@@ -204,14 +204,9 @@ namespace Toolbox::UI {
                         m_is_renaming = false;
                     }
                     // Delete stuff
-                    if (ImGui::IsKeyPressed(ImGuiKey_Delete) && !m_selected_indices.empty()) {
-                        if (dont_ask_for_deletes) {
-                            for (auto &item_index : m_selected_indices) {
-                                m_file_system_model->remove(item_index);
-                            }
-                        } else {
-                            ImGui::OpenPopup("Delete?");
-                        }
+                    if (m_delete_requested) {
+                        ImGui::OpenPopup("Delete?");
+                        m_delete_requested = false;
                     }
                 }
 
@@ -238,7 +233,7 @@ namespace Toolbox::UI {
         return true;
     }
 
-    void ProjectViewWindow::onAttach() {}
+    void ProjectViewWindow::onAttach() { buildContextMenu(); }
 
     void ProjectViewWindow::onDetach() {}
 
@@ -249,6 +244,133 @@ namespace Toolbox::UI {
     void ProjectViewWindow::onDragEvent(RefPtr<DragEvent> ev) {}
 
     void ProjectViewWindow::onDropEvent(RefPtr<DropEvent> ev) {}
+
+    void ProjectViewWindow::buildContextMenu() {
+        m_context_menu = ContextMenu<ModelIndex>();
+
+        m_context_menu.onOpen(
+            [this](const ModelIndex &index) { m_selected_indices_ctx = m_selected_indices; });
+
+        m_context_menu.addOption(
+            "Open", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_O}),
+            [this]() {
+                return m_selected_indices_ctx.size() > 0 &&
+                       std::all_of(m_selected_indices_ctx.begin(), m_selected_indices_ctx.end(),
+                                   [this](const ModelIndex &index) {
+                                       return m_file_system_model->isFile(index);
+                                   });
+            },
+            [this](auto) { actionOpenIndexes(m_selected_indices_ctx); });
+
+        m_context_menu.addOption(
+            "Open in Explorer",
+            KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O}),
+            [this]() {
+                return std::all_of(
+                    m_selected_indices_ctx.begin(), m_selected_indices_ctx.end(),
+                    [this](const ModelIndex &index) { return m_file_system_model->isFile(index); });
+            },
+            [this](auto) {
+                if (m_selected_indices_ctx.size() == 0) {
+                    // TODO: Implement this interface
+                    // Toolbox::Platform::OpenFileExplorer(path);
+                } else {
+                    std::set<fs_path> paths;
+                    for (const ModelIndex &item_index : m_selected_indices_ctx) {
+                        fs_path path = m_file_system_model->getPath(item_index);
+                        if (m_file_system_model->isDirectory(item_index)) {
+                            paths.insert(path);
+                        } else {
+                            paths.insert(path.parent_path());
+                        }
+                    }
+                    for (const fs_path &path : paths) {
+                        // TODO: Implement this interface
+                        // Toolbox::Platform::OpenFileExplorer(path);
+                    }
+                }
+            });
+
+        m_context_menu.addDivider();
+
+        m_context_menu.addOption(
+            "Copy Path",
+            KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C}),
+            [this]() { return true; },
+            [this](auto) {
+                std::string paths;
+                if (m_selected_indices_ctx.size() == 0) {
+                    paths = m_file_system_model->getPath(m_view_index).string();
+                } else {
+                    for (const ModelIndex &item_index : m_selected_indices_ctx) {
+                        fs_path path = m_file_system_model->getPath(item_index);
+                        paths += path.string() + "\n";
+                    }
+                }
+                ImGui::SetClipboardText(paths.c_str());
+            });
+
+        m_context_menu.addDivider();
+
+        m_context_menu.addOption(
+            "Cut", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_X}),
+            [this]() { return m_selected_indices_ctx.size() > 0; }, [this](auto) {});
+
+        m_context_menu.addOption(
+            "Copy", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C}),
+            [this]() { return m_selected_indices_ctx.size() > 0; }, [this](auto) {});
+
+        m_context_menu.addDivider();
+
+        m_context_menu.addOption(
+            "Delete", KeyBind({KeyCode::KEY_DELETE}),
+            [this]() { return m_selected_indices_ctx.size() > 0; },
+            [this](auto) {
+                if (m_delete_without_request) {
+                    actionDeleteIndexes(m_selected_indices_ctx);
+                } else {
+                    m_delete_requested = true;
+                }
+            });
+
+        m_context_menu.addOption(
+            "Rename", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R}),
+            [this]() { return m_selected_indices_ctx.size() == 1; },
+            [this](auto) {
+                m_is_renaming = true;
+                std::strncpy(m_rename_buffer,
+                             m_file_system_model->getDisplayText(m_selected_indices_ctx[0]).c_str(),
+                             IM_ARRAYSIZE(m_rename_buffer));
+            });
+
+        m_context_menu.addDivider();  
+
+        m_context_menu.addOption(
+            "New...", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N}),
+            [this]() { return m_selected_indices_ctx.size() == 0; },
+            [this](const ModelIndex &view_index) {
+                // TODO: Open a dialog that gives the user different file types to create.
+            });
+    }
+
+    void ProjectViewWindow::actionDeleteIndexes(std::vector<ModelIndex> &indices) {
+        for (auto &item_index : indices) {
+            m_file_system_model->remove(item_index);
+        }
+        indices.clear();
+    }
+
+    void ProjectViewWindow::actionOpenIndexes(const std::vector<ModelIndex> &indices) {
+        for (auto &item_index : indices) {
+            if (m_file_system_model->isDirectory(item_index)) {
+                m_view_index = item_index;
+                continue;
+            }
+
+            // TODO: Open files based on extension. Can be either internal or external
+            // depending on the file type.
+        }
+    }
 
     bool ProjectViewWindow::isViewedAncestor(const ModelIndex &index) {
         if (m_view_index == m_tree_proxy.toSourceIndex(index)) {

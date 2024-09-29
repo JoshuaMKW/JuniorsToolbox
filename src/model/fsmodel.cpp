@@ -339,7 +339,7 @@ namespace Toolbox {
             {".bmt",     FSTypeInfo("J3D Material Table",       "fs_bmt.png")           },
             {".brk",     FSTypeInfo("J3D Color Register Anim",  "fs_brk.png")           },
             {".bti",     FSTypeInfo("J2D Texture Image",        "fs_bti.png")           },
-            {".btk",     FSTypeInfo("J2D Texture Animation",    "fs_btk.png")           },
+            {".btk",     FSTypeInfo("J2D Texture UV Anim",      "fs_btk.png")           },
             {".btp",     FSTypeInfo("J2D Texture Pattern Anim", "fs_btp.png")           },
             {".col",     FSTypeInfo("SMS Collision Data",       "fs_col.png")           },
             {".jpa",     FSTypeInfo("JParticle Data",           "fs_jpa.png")           },
@@ -1348,7 +1348,7 @@ namespace Toolbox {
     }
 
     ModelIndex FileSystemModelSortFilterProxy::toProxyIndex(int64_t row, int64_t column,
-                                                             const ModelIndex &src_parent) const {
+                                                            const ModelIndex &src_parent) const {
         std::unique_lock lock(m_cache_mutex);
 
         const UUID64 &src_parent_uuid = src_parent.getUUID();
