@@ -22,7 +22,6 @@
 #include "gui/project/asset.hpp"
 
 #include "model/fsmodel.hpp"
-#include "watchdog/fswatchdog.hpp"
 
 #include <imgui.h>
 
@@ -96,8 +95,6 @@ namespace Toolbox::UI {
 
     private:
         fs_path m_project_root;
-
-        FileSystemWatchdog m_fs_watchdog;
 
         // TODO: Have filesystem model.
         FileSystemModelSortFilterProxy m_tree_proxy;

@@ -114,6 +114,7 @@ namespace Toolbox {
         for (auto &[key, value] : m_index_map) {
             delete value.data<_FileSystemIndexData>();
         }
+        m_watchdog.tKill(true);
     }
 
     void FileSystemModel::initialize() {
@@ -135,6 +136,16 @@ namespace Toolbox {
                 TOOLBOX_ERROR_V("[FileSystemModel] Failed to load icon: {}", value.m_image_name);
             }
         }
+
+        m_watchdog.onDirAdded(TOOLBOX_BIND_EVENT_FN(folderAdded));
+        m_watchdog.onDirModified(TOOLBOX_BIND_EVENT_FN(folderModified));
+        m_watchdog.onFileAdded(TOOLBOX_BIND_EVENT_FN(fileAdded));
+        m_watchdog.onFileModified(TOOLBOX_BIND_EVENT_FN(fileModified));
+        m_watchdog.onPathRemoved(TOOLBOX_BIND_EVENT_FN(pathRemoved));
+        m_watchdog.onPathRenamedSrc(TOOLBOX_BIND_EVENT_FN(pathRenamedSrc));
+        m_watchdog.onPathRenamedDst(TOOLBOX_BIND_EVENT_FN(pathRenamedDst));
+
+        m_watchdog.tStart(false, nullptr);
     }
 
     const fs_path &FileSystemModel::getRoot() const & { return m_root_path; }
@@ -144,10 +155,17 @@ namespace Toolbox {
             return;
         }
 
-        m_index_map.clear();
+        {
+            std::scoped_lock lock(m_mutex);
 
-        m_root_path  = path;
-        m_root_index = makeIndex(path, 0, ModelIndex()).getUUID();
+            m_watchdog.reset();
+            m_watchdog.addPath(path);
+
+            m_index_map.clear();
+
+            m_root_path  = path;
+            m_root_index = makeIndex(path, 0, ModelIndex()).getUUID();
+        }
     }
 
     FileSystemModelOptions FileSystemModel::getOptions() const { return m_options; }
@@ -159,409 +177,111 @@ namespace Toolbox {
     void FileSystemModel::setReadOnly(bool read_only) { m_read_only = read_only; }
 
     bool FileSystemModel::isDirectory(const ModelIndex &index) const {
-        if (!validateIndex(index)) {
-            return false;
-        }
-        return index.data<_FileSystemIndexData>()->m_type == _FileSystemIndexData::Type::DIRECTORY;
+        std::scoped_lock lock(m_mutex);
+        return isDirectory_(index);
     }
 
     bool FileSystemModel::isFile(const ModelIndex &index) const {
-        if (!validateIndex(index)) {
-            return false;
-        }
-        return index.data<_FileSystemIndexData>()->m_type == _FileSystemIndexData::Type::FILE;
+        std::scoped_lock lock(m_mutex);
+        return isFile_(index);
     }
 
     bool FileSystemModel::isArchive(const ModelIndex &index) const {
-        if (!validateIndex(index)) {
-            return false;
-        }
-        return index.data<_FileSystemIndexData>()->m_type == _FileSystemIndexData::Type::ARCHIVE;
+        std::scoped_lock lock(m_mutex);
+        return isArchive_(index);
     }
 
     size_t FileSystemModel::getFileSize(const ModelIndex &index) const {
-        if (!isFile(index)) {
-            return 0;
-        }
-        return index.data<_FileSystemIndexData>()->m_size;
+        std::scoped_lock lock(m_mutex);
+        return getFileSize_(index);
     }
 
     size_t FileSystemModel::getDirSize(const ModelIndex &index, bool recursive) const {
-        if (!(isDirectory(index) || isArchive(index))) {
-            return 0;
-        }
-        return index.data<_FileSystemIndexData>()->m_size;
+        std::scoped_lock lock(m_mutex);
+        return getDirSize_(index, recursive);
     }
 
     std::any FileSystemModel::getData(const ModelIndex &index, int role) const {
-        if (!validateIndex(index)) {
-            return {};
-        }
-
-        switch (role) {
-        case ModelDataRole::DATA_ROLE_DISPLAY:
-            return index.data<_FileSystemIndexData>()->m_name;
-        case ModelDataRole::DATA_ROLE_TOOLTIP:
-            return "Tooltip unimplemented!";
-        case ModelDataRole::DATA_ROLE_DECORATION: {
-            return index.data<_FileSystemIndexData>()->m_icon;
-        }
-        case FileSystemDataRole::FS_DATA_ROLE_DATE: {
-
-            Filesystem::file_time_type result = Filesystem::file_time_type();
-
-            fs_path path = getPath(index);
-            Filesystem::last_write_time(path)
-                .and_then([&](Filesystem::file_time_type &&time) {
-                    result = std::move(time);
-                    return Result<Filesystem::file_time_type, FSError>();
-                })
-                .or_else([&](const FSError &error) {
-                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to get last write time: {}",
-                                    error.m_message[0]);
-                    return Result<Filesystem::file_time_type, FSError>();
-                });
-
-            return result;
-        }
-        case FileSystemDataRole::FS_DATA_ROLE_STATUS: {
-
-            Filesystem::file_status result = Filesystem::file_status();
-
-            fs_path path = getPath(index);
-            Filesystem::status(path)
-                .and_then([&](Filesystem::file_status &&status) {
-                    result = std::move(status);
-                    return Result<Filesystem::file_status, FSError>();
-                })
-                .or_else([&](const FSError &error) {
-                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to get last write status: {}",
-                                    error.m_message[0]);
-                    return Result<Filesystem::file_status, FSError>();
-                });
-
-            return result;
-        }
-        case FileSystemDataRole::FS_DATA_ROLE_TYPE: {
-
-            if (isDirectory(index)) {
-                return TypeMap().at("_Folder").m_name;
-            }
-
-            if (isArchive(index)) {
-                return TypeMap().at("_Archive").m_name;
-            }
-
-            std::string name = index.data<_FileSystemIndexData>()->m_name;
-            std::string ext  = "";
-            if (size_t epos = name.find('.'); epos != std::string::npos) {
-                ext = name.substr(epos);
-            }
-
-            if (ext.empty()) {
-                return TypeMap().at("_Folder").m_name;
-            }
-
-            if (TypeMap().find(ext) == TypeMap().end()) {
-                return TypeMap().at("_File").m_name;
-            }
-
-            return TypeMap().at(ext).m_name;
-        }
-        default:
-            return std::any();
-        }
+        std::scoped_lock lock(m_mutex);
+        return getData_(index, role);
     }
 
     ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &name) {
-        if (!validateIndex(parent)) {
-            return ModelIndex();
-        }
-
-        bool result = false;
-
-        if (isDirectory(parent)) {
-            fs_path path = getPath(parent);
-            path /= name;
-            Filesystem::create_directory(path)
-                .and_then([&](bool created) {
-                    if (!created) {
-                        TOOLBOX_ERROR_V("[FileSystemModel] Failed to create directory: {}",
-                                        path.string());
-                        return Result<bool, FSError>();
-                    }
-                    result = true;
-                    return Result<bool, FSError>();
-                })
-                .or_else([&](const FSError &error) {
-                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to create directory: {}",
-                                    error.m_message[0]);
-                    return Result<bool, FSError>();
-                });
-        } else if (isArchive(parent)) {
-            TOOLBOX_ERROR("[FileSystemModel] Archive creation is unimplemented!");
-        } else {
-            TOOLBOX_ERROR("[FileSystemModel] Parent index is not a directory!");
-        }
-
-        if (!result) {
-            return ModelIndex();
-        }
-
-        return makeIndex(parent.data<_FileSystemIndexData>()->m_path / name, getRowCount(parent),
-                         parent);
+        std::scoped_lock lock(m_mutex);
+        return mkdir_(parent, name);
     }
 
     ModelIndex FileSystemModel::touch(const ModelIndex &parent, const std::string &name) {
-        if (!validateIndex(parent)) {
-            return ModelIndex();
-        }
-
-        bool result = false;
-
-        if (isDirectory(parent)) {
-            fs_path path = parent.data<_FileSystemIndexData>()->m_path / name;
-            std::ofstream file(path);
-            if (!file.is_open()) {
-                TOOLBOX_ERROR_V("[FileSystemModel] Failed to create file: {}", path.string());
-                return ModelIndex();
-            }
-            file.close();
-            result = true;
-        } else if (isArchive(parent)) {
-            TOOLBOX_ERROR("[FileSystemModel] Archive creation is unimplemented!");
-        } else {
-            TOOLBOX_ERROR("[FileSystemModel] Parent index is not a directory!");
-        }
-
-        if (!result) {
-            return ModelIndex();
-        }
-
-        return makeIndex(parent.data<_FileSystemIndexData>()->m_path / name, getRowCount(parent),
-                         parent);
+        std::scoped_lock lock(m_mutex);
+        return touch_(parent, name);
     }
 
     bool FileSystemModel::rmdir(const ModelIndex &index) {
-        if (!validateIndex(index)) {
-            return false;
-        }
-
-        bool result = false;
-
-        if (isDirectory(index)) {
-            Filesystem::remove_all(getPath(index))
-                .and_then([&](bool removed) {
-                    if (!removed) {
-                        TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove directory: {}",
-                                        getPath(index).string());
-                        return Result<bool, FSError>();
-                    }
-                    result = true;
-                    return Result<bool, FSError>();
-                })
-                .or_else([&](const FSError &error) {
-                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove directory: {}",
-                                    error.m_message[0]);
-                    return Result<bool, FSError>();
-                });
-        } else if (isArchive(index)) {
-            Filesystem::remove(getPath(index))
-                .and_then([&](bool removed) {
-                    if (!removed) {
-                        TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove archive: {}",
-                                        getPath(index).string());
-                        return Result<bool, FSError>();
-                    }
-                    result = true;
-                    return Result<bool, FSError>();
-                })
-                .or_else([&](const FSError &error) {
-                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove archive: {}",
-                                    error.m_message[0]);
-                    return Result<bool, FSError>();
-                });
-        } else {
-            TOOLBOX_ERROR("[FileSystemModel] Index is not a directory!");
-        }
-
-        if (result) {
-            ModelIndex parent = getParent(index);
-            if (validateIndex(parent)) {
-                _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
-                parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
-                                                          parent_data->m_children.end(),
-                                                          index.getUUID()),
-                                              parent_data->m_children.end());
-            }
-            delete index.data<_FileSystemIndexData>();
-            m_index_map.erase(index.getUUID());
-        }
-
-        return result;
+        std::scoped_lock lock(m_mutex);
+        return rmdir_(index);
     }
 
     bool FileSystemModel::remove(const ModelIndex &index) {
-        if (!validateIndex(index)) {
-            return false;
-        }
-
-        bool result = false;
-
-        if (isFile(index)) {
-            Filesystem::remove(getPath(index))
-                .and_then([&](bool removed) {
-                    if (!removed) {
-                        TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove file: {}",
-                                        getPath(index).string());
-                        return Result<bool, FSError>();
-                    }
-                    result = true;
-                    return Result<bool, FSError>();
-                })
-                .or_else([&](const FSError &error) {
-                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove file: {}",
-                                    error.m_message[0]);
-                    return Result<bool, FSError>();
-                });
-        } else if (isArchive(index)) {
-            TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
-        } else {
-            TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
-        }
-
-        if (result) {
-            ModelIndex parent = getParent(index);
-            if (validateIndex(parent)) {
-                _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
-                parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
-                                                          parent_data->m_children.end(),
-                                                          index.getUUID()),
-                                              parent_data->m_children.end());
-            }
-            delete index.data<_FileSystemIndexData>();
-            m_index_map.erase(index.getUUID());
-        }
-
-        return result;
+        std::scoped_lock lock(m_mutex);
+        return remove_(index);
     }
 
     ModelIndex FileSystemModel::rename(const ModelIndex &file, const std::string &new_name) {
-        if (!validateIndex(file)) {
-            return ModelIndex();
-        }
-        if (!isDirectory(file) && !isFile(file)) {
-            TOOLBOX_ERROR("[FileSystemModel] Not a directory or file!");
-            return ModelIndex();
-        }
-        fs_path from                      = file.data<_FileSystemIndexData>()->m_path;
-        fs_path to                        = from.parent_path() / new_name;
-        ModelIndex parent                 = getParent(file);
-        _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
-
-        int dest_index = std::find(parent_data->m_children.begin(), parent_data->m_children.end(),
-                                   file.getUUID()) -
-                         parent_data->m_children.begin();
-
-        Filesystem::rename(from, to);
-
-        delete file.data<_FileSystemIndexData>();
-        m_index_map.erase(file.getUUID());
-        parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
-                                                  parent_data->m_children.end(), file.getUUID()),
-                                      parent_data->m_children.end());
-        return makeIndex(to, dest_index, parent);
+        std::scoped_lock lock(m_mutex);
+        return rename_(file, new_name);
     }
 
     ModelIndex FileSystemModel::getIndex(const fs_path &path) const {
-        if (m_index_map.empty()) {
-            return ModelIndex();
-        }
-
-        for (const auto &[uuid, index] : m_index_map) {
-            if (getPath(index) == path) {
-                return index;
-            }
-        }
-
-        return ModelIndex();
+        std::scoped_lock lock(m_mutex);
+        return getIndex_(path);
     }
 
-    ModelIndex FileSystemModel::getIndex(const UUID64 &uuid) const { return m_index_map.at(uuid); }
+    ModelIndex FileSystemModel::getIndex(const UUID64 &uuid) const {
+        std::scoped_lock lock(m_mutex);
+        return getIndex_(uuid);
+    }
 
     ModelIndex FileSystemModel::getIndex(int64_t row, int64_t column,
                                          const ModelIndex &parent) const {
-        if (!validateIndex(parent)) {
-            if (m_root_index != 0 && row == 0 && column == 0) {
-                return m_index_map.at(m_root_index);
-            }
-            return ModelIndex();
-        }
-
-        _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
-        if (row < 0 || (size_t)row >= parent_data->m_children.size()) {
-            return ModelIndex();
-        }
-
-        return m_index_map.at(parent_data->m_children[row]);
+        std::scoped_lock lock(m_mutex);
+        return getIndex_(row, column, parent);
     }
 
     fs_path FileSystemModel::getPath(const ModelIndex &index) const {
-        if (!validateIndex(index)) {
-            return fs_path();
-        }
-
-        return index.data<_FileSystemIndexData>()->m_path;
+        std::scoped_lock lock(m_mutex);
+        return getPath_(index);
     }
 
     ModelIndex FileSystemModel::getParent(const ModelIndex &index) const {
-        if (!validateIndex(index)) {
-            return ModelIndex();
-        }
-
-        const UUID64 &id = index.data<_FileSystemIndexData>()->m_parent;
-        if (id == 0) {
-            return ModelIndex();
-        }
-
-        return m_index_map.at(id);
+        std::scoped_lock lock(m_mutex);
+        return getParent_(index);
     }
 
     ModelIndex FileSystemModel::getSibling(int64_t row, int64_t column,
                                            const ModelIndex &index) const {
-        if (!validateIndex(index)) {
-            return ModelIndex();
-        }
-
-        const ModelIndex &parent = getParent(index);
-        if (!validateIndex(parent)) {
-            return ModelIndex();
-        }
-
-        return getIndex(row, column, parent);
+        std::scoped_lock lock(m_mutex);
+        return getSibling_(row, column, index);
     }
 
-    size_t FileSystemModel::getColumnCount(const ModelIndex &index) const { return 1; }
+    size_t FileSystemModel::getColumnCount(const ModelIndex &index) const {
+        std::scoped_lock lock(m_mutex);
+        return getColumnCount_(index);
+    }
 
     size_t FileSystemModel::getRowCount(const ModelIndex &index) const {
-        if (!validateIndex(index)) {
-            return 0;
-        }
-
-        return index.data<_FileSystemIndexData>()->m_children.size();
+        std::scoped_lock lock(m_mutex);
+        return getRowCount_(index);
     }
 
     bool FileSystemModel::hasChildren(const ModelIndex &parent) const {
-        if (getRowCount(parent) > 0) {
-            return true;
-        }
-        return pollChildren(parent) > 0;
+        std::scoped_lock lock(m_mutex);
+        return hasChildren_(parent);
     }
 
     ScopePtr<MimeData>
     FileSystemModel::createMimeData(const std::vector<ModelIndex> &indexes) const {
-        TOOLBOX_ERROR("[FileSystemModel] Mimedata unimplemented!");
-        return ScopePtr<MimeData>();
+        std::scoped_lock lock(m_mutex);
+        return createMimeData_(indexes);
     }
 
     std::vector<std::string> FileSystemModel::getSupportedMimeTypes() const {
@@ -569,31 +289,21 @@ namespace Toolbox {
     }
 
     bool FileSystemModel::canFetchMore(const ModelIndex &index) {
-        if (!validateIndex(index)) {
-            return false;
-        }
-
-        if (!isDirectory(index) && !isArchive(index)) {
-            return false;
-        }
-
-        return index.data<_FileSystemIndexData>()->m_children.empty();
+        std::scoped_lock lock(m_mutex);
+        return canFetchMore_(index);
     }
 
     void FileSystemModel::fetchMore(const ModelIndex &index) {
-        if (!validateIndex(index)) {
-            return;
-        }
-
-        if (isDirectory(index)) {
-            fs_path path = getPath(index);
-
-            size_t i = 0;
-            for (const auto &entry : Filesystem::directory_iterator(path)) {
-                makeIndex(entry.path(), i++, index);
-            }
-        }
+        std::scoped_lock lock(m_mutex);
+        return fetchMore_(index);
     }
+
+    void FileSystemModel::addEventListener(UUID64 uuid, event_listener_t listener,
+                                           FileSystemModelEventFlags flags) {
+        m_listeners[uuid] = {listener, flags};
+    }
+
+    void FileSystemModel::removeEventListener(UUID64 uuid) { m_listeners.erase(uuid); }
 
     const ImageHandle &FileSystemModel::InvalidIcon() {
         static ImageHandle s_invalid_fs_icon = ImageHandle("Images/Icons/fs_invalid.png");
@@ -644,6 +354,439 @@ namespace Toolbox {
         return s_type_map;
     }
 
+    bool FileSystemModel::isDirectory_(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return false;
+        }
+        return index.data<_FileSystemIndexData>()->m_type == _FileSystemIndexData::Type::DIRECTORY;
+    }
+
+    bool FileSystemModel::isFile_(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return false;
+        }
+        return index.data<_FileSystemIndexData>()->m_type == _FileSystemIndexData::Type::FILE;
+    }
+
+    bool FileSystemModel::isArchive_(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return false;
+        }
+        return index.data<_FileSystemIndexData>()->m_type == _FileSystemIndexData::Type::ARCHIVE;
+    }
+
+    size_t FileSystemModel::getFileSize_(const ModelIndex &index) const {
+        if (!isFile_(index)) {
+            return 0;
+        }
+        return index.data<_FileSystemIndexData>()->m_size;
+    }
+
+    size_t FileSystemModel::getDirSize_(const ModelIndex &index, bool recursive) const {
+        if (!(isDirectory_(index) || isArchive_(index))) {
+            return 0;
+        }
+        return index.data<_FileSystemIndexData>()->m_size;
+    }
+
+    std::any FileSystemModel::getData_(const ModelIndex &index, int role) const {
+        if (!validateIndex(index)) {
+            return {};
+        }
+
+        switch (role) {
+        case ModelDataRole::DATA_ROLE_DISPLAY:
+            return index.data<_FileSystemIndexData>()->m_name;
+        case ModelDataRole::DATA_ROLE_TOOLTIP:
+            return "Tooltip unimplemented!";
+        case ModelDataRole::DATA_ROLE_DECORATION: {
+            return index.data<_FileSystemIndexData>()->m_icon;
+        }
+        case FileSystemDataRole::FS_DATA_ROLE_DATE: {
+
+            Filesystem::file_time_type result = Filesystem::file_time_type();
+
+            fs_path path = getPath_(index);
+            Filesystem::last_write_time(path)
+                .and_then([&](Filesystem::file_time_type &&time) {
+                    result = std::move(time);
+                    return Result<Filesystem::file_time_type, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to get last write time: {}",
+                                    error.m_message[0]);
+                    return Result<Filesystem::file_time_type, FSError>();
+                });
+
+            return result;
+        }
+        case FileSystemDataRole::FS_DATA_ROLE_STATUS: {
+
+            Filesystem::file_status result = Filesystem::file_status();
+
+            fs_path path = getPath_(index);
+            Filesystem::status(path)
+                .and_then([&](Filesystem::file_status &&status) {
+                    result = std::move(status);
+                    return Result<Filesystem::file_status, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to get last write status: {}",
+                                    error.m_message[0]);
+                    return Result<Filesystem::file_status, FSError>();
+                });
+
+            return result;
+        }
+        case FileSystemDataRole::FS_DATA_ROLE_TYPE: {
+
+            if (isDirectory_(index)) {
+                return TypeMap().at("_Folder").m_name;
+            }
+
+            if (isArchive_(index)) {
+                return TypeMap().at("_Archive").m_name;
+            }
+
+            std::string name = index.data<_FileSystemIndexData>()->m_name;
+            std::string ext  = "";
+            if (size_t epos = name.find('.'); epos != std::string::npos) {
+                ext = name.substr(epos);
+            }
+
+            if (ext.empty()) {
+                return TypeMap().at("_Folder").m_name;
+            }
+
+            if (TypeMap().find(ext) == TypeMap().end()) {
+                return TypeMap().at("_File").m_name;
+            }
+
+            return TypeMap().at(ext).m_name;
+        }
+        default:
+            return std::any();
+        }
+    }
+
+    ModelIndex FileSystemModel::mkdir_(const ModelIndex &parent, const std::string &name) {
+        if (!validateIndex(parent)) {
+            return ModelIndex();
+        }
+
+        bool result = false;
+
+        if (isDirectory_(parent)) {
+            fs_path path = getPath_(parent);
+            path /= name;
+            Filesystem::create_directory(path)
+                .and_then([&](bool created) {
+                    if (!created) {
+                        TOOLBOX_ERROR_V("[FileSystemModel] Failed to create directory: {}",
+                                        path.string());
+                        return Result<bool, FSError>();
+                    }
+                    result = true;
+                    return Result<bool, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to create directory: {}",
+                                    error.m_message[0]);
+                    return Result<bool, FSError>();
+                });
+        } else if (isArchive_(parent)) {
+            TOOLBOX_ERROR("[FileSystemModel] Archive creation is unimplemented!");
+        } else {
+            TOOLBOX_ERROR("[FileSystemModel] Parent index is not a directory!");
+        }
+
+        if (!result) {
+            return ModelIndex();
+        }
+
+        return makeIndex(parent.data<_FileSystemIndexData>()->m_path / name, getRowCount(parent),
+                         parent);
+    }
+
+    ModelIndex FileSystemModel::touch_(const ModelIndex &parent, const std::string &name) {
+        if (!validateIndex(parent)) {
+            return ModelIndex();
+        }
+
+        bool result = false;
+
+        if (isDirectory_(parent)) {
+            fs_path path = parent.data<_FileSystemIndexData>()->m_path / name;
+            std::ofstream file(path);
+            if (!file.is_open()) {
+                TOOLBOX_ERROR_V("[FileSystemModel] Failed to create file: {}", path.string());
+                return ModelIndex();
+            }
+            file.close();
+            result = true;
+        } else if (isArchive_(parent)) {
+            TOOLBOX_ERROR("[FileSystemModel] Archive creation is unimplemented!");
+        } else {
+            TOOLBOX_ERROR("[FileSystemModel] Parent index is not a directory!");
+        }
+
+        if (!result) {
+            return ModelIndex();
+        }
+
+        return makeIndex(parent.data<_FileSystemIndexData>()->m_path / name, getRowCount(parent),
+                         parent);
+    }
+
+    bool FileSystemModel::rmdir_(const ModelIndex &index) {
+        if (!validateIndex(index)) {
+            return false;
+        }
+
+        bool result = false;
+
+        if (isDirectory_(index)) {
+            Filesystem::remove_all(getPath_(index))
+                .and_then([&](bool removed) {
+                    if (!removed) {
+                        TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove directory: {}",
+                                        getPath(index).string());
+                        return Result<bool, FSError>();
+                    }
+                    result = true;
+                    return Result<bool, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove directory: {}",
+                                    error.m_message[0]);
+                    return Result<bool, FSError>();
+                });
+        } else if (isArchive_(index)) {
+            Filesystem::remove(getPath_(index))
+                .and_then([&](bool removed) {
+                    if (!removed) {
+                        TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove archive: {}",
+                                        getPath(index).string());
+                        return Result<bool, FSError>();
+                    }
+                    result = true;
+                    return Result<bool, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove archive: {}",
+                                    error.m_message[0]);
+                    return Result<bool, FSError>();
+                });
+        } else {
+            TOOLBOX_ERROR("[FileSystemModel] Index is not a directory!");
+        }
+
+        if (result) {
+            ModelIndex parent = getParent_(index);
+            if (validateIndex(parent)) {
+                _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
+                parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
+                                                          parent_data->m_children.end(),
+                                                          index.getUUID()),
+                                              parent_data->m_children.end());
+            }
+            delete index.data<_FileSystemIndexData>();
+            m_index_map.erase(index.getUUID());
+        }
+
+        return result;
+    }
+
+    bool FileSystemModel::remove_(const ModelIndex &index) {
+        if (!validateIndex(index)) {
+            return false;
+        }
+
+        bool result = false;
+
+        if (isFile_(index)) {
+            Filesystem::remove(getPath_(index))
+                .and_then([&](bool removed) {
+                    if (!removed) {
+                        TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove file: {}",
+                                        getPath_(index).string());
+                        return Result<bool, FSError>();
+                    }
+                    result = true;
+                    return Result<bool, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove file: {}",
+                                    error.m_message[0]);
+                    return Result<bool, FSError>();
+                });
+        } else if (isArchive_(index)) {
+            TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
+        } else {
+            TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
+        }
+
+        if (result) {
+            ModelIndex parent = getParent_(index);
+            if (validateIndex(parent)) {
+                _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
+                parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
+                                                          parent_data->m_children.end(),
+                                                          index.getUUID()),
+                                              parent_data->m_children.end());
+            }
+            delete index.data<_FileSystemIndexData>();
+            m_index_map.erase(index.getUUID());
+        }
+
+        return result;
+    }
+
+    ModelIndex FileSystemModel::rename_(const ModelIndex &file, const std::string &new_name) {
+        if (!validateIndex(file)) {
+            return ModelIndex();
+        }
+        if (!isDirectory_(file) && !isFile_(file)) {
+            TOOLBOX_ERROR("[FileSystemModel] Not a directory or file!");
+            return ModelIndex();
+        }
+        fs_path from                      = file.data<_FileSystemIndexData>()->m_path;
+        fs_path to                        = from.parent_path() / new_name;
+        ModelIndex parent                 = getParent_(file);
+        _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
+
+        int dest_index = std::find(parent_data->m_children.begin(), parent_data->m_children.end(),
+                                   file.getUUID()) -
+                         parent_data->m_children.begin();
+
+        Filesystem::rename(from, to);
+
+        delete file.data<_FileSystemIndexData>();
+        m_index_map.erase(file.getUUID());
+        parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
+                                                  parent_data->m_children.end(), file.getUUID()),
+                                      parent_data->m_children.end());
+        return makeIndex(to, dest_index, parent);
+    }
+
+    ModelIndex FileSystemModel::getIndex_(const fs_path &path) const {
+        if (m_index_map.empty()) {
+            return ModelIndex();
+        }
+
+        for (const auto &[uuid, index] : m_index_map) {
+            if (getPath_(index) == path) {
+                return index;
+            }
+        }
+
+        return ModelIndex();
+    }
+
+    ModelIndex FileSystemModel::getIndex_(const UUID64 &uuid) const { return m_index_map.at(uuid); }
+
+    ModelIndex FileSystemModel::getIndex_(int64_t row, int64_t column,
+                                          const ModelIndex &parent) const {
+        if (!validateIndex(parent)) {
+            if (m_root_index != 0 && row == 0 && column == 0) {
+                return m_index_map.at(m_root_index);
+            }
+            return ModelIndex();
+        }
+
+        _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
+        if (row < 0 || (size_t)row >= parent_data->m_children.size()) {
+            return ModelIndex();
+        }
+
+        return m_index_map.at(parent_data->m_children[row]);
+    }
+
+    fs_path FileSystemModel::getPath_(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return fs_path();
+        }
+
+        return index.data<_FileSystemIndexData>()->m_path;
+    }
+
+    ModelIndex FileSystemModel::getParent_(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return ModelIndex();
+        }
+
+        const UUID64 &id = index.data<_FileSystemIndexData>()->m_parent;
+        if (id == 0) {
+            return ModelIndex();
+        }
+
+        return m_index_map.at(id);
+    }
+
+    ModelIndex FileSystemModel::getSibling_(int64_t row, int64_t column,
+                                            const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return ModelIndex();
+        }
+
+        const ModelIndex &parent = getParent_(index);
+        if (!validateIndex(parent)) {
+            return ModelIndex();
+        }
+
+        return getIndex_(row, column, parent);
+    }
+
+    size_t FileSystemModel::getColumnCount_(const ModelIndex &index) const { return 1; }
+
+    size_t FileSystemModel::getRowCount_(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return 0;
+        }
+
+        return index.data<_FileSystemIndexData>()->m_children.size();
+    }
+
+    bool FileSystemModel::hasChildren_(const ModelIndex &parent) const {
+        if (getRowCount_(parent) > 0) {
+            return true;
+        }
+        return pollChildren(parent) > 0;
+    }
+
+    ScopePtr<MimeData>
+    FileSystemModel::createMimeData_(const std::vector<ModelIndex> &indexes) const {
+        TOOLBOX_ERROR("[FileSystemModel] Mimedata unimplemented!");
+        return ScopePtr<MimeData>();
+    }
+
+    bool FileSystemModel::canFetchMore_(const ModelIndex &index) {
+        if (!validateIndex(index)) {
+            return false;
+        }
+
+        if (!isDirectory_(index) && !isArchive_(index)) {
+            return false;
+        }
+
+        return index.data<_FileSystemIndexData>()->m_children.empty();
+    }
+
+    void FileSystemModel::fetchMore_(const ModelIndex &index) {
+        if (!validateIndex(index)) {
+            return;
+        }
+
+        if (isDirectory_(index)) {
+            fs_path path = getPath_(index);
+
+            size_t i = 0;
+            for (const auto &entry : Filesystem::directory_iterator(path)) {
+                makeIndex(entry.path(), i++, index);
+            }
+        }
+    }
+
     ModelIndex FileSystemModel::makeIndex(const fs_path &path, int64_t row,
                                           const ModelIndex &parent) {
         _FileSystemIndexData *parent_data = nullptr;
@@ -664,7 +807,6 @@ namespace Toolbox {
         _FileSystemIndexData *data = new _FileSystemIndexData;
         data->m_path               = path;
         data->m_name               = path.filename().string();
-        data->m_size               = 0;
         data->m_children           = {};
 
         if (Filesystem::is_directory(path).value_or(false)) {
@@ -690,6 +832,21 @@ namespace Toolbox {
                                 error.m_message[0]);
                 return Result<Filesystem::file_time_type, FSError>();
             });
+
+        if (data->m_type == _FileSystemIndexData::Type::FILE) {
+            Filesystem::file_size(data->m_path)
+                .and_then([&](size_t size) {
+                    data->m_size = size;
+                    return Result<size_t, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to get file size: {}",
+                                    error.m_message[0]);
+                    return Result<size_t, FSError>();
+                });
+        } else {
+            data->m_size = 0;
+        }
 
         ModelIndex index = ModelIndex(getUUID());
 
@@ -733,12 +890,12 @@ namespace Toolbox {
     }
 
     ModelIndex FileSystemModel::getParentArchive(const ModelIndex &index) const {
-        ModelIndex parent = getParent(index);
+        ModelIndex parent = getParent_(index);
         do {
-            if (isArchive(parent)) {
+            if (isArchive_(parent)) {
                 return parent;
             }
-            parent = getParent(parent);
+            parent = getParent_(parent);
         } while (validateIndex(parent));
 
         return ModelIndex();
@@ -751,15 +908,15 @@ namespace Toolbox {
 
         size_t count = 0;
 
-        if (isDirectory(index)) {
+        if (isDirectory_(index)) {
             // Count the children in the filesystem
-            for (const auto &entry : Filesystem::directory_iterator(getPath(index))) {
+            for (const auto &entry : Filesystem::directory_iterator(getPath_(index))) {
                 count += 1;
             }
-        } else if (isArchive(index)) {
+        } else if (isArchive_(index)) {
             // Count the children in the archive
             TOOLBOX_ERROR("[FileSystemModel] Archive polling unimplemented!");
-        } else if (isFile(index)) {
+        } else if (isFile_(index)) {
             // Files have no children
             count = 0;
         } else {
@@ -770,12 +927,220 @@ namespace Toolbox {
         return count;
     }
 
+    void FileSystemModel::folderAdded(const fs_path &path) {
+        {
+            std::scoped_lock lock(m_mutex);
+
+            ModelIndex parent = getIndex_(path.parent_path());
+            if (!validateIndex(parent)) {
+                return;
+            }
+
+            makeIndex(path, getRowCount_(parent), parent);
+        }
+
+        for (const auto &[key, listener] : m_listeners) {
+            if ((listener.second & FileSystemModelEventFlags::EVENT_FOLDER_ADDED) !=
+                FileSystemModelEventFlags::NONE) {
+                listener.first(path, FileSystemModelEventFlags::EVENT_FOLDER_ADDED);
+            }
+        }
+    }
+
+    void FileSystemModel::folderModified(const fs_path &path) {
+        {
+            std::scoped_lock lock(m_mutex);
+
+            ModelIndex index = getIndex_(path);
+            if (!validateIndex(index)) {
+                return;
+            }
+
+            _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
+
+            Filesystem::last_write_time(data->m_path)
+                .and_then([&](Filesystem::file_time_type &&time) {
+                    data->m_date = std::move(time);
+                    return Result<Filesystem::file_time_type, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to get last write time: {}",
+                                    error.m_message[0]);
+                    return Result<Filesystem::file_time_type, FSError>();
+                });
+        }
+
+        for (const auto &[key, listener] : m_listeners) {
+            if ((listener.second & FileSystemModelEventFlags::EVENT_FOLDER_MODIFIED) !=
+                FileSystemModelEventFlags::NONE) {
+                listener.first(path, FileSystemModelEventFlags::EVENT_FOLDER_MODIFIED);
+            }
+        }
+    }
+
+    void FileSystemModel::fileAdded(const fs_path &path) {
+        {
+            std::scoped_lock lock(m_mutex);
+
+            ModelIndex parent = getIndex_(path.parent_path());
+            if (!validateIndex(parent)) {
+                return;
+            }
+
+            makeIndex(path, getRowCount_(parent), parent);
+        }
+
+        for (const auto &[key, listener] : m_listeners) {
+            if ((listener.second & FileSystemModelEventFlags::EVENT_FILE_ADDED) !=
+                FileSystemModelEventFlags::NONE) {
+                listener.first(path, FileSystemModelEventFlags::EVENT_FILE_ADDED);
+            }
+        }
+    }
+
+    void FileSystemModel::fileModified(const fs_path &path) {
+        {
+            std::scoped_lock lock(m_mutex);
+
+            ModelIndex index = getIndex_(path);
+            if (!validateIndex(index)) {
+                return;
+            }
+
+            _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
+
+            Filesystem::last_write_time(data->m_path)
+                .and_then([&](Filesystem::file_time_type &&time) {
+                    data->m_date = std::move(time);
+                    return Result<Filesystem::file_time_type, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to get last write time: {}",
+                                    error.m_message[0]);
+                    return Result<Filesystem::file_time_type, FSError>();
+                });
+
+            Filesystem::file_size(data->m_path)
+                .and_then([&](size_t size) {
+                    data->m_size = size;
+                    return Result<size_t, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to get file size: {}",
+                                    error.m_message[0]);
+                    return Result<size_t, FSError>();
+                });
+        }
+
+        for (const auto &[key, listener] : m_listeners) {
+            if ((listener.second & FileSystemModelEventFlags::EVENT_FILE_MODIFIED) !=
+                FileSystemModelEventFlags::NONE) {
+                listener.first(path, FileSystemModelEventFlags::EVENT_FILE_MODIFIED);
+            }
+        }
+    }
+
+    void FileSystemModel::pathRenamedSrc(const fs_path &old_path) {
+        std::scoped_lock lock(m_mutex);
+        m_rename_src = old_path;
+    }
+
+    void FileSystemModel::pathRenamedDst(const fs_path &new_path) {
+        {
+            std::scoped_lock lock(m_mutex);
+
+            ModelIndex index = getIndex_(m_rename_src);
+            if (!validateIndex(index)) {
+                return;
+            }
+
+            _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
+            data->m_path               = new_path;
+            data->m_name               = new_path.filename().string();
+
+            // Reparent index if necessary
+            ModelIndex parent = getParent_(index);
+            if (!validateIndex(parent)) {
+                return;
+            }
+
+            if (parent.data<_FileSystemIndexData>()->m_path != new_path.parent_path()) {
+                _FileSystemIndexData *old_parent_data = parent.data<_FileSystemIndexData>();
+                old_parent_data->m_children.erase(std::remove(old_parent_data->m_children.begin(),
+                                                              old_parent_data->m_children.end(),
+                                                              index.getUUID()),
+                                                  old_parent_data->m_children.end());
+
+                ModelIndex new_parent = getIndex_(new_path.parent_path());
+                if (!validateIndex(new_parent)) {
+                    return;
+                }
+
+                _FileSystemIndexData *new_parent_data = new_parent.data<_FileSystemIndexData>();
+                new_parent_data->m_children.push_back(index.getUUID());
+            }
+        }
+
+        for (const auto &[key, listener] : m_listeners) {
+            if ((listener.second & FileSystemModelEventFlags::EVENT_PATH_RENAMED) !=
+                FileSystemModelEventFlags::NONE) {
+                listener.first(new_path, FileSystemModelEventFlags::EVENT_PATH_RENAMED);
+            }
+        }
+    }
+
+    void FileSystemModel::pathRemoved(const fs_path &path) {
+        {
+            std::scoped_lock lock(m_mutex);
+
+            ModelIndex index = getIndex_(path);
+            if (!validateIndex(index)) {
+                return;
+            }
+
+            ModelIndex parent = getParent_(index);
+            if (!validateIndex(parent)) {
+                return;
+            }
+
+            {
+                _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
+                parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
+                                                          parent_data->m_children.end(),
+                                                          index.getUUID()),
+                                              parent_data->m_children.end());
+                delete index.data<_FileSystemIndexData>();
+                m_index_map.erase(index.getUUID());
+            }
+        }
+
+        for (const auto &[key, listener] : m_listeners) {
+            if ((listener.second & FileSystemModelEventFlags::EVENT_PATH_REMOVED) !=
+                FileSystemModelEventFlags::NONE) {
+                listener.first(path, FileSystemModelEventFlags::EVENT_PATH_REMOVED);
+            }
+        }
+    }
+
     RefPtr<FileSystemModel> FileSystemModelSortFilterProxy::getSourceModel() const {
         return m_source_model;
     }
 
     void FileSystemModelSortFilterProxy::setSourceModel(RefPtr<FileSystemModel> model) {
+        if (m_source_model == model) {
+            return;
+        }
+
+        if (m_source_model) {
+            m_source_model->removeEventListener(getUUID());
+        }
+
         m_source_model = model;
+
+        if (m_source_model) {
+            m_source_model->addEventListener(getUUID(), TOOLBOX_BIND_EVENT_FN(fsUpdateEvent),
+                                                          FileSystemModelEventFlags::EVENT_ANY);
+        }
     }
 
     ModelSortOrder FileSystemModelSortFilterProxy::getSortOrder() const { return m_sort_order; }
@@ -924,11 +1289,6 @@ namespace Toolbox {
 
     size_t FileSystemModelSortFilterProxy::getRowCount(const ModelIndex &index) const {
         ModelIndex &&source_index = toSourceIndex(index);
-
-        if (m_row_map.find(source_index.getUUID()) != m_row_map.end()) {
-            return m_row_map[source_index.getUUID()].size();
-        }
-
         return m_source_model->getRowCount(source_index);
     }
 
@@ -979,7 +1339,7 @@ namespace Toolbox {
 
         ModelIndex proxy_index = ModelIndex(getUUID());
         proxy_index.setData(index.data<_FileSystemIndexData>());
-        
+
         IDataModel::setIndexUUID(proxy_index, index.getUUID());
 
         return proxy_index;
@@ -1114,6 +1474,20 @@ namespace Toolbox {
                 }
             }
         }
+    }
+
+    void FileSystemModelSortFilterProxy::fsUpdateEvent(const fs_path &path,
+                                                       FileSystemModelEventFlags flags) {
+        if ((flags & FileSystemModelEventFlags::EVENT_ANY) == FileSystemModelEventFlags::NONE) {
+            return;
+        }
+
+        if ((flags & FileSystemModelEventFlags::EVENT_PATH_RENAMED) !=
+            FileSystemModelEventFlags::NONE) {
+            m_filter_map.clear();
+        }
+
+        m_row_map.clear();
     }
 
 }  // namespace Toolbox
