@@ -121,7 +121,7 @@ namespace Toolbox::UI {
                                 m_is_renaming = false;
                                 if (m_view_proxy.isDirectory(child_index)) {
                                     m_view_index = m_view_proxy.toSourceIndex(child_index);
-                                    m_fs_watchdog.addPath(m_file_system_model->getPath(m_view_index));
+                                    //m_fs_watchdog.addPath(m_file_system_model->getPath(m_view_index));
                                     ImGui::EndChild();
                                     ImGui::PopStyleColor(1);
                                     break;
@@ -232,10 +232,6 @@ namespace Toolbox::UI {
         m_view_index = m_view_proxy.getIndex(0, 0);
         m_fs_watchdog.reset();
         m_fs_watchdog.addPath(m_project_root);
-        m_fs_watchdog.onFileRemoved([this](const fs_path &path) {
-            TOOLBOX_INFO_V("File removed: {}", path.string());
-            //m_file_system_model->removeIndex(m_file_system_model->getIndex(path));
-        });
         m_fs_watchdog.onFileAdded(
             [this](const fs_path &path) {
             TOOLBOX_INFO_V("File added: {}", path.string());
@@ -254,9 +250,17 @@ namespace Toolbox::UI {
             TOOLBOX_INFO_V("Dir modified: {}", path.string());
             //m_file_system_model->updateIndex(m_file_system_model->getIndex(path));
         });
-        m_fs_watchdog.onDirRemoved([this](const fs_path &path) {
-            TOOLBOX_INFO_V("Dir removed: {}", path.string());
-            //m_file_system_model->renameIndex(m_file_system_model->getIndex(old_path), new_path);
+        m_fs_watchdog.onPathRenamedSrc([this](const fs_path &path) {
+            TOOLBOX_INFO_V("Path renamed from: {}", path.string());
+            // m_file_system_model->updateIndex(m_file_system_model->getIndex(path));
+        });
+        m_fs_watchdog.onPathRenamedDst([this](const fs_path &path) {
+            TOOLBOX_INFO_V("Path renamed to: {}", path.string());
+            // m_file_system_model->updateIndex(m_file_system_model->getIndex(path));
+        });
+        m_fs_watchdog.onPathRemoved([this](const fs_path &path) {
+            TOOLBOX_INFO_V("Path removed: {}", path.string());
+            // m_file_system_model->updateIndex(m_file_system_model->getIndex(path));
         });
         return true;
     }
@@ -304,7 +308,7 @@ namespace Toolbox::UI {
 
             if (ImGui::IsItemClicked()) {
                 m_view_index = m_tree_proxy.toSourceIndex(index);
-                m_fs_watchdog.addPath(m_file_system_model->getPath(m_view_index));
+                //m_fs_watchdog.addPath(m_file_system_model->getPath(m_view_index));
             }
 
             if (is_open) {
