@@ -1139,7 +1139,7 @@ namespace Toolbox {
 
         if (m_source_model) {
             m_source_model->addEventListener(getUUID(), TOOLBOX_BIND_EVENT_FN(fsUpdateEvent),
-                                                          FileSystemModelEventFlags::EVENT_ANY);
+                                             FileSystemModelEventFlags::EVENT_ANY);
         }
     }
 
@@ -1261,6 +1261,8 @@ namespace Toolbox {
 
     ModelIndex FileSystemModelSortFilterProxy::getSibling(int64_t row, int64_t column,
                                                           const ModelIndex &index) const {
+        std::unique_lock lock(m_cache_mutex);
+
         ModelIndex source_index       = toSourceIndex(index);
         ModelIndex src_parent         = getParent(source_index);
         const UUID64 &src_parent_uuid = src_parent.getUUID();
@@ -1271,7 +1273,7 @@ namespace Toolbox {
         }
 
         if (m_row_map.find(map_key) == m_row_map.end()) {
-            cacheIndex(src_parent);
+            cacheIndex_(src_parent);
         }
 
         if (row < m_row_map[map_key].size()) {
@@ -1346,7 +1348,9 @@ namespace Toolbox {
     }
 
     ModelIndex FileSystemModelSortFilterProxy::toProxyIndex(int64_t row, int64_t column,
-                                                            const ModelIndex &src_parent) const {
+                                                             const ModelIndex &src_parent) const {
+        std::unique_lock lock(m_cache_mutex);
+
         const UUID64 &src_parent_uuid = src_parent.getUUID();
 
         u64 map_key = src_parent_uuid;
@@ -1355,7 +1359,7 @@ namespace Toolbox {
         }
 
         if (m_row_map.find(map_key) == m_row_map.end()) {
-            cacheIndex(src_parent);
+            cacheIndex_(src_parent);
         }
 
         if (row < m_row_map[map_key].size()) {
@@ -1388,6 +1392,11 @@ namespace Toolbox {
     }
 
     void FileSystemModelSortFilterProxy::cacheIndex(const ModelIndex &dir_index) const {
+        std::unique_lock lock(m_cache_mutex);
+        cacheIndex_(dir_index);
+    }
+
+    void FileSystemModelSortFilterProxy::cacheIndex_(const ModelIndex &dir_index) const {
         std::vector<UUID64> orig_children  = {};
         std::vector<UUID64> proxy_children = {};
 
@@ -1482,12 +1491,12 @@ namespace Toolbox {
             return;
         }
 
-        if ((flags & FileSystemModelEventFlags::EVENT_PATH_RENAMED) !=
-            FileSystemModelEventFlags::NONE) {
-            m_filter_map.clear();
-        }
+        {
+            std::scoped_lock lock(m_cache_mutex);
 
-        m_row_map.clear();
+            m_filter_map.clear();
+            m_row_map.clear();
+        }
     }
 
 }  // namespace Toolbox

@@ -134,7 +134,8 @@ namespace Toolbox {
         void fetchMore(const ModelIndex &index) override;
 
         using event_listener_t = std::function<void(const fs_path &, FileSystemModelEventFlags)>;
-        void addEventListener(UUID64 uuid, event_listener_t listener, FileSystemModelEventFlags flags);
+        void addEventListener(UUID64 uuid, event_listener_t listener,
+                              FileSystemModelEventFlags flags);
         void removeEventListener(UUID64 uuid);
 
         static const ImageHandle &InvalidIcon();
@@ -202,7 +203,8 @@ namespace Toolbox {
 
         mutable std::mutex m_mutex;
         FileSystemWatchdog m_watchdog;
-        std::unordered_map<UUID64, std::pair<event_listener_t, FileSystemModelEventFlags>> m_listeners;
+        std::unordered_map<UUID64, std::pair<event_listener_t, FileSystemModelEventFlags>>
+            m_listeners;
 
         fs_path m_root_path;
 
@@ -293,7 +295,9 @@ namespace Toolbox {
                                               const ModelIndex &parent = ModelIndex()) const;
 
         [[nodiscard]] bool isFiltered(const UUID64 &uuid) const;
+
         void cacheIndex(const ModelIndex &index) const;
+        void cacheIndex_(const ModelIndex &index) const;
 
         ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) {
             return ModelIndex();
@@ -311,6 +315,7 @@ namespace Toolbox {
 
         bool m_dirs_only = false;
 
+        mutable std::mutex m_cache_mutex;
         mutable std::unordered_map<UUID64, bool> m_filter_map;
         mutable std::unordered_map<UUID64, std::vector<int64_t>> m_row_map;
     };
