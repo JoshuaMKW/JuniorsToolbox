@@ -124,6 +124,9 @@ namespace Toolbox {
         [[nodiscard]] size_t getColumnCount(const ModelIndex &index) const override;
         [[nodiscard]] size_t getRowCount(const ModelIndex &index) const override;
 
+        [[nodiscard]] int64_t getColumn(const ModelIndex &index) const override;
+        [[nodiscard]] int64_t getRow(const ModelIndex &index) const override;
+
         [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] ScopePtr<MimeData>
@@ -171,6 +174,9 @@ namespace Toolbox {
 
         [[nodiscard]] size_t getColumnCount_(const ModelIndex &index) const;
         [[nodiscard]] size_t getRowCount_(const ModelIndex &index) const;
+
+        [[nodiscard]] int64_t getColumn_(const ModelIndex &index) const;
+        [[nodiscard]] int64_t getRow_(const ModelIndex &index) const;
 
         [[nodiscard]] bool hasChildren_(const ModelIndex &parent = ModelIndex()) const;
 
@@ -264,31 +270,32 @@ namespace Toolbox {
         bool remove(const ModelIndex &index);
 
         [[nodiscard]] ModelIndex getIndex(const fs_path &path) const;
-        [[nodiscard]] ModelIndex getIndex(const UUID64 &path) const;
+        [[nodiscard]] ModelIndex getIndex(const UUID64 &path) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
-                                          const ModelIndex &parent = ModelIndex()) const;
+                                          const ModelIndex &parent = ModelIndex()) const override;
         [[nodiscard]] fs_path getPath(const ModelIndex &index) const;
 
-        [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const;
+        [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
         [[nodiscard]] ModelIndex getSibling(int64_t row, int64_t column,
-                                            const ModelIndex &index) const;
+                                            const ModelIndex &index) const override;
 
-        [[nodiscard]] size_t getColumnCount(const ModelIndex &index) const;
-        [[nodiscard]] size_t getRowCount(const ModelIndex &index) const;
+        [[nodiscard]] size_t getColumnCount(const ModelIndex &index) const override;
+        [[nodiscard]] size_t getRowCount(const ModelIndex &index) const override;
 
-        [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const;
+        [[nodiscard]] int64_t getColumn(const ModelIndex &index) const override;
+        [[nodiscard]] int64_t getRow(const ModelIndex &index) const override;
+
+        [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData(const std::vector<ModelIndex> &indexes) const;
-        [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const;
+        createMimeData(const std::vector<ModelIndex> &indexes) const override;
+        [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
-        [[nodiscard]] bool canFetchMore(const ModelIndex &index);
-        void fetchMore(const ModelIndex &index);
+        [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
+        void fetchMore(const ModelIndex &index) override;
 
         [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;
-
-        [[nodiscard]] UUID64 getSourceUUID(const ModelIndex &index) const;
 
     protected:
         [[nodiscard]] ModelIndex toProxyIndex(int64_t row, int64_t column,
@@ -299,7 +306,7 @@ namespace Toolbox {
         void cacheIndex(const ModelIndex &index) const;
         void cacheIndex_(const ModelIndex &index) const;
 
-        ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) {
+        ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) override {
             return ModelIndex();
         }
 

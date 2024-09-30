@@ -105,6 +105,7 @@ namespace Toolbox::UI {
         FileSystemModelSortFilterProxy m_view_proxy;
         RefPtr<FileSystemModel> m_file_system_model;
 
+        ModelIndex m_last_selected_index;
         std::vector<ModelIndex> m_selected_indices;
         std::vector<ProjectAsset> m_view_assets;
         ModelIndex m_view_index;

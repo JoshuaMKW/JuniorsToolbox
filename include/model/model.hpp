@@ -99,6 +99,9 @@ namespace Toolbox {
         [[nodiscard]] virtual size_t getColumnCount(const ModelIndex &index) const = 0;
         [[nodiscard]] virtual size_t getRowCount(const ModelIndex &index) const    = 0;
 
+        [[nodiscard]] virtual int64_t getColumn(const ModelIndex &index) const = 0;
+        [[nodiscard]] virtual int64_t getRow(const ModelIndex &index) const = 0;
+
         [[nodiscard]] virtual bool hasChildren(const ModelIndex &parent = ModelIndex()) const = 0;
 
         [[nodiscard]] virtual ScopePtr<MimeData>

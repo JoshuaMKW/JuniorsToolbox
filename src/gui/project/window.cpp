@@ -157,17 +157,47 @@ namespace Toolbox::UI {
                                     }
                                 } else if (ImGui::IsMouseClicked(0)) {
                                     m_is_renaming = false;
-                                    if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+                                    if (Input::GetKey(KeyCode::KEY_LEFTCONTROL) ||
+                                        Input::GetKey(KeyCode::KEY_RIGHTCONTROL)) {
                                         if (is_selected) {
                                             m_selected_indices.erase(std::remove(
                                                 m_selected_indices.begin(),
                                                 m_selected_indices.end(), source_child_index));
+                                            m_last_selected_index = ModelIndex();
+                                        } else {
+                                            m_selected_indices.push_back(source_child_index);
+                                            m_last_selected_index = source_child_index;
+                                        }
+                                    } else if (Input::GetKey(KeyCode::KEY_LEFTSHIFT) ||
+                                               Input::GetKey(KeyCode::KEY_RIGHTSHIFT)) {
+                                        if (m_file_system_model->validateIndex(
+                                                m_last_selected_index)) {
+                                            int64_t this_row = m_view_proxy.getRow(child_index);
+                                            int64_t last_row = m_view_proxy.getRow(
+                                                m_view_proxy.toProxyIndex(m_last_selected_index));
+                                            if (this_row > last_row) {
+                                                for (int64_t i = last_row + 1; i <= this_row; ++i) {
+                                                    ModelIndex span_index =
+                                                        m_view_proxy.getIndex(i, 0, view_index);
+                                                    m_selected_indices.push_back(
+                                                        m_view_proxy.toSourceIndex(span_index));
+                                                }
+                                            } else if (this_row < last_row) {
+                                                for (int64_t i = this_row; i < last_row; ++i) {
+                                                    ModelIndex span_index =
+                                                        m_view_proxy.getIndex(i, 0, view_index);
+                                                    m_selected_indices.push_back(
+                                                        m_view_proxy.toSourceIndex(span_index));
+                                                }
+                                            }
                                         } else {
                                             m_selected_indices.push_back(source_child_index);
                                         }
+                                        m_last_selected_index = source_child_index;
                                     } else {
                                         m_selected_indices.clear();
                                         m_selected_indices.push_back(source_child_index);
+                                        m_last_selected_index = source_child_index;
                                     }
                                 }
                             }

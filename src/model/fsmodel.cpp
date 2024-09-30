@@ -273,6 +273,16 @@ namespace Toolbox {
         return getRowCount_(index);
     }
 
+    int64_t FileSystemModel::getColumn(const ModelIndex &index) const {
+        std::scoped_lock lock(m_mutex);
+        return getColumn_(index);
+    }
+
+    int64_t FileSystemModel::getRow(const ModelIndex &index) const {
+        std::scoped_lock lock(m_mutex);
+        return getRow_(index);
+    }
+
     bool FileSystemModel::hasChildren(const ModelIndex &parent) const {
         std::scoped_lock lock(m_mutex);
         return hasChildren_(parent);
@@ -745,6 +755,32 @@ namespace Toolbox {
         }
 
         return index.data<_FileSystemIndexData>()->m_children.size();
+    }
+
+    int64_t FileSystemModel::getColumn_(const ModelIndex &index) const {
+        return validateIndex(index) ? 0 : -1;
+    }
+
+    int64_t FileSystemModel::getRow_(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return -1;
+        }
+
+        ModelIndex parent = getParent_(index);
+        if (!validateIndex(parent)) {
+            return 0;
+        }
+
+        _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
+        int64_t row                       = 0;
+        for (const UUID64 &uuid : parent_data->m_children) {
+            if (uuid == index.getUUID()) {
+                return row;
+            }
+            ++row;
+        }
+
+        return -1;
     }
 
     bool FileSystemModel::hasChildren_(const ModelIndex &parent) const {
@@ -1264,7 +1300,7 @@ namespace Toolbox {
         std::unique_lock lock(m_cache_mutex);
 
         ModelIndex source_index       = toSourceIndex(index);
-        ModelIndex src_parent         = getParent(source_index);
+        ModelIndex src_parent         = m_source_model->getParent(source_index);
         const UUID64 &src_parent_uuid = src_parent.getUUID();
 
         u64 map_key = src_parent_uuid;
@@ -1292,6 +1328,41 @@ namespace Toolbox {
     size_t FileSystemModelSortFilterProxy::getRowCount(const ModelIndex &index) const {
         ModelIndex &&source_index = toSourceIndex(index);
         return m_source_model->getRowCount(source_index);
+    }
+
+    int64_t FileSystemModelSortFilterProxy::getColumn(const ModelIndex &index) const {
+        ModelIndex &&source_index = toSourceIndex(index);
+        return m_source_model->getColumn(source_index);
+    }
+
+    int64_t FileSystemModelSortFilterProxy::getRow(const ModelIndex &index) const {
+
+        ModelIndex &&source_index     = toSourceIndex(index);
+        ModelIndex src_parent         = m_source_model->getParent(source_index);
+        const UUID64 &src_parent_uuid = src_parent.getUUID();
+
+        u64 map_key = src_parent_uuid;
+        if (!m_source_model->validateIndex(src_parent)) {
+            map_key = 0;
+        }
+
+        if (m_row_map.find(map_key) == m_row_map.end()) {
+            cacheIndex_(src_parent);
+        }
+
+        int64_t src_row = m_source_model->getRow(source_index);
+        if (src_row == -1) {
+            return src_row;
+        }
+
+        const std::vector<int64_t> &row_map = m_row_map[map_key];
+        for (size_t i = 0; i < row_map.size(); ++i) {
+            if (src_row == row_map[i]) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     bool FileSystemModelSortFilterProxy::hasChildren(const ModelIndex &parent) const {
@@ -1368,14 +1439,6 @@ namespace Toolbox {
         }
 
         return ModelIndex();
-    }
-
-    UUID64 FileSystemModelSortFilterProxy::getSourceUUID(const ModelIndex &index) const {
-        if (!validateIndex(index)) {
-            return 0;
-        }
-
-        return index.data<_FileSystemIndexData>()->m_self_uuid;
     }
 
     bool FileSystemModelSortFilterProxy::isFiltered(const UUID64 &uuid) const {
