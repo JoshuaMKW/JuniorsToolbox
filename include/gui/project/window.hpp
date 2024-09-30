@@ -95,6 +95,7 @@ namespace Toolbox::UI {
         // Selection actions
         void actionDeleteIndexes(std::vector<ModelIndex> &indices);
         void actionOpenIndexes(const std::vector<ModelIndex> &indices);
+        void actionRenameIndex(const ModelIndex &index);
 
     private:
         fs_path m_project_root;
@@ -107,14 +108,16 @@ namespace Toolbox::UI {
         std::vector<ModelIndex> m_selected_indices;
         std::vector<ProjectAsset> m_view_assets;
         ModelIndex m_view_index;
-        bool m_is_renaming = false;
-        char m_rename_buffer[128];
 
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;
 
         ContextMenu<ModelIndex> m_context_menu;
         std::vector<ModelIndex> m_selected_indices_ctx;
+
+        bool m_is_renaming = false;
+        char m_rename_buffer[128];
+
         bool m_delete_without_request = false;
         bool m_delete_requested     = false;
     };

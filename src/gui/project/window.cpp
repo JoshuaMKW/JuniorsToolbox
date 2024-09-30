@@ -35,6 +35,8 @@ namespace Toolbox::UI {
             return;
         }
 
+        const ImGuiStyle &style = ImGui::GetStyle();
+
         if (ImGui::BeginChild("Folder View", {0, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
             if (m_file_system_model->hasChildren(m_view_index)) {
@@ -46,6 +48,7 @@ namespace Toolbox::UI {
                 ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
                 ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
+                ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
 
                 ImVec2 size = ImGui::GetContentRegionAvail();
 
@@ -79,86 +82,100 @@ namespace Toolbox::UI {
                                               ImGui::ColorConvertFloat4ToU32(
                                                   ImGui::GetStyleColorVec4(ImGuiCol_ChildBg)));
                     }
+                    const bool is_selected_rename = m_is_renaming && is_selected;
+
                     // Get the label and it's size
                     std::string text   = m_view_proxy.getDisplayText(child_index);
                     ImVec2 text_size   = ImGui::CalcTextSize(text.c_str());
                     ImVec2 rename_size = ImGui::CalcTextSize(m_rename_buffer);
 
-                    float box_width = m_is_renaming && is_selected ? std::max(rename_size.x, 76.0f)
-                                                                   : 76.0f;
-                    if (ImGui::BeginChild(child_index.getUUID(), {box_width, 92.0f}, true,
+                    const float box_width   = 76.0f;
+                    const float label_width = box_width - style.WindowPadding.x * 4.0f;
+                    const float text_width  = is_selected_rename
+                                                  ? std::min(rename_size.x, label_width)
+                                                  : std::min(text_size.x, label_width);
+
+                    if (ImGui::BeginChild(child_index.getUUID(), {box_width, 100.0f}, true,
                                           ImGuiWindowFlags_ChildWindow |
                                               ImGuiWindowFlags_NoDecoration)) {
-
-                        m_icon_painter.render(*m_view_proxy.getDecoration(child_index),
-                                              {72.0f, 72.0f});
+                        ImVec2 pos       = ImGui::GetCursorScreenPos() + style.WindowPadding;
+                        ImVec2 icon_size = ImVec2(box_width - style.WindowPadding.x * 2.0f,
+                                                  box_width - style.WindowPadding.x * 2.0f);
+                        m_icon_painter.render(*m_view_proxy.getDecoration(child_index), pos,
+                                              icon_size);
 
                         // Render the label
-                        ImVec2 pos    = ImGui::GetCursorScreenPos();
-                        ImVec2 newPos = pos;
-                        newPos.x += std::max<float>(36.0f - (((m_is_renaming && is_selected)
-                                                                  ? std::max(rename_size.x, 40.0f)
-                                                                  : text_size.x) /
-                                                             2.0f),
-                                                    0.0);
-                        newPos.y += 72.0f;
-                        if (m_is_renaming && is_selected) {
-                            ImGui::SetCursorScreenPos(newPos);
-                            ImGui::SetKeyboardFocusHere();
-                            ImGui::PushItemWidth(std::max(rename_size.x, 40.0f));
-                            bool done = ImGui::InputText("##rename", m_rename_buffer,
-                                                         IM_ARRAYSIZE(m_rename_buffer),
-                                                         ImGuiInputTextFlags_AutoSelectAll |
-                                                             ImGuiInputTextFlags_EnterReturnsTrue);
-                            if (done) {
-                                m_file_system_model->rename(m_view_proxy.toSourceIndex(child_index),
-                                                            m_rename_buffer);
-                            }
-                            ImGui::SetCursorScreenPos(pos);
-                            ImGui::PopItemWidth();
-                        } else {
-                            ImGui::RenderTextEllipsis(
-                                ImGui::GetWindowDrawList(), newPos, newPos + ImVec2(64, 20),
-                                pos.x + 64.0f, newPos.x + 76.0f, text.c_str(), nullptr, nullptr);
-                        }
-                        any_items_hovered = any_items_hovered || ImGui::IsItemHovered() ||
-                                            ImGui::IsWindowHovered(ImGuiHoveredFlags_None);
-                        // Handle click responses
-                        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_None)) {
-                            if (ImGui::IsMouseDoubleClicked(0)) {
-                                m_is_renaming = false;
-                                if (m_view_proxy.isDirectory(child_index)) {
-                                    m_view_index = m_view_proxy.toSourceIndex(child_index);
-                                    ImGui::EndChild();
-                                    ImGui::PopStyleColor(1);
-                                    break;
+                        {
+                            if (m_is_renaming && is_selected) {
+                                ImVec2 rename_pos =
+                                    pos + ImVec2(style.WindowPadding.x,
+                                                 icon_size.y + style.ItemInnerSpacing.y -
+                                                     style.FramePadding.y);
+
+                                ImGui::SetCursorScreenPos(rename_pos);
+                                ImGui::SetKeyboardFocusHere();
+
+                                ImGui::PushItemWidth(label_width);
+                                bool done = ImGui::InputText(
+                                    "##rename", m_rename_buffer, IM_ARRAYSIZE(m_rename_buffer),
+                                    ImGuiInputTextFlags_AutoSelectAll |
+                                        ImGuiInputTextFlags_EnterReturnsTrue);
+                                if (done) {
+                                    m_file_system_model->rename(
+                                        m_view_proxy.toSourceIndex(child_index), m_rename_buffer);
                                 }
-                            } else if (ImGui::IsMouseClicked(0)) {
-                                if (is_selected) {
-                                    if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
-                                        m_selected_indices.erase(std::find(
-                                            m_selected_indices.begin(), m_selected_indices.end(),
-                                            source_child_index));
-                                        m_is_renaming = false;
-                                    } else {
-                                        m_is_renaming = true;
-                                        std::strncpy(m_rename_buffer, text.c_str(),
-                                                     IM_ARRAYSIZE(m_rename_buffer));
-                                    }
-                                } else {
-                                    if (!ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
-                                        m_selected_indices.clear();
-                                    }
-                                    m_selected_indices.push_back(source_child_index);
+                                ImGui::SetCursorScreenPos(pos);
+                                ImGui::PopItemWidth();
+                            } else {
+                                ImVec2 text_pos =
+                                    pos + ImVec2(style.WindowPadding.x,
+                                                 icon_size.y + style.ItemInnerSpacing.y);
+                                text_pos.x +=
+                                    std::max((label_width / 2.0f) - (text_width / 2.0f), 0.0f);
+
+                                float ellipsis_max = text_pos.x + label_width;
+                                ImVec2 text_clip_max =
+                                    ImVec2(ellipsis_max - 8.0f, text_pos.y + 20.0f);
+                                ImGui::RenderTextEllipsis(ImGui::GetWindowDrawList(), text_pos,
+                                                          text_clip_max, ellipsis_max, ellipsis_max,
+                                                          text.c_str(), nullptr, nullptr);
+                            }
+                        }
+
+                        // Handle click responses
+                        {
+                            any_items_hovered = any_items_hovered || ImGui::IsItemHovered() ||
+                                                ImGui::IsWindowHovered(ImGuiHoveredFlags_None);
+                            if (ImGui::IsWindowHovered(ImGuiHoveredFlags_None)) {
+                                if (ImGui::IsMouseDoubleClicked(0)) {
                                     m_is_renaming = false;
+                                    if (m_view_proxy.isDirectory(child_index)) {
+                                        m_view_index = m_view_proxy.toSourceIndex(child_index);
+                                        ImGui::EndChild();
+                                        ImGui::PopStyleColor(1);
+                                        break;
+                                    }
+                                } else if (ImGui::IsMouseClicked(0)) {
+                                    m_is_renaming = false;
+                                    if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+                                        if (is_selected) {
+                                            m_selected_indices.erase(std::remove(
+                                                m_selected_indices.begin(),
+                                                m_selected_indices.end(), source_child_index));
+                                        } else {
+                                            m_selected_indices.push_back(source_child_index);
+                                        }
+                                    } else {
+                                        m_selected_indices.clear();
+                                        m_selected_indices.push_back(source_child_index);
+                                    }
                                 }
                             }
                         }
                     }
+
                     ImGui::EndChild();
                     ImGui::PopStyleColor(1);
-
-                    // ImGui::Text("%s", m_view_proxy.getDisplayText(child_index).c_str());
 
                     if ((i + 1) % x_count != 0) {
                         ImGui::SameLine();
@@ -210,7 +227,7 @@ namespace Toolbox::UI {
                     }
                 }
 
-                ImGui::PopStyleVar(4);
+                ImGui::PopStyleVar(5);
             }
         }
         ImGui::EndChild();
@@ -336,14 +353,9 @@ namespace Toolbox::UI {
         m_context_menu.addOption(
             "Rename", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R}),
             [this]() { return m_selected_indices_ctx.size() == 1; },
-            [this](auto) {
-                m_is_renaming = true;
-                std::strncpy(m_rename_buffer,
-                             m_file_system_model->getDisplayText(m_selected_indices_ctx[0]).c_str(),
-                             IM_ARRAYSIZE(m_rename_buffer));
-            });
+            [this](auto) { actionRenameIndex(m_selected_indices_ctx[0]); });
 
-        m_context_menu.addDivider();  
+        m_context_menu.addDivider();
 
         m_context_menu.addOption(
             "New...", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N}),
@@ -370,6 +382,12 @@ namespace Toolbox::UI {
             // TODO: Open files based on extension. Can be either internal or external
             // depending on the file type.
         }
+    }
+
+    void ProjectViewWindow::actionRenameIndex(const ModelIndex &index) {
+        m_is_renaming         = true;
+        std::string file_name = m_file_system_model->getDisplayText(index);
+        std::strncpy(m_rename_buffer, file_name.c_str(), IM_ARRAYSIZE(m_rename_buffer));
     }
 
     bool ProjectViewWindow::isViewedAncestor(const ModelIndex &index) {
