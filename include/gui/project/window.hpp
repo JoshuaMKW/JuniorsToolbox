@@ -96,6 +96,8 @@ namespace Toolbox::UI {
         void actionDeleteIndexes(std::vector<ModelIndex> &indices);
         void actionOpenIndexes(const std::vector<ModelIndex> &indices);
         void actionRenameIndex(const ModelIndex &index);
+        void actionLeftClickIndex(const ModelIndex &view_index, const ModelIndex &child_index,
+                                  bool is_selected);
 
     private:
         fs_path m_project_root;
@@ -113,14 +115,15 @@ namespace Toolbox::UI {
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;
 
-        ContextMenu<ModelIndex> m_context_menu;
+        ContextMenu<ModelIndex> m_folder_view_context_menu;
+        ContextMenu<ModelIndex> m_tree_view_context_menu;
         std::vector<ModelIndex> m_selected_indices_ctx;
 
         bool m_is_renaming = false;
         char m_rename_buffer[128];
 
         bool m_delete_without_request = false;
-        bool m_delete_requested     = false;
+        bool m_delete_requested       = false;
     };
 
 }  // namespace Toolbox::UI

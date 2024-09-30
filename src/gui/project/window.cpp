@@ -18,7 +18,6 @@ namespace Toolbox::UI {
         renderProjectFolderView();
         renderProjectFolderButton();
         renderProjectFileButton();
-        m_context_menu.render("Project View", m_view_index);
     }
 
     void ProjectViewWindow::renderProjectTreeView() {
@@ -37,6 +36,10 @@ namespace Toolbox::UI {
 
         const ImGuiStyle &style = ImGui::GetStyle();
 
+        bool is_left_click        = Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
+        bool is_double_left_click = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
+        bool is_right_click       = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
+
         if (ImGui::BeginChild("Folder View", {0, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
             if (m_file_system_model->hasChildren(m_view_index)) {
@@ -50,9 +53,12 @@ namespace Toolbox::UI {
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
                 ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
 
+                const float box_width   = 76.0f;
+                const float label_width = box_width - style.WindowPadding.x * 4.0f;
+
                 ImVec2 size = ImGui::GetContentRegionAvail();
 
-                size_t x_count = (size_t)(size.x / 80);
+                size_t x_count = (size_t)(size.x / (box_width + style.ItemSpacing.x) + 0.1f);
                 if (x_count == 0) {
                     x_count = 1;
                 }
@@ -89,11 +95,9 @@ namespace Toolbox::UI {
                     ImVec2 text_size   = ImGui::CalcTextSize(text.c_str());
                     ImVec2 rename_size = ImGui::CalcTextSize(m_rename_buffer);
 
-                    const float box_width   = 76.0f;
-                    const float label_width = box_width - style.WindowPadding.x * 4.0f;
-                    const float text_width  = is_selected_rename
-                                                  ? std::min(rename_size.x, label_width)
-                                                  : std::min(text_size.x, label_width);
+                    const float text_width = is_selected_rename
+                                                 ? std::min(rename_size.x, label_width)
+                                                 : std::min(text_size.x, label_width);
 
                     if (ImGui::BeginChild(child_index.getUUID(), {box_width, 100.0f}, true,
                                           ImGuiWindowFlags_ChildWindow |
@@ -106,7 +110,7 @@ namespace Toolbox::UI {
 
                         // Render the label
                         {
-                            if (m_is_renaming && is_selected) {
+                            if (is_selected_rename) {
                                 ImVec2 rename_pos =
                                     pos + ImVec2(style.WindowPadding.x,
                                                  icon_size.y + style.ItemInnerSpacing.y -
@@ -144,10 +148,10 @@ namespace Toolbox::UI {
 
                         // Handle click responses
                         {
-                            any_items_hovered = any_items_hovered || ImGui::IsItemHovered() ||
-                                                ImGui::IsWindowHovered(ImGuiHoveredFlags_None);
+                            any_items_hovered |= ImGui::IsItemHovered() ||
+                                                 ImGui::IsWindowHovered(ImGuiHoveredFlags_None);
                             if (ImGui::IsWindowHovered(ImGuiHoveredFlags_None)) {
-                                if (ImGui::IsMouseDoubleClicked(0)) {
+                                if (is_double_left_click) {
                                     m_is_renaming = false;
                                     if (m_view_proxy.isDirectory(child_index)) {
                                         m_view_index = m_view_proxy.toSourceIndex(child_index);
@@ -155,53 +159,9 @@ namespace Toolbox::UI {
                                         ImGui::PopStyleColor(1);
                                         break;
                                     }
-                                } else if (ImGui::IsMouseClicked(0)) {
+                                } else if (is_left_click) {
                                     m_is_renaming = false;
-                                    if (Input::GetKey(KeyCode::KEY_LEFTCONTROL) ||
-                                        Input::GetKey(KeyCode::KEY_RIGHTCONTROL)) {
-                                        if (is_selected) {
-                                            m_selected_indices.erase(std::remove(
-                                                m_selected_indices.begin(),
-                                                m_selected_indices.end(), source_child_index));
-                                            m_last_selected_index = ModelIndex();
-                                        } else {
-                                            m_selected_indices.push_back(source_child_index);
-                                            m_last_selected_index = source_child_index;
-                                        }
-                                    } else {
-                                        m_selected_indices.clear();
-                                        if (Input::GetKey(KeyCode::KEY_LEFTSHIFT) ||
-                                            Input::GetKey(KeyCode::KEY_RIGHTSHIFT)) {
-                                            if (m_file_system_model->validateIndex(
-                                                    m_last_selected_index)) {
-                                                int64_t this_row = m_view_proxy.getRow(child_index);
-                                                int64_t last_row =
-                                                    m_view_proxy.getRow(m_view_proxy.toProxyIndex(
-                                                        m_last_selected_index));
-                                                if (this_row > last_row) {
-                                                    for (int64_t i = last_row; i <= this_row;
-                                                         ++i) {
-                                                        ModelIndex span_index =
-                                                            m_view_proxy.getIndex(i, 0, view_index);
-                                                        m_selected_indices.push_back(
-                                                            m_view_proxy.toSourceIndex(span_index));
-                                                    }
-                                                } else {
-                                                    for (int64_t i = this_row; i <= last_row; ++i) {
-                                                        ModelIndex span_index =
-                                                            m_view_proxy.getIndex(i, 0, view_index);
-                                                        m_selected_indices.push_back(
-                                                            m_view_proxy.toSourceIndex(span_index));
-                                                    }
-                                                }
-                                            } else {
-                                                m_selected_indices.push_back(source_child_index);
-                                            }
-                                        } else {
-                                            m_selected_indices.push_back(source_child_index);
-                                            m_last_selected_index = source_child_index;
-                                        }
-                                    }
+                                    actionLeftClickIndex(view_index, child_index, is_selected);
                                 }
                             }
                         }
@@ -264,6 +224,10 @@ namespace Toolbox::UI {
             }
         }
         ImGui::EndChild();
+
+        m_folder_view_context_menu.render("Project View", m_view_index,
+                                          ImGuiHoveredFlags_AllowWhenBlockedByPopup |
+                                              ImGuiHoveredFlags_AllowWhenOverlapped);
     }
 
     void ProjectViewWindow::renderProjectFolderButton() {}
@@ -296,12 +260,12 @@ namespace Toolbox::UI {
     void ProjectViewWindow::onDropEvent(RefPtr<DropEvent> ev) {}
 
     void ProjectViewWindow::buildContextMenu() {
-        m_context_menu = ContextMenu<ModelIndex>();
+        m_folder_view_context_menu = ContextMenu<ModelIndex>();
 
-        m_context_menu.onOpen(
+        m_folder_view_context_menu.onOpen(
             [this](const ModelIndex &index) { m_selected_indices_ctx = m_selected_indices; });
 
-        m_context_menu.addOption(
+        m_folder_view_context_menu.addOption(
             "Open", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_O}),
             [this]() {
                 return m_selected_indices_ctx.size() > 0 &&
@@ -312,7 +276,7 @@ namespace Toolbox::UI {
             },
             [this](auto) { actionOpenIndexes(m_selected_indices_ctx); });
 
-        m_context_menu.addOption(
+        m_folder_view_context_menu.addOption(
             "Open in Explorer",
             KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O}),
             [this]() {
@@ -341,9 +305,9 @@ namespace Toolbox::UI {
                 }
             });
 
-        m_context_menu.addDivider();
+        m_folder_view_context_menu.addDivider();
 
-        m_context_menu.addOption(
+        m_folder_view_context_menu.addOption(
             "Copy Path",
             KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C}),
             [this]() { return true; },
@@ -360,19 +324,19 @@ namespace Toolbox::UI {
                 ImGui::SetClipboardText(paths.c_str());
             });
 
-        m_context_menu.addDivider();
+        m_folder_view_context_menu.addDivider();
 
-        m_context_menu.addOption(
+        m_folder_view_context_menu.addOption(
             "Cut", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_X}),
             [this]() { return m_selected_indices_ctx.size() > 0; }, [this](auto) {});
 
-        m_context_menu.addOption(
+        m_folder_view_context_menu.addOption(
             "Copy", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C}),
             [this]() { return m_selected_indices_ctx.size() > 0; }, [this](auto) {});
 
-        m_context_menu.addDivider();
+        m_folder_view_context_menu.addDivider();
 
-        m_context_menu.addOption(
+        m_folder_view_context_menu.addOption(
             "Delete", KeyBind({KeyCode::KEY_DELETE}),
             [this]() { return m_selected_indices_ctx.size() > 0; },
             [this](auto) {
@@ -383,14 +347,14 @@ namespace Toolbox::UI {
                 }
             });
 
-        m_context_menu.addOption(
+        m_folder_view_context_menu.addOption(
             "Rename", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R}),
             [this]() { return m_selected_indices_ctx.size() == 1; },
             [this](auto) { actionRenameIndex(m_selected_indices_ctx[0]); });
 
-        m_context_menu.addDivider();
+        m_folder_view_context_menu.addDivider();
 
-        m_context_menu.addOption(
+        m_folder_view_context_menu.addOption(
             "New...", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N}),
             [this]() { return m_selected_indices_ctx.size() == 0; },
             [this](const ModelIndex &view_index) {
@@ -421,6 +385,46 @@ namespace Toolbox::UI {
         m_is_renaming         = true;
         std::string file_name = m_file_system_model->getDisplayText(index);
         std::strncpy(m_rename_buffer, file_name.c_str(), IM_ARRAYSIZE(m_rename_buffer));
+    }
+
+    void ProjectViewWindow::actionLeftClickIndex(const ModelIndex &view_index,
+                                                 const ModelIndex &child_index, bool is_selected) {
+        ModelIndex source_child_index = m_view_proxy.toSourceIndex(child_index);
+        if (Input::GetKey(KeyCode::KEY_LEFTCONTROL) || Input::GetKey(KeyCode::KEY_RIGHTCONTROL)) {
+            if (is_selected) {
+                m_selected_indices.erase(std::remove(m_selected_indices.begin(),
+                                                     m_selected_indices.end(), source_child_index));
+                m_last_selected_index = ModelIndex();
+            } else {
+                m_selected_indices.push_back(source_child_index);
+                m_last_selected_index = source_child_index;
+            }
+        } else {
+            m_selected_indices.clear();
+            if (Input::GetKey(KeyCode::KEY_LEFTSHIFT) || Input::GetKey(KeyCode::KEY_RIGHTSHIFT)) {
+                if (m_file_system_model->validateIndex(m_last_selected_index)) {
+                    int64_t this_row = m_view_proxy.getRow(child_index);
+                    int64_t last_row =
+                        m_view_proxy.getRow(m_view_proxy.toProxyIndex(m_last_selected_index));
+                    if (this_row > last_row) {
+                        for (int64_t i = last_row; i <= this_row; ++i) {
+                            ModelIndex span_index = m_view_proxy.getIndex(i, 0, view_index);
+                            m_selected_indices.push_back(m_view_proxy.toSourceIndex(span_index));
+                        }
+                    } else {
+                        for (int64_t i = this_row; i <= last_row; ++i) {
+                            ModelIndex span_index = m_view_proxy.getIndex(i, 0, view_index);
+                            m_selected_indices.push_back(m_view_proxy.toSourceIndex(span_index));
+                        }
+                    }
+                } else {
+                    m_selected_indices.push_back(source_child_index);
+                }
+            } else {
+                m_selected_indices.push_back(source_child_index);
+                m_last_selected_index = source_child_index;
+            }
+        }
     }
 
     bool ProjectViewWindow::isViewedAncestor(const ModelIndex &index) {

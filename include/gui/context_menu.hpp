@@ -12,6 +12,7 @@
 #include "IconsForkAwesome.h"
 
 #include <imgui.h>
+#include "imgui_ext.hpp"
 
 #include "core/input/input.hpp"
 #include "core/keybind/keybind.hpp"
@@ -44,7 +45,8 @@ namespace Toolbox::UI {
 
         void addDivider();
 
-        void render(std::optional<std::string> label, _DataT ctx);
+        void render(std::optional<std::string> label, _DataT ctx,
+                    ImGuiHoveredFlags hover_flags = ImGuiHoveredFlags_AllowWhenBlockedByPopup);
 
         void onOpen(open_event_t open) { m_open_event = open; }
 
@@ -83,10 +85,10 @@ namespace Toolbox::UI {
     }
 
     template <typename _DataT>
-    inline void ContextMenu<_DataT>::render(std::optional<std::string> label, _DataT ctx) {
+    inline void ContextMenu<_DataT>::render(std::optional<std::string> label, _DataT ctx, ImGuiHoveredFlags hover_flags) {
         processKeybinds(ctx);
 
-        if (!ImGui::BeginPopupContextItem(label ? label->c_str() : nullptr)) {
+        if (!ImGui::BeginPopupContextItem(label ? label->c_str() : nullptr, 1, hover_flags)) {
             m_was_open = false;
             return;
         }
@@ -96,7 +98,7 @@ namespace Toolbox::UI {
         }
         m_was_open = true;
 
-        size_t prev_opt_index = 0; 
+        size_t prev_opt_index = 0;
 
         for (size_t i = 0; i < m_options.size(); ++i) {
             ContextOp &option = m_options.at(i);
