@@ -106,6 +106,8 @@ namespace Toolbox {
         ModelIndex mkdir(const ModelIndex &parent, const std::string &name);
         ModelIndex touch(const ModelIndex &parent, const std::string &name);
         ModelIndex rename(const ModelIndex &file, const std::string &new_name);
+        ModelIndex copy(const fs_path &file_path, const ModelIndex &new_parent,
+                        const std::string &new_name);
 
         bool rmdir(const ModelIndex &index);
         bool remove(const ModelIndex &index);
@@ -158,6 +160,8 @@ namespace Toolbox {
         ModelIndex mkdir_(const ModelIndex &parent, const std::string &name);
         ModelIndex touch_(const ModelIndex &parent, const std::string &name);
         ModelIndex rename_(const ModelIndex &file, const std::string &new_name);
+        ModelIndex copy_(const fs_path &file_path, const ModelIndex &new_parent,
+                         const std::string &new_name);
 
         bool rmdir_(const ModelIndex &index);
         bool remove_(const ModelIndex &index);

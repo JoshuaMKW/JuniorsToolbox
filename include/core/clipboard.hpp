@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "core/error.hpp"
+#include "core/mimedata/mimedata.hpp"
 #include "tristate.hpp"
 
 namespace Toolbox {
@@ -37,6 +38,8 @@ namespace Toolbox {
 
         Result<std::string, ClipboardError> getText();
         Result<void, ClipboardError> setText(const std::string &text);
+        Result<std::vector<std::string>, ClipboardError> possibleContentTypes();
+        Result<MimeData, ClipboardError> getContent(const std::string &type);
     };
 
     class DataClipboard {
