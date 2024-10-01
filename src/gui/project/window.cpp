@@ -1,4 +1,5 @@
 #include "gui/project/window.hpp"
+#include "gui/application.hpp"
 #include "model/fsmodel.hpp"
 
 #include <cmath>
@@ -261,15 +262,15 @@ namespace Toolbox::UI {
 
     std::vector<std::string_view> splitLines(std::string_view s) {
         std::vector<std::string_view> result;
-        size_t last_pos = 0;
+        size_t last_pos         = 0;
         size_t next_newline_pos = s.find('\n', 0);
         while (next_newline_pos != std::string::npos) {
-            if (s[last_pos + next_newline_pos - 1] == '\r'){
+            if (s[last_pos + next_newline_pos - 1] == '\r') {
                 result.push_back(s.substr(last_pos, next_newline_pos - 1));
             } else {
                 result.push_back(s.substr(last_pos, next_newline_pos));
             }
-            last_pos = next_newline_pos + 1;
+            last_pos         = next_newline_pos + 1;
             next_newline_pos = s.find('\n', last_pos);
         }
         return result;
@@ -287,7 +288,7 @@ namespace Toolbox::UI {
                 return m_selected_indices_ctx.size() > 0 &&
                        std::all_of(m_selected_indices_ctx.begin(), m_selected_indices_ctx.end(),
                                    [this](const ModelIndex &index) {
-                                       return m_file_system_model->isFile(index);
+                                       return m_file_system_model->isFile(index) || isPathForScene(index);
                                    });
             },
             [this](auto) { actionOpenIndexes(m_selected_indices_ctx); });
@@ -394,7 +395,8 @@ namespace Toolbox::UI {
                             TOOLBOX_ERROR_V("Can't copy non-local uri {}", src_path_str);
                         }
                         fs_path src_path = src_path_str.substr(7);
-                        m_file_system_model->copy(src_path, m_view_index, src_path.filename().string());
+                        m_file_system_model->copy(src_path, m_view_index,
+                                                  src_path.filename().string());
                     }
                 }
             });
@@ -418,10 +420,15 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::actionOpenIndexes(const std::vector<ModelIndex> &indices) {
         for (auto &item_index : indices) {
+            if (actionOpenScene(item_index)) {
+                continue;
+            }
+
             if (m_file_system_model->isDirectory(item_index)) {
                 m_view_index = item_index;
                 continue;
             }
+
 
             // TODO: Open files based on extension. Can be either internal or external
             // depending on the file type.
@@ -472,6 +479,71 @@ namespace Toolbox::UI {
                 m_last_selected_index = source_child_index;
             }
         }
+    }
+
+    bool ProjectViewWindow::actionOpenScene(const ModelIndex &index) {
+        if (!m_file_system_model->validateIndex(index)) {
+            return false;
+        }
+
+        GUIApplication &app = GUIApplication::instance();
+
+        if (m_file_system_model->isDirectory(index)) {
+            // ./scene/
+            fs_path scene_path = m_file_system_model->getPath(index);
+
+            RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Scene Editor");
+            if (!window->onLoadData(scene_path)) {
+                app.removeWindow(window);
+                return false;
+            }
+
+            return true;
+        } else if (m_file_system_model->isArchive(index)) {
+            TOOLBOX_ERROR("[PROJECT] Archives are not supported yet");
+        } else if (m_file_system_model->isFile(index)) {
+            // ./scene/map/scene.bin
+            fs_path scene_path = m_file_system_model->getPath(index);
+            if (scene_path.filename().string() != "scene.bin") {
+                return false;
+            }
+
+            fs_path scene_folder = scene_path.parent_path().parent_path();
+            if (scene_folder.filename().string() != "scene") {
+                return false;
+            }
+
+            RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Scene Editor");
+            if (!window->onLoadData(scene_folder)) {
+                app.removeWindow(window);
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    bool ProjectViewWindow::isPathForScene(const ModelIndex &index) const {
+        if (!m_file_system_model->validateIndex(index)) {
+            return false;
+        }
+
+        if (m_file_system_model->isDirectory(index)) {
+            fs_path scene_path = m_file_system_model->getPath(index);
+            if (scene_path.filename().string() == "scene") {
+                return true;
+            }
+        } else if (m_file_system_model->isFile(index)) {
+            fs_path scene_path = m_file_system_model->getPath(index);
+            if (scene_path.filename().string() == "scene.bin") {
+                fs_path scene_folder = scene_path.parent_path().parent_path();
+                if (scene_folder.filename().string() == "scene") {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     bool ProjectViewWindow::isViewedAncestor(const ModelIndex &index) {

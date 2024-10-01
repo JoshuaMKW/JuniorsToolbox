@@ -99,6 +99,10 @@ namespace Toolbox::UI {
         void actionLeftClickIndex(const ModelIndex &view_index, const ModelIndex &child_index,
                                   bool is_selected);
 
+        bool actionOpenScene(const ModelIndex &index);
+
+        bool isPathForScene(const ModelIndex &index) const;
+
     private:
         fs_path m_project_root;
 

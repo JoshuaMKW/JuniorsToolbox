@@ -55,13 +55,21 @@ namespace Toolbox {
         virtual void onExit() override;
 
         void addWindow(RefPtr<ImWindow> window) {
-            addLayer(window);
-            m_windows.push_back(window);
+            if (!m_windows_processing) {
+                addLayer(window);
+                m_windows.push_back(window);
+            } else {
+                m_windows_to_add.push(window);
+            }
         }
 
         void removeWindow(RefPtr<ImWindow> window) {
-            removeLayer(window);
-            std::erase(m_windows, window);
+            if (!m_windows_processing) {
+                removeLayer(window);
+                std::erase(m_windows, window);
+            } else {
+                m_windows_to_gc.push(window);
+            }
         }
 
         const std::vector<RefPtr<ImWindow>> &getWindows() const & { return m_windows; }
@@ -179,6 +187,9 @@ namespace Toolbox {
 
         GLFWwindow *m_render_window;
         std::vector<RefPtr<ImWindow>> m_windows;
+        std::queue<RefPtr<ImWindow>> m_windows_to_gc;
+        std::queue<RefPtr<ImWindow>> m_windows_to_add;
+        bool m_windows_processing = false;
 
         std::unordered_map<UUID64, bool> m_docked_map;
         ImGuiID m_dockspace_id;
