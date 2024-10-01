@@ -288,7 +288,8 @@ namespace Toolbox::UI {
                 return m_selected_indices_ctx.size() > 0 &&
                        std::all_of(m_selected_indices_ctx.begin(), m_selected_indices_ctx.end(),
                                    [this](const ModelIndex &index) {
-                                       return m_file_system_model->isFile(index) || isPathForScene(index);
+                                       return m_file_system_model->isFile(index) ||
+                                              isPathForScene(index);
                                    });
             },
             [this](auto) { actionOpenIndexes(m_selected_indices_ctx); });
@@ -429,7 +430,6 @@ namespace Toolbox::UI {
                 continue;
             }
 
-
             // TODO: Open files based on extension. Can be either internal or external
             // depending on the file type.
         }
@@ -492,6 +492,12 @@ namespace Toolbox::UI {
             // ./scene/
             fs_path scene_path = m_file_system_model->getPath(index);
 
+            RefPtr<ImWindow> existing_editor = app.findWindow("Scene Editor", scene_path.string());
+            if (existing_editor) {
+                existing_editor->focus();
+                return true;
+            }
+
             RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Scene Editor");
             if (!window->onLoadData(scene_path)) {
                 app.removeWindow(window);
@@ -511,6 +517,13 @@ namespace Toolbox::UI {
             fs_path scene_folder = scene_path.parent_path().parent_path();
             if (scene_folder.filename().string() != "scene") {
                 return false;
+            }
+
+            RefPtr<ImWindow> existing_editor =
+                app.findWindow("Scene Editor", scene_folder.string());
+            if (existing_editor) {
+                existing_editor->focus();
+                return true;
             }
 
             RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Scene Editor");

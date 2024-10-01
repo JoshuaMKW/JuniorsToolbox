@@ -266,7 +266,7 @@ namespace Toolbox {
                                                 const std::string &context) {
         auto it = std::find_if(m_windows.begin(), m_windows.end(),
                                [&title, &context](const auto &window) {
-                                   return window->title() == title && window->context() == context;
+                                   return window->name() == title && window->context() == context;
                                });
         return it != m_windows.end() ? *it : nullptr;
     }
@@ -360,7 +360,7 @@ namespace Toolbox {
             m_windows_processing = true;
             CoreApplication::onUpdate(delta_time);
             m_windows_processing = false;
-            
+
             for (size_t i = 0; i < m_windows_to_add.size(); ++i) {
                 RefPtr<ImWindow> window = m_windows_to_add.front();
                 m_windows_to_add.pop();
@@ -450,27 +450,13 @@ namespace Toolbox {
             FileDialog::instance()->close();
             if (FileDialog::instance()->isOk()) {
                 std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();
-                if (selected_path.filename() == "scene") {
-                    RefPtr<ImWindow> existing_editor =
-                        findWindow("Scene Editor", selected_path.string());
-                    if (existing_editor) {
-                        existing_editor->focus();
-                    } else {
-                        RefPtr<SceneWindow> scene_window =
-                            createWindow<SceneWindow, true>("Scene Editor");
-                        if (!scene_window->onLoadData(selected_path)) {
-                            scene_window->close();
-                        }
-                    }
-                } else {
-                    if (m_project_manager.loadProjectFolder(selected_path)) {
-                        TOOLBOX_INFO_V("Loaded project folder: {}", selected_path.string());
-                        RefPtr<ProjectViewWindow> project_window =
-                            createWindow<ProjectViewWindow>("Project View");
-                        if (!project_window->onLoadData(selected_path)) {
-                            TOOLBOX_ERROR("Failed to open project folder view!");
-                            project_window->close();
-                        }
+                if (m_project_manager.loadProjectFolder(selected_path)) {
+                    TOOLBOX_INFO_V("Loaded project folder: {}", selected_path.string());
+                    RefPtr<ProjectViewWindow> project_window =
+                        createWindow<ProjectViewWindow>("Project View");
+                    if (!project_window->onLoadData(selected_path)) {
+                        TOOLBOX_ERROR("Failed to open project folder view!");
+                        project_window->close();
                     }
                 }
             }
