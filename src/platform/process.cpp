@@ -51,7 +51,7 @@ namespace Toolbox::Platform {
         }
     }
 
-    Result<ProcessInformation> CreateExProcess(const std::filesystem::path &program_path,
+    Result<ProcessInformation> CreateExProcess(const fs_path &program_path,
                                                std::string_view cmdargs) {
         std::string true_cmdargs =
             std::format("\"{}\" {}", program_path.string().c_str(), cmdargs.data());
@@ -187,10 +187,15 @@ namespace Toolbox::Platform {
         return UpdateWindow(window);
     }
 
+    bool OpenFileExplorer(const fs_path &path) {
+        std::wstring path_str = path.wstring();
+        return (int)ShellExecuteW(NULL, L"open", L"explorer.exe", path_str.c_str(), NULL, SW_SHOW) > 32;
+    }
+
 #elif defined(TOOLBOX_PLATFORM_LINUX)
     std::string GetLastErrorMessage() { return strerror(errno); }
 
-    Result<ProcessInformation> CreateExProcess(const std::filesystem::path &program_path,
+    Result<ProcessInformation> CreateExProcess(const fs_path &program_path,
                                                std::string_view cmdargs) {
         ProcessID pid = fork();  // Fork the current process
         if (pid == -1) {

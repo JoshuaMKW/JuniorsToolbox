@@ -5,6 +5,8 @@
 #include <core/core.hpp>
 #include <core/error.hpp>
 
+#include "fsystem.hpp"
+
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
 #elif defined(TOOLBOX_PLATFORM_LINUX)
@@ -36,7 +38,7 @@ namespace Toolbox::Platform {
         ProcessID m_thread_id      = std::numeric_limits<ProcessID>::max();
     };
 
-    Result<ProcessInformation> CreateExProcess(const std::filesystem::path &program_path,
+    Result<ProcessInformation> CreateExProcess(const fs_path &program_path,
                                                std::string_view cmdargs);
     Result<void> KillExProcess(const ProcessInformation &process,
                                size_t max_wait = std::numeric_limits<ProcessID>::max());
@@ -51,5 +53,7 @@ namespace Toolbox::Platform {
     bool ForceWindowToFront(LowWindow window, LowWindow target);
 
     bool SetWindowTransparency(LowWindow window, uint8_t alpha);
+
+    bool OpenFileExplorer(const fs_path &path);
 
 }  // namespace Toolbox::Platform

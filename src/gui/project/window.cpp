@@ -287,7 +287,7 @@ namespace Toolbox::UI {
             [this](auto) {
                 if (m_selected_indices_ctx.size() == 0) {
                     // TODO: Implement this interface
-                    // Toolbox::Platform::OpenFileExplorer(path);
+                    Toolbox::Platform::OpenFileExplorer(m_file_system_model->getPath(m_view_index));
                 } else {
                     std::set<fs_path> paths;
                     for (const ModelIndex &item_index : m_selected_indices_ctx) {
@@ -300,7 +300,7 @@ namespace Toolbox::UI {
                     }
                     for (const fs_path &path : paths) {
                         // TODO: Implement this interface
-                        // Toolbox::Platform::OpenFileExplorer(path);
+                        Toolbox::Platform::OpenFileExplorer(path);
                     }
                 }
             });
