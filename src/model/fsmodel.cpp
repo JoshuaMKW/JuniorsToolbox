@@ -700,7 +700,7 @@ namespace Toolbox {
 
         Filesystem::copy(file, to);
 
-        return makeIndex(to, dest_index, new_parent);
+        return getIndex_(to);
     }
 
     ModelIndex FileSystemModel::getIndex_(const fs_path &path) const {
