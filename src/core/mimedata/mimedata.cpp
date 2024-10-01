@@ -112,12 +112,18 @@ namespace Toolbox {
     }
 
     [[nodiscard]] std::optional<std::string> MimeData::get_urls() const {
-        TOOLBOX_DEBUG_LOG("URL mimedata unsupported");
-        return {};
+        if (!has_urls()) {
+            return std::nullopt;
+        }
+        const Buffer &data_buf = m_data_map["text/uri-list"];
+        return std::string(data_buf.buf<char>(), data_buf.size());
     }
 
     void MimeData::set_urls(std::string_view data) {
-        TOOLBOX_DEBUG_LOG("URL mimedata unsupported");
+        Buffer _tmp;
+        _tmp.alloc(data.size());
+        std::memcpy(_tmp.buf(), data.data(), data.size());
+        set_data("text/uri-list", std::move(_tmp));
     }
 
     void MimeData::clear() { m_data_map.clear(); }

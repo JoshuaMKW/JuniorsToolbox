@@ -230,6 +230,11 @@ namespace Toolbox {
         std::scoped_lock lock(m_mutex);
         return rename_(file, new_name);
     }
+    ModelIndex FileSystemModel::copy(const fs_path &file, const ModelIndex &new_parent,
+                                     const std::string &new_name) {
+        std::scoped_lock lock(m_mutex);
+        return copy_(file, new_parent, new_name);
+    }
 
     ModelIndex FileSystemModel::getIndex(const fs_path &path) const {
         std::scoped_lock lock(m_mutex);
@@ -677,6 +682,25 @@ namespace Toolbox {
                                                   parent_data->m_children.end(), file.getUUID()),
                                       parent_data->m_children.end());
         return makeIndex(to, dest_index, parent);
+    }
+    ModelIndex FileSystemModel::copy_(const fs_path &file, const ModelIndex &new_parent,
+                                      const std::string &new_name) {
+        if (!validateIndex(new_parent)) {
+            TOOLBOX_ERROR("[FileSystemModel] New parent isn't a valid index!");
+            return ModelIndex();
+        }
+        if (!Filesystem::exists(file)) {
+            TOOLBOX_ERROR_V("[FileSystemModel] \"{}\" is not a directory or file!",
+                            file.string());
+            return ModelIndex();
+        }
+        fs_path to = new_parent.data<_FileSystemIndexData>()->m_path / new_name;
+
+        int dest_index = getRowCount_(new_parent);
+
+        Filesystem::copy(file, to);
+
+        return makeIndex(to, dest_index, new_parent);
     }
 
     ModelIndex FileSystemModel::getIndex_(const fs_path &path) const {

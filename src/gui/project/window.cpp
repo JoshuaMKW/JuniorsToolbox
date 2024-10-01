@@ -259,6 +259,22 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::onDropEvent(RefPtr<DropEvent> ev) {}
 
+    std::vector<std::string_view> splitLines(std::string_view s) {
+        std::vector<std::string_view> result;
+        size_t last_pos = 0;
+        size_t next_newline_pos = s.find('\n', 0);
+        while (next_newline_pos != std::string::npos) {
+            if (s[last_pos + next_newline_pos - 1] == '\r'){
+                result.push_back(s.substr(last_pos, next_newline_pos - 1));
+            } else {
+                result.push_back(s.substr(last_pos, next_newline_pos));
+            }
+            last_pos = next_newline_pos + 1;
+            next_newline_pos = s.find('\n', last_pos);
+        }
+        return result;
+    }
+
     void ProjectViewWindow::buildContextMenu() {
         m_folder_view_context_menu = ContextMenu<ModelIndex>();
 
@@ -351,6 +367,37 @@ namespace Toolbox::UI {
             "Rename", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R}),
             [this]() { return m_selected_indices_ctx.size() == 1; },
             [this](auto) { actionRenameIndex(m_selected_indices_ctx[0]); });
+        m_folder_view_context_menu.addOption(
+            "Paste", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V}),
+            [this]() { return m_selected_indices_ctx.size() == 0; },
+            [this](auto) {
+                auto content_types = SystemClipboard::instance().possibleContentTypes();
+                if (!content_types) {
+                    TOOLBOX_ERROR("Couldn't get content types");
+                    return;
+                }
+                if (std::find(content_types.value().begin(), content_types.value().end(),
+                              std::string("text/uri-list")) != content_types.value().end()) {
+                    auto content = SystemClipboard::instance().getContent("text/uri-list");
+                    if (!content) {
+                        TOOLBOX_ERROR("Failed to get content as uri list");
+                        return;
+                    }
+                    auto text = content.value().get_urls();
+                    if (!text) {
+                        TOOLBOX_ERROR("Mime data wouldn't return uri list");
+                        return;
+                    }
+
+                    for (std::string_view src_path_str : splitLines(text.value())) {
+                        if (src_path_str.substr(0, 7) != "file://") {
+                            TOOLBOX_ERROR_V("Can't copy non-local uri {}", src_path_str);
+                        }
+                        fs_path src_path = src_path_str.substr(7);
+                        m_file_system_model->copy(src_path, m_view_index, src_path.filename());
+                    }
+                }
+            });
 
         m_folder_view_context_menu.addDivider();
 
