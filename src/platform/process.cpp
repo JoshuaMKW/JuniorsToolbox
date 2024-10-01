@@ -363,5 +363,9 @@ namespace Toolbox::Platform {
             }
         }
     }
+    bool OpenFileExplorer(const fs_path &path) {
+        TOOLBOX_ERROR("Open file explorer currently unsupported on linux");
+        return false;
+    }
 #endif
 }  // namespace Toolbox::Platform
