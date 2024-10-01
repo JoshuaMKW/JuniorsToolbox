@@ -394,7 +394,7 @@ namespace Toolbox::UI {
                             TOOLBOX_ERROR_V("Can't copy non-local uri {}", src_path_str);
                         }
                         fs_path src_path = src_path_str.substr(7);
-                        m_file_system_model->copy(src_path, m_view_index, src_path.filename());
+                        m_file_system_model->copy(src_path, m_view_index, src_path.filename().string());
                     }
                 }
             });
