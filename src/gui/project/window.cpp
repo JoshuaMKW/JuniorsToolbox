@@ -421,6 +421,10 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::actionOpenIndexes(const std::vector<ModelIndex> &indices) {
         for (auto &item_index : indices) {
+            if (actionOpenPad(item_index)) {
+                continue;
+            }
+
             if (actionOpenScene(item_index)) {
                 continue;
             }
@@ -534,6 +538,34 @@ namespace Toolbox::UI {
 
             return true;
         }
+    }
+
+    bool ProjectViewWindow::actionOpenPad(const ModelIndex &index) {
+        if (!m_file_system_model->isDirectory(index)) {
+            return false;
+        }
+
+        GUIApplication &app = GUIApplication::instance();
+
+        // ./scene/map/map/pad/
+        fs_path pad_path = m_file_system_model->getPath(index);
+        if (pad_path.filename().string() != "pad") {
+            return false;
+        }
+
+        RefPtr<ImWindow> existing_editor = app.findWindow("Pad Recorder", pad_path.string());
+        if (existing_editor) {
+            existing_editor->focus();
+            return true;
+        }
+
+        RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Pad Recorder");
+        if (!window->onLoadData(pad_path)) {
+            app.removeWindow(window);
+            return false;
+        }
+
+        return true;
     }
 
     bool ProjectViewWindow::isPathForScene(const ModelIndex &index) const {

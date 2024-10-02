@@ -100,6 +100,7 @@ namespace Toolbox::UI {
                                   bool is_selected);
 
         bool actionOpenScene(const ModelIndex &index);
+        bool actionOpenPad(const ModelIndex &index);
 
         bool isPathForScene(const ModelIndex &index) const;
 
