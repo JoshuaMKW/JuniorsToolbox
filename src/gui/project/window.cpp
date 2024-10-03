@@ -353,7 +353,22 @@ namespace Toolbox::UI {
 
         m_folder_view_context_menu.addOption(
             "Copy", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C}),
-            [this]() { return m_selected_indices_ctx.size() > 0; }, [this](auto) {});
+            [this]() { return m_selected_indices_ctx.size() > 0; },
+            [this](auto) {
+                std::string copied_paths;
+                for (const ModelIndex &index : m_selected_indices_ctx) {
+                    copied_paths += m_file_system_model->getPath(index).string();
+                    copied_paths += "\n";
+                }
+
+                MimeData data;
+                data.set_urls(copied_paths);
+
+                auto result = SystemClipboard::instance().setContent("text/uri-list", data);
+                if (!result) {
+                    TOOLBOX_ERROR("[PROJECT] Failed to set contents of clipboard");
+                }
+            });
 
         m_folder_view_context_menu.addDivider();
 
@@ -376,7 +391,7 @@ namespace Toolbox::UI {
             "Paste", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V}),
             [this]() { return m_selected_indices_ctx.size() == 0; },
             [this](auto) {
-                auto content_types = SystemClipboard::instance().possibleContentTypes();
+                auto content_types = SystemClipboard::instance().getAvailableContentFormats();
                 if (!content_types) {
                     TOOLBOX_ERROR("Couldn't get content types");
                     return;

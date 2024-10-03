@@ -122,8 +122,9 @@ namespace Toolbox {
 
     void MimeData::set_urls(std::string_view data) {
         Buffer _tmp;
-        _tmp.alloc(data.size());
+        _tmp.alloc(data.size() + 1);
         std::memcpy(_tmp.buf(), data.data(), data.size());
+        _tmp.get<char>(data.size()) = '\0';
         set_data("text/uri-list", std::move(_tmp));
     }
 

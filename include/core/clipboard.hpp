@@ -36,10 +36,13 @@ namespace Toolbox {
             return s_clipboard;
         }
 
+        Result<std::vector<std::string>, ClipboardError> getAvailableContentFormats() const;
+
         Result<std::string, ClipboardError> getText();
         Result<void, ClipboardError> setText(const std::string &text);
-        Result<std::vector<std::string>, ClipboardError> possibleContentTypes();
+
         Result<MimeData, ClipboardError> getContent(const std::string &type);
+        Result<void, ClipboardError> setContent(const std::string &type, const MimeData &mimedata);
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
     protected:
