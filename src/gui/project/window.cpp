@@ -348,7 +348,20 @@ namespace Toolbox::UI {
 
         m_folder_view_context_menu.addOption(
             "Copy", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C}),
-            [this]() { return m_selected_indices_ctx.size() > 0; }, [this](auto) {});
+            [this]() { return m_selected_indices_ctx.size() > 0; }, [this](auto) {
+                std::string paths;
+                if (m_selected_indices_ctx.size() == 0) {
+                    paths = m_file_system_model->getPath(m_view_index).string();
+                } else {
+                    for (const ModelIndex &item_index : m_selected_indices_ctx) {
+                        fs_path path = m_file_system_model->getPath(item_index);
+                        paths += "file://" + path.string() + "\r\n";
+                    }
+                }
+                MimeData data;
+                data.set_urls(paths);
+                SystemClipboard::instance().setContent(data);
+            });
 
         m_folder_view_context_menu.addDivider();
 

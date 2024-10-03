@@ -40,6 +40,7 @@ namespace Toolbox {
         Result<void, ClipboardError> setText(const std::string &text);
         Result<std::vector<std::string>, ClipboardError> possibleContentTypes();
         Result<MimeData, ClipboardError> getContent(const std::string &type);
+        Result<void, ClipboardError> setContent(const MimeData &content);
     };
 
     class DataClipboard {

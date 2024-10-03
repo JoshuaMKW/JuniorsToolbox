@@ -198,6 +198,106 @@ namespace Toolbox {
                 }
             }
         }
+    Result<void, ClipboardError> SystemClipboard::setContent(const MimeData &content) {
+#ifdef TOOLBOX_PLATFORM_LINUX
+        Display *dpy          = XOpenDisplay(nullptr);
+        Atom TIMESTAMP        = XInternAtom(dpy, "TIMESTAMP", False);
+        Atom TARGETS          = XInternAtom(dpy, "TARGETS", False);
+        Atom CLIPBOARD        = XInternAtom(dpy, "CLIPBOARD", False);
+        Atom TEXT_URI         = XInternAtom(dpy, "text/uri-list", False);
+        Atom APP_KDE4_URILIST = XInternAtom(dpy, "application/x-kde4-urilist", False);
+        Atom APP_VND          = XInternAtom(dpy, "application/vnd.portal.filetransfer", False);
+        Atom MULT             = XInternAtom(dpy, "MULTIPLE", False);
+        Atom UTF8             = XInternAtom(dpy, "UTF8_STRING", False);
+        Atom APP_SRCID        = XInternAtom(dpy, "application/x-kde-source-id", False);
+        Window root           = RootWindow(dpy, DefaultScreen(dpy));
+        Window target_window  = XCreateSimpleWindow(dpy, root, -10, -10, 1, 1, 0, 0, 0);
+
+        XSetSelectionOwner(dpy, CLIPBOARD, target_window, CurrentTime);
+
+        while (true) {
+            XEvent event;
+            std::cout << "Waiting on X event... " << std::endl;
+            XNextEvent(dpy, &event);
+            switch (event.type) {
+            case SelectionClear:
+                std::cout << "Lost selection ownership" << std::endl;
+                return {};
+            case SelectionRequest: {
+                XSelectionRequestEvent *request = &event.xselectionrequest;
+                std::cout << "Requestor: " << request->requestor << std::endl;
+                char *target_type = XGetAtomName(dpy, request->target);
+                std::cout << "Target Type: " << target_type << std::endl;
+                char *target_property = XGetAtomName(dpy, request->property);
+                std::cout << "Target Property: " << target_property << std::endl;
+                // const Atom targets[] = {TARGETS, MULT, UTF8, XA_STRING};
+                // const Atom targets[] = {TIMESTAMP,        TARGETS, TEXT_URI,
+                //                         APP_KDE4_URILIST, APP_VND, APP_SRCID};
+                const Atom targets[] = {TARGETS, TEXT_URI};
+                if (request->target == TARGETS) {
+                    std::cout << "Responding with targets:" << std::endl;
+                    for (const Atom &targ : targets) {
+                        char *target = XGetAtomName(dpy, targ);
+                        std::cout << target << std::endl;
+                        if (target)
+                            XFree(target);
+                    }
+                    XChangeProperty(dpy, request->requestor, request->property, XA_ATOM, 32,
+                                    PropModeReplace,
+                                    reinterpret_cast<const unsigned char *>(targets),
+                                    sizeof(targets) / sizeof(targets[0]));
+                    XSelectionEvent response;
+                    response.type      = SelectionNotify;
+                    response.requestor = request->requestor;
+                    response.selection = request->selection;
+                    response.target    = request->target;
+                    response.property  = request->property;
+                    response.time      = request->time;
+
+                    XSendEvent(dpy, request->requestor, True, NoEventMask,
+                               reinterpret_cast<XEvent *>(&response));
+                    continue;
+                } else if (request->target == TEXT_URI) {
+                    std::string urls = content.get_urls().value();
+                    std::cout << "Responding with urls: " << urls << std::endl;
+                    XChangeProperty(
+                        dpy, request->requestor, request->property, TEXT_URI, 8, PropModeReplace,
+                        reinterpret_cast<const unsigned char *>(urls.c_str()), urls.length());
+
+                    XSelectionEvent response;
+                    response.type      = SelectionNotify;
+                    response.requestor = request->requestor;
+                    response.selection = request->selection;
+                    response.target    = request->target;
+                    response.property  = request->property;
+                    response.time      = request->time;
+
+                    XSendEvent(dpy, request->requestor, True, NoEventMask,
+                               reinterpret_cast<XEvent *>(&response));
+                    // return {};
+                } else if (request->target == UTF8) {
+                    std::string test_string = "something";
+                    XChangeProperty(
+                        dpy, request->requestor, request->property, UTF8, 8, PropModeReplace,
+                        reinterpret_cast<const unsigned char *>(test_string.c_str()), test_string.length());
+
+                    XSelectionEvent response;
+                    response.type      = SelectionNotify;
+                    response.requestor = request->requestor;
+                    response.selection = request->selection;
+                    response.target    = request->target;
+                    response.property  = request->property;
+                    response.time      = request->time;
+
+                    XSendEvent(dpy, request->requestor, True, NoEventMask,
+                               reinterpret_cast<XEvent *>(&response));
+                } else {
+                    TOOLBOX_ERROR("Unrecognized request");
+                    return {};
+                }
+            }
+            }
+        }
 #endif
         return {};
     }
