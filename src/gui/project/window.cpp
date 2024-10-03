@@ -265,7 +265,7 @@ namespace Toolbox::UI {
         size_t last_pos         = 0;
         size_t next_newline_pos = s.find('\n', 0);
         while (next_newline_pos != std::string::npos) {
-            if (s[last_pos + next_newline_pos - 1] == '\r') {
+            if (s[next_newline_pos - 1] == '\r') {
                 result.push_back(s.substr(last_pos, next_newline_pos - 1));
             } else {
                 result.push_back(s.substr(last_pos, next_newline_pos));
@@ -392,10 +392,18 @@ namespace Toolbox::UI {
                     }
 
                     for (std::string_view src_path_str : splitLines(text.value())) {
-                        if (src_path_str.substr(0, 7) != "file://") {
+                        if (src_path_str.starts_with("file:/")) {
+                            if (src_path_str.starts_with("file:///")) {
+                                src_path_str = src_path_str.substr(8);
+                            } else {
+                                src_path_str = src_path_str.substr(7);
+                            }
+                        } else {
                             TOOLBOX_ERROR_V("Can't copy non-local uri {}", src_path_str);
+                            continue;
                         }
-                        fs_path src_path = src_path_str.substr(7);
+
+                        fs_path src_path = src_path_str;
                         m_file_system_model->copy(src_path, m_view_index,
                                                   src_path.filename().string());
                     }

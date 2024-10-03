@@ -28,7 +28,7 @@ namespace Toolbox {
         ~SystemClipboard();
 
         SystemClipboard(const SystemClipboard &) = delete;
-        SystemClipboard(SystemClipboard &&) = delete;
+        SystemClipboard(SystemClipboard &&)      = delete;
 
     public:
         static SystemClipboard &instance() {
@@ -40,6 +40,20 @@ namespace Toolbox {
         Result<void, ClipboardError> setText(const std::string &text);
         Result<std::vector<std::string>, ClipboardError> possibleContentTypes();
         Result<MimeData, ClipboardError> getContent(const std::string &type);
+
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+    protected:
+        static UINT FormatForMime(std::string_view mimetype);
+        static std::string MimeForFormat(UINT format);
+
+    private:
+        std::unordered_map<std::string, UINT> m_mime_to_format;
+#elif defined(TOOLBOX_PLATFORM_LINUX)
+    protected:
+        static std::string UTIForMime(std::string_view mimetype);
+        static std::string MimeForUTI(std::string_view uti);
+#endif
+
     };
 
     class DataClipboard {
@@ -137,4 +151,4 @@ namespace Toolbox {
         std::vector<_DataT> m_data                      = {};
     };
 
-}  // namespace Toolbox::UI
+}  // namespace Toolbox

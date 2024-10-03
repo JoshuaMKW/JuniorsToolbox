@@ -66,15 +66,6 @@ namespace Toolbox {
             return *this;
         }
 
-    protected:
-#ifdef TOOLBOX_PLATFORM_WINDOWS
-        static FORMATETC FormatForMime(std::string_view mimetype);
-        static std::string MimeForFormat(FORMATETC format);
-#elif defined(TOOLBOX_PLATFORM_LINUX)
-        static std::string UTIForMime(std::string_view mimetype);
-        static std::string MimeForUTI(std::string_view uti);
-#endif
-
     private:
         mutable std::unordered_map<std::string, Buffer> m_data_map;
     };

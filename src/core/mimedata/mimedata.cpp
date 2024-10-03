@@ -59,10 +59,11 @@ namespace Toolbox {
         Buffer &data_buf = m_data_map["application/x-color"];
 
         Color::RGBAShader rgba_color;
-        TRY(Deserializer::BytesToObject(data_buf, rgba_color)).error([&rgba_color](const BaseError &error) {
-            UI::LogError(error);
-            rgba_color.setColor(0.0f, 0.0f, 0.0f);
-        });
+        TRY(Deserializer::BytesToObject(data_buf, rgba_color))
+            .error([&rgba_color](const BaseError &error) {
+                UI::LogError(error);
+                rgba_color.setColor(0.0f, 0.0f, 0.0f);
+            });
         return rgba_color;
     }
 
@@ -127,51 +128,5 @@ namespace Toolbox {
     }
 
     void MimeData::clear() { m_data_map.clear(); }
-
-#ifdef TOOLBOX_PLATFORM_WINDOWS
-
-    /* TODO: Change NULL to HTML */
-    static std::unordered_map<u32, std::string> s_format_to_mime = {
-        {CF_UNICODETEXT, "text/plain"            },
-        {CF_TEXT,        "text/plain"            },
-        {CF_NULL,        "text/html"             },
-        {CF_HDROP,       "text/uri-list"         },
-        {CF_DIB,         "application/x-qt-image"}
-    };
-
-    static std::unordered_map<std::string, u32> s_mime_to_format = {
-        {"text/plain",             CF_TEXT },
-        {"text/html",              CF_NULL },
-        {"text/uri-list",          CF_HDROP},
-        {"application/x-qt-image", CF_DIB  },
-    };
-
-    FORMATETC MimeData::FormatForMime(std::string_view mimetype) { return FORMATETC(); }
-
-    std::string MimeData::MimeForFormat(FORMATETC format) { return std::string(); }
-#elif defined(TOOLBOX_PLATFORM_LINUX)
-    static std::unordered_map<std::string, std::string> s_uti_to_mime = {
-        {"public.utf8-plain-text",               "text/plain"            },
-        {"public.utf16-plain-text",              "text/plain"            },
-        {"public.text",                          "text/plain"            },
-        {"public.html",                          "text/html"             },
-        {"public.url",                           "text/uri-list"         },
-        {"public.file-url",                      "text/uri-list"         },
-        {"public.tiff",                          "application/x-qt-image"},
-        {"public.vcard",                         "text/plain"            },
-        {"com.apple.traditional-mac-plain-text", "text/plain"            },
-        {"com.apple.pict",                       "application/x-qt-image"},
-    };
-
-    static std::unordered_map<std::string, std::string> s_mime_to_uti = {
-        {"text/plain",             "public.text"},
-        {"text/html",              "public.html"},
-        {"text/uri-list",          "public.url" },
-        {"application/x-qt-image", "public.tiff"},
-    };
-
-    std::string MimeData::UTIForMime(std::string_view mimetype) { return s_mime_to_uti[std::string(mimetype)]; }
-    std::string MimeData::MimeForUTI(std::string_view uti) { return s_uti_to_mime[std::string(uti)]; }
-#endif
 
 }  // namespace Toolbox
