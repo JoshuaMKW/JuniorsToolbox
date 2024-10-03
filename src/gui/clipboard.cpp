@@ -14,20 +14,8 @@
 
 namespace Toolbox {
 
-#ifdef WIN32
     SystemClipboard::SystemClipboard() {}
     SystemClipboard::~SystemClipboard() {}
-#elif defined(TOOLBOX_PLATFORM_LINUX)
-    Window clipboard_helper_window;
-    SystemClipboard::SystemClipboard() {
-        Display* dpy = getGLFWDisplay();
-        Window root_window   = RootWindow(dpy, DefaultScreen(dpy));
-        clipboard_helper_window = XCreateSimpleWindow(dpy, root_window, -10, -10, 1, 1, 0, 0, 0);
-    }
-    SystemClipboard::~SystemClipboard() {
-        XDestroyWindow(getGLFWDisplay(), clipboard_helper_window);
-    }
-#endif
 
     Result<std::string, ClipboardError> SystemClipboard::getText() {
 #ifdef WIN32
@@ -152,7 +140,7 @@ namespace Toolbox {
         Atom sel             = XInternAtom(dpy, "CLIPBOARD", False);
         Atom targets         = XInternAtom(dpy, "TARGETS", False);
         Atom target_property = XInternAtom(dpy, "CLIP_TYPES", False);
-        Window target_window = clipboard_helper_window;
+        Window target_window = getGLFWHelperWindow();
         XConvertSelection(dpy, sel, targets, target_property, target_window, CurrentTime);
 
         XEvent ev;
@@ -186,7 +174,7 @@ namespace Toolbox {
                             XFree(an);
                     }
                     XFree(prop_ret);
-                    XDeleteProperty(dpy, clipboard_helper_window, target_property);
+                    XDeleteProperty(dpy, target_window, target_property);
                     return types;
                 }
                 break;
@@ -205,7 +193,7 @@ namespace Toolbox {
         if (clipboard_owner == None) {
             return make_clipboard_error<MimeData>("Clipboard isn't owned by anyone");
         }
-        Window target_window = clipboard_helper_window;
+        Window target_window = getGLFWHelperWindow();
         Atom target_property = XInternAtom(dpy, "CLIP_CONTENTS", False);
         XConvertSelection(dpy, sel, requested_type, target_property, target_window, CurrentTime);
         XEvent ev;
@@ -262,12 +250,10 @@ namespace Toolbox {
     Result<void, ClipboardError> SystemClipboard::setContent(const MimeData &content) {
 #ifdef TOOLBOX_PLATFORM_LINUX
         Display* dpy = getGLFWDisplay();
+        Window target_window = getGLFWHelperWindow();
         Atom CLIPBOARD        = XInternAtom(dpy, "CLIPBOARD", False);
         m_clipboard_contents = content;
-        XSetSelectionOwner(dpy, CLIPBOARD, clipboard_helper_window, CurrentTime);
-        ImGui::SetClipboardText("");
-        return {};
-
+        XSetSelectionOwner(dpy, CLIPBOARD, target_window, CurrentTime);
 #endif
         return {};
     }
