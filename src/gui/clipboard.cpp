@@ -134,7 +134,7 @@ namespace Toolbox {
     void hookClipboardIntoGLFW(void) {}
 #endif
 
-    Result<std::vector<std::string>, ClipboardError> SystemClipboard::possibleContentTypes() {
+    Result<std::vector<std::string>, ClipboardError> SystemClipboard::possibleContentTypes() const {
 #ifdef TOOLBOX_PLATFORM_LINUX
         Display *dpy         = getGLFWDisplay();
         Atom sel             = XInternAtom(dpy, "CLIPBOARD", False);
@@ -184,7 +184,7 @@ namespace Toolbox {
 #endif
         return {};
     }
-    Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) {
+    Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) const {
 #ifdef TOOLBOX_PLATFORM_LINUX
         Display *dpy = getGLFWDisplay();
         Atom requested_type    = XInternAtom(dpy, type.c_str(), False);

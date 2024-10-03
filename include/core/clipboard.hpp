@@ -38,8 +38,8 @@ namespace Toolbox {
 
         Result<std::string, ClipboardError> getText();
         Result<void, ClipboardError> setText(const std::string &text);
-        Result<std::vector<std::string>, ClipboardError> possibleContentTypes();
-        Result<MimeData, ClipboardError> getContent(const std::string &type);
+        Result<std::vector<std::string>, ClipboardError> possibleContentTypes() const;
+        Result<MimeData, ClipboardError> getContent(const std::string &type) const;
         Result<void, ClipboardError> setContent(const MimeData &content);
 #ifdef TOOLBOX_PLATFORM_LINUX
         MimeData m_clipboard_contents;
