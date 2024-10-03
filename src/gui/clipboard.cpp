@@ -3,8 +3,13 @@
 #ifdef WIN32
 #include <Windows.h>
 #elif defined(TOOLBOX_PLATFORM_LINUX)
-#include <X11/Xlib.h>
+#include <GLFW/glfw3.h>
 #include <X11/Xatom.h>
+#include <X11/Xlib.h>
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
+#include <imgui/imgui.h>
+
 #endif
 
 namespace Toolbox {
@@ -77,6 +82,67 @@ namespace Toolbox {
 #endif
         return {};
     }
+
+#ifdef TOOLBOX_PLATFORM_LINUX
+    void (*glfwSelectionRequestHandler)(XEvent *);
+    void handleSelectionRequest(XEvent *event) {
+        std::cout << "Handling a selection request from hook" << std::endl;
+        const XSelectionRequestEvent* request = &event->xselectionrequest;
+        Display* dpy = getGLFWDisplay();
+        Atom TEXT_URI         = XInternAtom(dpy, "text/uri-list", False);
+        Atom TARGETS          = XInternAtom(dpy, "TARGETS", False);
+        const Atom targets[] = {TARGETS, TEXT_URI};
+        if (request->target == TARGETS) {
+            std::cout << "Responding with targets:" << std::endl;
+            for (const Atom &targ : targets) {
+                char *target = XGetAtomName(dpy, targ);
+                std::cout << target << std::endl;
+                if (target)
+                    XFree(target);
+            }
+            XChangeProperty(dpy, request->requestor, request->property, XA_ATOM, 32,
+                            PropModeReplace,
+                            reinterpret_cast<const unsigned char *>(targets),
+                            sizeof(targets) / sizeof(targets[0]));
+            XSelectionEvent response;
+            response.type      = SelectionNotify;
+            response.requestor = request->requestor;
+            response.selection = request->selection;
+            response.target    = request->target;
+            response.property  = request->property;
+            response.time      = request->time;
+
+            XSendEvent(dpy, request->requestor, True, NoEventMask,
+                       reinterpret_cast<XEvent *>(&response));
+        } else if (request->target == TEXT_URI) {
+            std::string urls = SystemClipboard::instance().m_clipboard_contents.get_urls().value();
+            std::cout << "Responding with urls: " << urls << std::endl;
+            XChangeProperty(
+                dpy, request->requestor, request->property, TEXT_URI, 8, PropModeReplace,
+                reinterpret_cast<const unsigned char *>(urls.c_str()), urls.length());
+
+            XSelectionEvent response;
+            response.type      = SelectionNotify;
+            response.requestor = request->requestor;
+            response.selection = request->selection;
+            response.target    = request->target;
+            response.property  = request->property;
+            response.time      = request->time;
+
+            XSendEvent(dpy, request->requestor, True, NoEventMask,
+                       reinterpret_cast<XEvent *>(&response));
+        } else {
+            glfwSelectionRequestHandler(event);
+        }
+    }
+    void hookClipboardIntoGLFW(void) {
+        std::cout << "Setting handlers" << std::endl;
+        glfwSelectionRequestHandler = getSelectionRequestHandler();
+        setSelectionRequestHandler(handleSelectionRequest);
+    }
+#else
+    void hookClipboardIntoGLFW(void) {}
+#endif
 
     Result<std::vector<std::string>, ClipboardError> SystemClipboard::possibleContentTypes() {
 #ifdef TOOLBOX_PLATFORM_LINUX
@@ -220,6 +286,12 @@ namespace Toolbox {
         Window target_window  = XCreateSimpleWindow(dpy, root, -10, -10, 1, 1, 0, 0, 0);
 
         XSetSelectionOwner(dpy, CLIPBOARD, target_window, CurrentTime);
+        Atom CLIPBOARD        = XInternAtom(clipboard_display, "CLIPBOARD", False);
+        m_clipboard_contents = content;
+        std::cout << "Setting ourselves as clipboard owners" << std::endl;
+        XSetSelectionOwner(clipboard_display, CLIPBOARD, clipboard_helper_window, CurrentTime);
+        ImGui::SetClipboardText("");
+        return {};
 
         while (true) {
             XEvent event;

@@ -41,7 +41,11 @@ namespace Toolbox {
         Result<std::vector<std::string>, ClipboardError> possibleContentTypes();
         Result<MimeData, ClipboardError> getContent(const std::string &type);
         Result<void, ClipboardError> setContent(const MimeData &content);
+#ifdef TOOLBOX_PLATFORM_LINUX
+        MimeData m_clipboard_contents;
+#endif
     };
+    void hookClipboardIntoGLFW(void) ;
 
     class DataClipboard {
     public:
