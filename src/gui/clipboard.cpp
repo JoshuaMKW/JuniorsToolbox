@@ -78,36 +78,29 @@ namespace Toolbox {
         return {};
     }
 
-    Result<std::vector<std::string>, ClipboardError> SystemClipboard::possibleContentTypes(){
+    Result<std::vector<std::string>, ClipboardError> SystemClipboard::possibleContentTypes() {
 #ifdef TOOLBOX_PLATFORM_LINUX
-        Display *dpy = XOpenDisplay(nullptr);
-        if (!dpy) {
-            return make_clipboard_error<std::vector<std::string>>("Could not open X display");
-        }
-        Atom sel = XInternAtom(dpy, "CLIPBOARD", False);
-        Atom targets = XInternAtom(dpy, "TARGETS", False);
+        Display *dpy         = XOpenDisplay(nullptr);
+        Atom sel             = XInternAtom(dpy, "CLIPBOARD", False);
+        Atom targets         = XInternAtom(dpy, "TARGETS", False);
         Atom target_property = XInternAtom(dpy, "CLIP_TYPES", False);
-        Window root_window = RootWindow(dpy, DefaultScreen(dpy));
+        Window root_window   = RootWindow(dpy, DefaultScreen(dpy));
         Window target_window = XCreateSimpleWindow(dpy, root_window, -10, -10, 1, 1, 0, 0, 0);
-        XConvertSelection(dpy, sel, targets, target_property, target_window,
-                          CurrentTime);
+        XConvertSelection(dpy, sel, targets, target_property, target_window, CurrentTime);
 
         XEvent ev;
         XSelectionEvent *sev;
         // This looks pretty dangerous but this is how glfw does it,
         // and how the examples online do it, so :shrug:
-        while(true){
+        while (true) {
             XNextEvent(dpy, &ev);
-            switch (ev.type)
-            {
+            switch (ev.type) {
             case SelectionNotify:
-                sev = (XSelectionEvent*)&ev.xselection;
-                if (sev->property == None)
-                {
-                    return make_clipboard_error<std::vector<std::string>>("Conversion could not be performed.\n");
-                }
-                else
-                {
+                sev = (XSelectionEvent *)&ev.xselection;
+                if (sev->property == None) {
+                    return make_clipboard_error<std::vector<std::string>>(
+                        "Conversion could not be performed.\n");
+                } else {
                     std::vector<std::string> types;
                     unsigned long nitems;
                     unsigned char *prop_ret = nullptr;
@@ -115,13 +108,12 @@ namespace Toolbox {
                     Atom _type;
                     int _di;
                     unsigned long _dul;
-                    XGetWindowProperty(dpy, target_window, target_property, 0,
-                                       1024 * sizeof(Atom), False, XA_ATOM,
-                                       &_type, &_di, &nitems, &_dul, &prop_ret);
+                    XGetWindowProperty(dpy, target_window, target_property, 0, 1024 * sizeof(Atom),
+                                       False, XA_ATOM, &_type, &_di, &nitems, &_dul, &prop_ret);
 
-                    Atom *targets = (Atom*)prop_ret;
-                    for(int i = 0; i < nitems; ++i) {
-                        char* an = XGetAtomName(dpy, targets[i]);
+                    Atom *targets = (Atom *)prop_ret;
+                    for (int i = 0; i < nitems; ++i) {
+                        char *an = XGetAtomName(dpy, targets[i]);
                         types.push_back(std::string(an));
                         if (an)
                             XFree(an);
@@ -136,19 +128,19 @@ namespace Toolbox {
 #endif
         return {};
     }
-    Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type){
+    Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) {
 #ifdef TOOLBOX_PLATFORM_LINUX
         Display *dpy = XOpenDisplay(nullptr);
         if (!dpy) {
             return make_clipboard_error<MimeData>("Could not open X display");
         }
-        Atom requested_type = XInternAtom(dpy, type.c_str(), False);
-        Atom sel = XInternAtom(dpy, "CLIPBOARD", False);
+        Atom requested_type    = XInternAtom(dpy, type.c_str(), False);
+        Atom sel               = XInternAtom(dpy, "CLIPBOARD", False);
         Window clipboard_owner = XGetSelectionOwner(dpy, sel);
         if (clipboard_owner == None) {
             return make_clipboard_error<MimeData>("Clipboard isn't owned by anyone");
         }
-        Window root = RootWindow(dpy, DefaultScreen(dpy));
+        Window root          = RootWindow(dpy, DefaultScreen(dpy));
         Window target_window = XCreateSimpleWindow(dpy, root, -10, -10, 1, 1, 0, 0, 0);
         Atom target_property = XInternAtom(dpy, "CLIP_CONTENTS", False);
         XConvertSelection(dpy, sel, requested_type, target_property, target_window, CurrentTime);
@@ -156,12 +148,11 @@ namespace Toolbox {
         XSelectionEvent *sev;
         // This looks pretty dangerous but this is how glfw does it,
         // and how the examples online do it, so :shrug:
-        while(true){
+        while (true) {
             XNextEvent(dpy, &ev);
-            switch (ev.type)
-            {
+            switch (ev.type) {
             case SelectionNotify:
-                sev = (XSelectionEvent*)&ev.xselection;
+                sev = (XSelectionEvent *)&ev.xselection;
                 if (sev->property == None) {
                     return make_clipboard_error<MimeData>("Conversion could not be performed.");
                 } else {
@@ -174,12 +165,14 @@ namespace Toolbox {
                     Atom _da;
 
                     XGetWindowProperty(dpy, target_window, target_property, 0, 0, False,
-                                       AnyPropertyType, &type_received, &_di, &_dul, &size, &prop_ret);
+                                       AnyPropertyType, &type_received, &_di, &_dul, &size,
+                                       &prop_ret);
                     XFree(prop_ret);
 
                     Atom incr = XInternAtom(dpy, "INCR", False);
                     if (type_received == incr) {
-                        return make_clipboard_error<MimeData>("Data over 256kb, this isn't supported yet");
+                        return make_clipboard_error<MimeData>(
+                            "Data over 256kb, this isn't supported yet");
                     }
                     XGetWindowProperty(dpy, target_window, target_property, 0, size, False,
                                        AnyPropertyType, &_da, &_di, &_dul, &_dul, &prop_ret);
@@ -198,6 +191,7 @@ namespace Toolbox {
                 }
             }
         }
+#endif
     Result<void, ClipboardError> SystemClipboard::setContent(const MimeData &content) {
 #ifdef TOOLBOX_PLATFORM_LINUX
         Display *dpy          = XOpenDisplay(nullptr);
