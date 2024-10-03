@@ -187,7 +187,7 @@ namespace Toolbox {
     }
     Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) const {
 #ifdef TOOLBOX_PLATFORM_LINUX
-        Display *dpy = getGLFWDisplay();
+        Display *dpy           = getGLFWDisplay();
         Atom requested_type    = XInternAtom(dpy, type.c_str(), False);
         Atom sel               = XInternAtom(dpy, "CLIPBOARD", False);
         Window clipboard_owner = XGetSelectionOwner(dpy, sel);
@@ -250,9 +250,9 @@ namespace Toolbox {
 
     Result<void, ClipboardError> SystemClipboard::setContent(const MimeData &content) {
 #ifdef TOOLBOX_PLATFORM_LINUX
-        Display* dpy = getGLFWDisplay();
+        Display *dpy         = getGLFWDisplay();
         Window target_window = getGLFWHelperWindow();
-        Atom CLIPBOARD        = XInternAtom(dpy, "CLIPBOARD", False);
+        Atom CLIPBOARD       = XInternAtom(dpy, "CLIPBOARD", False);
         m_clipboard_contents = content;
         XSetSelectionOwner(dpy, CLIPBOARD, target_window, CurrentTime);
 #endif
