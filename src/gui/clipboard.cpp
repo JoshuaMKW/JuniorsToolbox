@@ -14,8 +14,20 @@
 
 namespace Toolbox {
 
+#ifdef WIN32
     SystemClipboard::SystemClipboard() {}
     SystemClipboard::~SystemClipboard() {}
+#elif defined(TOOLBOX_PLATFORM_LINUX)
+    Window clipboard_helper_window;
+    SystemClipboard::SystemClipboard() {
+        Display* dpy = getGLFWDisplay();
+        Window root_window   = RootWindow(dpy, DefaultScreen(dpy));
+        clipboard_helper_window = XCreateSimpleWindow(dpy, root_window, -10, -10, 1, 1, 0, 0, 0);
+    }
+    SystemClipboard::~SystemClipboard() {
+        XDestroyWindow(getGLFWDisplay(), clipboard_helper_window);
+    }
+#endif
 
     Result<std::string, ClipboardError> SystemClipboard::getText() {
 #ifdef WIN32
@@ -86,20 +98,12 @@ namespace Toolbox {
 #ifdef TOOLBOX_PLATFORM_LINUX
     void (*glfwSelectionRequestHandler)(XEvent *);
     void handleSelectionRequest(XEvent *event) {
-        std::cout << "Handling a selection request from hook" << std::endl;
         const XSelectionRequestEvent* request = &event->xselectionrequest;
         Display* dpy = getGLFWDisplay();
         Atom TEXT_URI         = XInternAtom(dpy, "text/uri-list", False);
         Atom TARGETS          = XInternAtom(dpy, "TARGETS", False);
         const Atom targets[] = {TARGETS, TEXT_URI};
         if (request->target == TARGETS) {
-            std::cout << "Responding with targets:" << std::endl;
-            for (const Atom &targ : targets) {
-                char *target = XGetAtomName(dpy, targ);
-                std::cout << target << std::endl;
-                if (target)
-                    XFree(target);
-            }
             XChangeProperty(dpy, request->requestor, request->property, XA_ATOM, 32,
                             PropModeReplace,
                             reinterpret_cast<const unsigned char *>(targets),
@@ -116,7 +120,6 @@ namespace Toolbox {
                        reinterpret_cast<XEvent *>(&response));
         } else if (request->target == TEXT_URI) {
             std::string urls = SystemClipboard::instance().m_clipboard_contents.get_urls().value();
-            std::cout << "Responding with urls: " << urls << std::endl;
             XChangeProperty(
                 dpy, request->requestor, request->property, TEXT_URI, 8, PropModeReplace,
                 reinterpret_cast<const unsigned char *>(urls.c_str()), urls.length());
@@ -136,7 +139,6 @@ namespace Toolbox {
         }
     }
     void hookClipboardIntoGLFW(void) {
-        std::cout << "Setting handlers" << std::endl;
         glfwSelectionRequestHandler = getSelectionRequestHandler();
         setSelectionRequestHandler(handleSelectionRequest);
     }
@@ -146,12 +148,11 @@ namespace Toolbox {
 
     Result<std::vector<std::string>, ClipboardError> SystemClipboard::possibleContentTypes() {
 #ifdef TOOLBOX_PLATFORM_LINUX
-        Display *dpy         = XOpenDisplay(nullptr);
+        Display *dpy         = getGLFWDisplay();
         Atom sel             = XInternAtom(dpy, "CLIPBOARD", False);
         Atom targets         = XInternAtom(dpy, "TARGETS", False);
         Atom target_property = XInternAtom(dpy, "CLIP_TYPES", False);
-        Window root_window   = RootWindow(dpy, DefaultScreen(dpy));
-        Window target_window = XCreateSimpleWindow(dpy, root_window, -10, -10, 1, 1, 0, 0, 0);
+        Window target_window = clipboard_helper_window;
         XConvertSelection(dpy, sel, targets, target_property, target_window, CurrentTime);
 
         XEvent ev;
@@ -164,8 +165,6 @@ namespace Toolbox {
             case SelectionNotify:
                 sev = (XSelectionEvent *)&ev.xselection;
                 if (sev->property == None) {
-                    XDestroyWindow(dpy, target_window);
-                    XCloseDisplay(dpy);
                     return make_clipboard_error<std::vector<std::string>>(
                         "Conversion could not be performed.\n");
                 } else {
@@ -187,9 +186,7 @@ namespace Toolbox {
                             XFree(an);
                     }
                     XFree(prop_ret);
-                    XDeleteProperty(dpy, target_window, target_property);
-                    XDestroyWindow(dpy, target_window);
-                    XCloseDisplay(dpy);
+                    XDeleteProperty(dpy, clipboard_helper_window, target_property);
                     return types;
                 }
                 break;
@@ -201,18 +198,14 @@ namespace Toolbox {
     }
     Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) {
 #ifdef TOOLBOX_PLATFORM_LINUX
-        Display *dpy = XOpenDisplay(nullptr);
-        if (!dpy) {
-            return make_clipboard_error<MimeData>("Could not open X display");
-        }
+        Display *dpy = getGLFWDisplay();
         Atom requested_type    = XInternAtom(dpy, type.c_str(), False);
         Atom sel               = XInternAtom(dpy, "CLIPBOARD", False);
         Window clipboard_owner = XGetSelectionOwner(dpy, sel);
         if (clipboard_owner == None) {
             return make_clipboard_error<MimeData>("Clipboard isn't owned by anyone");
         }
-        Window root          = RootWindow(dpy, DefaultScreen(dpy));
-        Window target_window = XCreateSimpleWindow(dpy, root, -10, -10, 1, 1, 0, 0, 0);
+        Window target_window = clipboard_helper_window;
         Atom target_property = XInternAtom(dpy, "CLIP_CONTENTS", False);
         XConvertSelection(dpy, sel, requested_type, target_property, target_window, CurrentTime);
         XEvent ev;
@@ -225,7 +218,6 @@ namespace Toolbox {
             case SelectionNotify:
                 sev = (XSelectionEvent *)&ev.xselection;
                 if (sev->property == None) {
-                    XCloseDisplay(dpy);
                     return make_clipboard_error<MimeData>("Conversion could not be performed.");
                 } else {
                     Atom type_received;
@@ -250,7 +242,6 @@ namespace Toolbox {
                                        AnyPropertyType, &_da, &_di, &_dul, &_dul, &prop_ret);
                     Buffer data_buffer;
                     if (!data_buffer.alloc(size)) {
-                        XCloseDisplay(dpy);
                         return make_clipboard_error<MimeData>(
                             "Couldn't allocate buffer of big enough size");
                     }
@@ -260,126 +251,25 @@ namespace Toolbox {
 
                     MimeData result;
                     result.set_data(type, std::move(data_buffer));
-                    XCloseDisplay(dpy);
                     return result;
                 }
             }
         }
-        XCloseDisplay(dpy);
 #endif
         return {};
     }
 
     Result<void, ClipboardError> SystemClipboard::setContent(const MimeData &content) {
 #ifdef TOOLBOX_PLATFORM_LINUX
-        Display *dpy          = XOpenDisplay(nullptr);
-        Atom TIMESTAMP        = XInternAtom(dpy, "TIMESTAMP", False);
-        Atom TARGETS          = XInternAtom(dpy, "TARGETS", False);
+        Display* dpy = getGLFWDisplay();
         Atom CLIPBOARD        = XInternAtom(dpy, "CLIPBOARD", False);
-        Atom TEXT_URI         = XInternAtom(dpy, "text/uri-list", False);
-        Atom APP_KDE4_URILIST = XInternAtom(dpy, "application/x-kde4-urilist", False);
-        Atom APP_VND          = XInternAtom(dpy, "application/vnd.portal.filetransfer", False);
-        Atom MULT             = XInternAtom(dpy, "MULTIPLE", False);
-        Atom UTF8             = XInternAtom(dpy, "UTF8_STRING", False);
-        Atom APP_SRCID        = XInternAtom(dpy, "application/x-kde-source-id", False);
-        Window root           = RootWindow(dpy, DefaultScreen(dpy));
-        Window target_window  = XCreateSimpleWindow(dpy, root, -10, -10, 1, 1, 0, 0, 0);
-
-        XSetSelectionOwner(dpy, CLIPBOARD, target_window, CurrentTime);
-        Atom CLIPBOARD        = XInternAtom(clipboard_display, "CLIPBOARD", False);
         m_clipboard_contents = content;
-        std::cout << "Setting ourselves as clipboard owners" << std::endl;
-        XSetSelectionOwner(clipboard_display, CLIPBOARD, clipboard_helper_window, CurrentTime);
+        XSetSelectionOwner(dpy, CLIPBOARD, clipboard_helper_window, CurrentTime);
         ImGui::SetClipboardText("");
         return {};
 
-        while (true) {
-            XEvent event;
-            std::cout << "Waiting on X event... " << std::endl;
-            XNextEvent(dpy, &event);
-            switch (event.type) {
-            case SelectionClear:
-                std::cout << "Lost selection ownership" << std::endl;
-                return {};
-            case SelectionRequest: {
-                XSelectionRequestEvent *request = &event.xselectionrequest;
-                std::cout << "Requestor: " << request->requestor << std::endl;
-                char *target_type = XGetAtomName(dpy, request->target);
-                std::cout << "Target Type: " << target_type << std::endl;
-                char *target_property = XGetAtomName(dpy, request->property);
-                std::cout << "Target Property: " << target_property << std::endl;
-                // const Atom targets[] = {TARGETS, MULT, UTF8, XA_STRING};
-                // const Atom targets[] = {TIMESTAMP,        TARGETS, TEXT_URI,
-                //                         APP_KDE4_URILIST, APP_VND, APP_SRCID};
-                const Atom targets[] = {TARGETS, TEXT_URI};
-                if (request->target == TARGETS) {
-                    std::cout << "Responding with targets:" << std::endl;
-                    for (const Atom &targ : targets) {
-                        char *target = XGetAtomName(dpy, targ);
-                        std::cout << target << std::endl;
-                        if (target)
-                            XFree(target);
-                    }
-                    XChangeProperty(dpy, request->requestor, request->property, XA_ATOM, 32,
-                                    PropModeReplace,
-                                    reinterpret_cast<const unsigned char *>(targets),
-                                    sizeof(targets) / sizeof(targets[0]));
-                    XSelectionEvent response;
-                    response.type      = SelectionNotify;
-                    response.requestor = request->requestor;
-                    response.selection = request->selection;
-                    response.target    = request->target;
-                    response.property  = request->property;
-                    response.time      = request->time;
-
-                    XSendEvent(dpy, request->requestor, True, NoEventMask,
-                               reinterpret_cast<XEvent *>(&response));
-                    continue;
-                } else if (request->target == TEXT_URI) {
-                    std::string urls = content.get_urls().value();
-                    std::cout << "Responding with urls: " << urls << std::endl;
-                    XChangeProperty(
-                        dpy, request->requestor, request->property, TEXT_URI, 8, PropModeReplace,
-                        reinterpret_cast<const unsigned char *>(urls.c_str()), urls.length());
-
-                    XSelectionEvent response;
-                    response.type      = SelectionNotify;
-                    response.requestor = request->requestor;
-                    response.selection = request->selection;
-                    response.target    = request->target;
-                    response.property  = request->property;
-                    response.time      = request->time;
-
-                    XSendEvent(dpy, request->requestor, True, NoEventMask,
-                               reinterpret_cast<XEvent *>(&response));
-                    // return {};
-                } else if (request->target == UTF8) {
-                    std::string test_string = "something";
-                    XChangeProperty(
-                        dpy, request->requestor, request->property, UTF8, 8, PropModeReplace,
-                        reinterpret_cast<const unsigned char *>(test_string.c_str()), test_string.length());
-
-                    XSelectionEvent response;
-                    response.type      = SelectionNotify;
-                    response.requestor = request->requestor;
-                    response.selection = request->selection;
-                    response.target    = request->target;
-                    response.property  = request->property;
-                    response.time      = request->time;
-
-                    XSendEvent(dpy, request->requestor, True, NoEventMask,
-                               reinterpret_cast<XEvent *>(&response));
-                } else {
-                    TOOLBOX_ERROR("Unrecognized request");
-                    return {};
-                }
-            }
-            }
-        }
-        XDestroyWindow(dpy, target_window);
-        XCloseDisplay(dpy);
 #endif
         return {};
     }
 
-}  // namespace Toolbox::UI
+}  // namespace Toolbox
