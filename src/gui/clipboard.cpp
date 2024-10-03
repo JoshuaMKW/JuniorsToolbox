@@ -98,6 +98,8 @@ namespace Toolbox {
             case SelectionNotify:
                 sev = (XSelectionEvent *)&ev.xselection;
                 if (sev->property == None) {
+                    XDestroyWindow(dpy, target_window);
+                    XCloseDisplay(dpy);
                     return make_clipboard_error<std::vector<std::string>>(
                         "Conversion could not be performed.\n");
                 } else {
@@ -120,11 +122,14 @@ namespace Toolbox {
                     }
                     XFree(prop_ret);
                     XDeleteProperty(dpy, target_window, target_property);
+                    XDestroyWindow(dpy, target_window);
+                    XCloseDisplay(dpy);
                     return types;
                 }
                 break;
             }
         }
+        XCloseDisplay(dpy);
 #endif
         return {};
     }
@@ -154,6 +159,7 @@ namespace Toolbox {
             case SelectionNotify:
                 sev = (XSelectionEvent *)&ev.xselection;
                 if (sev->property == None) {
+                    XCloseDisplay(dpy);
                     return make_clipboard_error<MimeData>("Conversion could not be performed.");
                 } else {
                     Atom type_received;
@@ -178,6 +184,7 @@ namespace Toolbox {
                                        AnyPropertyType, &_da, &_di, &_dul, &_dul, &prop_ret);
                     Buffer data_buffer;
                     if (!data_buffer.alloc(size)) {
+                        XCloseDisplay(dpy);
                         return make_clipboard_error<MimeData>(
                             "Couldn't allocate buffer of big enough size");
                     }
@@ -187,11 +194,16 @@ namespace Toolbox {
 
                     MimeData result;
                     result.set_data(type, std::move(data_buffer));
+                    XCloseDisplay(dpy);
                     return result;
                 }
             }
         }
+        XCloseDisplay(dpy);
 #endif
+        return {};
+    }
+
     Result<void, ClipboardError> SystemClipboard::setContent(const MimeData &content) {
 #ifdef TOOLBOX_PLATFORM_LINUX
         Display *dpy          = XOpenDisplay(nullptr);
@@ -292,6 +304,8 @@ namespace Toolbox {
             }
             }
         }
+        XDestroyWindow(dpy, target_window);
+        XCloseDisplay(dpy);
 #endif
         return {};
     }
