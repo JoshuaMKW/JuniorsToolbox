@@ -29,6 +29,14 @@ namespace Toolbox {
         [[nodiscard]] bool has_format(std::string_view type) const {
             return m_data_map.contains(std::string(type));
         }
+        std::vector<std::string> get_all_formats() const {
+            std::vector<std::string> formats;
+            formats.reserve(m_data_map.size());
+            for (auto &[k, v] : m_data_map) {
+                formats.push_back(k);
+            }
+            return formats;
+        }
 
         [[nodiscard]] bool has_color() const;
         [[nodiscard]] bool has_html() const;

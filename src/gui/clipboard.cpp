@@ -85,45 +85,46 @@ namespace Toolbox {
 
 #ifdef TOOLBOX_PLATFORM_LINUX
     void (*glfwSelectionRequestHandler)(XEvent *);
+    void sendRequestNotify(XSelecctionRequestEvent *request) {
+        XSelectionEvent response;
+        response.type      = SelectionNotify;
+        response.requestor = request->requestor;
+        response.selection = request->selection;
+        response.target    = request->target;
+        response.property  = request->property;
+        response.time      = request->time;
+
+        XSendEvent(dpy, request->requestor, True, NoEventMask,
+                   reinterpret_cast<XEvent *>(&response));
+    }
     void handleSelectionRequest(XEvent *event) {
-        const XSelectionRequestEvent* request = &event->xselectionrequest;
-        Display* dpy = getGLFWDisplay();
-        Atom TEXT_URI         = XInternAtom(dpy, "text/uri-list", False);
-        Atom TARGETS          = XInternAtom(dpy, "TARGETS", False);
-        const Atom targets[] = {TARGETS, TEXT_URI};
+        MimeData clipboard_contents = SystemClipboard::instance().m_clipboard_contents;
+        const XSelectionRequestEvent *request = &event->xselectionrequest;
+        Display *dpy                          = getGLFWDisplay();
+        Atom TARGETS                          = XInternAtom(dpy, "TARGETS", False);
+        std::vector<Atom> targets             = {TARGETS};
+        for (auto &string_format : clipboardContents.get_all_formats()) {
+            Atom format_atom = XInternAtom(dpy, format.c_str(), False);
+            targets.push_back(format_atom);
+        }
         if (request->target == TARGETS) {
             XChangeProperty(dpy, request->requestor, request->property, XA_ATOM, 32,
-                            PropModeReplace,
-                            reinterpret_cast<const unsigned char *>(targets),
-                            sizeof(targets) / sizeof(targets[0]));
-            XSelectionEvent response;
-            response.type      = SelectionNotify;
-            response.requestor = request->requestor;
-            response.selection = request->selection;
-            response.target    = request->target;
-            response.property  = request->property;
-            response.time      = request->time;
-
-            XSendEvent(dpy, request->requestor, True, NoEventMask,
-                       reinterpret_cast<XEvent *>(&response));
-        } else if (request->target == TEXT_URI) {
-            std::string urls = SystemClipboard::instance().m_clipboard_contents.get_urls().value();
-            XChangeProperty(
-                dpy, request->requestor, request->property, TEXT_URI, 8, PropModeReplace,
-                reinterpret_cast<const unsigned char *>(urls.c_str()), urls.length());
-
-            XSelectionEvent response;
-            response.type      = SelectionNotify;
-            response.requestor = request->requestor;
-            response.selection = request->selection;
-            response.target    = request->target;
-            response.property  = request->property;
-            response.time      = request->time;
-
-            XSendEvent(dpy, request->requestor, True, NoEventMask,
-                       reinterpret_cast<XEvent *>(&response));
+                            PropModeReplace, reinterpret_cast<const unsigned char *>(targets.data()),
+                            targets.size());
+            sendRequestNotify(request);
         } else {
-            glfwSelectionRequestHandler(event);
+            char* requested_target = XGetAtomName(dpy, request->target);
+            auto data = clipboard_contents.get_data(requested_target);
+            if (data && request->property != None) {
+                XChangeProperty(dpy, request->requestor, request->property, request->target,
+                                8 /* is this ever wrong? */, PropModeReplace,
+                                reinterpret_cast<const unsigned char*>data.buf(),
+                                data.size);
+            } else {
+                glfwSelectionRequestHandler(event);
+            }
+            sendRequestNotify(request);
+            XFree(requested_target);
         }
     }
     void hookClipboardIntoGLFW(void) {
