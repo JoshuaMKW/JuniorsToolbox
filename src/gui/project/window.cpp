@@ -273,6 +273,9 @@ namespace Toolbox::UI {
             last_pos         = next_newline_pos + 1;
             next_newline_pos = s.find('\n', last_pos);
         }
+        if (last_pos < s.size()) {
+            result.push_back(s.substr(last_pos));
+        }
         return result;
     }
 
@@ -391,7 +394,8 @@ namespace Toolbox::UI {
                         return;
                     }
 
-                    for (std::string_view src_path_str : splitLines(text.value())) {
+                    std::vector<std::string_view> urls = splitLines(text.value());
+                    for (std::string_view src_path_str : urls) {
                         if (src_path_str.starts_with("file:/")) {
                             if (src_path_str.starts_with("file:///")) {
                                 src_path_str = src_path_str.substr(8);
