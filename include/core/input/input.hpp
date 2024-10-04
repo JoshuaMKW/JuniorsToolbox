@@ -23,7 +23,7 @@ namespace Toolbox::Input {
     bool GetMouseButtonDown(MouseButton button);
     bool GetMouseButtonUp(MouseButton button);
 
-    void GetMouseViewportPosition(float &x, float &y);
+    void GetMouseViewportPosition(double &x, double &y);
     void SetMousePosition(double x, double y, bool overwrite_delta = true);
 
     void GetMouseDelta(double &x, double &y);

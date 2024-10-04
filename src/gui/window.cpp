@@ -1,5 +1,6 @@
 #include "gui/window.hpp"
 #include "gui/application.hpp"
+#include "gui/event/dropevent.hpp"
 #include "gui/util.hpp"
 
 #include <lib/bStream/bstream.h>
@@ -41,8 +42,8 @@ namespace Toolbox::UI {
 
         // Load image data
         {
-            stbi_uc *data =
-                stbi_load_from_memory(result.value().data(), result.value().size(), &width, &height, &channels, 4);
+            stbi_uc *data = stbi_load_from_memory(result.value().data(), result.value().size(),
+                                                  &width, &height, &channels, 4);
 
             data_buf.alloc(static_cast<size_t>(width * height * channels));
             std::memcpy(data_buf.buf<u8>(), data, data_buf.size());
@@ -179,6 +180,13 @@ namespace Toolbox::UI {
             // Render the window
             if (ImGui::Begin(window_name.c_str(), &is_open, flags_)) {
                 ImGuiViewport *viewport = ImGui::GetCurrentWindow()->Viewport;
+                GLFWwindow *window      = static_cast<GLFWwindow *>(viewport->PlatformHandle);
+                if (window) {
+                    TOOLBOX_DEBUG_LOG("Setting window callbacks");
+                    glfwSetWindowUserPointer(window, this);
+                    glfwSetDropCallback(static_cast<GLFWwindow *>(viewport->PlatformHandle),
+                                        privDropCallback);
+                }
 
                 if ((flags_ & ImGuiWindowFlags_NoBackground)) {
                     viewport->Flags |= ImGuiViewportFlags_TransparentFrameBuffer;
@@ -249,6 +257,26 @@ namespace Toolbox::UI {
             t = name();
         }
         return t;
+    }
+
+    void ImWindow::privDropCallback(GLFWwindow *window, int path_count, const char *paths[]) {
+        ImWindow *self = static_cast<ImWindow *>(glfwGetWindowUserPointer(window));
+        if (!self) {
+            TOOLBOX_ERROR("[ImWindow] Attempted drop operation on NULL user pointer!");
+        }
+
+        std::string uri_list;
+        for (int i = 0; i < path_count; ++i) {
+            uri_list += std::format("file:///{}\n", paths[i]);
+        }
+
+        double mouse_x, mouse_y;
+        Input::GetMouseViewportPosition(mouse_x, mouse_y);
+
+        MimeData &&data = MimeData();
+        data.set_urls(uri_list);
+        GUIApplication::instance().dispatchEvent<DropEvent, true>(
+            ImVec2(mouse_x, mouse_y), DropType::ACTION_COPY, 0, self->getUUID(), std::move(data));
     }
 
 }  // namespace Toolbox::UI

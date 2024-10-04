@@ -1,14 +1,15 @@
 #include "core/clipboard.hpp"
+#include "core/core.hpp"
 
-#ifdef WIN32
+#ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
+#include <shlobj_core.h>
 #elif defined(TOOLBOX_PLATFORM_LINUX)
 #include <GLFW/glfw3.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
-#include <imgui/imgui.h>
 
 #endif
 
@@ -17,8 +18,43 @@ namespace Toolbox {
     SystemClipboard::SystemClipboard() {}
     SystemClipboard::~SystemClipboard() {}
 
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+
+    Result<std::vector<std::string>, ClipboardError>
+    SystemClipboard::getAvailableContentFormats() const {
+        if (!OpenClipboard(nullptr)) {
+            return make_clipboard_error<std::vector<std::string>>("Failed to open the clipboard!");
+        }
+
+        std::vector<std::string> types;
+        UINT format = 0;
+        while ((format = EnumClipboardFormats(format)) != CF_NULL) {
+            std::string the_format = "";
+
+            for (const auto &[mime, custom_fmt] : m_mime_to_format) {
+                if (format == custom_fmt) {
+                    the_format = mime;
+                    break;
+                }
+            }
+
+            if (the_format.empty()) {
+                the_format = MimeForFormat(format);
+            }
+
+            if (!the_format.empty()) {
+                types.push_back(the_format);
+            }
+        }
+
+        if (!CloseClipboard()) {
+            return make_clipboard_error<std::vector<std::string>>("Failed to close the clipboard!");
+        }
+
+        return types;
+    }
+
     Result<std::string, ClipboardError> SystemClipboard::getText() {
-#ifdef WIN32
         if (!OpenClipboard(nullptr)) {
             return make_clipboard_error<std::string>("Failed to open the clipboard!");
         }
@@ -30,7 +66,8 @@ namespace Toolbox {
 
         const char *text_data = static_cast<const char *>(GlobalLock(clipboard_data));
         if (!text_data) {
-            return make_clipboard_error<std::string>("Failed to retrieve the buffer from the handle!");
+            return make_clipboard_error<std::string>(
+                "Failed to retrieve the buffer from the handle!");
         }
 
         std::string result = text_data;
@@ -44,11 +81,9 @@ namespace Toolbox {
         }
 
         return result;
-#else
-#endif
     }
+
     Result<void, ClipboardError> SystemClipboard::setText(const std::string &text) {
-#ifdef WIN32
         if (!OpenClipboard(nullptr)) {
             return make_clipboard_error<void>("Failed to open the clipboard!");
         }
@@ -57,7 +92,7 @@ namespace Toolbox {
             return make_clipboard_error<void>("Failed to clear the clipboard!");
         }
 
-        HANDLE data_handle = GlobalAlloc(GMEM_DDESHARE, text.size()+1);
+        HANDLE data_handle = GlobalAlloc(GMEM_DDESHARE, text.size() + 1);
         if (!data_handle) {
             return make_clipboard_error<void>("Failed to alloc new data handle!");
         }
@@ -67,7 +102,7 @@ namespace Toolbox {
             return make_clipboard_error<void>("Failed to retrieve the buffer from the handle!");
         }
 
-        strncpy_s(data_buffer, text.size()+1, text.c_str(), text.size()+1);
+        strncpy_s(data_buffer, text.size() + 1, text.c_str(), text.size() + 1);
 
         if (!GlobalUnlock(data_handle)) {
             return make_clipboard_error<void>("Failed to unlock the data handle!");
@@ -78,12 +113,277 @@ namespace Toolbox {
         if (!CloseClipboard()) {
             return make_clipboard_error<void>("Failed to close the clipboard!");
         }
-#else
-#endif
         return {};
     }
 
-#ifdef TOOLBOX_PLATFORM_LINUX
+    Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) {
+        if (!OpenClipboard(nullptr)) {
+            return make_clipboard_error<MimeData>("Failed to open the clipboard!");
+        }
+
+        UINT format = CF_NULL;
+        if (m_mime_to_format.find(type) == m_mime_to_format.end()) {
+            format = FormatForMime(type);
+            if (format == CF_NULL) {
+                m_mime_to_format[type] = RegisterClipboardFormat(type.c_str());
+                format                 = m_mime_to_format[type];
+            }
+        } else {
+            format = m_mime_to_format[type];
+        }
+
+        if (format == CF_NULL) {
+            return make_clipboard_error<MimeData>("Failed to register the clipboard format!");
+        }
+
+        HANDLE clipboard_data = GetClipboardData(format);
+        if (!clipboard_data) {
+            return make_clipboard_error<MimeData>("Failed to retrieve the data handle!");
+        }
+
+        HANDLE data_handle = static_cast<HANDLE>(GlobalLock(clipboard_data));
+        if (!data_handle) {
+            return make_clipboard_error<MimeData>("Failed to retrieve the buffer from the handle!");
+        }
+
+        if (format == CF_TEXT) {
+            const char *text_data = static_cast<const char *>(data_handle);
+            std::string result    = text_data;
+
+            if (!GlobalUnlock(clipboard_data)) {
+                return make_clipboard_error<MimeData>("Failed to unlock the data handle!");
+            }
+
+            if (!CloseClipboard()) {
+                return make_clipboard_error<MimeData>("Failed to close the clipboard!");
+            }
+
+            MimeData mime_data;
+            mime_data.set_text(result);
+            return mime_data;
+        }
+
+        if (format == CF_HDROP) {
+            HDROP hdrop    = static_cast<HDROP>(data_handle);
+            UINT num_files = DragQueryFile(hdrop, 0xFFFFFFFF, nullptr, 0);
+            std::string uri_list;
+            for (UINT i = 0; i < num_files; ++i) {
+                UINT size = DragQueryFile(hdrop, i, nullptr, 0);
+                std::string file(size, '\0');
+                DragQueryFile(hdrop, i, file.data(), size + 1);
+                uri_list += std::format("file:///{}", file);
+                if (i != num_files - 1) {
+                    uri_list += "\r\n";
+                }
+            }
+
+            if (!GlobalUnlock(clipboard_data)) {
+                return make_clipboard_error<MimeData>("Failed to unlock the data handle!");
+            }
+
+            if (!CloseClipboard()) {
+                return make_clipboard_error<MimeData>("Failed to close the clipboard!");
+            }
+
+            MimeData mime_data;
+            mime_data.set_urls(uri_list);
+            return mime_data;
+        }
+
+        if (format == CF_UNICODETEXT) {
+            const wchar_t *text_data = static_cast<const wchar_t *>(data_handle);
+            std::wstring result      = text_data;
+
+            if (!GlobalUnlock(clipboard_data)) {
+                return make_clipboard_error<MimeData>("Failed to unlock the data handle!");
+            }
+
+            if (!CloseClipboard()) {
+                return make_clipboard_error<MimeData>("Failed to close the clipboard!");
+            }
+
+            MimeData mime_data;
+            mime_data.set_text(std::string(result.begin(), result.end()));
+            return mime_data;
+        }
+
+        return make_clipboard_error<MimeData>("Unimplemented MIME type!");
+    }
+
+    Result<void, ClipboardError> SystemClipboard::setContent(const std::string &type,
+                                                             const MimeData &mimedata) {
+        if (!OpenClipboard(nullptr)) {
+            return make_clipboard_error<void>("Failed to open the clipboard!");
+        }
+
+        if (!EmptyClipboard()) {
+            return make_clipboard_error<void>("Failed to clear the clipboard!");
+        }
+
+        std::optional<Buffer> result = mimedata.get_data(type);
+        if (!result) {
+            return make_clipboard_error<void>(
+                std::format("Failed to find MIME data type \"{}\"", type));
+        }
+
+        Buffer data_buf = std::move(result.value());
+
+        UINT format = CF_NULL;
+        if (m_mime_to_format.find(type) == m_mime_to_format.end()) {
+            format = FormatForMime(type);
+            if (format == CF_NULL) {
+                m_mime_to_format[type] = RegisterClipboardFormat(type.c_str());
+                format                 = m_mime_to_format[type];
+            }
+        } else {
+            format = m_mime_to_format[type];
+        }
+
+        if (format == CF_NULL) {
+            return make_clipboard_error<void>("Failed to register the clipboard format!");
+        }
+
+        size_t dest_buf_size = data_buf.size();
+        if (format == CF_HDROP) {
+            dest_buf_size *= 2;
+            dest_buf_size += sizeof(DROPFILES) + sizeof(wchar_t);
+        } else if (format == CF_TEXT) {
+            dest_buf_size *= 2;
+        }
+
+        HANDLE data_handle = GlobalAlloc(GMEM_DDESHARE | GMEM_ZEROINIT, dest_buf_size);
+        if (!data_handle) {
+            return make_clipboard_error<void>("Failed to alloc new data handle!");
+        }
+
+        void *data_buffer = static_cast<void *>(GlobalLock(data_handle));
+        if (!data_buffer) {
+            return make_clipboard_error<void>("Failed to retrieve the buffer from the handle!");
+        }
+
+        if (format == CF_HDROP) {
+            DROPFILES *drop_files_buf = static_cast<DROPFILES *>(data_buffer);
+            drop_files_buf->fWide     = TRUE;
+            drop_files_buf->pFiles    = sizeof(DROPFILES);
+
+            wchar_t *path_list_ptr = (wchar_t *)((char *)data_buffer + sizeof(DROPFILES));
+            std::mbstowcs(path_list_ptr, data_buf.buf<char>(), data_buf.size());
+
+            for (size_t i = 0; i < data_buf.size(); ++i) {
+                wchar_t &wchr = path_list_ptr[i];
+                if (wchr == L'\n') {
+                    wchr = L'\0';
+                }
+            }
+
+            path_list_ptr[data_buf.size()] = L'\0';
+            path_list_ptr[data_buf.size() + 1] = L'\0';
+        } else if (format == CF_TEXT) {
+            wchar_t *path_list_ptr = (wchar_t *)data_buffer;
+            std::mbstowcs(path_list_ptr, data_buf.buf<char>(), data_buf.size());
+            path_list_ptr[data_buf.size()] = L'\0';
+        } else {
+            std::memcpy(data_buffer, data_buf.buf(), data_buf.size());
+        }
+
+        if (!GlobalUnlock(data_handle)) {
+            return make_clipboard_error<void>("Failed to unlock the data handle!");
+        }
+
+        SetClipboardData(format, data_handle);
+
+        if (!CloseClipboard()) {
+            return make_clipboard_error<void>("Failed to close the clipboard!");
+        }
+
+        return Result<void, ClipboardError>();
+    }
+
+    UINT SystemClipboard::FormatForMime(std::string_view mimetype) {
+        if (mimetype == "text/plain") {
+            return CF_TEXT;
+        }
+
+        if (mimetype == "image/bmp") {
+            return CF_BITMAP;
+        }
+
+        if (mimetype == "image/x-wmf") {
+            return CF_METAFILEPICT;
+        }
+
+        if (mimetype == "application/vnd.ms-excel") {
+            return CF_SYLK;
+        }
+
+        if (mimetype == "image/tiff") {
+            return CF_TIFF;
+        }
+
+        if (mimetype == "audio/riff") {
+            return CF_RIFF;
+        }
+
+        if (mimetype == "audio/wav") {
+            return CF_WAVE;
+        }
+
+        if (mimetype == "text/uri-list") {
+            return CF_HDROP;
+        }
+
+        return CF_NULL;
+    }
+
+    std::string SystemClipboard::MimeForFormat(UINT format) {
+        switch (format) {
+        case CF_TEXT:
+            return "text/plain";
+        case CF_BITMAP:
+            return "image/bmp";
+        case CF_METAFILEPICT:
+            return "image/x-wmf";
+        case CF_SYLK:
+            return "application/vnd.ms-excel";
+        case CF_DIF:
+            return "application/vnd.ms-excel";
+        case CF_TIFF:
+            return "image/tiff";
+        case CF_OEMTEXT:
+            return "text/plain";
+        case CF_DIB:
+            return "";
+        case CF_PALETTE:
+            return "";
+        case CF_PENDATA:
+            return "";
+        case CF_RIFF:
+            return "audio/riff";
+        case CF_WAVE:
+            return "audio/wav";
+        case CF_UNICODETEXT:
+            return "text/plain";
+        case CF_ENHMETAFILE:
+            return "";
+#if (WINVER >= 0x0400)
+        case CF_HDROP:
+            return "text/uri-list";
+        case CF_LOCALE:
+            return "";
+#endif /* WINVER >= 0x0400 */
+#if (WINVER >= 0x0500)
+        case CF_DIBV5:
+            return "";
+#endif /* WINVER >= 0x0500 */
+        default:
+            return "";
+        }
+    }
+    // On windows we don't need to hook into GLFW for clipboard
+    // functionality, so do nothing.
+    void hookClipboardIntoGLFW(void) {}
+
+#elif defined(TOOLBOX_PLATFORM_LINUX)
     // Storage for a function pointer to the original handler, so that
     // we can call it if we don't want to handle the event ourselves.
     void (*glfwSelectionRequestHandler)(XEvent *);
@@ -170,15 +470,9 @@ namespace Toolbox {
         // Set our handler as the new handler.
         setSelectionRequestHandler(handleSelectionRequest);
     }
-#else
-    // On windows we don't need to hook into GLFW for clipboard
-    // functionality, so do nothing.
-    void hookClipboardIntoGLFW(void) {}
-#endif
-
     // Get all possible content types for the system clipboard.
-    Result<std::vector<std::string>, ClipboardError> SystemClipboard::possibleContentTypes() const {
-#ifdef TOOLBOX_PLATFORM_LINUX
+    Result<std::vector<std::string>, ClipboardError>
+    SystemClipboard::getAvailableContentFormats() const {
         Display *dpy         = getGLFWDisplay();
         Atom sel             = XInternAtom(dpy, "CLIPBOARD", False);
         Atom targets         = XInternAtom(dpy, "TARGETS", False);
@@ -224,12 +518,18 @@ namespace Toolbox {
                 break;
             }
         }
-#endif
         return {};
     }
+    Result<std::string, ClipboardError> SystemClipboard::getText() const {
+        return make_clipboard_error<std::string>("Not implemented yet");
+    }
+
+    Result<void, ClipboardError> SystemClipboard::setText(const std::string &text) {
+        return make_clipboard_error<void>("Not implemented yet");
+    }
+
     // Get the contents of the system clipboard.
     Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) const {
-#ifdef TOOLBOX_PLATFORM_LINUX
         Display *dpy           = getGLFWDisplay();
         Atom requested_type    = XInternAtom(dpy, type.c_str(), False);
         Atom sel               = XInternAtom(dpy, "CLIPBOARD", False);
@@ -288,13 +588,12 @@ namespace Toolbox {
                 }
             }
         }
-#endif
         return {};
     }
 
     // Set the contents of the system clipboard.
-    Result<void, ClipboardError> SystemClipboard::setContent(const MimeData &content) {
-#ifdef TOOLBOX_PLATFORM_LINUX
+    Result<void, ClipboardError> SystemClipboard::setContent(const std::string &_type,
+                                                             const MimeData &content) {
         // Get the display and helper window from GLFW using our custom hooks.
         Display *dpy         = getGLFWDisplay();
         Window target_window = getGLFWHelperWindow();
@@ -305,8 +604,8 @@ namespace Toolbox {
         // our event handling hook.
         Atom CLIPBOARD       = XInternAtom(dpy, "CLIPBOARD", False);
         XSetSelectionOwner(dpy, CLIPBOARD, target_window, CurrentTime);
-#endif
         return {};
     }
+#endif
 
 }  // namespace Toolbox

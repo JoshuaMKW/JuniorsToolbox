@@ -1,4 +1,5 @@
 #include "gui/project/window.hpp"
+#include "gui/application.hpp"
 #include "model/fsmodel.hpp"
 
 #include <cmath>
@@ -222,6 +223,7 @@ namespace Toolbox::UI {
 
                 ImGui::PopStyleVar(5);
             }
+
         }
         ImGui::EndChild();
 
@@ -257,20 +259,29 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::onDragEvent(RefPtr<DragEvent> ev) {}
 
-    void ProjectViewWindow::onDropEvent(RefPtr<DropEvent> ev) {}
+    void ProjectViewWindow::onDropEvent(RefPtr<DropEvent> ev) {
+        actionPasteIntoIndex(m_view_index, ev->getMimeData());
+    }
 
     std::vector<std::string_view> splitLines(std::string_view s) {
         std::vector<std::string_view> result;
-        size_t last_pos = 0;
+        size_t last_pos         = 0;
         size_t next_newline_pos = s.find('\n', 0);
         while (next_newline_pos != std::string::npos) {
-            if (s[last_pos + next_newline_pos - 1] == '\r'){
-                result.push_back(s.substr(last_pos, next_newline_pos - 1));
+            if (s[next_newline_pos - 1] == '\r') {
+                result.push_back(s.substr(last_pos, next_newline_pos - last_pos - 1));
             } else {
-                result.push_back(s.substr(last_pos, next_newline_pos));
+                result.push_back(s.substr(last_pos, next_newline_pos - last_pos));
             }
-            last_pos = next_newline_pos + 1;
+            last_pos         = next_newline_pos + 1;
             next_newline_pos = s.find('\n', last_pos);
+        }
+        if (last_pos < s.size()) {
+            if (s[s.size()-1] == '\r') {
+                result.push_back(s.substr(last_pos, s.size() - last_pos - 1));
+            } else {
+                result.push_back(s.substr(last_pos));
+            }
         }
         return result;
     }
@@ -287,7 +298,8 @@ namespace Toolbox::UI {
                 return m_selected_indices_ctx.size() > 0 &&
                        std::all_of(m_selected_indices_ctx.begin(), m_selected_indices_ctx.end(),
                                    [this](const ModelIndex &index) {
-                                       return m_file_system_model->isFile(index);
+                                       return m_file_system_model->isFile(index) ||
+                                              isPathForScene(index);
                                    });
             },
             [this](auto) { actionOpenIndexes(m_selected_indices_ctx); });
@@ -348,20 +360,8 @@ namespace Toolbox::UI {
 
         m_folder_view_context_menu.addOption(
             "Copy", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C}),
-            [this]() { return m_selected_indices_ctx.size() > 0; }, [this](auto) {
-                std::string paths;
-                if (m_selected_indices_ctx.size() == 0) {
-                    paths = m_file_system_model->getPath(m_view_index).string();
-                } else {
-                    for (const ModelIndex &item_index : m_selected_indices_ctx) {
-                        fs_path path = m_file_system_model->getPath(item_index);
-                        paths += "file://" + path.string() + "\r\n";
-                    }
-                }
-                MimeData data;
-                data.set_urls(paths);
-                SystemClipboard::instance().setContent(data);
-            });
+            [this]() { return m_selected_indices_ctx.size() > 0; },
+            [this](auto) { actionCopyIndexes(m_selected_indices_ctx); });
 
         m_folder_view_context_menu.addDivider();
 
@@ -380,36 +380,26 @@ namespace Toolbox::UI {
             "Rename", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R}),
             [this]() { return m_selected_indices_ctx.size() == 1; },
             [this](auto) { actionRenameIndex(m_selected_indices_ctx[0]); });
+
         m_folder_view_context_menu.addOption(
             "Paste", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V}),
             [this]() { return m_selected_indices_ctx.size() == 0; },
             [this](auto) {
-                auto content_types = SystemClipboard::instance().possibleContentTypes();
+                auto content_types = SystemClipboard::instance().getAvailableContentFormats();
                 if (!content_types) {
                     TOOLBOX_ERROR("Couldn't get content types");
                     return;
                 }
-                if (std::find(content_types.value().begin(), content_types.value().end(),
-                              std::string("text/uri-list")) != content_types.value().end()) {
-                    auto content = SystemClipboard::instance().getContent("text/uri-list");
-                    if (!content) {
-                        TOOLBOX_ERROR("Failed to get content as uri list");
-                        return;
-                    }
-                    auto text = content.value().get_urls();
-                    if (!text) {
-                        TOOLBOX_ERROR("Mime data wouldn't return uri list");
-                        return;
-                    }
 
-                    for (std::string_view src_path_str : splitLines(text.value())) {
-                        if (src_path_str.substr(0, 7) != "file://") {
-                            TOOLBOX_ERROR_V("Can't copy non-local uri {}", src_path_str);
-                        }
-                        fs_path src_path = src_path_str.substr(7);
-                        m_file_system_model->copy(src_path, m_view_index, src_path.filename().string());
-                    }
+                if (std::find(content_types.value().begin(), content_types.value().end(),
+                              std::string("text/uri-list")) == content_types.value().end()) {
+                    return;
                 }
+
+                MimeData data =
+                    SystemClipboard::instance().getContent("text/uri-list").value_or(MimeData());
+
+                actionPasteIntoIndex(m_view_index, data);
             });
 
         m_folder_view_context_menu.addDivider();
@@ -431,6 +421,14 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::actionOpenIndexes(const std::vector<ModelIndex> &indices) {
         for (auto &item_index : indices) {
+            if (actionOpenPad(item_index)) {
+                continue;
+            }
+
+            if (actionOpenScene(item_index)) {
+                continue;
+            }
+
             if (m_file_system_model->isDirectory(item_index)) {
                 m_view_index = item_index;
                 continue;
@@ -445,6 +443,59 @@ namespace Toolbox::UI {
         m_is_renaming         = true;
         std::string file_name = m_file_system_model->getDisplayText(index);
         std::strncpy(m_rename_buffer, file_name.c_str(), IM_ARRAYSIZE(m_rename_buffer));
+    }
+
+    void ProjectViewWindow::actionPasteIntoIndex(const ModelIndex &index, const MimeData &data) {
+        std::optional<std::string> text = data.get_urls();
+        if (!text) {
+            TOOLBOX_ERROR("Mime data wouldn't return uri list");
+            return;
+        }
+
+        std::vector<std::string_view> urls = splitLines(text.value());
+        for (std::string_view src_path_str : urls) {
+            if (src_path_str.starts_with("file:/")) {
+#ifdef TOOLBOX_PLATFORM_LINUX
+                src_path_str = src_path_str.substr(7);
+#elif defined TOOLBOX_PLATFORM_WINDOWS
+                if (src_path_str.starts_with("file:///")) {
+                    src_path_str = src_path_str.substr(8);
+                } else {
+                    src_path_str = src_path_str.substr(7);
+                }
+#endif
+            } else {
+                TOOLBOX_ERROR_V("Can't copy non-local uri {}", src_path_str);
+                continue;
+            }
+
+            fs_path src_path = src_path_str;
+            m_file_system_model->copy(src_path, index, src_path.filename().string());
+        }
+    }
+
+    void ProjectViewWindow::actionCopyIndexes(const std::vector<ModelIndex> &indices) {
+        std::string copied_paths;
+        for (const ModelIndex &index : indices) {
+#ifdef TOOLBOX_PLATFORM_LINUX
+            copied_paths += "file://";
+#elif defined TOOLBOX_PLATFORM_WINDOWS
+            copied_paths += "file:///"
+#endif
+            copied_paths += m_file_system_model->getPath(index).string();
+#ifdef TOOLBOX_PLATFORM_LINUX
+            copied_paths += "\r";
+#endif
+            copied_paths += "\n";
+        }
+
+        MimeData data;
+        data.set_urls(copied_paths);
+
+        auto result = SystemClipboard::instance().setContent("text/uri-list", data);
+        if (!result) {
+            TOOLBOX_ERROR("[PROJECT] Failed to set contents of clipboard");
+        }
     }
 
     void ProjectViewWindow::actionLeftClickIndex(const ModelIndex &view_index,
@@ -485,6 +536,112 @@ namespace Toolbox::UI {
                 m_last_selected_index = source_child_index;
             }
         }
+    }
+
+    bool ProjectViewWindow::actionOpenScene(const ModelIndex &index) {
+        if (!m_file_system_model->validateIndex(index)) {
+            return false;
+        }
+
+        GUIApplication &app = GUIApplication::instance();
+
+        if (m_file_system_model->isDirectory(index)) {
+            // ./scene/
+            fs_path scene_path = m_file_system_model->getPath(index);
+
+            RefPtr<ImWindow> existing_editor = app.findWindow("Scene Editor", scene_path.string());
+            if (existing_editor) {
+                existing_editor->focus();
+                return true;
+            }
+
+            RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Scene Editor");
+            if (!window->onLoadData(scene_path)) {
+                app.removeWindow(window);
+                return false;
+            }
+
+            return true;
+        } else if (m_file_system_model->isArchive(index)) {
+            TOOLBOX_ERROR("[PROJECT] Archives are not supported yet");
+        } else if (m_file_system_model->isFile(index)) {
+            // ./scene/map/scene.bin
+            fs_path scene_path = m_file_system_model->getPath(index);
+            if (scene_path.filename().string() != "scene.bin") {
+                return false;
+            }
+
+            fs_path scene_folder = scene_path.parent_path().parent_path();
+            if (scene_folder.filename().string() != "scene") {
+                return false;
+            }
+
+            RefPtr<ImWindow> existing_editor =
+                app.findWindow("Scene Editor", scene_folder.string());
+            if (existing_editor) {
+                existing_editor->focus();
+                return true;
+            }
+
+            RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Scene Editor");
+            if (!window->onLoadData(scene_folder)) {
+                app.removeWindow(window);
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    bool ProjectViewWindow::actionOpenPad(const ModelIndex &index) {
+        if (!m_file_system_model->isDirectory(index)) {
+            return false;
+        }
+
+        GUIApplication &app = GUIApplication::instance();
+
+        // ./scene/map/map/pad/
+        fs_path pad_path = m_file_system_model->getPath(index);
+        if (pad_path.filename().string() != "pad") {
+            return false;
+        }
+
+        RefPtr<ImWindow> existing_editor = app.findWindow("Pad Recorder", pad_path.string());
+        if (existing_editor) {
+            existing_editor->focus();
+            return true;
+        }
+
+        RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Pad Recorder");
+        if (!window->onLoadData(pad_path)) {
+            app.removeWindow(window);
+            return false;
+        }
+
+        return true;
+    }
+
+    bool ProjectViewWindow::isPathForScene(const ModelIndex &index) const {
+        if (!m_file_system_model->validateIndex(index)) {
+            return false;
+        }
+
+        if (m_file_system_model->isDirectory(index)) {
+            fs_path scene_path = m_file_system_model->getPath(index);
+            if (scene_path.filename().string() == "scene") {
+                return true;
+            }
+        } else if (m_file_system_model->isFile(index)) {
+            fs_path scene_path = m_file_system_model->getPath(index);
+            if (scene_path.filename().string() == "scene.bin") {
+                fs_path scene_folder = scene_path.parent_path().parent_path();
+                if (scene_folder.filename().string() == "scene") {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     bool ProjectViewWindow::isViewedAncestor(const ModelIndex &index) {
