@@ -223,13 +223,6 @@ namespace Toolbox::UI {
 
                 ImGui::PopStyleVar(5);
             }
-
-            /*std::vector<std::string> formats =
-                SystemClipboard::instance().getAvailableContentFormats().value_or(
-                    std::vector<std::string>());
-            if (std::find(formats.begin(), formats.end(), "text/uri-list") != formats.end()) {
-                
-            }*/
         }
         ImGui::EndChild();
 

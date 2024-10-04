@@ -4,23 +4,14 @@
 #include "core/mimedata/mimedata.hpp"
 #include "gui/dragdrop/dragaction.hpp"
 #include "gui/dragdrop/dropaction.hpp"
+#include "gui/dragdrop/dragdropmanager.hpp"
 
 namespace Toolbox::UI {
-
-    class DragDropManager {
-    public:
-        static DragDropManager &instance() {
-            static DragDropManager _instance;
-            return _instance;
-        }
-
-        void initialize();
         
-        RefPtr<DragAction> createDragAction();
+    RefPtr<DragAction> DragDropManager::createDragAction() {
+        return make_referable<DragAction>();
+    }
 
-
-    protected:
-        DragDropManager() = default;
-    };
+    void DragDropManager::initialize() {}
 
 }  // namespace Toolbox::UI

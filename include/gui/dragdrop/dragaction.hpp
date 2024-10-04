@@ -22,7 +22,7 @@ namespace Toolbox::UI {
         [[nodiscard]] ImVec2 getHotSpot() const { return m_hot_spot; }
         [[nodiscard]] const ImageHandle &getImage() { return m_image_handle; }
 
-        [[nodiscard]] const ImGuiPayload *getPayload() const { return m_imgui_payload; }
+        [[nodiscard]] const MimeData &getPayload() const { return m_mime_data; }
         [[nodiscard]] DropType getDefaultDropType() const { m_default_drop_type; }
         [[nodiscard]] DropTypes getSupportedDropTypes() const { return m_supported_drop_types; }
 
@@ -31,13 +31,14 @@ namespace Toolbox::UI {
 
         void setHotSpot(const ImVec2 &absp) { m_hot_spot = absp; }
         void setImage(const ImageHandle &image) { m_image_handle = image; }
-        void setPayload(const ImGuiPayload *payload) { m_imgui_payload = payload; }
+        void setPayload(const MimeData &data) { m_mime_data = data; }
+        void setTargetUUID(const UUID64 &uuid) { m_target_uuid = uuid; }
 
     private:
         ImVec2 m_hot_spot;
         ImageHandle m_image_handle;
 
-        const ImGuiPayload *m_imgui_payload;
+        MimeData m_mime_data;
         DropType m_default_drop_type;
         DropType m_supported_drop_types;
 
