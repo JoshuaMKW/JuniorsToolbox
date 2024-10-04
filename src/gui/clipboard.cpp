@@ -224,7 +224,6 @@ namespace Toolbox {
                 break;
             }
         }
-        XCloseDisplay(dpy);
 #endif
         return {};
     }
