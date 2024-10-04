@@ -182,7 +182,6 @@ namespace Toolbox::UI {
                 ImGuiViewport *viewport = ImGui::GetCurrentWindow()->Viewport;
                 GLFWwindow *window      = static_cast<GLFWwindow *>(viewport->PlatformHandle);
                 if (window) {
-                    TOOLBOX_DEBUG_LOG("Setting window callbacks");
                     glfwSetWindowUserPointer(window, this);
                     glfwSetDropCallback(static_cast<GLFWwindow *>(viewport->PlatformHandle),
                                         privDropCallback);
