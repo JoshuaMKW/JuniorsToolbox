@@ -11,7 +11,7 @@
 	url = https://github.com/aiekick/ImGuiFileDialog.git
 [submodule "lib/glfw"]
 	path = lib/glfw
-	url = https://github.com/glfw/glfw.git
+	url = https://github.com/HazardousPeach/glfw.git
 [submodule "lib/libbti"]
 	path = lib/libbti
 	url = https://github.com/HazardousPeach/libbti.git
