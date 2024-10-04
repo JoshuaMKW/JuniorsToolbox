@@ -194,6 +194,7 @@ namespace Toolbox {
         createWindow<LoggingWindow>("Application Log");
 
         determineEnvironmentConflicts();
+        hookClipboardIntoGLFW();
     }
 
     void GUIApplication::onUpdate(TimeStep delta_time) {

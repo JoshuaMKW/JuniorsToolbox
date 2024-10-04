@@ -5,8 +5,12 @@
 #include <Windows.h>
 #include <shlobj_core.h>
 #elif defined(TOOLBOX_PLATFORM_LINUX)
+#include <GLFW/glfw3.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
+
 #endif
 
 namespace Toolbox {
@@ -375,25 +379,112 @@ namespace Toolbox {
             return "";
         }
     }
+    // On windows we don't need to hook into GLFW for clipboard
+    // functionality, so do nothing.
+    void hookClipboardIntoGLFW(void) {}
 
 #elif defined(TOOLBOX_PLATFORM_LINUX)
+    // Storage for a function pointer to the original handler, so that
+    // we can call it if we don't want to handle the event ourselves.
+    void (*glfwSelectionRequestHandler)(XEvent *);
+    // Sends a notification that we're done responding to a given
+    // request.
+    void sendRequestNotify(Display* dpy, const XSelectionRequestEvent *request) {
+        XSelectionEvent response;
+        response.type      = SelectionNotify;
+        response.requestor = request->requestor;
+        response.selection = request->selection;
+        response.target    = request->target;
+        response.property  = request->property;
+        response.time      = request->time;
+
+        XSendEvent(dpy, request->requestor, True, NoEventMask,
+                   reinterpret_cast<XEvent *>(&response));
+    }
+    // Our hook into the GLFW selection event handling code. When we
+    // receive a selection event, either return a list of formats we
+    // support or return the data in our clipboard.
+    void handleSelectionRequest(XEvent *event) {
+        // Pull the contents of the clipboard from the clipboard
+        // instance. This function can't be a method on that object
+        // because we're going to be passing it as a function pointer
+        // into GLFW, so we have to do everything externally.
+        MimeData clipboard_contents           = SystemClipboard::instance().m_clipboard_contents;
+        // Get the display object from GLFW so we can intern our
+        // strings in its namespace.
+        Display *dpy                          = getGLFWDisplay();
+        // Pull out the specific event from the general one.
+        const XSelectionRequestEvent *request = &event->xselectionrequest;
+        // Start our targets array with just the "TARGET" target,
+        // since we'll generate the rest in a loop.
+        Atom TARGETS                          = XInternAtom(dpy, "TARGETS", False);
+        // If they
+        if (request->target == TARGETS) {
+            std::vector<Atom> targets             = {TARGETS};
+            // For each format the selection data supports, intern it into
+            // an atom and add it to the targets array.
+            for (auto &string_format : clipboard_contents.get_all_formats()) {
+                Atom format_atom = XInternAtom(dpy, string_format.c_str(), False);
+                targets.push_back(format_atom);
+            }
+            // Put this data as the requested property on the
+            // requested window. XAtoms are 32 bits wide, so specify
+            // that.
+            XChangeProperty(
+                dpy, request->requestor, request->property, XA_ATOM, 32, PropModeReplace,
+                reinterpret_cast<const unsigned char *>(targets.data()), targets.size());
+            // Send a notification that we did the thing.
+            sendRequestNotify(dpy, request);
+        } else {
+            // If they request anything but TARGETS, assume its a data
+            // format from the clipboard data. Get the string name of
+            // the format, and ask for it from the clipboard contents
+            // mime type.
+            char *requested_target = XGetAtomName(dpy, request->target);
+            auto data              = clipboard_contents.get_data(requested_target);
+            // If the mime data recognized and gave us a response, and
+            // also we have a property to put the response on...
+            if (data && request->property != None) {
+                // Then set the property, and notify of a response.
+                XChangeProperty(dpy, request->requestor, request->property, request->target,
+                                8 /* is this ever wrong? */, PropModeReplace,
+                                reinterpret_cast<const unsigned char *>(data.value().buf()), data.value().size());
+                sendRequestNotify(dpy, request);
+            } else {
+                // If we don't recognize the data, or it's a legacy
+                // client without a property target, then let GLFW
+                // complain about it.
+                glfwSelectionRequestHandler(event);
+            }
+            // Make sure to free the string that represents the
+            // format.
+            XFree(requested_target);
+        }
+    }
+    // Called on initialization to hook our code into the GLFW
+    // selection code.
+    void hookClipboardIntoGLFW(void) {
+        // Get the old handler so that we can invoke it when our
+        // handler doesn't know what to do.
+        glfwSelectionRequestHandler = getSelectionRequestHandler();
+        // Set our handler as the new handler.
+        setSelectionRequestHandler(handleSelectionRequest);
+    }
+    // Get all possible content types for the system clipboard.
     Result<std::vector<std::string>, ClipboardError>
     SystemClipboard::getAvailableContentFormats() const {
-        Display *dpy = XOpenDisplay(nullptr);
-        if (!dpy) {
-            return make_clipboard_error<std::vector<std::string>>("Could not open X display");
-        }
+        Display *dpy         = getGLFWDisplay();
         Atom sel             = XInternAtom(dpy, "CLIPBOARD", False);
         Atom targets         = XInternAtom(dpy, "TARGETS", False);
         Atom target_property = XInternAtom(dpy, "CLIP_TYPES", False);
-        Window root_window   = RootWindow(dpy, DefaultScreen(dpy));
-        Window target_window = XCreateSimpleWindow(dpy, root_window, -10, -10, 1, 1, 0, 0, 0);
+        Window target_window = getGLFWHelperWindow();
         XConvertSelection(dpy, sel, targets, target_property, target_window, CurrentTime);
 
         XEvent ev;
         XSelectionEvent *sev;
-        // This looks pretty dangerous but this is how glfw does it,
-        // and how the examples online do it, so :shrug:
+        // This unconditional while loop looks pretty dangerous but
+        // this is how glfw does it, and how the examples online do
+        // it, so :shrug:
         while (true) {
             XNextEvent(dpy, &ev);
             switch (ev.type) {
@@ -429,8 +520,7 @@ namespace Toolbox {
         }
         return {};
     }
-
-    Result<std::string, ClipboardError> SystemClipboard::getText() {
+    Result<std::string, ClipboardError> SystemClipboard::getText() const {
         return make_clipboard_error<std::string>("Not implemented yet");
     }
 
@@ -438,25 +528,23 @@ namespace Toolbox {
         return make_clipboard_error<void>("Not implemented yet");
     }
 
-    Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) {
-        Display *dpy = XOpenDisplay(nullptr);
-        if (!dpy) {
-            return make_clipboard_error<MimeData>("Could not open X display");
-        }
+    // Get the contents of the system clipboard.
+    Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) const {
+        Display *dpy           = getGLFWDisplay();
         Atom requested_type    = XInternAtom(dpy, type.c_str(), False);
         Atom sel               = XInternAtom(dpy, "CLIPBOARD", False);
         Window clipboard_owner = XGetSelectionOwner(dpy, sel);
         if (clipboard_owner == None) {
             return make_clipboard_error<MimeData>("Clipboard isn't owned by anyone");
         }
-        Window root          = RootWindow(dpy, DefaultScreen(dpy));
-        Window target_window = XCreateSimpleWindow(dpy, root, -10, -10, 1, 1, 0, 0, 0);
+        Window target_window = getGLFWHelperWindow();
         Atom target_property = XInternAtom(dpy, "CLIP_CONTENTS", False);
         XConvertSelection(dpy, sel, requested_type, target_property, target_window, CurrentTime);
         XEvent ev;
         XSelectionEvent *sev;
-        // This looks pretty dangerous but this is how glfw does it,
-        // and how the examples online do it, so :shrug:
+        // This unconditional while loop looks pretty dangerous but
+        // this is how glfw does it, and how the examples online do
+        // it, so :shrug:
         while (true) {
             XNextEvent(dpy, &ev);
             switch (ev.type) {
@@ -503,31 +591,20 @@ namespace Toolbox {
         return {};
     }
 
-    static std::unordered_map<std::string, std::string> s_uti_to_mime = {
-        {"public.utf8-plain-text",               "text/plain"            },
-        {"public.utf16-plain-text",              "text/plain"            },
-        {"public.text",                          "text/plain"            },
-        {"public.html",                          "text/html"             },
-        {"public.url",                           "text/uri-list"         },
-        {"public.file-url",                      "text/uri-list"         },
-        {"public.tiff",                          "application/x-qt-image"},
-        {"public.vcard",                         "text/plain"            },
-        {"com.apple.traditional-mac-plain-text", "text/plain"            },
-        {"com.apple.pict",                       "application/x-qt-image"},
-    };
-
-    static std::unordered_map<std::string, std::string> s_mime_to_uti = {
-        {"text/plain",             "public.text"},
-        {"text/html",              "public.html"},
-        {"text/uri-list",          "public.url" },
-        {"application/x-qt-image", "public.tiff"},
-    };
-
-    std::string MimeData::UTIForMime(std::string_view mimetype) {
-        return s_mime_to_uti[std::string(mimetype)];
-    }
-    std::string MimeData::MimeForUTI(std::string_view uti) {
-        return s_uti_to_mime[std::string(uti)];
+    // Set the contents of the system clipboard.
+    Result<void, ClipboardError> SystemClipboard::setContent(const std::string &_type,
+                                                             const MimeData &content) {
+        // Get the display and helper window from GLFW using our custom hooks.
+        Display *dpy         = getGLFWDisplay();
+        Window target_window = getGLFWHelperWindow();
+        // Copy the content into the contents member variable.
+        m_clipboard_contents = content;
+        // Set ourselves as the owner of the clipboard. We'll do all
+        // the actual data transfer once someone asks us for data, in
+        // our event handling hook.
+        Atom CLIPBOARD       = XInternAtom(dpy, "CLIPBOARD", False);
+        XSetSelectionOwner(dpy, CLIPBOARD, target_window, CurrentTime);
+        return {};
     }
 #endif
 

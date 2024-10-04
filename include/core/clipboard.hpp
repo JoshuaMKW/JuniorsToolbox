@@ -38,11 +38,11 @@ namespace Toolbox {
 
         Result<std::vector<std::string>, ClipboardError> getAvailableContentFormats() const;
 
-        Result<std::string, ClipboardError> getText();
+        Result<std::string, ClipboardError> getText() const;
         Result<void, ClipboardError> setText(const std::string &text);
-
-        Result<MimeData, ClipboardError> getContent(const std::string &type);
+        Result<MimeData, ClipboardError> getContent(const std::string &type) const;
         Result<void, ClipboardError> setContent(const std::string &type, const MimeData &mimedata);
+
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
     protected:
@@ -52,12 +52,23 @@ namespace Toolbox {
     private:
         std::unordered_map<std::string, UINT> m_mime_to_format;
 #elif defined(TOOLBOX_PLATFORM_LINUX)
-    protected:
-        static std::string UTIForMime(std::string_view mimetype);
-        static std::string MimeForUTI(std::string_view uti);
+        // The reason this isn't private/protected is actually kind of
+        // dumb. It needs to be accessed by handleSelectionRequest,
+        // but we can't put the signature for handleSelectionRequest
+        // in this header file so it can't be a method or friend
+        // function. The reason we can't put it in this header file is
+        // because it's argument type is XEvent*, which is defined in
+        // X11/Xlib.h. But we can't include X11/Xlib.h in this header,
+        // because that would make it recursively included in every
+        // file that includes this header. And because it's a C
+        // library, it doesn't have namespaces, and it defines a bunch
+        // of symbols with very general names which clash with a bunch
+        // of names we like to use in other places.
+        MimeData m_clipboard_contents;
 #endif
 
     };
+    void hookClipboardIntoGLFW(void) ;
 
     class DataClipboard {
     public:

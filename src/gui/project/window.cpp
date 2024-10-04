@@ -276,7 +276,11 @@ namespace Toolbox::UI {
             next_newline_pos = s.find('\n', last_pos);
         }
         if (last_pos < s.size()) {
-            result.push_back(s.substr(last_pos));
+            if (s[s.size()-1] == '\r') {
+                result.push_back(s.substr(last_pos, s.size() - last_pos - 1));
+            } else {
+                result.push_back(s.substr(last_pos));
+            }
         }
         return result;
     }
@@ -450,11 +454,15 @@ namespace Toolbox::UI {
         std::vector<std::string_view> urls = splitLines(text.value());
         for (std::string_view src_path_str : urls) {
             if (src_path_str.starts_with("file:/")) {
+#ifdef TOOLBOX_PLATFORM_LINUX
+                src_path_str = src_path_str.substr(7);
+#elif defined TOOLBOX_PLATFORM_WINDOWS
                 if (src_path_str.starts_with("file:///")) {
                     src_path_str = src_path_str.substr(8);
                 } else {
                     src_path_str = src_path_str.substr(7);
                 }
+#endif
             } else {
                 TOOLBOX_ERROR_V("Can't copy non-local uri {}", src_path_str);
                 continue;
@@ -468,7 +476,15 @@ namespace Toolbox::UI {
     void ProjectViewWindow::actionCopyIndexes(const std::vector<ModelIndex> &indices) {
         std::string copied_paths;
         for (const ModelIndex &index : indices) {
+#ifdef TOOLBOX_PLATFORM_LINUX
+            copied_paths += "file://";
+#elif defined TOOLBOX_PLATFORM_WINDOWS
+            copied_paths += "file:///"
+#endif
             copied_paths += m_file_system_model->getPath(index).string();
+#ifdef TOOLBOX_PLATFORM_LINUX
+            copied_paths += "\r";
+#endif
             copied_paths += "\n";
         }
 
