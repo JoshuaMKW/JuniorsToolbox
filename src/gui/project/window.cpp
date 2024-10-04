@@ -223,6 +223,13 @@ namespace Toolbox::UI {
 
                 ImGui::PopStyleVar(5);
             }
+
+            /*std::vector<std::string> formats =
+                SystemClipboard::instance().getAvailableContentFormats().value_or(
+                    std::vector<std::string>());
+            if (std::find(formats.begin(), formats.end(), "text/uri-list") != formats.end()) {
+                
+            }*/
         }
         ImGui::EndChild();
 
@@ -354,21 +361,7 @@ namespace Toolbox::UI {
         m_folder_view_context_menu.addOption(
             "Copy", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C}),
             [this]() { return m_selected_indices_ctx.size() > 0; },
-            [this](auto) {
-                std::string copied_paths;
-                for (const ModelIndex &index : m_selected_indices_ctx) {
-                    copied_paths += m_file_system_model->getPath(index).string();
-                    copied_paths += "\n";
-                }
-
-                MimeData data;
-                data.set_urls(copied_paths);
-
-                auto result = SystemClipboard::instance().setContent("text/uri-list", data);
-                if (!result) {
-                    TOOLBOX_ERROR("[PROJECT] Failed to set contents of clipboard");
-                }
-            });
+            [this](auto) { actionCopyIndexes(m_selected_indices_ctx); });
 
         m_folder_view_context_menu.addDivider();
 
@@ -387,47 +380,11 @@ namespace Toolbox::UI {
             "Rename", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R}),
             [this]() { return m_selected_indices_ctx.size() == 1; },
             [this](auto) { actionRenameIndex(m_selected_indices_ctx[0]); });
+
         m_folder_view_context_menu.addOption(
             "Paste", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V}),
             [this]() { return m_selected_indices_ctx.size() == 0; },
-            [this](auto) {
-                auto content_types = SystemClipboard::instance().getAvailableContentFormats();
-                if (!content_types) {
-                    TOOLBOX_ERROR("Couldn't get content types");
-                    return;
-                }
-                if (std::find(content_types.value().begin(), content_types.value().end(),
-                              std::string("text/uri-list")) != content_types.value().end()) {
-                    auto content = SystemClipboard::instance().getContent("text/uri-list");
-                    if (!content) {
-                        TOOLBOX_ERROR("Failed to get content as uri list");
-                        return;
-                    }
-                    auto text = content.value().get_urls();
-                    if (!text) {
-                        TOOLBOX_ERROR("Mime data wouldn't return uri list");
-                        return;
-                    }
-
-                    std::vector<std::string_view> urls = splitLines(text.value());
-                    for (std::string_view src_path_str : urls) {
-                        if (src_path_str.starts_with("file:/")) {
-                            if (src_path_str.starts_with("file:///")) {
-                                src_path_str = src_path_str.substr(8);
-                            } else {
-                                src_path_str = src_path_str.substr(7);
-                            }
-                        } else {
-                            TOOLBOX_ERROR_V("Can't copy non-local uri {}", src_path_str);
-                            continue;
-                        }
-
-                        fs_path src_path = src_path_str;
-                        m_file_system_model->copy(src_path, m_view_index,
-                                                  src_path.filename().string());
-                    }
-                }
-            });
+            [this](auto) { actionPasteIntoIndex(m_view_index); });
 
         m_folder_view_context_menu.addDivider();
 
@@ -470,6 +427,64 @@ namespace Toolbox::UI {
         m_is_renaming         = true;
         std::string file_name = m_file_system_model->getDisplayText(index);
         std::strncpy(m_rename_buffer, file_name.c_str(), IM_ARRAYSIZE(m_rename_buffer));
+    }
+
+    void ProjectViewWindow::actionPasteIntoIndex(const ModelIndex &index) {
+        auto content_types = SystemClipboard::instance().getAvailableContentFormats();
+        if (!content_types) {
+            TOOLBOX_ERROR("Couldn't get content types");
+            return;
+        }
+
+        if (std::find(content_types.value().begin(), content_types.value().end(),
+                      std::string("text/uri-list")) == content_types.value().end()) {
+            return;
+        }
+
+        auto content = SystemClipboard::instance().getContent("text/uri-list");
+        if (!content) {
+            TOOLBOX_ERROR("Failed to get content as uri list");
+            return;
+        }
+
+        auto text = content.value().get_urls();
+        if (!text) {
+            TOOLBOX_ERROR("Mime data wouldn't return uri list");
+            return;
+        }
+
+        std::vector<std::string_view> urls = splitLines(text.value());
+        for (std::string_view src_path_str : urls) {
+            if (src_path_str.starts_with("file:/")) {
+                if (src_path_str.starts_with("file:///")) {
+                    src_path_str = src_path_str.substr(8);
+                } else {
+                    src_path_str = src_path_str.substr(7);
+                }
+            } else {
+                TOOLBOX_ERROR_V("Can't copy non-local uri {}", src_path_str);
+                continue;
+            }
+
+            fs_path src_path = src_path_str;
+            m_file_system_model->copy(src_path, index, src_path.filename().string());
+        }
+    }
+
+    void ProjectViewWindow::actionCopyIndexes(const std::vector<ModelIndex> &indices) {
+        std::string copied_paths;
+        for (const ModelIndex &index : indices) {
+            copied_paths += m_file_system_model->getPath(index).string();
+            copied_paths += "\n";
+        }
+
+        MimeData data;
+        data.set_urls(copied_paths);
+
+        auto result = SystemClipboard::instance().setContent("text/uri-list", data);
+        if (!result) {
+            TOOLBOX_ERROR("[PROJECT] Failed to set contents of clipboard");
+        }
     }
 
     void ProjectViewWindow::actionLeftClickIndex(const ModelIndex &view_index,

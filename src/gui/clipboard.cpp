@@ -242,7 +242,7 @@ namespace Toolbox {
         size_t dest_buf_size = data_buf.size();
         if (format == CF_HDROP) {
             dest_buf_size *= 2;
-            dest_buf_size += sizeof(DROPFILES);
+            dest_buf_size += sizeof(DROPFILES) + sizeof(wchar_t);
         } else if (format == CF_TEXT) {
             dest_buf_size *= 2;
         }
@@ -273,6 +273,7 @@ namespace Toolbox {
             }
 
             path_list_ptr[data_buf.size()] = L'\0';
+            path_list_ptr[data_buf.size() + 1] = L'\0';
         } else if (format == CF_TEXT) {
             wchar_t *path_list_ptr = (wchar_t *)data_buffer;
             std::mbstowcs(path_list_ptr, data_buf.buf<char>(), data_buf.size());
