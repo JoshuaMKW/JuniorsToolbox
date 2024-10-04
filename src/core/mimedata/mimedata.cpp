@@ -22,6 +22,7 @@ namespace Toolbox {
         "image/bmp",
         "image/jpeg",
         "image/png",
+        "image/tiff",
         "image/x-portable-bitmap",
         "image/x-portable-graymap",
         "image/x-portable-pixmap",
@@ -102,13 +103,14 @@ namespace Toolbox {
             return std::nullopt;
         }
         const Buffer &data_buf = m_data_map["text/plain"];
-        return std::string(data_buf.buf<char>(), data_buf.size());
+        return std::string(data_buf.buf<char>(), data_buf.size() - 1);
     }
 
     void MimeData::set_text(std::string_view data) {
         Buffer _tmp;
-        _tmp.alloc(data.size());
+        _tmp.alloc(data.size() + 1);
         std::memcpy(_tmp.buf(), data.data(), data.size());
+        _tmp.get<char>(data.size()) = '\0';
         set_data("text/plain", std::move(_tmp));
     }
 
@@ -117,7 +119,7 @@ namespace Toolbox {
             return std::nullopt;
         }
         const Buffer &data_buf = m_data_map["text/uri-list"];
-        return std::string(data_buf.buf<char>(), data_buf.size());
+        return std::string(data_buf.buf<char>(), data_buf.size() - 1);
     }
 
     void MimeData::set_urls(std::string_view data) {

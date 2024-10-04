@@ -265,7 +265,9 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::onDragEvent(RefPtr<DragEvent> ev) {}
 
-    void ProjectViewWindow::onDropEvent(RefPtr<DropEvent> ev) {}
+    void ProjectViewWindow::onDropEvent(RefPtr<DropEvent> ev) {
+        actionPasteIntoIndex(m_view_index, ev->getMimeData());
+    }
 
     std::vector<std::string_view> splitLines(std::string_view s) {
         std::vector<std::string_view> result;
@@ -273,9 +275,9 @@ namespace Toolbox::UI {
         size_t next_newline_pos = s.find('\n', 0);
         while (next_newline_pos != std::string::npos) {
             if (s[next_newline_pos - 1] == '\r') {
-                result.push_back(s.substr(last_pos, next_newline_pos - 1));
+                result.push_back(s.substr(last_pos, next_newline_pos - last_pos - 1));
             } else {
-                result.push_back(s.substr(last_pos, next_newline_pos));
+                result.push_back(s.substr(last_pos, next_newline_pos - last_pos));
             }
             last_pos         = next_newline_pos + 1;
             next_newline_pos = s.find('\n', last_pos);
@@ -384,7 +386,23 @@ namespace Toolbox::UI {
         m_folder_view_context_menu.addOption(
             "Paste", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V}),
             [this]() { return m_selected_indices_ctx.size() == 0; },
-            [this](auto) { actionPasteIntoIndex(m_view_index); });
+            [this](auto) {
+                auto content_types = SystemClipboard::instance().getAvailableContentFormats();
+                if (!content_types) {
+                    TOOLBOX_ERROR("Couldn't get content types");
+                    return;
+                }
+
+                if (std::find(content_types.value().begin(), content_types.value().end(),
+                              std::string("text/uri-list")) == content_types.value().end()) {
+                    return;
+                }
+
+                MimeData data =
+                    SystemClipboard::instance().getContent("text/uri-list").value_or(MimeData());
+
+                actionPasteIntoIndex(m_view_index, data);
+            });
 
         m_folder_view_context_menu.addDivider();
 
@@ -429,25 +447,8 @@ namespace Toolbox::UI {
         std::strncpy(m_rename_buffer, file_name.c_str(), IM_ARRAYSIZE(m_rename_buffer));
     }
 
-    void ProjectViewWindow::actionPasteIntoIndex(const ModelIndex &index) {
-        auto content_types = SystemClipboard::instance().getAvailableContentFormats();
-        if (!content_types) {
-            TOOLBOX_ERROR("Couldn't get content types");
-            return;
-        }
-
-        if (std::find(content_types.value().begin(), content_types.value().end(),
-                      std::string("text/uri-list")) == content_types.value().end()) {
-            return;
-        }
-
-        auto content = SystemClipboard::instance().getContent("text/uri-list");
-        if (!content) {
-            TOOLBOX_ERROR("Failed to get content as uri list");
-            return;
-        }
-
-        auto text = content.value().get_urls();
+    void ProjectViewWindow::actionPasteIntoIndex(const ModelIndex &index, const MimeData &data) {
+        std::optional<std::string> text = data.get_urls();
         if (!text) {
             TOOLBOX_ERROR("Mime data wouldn't return uri list");
             return;

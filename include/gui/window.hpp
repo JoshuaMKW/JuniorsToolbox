@@ -116,6 +116,8 @@ namespace Toolbox::UI {
         void setLayerSize(const ImVec2 &size) noexcept { ImProcessLayer::setSize(size); }
         void setLayerPos(const ImVec2 &pos) noexcept { ImProcessLayer::setPos(pos); }
 
+        static void privDropCallback(GLFWwindow *window, int path_count, const char *paths[]);
+
         UUID64 m_UUID64;
         ImGuiID m_sibling_id = 0;
 
