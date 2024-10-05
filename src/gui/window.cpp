@@ -187,9 +187,9 @@ namespace Toolbox::UI {
                 GLFWwindow *window      = static_cast<GLFWwindow *>(viewport->PlatformHandle);
                 if (window) {
                     glfwSetWindowUserPointer(window, this);
-                    glfwSetDropCallback(static_cast<GLFWwindow *>(viewport->PlatformHandle),
-                                        privDropCallback);
-                    m_drop_delegate->initializeForWindow((Platform::LowWindow)glfwGetWin32Window(window));
+                    /*glfwSetDropCallback(static_cast<GLFWwindow *>(viewport->PlatformHandle),
+                                        privDropCallback);*/
+                    GUIApplication::instance().registerDragDropTarget((Platform::LowWindow)glfwGetWin32Window(window));
                 }
 
                 if ((flags_ & ImGuiWindowFlags_NoBackground)) {

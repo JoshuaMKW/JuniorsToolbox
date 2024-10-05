@@ -171,6 +171,7 @@ namespace Toolbox {
         platform_io.Renderer_RenderWindow = ImGui_ImplOpenGL3_RenderWindow_Ex;
 
         DragDropManager::instance().initialize();
+        m_drag_drop_target_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
 
         if (!m_settings_manager.initialize()) {
             TOOLBOX_ERROR("[INIT] Failed to initialize settings manager!");
@@ -290,6 +291,14 @@ namespace Toolbox {
         std::copy_if(m_windows.begin(), m_windows.end(), std::back_inserter(result),
                      [&title](RefPtr<ImWindow> window) { return window->title() == title; });
         return result;
+    }
+
+    bool GUIApplication::registerDragDropTarget(Platform::LowWindow window) {
+        return m_drag_drop_target_delegate->initializeForWindow(window);
+    }
+
+    void GUIApplication::deregisterDragDropTarget(Platform::LowWindow window) {
+        m_drag_drop_target_delegate->shutdownForWindow(window);
     }
 
     void GUIApplication::registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,

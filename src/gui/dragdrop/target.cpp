@@ -7,6 +7,19 @@
 
 namespace Toolbox::UI {
 
+    static UUID64 searchDropTarget(const ImVec2 &mouse_pos) {
+        std::vector<RefPtr<ImWindow>> windows = GUIApplication::instance().getWindows();
+
+        for (RefPtr<ImWindow> window : windows) {
+            ImRect rect = {window->getPos(), window->getPos() + window->getSize()};
+            if (rect.Contains(mouse_pos)) {
+                return window->getUUID();
+            }
+        }
+
+        return 0;
+    }
+
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 
 #include <Windows.h>
@@ -90,7 +103,7 @@ namespace Toolbox::UI {
 
                 std::string text_data;
 
-                if (format_etc.tymed == TYMED_HGLOBAL) {
+                if ((format_etc.tymed & TYMED_HGLOBAL) == TYMED_HGLOBAL) {
                     LPSTR text = (LPSTR)GlobalLock(stg_medium.hGlobal);
                     if (text) {
                         text_data = text;
@@ -109,10 +122,15 @@ namespace Toolbox::UI {
 
     class WindowsDragDropTarget : public IDropTarget {
     public:
-        WindowsDragDropTarget(WindowsDragDropTargetDelegate *delegate)
-            : m_delegate(delegate), m_refCount() {}
+        WindowsDragDropTarget(WindowsDragDropTargetDelegate *delegate, Platform::LowWindow window)
+            : m_delegate(delegate), m_window_handle(window), m_refCount() {}
 
         ~WindowsDragDropTarget() = default;
+
+        Platform::LowWindow GetWindowHandle() const { return m_window_handle; }
+
+        HRESULT Initialize() { return RegisterDragDrop(m_window_handle, this); }
+        HRESULT Shutdown() { return RevokeDragDrop(m_window_handle); }
 
         // IUnknown Methods
         HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject) override {
@@ -145,6 +163,7 @@ namespace Toolbox::UI {
 
     private:
         WindowsDragDropTargetDelegate *m_delegate = nullptr;
+        Platform::LowWindow m_window_handle       = nullptr;
         LONG m_refCount;  // Reference count for COM object
     };
 
@@ -152,10 +171,8 @@ namespace Toolbox::UI {
     public:
         friend class WindowsDragDropTarget;
 
-        WindowsDragDropTargetDelegate()           = default;
-        ~WindowsDragDropTargetDelegate() override { delete m_target; }
-
-        void setImWindow(void *window) override { m_window = static_cast<ImWindow *>(window); }
+        WindowsDragDropTargetDelegate() = default;
+        ~WindowsDragDropTargetDelegate() override { m_targets.clear(); }
 
         void onDragEnter(RefPtr<DragAction> action) override;
         void onDragLeave(RefPtr<DragAction> action) override;
@@ -166,9 +183,7 @@ namespace Toolbox::UI {
         void shutdownForWindow(Platform::LowWindow window) override;
 
     private:
-        Platform::LowWindow m_window_handle = nullptr;
-        ImWindow *m_window                  = nullptr;
-        WindowsDragDropTarget *m_target     = nullptr;
+        std::vector<WindowsDragDropTarget *> m_targets = {};
     };
 
 #elif defined(TOOLBOX_PLATFORM_LINUX)
@@ -177,8 +192,6 @@ namespace Toolbox::UI {
         LinuxDragDropTargetDelegate() {}
         ~LinuxDragDropTargetDelegate() override = default;
 
-        void setImWindow(void *window) override { m_window = static_cast<ImWindow *>(window); }
-
         void onDragEnter(RefPtr<DragAction> action) override;
         void onDragLeave(RefPtr<DragAction> action) override;
         void onDragMove(RefPtr<DragAction> action) override;
@@ -189,15 +202,14 @@ namespace Toolbox::UI {
 
     private:
         Platform::LowWindow m_window_handle = nullptr;
-        ImWindow *m_window                  = nullptr;
     };
 #endif
 
-    RefPtr<IDragDropTargetDelegate> DragDropTargetFactory::createDragDropTargetDelegate() {
+    ScopePtr<IDragDropTargetDelegate> DragDropTargetFactory::createDragDropTargetDelegate() {
 #ifdef TOOLBOX_PLATFORM_WINDOWS
-        return make_referable<WindowsDragDropTargetDelegate>();
+        return make_scoped<WindowsDragDropTargetDelegate>();
 #elif defined(TOOLBOX_PLATFORM_LINUX)
-        return make_referable<LinuxDragDropTargetDelegate>();
+        return make_scoped<LinuxDragDropTargetDelegate>();
 #else
         return nullptr;
 #endif
@@ -210,12 +222,10 @@ namespace Toolbox::UI {
         RefPtr<DragAction> action = DragDropManager::instance().getCurrentDragAction();
         if (!action) {
             MimeData mime_data = createMimeDataFromDataObject(pDataObj);
-            action = DragDropManager::instance().createDragAction(0,
-                                                                  std::move(mime_data));
+            action = DragDropManager::instance().createDragAction(0, std::move(mime_data));
         }
 
         action->setHotSpot(ImVec2(pt.x, pt.y));
-        action->setTargetUUID(m_delegate->m_window->getUUID());
 
         DropTypes supported_drop_types = DropType::ACTION_NONE;
         if ((*pdwEffect & DROPEFFECT_COPY)) {
@@ -237,14 +247,12 @@ namespace Toolbox::UI {
                                                       DWORD *pdwEffect) {
         RefPtr<DragAction> action = DragDropManager::instance().getCurrentDragAction();
         action->setHotSpot(ImVec2(pt.x, pt.y));
-        action->setTargetUUID(m_delegate->m_window->getUUID());
         m_delegate->onDragMove(action);
         return S_OK;
     }
 
     HRESULT __stdcall WindowsDragDropTarget::DragLeave() {
         RefPtr<DragAction> action = DragDropManager::instance().getCurrentDragAction();
-        action->setTargetUUID(0);
         m_delegate->onDragLeave(action);
         return S_OK;
     }
@@ -258,7 +266,6 @@ namespace Toolbox::UI {
         }
 
         action->setHotSpot(ImVec2(pt.x, pt.y));
-        action->setTargetUUID(m_delegate->m_window->getUUID());
 
         DropTypes supported_drop_types = DropType::ACTION_NONE;
         if ((*pdwEffect & DROPEFFECT_COPY)) {
@@ -280,6 +287,9 @@ namespace Toolbox::UI {
         double mouse_x, mouse_y;
         Input::GetMouseViewportPosition(mouse_x, mouse_y);
 
+        ImVec2 mouse_pos = ImVec2(mouse_x, mouse_y);
+        action->setTargetUUID(searchDropTarget(mouse_pos));
+
         GUIApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_ENTER, mouse_x,
                                                                   mouse_y, action);
     }
@@ -287,6 +297,9 @@ namespace Toolbox::UI {
     void WindowsDragDropTargetDelegate::onDragLeave(RefPtr<DragAction> action) {
         double mouse_x, mouse_y;
         Input::GetMouseViewportPosition(mouse_x, mouse_y);
+
+        ImVec2 mouse_pos = ImVec2(mouse_x, mouse_y);
+        action->setTargetUUID(searchDropTarget(mouse_pos));
 
         GUIApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_LEAVE, mouse_x,
                                                                   mouse_y, action);
@@ -296,6 +309,9 @@ namespace Toolbox::UI {
         double mouse_x, mouse_y;
         Input::GetMouseViewportPosition(mouse_x, mouse_y);
 
+        ImVec2 mouse_pos = ImVec2(mouse_x, mouse_y);
+        action->setTargetUUID(searchDropTarget(mouse_pos));
+
         GUIApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_MOVE, mouse_x, mouse_y,
                                                                   action);
     }
@@ -304,36 +320,48 @@ namespace Toolbox::UI {
         double mouse_x, mouse_y;
         Input::GetMouseViewportPosition(mouse_x, mouse_y);
 
-        GUIApplication::instance().dispatchEvent<DropEvent, true>(ImVec2(mouse_x, mouse_y), action);
+        ImVec2 mouse_pos = ImVec2(mouse_x, mouse_y);
+        action->setTargetUUID(searchDropTarget(mouse_pos));
+
+        GUIApplication::instance().dispatchEvent<DropEvent, true>(mouse_pos, action);
     }
 
     bool WindowsDragDropTargetDelegate::initializeForWindow(Platform::LowWindow window) {
-        if (window == m_window_handle) {
-            return window != NULL;
+        if (std::find_if(m_targets.begin(), m_targets.end(),
+                         [window](WindowsDragDropTarget *target) {
+                             return target->GetWindowHandle() == window;
+                         }) != m_targets.end()) {
+            return true;
         }
 
-        if (m_window_handle != NULL) {
-            RevokeDragDrop(m_window_handle);
-        }
-
-        m_target = new WindowsDragDropTarget(this);
-
-        HRESULT hr = RegisterDragDrop(window, m_target);
-        if (FAILED(hr)) {
-            TOOLBOX_ERROR("Failed to register drag drop target");
+        WindowsDragDropTarget *target = new WindowsDragDropTarget(this, window);
+        if (FAILED(target->Initialize())) {
+            TOOLBOX_ERROR("Failed to initialize drag drop target");
+            delete target;
             return false;
         }
 
-        m_window_handle = window;
+        m_targets.push_back(target);
         return true;
     }
 
     void WindowsDragDropTargetDelegate::shutdownForWindow(Platform::LowWindow window) {
-        if (!window) {
+
+        auto target_it = std::find_if(m_targets.begin(), m_targets.end(),
+                                      [window](WindowsDragDropTarget *target) {
+                                          return target->GetWindowHandle() == window;
+                                      });
+        if (target_it == m_targets.end()) {
             return;
         }
 
-        RevokeDragDrop(window);
+        WindowsDragDropTarget *target = *target_it;
+        if (FAILED(target->Shutdown())) {
+            TOOLBOX_ERROR("Failed to shutdown drag drop target");
+        }
+
+        m_targets.erase(target_it);
+        delete target;
     }
 
 #elif defined(TOOLBOX_PLATFORM_LINUX)

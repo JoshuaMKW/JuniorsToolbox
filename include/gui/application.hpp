@@ -138,6 +138,8 @@ namespace Toolbox {
         ProjectManager &getProjectManager() { return m_project_manager; }
         const ProjectManager &getProjectManager() const { return m_project_manager; }
         
+        bool registerDragDropTarget(Platform::LowWindow window);
+        void deregisterDragDropTarget(Platform::LowWindow window);
 
         void registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
                                     SceneWindow::render_layer_cb cb);
@@ -192,6 +194,8 @@ namespace Toolbox {
         std::queue<RefPtr<ImWindow>> m_windows_to_gc;
         std::queue<RefPtr<ImWindow>> m_windows_to_add;
         bool m_windows_processing = false;
+
+        ScopePtr<IDragDropTargetDelegate> m_drag_drop_target_delegate;
 
         std::unordered_map<UUID64, bool> m_docked_map;
         ImGuiID m_dockspace_id;

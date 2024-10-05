@@ -10,9 +10,6 @@ namespace Toolbox::UI {
     public:
         virtual ~IDragDropTargetDelegate() = default;
 
-        // void * for circular ref
-        virtual void setImWindow(void *window) = 0;
-
         virtual void onDragEnter(RefPtr<DragAction> action) = 0;
         virtual void onDragLeave(RefPtr<DragAction> action) = 0;
         virtual void onDragMove(RefPtr<DragAction> action)  = 0;
@@ -24,7 +21,7 @@ namespace Toolbox::UI {
 
     class DragDropTargetFactory {
     public:
-         static RefPtr<IDragDropTargetDelegate> createDragDropTargetDelegate();
+         static ScopePtr<IDragDropTargetDelegate> createDragDropTargetDelegate();
     };
 
 }  // namespace Toolbox::UI

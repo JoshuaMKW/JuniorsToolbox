@@ -33,44 +33,26 @@ namespace Toolbox::UI {
         virtual void onRenderBody(TimeStep delta_time) {}
 
     public:
-        explicit ImWindow(const std::string &name) : ImProcessLayer(name) {
-            m_drop_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
-            m_drop_delegate->setImWindow(this);
-        }
+        explicit ImWindow(const std::string &name) : ImProcessLayer(name) {}
         ImWindow(const std::string &name, std::optional<ImVec2> default_size)
-            : ImProcessLayer(name), m_default_size(default_size) {
-            m_drop_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
-            m_drop_delegate->setImWindow(this);
-        }
+            : ImProcessLayer(name), m_default_size(default_size) {}
         ImWindow(const std::string &name, std::optional<ImVec2> min_size,
                  std::optional<ImVec2> max_size)
-            : ImProcessLayer(name), m_min_size(min_size), m_max_size(max_size) {
-            m_drop_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
-            m_drop_delegate->setImWindow(this);
-        }
+            : ImProcessLayer(name), m_min_size(min_size), m_max_size(max_size) {}
         ImWindow(const std::string &name, std::optional<ImVec2> default_size,
                  std::optional<ImVec2> min_size, std::optional<ImVec2> max_size)
             : ImProcessLayer(name), m_default_size(default_size), m_min_size(min_size),
-              m_max_size(max_size) {
-            m_drop_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
-            m_drop_delegate->setImWindow(this);
-        }
+              m_max_size(max_size) {}
         ImWindow(const std::string &name, std::optional<ImVec2> default_size,
                  std::optional<ImVec2> min_size, std::optional<ImVec2> max_size,
                  ImGuiWindowClass window_class)
             : ImProcessLayer(name), m_default_size(default_size), m_min_size(min_size),
-              m_max_size(max_size), m_window_class(window_class) {
-            m_drop_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
-            m_drop_delegate->setImWindow(this);
-        }
+              m_max_size(max_size), m_window_class(window_class) {}
         ImWindow(const std::string &name, std::optional<ImVec2> default_size,
                  std::optional<ImVec2> min_size, std::optional<ImVec2> max_size,
                  ImGuiWindowClass window_class, ImGuiWindowFlags flags)
             : ImProcessLayer(name), m_default_size(default_size), m_min_size(min_size),
-              m_max_size(max_size), m_window_class(window_class), m_flags(flags) {
-            m_drop_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
-            m_drop_delegate->setImWindow(this);
-        }
+              m_max_size(max_size), m_window_class(window_class), m_flags(flags) {}
 
         virtual ~ImWindow() = default;
 
@@ -164,8 +146,6 @@ namespace Toolbox::UI {
 
         ImVec2 m_next_size = {};
         ImVec2 m_next_pos  = {};
-
-        RefPtr<IDragDropTargetDelegate> m_drop_delegate = nullptr;
     };
 
     inline std::string ImWindowComponentTitle(const ImWindow &window_layer,
