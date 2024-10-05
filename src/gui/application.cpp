@@ -22,6 +22,7 @@
 #include "core/input/input.hpp"
 #include "dolphin/hook.hpp"
 #include "gui/application.hpp"
+#include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
 #include "gui/logging/errors.hpp"
@@ -169,6 +170,8 @@ namespace Toolbox {
         platform_io.Platform_CreateWindow = ImGui_ImplGlfw_CreateWindow_Ex;
         platform_io.Renderer_RenderWindow = ImGui_ImplOpenGL3_RenderWindow_Ex;
 
+        DragDropManager::instance().initialize();
+
         if (!m_settings_manager.initialize()) {
             TOOLBOX_ERROR("[INIT] Failed to initialize settings manager!");
         }
@@ -254,7 +257,17 @@ namespace Toolbox {
         m_dolphin_communicator.tKill(true);
         m_task_communicator.tKill(true);
 
+        DragDropManager::instance().shutdown();
+
         NFD_Quit();
+    }
+
+    void GUIApplication::onEvent(RefPtr<BaseEvent> ev) {
+        CoreApplication::onEvent(ev);
+        if (ev->getType() == EVENT_DROP) {
+            DragDropManager::instance().destroyDragAction(
+                DragDropManager::instance().getCurrentDragAction());
+        }
     }
 
     RefPtr<ImWindow> GUIApplication::findWindow(UUID64 uuid) {

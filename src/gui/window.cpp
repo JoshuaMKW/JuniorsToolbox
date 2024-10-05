@@ -1,5 +1,6 @@
 #include "gui/window.hpp"
 #include "gui/application.hpp"
+#include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/event/dropevent.hpp"
 #include "gui/util.hpp"
 
@@ -11,6 +12,9 @@
 
 #include <iconv.h>
 #include <stb/stb_image.h>
+
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <glfw/glfw3native.h>
 
 namespace Toolbox::UI {
 
@@ -185,6 +189,7 @@ namespace Toolbox::UI {
                     glfwSetWindowUserPointer(window, this);
                     glfwSetDropCallback(static_cast<GLFWwindow *>(viewport->PlatformHandle),
                                         privDropCallback);
+                    m_drop_delegate->initializeForWindow((Platform::LowWindow)glfwGetWin32Window(window));
                 }
 
                 if ((flags_ & ImGuiWindowFlags_NoBackground)) {
@@ -262,6 +267,7 @@ namespace Toolbox::UI {
         ImWindow *self = static_cast<ImWindow *>(glfwGetWindowUserPointer(window));
         if (!self) {
             TOOLBOX_ERROR("[ImWindow] Attempted drop operation on NULL user pointer!");
+            return;
         }
 
         std::string uri_list;
@@ -274,8 +280,11 @@ namespace Toolbox::UI {
 
         MimeData &&data = MimeData();
         data.set_urls(uri_list);
+
+        RefPtr<DragAction> action = DragDropManager::instance().createDragAction(self->getUUID(), std::move(data));
+
         GUIApplication::instance().dispatchEvent<DropEvent, true>(
-            ImVec2(mouse_x, mouse_y), DropType::ACTION_COPY, 0, self->getUUID(), std::move(data));
+            ImVec2(mouse_x, mouse_y), action);
     }
 
 }  // namespace Toolbox::UI

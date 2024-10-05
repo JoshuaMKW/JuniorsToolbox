@@ -27,20 +27,21 @@ namespace Toolbox::UI {
         [[nodiscard]] DropTypes getSupportedDropTypes() const { return m_supported_drop_types; }
 
         [[nodiscard]] UUID64 getSourceUUID() const { return m_source_uuid; }
-        [[nodiscard]] std::optional<UUID64> getTargetUUID() const { return m_source_uuid; }
+        [[nodiscard]] std::optional<UUID64> getTargetUUID() const { return m_target_uuid; }
 
         void setHotSpot(const ImVec2 &absp) { m_hot_spot = absp; }
         void setImage(const ImageHandle &image) { m_image_handle = image; }
         void setPayload(const MimeData &data) { m_mime_data = data; }
         void setTargetUUID(const UUID64 &uuid) { m_target_uuid = uuid; }
+        void setSupportedDropTypes(DropTypes types) { m_supported_drop_types = types; }
 
     private:
         ImVec2 m_hot_spot;
         ImageHandle m_image_handle;
 
         MimeData m_mime_data;
-        DropType m_default_drop_type;
-        DropType m_supported_drop_types;
+        DropType m_default_drop_type = DropType::ACTION_MOVE;
+        DropTypes m_supported_drop_types = DropType::ACTION_COPY | DropType::ACTION_MOVE;
 
         UUID64 m_source_uuid;
         std::optional<UUID64> m_target_uuid;

@@ -16,9 +16,11 @@
 #include "serial.hpp"
 #include "smart_resource.hpp"
 #include "unique.hpp"
+
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "gui/dragdrop/target.hpp"
 #include "gui/layer/imlayer.hpp"
 
 namespace Toolbox::UI {
@@ -31,26 +33,44 @@ namespace Toolbox::UI {
         virtual void onRenderBody(TimeStep delta_time) {}
 
     public:
-        explicit ImWindow(const std::string &name) : ImProcessLayer(name) {}
+        explicit ImWindow(const std::string &name) : ImProcessLayer(name) {
+            m_drop_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
+            m_drop_delegate->setImWindow(this);
+        }
         ImWindow(const std::string &name, std::optional<ImVec2> default_size)
-            : ImProcessLayer(name), m_default_size(default_size) {}
+            : ImProcessLayer(name), m_default_size(default_size) {
+            m_drop_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
+            m_drop_delegate->setImWindow(this);
+        }
         ImWindow(const std::string &name, std::optional<ImVec2> min_size,
                  std::optional<ImVec2> max_size)
-            : ImProcessLayer(name), m_min_size(min_size), m_max_size(max_size) {}
+            : ImProcessLayer(name), m_min_size(min_size), m_max_size(max_size) {
+            m_drop_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
+            m_drop_delegate->setImWindow(this);
+        }
         ImWindow(const std::string &name, std::optional<ImVec2> default_size,
                  std::optional<ImVec2> min_size, std::optional<ImVec2> max_size)
             : ImProcessLayer(name), m_default_size(default_size), m_min_size(min_size),
-              m_max_size(max_size) {}
+              m_max_size(max_size) {
+            m_drop_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
+            m_drop_delegate->setImWindow(this);
+        }
         ImWindow(const std::string &name, std::optional<ImVec2> default_size,
                  std::optional<ImVec2> min_size, std::optional<ImVec2> max_size,
                  ImGuiWindowClass window_class)
             : ImProcessLayer(name), m_default_size(default_size), m_min_size(min_size),
-              m_max_size(max_size), m_window_class(window_class) {}
+              m_max_size(max_size), m_window_class(window_class) {
+            m_drop_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
+            m_drop_delegate->setImWindow(this);
+        }
         ImWindow(const std::string &name, std::optional<ImVec2> default_size,
                  std::optional<ImVec2> min_size, std::optional<ImVec2> max_size,
                  ImGuiWindowClass window_class, ImGuiWindowFlags flags)
             : ImProcessLayer(name), m_default_size(default_size), m_min_size(min_size),
-              m_max_size(max_size), m_window_class(window_class), m_flags(flags) {}
+              m_max_size(max_size), m_window_class(window_class), m_flags(flags) {
+            m_drop_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
+            m_drop_delegate->setImWindow(this);
+        }
 
         virtual ~ImWindow() = default;
 
@@ -132,18 +152,20 @@ namespace Toolbox::UI {
         std::optional<ImVec2> m_max_size     = {};
 
     private:
-        ImGuiID m_dockspace_id   = std::numeric_limits<ImGuiID>::max();
+        ImGuiID m_dockspace_id = std::numeric_limits<ImGuiID>::max();
 
         bool m_is_docking_set_up = false;
         bool m_is_resized        = false;
         bool m_is_repositioned   = false;
 
-        bool m_is_new_icon       = false;
-        ImVec2 m_icon_size       = {};
-        Buffer m_icon_data       = {};
+        bool m_is_new_icon = false;
+        ImVec2 m_icon_size = {};
+        Buffer m_icon_data = {};
 
         ImVec2 m_next_size = {};
         ImVec2 m_next_pos  = {};
+
+        RefPtr<IDragDropTargetDelegate> m_drop_delegate = nullptr;
     };
 
     inline std::string ImWindowComponentTitle(const ImWindow &window_layer,

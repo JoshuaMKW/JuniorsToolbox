@@ -54,6 +54,8 @@ namespace Toolbox {
         virtual void onUpdate(TimeStep delta_time) override;
         virtual void onExit() override;
 
+        void onEvent(RefPtr<BaseEvent> ev) override;
+
         void addWindow(RefPtr<ImWindow> window) {
             if (!m_windows_processing) {
                 addLayer(window);

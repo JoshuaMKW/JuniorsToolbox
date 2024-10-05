@@ -10,7 +10,6 @@
 #include <X11/Xlib.h>
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
-
 #endif
 
 namespace Toolbox {
@@ -54,7 +53,7 @@ namespace Toolbox {
         return types;
     }
 
-    Result<std::string, ClipboardError> SystemClipboard::getText() {
+    Result<std::string, ClipboardError> SystemClipboard::getText() const {
         if (!OpenClipboard(nullptr)) {
             return make_clipboard_error<std::string>("Failed to open the clipboard!");
         }
@@ -116,7 +115,7 @@ namespace Toolbox {
         return {};
     }
 
-    Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) {
+    Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) const {
         if (!OpenClipboard(nullptr)) {
             return make_clipboard_error<MimeData>("Failed to open the clipboard!");
         }

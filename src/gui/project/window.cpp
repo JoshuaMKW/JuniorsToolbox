@@ -260,6 +260,7 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::onDropEvent(RefPtr<DropEvent> ev) {
         actionPasteIntoIndex(m_view_index, ev->getMimeData());
+        ev->accept();
     }
 
     std::vector<std::string_view> splitLines(std::string_view s) {
@@ -479,7 +480,7 @@ namespace Toolbox::UI {
 #ifdef TOOLBOX_PLATFORM_LINUX
             copied_paths += "file://";
 #elif defined TOOLBOX_PLATFORM_WINDOWS
-            copied_paths += "file:///"
+            copied_paths += "file:///";
 #endif
             copied_paths += m_file_system_model->getPath(index).string();
 #ifdef TOOLBOX_PLATFORM_LINUX
