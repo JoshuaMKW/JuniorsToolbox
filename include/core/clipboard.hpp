@@ -50,7 +50,7 @@ namespace Toolbox {
         static std::string MimeForFormat(UINT format);
 
     private:
-        std::unordered_map<std::string, UINT> m_mime_to_format;
+        mutable std::unordered_map<std::string, UINT> m_mime_to_format;
 #elif defined(TOOLBOX_PLATFORM_LINUX)
         // The reason this isn't private/protected is actually kind of
         // dumb. It needs to be accessed by handleSelectionRequest,
