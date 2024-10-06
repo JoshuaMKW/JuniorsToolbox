@@ -520,11 +520,17 @@ namespace Toolbox {
         return {};
     }
     Result<std::string, ClipboardError> SystemClipboard::getText() const {
-        return make_clipboard_error<std::string>("Not implemented yet");
+        auto data = getContent("text/plain");
+        if (!data || !data.value().has_text()) {
+            return make_clipboard_error<std::string>("No text in clipboard!");
+        }
+        return data.value().get_text().value();
     }
 
     Result<void, ClipboardError> SystemClipboard::setText(const std::string &text) {
-        return make_clipboard_error<void>("Not implemented yet");
+        MimeData data;
+        data.set_text(text);
+        return setContent("text/plain", data);
     }
 
     // Get the contents of the system clipboard.
