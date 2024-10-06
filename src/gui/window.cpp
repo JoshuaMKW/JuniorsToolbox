@@ -32,6 +32,21 @@ namespace Toolbox::UI {
         }
     }
 
+    void ImWindow::setSize(const ImVec2 &size) noexcept {
+        if (size == getSize()) {
+            return;
+        }
+        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_RESIZE,
+                                                                    size);
+    }
+    void ImWindow::setPos(const ImVec2 &pos) noexcept {
+        if (pos == getPos()) {
+            return;
+        }
+        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_MOVE,
+                                                                    pos);
+    }
+
     void ImWindow::setIcon(const std::string &icon_name) {
         ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
         UUID64 icon_dir              = res_manager.getResourcePathUUID("Images/Icons");
@@ -140,8 +155,8 @@ namespace Toolbox::UI {
         bool was_open    = is_open;
 
         if (is_open) {
-            ImVec2 pos  = getPos();
-            ImVec2 size = getSize();
+            m_prev_pos  = getPos();
+            m_prev_size = getSize();
 
             ImVec2 default_min = {0, 0};
             ImVec2 default_max = {FLT_MAX, FLT_MAX};
@@ -159,30 +174,20 @@ namespace Toolbox::UI {
                 flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
-            // Establish window constraints
-            if (window) {
-                if (size != m_next_size && m_is_resized) {
-                    if (m_next_size.x >= 0.0f && m_next_size.y >= 0.0f) {
-                        ImGui::SetNextWindowSize(size);
-                        GUIApplication::instance().dispatchEvent<WindowEvent, true>(
-                            getUUID(), EVENT_WINDOW_RESIZE, m_next_size);
-                    }
-                    m_is_resized = false;
-                }
-                if (pos != m_next_pos && m_is_repositioned) {
-                    ImGui::SetNextWindowPos(m_next_pos);
-                    GUIApplication::instance().dispatchEvent<WindowEvent, true>(
-                        getUUID(), EVENT_WINDOW_MOVE, m_next_pos);
-                    m_is_repositioned = false;
-                }
-            }
-
             if ((flags_ & ImGuiWindowFlags_NoBackground)) {
                 ImGui::SetNextWindowBgAlpha(0.0f);
             }
 
             // Render the window
             if (ImGui::Begin(window_name.c_str(), &is_open, flags_)) {
+                if (m_first_render) {
+                    m_prev_pos  = ImGui::GetWindowPos();
+                    m_prev_size = ImGui::GetWindowSize();
+                    setSize(m_prev_size);
+                    setPos(m_prev_pos);
+                    m_first_render = false;
+                }
+
                 ImGuiViewport *viewport = ImGui::GetCurrentWindow()->Viewport;
                 GLFWwindow *window      = static_cast<GLFWwindow *>(viewport->PlatformHandle);
                 if (window) {
@@ -206,6 +211,23 @@ namespace Toolbox::UI {
                 m_viewport = nullptr;
             }
             ImGui::End();
+        }
+
+        // Establish window constraints
+        if (window) {
+            if (window->Size != m_prev_size) {
+                if (m_next_size.x >= 0.0f && m_next_size.y >= 0.0f) {
+                    GUIApplication::instance().dispatchEvent<WindowEvent, true>(
+                        getUUID(), EVENT_WINDOW_RESIZE, window->Size);
+                }
+                ImGui::SetWindowSize(window, m_prev_size, ImGuiCond_Always);
+            }
+
+            if (window->Pos != m_prev_pos) {
+                GUIApplication::instance().dispatchEvent<WindowEvent, true>(
+                    getUUID(), EVENT_WINDOW_MOVE, window->Pos);
+                ImGui::SetWindowPos(window, m_prev_pos, ImGuiCond_Always);
+            }
         }
 
         // Handle open/close and focus/defocus
@@ -233,6 +255,12 @@ namespace Toolbox::UI {
     void ImWindow::onWindowEvent(RefPtr<WindowEvent> ev) {
         ImProcessLayer::onWindowEvent(ev);
         switch (ev->getType()) {
+        case EVENT_WINDOW_MOVE: {
+            ImVec2 win_pos = ev->getGlobalPoint();
+            setLayerPos(win_pos);
+            ev->accept();
+            break;
+        }
         case EVENT_WINDOW_RESIZE: {
             ImVec2 win_size = ev->getSize();
             if (m_min_size) {

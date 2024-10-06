@@ -248,9 +248,12 @@ namespace Toolbox::UI {
         return true;
     }
 
-    void ProjectViewWindow::onAttach() { buildContextMenu(); }
+    void ProjectViewWindow::onAttach() {
+        ImWindow::onAttach();
+        buildContextMenu();
+    }
 
-    void ProjectViewWindow::onDetach() {}
+    void ProjectViewWindow::onDetach() { ImWindow::onDetach(); }
 
     void ProjectViewWindow::onImGuiUpdate(TimeStep delta_time) {}
 
@@ -277,7 +280,7 @@ namespace Toolbox::UI {
             next_newline_pos = s.find('\n', last_pos);
         }
         if (last_pos < s.size()) {
-            if (s[s.size()-1] == '\r') {
+            if (s[s.size() - 1] == '\r') {
                 result.push_back(s.substr(last_pos, s.size() - last_pos - 1));
             } else {
                 result.push_back(s.substr(last_pos));

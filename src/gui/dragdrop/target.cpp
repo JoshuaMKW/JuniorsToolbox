@@ -41,6 +41,10 @@ namespace Toolbox::UI {
 
         FORMATETC format_etc;
         while (enum_format_etc->Next(1, &format_etc, nullptr) == S_OK) {
+            if ((format_etc.dwAspect & DVASPECT_CONTENT) == 0) {
+                continue;
+            }
+
             if (format_etc.cfFormat == CF_HDROP) {
                 STGMEDIUM stg_medium;
                 {

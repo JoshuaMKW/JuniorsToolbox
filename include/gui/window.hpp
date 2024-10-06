@@ -73,14 +73,8 @@ namespace Toolbox::UI {
             return flags_;
         }
 
-        [[nodiscard]] void setSize(const ImVec2 &size) noexcept override {
-            m_next_size  = size;
-            m_is_resized = true;
-        }
-        [[nodiscard]] void setPos(const ImVec2 &pos) noexcept override {
-            m_next_pos        = pos;
-            m_is_repositioned = true;
-        }
+        void setSize(const ImVec2 &size) noexcept override;
+        void setPos(const ImVec2 &pos) noexcept override;
 
         void setIcon(const std::string &icon_name);
         void setIcon(Buffer &&icon_data, const ImVec2 &icon_size);
@@ -144,8 +138,13 @@ namespace Toolbox::UI {
         ImVec2 m_icon_size = {};
         Buffer m_icon_data = {};
 
+        ImVec2 m_prev_size = {};
+        ImVec2 m_prev_pos  = {};
+
         ImVec2 m_next_size = {};
         ImVec2 m_next_pos  = {};
+
+        bool m_first_render = true;
     };
 
     inline std::string ImWindowComponentTitle(const ImWindow &window_layer,
