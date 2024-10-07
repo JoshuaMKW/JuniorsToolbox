@@ -54,6 +54,7 @@ namespace Toolbox::Platform {
     bool ForceWindowToFront(LowWindow window, LowWindow target);
 
     bool SetWindowTransparency(LowWindow window, uint8_t alpha);
+    bool SetWindowClickThrough(LowWindow window, bool click_through);
 
     bool OpenFileExplorer(const fs_path &path);
 

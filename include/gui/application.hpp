@@ -196,6 +196,8 @@ namespace Toolbox {
         bool m_windows_processing = false;
 
         ScopePtr<IDragDropTargetDelegate> m_drag_drop_target_delegate;
+        ImGuiViewport *m_drag_drop_viewport = nullptr;
+        bool m_await_drag_drop_destroy      = false;
 
         std::unordered_map<UUID64, bool> m_docked_map;
         ImGuiID m_dockspace_id;

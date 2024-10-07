@@ -24,7 +24,7 @@ namespace Toolbox::UI {
 
         bool initialize();
         void shutdown();
-        
+
         void setSystemAction(bool is_system) { m_is_system_action = is_system; }
 
         RefPtr<DragAction> createDragAction(UUID64 source_uuid, MimeData &&data);

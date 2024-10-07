@@ -309,23 +309,41 @@ namespace Toolbox::UI {
         UUID64 prev_uuid = action->getTargetUUID();
         UUID64 new_uuid  = searchDropTarget(mouse_pos);
 
-        if (prev_uuid != new_uuid && prev_uuid != 0) {
-            GUIApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_LEAVE, mouse_pos.x,
-                                                                      mouse_pos.y, action);
-        }
+        ResourceManager &resource_manager = GUIApplication::instance().getResourceManager();
+        RefPtr<const ImageHandle> image =
+            resource_manager
+                .getImageHandle("toolbox.png", resource_manager.getResourcePathUUID("Images/Icons"))
+                .value_or(nullptr);
+        action->setImage(image);
 
-        action->setTargetUUID(new_uuid);
+        if (prev_uuid != new_uuid) {
+            if (prev_uuid != 0) {
+                GUIApplication::instance().dispatchEvent<DragEvent, true>(
+                    EVENT_DRAG_LEAVE, mouse_pos.x, mouse_pos.y, action);
+            }
 
-        if (new_uuid != 0) {
-            GUIApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_ENTER, mouse_pos.x,
-                                                                      mouse_pos.y, action);
+            action->setTargetUUID(new_uuid);
+
+            if (new_uuid != 0) {
+                GUIApplication::instance().dispatchEvent<DragEvent, true>(
+                    EVENT_DRAG_ENTER, mouse_pos.x, mouse_pos.y, action);
+            }
         }
     }
 
     void WindowsDragDropTargetDelegate::onDragLeave(RefPtr<DragAction> action) {
         ImVec2 mouse_pos = action->getHotSpot();
+        UUID64 prev_uuid = action->getTargetUUID();
+        UUID64 new_uuid  = searchDropTarget(mouse_pos);
 
-        if (action->getTargetUUID() != 0) {
+        ResourceManager &resource_manager = GUIApplication::instance().getResourceManager();
+        RefPtr<const ImageHandle> image =
+            resource_manager
+                .getImageHandle("toolbox.png", resource_manager.getResourcePathUUID("Images/Icons"))
+                .value_or(nullptr);
+        action->setImage(image);
+
+        if (prev_uuid != new_uuid && prev_uuid != 0) {
             GUIApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_LEAVE, mouse_pos.x,
                                                                       mouse_pos.y, action);
         }
@@ -336,7 +354,14 @@ namespace Toolbox::UI {
     void WindowsDragDropTargetDelegate::onDragMove(RefPtr<DragAction> action) {
         ImVec2 mouse_pos = action->getHotSpot();
         UUID64 prev_uuid = action->getTargetUUID();
-        UUID64 new_uuid = searchDropTarget(mouse_pos);
+        UUID64 new_uuid  = searchDropTarget(mouse_pos);
+
+        ResourceManager &resource_manager = GUIApplication::instance().getResourceManager();
+        RefPtr<const ImageHandle> image =
+            resource_manager
+                .getImageHandle("toolbox.png", resource_manager.getResourcePathUUID("Images/Icons"))
+                .value_or(nullptr);
+        action->setImage(image);
 
         if (prev_uuid != new_uuid) {
             if (!m_block_implicit_drag_events && prev_uuid != 0) {
@@ -361,6 +386,13 @@ namespace Toolbox::UI {
 
     void WindowsDragDropTargetDelegate::onDrop(RefPtr<DragAction> action) {
         ImVec2 mouse_pos = action->getHotSpot();
+
+        ResourceManager &resource_manager = GUIApplication::instance().getResourceManager();
+        RefPtr<const ImageHandle> image =
+            resource_manager
+                .getImageHandle("toolbox.png", resource_manager.getResourcePathUUID("Images/Icons"))
+                .value_or(nullptr);
+        action->setImage(image);
 
         UUID64 new_uuid = searchDropTarget(mouse_pos);
         action->setTargetUUID(new_uuid);

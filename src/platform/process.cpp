@@ -221,12 +221,24 @@ namespace Toolbox::Platform {
     }
 
     bool SetWindowTransparency(LowWindow window, uint8_t alpha) {
-        SetWindowLongPtr(window, GWL_STYLE, WS_EX_LAYERED);
+        SetWindowLongPtr(window, GWL_STYLE, GetWindowLongPtr(window, GWL_STYLE) | WS_EX_LAYERED);
         SetLayeredWindowAttributes(window, RGB(0, 0, 0), 255, LWA_ALPHA);
         if (!ShowWindow(window, SW_SHOW)) {
             return false;
         }
         return UpdateWindow(window);
+    }
+
+    bool SetWindowClickThrough(LowWindow window, bool click_through) {
+        LONG_PTR style = GetWindowLongPtr(window, GWL_EXSTYLE);
+        if (click_through) {
+            style |= WS_EX_LAYERED;
+            style |= WS_EX_TRANSPARENT;
+        } else {
+            style &= ~WS_EX_LAYERED;
+            style &= ~WS_EX_TRANSPARENT;
+        }
+        return SetWindowLongPtr(window, GWL_EXSTYLE, style) >= 0;
     }
 
     bool OpenFileExplorer(const fs_path &path) {

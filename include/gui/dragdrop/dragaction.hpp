@@ -19,8 +19,8 @@ namespace Toolbox::UI {
         DragAction(const DragAction &) = default;
         DragAction(DragAction &&)      = default;
 
-        [[nodiscard]] ImVec2 getHotSpot() const { return m_hot_spot; }
-        [[nodiscard]] const ImageHandle &getImage() { return m_image_handle; }
+        [[nodiscard]] const ImVec2 &getHotSpot() const { return m_hot_spot; }
+        [[nodiscard]] RefPtr<const ImageHandle> getImage() { return m_image_handle; }
 
         [[nodiscard]] const MimeData &getPayload() const { return m_mime_data; }
         [[nodiscard]] DropType getDefaultDropType() const { m_default_drop_type; }
@@ -30,14 +30,14 @@ namespace Toolbox::UI {
         [[nodiscard]] UUID64 getTargetUUID() const { return m_target_uuid; }
 
         void setHotSpot(const ImVec2 &absp) { m_hot_spot = absp; }
-        void setImage(const ImageHandle &image) { m_image_handle = image; }
+        void setImage(RefPtr<const ImageHandle> image) { m_image_handle = image; }
         void setPayload(const MimeData &data) { m_mime_data = data; }
         void setTargetUUID(const UUID64 &uuid) { m_target_uuid = uuid; }
         void setSupportedDropTypes(DropTypes types) { m_supported_drop_types = types; }
 
     private:
         ImVec2 m_hot_spot;
-        ImageHandle m_image_handle;
+        RefPtr<const ImageHandle> m_image_handle;
 
         MimeData m_mime_data;
         DropType m_default_drop_type = DropType::ACTION_MOVE;
