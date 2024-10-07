@@ -168,6 +168,48 @@ namespace Toolbox::Platform {
         return true;
     }
 
+    // Structure to store child windows and their z-order
+    struct WindowInfo {
+        HWND hwnd;
+        int zOrder;
+    };
+
+    BOOL CALLBACK EnumWindowsForZProc(HWND hwnd, LPARAM lParam) {
+        std::vector<WindowInfo> *windows = reinterpret_cast<std::vector<WindowInfo> *>(lParam);
+
+        // Add the child window to the vector
+        WindowInfo info;
+        info.hwnd   = hwnd;
+        info.zOrder = windows->size();  // The index represents the Z-order among child windows
+        windows->push_back(info);
+
+        return TRUE;  // Continue enumeration
+    }
+
+    bool GetWindowZOrder(LowWindow window, int &zorder) {
+        std::vector<WindowInfo> windows;
+        windows.reserve(1024);
+
+        // Get the parent window of the window
+        HWND parent = GetParent(window);
+        if (parent == NULL) {
+            EnumWindows(EnumWindowsForZProc, reinterpret_cast<LPARAM>(&windows));
+        } else {
+            // Enumerate the child windows of the parent window
+            EnumChildWindows(parent, EnumWindowsForZProc, reinterpret_cast<LPARAM>(&windows));
+        }
+
+        // Find the Z-order of the window among the child windows
+        for (size_t i = 0; i < windows.size(); i++) {
+            if (windows[i].hwnd == window) {
+                zorder = windows[i].zOrder;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     bool ForceWindowToFront(LowWindow window) {
         return SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0,
                             SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
@@ -286,6 +328,9 @@ namespace Toolbox::Platform {
         std::string stringTitle(stringList[0]);
         XFreeStringList(stringList);
         return stringList[0];
+    }
+    bool GetWindowZOrder(LowWindow window, int &zorder) {
+        return false;
     }
     bool ForceWindowToFront(LowWindow window) {
         Display* display = XOpenDisplay(0);

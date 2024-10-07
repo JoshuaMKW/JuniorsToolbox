@@ -49,11 +49,11 @@ namespace Toolbox::UI {
         virtual void onImGuiPostUpdate(TimeStep delta_time) {}
 
         // Event callbacks
-        virtual void onContextMenuEvent(RefPtr<ContextMenuEvent> ev) {}
-        virtual void onDragEvent(RefPtr<DragEvent> ev) {}
-        virtual void onDropEvent(RefPtr<DropEvent> ev) {}
+        virtual void onContextMenuEvent(RefPtr<ContextMenuEvent> ev) { ev->ignore(); }
+        virtual void onDragEvent(RefPtr<DragEvent> ev) { ev->ignore(); }
+        virtual void onDropEvent(RefPtr<DropEvent> ev) { ev->ignore(); }
         virtual void onFocusEvent(RefPtr<BaseEvent> ev);
-        virtual void onMouseEvent(RefPtr<MouseEvent> ev) {}
+        virtual void onMouseEvent(RefPtr<MouseEvent> ev) { ev->ignore(); }
         virtual void onWindowEvent(RefPtr<WindowEvent> ev);
 
     private:

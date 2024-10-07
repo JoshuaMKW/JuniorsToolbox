@@ -89,6 +89,9 @@ namespace Toolbox::UI {
         // Returns the supported file type, or empty if designed for a folder.
         [[nodiscard]] virtual std::vector<std::string> extensions() const { return {}; }
 
+        int getZOrder() const { return m_z_order; }
+        int getImOrder() const { return m_im_order; }
+
         void close();
         void defocus();
         void focus();
@@ -111,8 +114,6 @@ namespace Toolbox::UI {
     protected:
         void setLayerSize(const ImVec2 &size) noexcept { ImProcessLayer::setSize(size); }
         void setLayerPos(const ImVec2 &pos) noexcept { ImProcessLayer::setPos(pos); }
-
-        static void privDropCallback(GLFWwindow *window, int path_count, const char *paths[]);
 
         UUID64 m_UUID64;
         ImGuiID m_sibling_id = 0;
@@ -145,6 +146,9 @@ namespace Toolbox::UI {
         ImVec2 m_next_pos  = {};
 
         bool m_first_render = true;
+
+        int m_z_order = -1;
+        int m_im_order = -1;
     };
 
     inline std::string ImWindowComponentTitle(const ImWindow &window_layer,

@@ -48,6 +48,7 @@ namespace Toolbox::Platform {
 
     std::string GetWindowTitle(LowWindow window);
     bool GetWindowClientRect(LowWindow window, int &x, int &y, int &width, int &height);
+    bool GetWindowZOrder(LowWindow window, int &zorder);
 
     bool ForceWindowToFront(LowWindow window);
     bool ForceWindowToFront(LowWindow window, LowWindow target);

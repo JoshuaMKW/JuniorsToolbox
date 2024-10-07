@@ -27,7 +27,7 @@ namespace Toolbox::UI {
         [[nodiscard]] DropTypes getSupportedDropTypes() const { return m_supported_drop_types; }
 
         [[nodiscard]] UUID64 getSourceUUID() const { return m_source_uuid; }
-        [[nodiscard]] std::optional<UUID64> getTargetUUID() const { return m_target_uuid; }
+        [[nodiscard]] UUID64 getTargetUUID() const { return m_target_uuid; }
 
         void setHotSpot(const ImVec2 &absp) { m_hot_spot = absp; }
         void setImage(const ImageHandle &image) { m_image_handle = image; }
@@ -43,8 +43,8 @@ namespace Toolbox::UI {
         DropType m_default_drop_type = DropType::ACTION_MOVE;
         DropTypes m_supported_drop_types = DropType::ACTION_COPY | DropType::ACTION_MOVE;
 
-        UUID64 m_source_uuid;
-        std::optional<UUID64> m_target_uuid;
+        UUID64 m_source_uuid = 0;
+        UUID64 m_target_uuid = 0;
     };
 
 }  // namespace Toolbox::UI

@@ -25,6 +25,8 @@ namespace Toolbox::UI {
         bool initialize();
         void shutdown();
         
+        void setSystemAction(bool is_system) { m_is_system_action = is_system; }
+
         RefPtr<DragAction> createDragAction(UUID64 source_uuid, MimeData &&data);
         RefPtr<DragAction> getCurrentDragAction() const { return m_current_drag_action; }
         void destroyDragAction(RefPtr<DragAction> action);
@@ -42,7 +44,8 @@ namespace Toolbox::UI {
 #elif defined(TOOLBOX_PLATFORM_LINUX)
 #endif
 
-         RefPtr<DragAction> m_current_drag_action;
+        RefPtr<DragAction> m_current_drag_action;
+        bool m_is_system_action = false;
     };
 
 }  // namespace Toolbox::UI

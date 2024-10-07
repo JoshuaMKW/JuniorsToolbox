@@ -265,9 +265,39 @@ namespace Toolbox {
 
     void GUIApplication::onEvent(RefPtr<BaseEvent> ev) {
         CoreApplication::onEvent(ev);
+
         if (ev->getType() == EVENT_DROP) {
             DragDropManager::instance().destroyDragAction(
                 DragDropManager::instance().getCurrentDragAction());
+        } else if (ev->getType() == EVENT_DRAG_MOVE || ev->getType() == EVENT_DRAG_ENTER ||
+                   ev->getType() == EVENT_DRAG_LEAVE) {
+            if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT, true)) {
+                DragDropManager::instance().destroyDragAction(
+                    DragDropManager::instance().getCurrentDragAction());
+            }
+        }
+
+        switch (ev->getType()) {
+        case EVENT_DRAG_ENTER:
+        case EVENT_DRAG_MOVE: {
+            if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT, true)) {
+                DragDropManager::instance().destroyDragAction(
+                    DragDropManager::instance().getCurrentDragAction());
+            }
+            break;
+        }
+        case EVENT_DRAG_LEAVE: {
+            if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT, true)) {
+                DragDropManager::instance().destroyDragAction(
+                    DragDropManager::instance().getCurrentDragAction());
+            } else {
+                RefPtr<DragAction> action = DragDropManager::instance().getCurrentDragAction();
+                if (action) {
+                    action->setTargetUUID(0);
+                }
+            }
+            break;
+        }
         }
     }
 

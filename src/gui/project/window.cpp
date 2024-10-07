@@ -259,7 +259,21 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::onContextMenuEvent(RefPtr<ContextMenuEvent> ev) {}
 
-    void ProjectViewWindow::onDragEvent(RefPtr<DragEvent> ev) {}
+    void ProjectViewWindow::onDragEvent(RefPtr<DragEvent> ev) {
+        float x, y;
+        ev->getGlobalPoint(x, y);
+
+        if (ev->getType() == EVENT_DRAG_ENTER) {
+            TOOLBOX_DEBUG_LOG("Drag enter");
+            ev->accept();
+        } else if (ev->getType() == EVENT_DRAG_LEAVE) {
+            TOOLBOX_DEBUG_LOG("Drag leave");
+            ev->accept();
+        } else if (ev->getType() == EVENT_DRAG_MOVE) {
+            TOOLBOX_DEBUG_LOG_V("Drag move ({}, {})", x, y);
+            ev->accept();
+        }
+    }
 
     void ProjectViewWindow::onDropEvent(RefPtr<DropEvent> ev) {
         actionPasteIntoIndex(m_view_index, ev->getMimeData());

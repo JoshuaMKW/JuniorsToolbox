@@ -13,9 +13,6 @@
 #include <iconv.h>
 #include <stb/stb_image.h>
 
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <glfw/glfw3native.h>
-
 namespace Toolbox::UI {
 
     void ImWindow::onRenderDockspace() {
@@ -180,6 +177,11 @@ namespace Toolbox::UI {
 
             // Render the window
             if (ImGui::Begin(window_name.c_str(), &is_open, flags_)) {
+                ImGuiWindow *im_window = ImGui::GetCurrentWindow();
+                if (im_window) {
+                    m_im_order = im_window->BeginOrderWithinContext;
+                }
+
                 if (m_first_render) {
                     m_prev_pos  = ImGui::GetWindowPos();
                     m_prev_size = ImGui::GetWindowSize();
@@ -194,7 +196,11 @@ namespace Toolbox::UI {
                     glfwSetWindowUserPointer(window, this);
                     /*glfwSetDropCallback(static_cast<GLFWwindow *>(viewport->PlatformHandle),
                                         privDropCallback);*/
-                    GUIApplication::instance().registerDragDropTarget((Platform::LowWindow)glfwGetWin32Window(window));
+                    Platform::LowWindow low_window = (Platform::LowWindow)viewport->PlatformHandleRaw;
+                    if (!Platform::GetWindowZOrder(low_window, m_z_order)) {
+                        m_z_order = -1;
+                    }
+                    GUIApplication::instance().registerDragDropTarget(low_window);
                 }
 
                 if ((flags_ & ImGuiWindowFlags_NoBackground)) {
@@ -289,30 +295,6 @@ namespace Toolbox::UI {
             t = name();
         }
         return t;
-    }
-
-    void ImWindow::privDropCallback(GLFWwindow *window, int path_count, const char *paths[]) {
-        ImWindow *self = static_cast<ImWindow *>(glfwGetWindowUserPointer(window));
-        if (!self) {
-            TOOLBOX_ERROR("[ImWindow] Attempted drop operation on NULL user pointer!");
-            return;
-        }
-
-        std::string uri_list;
-        for (int i = 0; i < path_count; ++i) {
-            uri_list += std::format("file:///{}\n", paths[i]);
-        }
-
-        double mouse_x, mouse_y;
-        Input::GetMouseViewportPosition(mouse_x, mouse_y);
-
-        MimeData &&data = MimeData();
-        data.set_urls(uri_list);
-
-        RefPtr<DragAction> action = DragDropManager::instance().createDragAction(self->getUUID(), std::move(data));
-
-        GUIApplication::instance().dispatchEvent<DropEvent, true>(
-            ImVec2(mouse_x, mouse_y), action);
     }
 
 }  // namespace Toolbox::UI
