@@ -1,17 +1,20 @@
-#if WIN32
+#include "core/core.hpp"
+#include "core/input/input.hpp"
+
+#include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+
+#include <cstring>
+
+#ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
-#elif __linux__
+#elif defined(TOOLBOX_PLATFORM_LINUX)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #else
 #error "Unsupported OS"
 #endif
-#include <GLFW/glfw3.h>
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-
-#include "core/core.hpp"
-#include "core/input/input.hpp"
 
 // Internals
 
