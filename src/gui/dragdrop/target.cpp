@@ -450,7 +450,9 @@ namespace Toolbox::UI {
 
     void LinuxDragDropTargetDelegate::onDrop(RefPtr<DragAction> action) {}
 
-    bool LinuxDragDropTargetDelegate::initializeWindow(Platform::LowWindow window) { return false; }
+    bool LinuxDragDropTargetDelegate::initializeForWindow(Platform::LowWindow window) { return false; }
+
+    void LinuxDragDropTargetDelegate::shutdownForWindow(Platform::LowWindow window) {}
 
 #endif
 
