@@ -353,6 +353,11 @@ namespace Toolbox::Platform {
         // target, but I don't know how to do that.
         return ForceWindowToFront(window);
     }
+
+    bool SetWindowTransparency(LowWindow window, uint8_t alpha) { return false; }
+
+    bool SetWindowClickThrough(LowWindow window, bool click_through) { return false; }
+
     bool GetWindowClientRect(LowWindow window, int &x, int &y, int &width, int &height) {
         XWindowAttributes attribs;
         Display* display = XOpenDisplay(0);
