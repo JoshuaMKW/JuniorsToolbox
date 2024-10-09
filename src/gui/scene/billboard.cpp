@@ -1,7 +1,7 @@
 #include "gui/scene/billboard.hpp"
 #include <filesystem>
 #include <gui/scene/renderer.hpp>
-#include "gui/stb_image.h"
+#include <stb/stb_image.h>
 #include <glad/glad.h>
 
 namespace Toolbox::UI {

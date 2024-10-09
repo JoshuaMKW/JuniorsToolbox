@@ -73,6 +73,11 @@ namespace Toolbox {
                                        const UUID64 &resource_path_uuid = 0) const;
         [[nodiscard]] bool hasDataPath(fs_path &&path, const UUID64 &resource_path_uuid = 0) const;
 
+        [[nodiscard]] Result<RefPtr<const ImageData>, FSError>
+        getImageData(const fs_path &path, const UUID64 &resource_path_uuid = 0) const;
+        [[nodiscard]] Result<RefPtr<const ImageData>, FSError>
+        getImageData(fs_path &&path, const UUID64 &resource_path_uuid = 0) const;
+
         [[nodiscard]] Result<RefPtr<const ImageHandle>, FSError>
         getImageHandle(const fs_path &path, const UUID64 &resource_path_uuid = 0) const;
         [[nodiscard]] Result<RefPtr<const ImageHandle>, FSError>

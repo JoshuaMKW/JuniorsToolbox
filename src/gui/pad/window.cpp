@@ -31,8 +31,8 @@
 #include "gui/window.hpp"
 
 #include "gui/logging/errors.hpp"
-#include "gui/stb_image.h"
 
+#include <stb/stb_image.h>
 #include <ImGuiFileDialog.h>
 #include <imgui.h>
 
