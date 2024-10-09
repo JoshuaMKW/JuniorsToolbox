@@ -9,8 +9,8 @@
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #define GLFW_EXPOSE_NATIVE_X11
-#include <GLFW/glfw3native.h>
 #include "strutil.hpp"
+#include <GLFW/glfw3native.h>
 #endif
 
 namespace Toolbox {
@@ -389,7 +389,7 @@ namespace Toolbox {
     void (*glfwSelectionRequestHandler)(XEvent *);
     // Sends a notification that we're done responding to a given
     // request.
-    void sendRequestNotify(Display* dpy, const XSelectionRequestEvent *request) {
+    void sendRequestNotify(Display *dpy, const XSelectionRequestEvent *request) {
         XSelectionEvent response;
         response.type      = SelectionNotify;
         response.requestor = request->requestor;
@@ -409,18 +409,18 @@ namespace Toolbox {
         // instance. This function can't be a method on that object
         // because we're going to be passing it as a function pointer
         // into GLFW, so we have to do everything externally.
-        MimeData clipboard_contents           = SystemClipboard::instance().m_clipboard_contents;
+        MimeData clipboard_contents = SystemClipboard::instance().m_clipboard_contents;
         // Get the display object from GLFW so we can intern our
         // strings in its namespace.
-        Display *dpy                          = getGLFWDisplay();
+        Display *dpy = getGLFWDisplay();
         // Pull out the specific event from the general one.
         const XSelectionRequestEvent *request = &event->xselectionrequest;
         // Start our targets array with just the "TARGET" target,
         // since we'll generate the rest in a loop.
-        Atom TARGETS                          = XInternAtom(dpy, "TARGETS", False);
+        Atom TARGETS = XInternAtom(dpy, "TARGETS", False);
         // If they
         if (request->target == TARGETS) {
-            std::vector<Atom> targets             = {TARGETS};
+            std::vector<Atom> targets = {TARGETS};
             // For each format the selection data supports, intern it into
             // an atom and add it to the targets array.
             for (auto &string_format : clipboard_contents.get_all_formats()) {
@@ -448,7 +448,8 @@ namespace Toolbox {
                 // Then set the property, and notify of a response.
                 XChangeProperty(dpy, request->requestor, request->property, request->target,
                                 8 /* is this ever wrong? */, PropModeReplace,
-                                reinterpret_cast<const unsigned char *>(data.value().buf()), data.value().size());
+                                reinterpret_cast<const unsigned char *>(data.value().buf()),
+                                data.value().size());
                 sendRequestNotify(dpy, request);
             } else {
                 // If we don't recognize the data, or it's a legacy
@@ -470,11 +471,10 @@ namespace Toolbox {
         // Set our handler as the new handler.
         setSelectionRequestHandler(handleSelectionRequest);
     }
-    void requestTarget(std::string target, Window target_window,
-                                               Atom target_property) {
-        Display *dpy           = getGLFWDisplay();
-        Atom requested_target  = XInternAtom(dpy, target.c_str(), False);
-        Atom sel               = XInternAtom(dpy, "CLIPBOARD", False);
+    void requestTarget(std::string target, Window target_window, Atom target_property) {
+        Display *dpy          = getGLFWDisplay();
+        Atom requested_target = XInternAtom(dpy, target.c_str(), False);
+        Atom sel              = XInternAtom(dpy, "CLIPBOARD", False);
         XConvertSelection(dpy, sel, requested_target, target_property, target_window, CurrentTime);
     }
 
@@ -597,9 +597,9 @@ namespace Toolbox {
             return std::unexpected<ClipboardError>(data.error());
         }
         auto data_string = std::string(data.value().buf<char>());
-        auto lines = String::splitLines(data_string);
+        auto lines       = String::splitLines(data_string);
         std::vector<fs_path> result((int)lines.size());
-        for (int i = 0; i < lines.size(); ++i){
+        for (int i = 0; i < lines.size(); ++i) {
             result[i] = lines[i];
         }
         return result;
@@ -634,7 +634,7 @@ namespace Toolbox {
         // Set ourselves as the owner of the clipboard. We'll do all
         // the actual data transfer once someone asks us for data, in
         // our event handling hook.
-        Atom CLIPBOARD       = XInternAtom(dpy, "CLIPBOARD", False);
+        Atom CLIPBOARD = XInternAtom(dpy, "CLIPBOARD", False);
         XSetSelectionOwner(dpy, CLIPBOARD, target_window, CurrentTime);
         return {};
     }
