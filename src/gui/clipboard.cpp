@@ -10,6 +10,7 @@
 #include <X11/Xlib.h>
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
+#include "strutil.hpp"
 #endif
 
 namespace Toolbox {
@@ -469,15 +470,21 @@ namespace Toolbox {
         // Set our handler as the new handler.
         setSelectionRequestHandler(handleSelectionRequest);
     }
+    void requestTarget(std::string target, Window target_window,
+                                               Atom target_property) {
+        Display *dpy           = getGLFWDisplay();
+        Atom requested_target  = XInternAtom(dpy, target.c_str(), False);
+        Atom sel               = XInternAtom(dpy, "CLIPBOARD", False);
+        XConvertSelection(dpy, sel, requested_target, target_property, target_window, CurrentTime);
+    }
+
     // Get all possible content types for the system clipboard.
     Result<std::vector<std::string>, ClipboardError>
     SystemClipboard::getAvailableContentFormats() const {
         Display *dpy         = getGLFWDisplay();
-        Atom sel             = XInternAtom(dpy, "CLIPBOARD", False);
-        Atom targets         = XInternAtom(dpy, "TARGETS", False);
-        Atom target_property = XInternAtom(dpy, "CLIP_TYPES", False);
         Window target_window = getGLFWHelperWindow();
-        XConvertSelection(dpy, sel, targets, target_property, target_window, CurrentTime);
+        Atom target_property = XInternAtom(dpy, "CLIP", False);
+        requestTarget("TARGETS", target_window, target_property);
 
         XEvent ev;
         XSelectionEvent *sev;
@@ -519,32 +526,11 @@ namespace Toolbox {
         }
         return {};
     }
-    Result<std::string, ClipboardError> SystemClipboard::getText() const {
-        auto data = getContent("text/plain");
-        if (!data || !data.value().has_text()) {
-            return make_clipboard_error<std::string>("No text in clipboard!");
-        }
-        return data.value().get_text().value();
-    }
-
-    Result<void, ClipboardError> SystemClipboard::setText(const std::string &text) {
-        MimeData data;
-        data.set_text(text);
-        return setContent("text/plain", data);
-    }
-
-    // Get the contents of the system clipboard.
-    Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) const {
-        Display *dpy           = getGLFWDisplay();
-        Atom requested_type    = XInternAtom(dpy, type.c_str(), False);
-        Atom sel               = XInternAtom(dpy, "CLIPBOARD", False);
-        Window clipboard_owner = XGetSelectionOwner(dpy, sel);
-        if (clipboard_owner == None) {
-            return make_clipboard_error<MimeData>("Clipboard isn't owned by anyone");
-        }
+    Result<Buffer, ClipboardError> getTarget(std::string target) {
+        Display *dpy         = getGLFWDisplay();
         Window target_window = getGLFWHelperWindow();
-        Atom target_property = XInternAtom(dpy, "CLIP_CONTENTS", False);
-        XConvertSelection(dpy, sel, requested_type, target_property, target_window, CurrentTime);
+        Atom target_property = XInternAtom(dpy, "CLIP", False);
+        requestTarget(target, target_window, target_property);
         XEvent ev;
         XSelectionEvent *sev;
         // This unconditional while loop looks pretty dangerous but
@@ -556,7 +542,7 @@ namespace Toolbox {
             case SelectionNotify:
                 sev = (XSelectionEvent *)&ev.xselection;
                 if (sev->property == None) {
-                    return make_clipboard_error<MimeData>("Conversion could not be performed.");
+                    return make_clipboard_error<Buffer>("Conversion could not be performed.");
                 } else {
                     Atom type_received;
                     unsigned long size;
@@ -573,32 +559,73 @@ namespace Toolbox {
 
                     Atom incr = XInternAtom(dpy, "INCR", False);
                     if (type_received == incr) {
-                        return make_clipboard_error<MimeData>(
+                        return make_clipboard_error<Buffer>(
                             "Data over 256kb, this isn't supported yet");
                     }
                     XGetWindowProperty(dpy, target_window, target_property, 0, size, False,
                                        AnyPropertyType, &_da, &_di, &_dul, &_dul, &prop_ret);
                     Buffer data_buffer;
-                    if (!data_buffer.alloc(size)) {
-                        return make_clipboard_error<MimeData>(
+                    if (!data_buffer.alloc(size + 1)) {
+                        return make_clipboard_error<Buffer>(
                             "Couldn't allocate buffer of big enough size");
                     }
                     std::memcpy(data_buffer.buf(), prop_ret, size);
+                    data_buffer.buf<char>()[size] = '\0';
                     XFree(prop_ret);
                     XDeleteProperty(dpy, target_window, target_property);
-
-                    MimeData result;
-                    result.set_data(type, std::move(data_buffer));
-                    return result;
+                    return data_buffer;
                 }
             }
         }
-        return {};
+    }
+    Result<std::string, ClipboardError> SystemClipboard::getText() const {
+        auto data = getTarget("text/plain");
+        if (!data) {
+            return std::unexpected<ClipboardError>(data.error());
+        }
+        return std::string(reinterpret_cast<char *>(data.value().buf()));
+    }
+
+    Result<void, ClipboardError> SystemClipboard::setText(const std::string &text) {
+        MimeData data;
+        data.set_text(text);
+        return setContent(data);
+    }
+    Result<std::vector<fs_path>, ClipboardError> SystemClipboard::getFiles() const {
+        auto data = getTarget("text/uri-list");
+        if (!data) {
+            return std::unexpected<ClipboardError>(data.error());
+        }
+        auto data_string = std::string(data.value().buf<char>());
+        auto lines = String::splitLines(data_string);
+        std::vector<fs_path> result((int)lines.size());
+        for (int i = 0; i < lines.size(); ++i){
+            result[i] = lines[i];
+        }
+        return result;
+    }
+
+    // Get the contents of the system clipboard.
+    Result<MimeData, ClipboardError> SystemClipboard::getContent() const {
+        MimeData result;
+        auto formats = getAvailableContentFormats();
+        if (!formats) {
+            return std::unexpected<ClipboardError>(formats.error());
+        }
+        for (std::string &target : formats.value()) {
+            if (!MimeData::isMimeTarget(target))
+                continue;
+            auto data = getTarget(target);
+            if (!data) {
+                return std::unexpected<ClipboardError>(data.error());
+            }
+            result.set_data(target, std::move(data.value()));
+        }
+        return result;
     }
 
     // Set the contents of the system clipboard.
-    Result<void, ClipboardError> SystemClipboard::setContent(const std::string &_type,
-                                                             const MimeData &content) {
+    Result<void, ClipboardError> SystemClipboard::setContent(const MimeData &content) {
         // Get the display and helper window from GLFW using our custom hooks.
         Display *dpy         = getGLFWDisplay();
         Window target_window = getGLFWHelperWindow();
