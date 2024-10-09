@@ -453,20 +453,6 @@ namespace Toolbox::UI {
                                                  const std::vector<fs_path> &paths) {
         for (fs_path src_path : paths) {
             auto src_path_str = src_path.string();
-#ifdef TOOLBOX_PLATFORM_WINDOWS
-            if (src_path_str.starts_with("file:/")) {
-                src_path_str = src_path_str.substr(7);
-                if (src_path_str.starts_with("file:///")) {
-                    src_path_str = src_path_str.substr(8);
-                } else {
-                    src_path_str = src_path_str.substr(7);
-                }
-            } else {
-                TOOLBOX_ERROR_V("Can't copy non-local uri \"{}\"", src_path_str);
-                continue;
-            }
-#endif
-
             m_file_system_model->copy(src_path_str, index,
                                       fs_path(src_path_str).filename().string());
         }

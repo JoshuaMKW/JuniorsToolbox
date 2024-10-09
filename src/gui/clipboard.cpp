@@ -82,6 +82,35 @@ namespace Toolbox {
 
         return result;
     }
+    // Assume the clipboard contains file paths and return them in a
+    // vector. Returns a clipboardError if the clipboard doesn't have
+    // files in it.
+    Result<std::vector<fs_path>, ClipboardError> SystemClipboard::getFiles() const {
+        // Get the file list target.
+        auto data = getContentType("text/uri-list");
+        // If the clipboard doesn't have a file list, propogate the
+        // error.
+        if (!data) {
+            return std::unexpected<ClipboardError>(data.error());
+        }
+        auto lines = data.value().get_urls();
+        // Allocate a vector of paths, and convert the vector of
+        // strings to it. When doing so, strip off the "file://"
+        // prefix.
+        std::vector<fs_path> result((int)lines.size());
+        for (int i = 0; i < lines.size(); ++i) {
+            if (line.starts_with("file:/")) {
+                if (src_path_str.starts_with("file:///")) {
+                    result[i] = src_path_str.substr(8);
+                } else {
+                    result[i] = src_path_str.substr(7);
+                }
+            } else {
+                return make_clipboard_error<std::vector<fs_path>>("Can't copy non file uri");
+            }
+        }
+        return result;
+    }
 
     Result<void, ClipboardError> SystemClipboard::setText(const std::string &text) {
         if (!OpenClipboard(nullptr)) {
