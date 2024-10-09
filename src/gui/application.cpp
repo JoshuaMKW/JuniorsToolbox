@@ -456,45 +456,40 @@ namespace Toolbox {
 
                 action->setHotSpot({(float)x, (float)y});
 
-                if (RefPtr<const ImageHandle> image = action->getImage()) {
-                    const ImVec2 &hotspot = action->getHotSpot();
+                const ImVec2 &hotspot = action->getHotSpot();
 
-                    ImGuiViewportP *viewport =
-                        ImGui::FindHoveredViewportFromPlatformWindowStack(hotspot);
-                    if (viewport) {
-                        const ImVec2 size = {96, 96};
-                        const ImVec2 pos  = {hotspot.x - size.x / 2.0f, hotspot.y - size.y / 1.1f};
+                ImGuiViewportP *viewport =
+                    ImGui::FindHoveredViewportFromPlatformWindowStack(hotspot);
+                if (viewport) {
+                    const ImVec2 size = {96, 96};
+                    const ImVec2 pos  = {hotspot.x - size.x / 2.0f, hotspot.y - size.y / 1.1f};
 
-                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-                        // ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 5.0f);
-                        ImGui::PushStyleColor(ImGuiCol_WindowBg,
-                                              ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
+                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+                    // ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 5.0f);
+                    ImGui::PushStyleColor(ImGuiCol_WindowBg,
+                                          ImGui::GetStyleColorVec4(ImGuiCol_Text));
 
-                        ImGui::SetNextWindowBgAlpha(1.0f);
-                        ImGui::SetNextWindowPos(pos);
-                        ImGui::SetNextWindowSize(size);
-                        if (ImGui::Begin("###Drag Icon", nullptr,
-                                         ImGuiWindowFlags_NoDecoration |
-                                             ImGuiWindowFlags_NoInputs)) {
-                            ImagePainter painter;
-                            painter.render(*action->getImage(), pos, size);
+                    ImGui::SetNextWindowBgAlpha(1.0f);
+                    ImGui::SetNextWindowPos(pos);
+                    ImGui::SetNextWindowSize(size);
+                    if (ImGui::Begin("###Drag Icon", nullptr,
+                                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs)) {
+                        action->render(size);
 
-                            if (ImGuiWindow *win = ImGui::GetCurrentWindow()) {
-                                if (win->Viewport != ImGui::GetMainViewport()) {
-                                    Platform::SetWindowClickThrough(
-                                        (Platform::LowWindow)win->Viewport->PlatformHandleRaw,
-                                        true);
-                                    m_drag_drop_viewport = win->Viewport;
-                                } else {
-                                    m_drag_drop_viewport = nullptr;
-                                }
+                        if (ImGuiWindow *win = ImGui::GetCurrentWindow()) {
+                            if (win->Viewport != ImGui::GetMainViewport()) {
+                                Platform::SetWindowClickThrough(
+                                    (Platform::LowWindow)win->Viewport->PlatformHandleRaw, true);
+                                m_drag_drop_viewport = win->Viewport;
+                            } else {
+                                m_drag_drop_viewport = nullptr;
                             }
                         }
-                        ImGui::End();
-
-                        ImGui::PopStyleColor(1);
-                        ImGui::PopStyleVar(1);
                     }
+                    ImGui::End();
+
+                    ImGui::PopStyleColor(1);
+                    ImGui::PopStyleVar(1);
                 }
             }
         }

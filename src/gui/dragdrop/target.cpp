@@ -7,6 +7,8 @@
 
 #include "image/imagebuilder.hpp"
 
+#include <imgui.h>
+
 namespace Toolbox::UI {
 
     static UUID64 searchDropTarget(const ImVec2 &mouse_pos) {
@@ -246,6 +248,29 @@ namespace Toolbox::UI {
             MimeData mime_data = createMimeDataFromDataObject(pDataObj);
             action = DragDropManager::instance().createDragAction(0, std::move(mime_data));
             DragDropManager::instance().setSystemAction(false);
+
+            action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {
+                std::string urls = action->getPayload().get_urls().value_or("");
+                if (urls.empty()) {
+                    return;
+                }
+
+                ImGuiStyle &style = ImGui::GetStyle();
+
+                size_t num_files = std::count(urls.begin(), urls.end(), '\n');
+                std::string file_count = std::format("{}", num_files);
+                ImVec2 text_size       = ImGui::CalcTextSize(file_count.c_str());
+
+                ImDrawList *draw_list = ImGui::GetWindowDrawList();
+                ImVec2 center         = pos + (size / 2.0f);
+
+                ImGui::DrawSquare(
+                    (size / 2.0f), size.x / 5.0f, IM_COL32_WHITE,
+                    ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_HeaderActive]), 1.0f);
+
+                draw_list->AddText(pos + (size / 2.0f) - (text_size / 2.0f), IM_COL32_WHITE,
+                                   file_count.c_str(), file_count.c_str() + file_count.size());
+            });
         }
 
         action->setHotSpot(ImVec2((float)pt.x, (float)pt.y));
@@ -286,6 +311,26 @@ namespace Toolbox::UI {
         if (!action) {
             MimeData mime_data = createMimeDataFromDataObject(pDataObj);
             action = DragDropManager::instance().createDragAction(0, std::move(mime_data));
+
+            action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {
+                std::string urls = action->getPayload().get_urls().value_or("");
+                if (urls.empty()) {
+                    return;
+                }
+
+                size_t num_files = std::count(urls.begin(), urls.end(), '\n');
+
+                ImDrawList *draw_list = ImGui::GetBackgroundDrawList();
+                ImVec2 center         = pos + (size / 2.0f);
+
+                ImGui::DrawSquare(center, size.x / 6.0f, IM_COL32_BLACK, IM_COL32_WHITE, 2.0f);
+
+                std::string file_count = std::format("{}", num_files);
+                ImVec2 text_size       = ImGui::CalcTextSize(file_count.c_str());
+
+                draw_list->AddText(pos + (size / 2.0f) - (text_size / 2.0f), IM_COL32_WHITE,
+                                   file_count.c_str(), file_count.c_str() + file_count.size());
+            });
         }
 
         action->setHotSpot(ImVec2((float)pt.x, (float)pt.y));
@@ -424,7 +469,9 @@ namespace Toolbox::UI {
 
     void LinuxDragDropTargetDelegate::onDrop(RefPtr<DragAction> action) {}
 
-    bool LinuxDragDropTargetDelegate::initializeForWindow(Platform::LowWindow window) { return false; }
+    bool LinuxDragDropTargetDelegate::initializeForWindow(Platform::LowWindow window) {
+        return false;
+    }
 
     void LinuxDragDropTargetDelegate::shutdownForWindow(Platform::LowWindow window) {}
 
