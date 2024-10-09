@@ -297,24 +297,4 @@ namespace Toolbox::UI {
         return t;
     }
 
-    void ImWindow::privDropCallback(GLFWwindow *window, int path_count, const char *paths[]) {
-        ImWindow *self = static_cast<ImWindow *>(glfwGetWindowUserPointer(window));
-        if (!self) {
-            TOOLBOX_ERROR("[ImWindow] Attempted drop operation on NULL user pointer!");
-        }
-
-        std::vector<std::string> uri_list(path_count);
-        for (int i = 0; i < path_count; ++i) {
-            uri_list.push_back(std::format("file:///{}", paths[i]));
-        }
-
-        double mouse_x, mouse_y;
-        Input::GetMouseViewportPosition(mouse_x, mouse_y);
-
-        MimeData &&data = MimeData();
-        data.set_urls(uri_list);
-        GUIApplication::instance().dispatchEvent<DropEvent, true>(
-            ImVec2(mouse_x, mouse_y), DropType::ACTION_COPY, 0, self->getUUID(), std::move(data));
-    }
-
 }  // namespace Toolbox::UI
