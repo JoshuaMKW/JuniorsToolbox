@@ -16,6 +16,10 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_internal.h>
+
+#ifndef STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#endif
 #include <stb/stb_image.h>
 
 #include "core/core.hpp"
@@ -473,7 +477,7 @@ namespace Toolbox {
                                          ImGuiWindowFlags_NoDecoration |
                                              ImGuiWindowFlags_NoInputs)) {
                             ImagePainter painter;
-                            painter.renderOverlay(*action->getImage(), pos, size);
+                            painter.render(*action->getImage(), pos, size);
 
                             if (ImGuiWindow *win = ImGui::GetCurrentWindow()) {
                                 if (win->Viewport != ImGui::GetMainViewport()) {

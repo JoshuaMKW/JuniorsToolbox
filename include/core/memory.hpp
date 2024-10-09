@@ -73,6 +73,8 @@ namespace Toolbox {
         void free() {
             if (m_buf && m_owns_buf) {
                 delete[] m_buf;
+                m_buf = nullptr;
+                m_owns_buf = false;
             }
             m_size = 0;
         }
