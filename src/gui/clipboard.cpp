@@ -418,8 +418,8 @@ namespace Toolbox {
         // Start our targets array with just the "TARGET" target,
         // since we'll generate the rest in a loop.
         Atom TARGETS = XInternAtom(dpy, "TARGETS", False);
-        // If they
         if (request->target == TARGETS) {
+            // If they requested the targets...
             std::vector<Atom> targets = {TARGETS};
             // For each format the selection data supports, intern it into
             // an atom and add it to the targets array.
@@ -471,6 +471,9 @@ namespace Toolbox {
         // Set our handler as the new handler.
         setSelectionRequestHandler(handleSelectionRequest);
     }
+    // Requests that the selection owner send us the data in the
+    // `target` format, by putting it on the `target_property`
+    // property of the `target_window` window.
     void requestTarget(std::string target, Window target_window, Atom target_property) {
         Display *dpy          = getGLFWDisplay();
         Atom requested_target = XInternAtom(dpy, target.c_str(), False);
@@ -484,141 +487,185 @@ namespace Toolbox {
         Display *dpy         = getGLFWDisplay();
         Window target_window = getGLFWHelperWindow();
         Atom target_property = XInternAtom(dpy, "CLIP", False);
+        // Request that the "TARGETS" info be sent to the CLIP
+        // property on the glfw helper window.
         requestTarget("TARGETS", target_window, target_property);
 
+        // Keep waiting for X events until we get a SelectionNotify
         XEvent ev;
-        XSelectionEvent *sev;
-        // This unconditional while loop looks pretty dangerous but
-        // this is how glfw does it, and how the examples online do
-        // it, so :shrug:
-        while (true) {
+        while (ev.type != SelectionNotify) {
             XNextEvent(dpy, &ev);
-            switch (ev.type) {
-            case SelectionNotify:
-                sev = (XSelectionEvent *)&ev.xselection;
-                if (sev->property == None) {
-                    return make_clipboard_error<std::vector<std::string>>(
-                        "Conversion could not be performed.\n");
-                } else {
-                    std::vector<std::string> types;
-                    unsigned long nitems;
-                    unsigned char *prop_ret = nullptr;
-                    // We won't use these.
-                    Atom _type;
-                    int _di;
-                    unsigned long _dul;
-                    XGetWindowProperty(dpy, target_window, target_property, 0, 1024 * sizeof(Atom),
-                                       False, XA_ATOM, &_type, &_di, &nitems, &_dul, &prop_ret);
-
-                    Atom *targets = (Atom *)prop_ret;
-                    for (int i = 0; i < nitems; ++i) {
-                        char *an = XGetAtomName(dpy, targets[i]);
-                        types.push_back(std::string(an));
-                        if (an)
-                            XFree(an);
-                    }
-                    XFree(prop_ret);
-                    XDeleteProperty(dpy, target_window, target_property);
-                    return types;
-                }
-                break;
-            }
         }
-        return {};
+        XSelectionEvent *sev = &ev.xselection;
+        // We can only copy from clients that give us a property to
+        // put the data on.
+        if (sev->property == None) {
+            return make_clipboard_error<std::vector<std::string>>(
+                "Conversion could not be performed.\n");
+        }
+        // Get the value on the property that the source told us.
+        std::vector<std::string> types;
+        unsigned long nitems;
+        unsigned char *prop_ret = nullptr;
+        // We won't use these.
+        Atom _type;
+        int _di;
+        unsigned long _dul;
+        XGetWindowProperty(dpy, target_window, target_property, 0, 1024 * sizeof(Atom), False,
+                           XA_ATOM, &_type, &_di, &nitems, &_dul, &prop_ret);
+
+        // Iterate through the returned atoms and convert them
+        // into strings to return.
+        Atom *targets = (Atom *)prop_ret;
+        for (int i = 0; i < nitems; ++i) {
+            char *an = XGetAtomName(dpy, targets[i]);
+            types.push_back(std::string(an));
+            if (an)
+                XFree(an);
+        }
+        // Free up the X11 resources we used.
+        XFree(prop_ret);
+        XDeleteProperty(dpy, target_window, target_property);
+        return types;
     }
+
+    // Get the bytes corresponding to a particular target. This is a
+    // higher-level function than requestTarget, which only sends the
+    // request and doesn't return anything.
     Result<Buffer, ClipboardError> getTarget(std::string target) {
+        // Request the target from the clipboard owner.
         Display *dpy         = getGLFWDisplay();
         Window target_window = getGLFWHelperWindow();
         Atom target_property = XInternAtom(dpy, "CLIP", False);
         requestTarget(target, target_window, target_property);
+
+        // Keep waiting for X events until we get a SelectionNotify
         XEvent ev;
-        XSelectionEvent *sev;
-        // This unconditional while loop looks pretty dangerous but
-        // this is how glfw does it, and how the examples online do
-        // it, so :shrug:
-        while (true) {
+        while (ev.type != SelectionNotify) {
             XNextEvent(dpy, &ev);
-            switch (ev.type) {
-            case SelectionNotify:
-                sev = (XSelectionEvent *)&ev.xselection;
-                if (sev->property == None) {
-                    return make_clipboard_error<Buffer>("Conversion could not be performed.");
-                } else {
-                    Atom type_received;
-                    unsigned long size;
-                    unsigned char *prop_ret = nullptr;
-                    // These are unused
-                    int _di;
-                    unsigned long _dul;
-                    Atom _da;
-
-                    XGetWindowProperty(dpy, target_window, target_property, 0, 0, False,
-                                       AnyPropertyType, &type_received, &_di, &_dul, &size,
-                                       &prop_ret);
-                    XFree(prop_ret);
-
-                    Atom incr = XInternAtom(dpy, "INCR", False);
-                    if (type_received == incr) {
-                        return make_clipboard_error<Buffer>(
-                            "Data over 256kb, this isn't supported yet");
-                    }
-                    XGetWindowProperty(dpy, target_window, target_property, 0, size, False,
-                                       AnyPropertyType, &_da, &_di, &_dul, &_dul, &prop_ret);
-                    Buffer data_buffer;
-                    if (!data_buffer.alloc(size + 1)) {
-                        return make_clipboard_error<Buffer>(
-                            "Couldn't allocate buffer of big enough size");
-                    }
-                    std::memcpy(data_buffer.buf(), prop_ret, size);
-                    data_buffer.buf<char>()[size] = '\0';
-                    XFree(prop_ret);
-                    XDeleteProperty(dpy, target_window, target_property);
-                    return data_buffer;
-                }
-            }
         }
+        XSelectionEvent *sev = &ev.xselection;
+        // Throw an error on old clients who don't tell you where they
+        // put stuff.
+        if (sev->property == None) {
+            return make_clipboard_error<Buffer>("Conversion could not be performed.");
+        }
+        Atom type_received;
+        unsigned long size;
+        unsigned char *prop_ret = nullptr;
+        // These are unused
+        int _di;
+        unsigned long _dul;
+        Atom _da;
+
+        // Use an initial X11 request to figure out how big the data is
+        // and whether it's requesting multiple batches.
+        XGetWindowProperty(dpy, target_window, target_property, 0, 0, False, AnyPropertyType,
+                           &type_received, &_di, &_dul, &size, &prop_ret);
+        // Don't use the return data, it's zero sized anyway.
+        XFree(prop_ret);
+
+        // If the data needs multiple batches, throw an error for now.
+        Atom incr = XInternAtom(dpy, "INCR", False);
+        if (type_received == incr) {
+            return make_clipboard_error<Buffer>("Data over 256kb, this isn't supported yet");
+        }
+        // Request that X11 copy the property data to an internal
+        // buffer and put a pointer to that buffer in prop_ret, using
+        // the size we got earlier.
+        XGetWindowProperty(dpy, target_window, target_property, 0, size, False, AnyPropertyType,
+                           &_da, &_di, &_dul, &_dul, &prop_ret);
+        // Allocate our own Buffer object and copy the data into
+        // it. Make sure to null-terminate the data in case it's a
+        // c string (which it often is).
+        Buffer data_buffer;
+        if (!data_buffer.alloc(size + 1)) {
+            return make_clipboard_error<Buffer>("Couldn't allocate buffer of big enough size");
+        }
+        std::memcpy(data_buffer.buf(), prop_ret, size);
+        data_buffer.buf<char>()[size] = '\0';
+        // Free the X11 data buffer
+        XFree(prop_ret);
+        // Free the window property
+        XDeleteProperty(dpy, target_window, target_property);
+        return data_buffer;
     }
+    // Assume the clipboard has plain text and return it as a
+    // string. Returns a ClipboardError if the clipboard doesn't have
+    // plain text.
     Result<std::string, ClipboardError> SystemClipboard::getText() const {
+        // Request the plain text target from the clipboard owner.
         auto data = getTarget("text/plain");
+        // If the clipboard doesn't have plain text, propogate the
+        // error.
         if (!data) {
             return std::unexpected<ClipboardError>(data.error());
         }
+        // Reinterpret the received buffer as a c-string, then wrap it
+        // in a c++ string to return.
         return std::string(reinterpret_cast<char *>(data.value().buf()));
     }
 
+    // Set the contents of the cilpboard to the given string. This
+    // can't fail at this step on Linux, but we return Result to be
+    // consistent with the Windows code.
     Result<void, ClipboardError> SystemClipboard::setText(const std::string &text) {
         MimeData data;
         data.set_text(text);
         return setContent(data);
     }
+    // Assume the clipboard contains file paths and return them in a
+    // vector. Returns a clipboardError if the clipboard doesn't have
+    // files in it.
     Result<std::vector<fs_path>, ClipboardError> SystemClipboard::getFiles() const {
+        // Get the file list target.
         auto data = getTarget("text/uri-list");
+        // If the clipboard doesn't have a file list, propogate the
+        // error.
         if (!data) {
             return std::unexpected<ClipboardError>(data.error());
         }
-        auto data_string = std::string(data.value().buf<char>());
-        auto lines       = String::splitLines(data_string);
+        // Reinterpret the received buffer as a c-string, then wrap it
+        // in a c++ string.
+        std::string data_string(data.value().buf<char>());
+        // Split the string into lines, one for each path.
+        auto lines = String::splitLines(data_string);
+        // Allocate a vector of paths, and convert the vector of
+        // strings to it. When doing so, strip off the "file://"
+        // prefix.
         std::vector<fs_path> result((int)lines.size());
         for (int i = 0; i < lines.size(); ++i) {
-            result[i] = lines[i];
+            if (!lines[i].starts_with("file:///")) {
+                TOOLBOX_ERROR_V("Can't copy non-local uri \"{}\"", lines[i]);
+            }
+            result[i] = lines[i].substr(7);
         }
         return result;
     }
 
     // Get the contents of the system clipboard.
     Result<MimeData, ClipboardError> SystemClipboard::getContent() const {
-        MimeData result;
+        // Figure out all possible formats the content can be in.
         auto formats = getAvailableContentFormats();
+        // If that didn't work, propogate the error.
         if (!formats) {
             return std::unexpected<ClipboardError>(formats.error());
         }
+        // For each possible data type...
+        MimeData result;
         for (std::string &target : formats.value()) {
+            // Skip targets that aren't MIME types. These will pretty
+            // much always be redundant with a mime-type target
+            // (except TARGETS, which we don't want to do here anyway.
             if (!MimeData::isMimeTarget(target))
                 continue;
+            // Get the target of each type.
             auto data = getTarget(target);
             if (!data) {
                 return std::unexpected<ClipboardError>(data.error());
             }
+            // Put that into the returned mime data indexed by the
+            // type.
             result.set_data(target, std::move(data.value()));
         }
         return result;
