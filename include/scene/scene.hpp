@@ -55,11 +55,33 @@ namespace Toolbox {
         }
 
         Result<void, SerialError> serialize(Serializer &out) const override {
+            if (!m_root) {
+                return make_serial_error<void>(out, "Root object is null");
+            }
             return m_root->serialize(out);
         }
 
         Result<void, SerialError> deserialize(Deserializer &in) override {
-            return m_root->deserialize(in);
+            SerialError err = {};
+            bool error      = false;
+
+            ObjectFactory::create(in)
+                .and_then([&](auto &&obj) {
+                    m_root =
+                        std::static_pointer_cast<GroupSceneObject, ISceneObject>(std::move(obj));
+                    return Result<bool, SerialError>();
+                })
+                .or_else([&](SerialError &&e) {
+                    err   = std::move(e);
+                    error = true;
+                    return Result<bool, SerialError>();
+                });
+
+            if (error) {
+                return std::unexpected(err);
+            }
+
+            return Result<void, SerialError>();
         }
 
         ScopePtr<ISmartResource> clone(bool deep) const override {

@@ -73,9 +73,14 @@ namespace Toolbox {
                                        const UUID64 &resource_path_uuid = 0) const;
         [[nodiscard]] bool hasDataPath(fs_path &&path, const UUID64 &resource_path_uuid = 0) const;
 
-        [[nodiscard]] Result<RefPtr<ImageHandle>, FSError>
+        [[nodiscard]] Result<RefPtr<const ImageData>, FSError>
+        getImageData(const fs_path &path, const UUID64 &resource_path_uuid = 0) const;
+        [[nodiscard]] Result<RefPtr<const ImageData>, FSError>
+        getImageData(fs_path &&path, const UUID64 &resource_path_uuid = 0) const;
+
+        [[nodiscard]] Result<RefPtr<const ImageHandle>, FSError>
         getImageHandle(const fs_path &path, const UUID64 &resource_path_uuid = 0) const;
-        [[nodiscard]] Result<RefPtr<ImageHandle>, FSError>
+        [[nodiscard]] Result<RefPtr<const ImageHandle>, FSError>
         getImageHandle(fs_path &&path, const UUID64 &resource_path_uuid = 0) const;
 
         [[nodiscard]] Result<void, FSError>
@@ -105,7 +110,7 @@ namespace Toolbox {
         UUID64 m_uuid;
         std::vector<ResourcePath> m_resource_paths;
 
-        mutable std::unordered_map<fs_path, RefPtr<ImageHandle>> m_image_handle_cache;
+        mutable std::unordered_map<fs_path, RefPtr<const ImageHandle>> m_image_handle_cache;
         mutable std::unordered_map<fs_path, ResourceData> m_data_preload_cache;
     };
 

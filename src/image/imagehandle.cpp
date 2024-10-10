@@ -1,5 +1,3 @@
-#pragma once
-
 #include <fstream>
 
 #include "image/imagehandle.hpp"
@@ -7,12 +5,10 @@
 #include "core/memory.hpp"
 #include "fsystem.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "gui/stb_image.h"
-#include "stb/stb_image_resize.h"
-
 #include <glad/glad.h>
 #include <imgui/imgui.h>
+
+#include <stb/stb_image.h>
 
 namespace Toolbox {
 
@@ -63,6 +59,10 @@ namespace Toolbox {
         loadGL(data_buf, channels, width, height);
 
         stbi_image_free(stbi_buf);
+    }
+
+    ImageHandle::ImageHandle(const ImageData &data) {
+        loadGL(data.m_data, data.getChannels(), data.getWidth(), data.getHeight());
     }
 
     ImageHandle::ImageHandle(const Buffer &data, int channels, int dx, int dy) {
