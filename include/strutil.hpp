@@ -6,6 +6,7 @@
 #include <iconv.h>
 #include <string>
 #include <string_view>
+#include <iterator>
 
 #include "core/error.hpp"
 
@@ -62,5 +63,40 @@ namespace Toolbox::String {
     inline Result<std::string, EncodingError> toGameEncoding(std::string_view value) {
         return asEncoding(value, IMGUI_ENCODING, GAME_ENCODING);
     }
+    inline std::vector<std::string_view> splitLines(std::string_view s) {
+        std::vector<std::string_view> result;
+        size_t last_pos         = 0;
+        size_t next_newline_pos = s.find('\n', 0);
+        while (next_newline_pos != std::string::npos) {
+            if (s[next_newline_pos - 1] == '\r') {
+                result.push_back(s.substr(last_pos, next_newline_pos - last_pos - 1));
+            } else {
+                result.push_back(s.substr(last_pos, next_newline_pos - last_pos));
+            }
+            last_pos         = next_newline_pos + 1;
+            next_newline_pos = s.find('\n', last_pos);
+        }
+        if (last_pos < s.size()) {
+            if (s[s.size() - 1] == '\r') {
+                result.push_back(s.substr(last_pos, s.size() - last_pos - 1));
+            } else {
+                result.push_back(s.substr(last_pos));
+            }
+        }
+        return result;
+    }
+    inline std::string joinStrings(std::vector<std::string> strings, const char *const delimiter) {
+        std::ostringstream os;
+        auto b = strings.begin(), e = strings.end();
 
+        if (b != e) {
+            std::copy(b, prev(e), std::ostream_iterator<std::string>(os, delimiter));
+            b = prev(e);
+        }
+        if (b != e) {
+            os << *b;
+        }
+
+        return os.str();
+    }
 }  // namespace Toolbox::String

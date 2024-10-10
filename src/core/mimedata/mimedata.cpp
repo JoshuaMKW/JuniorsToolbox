@@ -16,6 +16,8 @@
 
 #include "core/mimedata/mimedata.hpp"
 
+#include "strutil.hpp"
+
 namespace Toolbox {
 
     static std::vector<std::string> s_image_formats = {
@@ -114,19 +116,25 @@ namespace Toolbox {
         set_data("text/plain", std::move(_tmp));
     }
 
-    [[nodiscard]] std::optional<std::string> MimeData::get_urls() const {
+    [[nodiscard]] std::optional<std::vector<std::string>> MimeData::get_urls() const{
         if (!has_urls()) {
             return std::nullopt;
         }
         const Buffer &data_buf = m_data_map["text/uri-list"];
-        return std::string(data_buf.buf<char>(), data_buf.size() - 1);
+        std::string data_string(data_buf.buf<char>(), data_buf.size() - 1);
+        std::vector<std::string> result;
+        for (auto line : splitLines(data_string)) {
+            result.push_back(std::string(line));
+        }
+        return result;
     }
 
-    void MimeData::set_urls(std::string_view data) {
+    void MimeData::set_urls(std::vector<std::string> data){
+        std::string url_data = joinStrings(data, "\r\n");
         Buffer _tmp;
-        _tmp.alloc(data.size() + 1);
-        std::memcpy(_tmp.buf(), data.data(), data.size());
-        _tmp.get<char>(data.size()) = '\0';
+        _tmp.alloc(url_data.size() + 1);
+        std::memcpy(_tmp.buf(), url_data.data(), url_data.size());
+        _tmp.get<char>(url_data.size()) = '\0';
         set_data("text/uri-list", std::move(_tmp));
     }
 

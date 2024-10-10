@@ -7,6 +7,7 @@
 #include "core/error.hpp"
 #include "core/mimedata/mimedata.hpp"
 #include "tristate.hpp"
+#include "fsystem.hpp"
 
 namespace Toolbox {
 
@@ -40,8 +41,9 @@ namespace Toolbox {
 
         Result<std::string, ClipboardError> getText() const;
         Result<void, ClipboardError> setText(const std::string &text);
-        Result<MimeData, ClipboardError> getContent(const std::string &type) const;
-        Result<void, ClipboardError> setContent(const std::string &type, const MimeData &mimedata);
+        Result<MimeData, ClipboardError> getContent() const;\
+        Result<std::vector<fs_path>, ClipboardError> getFiles() const;
+        Result<void, ClipboardError> setContent(const MimeData &mimedata);
 
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
