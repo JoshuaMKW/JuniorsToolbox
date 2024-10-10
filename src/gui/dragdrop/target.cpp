@@ -246,7 +246,7 @@ namespace Toolbox::UI {
         if (!action) {
             DragDropManager::instance().setSystemAction(true);
             MimeData mime_data = createMimeDataFromDataObject(pDataObj);
-            action = DragDropManager::instance().createDragAction(0, std::move(mime_data));
+            action = DragDropManager::instance().createDragAction(0, std::move(mime_data), false);
             DragDropManager::instance().setSystemAction(false);
 
             action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {

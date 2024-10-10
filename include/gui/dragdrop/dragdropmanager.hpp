@@ -27,7 +27,7 @@ namespace Toolbox::UI {
 
         void setSystemAction(bool is_system) { m_is_system_action = is_system; }
 
-        RefPtr<DragAction> createDragAction(UUID64 source_uuid, MimeData &&data);
+        RefPtr<DragAction> createDragAction(UUID64 source_uuid, MimeData &&data, bool system_level = true);
         RefPtr<DragAction> getCurrentDragAction() const { return m_current_drag_action; }
         void destroyDragAction(RefPtr<DragAction> action);
 

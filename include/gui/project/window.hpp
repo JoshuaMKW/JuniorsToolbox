@@ -91,6 +91,7 @@ namespace Toolbox::UI {
         void onDropEvent(RefPtr<DropEvent> ev) override;
 
         void buildContextMenu();
+        MimeData &&buildFolderViewMimeData();
 
         // Selection actions
         void actionDeleteIndexes(std::vector<ModelIndex> &indices);
@@ -132,6 +133,8 @@ namespace Toolbox::UI {
 
         bool m_delete_without_request = false;
         bool m_delete_requested       = false;
+
+        ImVec2 m_last_reg_mouse_pos;
     };
 
 }  // namespace Toolbox::UI

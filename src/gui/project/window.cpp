@@ -1,5 +1,6 @@
 #include "gui/project/window.hpp"
 #include "gui/application.hpp"
+#include "gui/dragdrop/dragdropmanager.hpp"
 #include "model/fsmodel.hpp"
 
 #include <cmath>
@@ -37,7 +38,21 @@ namespace Toolbox::UI {
 
         const ImGuiStyle &style = ImGui::GetStyle();
 
-        bool is_left_click        = Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
+        ImVec2 mouse_pos;
+        {
+            double mouse_x, mouse_y;
+            Input::GetMousePosition(mouse_x, mouse_y);
+            mouse_pos.x = mouse_x;
+            mouse_pos.y = mouse_y;
+        }
+
+        bool is_left_click = Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
+        bool is_left_drag  = Input::GetMouseButton(MouseButton::BUTTON_LEFT);
+
+        if (!is_left_drag) {
+            m_last_reg_mouse_pos = mouse_pos;
+        }
+
         bool is_double_left_click = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
         bool is_right_click       = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
 
@@ -84,6 +99,17 @@ namespace Toolbox::UI {
                         ImGui::PushStyleColor(ImGuiCol_ChildBg,
                                               ImGui::ColorConvertFloat4ToU32(
                                                   ImGui::GetStyleColorVec4(ImGuiCol_TabSelected)));
+
+                        if (is_left_drag && ImLengthSqr(mouse_pos - m_last_reg_mouse_pos) > 10.0f) {
+                            if (DragDropManager::instance().getCurrentDragAction() == nullptr) {
+                                RefPtr<DragAction> action = DragDropManager::instance().createDragAction(
+                                    getUUID(), buildFolderViewMimeData());
+                                if (action) {
+                                    // action->setHotspot()
+                                    // action->setImage()
+                                }
+                            }
+                        }
                     } else {
                         ImGui::PushStyleColor(ImGuiCol_ChildBg,
                                               ImGui::ColorConvertFloat4ToU32(
@@ -429,6 +455,23 @@ namespace Toolbox::UI {
             });
     }
 
+    MimeData &&ProjectViewWindow::buildFolderViewMimeData() {
+        MimeData &&result = MimeData();
+
+        std::string paths;
+        for (const ModelIndex &index : m_selected_indices_ctx) {
+            fs_path path = m_file_system_model->getPath(index);
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+            paths += std::format("file:///{}\n", path.string());
+#elif defined(TOOLBOX_PLATFORM_LINUX)
+            paths += std::format("file://{}\n", path.string());
+#endif
+        }
+
+        result.set_urls(paths);
+        return std::move(result);
+    }
+
     void ProjectViewWindow::actionDeleteIndexes(std::vector<ModelIndex> &indices) {
         for (auto &item_index : indices) {
             m_file_system_model->remove(item_index);
@@ -608,6 +651,8 @@ namespace Toolbox::UI {
 
             return true;
         }
+
+        return false;
     }
 
     bool ProjectViewWindow::actionOpenPad(const ModelIndex &index) {

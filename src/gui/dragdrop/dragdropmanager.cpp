@@ -40,9 +40,12 @@ static std::vector<std::string_view> splitLines(std::string_view s) {
 
 namespace Toolbox::UI {
 
-    RefPtr<DragAction> DragDropManager::createDragAction(UUID64 source_uuid, MimeData &&data) {
+    RefPtr<DragAction> DragDropManager::createDragAction(UUID64 source_uuid, MimeData &&data, bool system_level) {
         m_current_drag_action = make_referable<DragAction>(source_uuid);
         m_current_drag_action->setPayload(data);
+        if (system_level) {
+            createSystemDragDropSource(std::move(data));
+        }
         return m_current_drag_action;
     }
 
@@ -56,14 +59,6 @@ namespace Toolbox::UI {
     void DragDropManager::shutdown() { OleUninitialize(); }
 
     Result<void, BaseError> DragDropManager::createSystemDragDropSource(MimeData &&data) {
-        std::vector<std::string> formats =
-            SystemClipboard::instance().getAvailableContentFormats().value_or(
-                std::vector<std::string>());
-
-        if (std::find(formats.begin(), formats.end(), "text/uri-list") == formats.end()) {
-            return make_error<void>("DRAG_DROP", "No paths available in mimedata");
-        }
-
         std::string paths = data.get_urls().value_or("");
 
         std::vector<PIDLIST_ABSOLUTE> pidls;
