@@ -100,7 +100,7 @@ namespace Toolbox::UI {
         void actionPasteIntoIndex(const ModelIndex &index, const MimeData &data);
         void actionCopyIndexes(const std::vector<ModelIndex> &indices);
 
-        void actionLeftClickIndex(const ModelIndex &view_index, const ModelIndex &child_index,
+        void actionSelectIndex(const ModelIndex &view_index, const ModelIndex &child_index,
                                   bool is_selected);
         void actionClearRequestExcIndex(const ModelIndex &view_index,
                                         const ModelIndex &child_index, bool is_left_button);

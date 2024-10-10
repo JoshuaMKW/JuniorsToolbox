@@ -56,8 +56,8 @@ namespace Toolbox::UI {
             m_last_reg_mouse_pos = mouse_pos;
         }
 
-        bool is_double_left_click = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-        bool is_right_click       = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
+        bool is_double_left_click   = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
+        bool is_right_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
         bool is_right_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_RIGHT);
 
         if (ImGui::BeginChild("Folder View", {0, 0}, true,
@@ -74,6 +74,7 @@ namespace Toolbox::UI {
                 ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
 
                 const float box_width   = 76.0f;
+                const float box_height  = 100.0f;
                 const float label_width = box_width - style.WindowPadding.x * 4.0f;
 
                 ImVec2 size = ImGui::GetContentRegionAvail();
@@ -95,6 +96,9 @@ namespace Toolbox::UI {
 
                     ModelIndex source_child_index = m_view_proxy.toSourceIndex(child_index);
 
+                    ImVec2 win_min = ImGui::GetCursorScreenPos();
+                    ImVec2 win_max = win_min + ImVec2(box_width, box_height);
+
                     bool is_selected =
                         std::find(m_selected_indices.begin(), m_selected_indices.end(),
                                   source_child_index) != m_selected_indices.end();
@@ -103,50 +107,16 @@ namespace Toolbox::UI {
                         ImGui::PushStyleColor(ImGuiCol_ChildBg,
                                               ImGui::ColorConvertFloat4ToU32(
                                                   ImGui::GetStyleColorVec4(ImGuiCol_TabSelected)));
-
-                        if (is_left_drag && ImLengthSqr(mouse_pos - m_last_reg_mouse_pos) > 10.0f) {
-                            if (DragDropManager::instance().getCurrentDragAction() == nullptr) {
-                                RefPtr<DragAction> action =
-                                    DragDropManager::instance().createDragAction(
-                                        getUUID(), std::move(buildFolderViewMimeData()));
-                                if (action) {
-                                    action->setHotSpot(mouse_pos);
-                                    action->setRender([action](const ImVec2 &pos,
-                                                               const ImVec2 &size) {
-                                        std::string urls =
-                                            action->getPayload().get_urls().value_or("");
-                                        if (urls.empty()) {
-                                            return;
-                                        }
-
-                                        ImGuiStyle &style = ImGui::GetStyle();
-
-                                        size_t num_files =
-                                            std::count(urls.begin(), urls.end(), '\n');
-                                        std::string file_count = std::format("{}", num_files);
-                                        ImVec2 text_size = ImGui::CalcTextSize(file_count.c_str());
-
-                                        ImDrawList *draw_list = ImGui::GetWindowDrawList();
-                                        ImVec2 center         = pos + (size / 2.0f);
-
-                                        ImGui::DrawSquare((size / 2.0f), size.x / 5.0f,
-                                                          IM_COL32_WHITE,
-                                                          ImGui::ColorConvertFloat4ToU32(
-                                                              style.Colors[ImGuiCol_HeaderActive]),
-                                                          1.0f);
-
-                                        draw_list->AddText(pos + (size / 2.0f) - (text_size / 2.0f),
-                                                           IM_COL32_WHITE, file_count.c_str(),
-                                                           file_count.c_str() + file_count.size());
-                                    });
-                                }
-                            }
-                        }
+                    } else if (ImGui::IsMouseHoveringRect(win_min, win_max)) {
+                        ImGui::PushStyleColor(ImGuiCol_ChildBg,
+                                              ImGui::ColorConvertFloat4ToU32(
+                                                  ImGui::GetStyleColorVec4(ImGuiCol_TabHovered)));
                     } else {
                         ImGui::PushStyleColor(ImGuiCol_ChildBg,
                                               ImGui::ColorConvertFloat4ToU32(
                                                   ImGui::GetStyleColorVec4(ImGuiCol_ChildBg)));
                     }
+
                     const bool is_selected_rename = m_is_renaming && is_selected;
 
                     // Get the label and it's size
@@ -158,9 +128,20 @@ namespace Toolbox::UI {
                                                  ? std::min(rename_size.x, label_width)
                                                  : std::min(text_size.x, label_width);
 
+                    ImGuiWindowFlags window_flags = ImGuiWindowFlags_ChildWindow |
+                                                    ImGuiWindowFlags_NoDecoration |
+                                                    ImGuiWindowFlags_NoScrollWithMouse;
+
+                    if (source_child_index == m_last_selected_index) {
+                        ImGui::GetWindowDrawList()->AddRect(
+                            win_min - (style.FramePadding / 2.0f),
+                            win_max + (style.FramePadding / 2.0f),
+                            ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_Text]), 3.0f,
+                            ImDrawFlags_RoundCornersAll, 2.0f);
+                    }
+
                     if (ImGui::BeginChild(child_index.getUUID(), {box_width, 100.0f}, true,
-                                          ImGuiWindowFlags_ChildWindow |
-                                              ImGuiWindowFlags_NoDecoration)) {
+                                          window_flags)) {
                         ImVec2 pos       = ImGui::GetCursorScreenPos() + style.WindowPadding;
                         ImVec2 icon_size = ImVec2(box_width - style.WindowPadding.x * 2.0f,
                                                   box_width - style.WindowPadding.x * 2.0f);
@@ -219,9 +200,10 @@ namespace Toolbox::UI {
                                         break;
                                     }
                                 } else {
-                                    if (is_left_click && !is_left_click_release) {
+                                    if ((is_left_click && !is_left_click_release) ||
+                                        (is_right_click && !is_right_click_release)) {
                                         m_is_renaming = false;
-                                        actionLeftClickIndex(view_index, child_index, is_selected);
+                                        actionSelectIndex(view_index, child_index, is_selected);
                                     } else if (is_left_click_release || is_right_click_release) {
                                         actionClearRequestExcIndex(view_index, child_index,
                                                                    is_left_click_release);
@@ -242,6 +224,41 @@ namespace Toolbox::UI {
                 if (!any_items_hovered && (is_left_click_release || is_right_click_release)) {
                     actionClearRequestExcIndex(view_index, ModelIndex(), is_left_click_release);
                     m_is_renaming = false;
+                }
+
+                if (any_items_hovered && is_left_drag && m_selected_indices.size() > 0 &&
+                    ImLengthSqr(mouse_pos - m_last_reg_mouse_pos) > 10.0f) {
+                    if (DragDropManager::instance().getCurrentDragAction() == nullptr) {
+                        RefPtr<DragAction> action = DragDropManager::instance().createDragAction(
+                            getUUID(), std::move(buildFolderViewMimeData()));
+                        if (action) {
+                            action->setHotSpot(mouse_pos);
+                            action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {
+                                std::string urls = action->getPayload().get_urls().value_or("");
+                                if (urls.empty()) {
+                                    return;
+                                }
+
+                                ImGuiStyle &style = ImGui::GetStyle();
+
+                                size_t num_files       = std::count(urls.begin(), urls.end(), '\n');
+                                std::string file_count = std::format("{}", num_files);
+                                ImVec2 text_size       = ImGui::CalcTextSize(file_count.c_str());
+
+                                ImDrawList *draw_list = ImGui::GetWindowDrawList();
+                                ImVec2 center         = pos + (size / 2.0f);
+
+                                ImGui::DrawSquare((size / 2.0f), size.x / 5.0f, IM_COL32_WHITE,
+                                                  ImGui::ColorConvertFloat4ToU32(
+                                                      style.Colors[ImGuiCol_HeaderActive]),
+                                                  1.0f);
+
+                                draw_list->AddText(pos + (size / 2.0f) - (text_size / 2.0f),
+                                                   IM_COL32_WHITE, file_count.c_str(),
+                                                   file_count.c_str() + file_count.size());
+                            });
+                        }
+                    }
                 }
 
                 ImVec2 center = ImGui::GetMainViewport()->GetCenter();
@@ -595,8 +612,8 @@ namespace Toolbox::UI {
         }
     }
 
-    void ProjectViewWindow::actionLeftClickIndex(const ModelIndex &view_index,
-                                                 const ModelIndex &child_index, bool is_selected) {
+    void ProjectViewWindow::actionSelectIndex(const ModelIndex &view_index,
+                                              const ModelIndex &child_index, bool is_selected) {
         if (m_did_drag_drop) {
             return;
         }
@@ -606,11 +623,10 @@ namespace Toolbox::UI {
             if (is_selected) {
                 m_selected_indices.erase(std::remove(m_selected_indices.begin(),
                                                      m_selected_indices.end(), source_child_index));
-                m_last_selected_index = ModelIndex();
             } else {
                 m_selected_indices.push_back(source_child_index);
-                m_last_selected_index = source_child_index;
             }
+            m_last_selected_index = source_child_index;
         } else {
             if (Input::GetKey(KeyCode::KEY_LEFTSHIFT) || Input::GetKey(KeyCode::KEY_RIGHTSHIFT)) {
                 m_selected_indices.clear();
@@ -633,11 +649,17 @@ namespace Toolbox::UI {
                     m_selected_indices.push_back(source_child_index);
                 }
             } else {
-                if (m_selected_indices.size() < 2) {
+                if (is_selected) {
+                    if (m_selected_indices.size() < 2) {
+                        m_selected_indices.clear();
+                        m_selected_indices.push_back(source_child_index);
+                    }
+                    m_last_selected_index = source_child_index;
+                } else {
                     m_selected_indices.clear();
+                    m_selected_indices.push_back(source_child_index);
+                    m_last_selected_index = source_child_index;
                 }
-                m_selected_indices.push_back(source_child_index);
-                m_last_selected_index = source_child_index;
             }
         }
     }
@@ -658,12 +680,14 @@ namespace Toolbox::UI {
         }
 
         if (is_left_button) {
-            m_selected_indices.clear();
-            m_last_selected_index = ModelIndex();
-            if (m_view_proxy.validateIndex(child_index)) {
-                ModelIndex source_index = m_view_proxy.toSourceIndex(child_index);
-                m_selected_indices.push_back(source_index);
-                m_last_selected_index = source_index;
+            if (m_selected_indices.size() > 1) {
+                m_selected_indices.clear();
+                m_last_selected_index = ModelIndex();
+                if (m_view_proxy.validateIndex(child_index)) {
+                    ModelIndex source_index = m_view_proxy.toSourceIndex(child_index);
+                    m_selected_indices.push_back(source_index);
+                    m_last_selected_index = source_index;
+                }
             }
         } else {
             if (!m_view_proxy.validateIndex(child_index)) {
@@ -671,6 +695,7 @@ namespace Toolbox::UI {
                 m_last_selected_index = ModelIndex();
             }
             m_selected_indices_ctx = m_selected_indices;
+            m_last_selected_index  = ModelIndex();
         }
     }
 
