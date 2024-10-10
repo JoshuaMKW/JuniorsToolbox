@@ -10,6 +10,7 @@ namespace Toolbox::UI {
 
     class DragAction {
         friend class DragDropManager;
+        friend class DragEvent;
 
     protected:
         DragAction() = default;
@@ -27,6 +28,13 @@ namespace Toolbox::UI {
             }
         }
 
+        struct DropState {
+            bool m_valid_target;
+            DropType m_pending_action;
+        };
+
+        const DropState &getDropState() const { return m_drop_state; }
+
         [[nodiscard]] const ImVec2 &getHotSpot() const { return m_hot_spot; }
 
         [[nodiscard]] const MimeData &getPayload() const { return m_mime_data; }
@@ -42,9 +50,13 @@ namespace Toolbox::UI {
         void setTargetUUID(const UUID64 &uuid) { m_target_uuid = uuid; }
         void setSupportedDropTypes(DropTypes types) { m_supported_drop_types = types; }
 
+    protected:
+        void setDropState(DropState &&state) { m_drop_state = std::move(state); }
+
     private:
         ImVec2 m_hot_spot;
         render_fn m_render;
+        DropState m_drop_state;
 
         MimeData m_mime_data;
         DropType m_default_drop_type     = DropType::ACTION_MOVE;

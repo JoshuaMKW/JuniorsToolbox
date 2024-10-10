@@ -464,6 +464,8 @@ namespace Toolbox {
                     const ImVec2 size = {96, 96};
                     const ImVec2 pos  = {hotspot.x - size.x / 2.0f, hotspot.y - size.y / 1.1f};
 
+                    ImGuiStyle &style = ImGui::GetStyle();
+
                     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
                     // ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 5.0f);
                     ImGui::PushStyleColor(ImGuiCol_WindowBg,
@@ -475,6 +477,19 @@ namespace Toolbox {
                     if (ImGui::Begin("###Drag Icon", nullptr,
                                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs)) {
                         action->render(size);
+
+                        ImVec2 status_size = {16, 16};
+                        ImGui::SetCursorScreenPos(pos + size - status_size);
+
+                        ImGui::DrawSquare(
+                            pos + size - (status_size / 2), status_size.x, IM_COL32_WHITE,
+                            ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_HeaderActive]));
+
+                        const DragAction::DropState &state = action->getDropState();
+                        if (state.m_valid_target) {
+
+                        } else {
+                        }
 
                         if (ImGuiWindow *win = ImGui::GetCurrentWindow()) {
                             if (win->Viewport != ImGui::GetMainViewport()) {

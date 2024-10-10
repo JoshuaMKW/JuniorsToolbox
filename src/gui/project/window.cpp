@@ -20,6 +20,8 @@ namespace Toolbox::UI {
         renderProjectFolderView();
         renderProjectFolderButton();
         renderProjectFileButton();
+
+        m_did_drag_drop = DragDropManager::instance().getCurrentDragAction() != nullptr;
     }
 
     void ProjectViewWindow::renderProjectTreeView() {
@@ -46,8 +48,9 @@ namespace Toolbox::UI {
             mouse_pos.y = mouse_y;
         }
 
-        bool is_left_click = Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
-        bool is_left_drag  = Input::GetMouseButton(MouseButton::BUTTON_LEFT);
+        bool is_left_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
+        bool is_left_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_LEFT);
+        bool is_left_drag          = Input::GetMouseButton(MouseButton::BUTTON_LEFT);
 
         if (!is_left_drag) {
             m_last_reg_mouse_pos = mouse_pos;
@@ -55,6 +58,7 @@ namespace Toolbox::UI {
 
         bool is_double_left_click = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
         bool is_right_click       = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
+        bool is_right_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_RIGHT);
 
         if (ImGui::BeginChild("Folder View", {0, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
@@ -102,11 +106,39 @@ namespace Toolbox::UI {
 
                         if (is_left_drag && ImLengthSqr(mouse_pos - m_last_reg_mouse_pos) > 10.0f) {
                             if (DragDropManager::instance().getCurrentDragAction() == nullptr) {
-                                RefPtr<DragAction> action = DragDropManager::instance().createDragAction(
-                                    getUUID(), buildFolderViewMimeData());
+                                RefPtr<DragAction> action =
+                                    DragDropManager::instance().createDragAction(
+                                        getUUID(), std::move(buildFolderViewMimeData()));
                                 if (action) {
-                                    // action->setHotspot()
-                                    // action->setImage()
+                                    action->setHotSpot(mouse_pos);
+                                    action->setRender([action](const ImVec2 &pos,
+                                                               const ImVec2 &size) {
+                                        std::string urls =
+                                            action->getPayload().get_urls().value_or("");
+                                        if (urls.empty()) {
+                                            return;
+                                        }
+
+                                        ImGuiStyle &style = ImGui::GetStyle();
+
+                                        size_t num_files =
+                                            std::count(urls.begin(), urls.end(), '\n');
+                                        std::string file_count = std::format("{}", num_files);
+                                        ImVec2 text_size = ImGui::CalcTextSize(file_count.c_str());
+
+                                        ImDrawList *draw_list = ImGui::GetWindowDrawList();
+                                        ImVec2 center         = pos + (size / 2.0f);
+
+                                        ImGui::DrawSquare((size / 2.0f), size.x / 5.0f,
+                                                          IM_COL32_WHITE,
+                                                          ImGui::ColorConvertFloat4ToU32(
+                                                              style.Colors[ImGuiCol_HeaderActive]),
+                                                          1.0f);
+
+                                        draw_list->AddText(pos + (size / 2.0f) - (text_size / 2.0f),
+                                                           IM_COL32_WHITE, file_count.c_str(),
+                                                           file_count.c_str() + file_count.size());
+                                    });
                                 }
                             }
                         }
@@ -186,9 +218,14 @@ namespace Toolbox::UI {
                                         ImGui::PopStyleColor(1);
                                         break;
                                     }
-                                } else if (is_left_click) {
-                                    m_is_renaming = false;
-                                    actionLeftClickIndex(view_index, child_index, is_selected);
+                                } else {
+                                    if (is_left_click && !is_left_click_release) {
+                                        m_is_renaming = false;
+                                        actionLeftClickIndex(view_index, child_index, is_selected);
+                                    } else if (is_left_click_release || is_right_click_release) {
+                                        actionClearRequestExcIndex(view_index, child_index,
+                                                                   is_left_click_release);
+                                    }
                                 }
                             }
                         }
@@ -200,6 +237,11 @@ namespace Toolbox::UI {
                     if ((i + 1) % x_count != 0) {
                         ImGui::SameLine();
                     }
+                }
+
+                if (!any_items_hovered && (is_left_click_release || is_right_click_release)) {
+                    actionClearRequestExcIndex(view_index, ModelIndex(), is_left_click_release);
+                    m_is_renaming = false;
                 }
 
                 ImVec2 center = ImGui::GetMainViewport()->GetCenter();
@@ -235,11 +277,6 @@ namespace Toolbox::UI {
                     }
                     ImGui::EndPopup();
                 } else {
-                    // Clearing the selection
-                    if (!any_items_hovered && ImGui::IsMouseClicked(0)) {
-                        m_selected_indices.clear();
-                        m_is_renaming = false;
-                    }
                     // Delete stuff
                     if (m_delete_requested) {
                         ImGui::OpenPopup("Delete?");
@@ -455,11 +492,11 @@ namespace Toolbox::UI {
             });
     }
 
-    MimeData &&ProjectViewWindow::buildFolderViewMimeData() {
-        MimeData &&result = MimeData();
+    MimeData ProjectViewWindow::buildFolderViewMimeData() const {
+        MimeData result;
 
         std::string paths;
-        for (const ModelIndex &index : m_selected_indices_ctx) {
+        for (const ModelIndex &index : m_selected_indices) {
             fs_path path = m_file_system_model->getPath(index);
 #ifdef TOOLBOX_PLATFORM_WINDOWS
             paths += std::format("file:///{}\n", path.string());
@@ -469,7 +506,7 @@ namespace Toolbox::UI {
         }
 
         result.set_urls(paths);
-        return std::move(result);
+        return result;
     }
 
     void ProjectViewWindow::actionDeleteIndexes(std::vector<ModelIndex> &indices) {
@@ -560,6 +597,10 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::actionLeftClickIndex(const ModelIndex &view_index,
                                                  const ModelIndex &child_index, bool is_selected) {
+        if (m_did_drag_drop) {
+            return;
+        }
+
         ModelIndex source_child_index = m_view_proxy.toSourceIndex(child_index);
         if (Input::GetKey(KeyCode::KEY_LEFTCONTROL) || Input::GetKey(KeyCode::KEY_RIGHTCONTROL)) {
             if (is_selected) {
@@ -571,8 +612,8 @@ namespace Toolbox::UI {
                 m_last_selected_index = source_child_index;
             }
         } else {
-            m_selected_indices.clear();
             if (Input::GetKey(KeyCode::KEY_LEFTSHIFT) || Input::GetKey(KeyCode::KEY_RIGHTSHIFT)) {
+                m_selected_indices.clear();
                 if (m_file_system_model->validateIndex(m_last_selected_index)) {
                     int64_t this_row = m_view_proxy.getRow(child_index);
                     int64_t last_row =
@@ -592,9 +633,44 @@ namespace Toolbox::UI {
                     m_selected_indices.push_back(source_child_index);
                 }
             } else {
+                if (m_selected_indices.size() < 2) {
+                    m_selected_indices.clear();
+                }
                 m_selected_indices.push_back(source_child_index);
                 m_last_selected_index = source_child_index;
             }
+        }
+    }
+
+    void ProjectViewWindow::actionClearRequestExcIndex(const ModelIndex &view_index,
+                                                       const ModelIndex &child_index,
+                                                       bool is_left_button) {
+        if (m_did_drag_drop) {
+            return;
+        }
+
+        if (Input::GetKey(KeyCode::KEY_LEFTCONTROL) || Input::GetKey(KeyCode::KEY_RIGHTCONTROL)) {
+            return;
+        }
+
+        if (Input::GetKey(KeyCode::KEY_LEFTSHIFT) || Input::GetKey(KeyCode::KEY_RIGHTSHIFT)) {
+            return;
+        }
+
+        if (is_left_button) {
+            m_selected_indices.clear();
+            m_last_selected_index = ModelIndex();
+            if (m_view_proxy.validateIndex(child_index)) {
+                ModelIndex source_index = m_view_proxy.toSourceIndex(child_index);
+                m_selected_indices.push_back(source_index);
+                m_last_selected_index = source_index;
+            }
+        } else {
+            if (!m_view_proxy.validateIndex(child_index)) {
+                m_selected_indices.clear();
+                m_last_selected_index = ModelIndex();
+            }
+            m_selected_indices_ctx = m_selected_indices;
         }
     }
 

@@ -23,6 +23,16 @@ namespace Toolbox::UI {
         [[nodiscard]] RefPtr<DragAction> getDragAction() const noexcept { return m_drag_action; }
         [[nodiscard]] UUID64 getSourceId() const noexcept { return m_drag_action->getSourceUUID(); }
 
+        void accept() override {
+            BaseEvent::accept();
+            m_drag_action->m_drop_state.m_valid_target = true;
+        }
+
+        void ignore() override {
+            BaseEvent::ignore();
+            m_drag_action->m_drop_state.m_valid_target = false;
+        }
+
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
         DragEvent &operator=(const DragEvent &)     = default;

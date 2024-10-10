@@ -91,7 +91,7 @@ namespace Toolbox::UI {
         void onDropEvent(RefPtr<DropEvent> ev) override;
 
         void buildContextMenu();
-        MimeData &&buildFolderViewMimeData();
+        MimeData buildFolderViewMimeData() const;
 
         // Selection actions
         void actionDeleteIndexes(std::vector<ModelIndex> &indices);
@@ -102,6 +102,8 @@ namespace Toolbox::UI {
 
         void actionLeftClickIndex(const ModelIndex &view_index, const ModelIndex &child_index,
                                   bool is_selected);
+        void actionClearRequestExcIndex(const ModelIndex &view_index,
+                                        const ModelIndex &child_index, bool is_left_button);
 
         bool actionOpenScene(const ModelIndex &index);
         bool actionOpenPad(const ModelIndex &index);
@@ -133,6 +135,8 @@ namespace Toolbox::UI {
 
         bool m_delete_without_request = false;
         bool m_delete_requested       = false;
+
+        bool m_did_drag_drop = false;
 
         ImVec2 m_last_reg_mouse_pos;
     };
