@@ -221,18 +221,20 @@ namespace Toolbox::UI {
 
         // Establish window constraints
         if (window) {
-            if (window->Size != m_prev_size) {
+            if (window->Size != m_prev_size && m_is_resized) {
                 if (m_next_size.x >= 0.0f && m_next_size.y >= 0.0f) {
                     GUIApplication::instance().dispatchEvent<WindowEvent, true>(
                         getUUID(), EVENT_WINDOW_RESIZE, window->Size);
                 }
                 ImGui::SetWindowSize(window, m_prev_size, ImGuiCond_Always);
+                m_is_resized = false;
             }
 
-            if (window->Pos != m_prev_pos) {
+            if (window->Pos != m_prev_pos && m_is_repositioned) {
                 GUIApplication::instance().dispatchEvent<WindowEvent, true>(
                     getUUID(), EVENT_WINDOW_MOVE, window->Pos);
                 ImGui::SetWindowPos(window, m_prev_pos, ImGuiCond_Always);
+                m_is_repositioned = false;
             }
         }
 
