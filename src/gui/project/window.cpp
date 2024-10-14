@@ -234,14 +234,15 @@ namespace Toolbox::UI {
                         if (action) {
                             action->setHotSpot(mouse_pos);
                             action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {
-                                std::string urls = action->getPayload().get_urls().value_or("");
-                                if (urls.empty()) {
+                                auto urls_maybe = action->getPayload().get_urls();
+                                if (!urls_maybe) {
                                     return;
                                 }
+                                std::vector<std::string> urls = urls_maybe.value();
 
                                 ImGuiStyle &style = ImGui::GetStyle();
 
-                                size_t num_files       = std::count(urls.begin(), urls.end(), '\n');
+                                size_t num_files       = urls.size();
                                 std::string file_count = std::format("{}", num_files);
                                 ImVec2 text_size       = ImGui::CalcTextSize(file_count.c_str());
 
@@ -500,14 +501,9 @@ namespace Toolbox::UI {
     MimeData ProjectViewWindow::buildFolderViewMimeData() const {
         MimeData result;
 
-        std::string paths;
+        std::vector<std::string> paths;
         for (const ModelIndex &index : m_selected_indices) {
-            fs_path path = m_file_system_model->getPath(index);
-#ifdef TOOLBOX_PLATFORM_WINDOWS
-            paths += std::format("file:///{}\n", path.string());
-#elif defined(TOOLBOX_PLATFORM_LINUX)
-            paths += std::format("file://{}\n", path.string());
-#endif
+            paths.push_back(m_file_system_model->getPath(index));
         }
 
         result.set_urls(paths);
@@ -549,7 +545,7 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::actionPasteIntoIndex(const ModelIndex &index,
                                                  const std::vector<fs_path> &paths) {
-        for (fs_path &src_path : paths) {
+        for (const fs_path &src_path : paths) {
             m_file_system_model->copy(src_path, index,
                                       src_path.filename().string());
         }
