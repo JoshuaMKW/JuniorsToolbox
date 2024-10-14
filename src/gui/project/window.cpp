@@ -282,7 +282,8 @@ namespace Toolbox::UI {
             TOOLBOX_ERROR("Passed mime data did not represent files!");
             return;
         }
-        std::vector<fs_path> paths(urls.value().size());
+        std::vector<fs_path> paths;
+        paths.reserve(urls.value().size());
         for (auto &url : urls.value()) {
             paths.push_back(url);
         }
