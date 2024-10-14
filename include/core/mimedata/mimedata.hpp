@@ -60,7 +60,7 @@ namespace Toolbox {
         void set_text(std::string_view data);
 
         [[nodiscard]] std::optional<std::vector<std::string>> get_urls() const;
-        void set_urls(std::vector<std::string> data);
+        void set_urls(const std::vector<std::string> &data);
 
         void clear();
 
@@ -74,7 +74,7 @@ namespace Toolbox {
             return *this;
         }
 
-        static bool isMimeTarget(std::string target) {
+        static bool isMimeTarget(const std::string &target) {
             return target.starts_with("image/") || target.starts_with("application/") ||
                    target.starts_with("text/");
         }

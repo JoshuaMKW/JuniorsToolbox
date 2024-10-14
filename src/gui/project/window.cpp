@@ -452,7 +452,7 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::actionPasteIntoIndex(const ModelIndex &index,
                                                  const std::vector<fs_path> &paths) {
-        for (fs_path src_path : paths) {
+        for (fs_path &src_path : paths) {
             auto src_path_str = src_path.string();
             m_file_system_model->copy(src_path_str, index,
                                       fs_path(src_path_str).filename().string());

@@ -129,7 +129,7 @@ namespace Toolbox {
         return result;
     }
 
-    void MimeData::set_urls(std::vector<std::string> data){
+    void MimeData::set_urls(const std::vector<std::string> &data){
         std::string url_data = joinStrings(data, "\r\n");
         Buffer _tmp;
         _tmp.alloc(url_data.size() + 1);
