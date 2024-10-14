@@ -41,7 +41,7 @@ namespace Toolbox {
 
         Result<std::string, ClipboardError> getText() const;
         Result<void, ClipboardError> setText(const std::string &text);
-        Result<MimeData, ClipboardError> getContent() const;\
+        Result<MimeData, ClipboardError> getContent() const;
         Result<std::vector<fs_path>, ClipboardError> getFiles() const;
         Result<void, ClipboardError> setContent(const MimeData &mimedata);
 
