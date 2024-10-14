@@ -33,6 +33,7 @@ namespace Toolbox::UI {
         if (size == getSize()) {
             return;
         }
+        m_is_resized = true;
         GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_RESIZE,
                                                                     size);
     }
@@ -40,6 +41,7 @@ namespace Toolbox::UI {
         if (pos == getPos()) {
             return;
         }
+        m_is_repositioned = true;
         GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_MOVE,
                                                                     pos);
     }
