@@ -503,7 +503,7 @@ namespace Toolbox::UI {
 
         std::vector<std::string> paths;
         for (const ModelIndex &index : m_selected_indices) {
-            paths.push_back(m_file_system_model->getPath(index));
+            paths.push_back(m_file_system_model->getPath(index).string());
         }
 
         result.set_urls(paths);

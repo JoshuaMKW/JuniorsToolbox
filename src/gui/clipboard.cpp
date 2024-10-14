@@ -54,96 +54,6 @@ namespace Toolbox {
         return types;
     }
 
-    Result<std::string, ClipboardError> SystemClipboard::getText() const {
-        if (!OpenClipboard(nullptr)) {
-            return make_clipboard_error<std::string>("Failed to open the clipboard!");
-        }
-
-        HANDLE clipboard_data = GetClipboardData(CF_TEXT);
-        if (!clipboard_data) {
-            return make_clipboard_error<std::string>("Failed to retrieve the data handle!");
-        }
-
-        const char *text_data = static_cast<const char *>(GlobalLock(clipboard_data));
-        if (!text_data) {
-            return make_clipboard_error<std::string>(
-                "Failed to retrieve the buffer from the handle!");
-        }
-
-        std::string result = text_data;
-
-        if (!GlobalUnlock(clipboard_data)) {
-            return make_clipboard_error<std::string>("Failed to unlock the data handle!");
-        }
-
-        if (!CloseClipboard()) {
-            return make_clipboard_error<std::string>("Failed to close the clipboard!");
-        }
-
-        return result;
-    }
-    // Assume the clipboard contains file paths and return them in a
-    // vector. Returns a clipboardError if the clipboard doesn't have
-    // files in it.
-    Result<std::vector<fs_path>, ClipboardError> SystemClipboard::getFiles() const {
-        // Get the file list target.
-        auto data = getContentType("text/uri-list");
-        // If the clipboard doesn't have a file list, propogate the
-        // error.
-        if (!data) {
-            return std::unexpected<ClipboardError>(data.error());
-        }
-        auto lines = data.value().get_urls();
-        // Allocate a vector of paths, and convert the vector of
-        // strings to it. When doing so, strip off the "file://"
-        // prefix.
-        std::vector<fs_path> result((int)lines.size());
-        for (int i = 0; i < lines.size(); ++i) {
-            if (line.starts_with("file:/")) {
-                if (src_path_str.starts_with("file:///")) {
-                    result[i] = src_path_str.substr(8);
-                } else {
-                    result[i] = src_path_str.substr(7);
-                }
-            } else {
-                return make_clipboard_error<std::vector<fs_path>>("Can't copy non file uri");
-            }
-        }
-        return result;
-    }
-
-    Result<void, ClipboardError> SystemClipboard::setText(const std::string &text) {
-        if (!OpenClipboard(nullptr)) {
-            return make_clipboard_error<void>("Failed to open the clipboard!");
-        }
-
-        if (!EmptyClipboard()) {
-            return make_clipboard_error<void>("Failed to clear the clipboard!");
-        }
-
-        HANDLE data_handle = GlobalAlloc(GMEM_DDESHARE, text.size() + 1);
-        if (!data_handle) {
-            return make_clipboard_error<void>("Failed to alloc new data handle!");
-        }
-
-        char *data_buffer = static_cast<char *>(GlobalLock(data_handle));
-        if (!data_buffer) {
-            return make_clipboard_error<void>("Failed to retrieve the buffer from the handle!");
-        }
-
-        strncpy_s(data_buffer, text.size() + 1, text.c_str(), text.size() + 1);
-
-        if (!GlobalUnlock(data_handle)) {
-            return make_clipboard_error<void>("Failed to unlock the data handle!");
-        }
-
-        SetClipboardData(CF_TEXT, data_handle);
-
-        if (!CloseClipboard()) {
-            return make_clipboard_error<void>("Failed to close the clipboard!");
-        }
-        return {};
-    }
 
     Result<MimeData, ClipboardError>
     getContentType(std::unordered_map<std::string, UINT> &mime_to_format,
@@ -197,15 +107,13 @@ namespace Toolbox {
         if (format == CF_HDROP) {
             HDROP hdrop    = static_cast<HDROP>(data_handle);
             UINT num_files = DragQueryFile(hdrop, 0xFFFFFFFF, nullptr, 0);
-            std::string uri_list;
+            std::vector<std::string> uri_list;
+            uri_list.reserve(num_files);
             for (UINT i = 0; i < num_files; ++i) {
                 UINT size = DragQueryFile(hdrop, i, nullptr, 0);
                 std::string file(size, '\0');
                 DragQueryFile(hdrop, i, file.data(), size + 1);
-                uri_list += std::format("file:///{}", file);
-                if (i != num_files - 1) {
-                    uri_list += "\r\n";
-                }
+                uri_list.push_back(file);
             }
 
             if (!GlobalUnlock(clipboard_data)) {
@@ -240,7 +148,98 @@ namespace Toolbox {
 
         return make_clipboard_error<MimeData>("Unimplemented MIME type!");
     }
-    Result<MimeData, ClipboardError> SystemClipboard::getContent(const std::string &type) const {
+    Result<std::string, ClipboardError> SystemClipboard::getText() const {
+        if (!OpenClipboard(nullptr)) {
+            return make_clipboard_error<std::string>("Failed to open the clipboard!");
+        }
+
+        HANDLE clipboard_data = GetClipboardData(CF_TEXT);
+        if (!clipboard_data) {
+            return make_clipboard_error<std::string>("Failed to retrieve the data handle!");
+        }
+
+        const char *text_data = static_cast<const char *>(GlobalLock(clipboard_data));
+        if (!text_data) {
+            return make_clipboard_error<std::string>(
+                "Failed to retrieve the buffer from the handle!");
+        }
+
+        std::string result = text_data;
+
+        if (!GlobalUnlock(clipboard_data)) {
+            return make_clipboard_error<std::string>("Failed to unlock the data handle!");
+        }
+
+        if (!CloseClipboard()) {
+            return make_clipboard_error<std::string>("Failed to close the clipboard!");
+        }
+
+        return result;
+    }
+    // Assume the clipboard contains file paths and return them in a
+    // vector. Returns a clipboardError if the clipboard doesn't have
+    // files in it.
+    Result<std::vector<fs_path>, ClipboardError> SystemClipboard::getFiles() const {
+        // Get the file list target.
+        auto data = getContentType(m_mime_to_format, "text/uri-list");
+        // If the clipboard doesn't have a file list, propogate the
+        // error.
+        if (!data) {
+            return std::unexpected<ClipboardError>(data.error());
+        }
+        auto lines = data.value().get_urls().value();
+        // Allocate a vector of paths, and convert the vector of
+        // strings to it. When doing so, strip off the "file://"
+        // prefix.
+        std::vector<fs_path> result;
+        result.reserve((int)lines.size());
+        for (auto &line : lines) {
+            if (line.starts_with("file:/")) {
+                if (line.starts_with("file:///")) {
+                    result.push_back(line.substr(8));
+                } else {
+                    result.push_back(line.substr(7));
+                }
+            } else {
+                return make_clipboard_error<std::vector<fs_path>>("Can't copy non file uri");
+            }
+        }
+        return result;
+    }
+
+    Result<void, ClipboardError> SystemClipboard::setText(const std::string &text) {
+        if (!OpenClipboard(nullptr)) {
+            return make_clipboard_error<void>("Failed to open the clipboard!");
+        }
+
+        if (!EmptyClipboard()) {
+            return make_clipboard_error<void>("Failed to clear the clipboard!");
+        }
+
+        HANDLE data_handle = GlobalAlloc(GMEM_DDESHARE, text.size() + 1);
+        if (!data_handle) {
+            return make_clipboard_error<void>("Failed to alloc new data handle!");
+        }
+
+        char *data_buffer = static_cast<char *>(GlobalLock(data_handle));
+        if (!data_buffer) {
+            return make_clipboard_error<void>("Failed to retrieve the buffer from the handle!");
+        }
+
+        strncpy_s(data_buffer, text.size() + 1, text.c_str(), text.size() + 1);
+
+        if (!GlobalUnlock(data_handle)) {
+            return make_clipboard_error<void>("Failed to unlock the data handle!");
+        }
+
+        SetClipboardData(CF_TEXT, data_handle);
+
+        if (!CloseClipboard()) {
+            return make_clipboard_error<void>("Failed to close the clipboard!");
+        }
+        return {};
+    }
+    Result<MimeData, ClipboardError> SystemClipboard::getContent() const {
         // Figure out all possible formats the content can be in.
         auto formats = getAvailableContentFormats();
         // If that didn't work, propogate the error.
@@ -251,7 +250,7 @@ namespace Toolbox {
         MimeData result;
         for (std::string &target : formats.value()) {
             // Get the target of each type.
-            auto data = getContenttype(target, m_mime_to_format);
+            auto data = getContentType(m_mime_to_format, target);
             if (!data) {
                 return std::unexpected<ClipboardError>(data.error());
             }
