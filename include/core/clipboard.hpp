@@ -72,8 +72,10 @@ namespace Toolbox {
         MimeData m_clipboard_contents;
 #endif
     };
+#ifdef TOOLBOX_PLATFORM_WINDOWS
     Result<MimeData, ClipboardError>
     getContentType(std::unordered_map<std::string, UINT> &mime_to_format, const std::string &type);
+#endif
     void hookClipboardIntoGLFW(void);
 
     class DataClipboard {
