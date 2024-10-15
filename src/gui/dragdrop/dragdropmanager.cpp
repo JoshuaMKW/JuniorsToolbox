@@ -15,29 +15,6 @@
 #elif defined(TOOLBOX_PLATFORM_LINUX)
 #endif
 
-static std::vector<std::string_view> splitLines(std::string_view s) {
-    std::vector<std::string_view> result;
-    size_t last_pos         = 0;
-    size_t next_newline_pos = s.find('\n', 0);
-    while (next_newline_pos != std::string::npos) {
-        if (s[next_newline_pos - 1] == '\r') {
-            result.push_back(s.substr(last_pos, next_newline_pos - last_pos - 1));
-        } else {
-            result.push_back(s.substr(last_pos, next_newline_pos - last_pos));
-        }
-        last_pos         = next_newline_pos + 1;
-        next_newline_pos = s.find('\n', last_pos);
-    }
-    if (last_pos < s.size()) {
-        if (s[s.size() - 1] == '\r') {
-            result.push_back(s.substr(last_pos, s.size() - last_pos - 1));
-        } else {
-            result.push_back(s.substr(last_pos));
-        }
-    }
-    return result;
-}
-
 namespace Toolbox::UI {
 
     RefPtr<DragAction> DragDropManager::createDragAction(UUID64 source_uuid, MimeData &&data, bool system_level) {
@@ -59,18 +36,18 @@ namespace Toolbox::UI {
     void DragDropManager::shutdown() { OleUninitialize(); }
 
     Result<void, BaseError> DragDropManager::createSystemDragDropSource(MimeData &&data) {
-        std::string paths = data.get_urls().value_or("");
+        auto maybe_paths = data.get_urls();
+        if (!maybe_paths) {
+            return make_error<void>("DRAG_DROP", "Passed Mimedata did not include urls");
+        }
+        std::vector<std::string> paths = maybe_paths.value();
 
         std::vector<PIDLIST_ABSOLUTE> pidls;
-        std::vector<std::string_view> lines = splitLines(paths);
 
         size_t next_newline_pos = 0;
-        for (const std::string_view &line : lines) {
-            if (line.empty()) {
-                continue;
-            }
+        for (const std::string_view &path : paths) {
 
-            std::wstring wpath = std::wstring(line.begin(), line.end());
+            std::wstring wpath = std::wstring(path.begin(), path.end());
 
             PIDLIST_ABSOLUTE pidl = ILCreateFromPathW(wpath.c_str());
             if (pidl == NULL) {

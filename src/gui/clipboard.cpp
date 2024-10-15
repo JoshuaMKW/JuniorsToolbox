@@ -271,7 +271,9 @@ namespace Toolbox {
             return make_clipboard_error<void>(
                 "Can't set clipboard to mulitple types at once on Windows!");
         }
-        TOOLBOX_ASSERT(formats.size() > 0);
+        if (formats.size() == 0) {
+            return make_clipboard_error<void>("The mimedata set on the clipboard has no formats!");
+        }
         auto type = formats[0];
 
         std::optional<Buffer> result = mimedata.get_data(type);
