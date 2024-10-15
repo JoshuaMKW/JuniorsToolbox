@@ -1,0 +1,67 @@
+{
+    "Key Chest": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightCount": {
+                "Type": "U32",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightCount"
+            },
+            "Model": {
+                "Type": "STRING",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Transform": [
+                      [
+                          0,
+                          0,
+                          0
+                      ],
+                      [
+                          0,
+                          0,
+                          0
+                      ],
+                      [
+                          1,
+                          1,
+                          1
+                      ]
+                  ],
+                  "Character": "KeyFollow キャラ",
+                  "LightCount": 0,
+                  "LightArray": {
+                      "ID": 0,
+                      "Name": "LightX"
+                  },
+                  "Model": "key_follow"
+              }
+        }
+    }
+}

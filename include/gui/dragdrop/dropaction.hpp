@@ -14,6 +14,7 @@ namespace Toolbox::UI {
         // Windows only
         ACTION_TARGET_MOVE = 0x8002,
     };
+    TOOLBOX_BITWISE_ENUM(DropType);
 
     using DropTypes = DropType;
 
