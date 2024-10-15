@@ -41,6 +41,7 @@ namespace Toolbox::UI {
 #ifdef TOOLBOX_PLATFORM_WINDOWS
         IDataObject *m_data_object = nullptr;
         IDropSource *m_drop_source = nullptr;
+        std::thread m_drag_thread;
 #elif defined(TOOLBOX_PLATFORM_LINUX)
 #endif
 
