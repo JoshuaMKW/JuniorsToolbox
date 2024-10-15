@@ -20,6 +20,9 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
+#include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
 #endif
 
 namespace Toolbox::Platform {
@@ -326,7 +329,7 @@ namespace Toolbox::Platform {
         return true;
     }
     std::string GetWindowTitle(LowWindow window) {
-        Display* display = XOpenDisplay(0);
+        Display* display = getGLFWDisplay();
         XTextProperty title;
         XGetWMName(display, (Window)window, &title);
         char** stringList;
@@ -345,7 +348,7 @@ namespace Toolbox::Platform {
         return false;
     }
     bool ForceWindowToFront(LowWindow window) {
-        Display* display = XOpenDisplay(0);
+        Display* display = getGLFWDisplay();
         return XRaiseWindow(display, (Window)window);
     }
     bool ForceWindowToFront(LowWindow window, LowWindow target) {
@@ -360,7 +363,7 @@ namespace Toolbox::Platform {
 
     bool GetWindowClientRect(LowWindow window, int &x, int &y, int &width, int &height) {
         XWindowAttributes attribs;
-        Display* display = XOpenDisplay(0);
+        Display* display = getGLFWDisplay();
         if (!XGetWindowAttributes(display, (Window)window, &attribs)) {
             return false;
         }
@@ -374,7 +377,7 @@ namespace Toolbox::Platform {
                                 const Atom PIDAtom, const int pid,
                                 std::vector<LowWindow> &result);
     std::vector<LowWindow> FindWindowsOfProcess(const ProcessInformation &process) {
-        Display* display = XOpenDisplay(0);
+        Display* display = getGLFWDisplay();
         Atom PIDAtom = XInternAtom(display, "_NET_WM_PID", True);
 
         if(PIDAtom == None)

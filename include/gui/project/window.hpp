@@ -97,7 +97,7 @@ namespace Toolbox::UI {
         void actionDeleteIndexes(std::vector<ModelIndex> &indices);
         void actionOpenIndexes(const std::vector<ModelIndex> &indices);
         void actionRenameIndex(const ModelIndex &index);
-        void actionPasteIntoIndex(const ModelIndex &index, const MimeData &data);
+        void actionPasteIntoIndex(const ModelIndex &index, const std::vector<fs_path> &data);
         void actionCopyIndexes(const std::vector<ModelIndex> &indices);
 
         void actionSelectIndex(const ModelIndex &view_index, const ModelIndex &child_index,

@@ -6,6 +6,7 @@
 
 #include "core/error.hpp"
 #include "core/mimedata/mimedata.hpp"
+#include "fsystem.hpp"
 #include "tristate.hpp"
 
 namespace Toolbox {
@@ -40,11 +41,15 @@ namespace Toolbox {
 
         Result<std::string, ClipboardError> getText() const;
         Result<void, ClipboardError> setText(const std::string &text);
-        Result<MimeData, ClipboardError> getContent(const std::string &type) const;
-        Result<void, ClipboardError> setContent(const std::string &type, const MimeData &mimedata);
-
+        Result<MimeData, ClipboardError> getContent() const;
+        Result<std::vector<fs_path>, ClipboardError> getFiles() const;
+        Result<void, ClipboardError> setContent(const MimeData &mimedata);
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
+        friend Result<MimeData, ClipboardError>
+        getContentType(std::unordered_map<std::string, UINT> &mime_to_format,
+                       const std::string &type);
+
     protected:
         static UINT FormatForMime(std::string_view mimetype);
         static std::string MimeForFormat(UINT format);
@@ -66,9 +71,12 @@ namespace Toolbox {
         // of names we like to use in other places.
         MimeData m_clipboard_contents;
 #endif
-
     };
-    void hookClipboardIntoGLFW(void) ;
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+    Result<MimeData, ClipboardError>
+    getContentType(std::unordered_map<std::string, UINT> &mime_to_format, const std::string &type);
+#endif
+    void hookClipboardIntoGLFW(void);
 
     class DataClipboard {
     public:

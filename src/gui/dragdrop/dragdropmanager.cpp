@@ -195,18 +195,18 @@ namespace Toolbox::UI {
     };
 
     Result<void, BaseError> DragDropManager::createSystemDragDropSource(MimeData &&data) {
-        std::string paths = data.get_urls().value_or("");
+        auto maybe_paths = data.get_urls();
+        if (!maybe_paths) {
+            return make_error<void>("DRAG_DROP", "Passed Mimedata did not include urls");
+        }
+        std::vector<std::string> paths = maybe_paths.value();
 
         std::vector<PIDLIST_ABSOLUTE> pidls;
-        std::vector<std::string_view> lines = splitLines(paths);
 
         size_t next_newline_pos = 0;
-        for (const std::string_view &line : lines) {
-            if (line.empty()) {
-                continue;
-            }
+        for (const std::string_view &path : paths) {
 
-            std::wstring wpath = std::wstring(line.begin(), line.end());
+            std::wstring wpath = std::wstring(path.begin(), path.end());
 
             PIDLIST_ABSOLUTE pidl = ILCreateFromPathW(wpath.c_str());
             if (pidl == NULL) {

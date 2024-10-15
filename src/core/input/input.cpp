@@ -12,6 +12,8 @@
 #elif defined(TOOLBOX_PLATFORM_LINUX)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
 #else
 #error "Unsupported OS"
 #endif
@@ -181,16 +183,13 @@ namespace Toolbox::Input {
 #ifdef TOOLBOX_PLATFORM_WINDOWS
         SetCursorPos((int)pos_x, (int)pos_y);
 #elif defined(TOOLBOX_PLATFORM_LINUX)
-        Display *display = XOpenDisplay(0);
-        if (display == nullptr)
-            return;
+        Display *display = getGLFWDisplay();
 
         float rel_pos_x = s_mouse_position_x - pos_x;
         float rel_pos_y = s_mouse_position_y - pos_y;
         XWarpPointer(display, 0, 0, 0, 0, 0, 0, rel_pos_x, rel_pos_y);
 
         XFlush(display);
-        XCloseDisplay(display);
 #else
 #error "Unsupported OS"
 #endif
@@ -213,9 +212,7 @@ namespace Toolbox::Input {
 #elif defined(TOOLBOX_PLATFORM_LINUX)
         // TODO: Check that this actually works
 
-        Display *display = XOpenDisplay(0);
-        if (display == nullptr)
-            return;
+        Display *display = getGLFWDisplay();
 
         Window root = DefaultRootWindow(display);
         Window child;

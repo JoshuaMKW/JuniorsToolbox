@@ -72,17 +72,17 @@ namespace Toolbox::UI {
                     }
                 }
 
-                std::string uri_paths;
+                std::vector<std::string> uri_paths;
 
                 HDROP hdrop = (HDROP)GlobalLock(stg_medium.hGlobal);
 
                 if (hdrop) {
                     UINT num_files = DragQueryFile(hdrop, 0xFFFFFFFF, nullptr, 0);
+                    uri_paths.reserve(num_files);
                     for (UINT i = 0; i < num_files; ++i) {
                         TCHAR file_path[MAX_PATH];
                         if (UINT length = DragQueryFile(hdrop, i, file_path, MAX_PATH)) {
-                            uri_paths +=
-                                std::format("file:///{}\n", std::string(file_path, length));
+                            uri_paths.push_back(std::string(file_path, length));
                         }
                     }
                 }
@@ -250,14 +250,15 @@ namespace Toolbox::UI {
             DragDropManager::instance().setSystemAction(false);
 
             action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {
-                std::string urls = action->getPayload().get_urls().value_or("");
-                if (urls.empty()) {
+                auto maybe_urls = action->getPayload().get_urls();
+                if (!maybe_urls) {
                     return;
                 }
+                std::vector<std::string> urls = maybe_urls.value();
 
                 ImGuiStyle &style = ImGui::GetStyle();
 
-                size_t num_files = std::count(urls.begin(), urls.end(), '\n');
+                size_t num_files = urls.size();
                 std::string file_count = std::format("{}", num_files);
                 ImVec2 text_size       = ImGui::CalcTextSize(file_count.c_str());
 
@@ -313,12 +314,12 @@ namespace Toolbox::UI {
             action = DragDropManager::instance().createDragAction(0, std::move(mime_data));
 
             action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {
-                std::string urls = action->getPayload().get_urls().value_or("");
-                if (urls.empty()) {
+                auto maybe_urls = action->getPayload().get_urls();
+                if (!maybe_urls) {
                     return;
                 }
 
-                size_t num_files = std::count(urls.begin(), urls.end(), '\n');
+                size_t num_files = maybe_urls.value().size();
 
                 ImDrawList *draw_list = ImGui::GetBackgroundDrawList();
                 ImVec2 center         = pos + (size / 2.0f);

@@ -234,14 +234,15 @@ namespace Toolbox::UI {
                         if (action) {
                             action->setHotSpot(mouse_pos);
                             action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {
-                                std::string urls = action->getPayload().get_urls().value_or("");
-                                if (urls.empty()) {
+                                auto urls_maybe = action->getPayload().get_urls();
+                                if (!urls_maybe) {
                                     return;
                                 }
+                                std::vector<std::string> urls = urls_maybe.value();
 
                                 ImGuiStyle &style = ImGui::GetStyle();
 
-                                size_t num_files       = std::count(urls.begin(), urls.end(), '\n');
+                                size_t num_files       = urls.size();
                                 std::string file_count = std::format("{}", num_files);
                                 ImVec2 text_size       = ImGui::CalcTextSize(file_count.c_str());
 
@@ -356,31 +357,19 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::onDropEvent(RefPtr<DropEvent> ev) {
-        actionPasteIntoIndex(m_view_index, ev->getMimeData());
+        MimeData data = ev->getMimeData();
+        auto urls     = data.get_urls();
+        if (!urls) {
+            TOOLBOX_ERROR("Passed mime data did not represent files!");
+            return;
+        }
+        std::vector<fs_path> paths;
+        paths.reserve(urls.value().size());
+        for (auto &url : urls.value()) {
+            paths.push_back(url);
+        }
+        actionPasteIntoIndex(m_view_index, paths);
         ev->accept();
-    }
-
-    std::vector<std::string_view> splitLines(std::string_view s) {
-        std::vector<std::string_view> result;
-        size_t last_pos         = 0;
-        size_t next_newline_pos = s.find('\n', 0);
-        while (next_newline_pos != std::string::npos) {
-            if (s[next_newline_pos - 1] == '\r') {
-                result.push_back(s.substr(last_pos, next_newline_pos - last_pos - 1));
-            } else {
-                result.push_back(s.substr(last_pos, next_newline_pos - last_pos));
-            }
-            last_pos         = next_newline_pos + 1;
-            next_newline_pos = s.find('\n', last_pos);
-        }
-        if (last_pos < s.size()) {
-            if (s[s.size() - 1] == '\r') {
-                result.push_back(s.substr(last_pos, s.size() - last_pos - 1));
-            } else {
-                result.push_back(s.substr(last_pos));
-            }
-        }
-        return result;
     }
 
     void ProjectViewWindow::buildContextMenu() {
@@ -492,9 +481,9 @@ namespace Toolbox::UI {
                               std::string("text/uri-list")) == content_types.value().end()) {
                     return;
                 }
+                auto maybe_data = SystemClipboard::instance().getFiles();
 
-                MimeData data =
-                    SystemClipboard::instance().getContent("text/uri-list").value_or(MimeData());
+                std::vector<fs_path> data = maybe_data.value();
 
                 actionPasteIntoIndex(m_view_index, data);
             });
@@ -512,14 +501,9 @@ namespace Toolbox::UI {
     MimeData ProjectViewWindow::buildFolderViewMimeData() const {
         MimeData result;
 
-        std::string paths;
+        std::vector<std::string> paths;
         for (const ModelIndex &index : m_selected_indices) {
-            fs_path path = m_file_system_model->getPath(index);
-#ifdef TOOLBOX_PLATFORM_WINDOWS
-            paths += std::format("file:///{}\n", path.string());
-#elif defined(TOOLBOX_PLATFORM_LINUX)
-            paths += std::format("file://{}\n", path.string());
-#endif
+            paths.push_back(m_file_system_model->getPath(index).string());
         }
 
         result.set_urls(paths);
@@ -559,54 +543,30 @@ namespace Toolbox::UI {
         std::strncpy(m_rename_buffer, file_name.c_str(), IM_ARRAYSIZE(m_rename_buffer));
     }
 
-    void ProjectViewWindow::actionPasteIntoIndex(const ModelIndex &index, const MimeData &data) {
-        std::optional<std::string> text = data.get_urls();
-        if (!text) {
-            TOOLBOX_ERROR("Mime data wouldn't return uri list");
-            return;
-        }
-
-        std::vector<std::string_view> urls = splitLines(text.value());
-        for (std::string_view src_path_str : urls) {
-            if (src_path_str.starts_with("file:/")) {
-#ifdef TOOLBOX_PLATFORM_LINUX
-                src_path_str = src_path_str.substr(7);
-#elif defined TOOLBOX_PLATFORM_WINDOWS
-                if (src_path_str.starts_with("file:///")) {
-                    src_path_str = src_path_str.substr(8);
-                } else {
-                    src_path_str = src_path_str.substr(7);
-                }
-#endif
-            } else {
-                TOOLBOX_ERROR_V("Can't copy non-local uri {}", src_path_str);
-                continue;
-            }
-
-            fs_path src_path = src_path_str;
-            m_file_system_model->copy(src_path, index, src_path.filename().string());
+    void ProjectViewWindow::actionPasteIntoIndex(const ModelIndex &index,
+                                                 const std::vector<fs_path> &paths) {
+        for (const fs_path &src_path : paths) {
+            m_file_system_model->copy(src_path, index,
+                                      src_path.filename().string());
         }
     }
 
     void ProjectViewWindow::actionCopyIndexes(const std::vector<ModelIndex> &indices) {
-        std::string copied_paths;
+
+        std::vector<std::string> copied_paths;
         for (const ModelIndex &index : indices) {
 #ifdef TOOLBOX_PLATFORM_LINUX
-            copied_paths += "file://";
+            const char *prefix = "file://";
 #elif defined TOOLBOX_PLATFORM_WINDOWS
-            copied_paths += "file:///";
+            const char *prefix = "file:///";
 #endif
-            copied_paths += m_file_system_model->getPath(index).string();
-#ifdef TOOLBOX_PLATFORM_LINUX
-            copied_paths += "\r";
-#endif
-            copied_paths += "\n";
+            copied_paths.push_back(prefix + m_file_system_model->getPath(index).string());
         }
 
         MimeData data;
         data.set_urls(copied_paths);
 
-        auto result = SystemClipboard::instance().setContent("text/uri-list", data);
+        auto result = SystemClipboard::instance().setContent(data);
         if (!result) {
             TOOLBOX_ERROR("[PROJECT] Failed to set contents of clipboard");
         }

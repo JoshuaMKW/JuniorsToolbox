@@ -59,8 +59,8 @@ namespace Toolbox {
         [[nodiscard]] std::optional<std::string> get_text() const;
         void set_text(std::string_view data);
 
-        [[nodiscard]] std::optional<std::string> get_urls() const;
-        void set_urls(std::string_view data);
+        [[nodiscard]] std::optional<std::vector<std::string>> get_urls() const;
+        void set_urls(const std::vector<std::string> &data);
 
         void clear();
 
@@ -72,6 +72,11 @@ namespace Toolbox {
         MimeData &operator=(MimeData &&other) {
             m_data_map = std::move(other.m_data_map);
             return *this;
+        }
+
+        static bool isMimeTarget(const std::string &target) {
+            return target.starts_with("image/") || target.starts_with("application/") ||
+                   target.starts_with("text/");
         }
 
     private:
