@@ -6,8 +6,8 @@
 
 #include "core/error.hpp"
 #include "core/mimedata/mimedata.hpp"
-#include "tristate.hpp"
 #include "fsystem.hpp"
+#include "tristate.hpp"
 
 namespace Toolbox {
 

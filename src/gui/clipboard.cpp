@@ -54,10 +54,8 @@ namespace Toolbox {
         return types;
     }
 
-
     Result<MimeData, ClipboardError>
-    getContentType(std::unordered_map<std::string, UINT> &mime_to_format,
-                   const std::string &type) {
+    getContentType(std::unordered_map<std::string, UINT> &mime_to_format, const std::string &type) {
         if (!OpenClipboard(nullptr)) {
             return make_clipboard_error<MimeData>("Failed to open the clipboard!");
         }
@@ -67,7 +65,7 @@ namespace Toolbox {
             format = SystemClipboard::FormatForMime(type);
             if (format == CF_NULL) {
                 mime_to_format[type] = RegisterClipboardFormat(type.c_str());
-                format                 = mime_to_format[type];
+                format               = mime_to_format[type];
             }
         } else {
             format = mime_to_format[type];
@@ -270,7 +268,8 @@ namespace Toolbox {
 
         std::vector<std::string> formats = mimedata.get_all_formats();
         if (formats.size() > 1) {
-            return make_clipboard_error<void>("Can't set clipboard to mulitple types at once on Windows!");
+            return make_clipboard_error<void>(
+                "Can't set clipboard to mulitple types at once on Windows!");
         }
         TOOLBOX_ASSERT(formats.size() > 0);
         auto type = formats[0];
@@ -331,7 +330,7 @@ namespace Toolbox {
                 }
             }
 
-            path_list_ptr[data_buf.size()] = L'\0';
+            path_list_ptr[data_buf.size()]     = L'\0';
             path_list_ptr[data_buf.size() + 1] = L'\0';
         } else if (format == CF_TEXT) {
             wchar_t *path_list_ptr = (wchar_t *)data_buffer;
