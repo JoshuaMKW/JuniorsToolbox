@@ -57,14 +57,14 @@ namespace Toolbox {
 
     Result<MimeData, ClipboardError>
     getContentType(std::unordered_map<std::string, UINT> &mime_to_format,
-                   const std::string &type) const {
+                   const std::string &type) {
         if (!OpenClipboard(nullptr)) {
             return make_clipboard_error<MimeData>("Failed to open the clipboard!");
         }
 
         UINT format = CF_NULL;
         if (mime_to_format.find(type) == mime_to_format.end()) {
-            format = FormatForMime(type);
+            format = SystemClipboard::FormatForMime(type);
             if (format == CF_NULL) {
                 mime_to_format[type] = RegisterClipboardFormat(type.c_str());
                 format                 = mime_to_format[type];
@@ -273,8 +273,9 @@ namespace Toolbox {
             return make_clipboard_error<void>("Can't set clipboard to mulitple types at once on Windows!");
         }
         TOOLBOX_ASSERT(formats.size() > 0);
+        auto type = formats[0];
 
-        std::optional<Buffer> result = mimedata.get_data(formats[0]);
+        std::optional<Buffer> result = mimedata.get_data(type);
         if (!result) {
             return make_clipboard_error<void>(
                 std::format("Failed to find MIME data type \"{}\"", type));
@@ -284,7 +285,7 @@ namespace Toolbox {
 
         UINT format = CF_NULL;
         if (m_mime_to_format.find(type) == m_mime_to_format.end()) {
-            format = FormatForMime(type);
+            format = SystemClipboard::FormatForMime(type);
             if (format == CF_NULL) {
                 m_mime_to_format[type] = RegisterClipboardFormat(type.c_str());
                 format                 = m_mime_to_format[type];
