@@ -45,8 +45,11 @@ namespace Toolbox {
         Result<std::vector<fs_path>, ClipboardError> getFiles() const;
         Result<void, ClipboardError> setContent(const MimeData &mimedata);
 
-
 #ifdef TOOLBOX_PLATFORM_WINDOWS
+        friend Result<MimeData, ClipboardError>
+        getContentType(std::unordered_map<std::string, UINT> &mime_to_format,
+                       const std::string &type);
+
     protected:
         static UINT FormatForMime(std::string_view mimetype);
         static std::string MimeForFormat(UINT format);
@@ -68,9 +71,10 @@ namespace Toolbox {
         // of names we like to use in other places.
         MimeData m_clipboard_contents;
 #endif
-
     };
-    void hookClipboardIntoGLFW(void) ;
+    Result<MimeData, ClipboardError>
+    getContentType(std::unordered_map<std::string, UINT> &mime_to_format, const std::string &type);
+    void hookClipboardIntoGLFW(void);
 
     class DataClipboard {
     public:
