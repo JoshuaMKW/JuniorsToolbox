@@ -58,6 +58,8 @@ file(GLOB TOOLBOX_SRC
     "include/gui/image/*.hpp"
     "src/gui/layer/*.cpp"
     "include/gui/layer/*.hpp"
+    "src/gui/new_item/*.cpp"
+    "include/gui/new_item/*.hpp"
     "src/gui/pad/*.cpp"
     "include/gui/pad/*.hpp"
     "src/gui/project/*.cpp"
