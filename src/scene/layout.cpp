@@ -9,7 +9,7 @@ using namespace Toolbox::UI;
 namespace Toolbox::Scene {
 
     size_t SceneLayoutManager::sceneCount() const {
-        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        RefPtr<GroupSceneObject> root = m_scene_layout.getRoot();
         if (!root) {
             return 0;
         }
@@ -17,7 +17,7 @@ namespace Toolbox::Scene {
     }
 
     size_t SceneLayoutManager::scenarioCount(size_t scene) const {
-        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        RefPtr<GroupSceneObject> root = m_scene_layout.getRoot();
         if (!root) {
             return 0;
         }
@@ -42,13 +42,12 @@ namespace Toolbox::Scene {
                 std::ifstream file(path, std::ios::binary);
                 Deserializer in(file.rdbuf());
 
-                if (&m_scene_layout == nullptr) {
-                    TOOLBOX_INFO("Failed to load from path because m_scene_layout "
-                                 "was never initialized");
-                    return Result<bool, FSError>();
-                }
-
-                m_scene_layout->deserialize(in).or_else([&](const SerialError &error) {
+                // if (&m_scene_layout == nullptr) {
+                //     TOOLBOX_INFO("Failed to load from path because m_scene_layout "
+                //                  "was never initialized");
+                //     return Result<bool, FSError>();
+                // }
+                m_scene_layout.deserialize(in).or_else([&](const SerialError &error) {
                     result = false;
                     LogError(error);
                     return Result<void, SerialError>();
@@ -94,7 +93,7 @@ namespace Toolbox::Scene {
                 std::ofstream file(path, std::ios::binary);
                 Serializer out(file.rdbuf());
 
-                m_scene_layout->serialize(out).or_else([&](const SerialError &error) {
+                m_scene_layout.serialize(out).or_else([&](const SerialError &error) {
                     result = false;
                     LogError(error);
                     return Result<void, SerialError>();
@@ -112,7 +111,7 @@ namespace Toolbox::Scene {
     }
 
     std::string SceneLayoutManager::getFileName(size_t scene, size_t scenario) const {
-        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        RefPtr<GroupSceneObject> root = m_scene_layout.getRoot();
         if (!root) {
             LogError(make_error<std::string>("SCENE_LAYOUT", "stageArc.bin root doesn't exist!")
                          .error());
@@ -162,7 +161,7 @@ namespace Toolbox::Scene {
 
     bool SceneLayoutManager::setFileName(const std::string &filename, size_t scene,
                                          size_t scenario) {
-        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        RefPtr<GroupSceneObject> root = m_scene_layout.getRoot();
         if (!root) {
             LogError(make_error<std::string>("SCENE_LAYOUT", "stageArc.bin root doesn't exist!")
                          .error());
@@ -210,7 +209,7 @@ namespace Toolbox::Scene {
 
     bool SceneLayoutManager::getScenarioForFileName(const std::string &filename, size_t &scene_out,
                                                     size_t &scenario_out) const {
-        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        RefPtr<GroupSceneObject> root = m_scene_layout.getRoot();
         if (!root) {
             LogError(make_error<std::string>("SCENE_LAYOUT", "stageArc.bin root doesn't exist!")
                          .error());
@@ -255,7 +254,7 @@ namespace Toolbox::Scene {
 
     std::optional<size_t> SceneLayoutManager::addScenario(const std::string &filename,
                                                           size_t scene) {
-        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        RefPtr<GroupSceneObject> root = m_scene_layout.getRoot();
         if (!root) {
             LogError(make_error<std::optional<size_t>>("SCENE_LAYOUT",
                                                        "stageArc.bin root doesn't exist!")
@@ -318,7 +317,7 @@ namespace Toolbox::Scene {
     }
 
     std::optional<size_t> SceneLayoutManager::addScene() {
-        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        RefPtr<GroupSceneObject> root = m_scene_layout.getRoot();
         if (!root) {
             LogError(make_error<std::optional<size_t>>("SCENE_LAYOUT",
                                                        "stageArc.bin root doesn't exist!")
@@ -348,7 +347,7 @@ namespace Toolbox::Scene {
     }
 
     bool SceneLayoutManager::moveScene(size_t src_scene, size_t dst_scene) {
-        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        RefPtr<GroupSceneObject> root = m_scene_layout.getRoot();
         if (!root) {
             LogError(make_error<std::optional<size_t>>("SCENE_LAYOUT",
                                                        "stageArc.bin root doesn't exist!")
@@ -392,7 +391,7 @@ namespace Toolbox::Scene {
 
     bool SceneLayoutManager::moveScenario(size_t src_scene, size_t src_scenario, size_t dst_scene,
                                           size_t dst_scenario) {
-        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        RefPtr<GroupSceneObject> root = m_scene_layout.getRoot();
         if (!root) {
             LogError(make_error<std::optional<size_t>>("SCENE_LAYOUT",
                                                        "stageArc.bin root doesn't exist!")
@@ -459,7 +458,7 @@ namespace Toolbox::Scene {
     }
 
     bool SceneLayoutManager::removeScene(size_t scene) {
-        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        RefPtr<GroupSceneObject> root = m_scene_layout.getRoot();
         if (!root) {
             LogError(make_error<std::optional<size_t>>("SCENE_LAYOUT",
                                                        "stageArc.bin root doesn't exist!")
@@ -484,7 +483,7 @@ namespace Toolbox::Scene {
     }
 
     bool SceneLayoutManager::removeScenario(size_t scene, size_t scenario) {
-        RefPtr<GroupSceneObject> root = m_scene_layout->getRoot();
+        RefPtr<GroupSceneObject> root = m_scene_layout.getRoot();
         if (!root) {
             LogError(make_error<std::optional<size_t>>("SCENE_LAYOUT",
                                                        "stageArc.bin root doesn't exist!")

@@ -13,15 +13,25 @@ namespace Toolbox::UI {
         DragEvent(const DragEvent &)     = default;
         DragEvent(DragEvent &&) noexcept = default;
 
-        DragEvent(TypeID type, float pos_x, float pos_y, DragAction &&action);
+        DragEvent(TypeID type, float pos_x, float pos_y, RefPtr<DragAction> action);
 
         [[nodiscard]] void getGlobalPoint(float &x, float &y) const noexcept {
             x = m_screen_pos_x;
             y = m_screen_pos_y;
         }
 
-        [[nodiscard]] DragAction &getDragAction() noexcept { return m_drag_action; }
-        [[nodiscard]] UUID64 getSourceId() const noexcept { return m_drag_action.getSourceUUID(); }
+        [[nodiscard]] RefPtr<DragAction> getDragAction() const noexcept { return m_drag_action; }
+        [[nodiscard]] UUID64 getSourceId() const noexcept { return m_drag_action->getSourceUUID(); }
+
+        void accept() override {
+            BaseEvent::accept();
+            m_drag_action->m_drop_state.m_valid_target = true;
+        }
+
+        void ignore() override {
+            BaseEvent::ignore();
+            m_drag_action->m_drop_state.m_valid_target = false;
+        }
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
@@ -31,7 +41,7 @@ namespace Toolbox::UI {
     private:
         float m_screen_pos_x;
         float m_screen_pos_y;
-        DragAction m_drag_action;
+        RefPtr<DragAction> m_drag_action;
     };
 
 }  // namespace Toolbox::UI
