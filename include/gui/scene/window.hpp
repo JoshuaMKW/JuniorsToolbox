@@ -80,6 +80,8 @@ namespace Toolbox::UI {
 
         void deregisterOverlay(const std::string &layer_name) { m_render_layers.erase(layer_name); }
 
+        void initToBasic() { m_current_scene = SceneInstance::BasicScene(); }
+
     protected:
         ImGuiID onBuildDockspace() override;
         void onRenderMenuBar() override;

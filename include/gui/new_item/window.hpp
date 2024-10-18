@@ -33,6 +33,16 @@ namespace Toolbox::UI {
         NewItemWindow(const std::string &name);
         ~NewItemWindow() = default;
 
+        using window_constructor = std::function<RefPtr<ImWindow>()>;
+
+        struct ItemInfo {
+            std::string m_name;
+            std::string m_extension;
+            std::string m_description;
+            RefPtr<const ImageHandle> m_icon;
+            window_constructor m_win_factory;
+        };
+
     protected:
         void onRenderBody(TimeStep delta_time) override;
 
@@ -76,16 +86,6 @@ namespace Toolbox::UI {
         void onImGuiUpdate(TimeStep delta_time) override;
 
     private:
-        using window_constructor = std::function<ScopePtr<ImWindow>(const std::string &)>;
-
-        struct ItemInfo {
-            std::string m_name;
-            std::string m_extension;
-            std::string m_description;
-            RefPtr<const ImageHandle> m_icon;
-            window_constructor m_win_factory;
-        };
-
         std::vector<ItemInfo> m_item_infos;
     };
 
