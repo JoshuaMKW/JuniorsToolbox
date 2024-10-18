@@ -74,14 +74,14 @@ namespace Toolbox::UI {
             return E_NOINTERFACE;
         }
 
-        STDMETHODIMP_(ULONG) AddRef() { return ++m_refCount; }
+        STDMETHODIMP_(ULONG) AddRef() { return ++m_ref_count; }
 
         STDMETHODIMP_(ULONG) Release() {
-            if (--m_refCount == 0) {
+            if (--m_ref_count == 0) {
                 delete this;
                 return 0;
             }
-            return m_refCount;
+            return m_ref_count;
         }
 
         STDMETHODIMP QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState) {
@@ -97,18 +97,60 @@ namespace Toolbox::UI {
         }
 
     private:
-        ULONG m_refCount = 1;
+        ULONG m_ref_count = 1;
     };
 
     // Create an IDataObject with CF_HDROP for file drag-and-drop
     class FileDropDataObject : public IDataObject {
     public:
-        FileDropDataObject(LPCWSTR filePath) {
-            m_refCount = 1;
-            m_filePath = filePath;
+        FileDropDataObject(const std::vector<std::string> &file_paths) : m_ref_count(1) {
+            size_t total_path_size = 2;  // Double null-terminator
+            for (const std::string &path : file_paths) {
+                total_path_size += path.size() + 1;  // +1 for null-terminator
+            }
+
+            m_format_etc.cfFormat = CF_HDROP;
+            m_format_etc.ptd      = nullptr;
+            m_format_etc.dwAspect = DVASPECT_CONTENT;
+            m_format_etc.lindex   = -1;
+            m_format_etc.tymed    = TYMED_HGLOBAL;
+
+            m_stg_medium.tymed = TYMED_HGLOBAL;
+            m_stg_medium.hGlobal =
+                GlobalAlloc(GHND, sizeof(DROPFILES) + total_path_size * sizeof(WCHAR));
+            m_stg_medium.pUnkForRelease = nullptr;
+            
+            DROPFILES *drop_files = static_cast<DROPFILES *>(GlobalLock(m_stg_medium.hGlobal));
+            if (!drop_files) {
+                TOOLBOX_ERROR("Failed to lock global memory for DROPFILES structure");
+                return;
+            }
+
+            drop_files->pFiles    = sizeof(DROPFILES);
+            drop_files->fWide     = TRUE;
+
+            WCHAR *file_path_buffer =
+                reinterpret_cast<WCHAR *>((CHAR *)drop_files + drop_files->pFiles);
+            for (const std::string &file_path : file_paths) {
+                size_t path_size = file_path.size();
+                std::mbstowcs(file_path_buffer, file_path.c_str(), path_size);
+                file_path_buffer += path_size;
+                *file_path_buffer++ = L'\0';
+            }
+
+            *file_path_buffer = L'\0';
+
+            GlobalUnlock(m_stg_medium.hGlobal);
         }
 
-        STDMETHODIMP QueryInterface(REFIID riid, void **ppvObject) {
+        ~FileDropDataObject() {
+            if (m_stg_medium.hGlobal) {
+                GlobalFree(m_stg_medium.hGlobal);
+            }
+        }
+
+        STDMETHODIMP
+        QueryInterface(REFIID riid, void **ppvObject) {
             if (riid == IID_IUnknown || riid == IID_IDataObject) {
                 *ppvObject = static_cast<IDataObject *>(this);
                 AddRef();
@@ -118,40 +160,24 @@ namespace Toolbox::UI {
             return E_NOINTERFACE;
         }
 
-        STDMETHODIMP_(ULONG) AddRef() { return ++m_refCount; }
+        STDMETHODIMP_(ULONG) AddRef() { return ++m_ref_count; }
 
         STDMETHODIMP_(ULONG) Release() {
-            if (--m_refCount == 0) {
+            if (--m_ref_count == 0) {
                 delete this;
                 return 0;
             }
-            return m_refCount;
+            return m_ref_count;
         }
 
         STDMETHODIMP GetData(FORMATETC *pFormatEtc, STGMEDIUM *pMedium) {
-            if (pFormatEtc->cfFormat == CF_HDROP && pFormatEtc->tymed & TYMED_HGLOBAL) {
-                // Allocate global memory for the file list
-                SIZE_T filePathSize = (wcslen(m_filePath) + 1) * sizeof(WCHAR);
-                SIZE_T totalSize    = sizeof(DROPFILES) + filePathSize;
+            if ((pFormatEtc->tymed & TYMED_HGLOBAL) == 0) {
+                return DV_E_TYMED;  // Unsupported medium
+            }
 
-                HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, totalSize);
-                if (!hGlobal)
-                    return E_OUTOFMEMORY;
-
-                // Fill in the DROPFILES structure
-                DROPFILES *pDropFiles = (DROPFILES *)GlobalLock(hGlobal);
-                pDropFiles->pFiles    = sizeof(DROPFILES);  // Offset to the file list
-                pDropFiles->fWide     = TRUE;               // Using Unicode (WCHAR)
-
-                // Copy the file path to the memory block
-                WCHAR *pDst = (WCHAR *)((BYTE *)pDropFiles + sizeof(DROPFILES));
-                wcscpy(pDst, m_filePath);
-
-                GlobalUnlock(hGlobal);
-
-                // Set the STGMEDIUM
+            if (pFormatEtc->cfFormat == CF_HDROP) {
                 pMedium->tymed          = TYMED_HGLOBAL;
-                pMedium->hGlobal        = hGlobal;
+                pMedium->hGlobal         = m_stg_medium.hGlobal;
                 pMedium->pUnkForRelease = nullptr;
                 return S_OK;
             }
@@ -162,7 +188,12 @@ namespace Toolbox::UI {
         STDMETHODIMP GetDataHere(FORMATETC *pFormatEtc, STGMEDIUM *pMedium) { return E_NOTIMPL; }
 
         STDMETHODIMP QueryGetData(FORMATETC *pFormatEtc) {
-            if (pFormatEtc->cfFormat == CF_HDROP && pFormatEtc->tymed & TYMED_HGLOBAL) {
+            if ((pFormatEtc->tymed & TYMED_HGLOBAL) == 0) {
+                return DV_E_TYMED;
+            }
+            if (pFormatEtc->cfFormat == CF_HDROP ||
+                pFormatEtc->cfFormat == RegisterClipboardFormat(CFSTR_FILECONTENTS) ||
+                pFormatEtc->cfFormat == RegisterClipboardFormat(CFSTR_FILEDESCRIPTOR)) {
                 return S_OK;
             }
             return DV_E_FORMATETC;
@@ -177,7 +208,7 @@ namespace Toolbox::UI {
         }
 
         STDMETHODIMP EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC **ppEnumFormatEtc) {
-            return E_NOTIMPL;
+            return OLE_S_USEREG;
         }
 
         STDMETHODIMP DAdvise(FORMATETC *pFormatEtc, DWORD advf, IAdviseSink *pAdvSink,
@@ -190,8 +221,9 @@ namespace Toolbox::UI {
         STDMETHODIMP EnumDAdvise(IEnumSTATDATA **ppEnumAdvise) { return E_NOTIMPL; }
 
     private:
-        ULONG m_refCount;
-        LPCWSTR m_filePath;
+        ULONG m_ref_count;
+        FORMATETC m_format_etc;
+        STGMEDIUM m_stg_medium;
     };
 
     Result<void, BaseError> DragDropManager::createSystemDragDropSource(MimeData &&data) {
@@ -199,54 +231,35 @@ namespace Toolbox::UI {
         if (!maybe_paths) {
             return make_error<void>("DRAG_DROP", "Passed Mimedata did not include urls");
         }
-        std::vector<std::string> paths = maybe_paths.value();
 
-        std::vector<PIDLIST_ABSOLUTE> pidls;
+        IDataObject *data_object = new FileDropDataObject(std::move(maybe_paths.value()));
+        IDropSource *drop_source = new DropSource();
 
-        size_t next_newline_pos = 0;
-        for (const std::string_view &path : paths) {
-
-            std::wstring wpath = std::wstring(path.begin(), path.end());
-
-            PIDLIST_ABSOLUTE pidl = ILCreateFromPathW(wpath.c_str());
-            if (pidl == NULL) {
-                for (PIDLIST_ABSOLUTE pidl : pidls) {
-                    ILFree(pidl);
-                }
-                return make_error<void>("DRAG_DROP", "Failed to create PIDL from path");
-            }
-
-            pidls.push_back(pidl);
-        }
-
-        IDataObject *data_object = nullptr;
+        #if 0
         {
-            HRESULT hr = SHCreateDataObject(NULL, static_cast<UINT>(pidls.size()),
-                                            (PCIDLIST_ABSOLUTE *)pidls.data(), nullptr,
-                                            IID_IDataObject, (void **)&data_object);
-
-            for (PIDLIST_ABSOLUTE pidl : pidls) {
-                ILFree(pidl);
+            if (m_is_thread_running) {
+                m_drag_thread.join();
             }
 
-            if (FAILED(hr)) {
-                return make_error<void>("DRAG_DROP", "Failed to create data object");
-            }
-        }
-
-        DropSource *drop_source = new DropSource();
-
-        {
             m_drag_thread = std::thread([data_object, drop_source]() {
                 DWORD effect;
-                DoDragDrop(data_object, drop_source, DROPEFFECT_MOVE, &effect);
+                DoDragDrop(data_object, drop_source, DROPEFFECT_COPY | DROPEFFECT_MOVE, &effect);
                 drop_source->Release();
                 data_object->Release();
             });
-        }
 
-        m_data_object = data_object;
-        m_drop_source = drop_source;
+            m_data_object = data_object;
+            m_drop_source = drop_source;
+        }
+        #elif 0
+        {
+            DWORD effect;
+            DoDragDrop(data_object, drop_source, DROPEFFECT_COPY | DROPEFFECT_MOVE, &effect);
+            drop_source->Release();
+            data_object->Release();
+        }
+        #else
+        #endif
         return {};
     }
 
