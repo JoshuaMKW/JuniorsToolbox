@@ -45,11 +45,60 @@ namespace Toolbox::UI {
             });
     }
 
-    void NewItemWindow::onRenderBody(TimeStep delta_time) {}
+    void NewItemWindow::onRenderBody(TimeStep delta_time) {
+        ImGui::Text("Search: ");
+        char search_buffer[256];
+        std::strncpy(search_buffer, m_search_buffer.c_str(), sizeof(search_buffer));
+        if (ImGui::InputText("##search", search_buffer, sizeof(search_buffer))) {
+            m_search_buffer = search_buffer;
+        }
 
-    void NewItemWindow::renderItemRow() {}
+        std::regex search_regex(m_search_buffer, std::regex::icase);
 
-    void NewItemWindow::renderItemDescription() {}
+        if (ImGui::BeginTable("##item_list", 1, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchSame)) {
+            for (size_t i = 0; i < m_item_infos.size(); ++i) {
+                const ItemInfo &info = m_item_infos[i];
+                if (m_search_buffer.size() > 0 && !std::regex_search(info.m_name, search_regex)) {
+                    continue;
+                }
+
+                bool selected = m_selected_item_index == i;
+
+                // TODO: Make selectable
+                std::string id_name = std::format("##item_{}", i);
+                if (ImGui::BeginChild(id_name.c_str(), {0, 100}, true)) {
+                    ImGui::PushID(i);
+                    renderItemRow(info, selected);
+                    ImGui::PopID();
+                    ImGui::EndChild();
+                }
+
+                ImGui::TableNextRow();
+            }
+            ImGui::EndChild();
+        }
+
+        renderControlPanel();
+    }
+
+    void NewItemWindow::renderItemRow(const ItemInfo &info, bool selected) {
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {0, 0});
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0, 0});
+
+        ImGui::PopStyleVar(2);
+
+        ImGui::SameLine();
+
+        ImagePainter painter;
+        painter.render(*info.m_icon, ImVec2(32, 32));
+
+        ImGui::SameLine();
+        ImGui::Text(info.m_name.c_str());
+
+        renderItemDescription(info.m_description);
+    }
+
+    void NewItemWindow::renderItemDescription(const std::string &description) {}
 
     void NewItemWindow::renderControlPanel() {}
 

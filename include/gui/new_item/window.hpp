@@ -46,8 +46,8 @@ namespace Toolbox::UI {
     protected:
         void onRenderBody(TimeStep delta_time) override;
 
-        void renderItemRow();
-        void renderItemDescription();
+        void renderItemRow(const ItemInfo &info, bool selected);
+        void renderItemDescription(const std::string &description);
         void renderControlPanel();
 
     public:
@@ -87,6 +87,8 @@ namespace Toolbox::UI {
 
     private:
         std::vector<ItemInfo> m_item_infos;
+        std::string m_search_buffer;
+        int m_selected_item_index;
     };
 
 }  // namespace Toolbox::UI
