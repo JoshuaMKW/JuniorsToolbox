@@ -35,3 +35,4 @@
 .vs/*
 out/*
 /enc_temp_folder
+/.idea
