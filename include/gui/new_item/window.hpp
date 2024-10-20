@@ -46,8 +46,8 @@ namespace Toolbox::UI {
     protected:
         void onRenderBody(TimeStep delta_time) override;
 
-        void renderItemRow(const ItemInfo &info, bool selected, const ImVec2 &size);
-        void renderItemDescription(const std::string &description, const ImVec2 &size);
+        void renderItemRow(const ItemInfo &info, bool selected, bool pressed, bool hovered, const ImVec2 &pos, const ImVec2 &size);
+        void renderItemDescription(const ItemInfo &info, const ImVec2 &pos, const ImVec2 &size);
         void renderControlPanel();
 
     public:
@@ -64,7 +64,7 @@ namespace Toolbox::UI {
 
         std::optional<ImVec2> minSize() const override {
             return {
-                {600, 700}
+                {650, 400}
             };
         }
 
