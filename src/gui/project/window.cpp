@@ -1,6 +1,7 @@
 #include "gui/project/window.hpp"
 #include "gui/application.hpp"
 #include "gui/dragdrop/dragdropmanager.hpp"
+#include "gui/new_item/window.hpp"
 #include "model/fsmodel.hpp"
 
 #include <cmath>
@@ -325,7 +326,7 @@ namespace Toolbox::UI {
         m_tree_proxy.setDirsOnly(true);
         m_view_proxy.setSourceModel(m_file_system_model);
         m_view_proxy.setSortRole(FileSystemModelSortRole::SORT_ROLE_NAME);
-        m_view_index = m_view_proxy.getIndex(0, 0);
+        m_view_index = m_file_system_model->getIndex(0, 0);
         return true;
     }
 
@@ -494,7 +495,11 @@ namespace Toolbox::UI {
             "New...", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N}),
             [this]() { return m_selected_indices_ctx.size() == 0; },
             [this](const ModelIndex &view_index) {
-                // TODO: Open a dialog that gives the user different file types to create.
+                RefPtr<NewItemWindow> window =
+                    GUIApplication::instance().createWindow<NewItemWindow>("New Item");
+                if (window) {
+                    window->setContextPath(m_file_system_model->getPath(view_index));
+                }
             });
     }
 
@@ -546,8 +551,7 @@ namespace Toolbox::UI {
     void ProjectViewWindow::actionPasteIntoIndex(const ModelIndex &index,
                                                  const std::vector<fs_path> &paths) {
         for (const fs_path &src_path : paths) {
-            m_file_system_model->copy(src_path, index,
-                                      src_path.filename().string());
+            m_file_system_model->copy(src_path, index, src_path.filename().string());
         }
     }
 

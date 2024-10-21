@@ -152,6 +152,10 @@ namespace Toolbox::UI {
                     return Result<void, SerialError>();
                 });
 
+            if (result) {
+                m_io_context_path = path;
+            }
+
             return result;
         }
 
@@ -2679,15 +2683,16 @@ void SceneWindow::onRenderMenuBar() {
 
     if (m_is_save_default_ready) {
         m_is_save_default_ready = false;
-        if (m_current_scene->rootPath())
-            (void)onSaveData(m_current_scene->rootPath());
-        else
+        if (!m_io_context_path.empty()) {
+            (void)onSaveData(m_io_context_path);
+        } else {
             m_is_save_as_dialog_open = true;
+        }
     }
 
     if (m_is_save_as_dialog_open) {
-        ImGuiFileDialog::Instance()->OpenDialog("SaveSceneDialog", "Choose Directory", nullptr, "",
-                                                "");
+        ImGuiFileDialog::Instance()->OpenDialog("SaveSceneDialog", "Choose Directory", nullptr,
+                                                m_io_context_path.string(), "");
     }
 
     if (ImGuiFileDialog::Instance()->Display("SaveSceneDialog")) {
