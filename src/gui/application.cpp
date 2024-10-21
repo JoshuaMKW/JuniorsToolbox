@@ -42,8 +42,6 @@
 #include "scene/layout.hpp"
 #include <nfd_glfw3.h>
 
-#include "gui/new_item/window.hpp"
-
 // void ImGuiSetupTheme(bool, float);
 
 namespace Toolbox {
@@ -205,8 +203,6 @@ namespace Toolbox {
 
         determineEnvironmentConflicts();
         hookClipboardIntoGLFW();
-
-        createWindow<NewItemWindow>("New Item");
     }
 
     void GUIApplication::onUpdate(TimeStep delta_time) {

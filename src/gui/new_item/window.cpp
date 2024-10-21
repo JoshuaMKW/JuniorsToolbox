@@ -14,17 +14,52 @@ namespace Toolbox::UI {
         NewItemWindow::window_constructor m_win_factory;
     };
 
-    static std::array<_BuiltinItemInfo, 2> s_default_items = {
+    static std::array<_BuiltinItemInfo, 10> s_default_items = {
         _BuiltinItemInfo("Basic Scene", "", "A minimal scene that runs in game.", "toolbox.png",
-                         []() -> RefPtr<SceneWindow> {
+                         [](const fs_path &context_path) -> RefPtr<SceneWindow> {
                              RefPtr<SceneWindow> window =
                                  GUIApplication::instance().createWindow<SceneWindow>(
                                      "Scene Editor");
                              window->initToBasic();
+                             window->setIOContextPath(context_path);
                              return window;
                          }),
-        _BuiltinItemInfo("J3D Texture Image", ".bti", "A texture resource for models and UI.",
-                         "FileSystem/fs_bti.png", []() -> RefPtr<SceneWindow> { return nullptr; }),
+        _BuiltinItemInfo("Message Data", ".bmg", "A message list with metadata descriptors.",
+            "FileSystem/fs_bmg.png",
+            [](const fs_path &context_path) -> RefPtr<SceneWindow> { return nullptr; }),
+        _BuiltinItemInfo(
+            "Parameter Data", ".prm", "A parameter sheet for tuning behaviors.",
+            "FileSystem/fs_prm.png",
+            [](const fs_path &context_path) -> RefPtr<SceneWindow> { return nullptr; }),
+        _BuiltinItemInfo(
+            "Sunscript", ".sb", "A script format for defining high-level scene behaviors.",
+            "FileSystem/fs_sb.png",
+            [](const fs_path &context_path) -> RefPtr<SceneWindow> { return nullptr; }),
+        _BuiltinItemInfo(
+            "DolphinOS Movie Data", ".thp",
+            "A video format that displays JPEGs and plays adpcm audio.", "FileSystem/fs_thp.png",
+            [](const fs_path &context_path) -> RefPtr<SceneWindow> { return nullptr; }),
+        _BuiltinItemInfo(
+            "J2D Texture Image", ".bti", "A texture resource for models and UI.",
+            "FileSystem/fs_bti.png",
+            [](const fs_path &context_path) -> RefPtr<SceneWindow> { return nullptr; }),
+        _BuiltinItemInfo(
+            "J2D Texture UV Anim", ".btk", "A texture coordinate animation for models and UI.",
+            "FileSystem/fs_btk.png",
+            [](const fs_path &context_path) -> RefPtr<SceneWindow> { return nullptr; }),
+        _BuiltinItemInfo(
+            "J2D Texture Pattern Anim", ".btp", "A texture pattern animation for models and UI.",
+            "FileSystem/fs_btp.png",
+            [](const fs_path &context_path) -> RefPtr<SceneWindow> { return nullptr; }),
+        _BuiltinItemInfo(
+            "J3D Model Data", ".bmd", "A 3D model format for Nintendo games.",
+            "FileSystem/fs_bmd.png",
+            [](const fs_path &context_path) -> RefPtr<SceneWindow> { return nullptr; }),
+        _BuiltinItemInfo(
+            "JParticle Data", ".jpa",
+            "A particle format defining texture resources, physics parameters, and more.",
+            "FileSystem/fs_jpa.png",
+            [](const fs_path &context_path) -> RefPtr<SceneWindow> { return nullptr; }),
     };
 
     NewItemWindow::NewItemWindow(const std::string &name)
@@ -60,20 +95,27 @@ namespace Toolbox::UI {
             regex_valid = false;
         }
 
-        float window_height = ImGui::GetContentRegionAvail().y;
-        float table_height    = window_height;
+        float window_height = ImGui::GetWindowSize().y;
+        float table_height  = window_height - style.WindowPadding.y * 4 - style.FramePadding.y * 2;
 
         const ImVec2 row_size = {400, 60};
 
         ImGui::GetWindowDrawList()->AddRectFilled(
-            ImGui::GetCursorScreenPos(), ImGui::GetCursorScreenPos() + ImVec2(row_size.x, table_height),
+            ImGui::GetCursorScreenPos(),
+            ImGui::GetCursorScreenPos() + ImVec2(row_size.x, table_height),
             ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_TableRowBgAlt]));
 
-        ImGui::BeginGroup();
-        if (ImGui::BeginTable("##item_list", 1, ImGuiTableFlags_BordersOuter,
+        if (ImGui::BeginTable("##item_list", 1,
+                              ImGuiTableFlags_BordersOuter | ImGuiTableFlags_ScrollY,
                               ImVec2(row_size.x, table_height))) {
             for (size_t i = 0; i < m_item_infos.size(); ++i) {
                 const ItemInfo &info = m_item_infos[i];
+
+#ifndef TOOLBOX_DEBUG
+                if (info.m_win_factory == nullptr) {
+                    continue;
+                }
+#endif
 
                 bool matches_search = false;
                 if (regex_valid) {
@@ -81,7 +123,6 @@ namespace Toolbox::UI {
                 } else {
                     matches_search = info.m_name.find(m_search_buffer) != std::string::npos;
                 }
-
 
                 if (!matches_search) {
                     continue;
@@ -150,8 +191,6 @@ namespace Toolbox::UI {
         renderControlPanel();
 
         ImGui::EndGroup();
-
-        ImGui::EndGroup();
     }
 
     void NewItemWindow::renderItemRow(const ItemInfo &info, bool selected, bool pressed,
@@ -199,12 +238,12 @@ namespace Toolbox::UI {
 
             ImVec2 ext_text_size =
                 ImGui::CalcTextSize(type.c_str(), type.c_str() + type.size(), false, 0);
-            ImVec2 ext_text_pos = ImVec2(row_size.x - ext_text_size.x - style.WindowPadding.x,
+            ImVec2 ext_text_pos = ImVec2(row_size.x - ext_text_size.x - style.WindowPadding.x - 16,
                                          row_size.y / 2 - ext_text_size.y / 2);
 
-            draw_list->AddText(
-                row_pos + ext_text_pos, ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_Text]),
-                info.m_extension.c_str(), info.m_extension.c_str() + info.m_extension.size());
+            draw_list->AddText(row_pos + ext_text_pos,
+                               ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_Text]),
+                               type.c_str(), type.c_str() + type.size());
         }
     }
 
@@ -230,7 +269,8 @@ namespace Toolbox::UI {
         ImVec2 cancel_button_size = cancel_text_size + (style.FramePadding * 2);
         ImVec2 open_button_size   = open_text_size + (style.FramePadding * 2);
 
-        float y_pos              = win_size.y - style.WindowPadding.y - (style.FramePadding.y * 2) - ImGui::GetFontSize();
+        float y_pos =
+            win_size.y - style.WindowPadding.y - (style.FramePadding.y * 2) - ImGui::GetFontSize();
         ImVec2 cancel_button_pos = {win_size.x - cancel_button_size.x - style.WindowPadding.x,
                                     y_pos};
         ImVec2 open_button_pos   = {cancel_button_pos.x - open_button_size.x - style.ItemSpacing.x,
@@ -240,9 +280,11 @@ namespace Toolbox::UI {
         if (ImGui::Button("Open", open_button_size)) {
             if (m_selected_item_index >= 0) {
                 const ItemInfo &info    = m_item_infos[m_selected_item_index];
-                RefPtr<ImWindow> window = info.m_win_factory();
+                RefPtr<ImWindow> window = info.m_win_factory(m_context_path);
                 if (!window) {
                     TOOLBOX_DEBUG_LOG("[NEW_ITEM_WINDOW] Failed to create window");
+                } else {
+                    close();
                 }
             }
         }

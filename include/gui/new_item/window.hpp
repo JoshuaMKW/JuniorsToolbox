@@ -33,7 +33,7 @@ namespace Toolbox::UI {
         NewItemWindow(const std::string &name);
         ~NewItemWindow() = default;
 
-        using window_constructor = std::function<RefPtr<ImWindow>()>;
+        using window_constructor = std::function<RefPtr<ImWindow>(const fs_path &context_path)>;
 
         struct ItemInfo {
             std::string m_name;
@@ -42,6 +42,10 @@ namespace Toolbox::UI {
             RefPtr<const ImageHandle> m_icon;
             window_constructor m_win_factory;
         };
+
+        void setContextPath(const fs_path &path) {
+            m_context_path = path;
+        }
 
     protected:
         void onRenderBody(TimeStep delta_time) override;
@@ -68,7 +72,7 @@ namespace Toolbox::UI {
             };
         }
 
-        [[nodiscard]] std::string context() const override { return ""; }
+        [[nodiscard]] std::string context() const override { return m_context_path.string(); }
 
         [[nodiscard]] bool unsaved() const override { return false; }
 
@@ -86,6 +90,7 @@ namespace Toolbox::UI {
         void onImGuiUpdate(TimeStep delta_time) override;
 
     private:
+        fs_path m_context_path;
         std::vector<ItemInfo> m_item_infos;
         std::string m_search_buffer;
         int m_selected_item_index;
