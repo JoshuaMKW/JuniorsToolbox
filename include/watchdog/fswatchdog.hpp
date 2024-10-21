@@ -109,8 +109,8 @@ namespace Toolbox {
 
     private:
         bool m_asleep = false;
-        std::chrono::time_point<std::chrono::system_clock> m_sleep_start;
-        std::chrono::time_point<std::chrono::system_clock> m_sleep_end;
+        Filesystem::file_time_type m_sleep_start;
+        Filesystem::file_time_type m_sleep_end;
 
         std::unordered_set<fs_path> m_ignore_paths;
 
