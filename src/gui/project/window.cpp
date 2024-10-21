@@ -492,7 +492,19 @@ namespace Toolbox::UI {
         m_folder_view_context_menu.addDivider();
 
         m_folder_view_context_menu.addOption(
-            "New...", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N}),
+            "New Folder", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_N}),
+            [this]() { return m_selected_indices_ctx.size() == 0; },
+            [this](const ModelIndex &view_index) {
+                std::string folder_name =
+                    m_file_system_model->findUniqueName(view_index, "New Folder");
+                ModelIndex new_index = m_file_system_model->mkdir(view_index, folder_name);
+                if (m_file_system_model->validateIndex(new_index)) {
+                    actionRenameIndex(new_index);
+                }
+            });
+
+        m_folder_view_context_menu.addOption(
+            "New Item...", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N}),
             [this]() { return m_selected_indices_ctx.size() == 0; },
             [this](const ModelIndex &view_index) {
                 RefPtr<NewItemWindow> window =
@@ -786,11 +798,16 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::renderFolderTree(const ModelIndex &index) {
         bool is_open = false;
-        if (m_tree_proxy.hasChildren(index)) {
+        if (m_tree_proxy.isDirectory(index)) {
             if (m_tree_proxy.canFetchMore(index)) {
                 m_tree_proxy.fetchMore(index);
             }
-            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None;
+            if (m_tree_proxy.hasChildren(index)) {
+                flags |= ImGuiTreeNodeFlags_OpenOnArrow;
+            } else {
+                flags |= ImGuiTreeNodeFlags_Leaf;
+            }
 
             if (m_view_index == m_tree_proxy.toSourceIndex(index)) {
                 flags |= ImGuiTreeNodeFlags_Selected;

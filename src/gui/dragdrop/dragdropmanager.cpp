@@ -36,7 +36,9 @@ namespace Toolbox::UI {
 
     void DragDropManager::shutdown() {
         OleUninitialize();
-        m_drag_thread.join();
+        if (m_is_thread_running) {
+            m_drag_thread.join();
+        }
     }
 
     static std::vector<std::string_view> splitLines(std::string_view s) {

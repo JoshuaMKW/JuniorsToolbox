@@ -206,6 +206,12 @@ namespace Toolbox {
         return getData_(index, role);
     }
 
+    std::string FileSystemModel::findUniqueName(const ModelIndex &index,
+                                                const std::string &name) const {
+        std::scoped_lock lock(m_mutex);
+        return findUniqueName_(index, name);
+    }
+
     ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &name) {
         std::scoped_lock lock(m_mutex);
         return mkdir_(parent, name);
@@ -484,6 +490,45 @@ namespace Toolbox {
         }
     }
 
+    std::string FileSystemModel::findUniqueName_(const ModelIndex &parent,
+                                                 const std::string &name) const {
+        if (!validateIndex(parent)) {
+            return name;
+        }
+
+        if (isFile_(parent)) {
+            return name;
+        }
+
+        if (isArchive_(parent)) {
+            // TODO: Implement for virtual FS
+            TOOLBOX_ERROR("[FileSystemModel] Archive probing is unimplemented!");
+            return name;
+        }
+
+        std::string result_name = name;
+        size_t collisions = 0;
+        std::vector<std::string> child_paths;
+
+        size_t dir_size = getDirSize_(parent, false);
+        for (size_t i = 0; i < dir_size; ++i) {
+            ModelIndex child = getIndex_(i, 0, parent);
+            child_paths.emplace_back(std::move(getPath_(child).filename().string()));
+        }
+
+        for (size_t i = 0; i < child_paths.size();) {
+            if (child_paths[i] == result_name) {
+                collisions += 1;
+                result_name = std::format("{} ({})", name, collisions);
+                i           = 0;
+                continue;
+            }
+            ++i;
+        }
+
+        return result_name;
+    }
+
     ModelIndex FileSystemModel::mkdir_(const ModelIndex &parent, const std::string &name) {
         if (!validateIndex(parent)) {
             return ModelIndex();
@@ -519,7 +564,7 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        return makeIndex(parent.data<_FileSystemIndexData>()->m_path / name, getRowCount(parent),
+        return makeIndex(parent.data<_FileSystemIndexData>()->m_path / name, getRowCount_(parent),
                          parent);
     }
 
@@ -549,7 +594,7 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        return makeIndex(parent.data<_FileSystemIndexData>()->m_path / name, getRowCount(parent),
+        return makeIndex(parent.data<_FileSystemIndexData>()->m_path / name, getRowCount_(parent),
                          parent);
     }
 
@@ -604,6 +649,7 @@ namespace Toolbox {
                                                           parent_data->m_children.end(),
                                                           index.getUUID()),
                                               parent_data->m_children.end());
+                parent_data->m_size -= 1;
             }
             delete index.data<_FileSystemIndexData>();
             m_index_map.erase(index.getUUID());
@@ -649,6 +695,7 @@ namespace Toolbox {
                                                           parent_data->m_children.end(),
                                                           index.getUUID()),
                                               parent_data->m_children.end());
+                parent_data->m_size -= 1;
             }
             delete index.data<_FileSystemIndexData>();
             m_index_map.erase(index.getUUID());
@@ -681,6 +728,7 @@ namespace Toolbox {
         parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
                                                   parent_data->m_children.end(), file.getUUID()),
                                       parent_data->m_children.end());
+        parent_data->m_size -= 1;
         return makeIndex(to, dest_index, parent);
     }
     ModelIndex FileSystemModel::copy_(const fs_path &file, const ModelIndex &new_parent,
@@ -690,8 +738,7 @@ namespace Toolbox {
             return ModelIndex();
         }
         if (!Filesystem::exists(file)) {
-            TOOLBOX_ERROR_V("[FileSystemModel] \"{}\" is not a directory or file!",
-                            file.string());
+            TOOLBOX_ERROR_V("[FileSystemModel] \"{}\" is not a directory or file!", file.string());
             return ModelIndex();
         }
         fs_path to = new_parent.data<_FileSystemIndexData>()->m_path / new_name;
@@ -941,6 +988,7 @@ namespace Toolbox {
             if (parent_data) {
                 parent_data->m_children.insert(parent_data->m_children.begin() + row,
                                                index.getUUID());
+                parent_data->m_size += 1;
             }
 
             m_index_map[index.getUUID()] = std::move(index);
@@ -1130,6 +1178,7 @@ namespace Toolbox {
                                                               old_parent_data->m_children.end(),
                                                               index.getUUID()),
                                                   old_parent_data->m_children.end());
+                old_parent_data->m_size -= 1;
 
                 ModelIndex new_parent = getIndex_(new_path.parent_path());
                 if (!validateIndex(new_parent)) {
@@ -1138,6 +1187,7 @@ namespace Toolbox {
 
                 _FileSystemIndexData *new_parent_data = new_parent.data<_FileSystemIndexData>();
                 new_parent_data->m_children.push_back(index.getUUID());
+                new_parent_data->m_size += 1;
             }
         }
 
@@ -1169,6 +1219,7 @@ namespace Toolbox {
                                                           parent_data->m_children.end(),
                                                           index.getUUID()),
                                               parent_data->m_children.end());
+                parent_data->m_size -= 1;
                 delete index.data<_FileSystemIndexData>();
                 m_index_map.erase(index.getUUID());
             }

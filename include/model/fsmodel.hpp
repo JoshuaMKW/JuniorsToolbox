@@ -103,6 +103,9 @@ namespace Toolbox {
 
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
 
+        [[nodiscard]] std::string findUniqueName(const ModelIndex &index,
+                                                 const std::string &name) const;
+
         ModelIndex mkdir(const ModelIndex &parent, const std::string &name);
         ModelIndex touch(const ModelIndex &parent, const std::string &name);
         ModelIndex rename(const ModelIndex &file, const std::string &new_name);
@@ -156,6 +159,9 @@ namespace Toolbox {
 
         // Implementation of public API for mutex locking reasons
         [[nodiscard]] std::any getData_(const ModelIndex &index, int role) const;
+
+        [[nodiscard]] std::string findUniqueName_(const ModelIndex &index,
+                                                  const std::string &name) const;
 
         ModelIndex mkdir_(const ModelIndex &parent, const std::string &name);
         ModelIndex touch_(const ModelIndex &parent, const std::string &name);
