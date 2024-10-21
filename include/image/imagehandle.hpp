@@ -5,6 +5,8 @@
 #include <imgui/imgui.h>
 #include <span>
 
+#include "image/imagedata.hpp"
+
 namespace Toolbox {
 
     namespace UI {
@@ -13,6 +15,7 @@ namespace Toolbox {
 
     class ImageHandle {
         friend class UI::ImagePainter;
+        friend class ImageBuilder;
 
     public:
         ImageHandle() = default;
@@ -26,6 +29,7 @@ namespace Toolbox {
         ImageHandle(std::span<u8> data, int channels, int dx, int dy);
 
         ImageHandle(const Buffer &data);
+        ImageHandle(const ImageData &data);
 
         // Data should be a valid RED, RGB, or RGBA image as loaded by stbi
         ImageHandle(const Buffer &data, int channels, int dx, int dy);

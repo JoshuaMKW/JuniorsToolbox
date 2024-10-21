@@ -153,7 +153,7 @@ namespace Toolbox::UI {
 
         CreateLinkDialog m_create_link_dialog;
 
-        RefPtr<ImageHandle> m_dolphin_logo;
+        RefPtr<const ImageHandle> m_dolphin_logo;
         ImagePainter m_image_painter;
     };
 

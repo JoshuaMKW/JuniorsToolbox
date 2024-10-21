@@ -16,9 +16,11 @@
 #include "serial.hpp"
 #include "smart_resource.hpp"
 #include "unique.hpp"
+
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "gui/dragdrop/target.hpp"
 #include "gui/layer/imlayer.hpp"
 
 namespace Toolbox::UI {
@@ -71,14 +73,8 @@ namespace Toolbox::UI {
             return flags_;
         }
 
-        [[nodiscard]] void setSize(const ImVec2 &size) noexcept override {
-            m_next_size  = size;
-            m_is_resized = true;
-        }
-        [[nodiscard]] void setPos(const ImVec2 &pos) noexcept override {
-            m_next_pos        = pos;
-            m_is_repositioned = true;
-        }
+        void setSize(const ImVec2 &size) noexcept override;
+        void setPos(const ImVec2 &pos) noexcept override;
 
         void setIcon(const std::string &icon_name);
         void setIcon(Buffer &&icon_data, const ImVec2 &icon_size);
@@ -92,6 +88,9 @@ namespace Toolbox::UI {
 
         // Returns the supported file type, or empty if designed for a folder.
         [[nodiscard]] virtual std::vector<std::string> extensions() const { return {}; }
+
+        int getZOrder() const { return m_z_order; }
+        int getImOrder() const { return m_im_order; }
 
         void close();
         void defocus();
@@ -130,18 +129,26 @@ namespace Toolbox::UI {
         std::optional<ImVec2> m_max_size     = {};
 
     private:
-        ImGuiID m_dockspace_id   = std::numeric_limits<ImGuiID>::max();
+        ImGuiID m_dockspace_id = std::numeric_limits<ImGuiID>::max();
 
         bool m_is_docking_set_up = false;
         bool m_is_resized        = false;
         bool m_is_repositioned   = false;
 
-        bool m_is_new_icon       = false;
-        ImVec2 m_icon_size       = {};
-        Buffer m_icon_data       = {};
+        bool m_is_new_icon = false;
+        ImVec2 m_icon_size = {};
+        Buffer m_icon_data = {};
+
+        ImVec2 m_prev_size = {};
+        ImVec2 m_prev_pos  = {};
 
         ImVec2 m_next_size = {};
         ImVec2 m_next_pos  = {};
+
+        bool m_first_render = true;
+
+        int m_z_order = -1;
+        int m_im_order = -1;
     };
 
     inline std::string ImWindowComponentTitle(const ImWindow &window_layer,

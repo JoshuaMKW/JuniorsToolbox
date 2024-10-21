@@ -80,6 +80,9 @@ namespace Toolbox::UI {
 
         void deregisterOverlay(const std::string &layer_name) { m_render_layers.erase(layer_name); }
 
+        void initToBasic() { m_current_scene = SceneInstance::BasicScene(); }
+        void setIOContextPath(const fs_path &path) { m_io_context_path = path; }
+
     protected:
         ImGuiID onBuildDockspace() override;
         void onRenderMenuBar() override;
@@ -190,6 +193,8 @@ namespace Toolbox::UI {
 
     private:
         ScopePtr<Toolbox::SceneInstance> m_current_scene;
+
+        fs_path m_io_context_path;
 
         // Hierarchy view
         ImGuiTextFilter m_hierarchy_filter;
