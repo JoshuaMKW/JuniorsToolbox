@@ -15,12 +15,20 @@ namespace Toolbox {
 
     void FileSystemWatchdog::sleep() {
         std::scoped_lock lock(m_mutex);
-        m_asleep = true;
+        m_asleep      = true;
+        m_sleep_start = std::chrono::system_clock::now();
     }
 
     void FileSystemWatchdog::wake() {
         std::scoped_lock lock(m_mutex);
-        m_asleep = false;
+        m_asleep    = false;
+        m_sleep_end = std::chrono::system_clock::now();
+    }
+
+    void FileSystemWatchdog::ignorePathOnce(const fs_path &path) { m_ignore_paths.emplace(path); }
+
+    void FileSystemWatchdog::ignorePathOnce(fs_path &&path) {
+        m_ignore_paths.emplace(std::move(path));
     }
 
     void FileSystemWatchdog::addPath(const fs_path &path) {
@@ -133,6 +141,22 @@ namespace Toolbox {
         }
     }
 
+    bool FileSystemWatchdog::wasSleepingForAlert(const fs_path &path) {
+        if (m_asleep) {
+            return true;
+        }
+
+        bool result = false;
+        Filesystem::last_write_time(path).and_then(
+            [this, &result](const Filesystem::file_time_type &file_time) {
+                auto system_file_time =
+                    std::chrono::clock_cast<std::chrono::system_clock>(file_time);
+                result = m_sleep_start <= system_file_time && m_sleep_end >= system_file_time;
+                return Result<Filesystem::file_time_type, FSError>();
+            });
+        return result;
+    }
+
     PathWatcher_::PathWatcher_(FileSystemWatchdog *watchdog, const fs_path &path) {
         m_watchdog = watchdog;
         m_path     = path;
@@ -172,11 +196,17 @@ namespace Toolbox {
     void PathWatcher_::callback_(const fs_path &path, const filewatch::Event event) {
         std::scoped_lock lock(m_watchdog->m_mutex);
 
-        if (m_watchdog->m_asleep) {
+        fs_path abs_path = m_path / path;
+
+        if (m_watchdog->wasSleepingForAlert(abs_path)) {
             return;
         }
 
-        fs_path abs_path = m_path / path;
+        if (m_watchdog->m_ignore_paths.contains(abs_path)) {
+            m_watchdog->m_ignore_paths.erase(abs_path);
+            return;
+        }
+
         bool is_dir      = Filesystem::is_directory(abs_path).value_or(false);
 
         switch (event) {

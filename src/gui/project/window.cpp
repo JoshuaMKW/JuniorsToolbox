@@ -492,13 +492,17 @@ namespace Toolbox::UI {
         m_folder_view_context_menu.addDivider();
 
         m_folder_view_context_menu.addOption(
-            "New Folder", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_N}),
+            "New Folder",
+            KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_N}),
             [this]() { return m_selected_indices_ctx.size() == 0; },
             [this](const ModelIndex &view_index) {
                 std::string folder_name =
                     m_file_system_model->findUniqueName(view_index, "New Folder");
                 ModelIndex new_index = m_file_system_model->mkdir(view_index, folder_name);
                 if (m_file_system_model->validateIndex(new_index)) {
+                    m_selected_indices.clear();
+                    m_selected_indices.push_back(new_index);
+                    m_selected_indices_ctx = m_selected_indices;
                     actionRenameIndex(new_index);
                 }
             });
@@ -529,7 +533,11 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::actionDeleteIndexes(std::vector<ModelIndex> &indices) {
         for (auto &item_index : indices) {
-            m_file_system_model->remove(item_index);
+            if (m_file_system_model->isDirectory(item_index)) {
+                m_file_system_model->rmdir(item_index);
+            } else {
+                m_file_system_model->remove(item_index);
+            }
         }
         indices.clear();
     }

@@ -42,6 +42,7 @@ namespace Toolbox {
         EVENT_FOLDER_MODIFIED = BIT(3),
         EVENT_PATH_RENAMED    = BIT(4),
         EVENT_PATH_REMOVED    = BIT(5),
+        EVENT_IS_VIRTUAL      = BIT(6),
         EVENT_FILE_ANY =
             EVENT_FILE_ADDED | EVENT_FILE_MODIFIED | EVENT_PATH_RENAMED | EVENT_PATH_REMOVED,
         EVENT_FOLDER_ANY =
@@ -213,6 +214,8 @@ namespace Toolbox {
         void pathRenamedDst(const fs_path &new_path);
 
         void pathRemoved(const fs_path &path);
+
+        void signalEventListeners(const fs_path &path, FileSystemModelEventFlags flags);
 
     private:
         UUID64 m_uuid;

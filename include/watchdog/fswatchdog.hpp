@@ -41,9 +41,7 @@ namespace Toolbox {
         ScopePtr<filewatch::FileWatch<fs_path>> m_watch;
     };
 
-}
-
-
+}  // namespace Toolbox
 
 namespace std {
 
@@ -73,6 +71,9 @@ namespace Toolbox {
         void sleep();
         void wake();
 
+        void ignorePathOnce(const fs_path &path);
+        void ignorePathOnce(fs_path &&path);
+
         void addPath(const fs_path &path);
         void addPath(fs_path &&path);
 
@@ -93,8 +94,7 @@ namespace Toolbox {
     protected:
         void tRun(void *param) override;
 
-        void observePath(const fs_path &path);
-        void observePathF(const fs_path &path);
+        bool wasSleepingForAlert(const fs_path &path);
 
         struct FileInfo {
             Filesystem::file_status m_status;
@@ -109,6 +109,10 @@ namespace Toolbox {
 
     private:
         bool m_asleep = false;
+        std::chrono::time_point<std::chrono::system_clock> m_sleep_start;
+        std::chrono::time_point<std::chrono::system_clock> m_sleep_end;
+
+        std::unordered_set<fs_path> m_ignore_paths;
 
         std::unordered_map<fs_path, FileInfo> m_path_infos;
 

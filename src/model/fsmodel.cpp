@@ -5,6 +5,10 @@
 #include "gui/application.hpp"
 #include "model/fsmodel.hpp"
 
+#ifndef TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+#define TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE 0
+#endif
+
 namespace Toolbox {
 
     struct _FileSystemIndexData {
@@ -507,7 +511,7 @@ namespace Toolbox {
         }
 
         std::string result_name = name;
-        size_t collisions = 0;
+        size_t collisions       = 0;
         std::vector<std::string> child_paths;
 
         size_t dir_size = getDirSize_(parent, false);
@@ -536,9 +540,21 @@ namespace Toolbox {
 
         bool result = false;
 
+#if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.sleep();
+#endif
+        fs_path path = getPath_(parent) / name;
+
+#if !TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.ignorePathOnce(path);
+#endif
+
+        FileSystemModelEventFlags event_flags = FileSystemModelEventFlags::EVENT_FOLDER_ADDED;
+        if (isArchive_(parent) || validateIndex(getParentArchive(parent))) {
+            event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
+        }
+
         if (isDirectory_(parent)) {
-            fs_path path = getPath_(parent);
-            path /= name;
             Filesystem::create_directory(path)
                 .and_then([&](bool created) {
                     if (!created) {
@@ -560,12 +576,18 @@ namespace Toolbox {
             TOOLBOX_ERROR("[FileSystemModel] Parent index is not a directory!");
         }
 
+#if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.wake();
+#endif
+
         if (!result) {
             return ModelIndex();
         }
 
-        return makeIndex(parent.data<_FileSystemIndexData>()->m_path / name, getRowCount_(parent),
-                         parent);
+        ModelIndex ret_index = makeIndex(parent.data<_FileSystemIndexData>()->m_path / name,
+                                         getRowCount_(parent), parent);
+        signalEventListeners(path, event_flags);
+        return ret_index;
     }
 
     ModelIndex FileSystemModel::touch_(const ModelIndex &parent, const std::string &name) {
@@ -575,8 +597,22 @@ namespace Toolbox {
 
         bool result = false;
 
+#if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.sleep();
+#endif
+
+        fs_path path = parent.data<_FileSystemIndexData>()->m_path / name;
+
+#if !TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.ignorePathOnce(path);
+#endif
+
+        FileSystemModelEventFlags event_flags = FileSystemModelEventFlags::EVENT_FILE_ADDED;
+        if (isArchive_(parent) || validateIndex(getParentArchive(parent))) {
+            event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
+        }
+
         if (isDirectory_(parent)) {
-            fs_path path = parent.data<_FileSystemIndexData>()->m_path / name;
             std::ofstream file(path);
             if (!file.is_open()) {
                 TOOLBOX_ERROR_V("[FileSystemModel] Failed to create file: {}", path.string());
@@ -590,12 +626,18 @@ namespace Toolbox {
             TOOLBOX_ERROR("[FileSystemModel] Parent index is not a directory!");
         }
 
+#if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.wake();
+#endif
+
         if (!result) {
             return ModelIndex();
         }
 
-        return makeIndex(parent.data<_FileSystemIndexData>()->m_path / name, getRowCount_(parent),
-                         parent);
+        ModelIndex ret_index = makeIndex(parent.data<_FileSystemIndexData>()->m_path / name,
+                                         getRowCount_(parent), parent);
+        signalEventListeners(path, event_flags);
+        return ret_index;
     }
 
     bool FileSystemModel::rmdir_(const ModelIndex &index) {
@@ -603,14 +645,26 @@ namespace Toolbox {
             return false;
         }
 
-        bool result = false;
+        bool result        = false;
+        fs_path index_path = getPath_(index);
+
+#if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.sleep();
+#else
+        m_watchdog.ignorePathOnce(index_path);
+#endif
+
+        FileSystemModelEventFlags event_flags = FileSystemModelEventFlags::EVENT_PATH_REMOVED;
+        if (validateIndex(getParentArchive(index))) {
+            event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
+        }
 
         if (isDirectory_(index)) {
-            Filesystem::remove_all(getPath_(index))
+            Filesystem::remove_all(index_path)
                 .and_then([&](bool removed) {
                     if (!removed) {
                         TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove directory: {}",
-                                        getPath(index).string());
+                                        index_path.string());
                         return Result<bool, FSError>();
                     }
                     result = true;
@@ -622,11 +676,11 @@ namespace Toolbox {
                     return Result<bool, FSError>();
                 });
         } else if (isArchive_(index)) {
-            Filesystem::remove(getPath_(index))
+            Filesystem::remove(index_path)
                 .and_then([&](bool removed) {
                     if (!removed) {
                         TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove archive: {}",
-                                        getPath(index).string());
+                                        index_path.string());
                         return Result<bool, FSError>();
                     }
                     result = true;
@@ -641,6 +695,10 @@ namespace Toolbox {
             TOOLBOX_ERROR("[FileSystemModel] Index is not a directory!");
         }
 
+#if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.wake();
+#endif
+
         if (result) {
             ModelIndex parent = getParent_(index);
             if (validateIndex(parent)) {
@@ -653,6 +711,8 @@ namespace Toolbox {
             }
             delete index.data<_FileSystemIndexData>();
             m_index_map.erase(index.getUUID());
+
+            signalEventListeners(index_path, event_flags);
         }
 
         return result;
@@ -663,7 +723,19 @@ namespace Toolbox {
             return false;
         }
 
-        bool result = false;
+        bool result        = false;
+        fs_path index_path = getPath_(index);
+
+#if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.sleep();
+#else
+        m_watchdog.ignorePathOnce(index_path);
+#endif
+
+        FileSystemModelEventFlags event_flags = FileSystemModelEventFlags::EVENT_PATH_REMOVED;
+        if (validateIndex(getParentArchive(index))) {
+            event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
+        }
 
         if (isFile_(index)) {
             Filesystem::remove(getPath_(index))
@@ -687,6 +759,10 @@ namespace Toolbox {
             TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
         }
 
+#if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.wake();
+#endif
+
         if (result) {
             ModelIndex parent = getParent_(index);
             if (validateIndex(parent)) {
@@ -699,6 +775,8 @@ namespace Toolbox {
             }
             delete index.data<_FileSystemIndexData>();
             m_index_map.erase(index.getUUID());
+
+            signalEventListeners(index_path, event_flags);
         }
 
         return result;
@@ -712,7 +790,10 @@ namespace Toolbox {
             TOOLBOX_ERROR("[FileSystemModel] Not a directory or file!");
             return ModelIndex();
         }
-        fs_path from                      = file.data<_FileSystemIndexData>()->m_path;
+
+        bool result = false;
+
+        fs_path from                      = getPath_(file);
         fs_path to                        = from.parent_path() / new_name;
         ModelIndex parent                 = getParent_(file);
         _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
@@ -721,7 +802,35 @@ namespace Toolbox {
                                    file.getUUID()) -
                          parent_data->m_children.begin();
 
-        Filesystem::rename(from, to);
+#if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.sleep();
+#else
+        m_watchdog.ignorePathOnce(from);
+        m_watchdog.ignorePathOnce(to);
+#endif
+
+        FileSystemModelEventFlags event_flags = FileSystemModelEventFlags::EVENT_PATH_RENAMED;
+        if (validateIndex(getParentArchive(file))) {
+            event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
+        }
+
+        Filesystem::rename(from, to)
+            .and_then([&result]() {
+                result = true;
+                return Result<bool, FSError>();
+            })
+            .or_else([&](const FSError &error) {
+                TOOLBOX_ERROR_V("[FileSystemModel] Failed to rename file: {}", error.m_message[0]);
+                return Result<bool, FSError>();
+            });
+
+#if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.wake();
+#endif
+
+        if (!result) {
+            return ModelIndex();
+        }
 
         delete file.data<_FileSystemIndexData>();
         m_index_map.erase(file.getUUID());
@@ -729,8 +838,12 @@ namespace Toolbox {
                                                   parent_data->m_children.end(), file.getUUID()),
                                       parent_data->m_children.end());
         parent_data->m_size -= 1;
-        return makeIndex(to, dest_index, parent);
+
+        ModelIndex ret_index = makeIndex(to, dest_index, parent);
+        signalEventListeners(to, event_flags);
+        return ret_index;
     }
+
     ModelIndex FileSystemModel::copy_(const fs_path &file, const ModelIndex &new_parent,
                                       const std::string &new_name) {
         if (!validateIndex(new_parent)) {
@@ -741,13 +854,53 @@ namespace Toolbox {
             TOOLBOX_ERROR_V("[FileSystemModel] \"{}\" is not a directory or file!", file.string());
             return ModelIndex();
         }
-        fs_path to = new_parent.data<_FileSystemIndexData>()->m_path / new_name;
+
+        FileSystemModelEventFlags event_flags = FileSystemModelEventFlags::EVENT_FOLDER_ADDED;
+        {
+            ModelIndex src_index = getIndex_(file);
+            if (validateIndex(src_index)) {
+                if (isFile_(src_index)) {
+                    // TODO: Detect when destination path is part of a valid archive.
+                    if (false) {
+                        event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
+                    }
+                    event_flags = FileSystemModelEventFlags::EVENT_FILE_ADDED;
+                }
+            } else {
+                if (Filesystem::is_regular_file(file).value_or(false)) {
+                    event_flags = FileSystemModelEventFlags::EVENT_FILE_ADDED;
+                }
+            }
+        }
+
+        bool result = false;
+        fs_path to  = new_parent.data<_FileSystemIndexData>()->m_path / new_name;
 
         int dest_index = getRowCount_(new_parent);
 
-        Filesystem::copy(file, to);
+#if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.sleep();
+#else
+        m_watchdog.ignorePathOnce(to);
+#endif
 
-        return getIndex_(to);
+        Filesystem::copy(file, to)
+            .and_then([&result]() {
+                result = true;
+                return Result<bool, FSError>();
+            })
+            .or_else([&](const FSError &error) {
+                TOOLBOX_ERROR_V("[FileSystemModel] Failed to copy file: {}", error.m_message[0]);
+                return Result<bool, FSError>();
+            });
+
+#if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
+        m_watchdog.wake();
+#endif
+
+        ModelIndex ret_index = makeIndex(to, getRowCount_(new_parent), new_parent);
+        signalEventListeners(to, event_flags);
+        return ret_index;
     }
 
     ModelIndex FileSystemModel::getIndex_(const fs_path &path) const {
@@ -1047,12 +1200,7 @@ namespace Toolbox {
             makeIndex(path, getRowCount_(parent), parent);
         }
 
-        for (const auto &[key, listener] : m_listeners) {
-            if ((listener.second & FileSystemModelEventFlags::EVENT_FOLDER_ADDED) !=
-                FileSystemModelEventFlags::NONE) {
-                listener.first(path, FileSystemModelEventFlags::EVENT_FOLDER_ADDED);
-            }
-        }
+        signalEventListeners(path, FileSystemModelEventFlags::EVENT_FOLDER_ADDED);
     }
 
     void FileSystemModel::folderModified(const fs_path &path) {
@@ -1078,12 +1226,7 @@ namespace Toolbox {
                 });
         }
 
-        for (const auto &[key, listener] : m_listeners) {
-            if ((listener.second & FileSystemModelEventFlags::EVENT_FOLDER_MODIFIED) !=
-                FileSystemModelEventFlags::NONE) {
-                listener.first(path, FileSystemModelEventFlags::EVENT_FOLDER_MODIFIED);
-            }
-        }
+        signalEventListeners(path, FileSystemModelEventFlags::EVENT_FOLDER_MODIFIED);
     }
 
     void FileSystemModel::fileAdded(const fs_path &path) {
@@ -1098,12 +1241,7 @@ namespace Toolbox {
             makeIndex(path, getRowCount_(parent), parent);
         }
 
-        for (const auto &[key, listener] : m_listeners) {
-            if ((listener.second & FileSystemModelEventFlags::EVENT_FILE_ADDED) !=
-                FileSystemModelEventFlags::NONE) {
-                listener.first(path, FileSystemModelEventFlags::EVENT_FILE_ADDED);
-            }
-        }
+        signalEventListeners(path, FileSystemModelEventFlags::EVENT_FILE_ADDED);
     }
 
     void FileSystemModel::fileModified(const fs_path &path) {
@@ -1140,12 +1278,7 @@ namespace Toolbox {
                 });
         }
 
-        for (const auto &[key, listener] : m_listeners) {
-            if ((listener.second & FileSystemModelEventFlags::EVENT_FILE_MODIFIED) !=
-                FileSystemModelEventFlags::NONE) {
-                listener.first(path, FileSystemModelEventFlags::EVENT_FILE_MODIFIED);
-            }
-        }
+        signalEventListeners(path, FileSystemModelEventFlags::EVENT_FILE_MODIFIED);
     }
 
     void FileSystemModel::pathRenamedSrc(const fs_path &old_path) {
@@ -1191,12 +1324,7 @@ namespace Toolbox {
             }
         }
 
-        for (const auto &[key, listener] : m_listeners) {
-            if ((listener.second & FileSystemModelEventFlags::EVENT_PATH_RENAMED) !=
-                FileSystemModelEventFlags::NONE) {
-                listener.first(new_path, FileSystemModelEventFlags::EVENT_PATH_RENAMED);
-            }
-        }
+        signalEventListeners(new_path, FileSystemModelEventFlags::EVENT_PATH_RENAMED);
     }
 
     void FileSystemModel::pathRemoved(const fs_path &path) {
@@ -1225,10 +1353,14 @@ namespace Toolbox {
             }
         }
 
+        signalEventListeners(path, FileSystemModelEventFlags::EVENT_PATH_REMOVED);
+    }
+
+    void FileSystemModel::signalEventListeners(const fs_path &path,
+                                               FileSystemModelEventFlags flags) {
         for (const auto &[key, listener] : m_listeners) {
-            if ((listener.second & FileSystemModelEventFlags::EVENT_PATH_REMOVED) !=
-                FileSystemModelEventFlags::NONE) {
-                listener.first(path, FileSystemModelEventFlags::EVENT_PATH_REMOVED);
+            if ((listener.second & flags) != FileSystemModelEventFlags::NONE) {
+                listener.first(path, flags);
             }
         }
     }
