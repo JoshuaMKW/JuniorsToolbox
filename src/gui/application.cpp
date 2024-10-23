@@ -175,7 +175,8 @@ namespace Toolbox {
         platform_io.Renderer_RenderWindow = ImGui_ImplOpenGL3_RenderWindow_Ex;
 
         DragDropManager::instance().initialize();
-        m_drag_drop_target_delegate = DragDropTargetFactory::createDragDropTargetDelegate();
+        m_drag_drop_source_delegate = DragDropDelegateFactory::createDragDropSourceDelegate();
+        m_drag_drop_target_delegate = DragDropDelegateFactory::createDragDropTargetDelegate();
 
         if (!m_settings_manager.initialize()) {
             TOOLBOX_ERROR("[INIT] Failed to initialize settings manager!");
@@ -326,6 +327,10 @@ namespace Toolbox {
                      [&title](RefPtr<ImWindow> window) { return window->title() == title; });
         return result;
     }
+
+    bool GUIApplication::registerDragDropSource(Platform::LowWindow window) { return false; }
+
+    void GUIApplication::deregisterDragDropSource(Platform::LowWindow window) {}
 
     bool GUIApplication::registerDragDropTarget(Platform::LowWindow window) {
         return m_drag_drop_target_delegate->initializeForWindow(window);

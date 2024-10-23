@@ -228,7 +228,7 @@ namespace Toolbox::UI {
     };
 #endif
 
-    ScopePtr<IDragDropTargetDelegate> DragDropTargetFactory::createDragDropTargetDelegate() {
+    ScopePtr<IDragDropTargetDelegate> DragDropDelegateFactory::createDragDropTargetDelegate() {
 #ifdef TOOLBOX_PLATFORM_WINDOWS
         return make_scoped<WindowsDragDropTargetDelegate>();
 #elif defined(TOOLBOX_PLATFORM_LINUX)
@@ -239,6 +239,20 @@ namespace Toolbox::UI {
     }
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
+
+    static DropTypes convertDropEffect(DWORD dwEffect) {
+        DropTypes drop_type = DropType::ACTION_NONE;
+        if (dwEffect & DROPEFFECT_COPY) {
+            drop_type |= DropType::ACTION_COPY;
+        }
+        if (dwEffect & DROPEFFECT_MOVE) {
+            drop_type |= DropType::ACTION_MOVE;
+        }
+        if (dwEffect & DROPEFFECT_LINK) {
+            drop_type |= DropType::ACTION_LINK;
+        }
+        return drop_type;
+    }
 
     HRESULT __stdcall WindowsDragDropTarget::DragEnter(IDataObject *pDataObj, DWORD grfKeyState,
                                                        POINTL pt, DWORD *pdwEffect) {
@@ -258,7 +272,7 @@ namespace Toolbox::UI {
 
                 ImGuiStyle &style = ImGui::GetStyle();
 
-                size_t num_files = urls.size();
+                size_t num_files       = urls.size();
                 std::string file_count = std::format("{}", num_files);
                 ImVec2 text_size       = ImGui::CalcTextSize(file_count.c_str());
 

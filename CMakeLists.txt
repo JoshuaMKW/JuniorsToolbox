@@ -148,7 +148,7 @@ target_link_libraries(JuniorsToolbox PRIVATE nfd)
 if (WIN32)
 #  link this library so we can find Nahimic service
 #  this is because it crashes window corner resizing :P
-    target_link_libraries(JuniorsToolbox PRIVATE Advapi32)
+    target_link_libraries(JuniorsToolbox PRIVATE Advapi32 Comctl32)
 endif()
 
 target_compile_definitions(JuniorsToolbox PRIVATE NOMINMAX IMGUI_DEFINE_MATH_OPERATORS)

@@ -16,6 +16,7 @@
 #undef GLFW_INCLUDE_NONE
 
 #include "gui/dolphin/overlay.hpp"
+#include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/scene/window.hpp"
 #include "gui/window.hpp"
 
@@ -138,6 +139,9 @@ namespace Toolbox {
         ProjectManager &getProjectManager() { return m_project_manager; }
         const ProjectManager &getProjectManager() const { return m_project_manager; }
         
+        bool registerDragDropSource(Platform::LowWindow window);
+        void deregisterDragDropSource(Platform::LowWindow window);
+
         bool registerDragDropTarget(Platform::LowWindow window);
         void deregisterDragDropTarget(Platform::LowWindow window);
 
@@ -196,6 +200,7 @@ namespace Toolbox {
         bool m_windows_processing = false;
 
         ScopePtr<IDragDropTargetDelegate> m_drag_drop_target_delegate;
+        ScopePtr<IDragDropSourceDelegate> m_drag_drop_source_delegate;
         ImGuiViewport *m_drag_drop_viewport = nullptr;
         bool m_await_drag_drop_destroy      = false;
 

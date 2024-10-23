@@ -19,9 +19,4 @@ namespace Toolbox::UI {
         virtual void shutdownForWindow(Platform::LowWindow window)   = 0;
     };
 
-    class DragDropTargetFactory {
-    public:
-         static ScopePtr<IDragDropTargetDelegate> createDragDropTargetDelegate();
-    };
-
 }  // namespace Toolbox::UI

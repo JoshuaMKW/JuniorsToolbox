@@ -75,6 +75,8 @@ namespace Toolbox {
             }
         }
 
+        void processEvents();
+
         void addLayer(RefPtr<ProcessLayer> layer);
         void removeLayer(RefPtr<ProcessLayer> layer);
 

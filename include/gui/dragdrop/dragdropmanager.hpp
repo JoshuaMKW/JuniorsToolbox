@@ -4,6 +4,8 @@
 #include "core/mimedata/mimedata.hpp"
 #include "gui/dragdrop/dragaction.hpp"
 #include "gui/dragdrop/dropaction.hpp"
+#include "gui/dragdrop/source.hpp"
+#include "gui/dragdrop/target.hpp"
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
@@ -48,6 +50,12 @@ namespace Toolbox::UI {
 
         RefPtr<DragAction> m_current_drag_action;
         bool m_is_system_action = false;
+    };
+
+    class DragDropDelegateFactory {
+    public:
+        static ScopePtr<IDragDropSourceDelegate> createDragDropSourceDelegate();
+        static ScopePtr<IDragDropTargetDelegate> createDragDropTargetDelegate();
     };
 
 }  // namespace Toolbox::UI
