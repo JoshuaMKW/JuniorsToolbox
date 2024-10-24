@@ -20,6 +20,9 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
+#include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
 #endif
 
 namespace Toolbox::Platform {
@@ -51,7 +54,7 @@ namespace Toolbox::Platform {
         }
     }
 
-    Result<ProcessInformation> CreateExProcess(const std::filesystem::path &program_path,
+    Result<ProcessInformation> CreateExProcess(const fs_path &program_path,
                                                std::string_view cmdargs) {
         std::string true_cmdargs =
             std::format("\"{}\" {}", program_path.string().c_str(), cmdargs.data());
@@ -168,6 +171,48 @@ namespace Toolbox::Platform {
         return true;
     }
 
+    // Structure to store child windows and their z-order
+    struct WindowInfo {
+        HWND hwnd;
+        int zOrder;
+    };
+
+    BOOL CALLBACK EnumWindowsForZProc(HWND hwnd, LPARAM lParam) {
+        std::vector<WindowInfo> *windows = reinterpret_cast<std::vector<WindowInfo> *>(lParam);
+
+        // Add the child window to the vector
+        WindowInfo info;
+        info.hwnd   = hwnd;
+        info.zOrder = windows->size();  // The index represents the Z-order among child windows
+        windows->push_back(info);
+
+        return TRUE;  // Continue enumeration
+    }
+
+    bool GetWindowZOrder(LowWindow window, int &zorder) {
+        std::vector<WindowInfo> windows;
+        windows.reserve(1024);
+
+        // Get the parent window of the window
+        HWND parent = GetParent(window);
+        if (parent == NULL) {
+            EnumWindows(EnumWindowsForZProc, reinterpret_cast<LPARAM>(&windows));
+        } else {
+            // Enumerate the child windows of the parent window
+            EnumChildWindows(parent, EnumWindowsForZProc, reinterpret_cast<LPARAM>(&windows));
+        }
+
+        // Find the Z-order of the window among the child windows
+        for (size_t i = 0; i < windows.size(); i++) {
+            if (windows[i].hwnd == window) {
+                zorder = windows[i].zOrder;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     bool ForceWindowToFront(LowWindow window) {
         return SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0,
                             SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
@@ -179,7 +224,7 @@ namespace Toolbox::Platform {
     }
 
     bool SetWindowTransparency(LowWindow window, uint8_t alpha) {
-        SetWindowLongPtr(window, GWL_STYLE, WS_EX_LAYERED);
+        SetWindowLongPtr(window, GWL_STYLE, GetWindowLongPtr(window, GWL_STYLE) | WS_EX_LAYERED);
         SetLayeredWindowAttributes(window, RGB(0, 0, 0), 255, LWA_ALPHA);
         if (!ShowWindow(window, SW_SHOW)) {
             return false;
@@ -187,10 +232,27 @@ namespace Toolbox::Platform {
         return UpdateWindow(window);
     }
 
+    bool SetWindowClickThrough(LowWindow window, bool click_through) {
+        LONG_PTR style = GetWindowLongPtr(window, GWL_EXSTYLE);
+        if (click_through) {
+            style |= WS_EX_LAYERED;
+            style |= WS_EX_TRANSPARENT;
+        } else {
+            style &= ~WS_EX_LAYERED;
+            style &= ~WS_EX_TRANSPARENT;
+        }
+        return SetWindowLongPtr(window, GWL_EXSTYLE, style) >= 0;
+    }
+
+    bool OpenFileExplorer(const fs_path &path) {
+        std::wstring path_str = path.wstring();
+        return (int)ShellExecuteW(NULL, L"open", L"explorer.exe", path_str.c_str(), NULL, SW_SHOW) > 32;
+    }
+
 #elif defined(TOOLBOX_PLATFORM_LINUX)
     std::string GetLastErrorMessage() { return strerror(errno); }
 
-    Result<ProcessInformation> CreateExProcess(const std::filesystem::path &program_path,
+    Result<ProcessInformation> CreateExProcess(const fs_path &program_path,
                                                std::string_view cmdargs) {
         ProcessID pid = fork();  // Fork the current process
         if (pid == -1) {
@@ -267,7 +329,7 @@ namespace Toolbox::Platform {
         return true;
     }
     std::string GetWindowTitle(LowWindow window) {
-        Display* display = XOpenDisplay(0);
+        Display* display = getGLFWDisplay();
         XTextProperty title;
         XGetWMName(display, (Window)window, &title);
         char** stringList;
@@ -282,8 +344,11 @@ namespace Toolbox::Platform {
         XFreeStringList(stringList);
         return stringList[0];
     }
+    bool GetWindowZOrder(LowWindow window, int &zorder) {
+        return false;
+    }
     bool ForceWindowToFront(LowWindow window) {
-        Display* display = XOpenDisplay(0);
+        Display* display = getGLFWDisplay();
         return XRaiseWindow(display, (Window)window);
     }
     bool ForceWindowToFront(LowWindow window, LowWindow target) {
@@ -291,9 +356,14 @@ namespace Toolbox::Platform {
         // target, but I don't know how to do that.
         return ForceWindowToFront(window);
     }
+
+    bool SetWindowTransparency(LowWindow window, uint8_t alpha) { return false; }
+
+    bool SetWindowClickThrough(LowWindow window, bool click_through) { return false; }
+
     bool GetWindowClientRect(LowWindow window, int &x, int &y, int &width, int &height) {
         XWindowAttributes attribs;
-        Display* display = XOpenDisplay(0);
+        Display* display = getGLFWDisplay();
         if (!XGetWindowAttributes(display, (Window)window, &attribs)) {
             return false;
         }
@@ -307,7 +377,7 @@ namespace Toolbox::Platform {
                                 const Atom PIDAtom, const int pid,
                                 std::vector<LowWindow> &result);
     std::vector<LowWindow> FindWindowsOfProcess(const ProcessInformation &process) {
-        Display* display = XOpenDisplay(0);
+        Display* display = getGLFWDisplay();
         Atom PIDAtom = XInternAtom(display, "_NET_WM_PID", True);
 
         if(PIDAtom == None)
@@ -357,6 +427,10 @@ namespace Toolbox::Platform {
                 searchWindowsOfProcess(wChildren[i], display, PIDAtom, pid, result);
             }
         }
+    }
+    bool OpenFileExplorer(const fs_path &path) {
+        TOOLBOX_ERROR("Open file explorer currently unsupported on linux");
+        return false;
     }
 #endif
 }  // namespace Toolbox::Platform

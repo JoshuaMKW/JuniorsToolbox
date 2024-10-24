@@ -1,16 +1,22 @@
-#if WIN32
-#include <Windows.h>
-#elif __linux__
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#else
-#error "Unsupported OS"
-#endif
+#include "core/core.hpp"
+#include "core/input/input.hpp"
+
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 
-#include "core/input/input.hpp"
+#include <cstring>
+
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+#include <Windows.h>
+#elif defined(TOOLBOX_PLATFORM_LINUX)
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
+#else
+#error "Unsupported OS"
+#endif
 
 // Internals
 
@@ -22,6 +28,9 @@ namespace {
     constexpr size_t c_buttons_max = 32;
 
     using namespace Toolbox::Input;
+
+    static double s_mouse_position_glfw_x = 0;
+    static double s_mouse_position_glfw_y = 0;
 
     static double s_mouse_position_x = 0;
     static double s_mouse_position_y = 0;
@@ -40,17 +49,21 @@ namespace {
     static bool s_keys_down[c_keys_max]      = {false};
     static bool s_prev_keys_down[c_keys_max] = {false};
 
+    static bool s_mouse_buttons_down_glfw[c_buttons_max]      = {false};
+    static bool s_prev_mouse_buttons_down_glfw[c_buttons_max] = {false};
+
     static bool s_mouse_buttons_down[c_buttons_max]      = {false};
     static bool s_prev_mouse_buttons_down[c_buttons_max] = {false};
 
-    static bool GetKeyState(Toolbox::Input::KeyCode key) { return s_keys_down[raw_enum(key)]; }
-    static void SetKeyState(Toolbox::Input::KeyCode key, bool state) { s_keys_down[raw_enum(key)] = state; }
-
-    static bool GetMouseButtonState(MouseButton button) {
-        return s_mouse_buttons_down[raw_enum(button)];
+    static void SetKeyState(Toolbox::Input::KeyCode key, bool state) {
+        s_keys_down[raw_enum(key)] = state;
     }
-    static void SetMouseButtonState(MouseButton button, bool state) {
+
+    static void SetMouseButtonState(MouseButton button, bool state, bool as_external) {
         s_mouse_buttons_down[raw_enum(button)] = state;
+        if (!as_external) {
+            s_mouse_buttons_down_glfw[raw_enum(button)] = state;
+        }
     }
 
 }  // namespace
@@ -98,8 +111,7 @@ namespace Toolbox::Input {
     bool GetKey(KeyCode key) { return s_keys_down[raw_enum(key)]; }
 
     bool GetKeyDown(KeyCode key) {
-        bool is_down =
-            s_keys_down[raw_enum(key)] && !s_prev_keys_down[raw_enum(key)];
+        bool is_down = s_keys_down[raw_enum(key)] && !s_prev_keys_down[raw_enum(key)];
         return is_down;
     }
 
@@ -117,19 +129,37 @@ namespace Toolbox::Input {
         return buttons;
     }
 
-    bool GetMouseButton(MouseButton button) { return s_mouse_buttons_down[raw_enum(button)]; }
-
-    bool GetMouseButtonDown(MouseButton button) {
-        return s_mouse_buttons_down[raw_enum(button)] &&
-               !s_prev_mouse_buttons_down[raw_enum(button)];
+    bool GetMouseButton(MouseButton button, bool include_external) {
+        return include_external ? s_mouse_buttons_down[raw_enum(button)]
+                                : s_mouse_buttons_down_glfw[raw_enum(button)];
     }
 
-    bool GetMouseButtonUp(MouseButton button) {
-        return s_prev_mouse_buttons_down[raw_enum(button)] &&
-               !s_mouse_buttons_down[raw_enum(button)];
+    bool GetMouseButtonDown(MouseButton button, bool include_external) {
+        if (include_external) {
+            return s_mouse_buttons_down[raw_enum(button)] &&
+                   !s_prev_mouse_buttons_down[raw_enum(button)];
+        } else {
+            return s_mouse_buttons_down_glfw[raw_enum(button)] &&
+                   !s_prev_mouse_buttons_down_glfw[raw_enum(button)];
+        }
+    }
+
+    bool GetMouseButtonUp(MouseButton button, bool include_external) {
+        if (include_external) {
+            return s_prev_mouse_buttons_down[raw_enum(button)] &&
+                   !s_mouse_buttons_down[raw_enum(button)];
+        } else {
+            return s_prev_mouse_buttons_down_glfw[raw_enum(button)] &&
+                   !s_mouse_buttons_down_glfw[raw_enum(button)];
+        }
     }
 
     void GetMouseViewportPosition(double &x, double &y) {
+        x = s_mouse_position_glfw_x;
+        y = s_mouse_position_glfw_y;
+    }
+
+    void GetMousePosition(double &x, double &y) {
         x = s_mouse_position_x;
         y = s_mouse_position_y;
     }
@@ -150,19 +180,16 @@ namespace Toolbox::Input {
         if (!overwrite_delta) {
             SetMouseWrapped(true);
         }
-#if WIN32
+#ifdef TOOLBOX_PLATFORM_WINDOWS
         SetCursorPos((int)pos_x, (int)pos_y);
-#elif __linux__
-        Display *display = XOpenDisplay(0);
-        if (display == nullptr)
-            return;
+#elif defined(TOOLBOX_PLATFORM_LINUX)
+        Display *display = getGLFWDisplay();
 
         float rel_pos_x = s_mouse_position_x - pos_x;
         float rel_pos_y = s_mouse_position_y - pos_y;
         XWarpPointer(display, 0, 0, 0, 0, 0, 0, rel_pos_x, rel_pos_y);
 
         XFlush(display);
-        XCloseDisplay(display);
 #else
 #error "Unsupported OS"
 #endif
@@ -171,6 +198,36 @@ namespace Toolbox::Input {
     void SetMouseWrapped(bool wrapped) { s_mouse_wrapped = wrapped; }
 
     void UpdateInputState() {
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+        POINT point;
+        GetCursorPos(&point);
+        s_mouse_position_x = point.x;
+        s_mouse_position_y = point.y;
+
+        // Poll mouse inputs
+        for (int i = 0; i < c_buttons_max; i++) {
+            int states[3]           = {VK_LBUTTON, VK_RBUTTON, VK_MBUTTON};
+            s_mouse_buttons_down[i] = GetAsyncKeyState(states[i]) & 0x8000;
+        }
+#elif defined(TOOLBOX_PLATFORM_LINUX)
+        // TODO: Check that this actually works
+
+        Display *display = getGLFWDisplay();
+
+        Window root = DefaultRootWindow(display);
+        Window child;
+        int root_x, root_y, win_x, win_y;
+        unsigned int mask;
+        XQueryPointer(display, root, &root, &child, &root_x, &root_y, &win_x, &win_y, &mask);
+
+        s_mouse_position_x = win_x;
+        s_mouse_position_y = win_y;
+
+        // Poll mouse inputs
+        for (int i = 0; i < c_buttons_max; i++) {
+        }
+#endif
+
         if (!s_mouse_wrapped) {
             s_mouse_delta_x = s_mouse_position_x - s_prev_mouse_position_x;
             s_mouse_delta_y = s_mouse_position_y - s_prev_mouse_position_y;
@@ -180,10 +237,14 @@ namespace Toolbox::Input {
     }
 
     void PostUpdateInputState() {
-        for (int i = 0; i < c_keys_max; i++)
-            s_prev_keys_down[i] = s_keys_down[i];
-        for (int i = 0; i < c_buttons_max; i++)
-            s_prev_mouse_buttons_down[i] = s_mouse_buttons_down[i];
+        /*TOOLBOX_DEBUG_LOG_V("PostUpdateInputState: LBUT: [P {}, N {}], LBUT_GLFW: [P {}, N {}]",
+                            s_prev_mouse_buttons_down[0], s_mouse_buttons_down[0],
+                            s_prev_mouse_buttons_down_glfw[0], s_mouse_buttons_down_glfw[0]);*/
+
+        std::memcpy(s_prev_mouse_buttons_down_glfw, s_mouse_buttons_down_glfw,
+                    sizeof(s_mouse_buttons_down_glfw));
+        std::memcpy(s_prev_mouse_buttons_down, s_mouse_buttons_down, sizeof(s_mouse_buttons_down));
+        std::memcpy(s_prev_keys_down, s_keys_down, sizeof(s_keys_down));
 
         s_prev_mouse_position_x = s_mouse_position_x;
         s_prev_mouse_position_y = s_mouse_position_y;
@@ -208,8 +269,8 @@ namespace Toolbox::Input {
         int win_x, win_y;
         glfwGetWindowPos(window, &win_x, &win_y);
 
-        s_mouse_position_x = win_x + xpos;
-        s_mouse_position_y = win_y + ypos;
+        s_mouse_position_glfw_x = xpos;
+        s_mouse_position_glfw_y = ypos;
 
         ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
     }
@@ -218,10 +279,11 @@ namespace Toolbox::Input {
         if (button >= c_buttons_max)
             return;
 
-        if (action == GLFW_PRESS)
-            s_mouse_buttons_down[button] = true;
-        else if (action == GLFW_RELEASE)
-            s_mouse_buttons_down[button] = false;
+        if (action == GLFW_PRESS) {
+            SetMouseButtonState(static_cast<MouseButton>(button), true, false);
+        } else if (action == GLFW_RELEASE) {
+            SetMouseButtonState(static_cast<MouseButton>(button), false, false);
+        }
 
         ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
     }
