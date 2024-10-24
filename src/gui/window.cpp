@@ -33,7 +33,6 @@ namespace Toolbox::UI {
         if (size == getSize()) {
             return;
         }
-        m_is_resized = true;
         GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_RESIZE,
                                                                     size);
     }
@@ -41,7 +40,6 @@ namespace Toolbox::UI {
         if (pos == getPos()) {
             return;
         }
-        m_is_repositioned = true;
         GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_MOVE,
                                                                     pos);
     }
@@ -225,20 +223,18 @@ namespace Toolbox::UI {
 
         // Establish window constraints
         if (window) {
-            if (window->Size != m_prev_size && m_is_resized) {
+            if (window->Size != m_prev_size) {
                 if (m_next_size.x >= 0.0f && m_next_size.y >= 0.0f) {
                     GUIApplication::instance().dispatchEvent<WindowEvent, true>(
                         getUUID(), EVENT_WINDOW_RESIZE, window->Size);
                 }
                 ImGui::SetWindowSize(window, m_prev_size, ImGuiCond_Always);
-                m_is_resized = false;
             }
 
-            if (window->Pos != m_prev_pos && m_is_repositioned) {
+            if (window->Pos != m_prev_pos) {
                 GUIApplication::instance().dispatchEvent<WindowEvent, true>(
                     getUUID(), EVENT_WINDOW_MOVE, window->Pos);
                 ImGui::SetWindowPos(window, m_prev_pos, ImGuiCond_Always);
-                m_is_repositioned = false;
             }
         }
 
@@ -270,6 +266,8 @@ namespace Toolbox::UI {
         case EVENT_WINDOW_MOVE: {
             ImVec2 win_pos = ev->getGlobalPoint();
             setLayerPos(win_pos);
+            std::string window_name = std::format("{}###{}", title(), ev->getTargetId());
+            ImGui::SetWindowPos(window_name.c_str(), win_pos, ImGuiCond_Always);
             ev->accept();
             break;
         }
@@ -284,6 +282,8 @@ namespace Toolbox::UI {
                 win_size.y = std::min(win_size.y, m_max_size->y);
             }
             setLayerSize(win_size);
+            std::string window_name = std::format("{}###{}", title(), ev->getTargetId());
+            ImGui::SetWindowSize(window_name.c_str(), win_size, ImGuiCond_Always);
             ev->accept();
             break;
         }
