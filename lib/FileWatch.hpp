@@ -597,7 +597,7 @@ namespace filewatch {
 
             std::unordered_map<int, std::filesystem::path> watches;
             for (auto &subdir_path : get_subdirectories(watch_path)) {
-                const auto watch_fd = inotify_add_watch(inotify_handle, watch_path.c_str(),
+                const auto watch_fd = inotify_add_watch(inotify_handle, subdir_path.c_str(),
                                                         IN_MODIFY | IN_CREATE | IN_DELETE);
                 watches[watch_fd] = subdir_path;
                 if (watch_fd < 0) {
