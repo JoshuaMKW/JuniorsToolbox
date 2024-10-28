@@ -160,12 +160,24 @@ namespace Toolbox::UI {
                                 ImGui::SetCursorScreenPos(rename_pos);
                                 ImGui::SetKeyboardFocusHere();
 
+                                if (m_is_valid_name) {
+                                    ImGui::PushStyleColor(ImGuiCol_Text,
+                                                          ImGui::ColorConvertFloat4ToU32(
+                                                                                         ImGui::GetStyleColorVec4(ImGuiCol_Text)));
+                                } else  {
+                                    ImGui::PushStyleColor(ImGuiCol_Text,
+                                                          ImGui::ColorConvertFloat4ToU32(ImVec4(1.0, 0.3, 0.3, 1.0)));
+                                }
                                 ImGui::PushItemWidth(label_width);
-                                bool done = ImGui::InputText(
+                                bool edited = ImGui::InputText(
                                     "##rename", m_rename_buffer, IM_ARRAYSIZE(m_rename_buffer),
-                                    ImGuiInputTextFlags_AutoSelectAll |
-                                        ImGuiInputTextFlags_EnterReturnsTrue);
-                                if (done) {
+                                    ImGuiInputTextFlags_AutoSelectAll);
+                                // Pop text color
+                                ImGui::PopStyleColor(1);
+                                if (edited) {
+                                    m_is_valid_name = isValidName(m_rename_buffer, m_selected_indices);
+                                }
+                                if (ImGui::IsItemDeactivatedAfterEdit() && m_is_valid_name) {
                                     if (std::strlen(m_rename_buffer) == 0) {
                                         TOOLBOX_DEBUG_LOG("Attempted to rename to the empty string, ignoring.");
                                     } else {
@@ -850,5 +862,37 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::initFolderAssets(const ModelIndex &index) {}
+    bool ProjectViewWindow::isValidName(const char* name, const std::vector<ModelIndex> &selected_indices) const {
+        TOOLBOX_ASSERT(selected_indices.size() == 1, "Can't rename more than one file!");
+
+        ModelIndex parent = m_file_system_model->getParent(selected_indices[0]);
+        for (size_t i = 0; i < m_file_system_model->getRowCount(parent); ++i) {
+            ModelIndex child_index = m_file_system_model->getIndex(i, 0, parent);
+            if (child_index == selected_indices[0]) {
+                continue;
+            }
+            std::string child_name = m_file_system_model->getDisplayText(child_index);
+            if (std::strcmp(child_name.c_str(), name) == 0) {
+                return false;
+            }
+        }
+        if (std::strchr(name, '/')) {
+            return false;
+        }
+        //#ifdef TOOLBOX_PLATFORM_WINDOWS
+        if (std::strchr(name, '\\') ||
+            std::strchr(name, '<') ||
+            std::strchr(name, '>') ||
+            std::strchr(name, ':') ||
+            std::strchr(name, '"') ||
+            std::strchr(name, '|') ||
+            std::strchr(name, '?') ||
+            std::strchr(name, '*')) {
+            return false;
+        }
+        //#endif
+
+        return true;
+    }
 
 }  // namespace Toolbox::UI
