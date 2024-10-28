@@ -166,8 +166,12 @@ namespace Toolbox::UI {
                                     ImGuiInputTextFlags_AutoSelectAll |
                                         ImGuiInputTextFlags_EnterReturnsTrue);
                                 if (done) {
-                                    m_file_system_model->rename(
-                                        m_view_proxy.toSourceIndex(child_index), m_rename_buffer);
+                                    if (std::strlen(m_rename_buffer) == 0) {
+                                        TOOLBOX_DEBUG_LOG("Attempted to rename to the empty string, ignoring.");
+                                    } else {
+                                        m_file_system_model->rename(
+                                            m_view_proxy.toSourceIndex(child_index), m_rename_buffer);
+                                    }
                                 }
                                 ImGui::SetCursorScreenPos(pos);
                                 ImGui::PopItemWidth();
