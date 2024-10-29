@@ -879,7 +879,7 @@ namespace Toolbox::UI {
         if (std::strchr(name, '/')) {
             return false;
         }
-        //#ifdef TOOLBOX_PLATFORM_WINDOWS
+        #ifdef TOOLBOX_PLATFORM_WINDOWS
         if (std::strchr(name, '\\') ||
             std::strchr(name, '<') ||
             std::strchr(name, '>') ||
@@ -890,7 +890,7 @@ namespace Toolbox::UI {
             std::strchr(name, '*')) {
             return false;
         }
-        //#endif
+        #endif
 
         return true;
     }
