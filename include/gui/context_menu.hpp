@@ -134,12 +134,16 @@ namespace Toolbox::UI {
             bool keybind_pressed = option.m_keybind.isInputMatching();
 
             if (keybind_pressed && !option.m_keybind_used) {
-                m_open_event(ctx);
-                option.m_keybind_used = true;
-                option.m_op(ctx);
+                if (m_open_event) {
+                    m_open_event(ctx);
+                }
+                if (option.m_condition()) {
+                    option.m_keybind_used = true;
+                    option.m_op(ctx);
+                }
             }
 
-            if (!keybind_pressed) {
+            if (!keybind_pressed || !option.m_condition()) {
                 option.m_keybind_used = false;
             }
         }
