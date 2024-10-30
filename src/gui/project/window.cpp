@@ -920,7 +920,7 @@ namespace Toolbox::UI {
              // also disallowed after these patterns.
              name.back() == '\XB6' ||
              name.back() == '\XB2' ||
-             name.back() == '\XB3'){
+             name.back() == '\XB3')){
             return false;
         }
 #endif
