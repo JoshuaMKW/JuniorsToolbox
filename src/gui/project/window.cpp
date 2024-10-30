@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <imgui/imgui.h>
+#include <cctype>
 
 namespace Toolbox::UI {
 
@@ -904,6 +905,29 @@ namespace Toolbox::UI {
         }
         if (name.back() == ' ' ||
             name.back() == '.') {
+            return false;
+        }
+        if (name == "CON" ||
+            name == "PRN" ||
+            name == "AUX" ||
+            name == "NUL"){
+            return false;
+        }
+        if (name.starts_with("CON.") ||
+            name.starts_with("PRN.") ||
+            name.starts_with("AUX.") ||
+            name.starts_with("NUL.")) {
+            return false;
+        }
+        if ((name.starts_with("COM") ||
+             name.starts_with("LPT")) &&
+            name.length() == 4 &&
+            (isdigit(name.back()) ||
+             // The escapes for superscript 1, 2, and 3, which are
+             // also disallowed after these patterns.
+             name.back() == '\XB6' ||
+             name.back() == '\XB2' ||
+             name.back() == '\XB3'){
             return false;
         }
         #endif
