@@ -902,6 +902,10 @@ namespace Toolbox::UI {
             name.contains('*')) {
             return false;
         }
+        if (name.back() == ' ' ||
+            name.back() == '.') {
+            return false;
+        }
         #endif
 
         return true;
