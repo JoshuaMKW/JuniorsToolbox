@@ -112,7 +112,7 @@ namespace Toolbox::UI {
 
     private:
 
-        bool isValidName(const char* name, const std::vector<ModelIndex> &selected_indices) const;
+        bool isValidName(const std::string &name, const std::vector<ModelIndex> &selected_indices) const;
         fs_path m_project_root;
 
         // TODO: Have filesystem model.

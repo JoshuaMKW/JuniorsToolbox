@@ -862,7 +862,16 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::initFolderAssets(const ModelIndex &index) {}
-    bool ProjectViewWindow::isValidName(const char* name, const std::vector<ModelIndex> &selected_indices) const {
+    bool char_equals(char a, char b)
+    {
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+        return std::tolower(static_cast<unsigned char>(a)) ==
+            std::tolower(static_cast<unsigned char>(b));
+#else
+        return a == b;
+#endif
+    }
+    bool ProjectViewWindow::isValidName(const std::string &name, const std::vector<ModelIndex> &selected_indices) const {
         TOOLBOX_ASSERT(selected_indices.size() == 1, "Can't rename more than one file!");
 
         ModelIndex parent = m_file_system_model->getParent(selected_indices[0]);
@@ -872,22 +881,23 @@ namespace Toolbox::UI {
                 continue;
             }
             std::string child_name = m_file_system_model->getDisplayText(child_index);
-            if (std::strcmp(child_name.c_str(), name) == 0) {
+            if (std::equal(child_name.begin(), child_name.end(),
+                           name.begin(), name.end(), char_equals)){
                 return false;
             }
         }
-        if (std::strchr(name, '/')) {
+        if (name.contains('/')) {
             return false;
         }
         #ifdef TOOLBOX_PLATFORM_WINDOWS
-        if (std::strchr(name, '\\') ||
-            std::strchr(name, '<') ||
-            std::strchr(name, '>') ||
-            std::strchr(name, ':') ||
-            std::strchr(name, '"') ||
-            std::strchr(name, '|') ||
-            std::strchr(name, '?') ||
-            std::strchr(name, '*')) {
+        if (name.contains('\\') ||
+            name.contains('<') ||
+            name.contains('>') ||
+            name.contains(':') ||
+            name.contains('"') ||
+            name.contains('|') ||
+            name.contains('?') ||
+            name.contains('*')) {
             return false;
         }
         #endif
