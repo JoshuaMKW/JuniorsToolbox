@@ -162,28 +162,33 @@ namespace Toolbox::UI {
                                 ImGui::SetKeyboardFocusHere();
 
                                 if (m_is_valid_name) {
-                                    ImGui::PushStyleColor(ImGuiCol_Text,
-                                                          ImGui::ColorConvertFloat4ToU32(
-                                                                                         ImGui::GetStyleColorVec4(ImGuiCol_Text)));
-                                } else  {
-                                    ImGui::PushStyleColor(ImGuiCol_Text,
-                                                          ImGui::ColorConvertFloat4ToU32(ImVec4(1.0, 0.3, 0.3, 1.0)));
+                                    ImGui::PushStyleColor(
+                                        ImGuiCol_Text,
+                                        ImGui::ColorConvertFloat4ToU32(
+                                            ImGui::GetStyleColorVec4(ImGuiCol_Text)));
+                                } else {
+                                    ImGui::PushStyleColor(
+                                        ImGuiCol_Text,
+                                        ImGui::ColorConvertFloat4ToU32(ImVec4(1.0, 0.3, 0.3, 1.0)));
                                 }
                                 ImGui::PushItemWidth(label_width);
-                                bool edited = ImGui::InputText(
-                                    "##rename", m_rename_buffer, IM_ARRAYSIZE(m_rename_buffer),
-                                    ImGuiInputTextFlags_AutoSelectAll);
+                                bool edited = ImGui::InputText("##rename", m_rename_buffer,
+                                                               IM_ARRAYSIZE(m_rename_buffer),
+                                                               ImGuiInputTextFlags_AutoSelectAll);
                                 // Pop text color
                                 ImGui::PopStyleColor(1);
                                 if (edited) {
-                                    m_is_valid_name = isValidName(m_rename_buffer, m_selected_indices);
+                                    m_is_valid_name =
+                                        isValidName(m_rename_buffer, m_selected_indices);
                                 }
                                 if (ImGui::IsItemDeactivatedAfterEdit() && m_is_valid_name) {
                                     if (std::strlen(m_rename_buffer) == 0) {
-                                        TOOLBOX_DEBUG_LOG("Attempted to rename to the empty string, ignoring.");
+                                        TOOLBOX_DEBUG_LOG(
+                                            "Attempted to rename to the empty string, ignoring.");
                                     } else {
                                         m_file_system_model->rename(
-                                            m_view_proxy.toSourceIndex(child_index), m_rename_buffer);
+                                            m_view_proxy.toSourceIndex(child_index),
+                                            m_rename_buffer);
                                     }
                                 }
                                 ImGui::SetCursorScreenPos(pos);
