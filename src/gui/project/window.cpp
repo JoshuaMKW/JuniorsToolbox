@@ -890,6 +890,8 @@ namespace Toolbox::UI {
             return false;
         }
         #ifdef TOOLBOX_PLATFORM_WINDOWS
+        // Windows naming constraints sourced from here:
+        // https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
         if (name.contains('\\') ||
             name.contains('<') ||
             name.contains('>') ||
