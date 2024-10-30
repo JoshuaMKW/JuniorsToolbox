@@ -4,9 +4,9 @@
 #include "gui/new_item/window.hpp"
 #include "model/fsmodel.hpp"
 
+#include <cctype>
 #include <cmath>
 #include <imgui/imgui.h>
-#include <cctype>
 
 namespace Toolbox::UI {
 
@@ -863,16 +863,16 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::initFolderAssets(const ModelIndex &index) {}
-    bool char_equals(char a, char b)
-    {
+    bool char_equals(char a, char b) {
 #ifdef TOOLBOX_PLATFORM_WINDOWS
         return std::tolower(static_cast<unsigned char>(a)) ==
-            std::tolower(static_cast<unsigned char>(b));
+               std::tolower(static_cast<unsigned char>(b));
 #else
         return a == b;
 #endif
     }
-    bool ProjectViewWindow::isValidName(const std::string &name, const std::vector<ModelIndex> &selected_indices) const {
+    bool ProjectViewWindow::isValidName(const std::string &name,
+                                        const std::vector<ModelIndex> &selected_indices) const {
         TOOLBOX_ASSERT(selected_indices.size() == 1, "Can't rename more than one file!");
 
         ModelIndex parent = m_file_system_model->getParent(selected_indices[0]);
@@ -882,40 +882,28 @@ namespace Toolbox::UI {
                 continue;
             }
             std::string child_name = m_file_system_model->getDisplayText(child_index);
-            if (std::equal(child_name.begin(), child_name.end(),
-                           name.begin(), name.end(), char_equals)){
+            if (std::equal(child_name.begin(), child_name.end(), name.begin(), name.end(),
+                           char_equals)) {
                 return false;
             }
         }
         if (name.contains('/')) {
             return false;
         }
-        #ifdef TOOLBOX_PLATFORM_WINDOWS
+#ifdef TOOLBOX_PLATFORM_WINDOWS
         // Windows naming constraints sourced from here:
         // https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
-        if (name.contains('\\') ||
-            name.contains('<') ||
-            name.contains('>') ||
-            name.contains(':') ||
-            name.contains('"') ||
-            name.contains('|') ||
-            name.contains('?') ||
-            name.contains('*')) {
+        if (name.contains('\\') || name.contains('<') || name.contains('>') || name.contains(':') ||
+            name.contains('"') || name.contains('|') || name.contains('?') || name.contains('*')) {
             return false;
         }
-        if (name.back() == ' ' ||
-            name.back() == '.') {
+        if (name.back() == ' ' || name.back() == '.') {
             return false;
         }
-        if (name == "CON" ||
-            name == "PRN" ||
-            name == "AUX" ||
-            name == "NUL"){
+        if (name == "CON" || name == "PRN" || name == "AUX" || name == "NUL") {
             return false;
         }
-        if (name.starts_with("CON.") ||
-            name.starts_with("PRN.") ||
-            name.starts_with("AUX.") ||
+        if (name.starts_with("CON.") || name.starts_with("PRN.") || name.starts_with("AUX.") ||
             name.starts_with("NUL.")) {
             return false;
         }
@@ -930,7 +918,7 @@ namespace Toolbox::UI {
              name.back() == '\XB3'){
             return false;
         }
-        #endif
+#endif
 
         return true;
     }
