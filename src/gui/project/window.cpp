@@ -684,7 +684,7 @@ namespace Toolbox::UI {
         }
 
         if (is_left_button) {
-            if (m_selected_indices.size() > 1) {
+            if (m_selected_indices.size() > 0) {
                 m_selected_indices.clear();
                 m_last_selected_index = ModelIndex();
                 if (m_view_proxy.validateIndex(child_index)) {
