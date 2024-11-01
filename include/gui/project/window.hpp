@@ -111,6 +111,8 @@ namespace Toolbox::UI {
         bool isPathForScene(const ModelIndex &index) const;
 
     private:
+
+        bool isValidName(const std::string &name, const std::vector<ModelIndex> &selected_indices) const;
         fs_path m_project_root;
 
         // TODO: Have filesystem model.
@@ -132,6 +134,7 @@ namespace Toolbox::UI {
 
         bool m_is_renaming = false;
         char m_rename_buffer[128];
+        bool m_is_valid_name = true;
 
         bool m_delete_without_request = false;
         bool m_delete_requested       = false;

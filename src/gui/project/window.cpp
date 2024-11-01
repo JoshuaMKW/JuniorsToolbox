@@ -4,6 +4,7 @@
 #include "gui/new_item/window.hpp"
 #include "model/fsmodel.hpp"
 
+#include <cctype>
 #include <cmath>
 #include <imgui/imgui.h>
 
@@ -160,14 +161,35 @@ namespace Toolbox::UI {
                                 ImGui::SetCursorScreenPos(rename_pos);
                                 ImGui::SetKeyboardFocusHere();
 
+                                if (m_is_valid_name) {
+                                    ImGui::PushStyleColor(
+                                        ImGuiCol_Text,
+                                        ImGui::ColorConvertFloat4ToU32(
+                                            ImGui::GetStyleColorVec4(ImGuiCol_Text)));
+                                } else {
+                                    ImGui::PushStyleColor(
+                                        ImGuiCol_Text,
+                                        ImGui::ColorConvertFloat4ToU32(ImVec4(1.0, 0.3, 0.3, 1.0)));
+                                }
                                 ImGui::PushItemWidth(label_width);
-                                bool done = ImGui::InputText(
-                                    "##rename", m_rename_buffer, IM_ARRAYSIZE(m_rename_buffer),
-                                    ImGuiInputTextFlags_AutoSelectAll |
-                                        ImGuiInputTextFlags_EnterReturnsTrue);
-                                if (done) {
-                                    m_file_system_model->rename(
-                                        m_view_proxy.toSourceIndex(child_index), m_rename_buffer);
+                                bool edited = ImGui::InputText("##rename", m_rename_buffer,
+                                                               IM_ARRAYSIZE(m_rename_buffer),
+                                                               ImGuiInputTextFlags_AutoSelectAll);
+                                // Pop text color
+                                ImGui::PopStyleColor(1);
+                                if (edited) {
+                                    m_is_valid_name =
+                                        isValidName(m_rename_buffer, m_selected_indices);
+                                }
+                                if (ImGui::IsItemDeactivatedAfterEdit() && m_is_valid_name) {
+                                    if (std::strlen(m_rename_buffer) == 0) {
+                                        TOOLBOX_DEBUG_LOG(
+                                            "Attempted to rename to the empty string, ignoring.");
+                                    } else {
+                                        m_file_system_model->rename(
+                                            m_view_proxy.toSourceIndex(child_index),
+                                            m_rename_buffer);
+                                    }
                                 }
                                 ImGui::SetCursorScreenPos(pos);
                                 ImGui::PopItemWidth();
@@ -662,7 +684,7 @@ namespace Toolbox::UI {
         }
 
         if (is_left_button) {
-            if (m_selected_indices.size() > 1) {
+            if (m_selected_indices.size() > 0) {
                 m_selected_indices.clear();
                 m_last_selected_index = ModelIndex();
                 if (m_view_proxy.validateIndex(child_index)) {
@@ -846,5 +868,64 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::initFolderAssets(const ModelIndex &index) {}
+    bool char_equals(char a, char b) {
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+        return std::tolower(static_cast<unsigned char>(a)) ==
+               std::tolower(static_cast<unsigned char>(b));
+#else
+        return a == b;
+#endif
+    }
+    bool ProjectViewWindow::isValidName(const std::string &name,
+                                        const std::vector<ModelIndex> &selected_indices) const {
+        TOOLBOX_ASSERT(selected_indices.size() == 1, "Can't rename more than one file!");
+
+        ModelIndex parent = m_file_system_model->getParent(selected_indices[0]);
+        for (size_t i = 0; i < m_file_system_model->getRowCount(parent); ++i) {
+            ModelIndex child_index = m_file_system_model->getIndex(i, 0, parent);
+            if (child_index == selected_indices[0]) {
+                continue;
+            }
+            std::string child_name = m_file_system_model->getDisplayText(child_index);
+            if (std::equal(child_name.begin(), child_name.end(), name.begin(), name.end(),
+                           char_equals)) {
+                return false;
+            }
+        }
+        if (name.contains('/')) {
+            return false;
+        }
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+        // Windows naming constraints sourced from here:
+        // https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+        if (name.contains('\\') || name.contains('<') || name.contains('>') || name.contains(':') ||
+            name.contains('"') || name.contains('|') || name.contains('?') || name.contains('*')) {
+            return false;
+        }
+        if (name.back() == ' ' || name.back() == '.') {
+            return false;
+        }
+        if (name == "CON" || name == "PRN" || name == "AUX" || name == "NUL") {
+            return false;
+        }
+        if (name.starts_with("CON.") || name.starts_with("PRN.") || name.starts_with("AUX.") ||
+            name.starts_with("NUL.")) {
+            return false;
+        }
+        if ((name.starts_with("COM") ||
+             name.starts_with("LPT")) &&
+            name.length() == 4 &&
+            (isdigit(name.back()) ||
+             // The escapes for superscript 1, 2, and 3, which are
+             // also disallowed after these patterns.
+             name.back() == '\XB6' ||
+             name.back() == '\XB2' ||
+             name.back() == '\XB3')){
+            return false;
+        }
+#endif
+
+        return true;
+    }
 
 }  // namespace Toolbox::UI

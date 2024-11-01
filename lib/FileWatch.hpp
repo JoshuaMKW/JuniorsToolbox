@@ -251,8 +251,8 @@ namespace filewatch {
 
 #if __unix__
         struct FolderInfo {
-            int folder;
-            int watch;
+            int inotify_handle;
+            std::unordered_map<int, std::filesystem::path> watches;
         };
 
         FolderInfo _directory;
@@ -340,7 +340,9 @@ namespace filewatch {
 #ifdef _WIN32
             SetEvent(_close_event);
 #elif __unix__
-            inotify_rm_watch(_directory.folder, _directory.watch);
+            for (auto &[wd, path] : _directory.watches) {
+                inotify_rm_watch(_directory.inotify_handle, wd);
+            }
 #elif FILEWATCH_PLATFORM_MAC
             if (_run_loop) {
                 CFRunLoopStop(_run_loop);
@@ -354,7 +356,7 @@ namespace filewatch {
 #ifdef _WIN32
             CloseHandle(_directory);
 #elif __unix__
-            close(_directory.folder);
+            close(_directory.inotify_handle);
 #elif FILEWATCH_PLATFORM_MAC
             FSEventStreamStop(_directory);
             FSEventStreamInvalidate(_directory);
@@ -560,10 +562,24 @@ namespace filewatch {
             }
             return S_ISREG(statbuf.st_mode);
         }
+        std::vector<std::filesystem::path> get_subdirectories(const std::filesystem::path &path) {
+            std::vector<std::filesystem::path> result;
+            result.push_back(path);
+            for (const auto &entry :
+                 std::filesystem::directory_iterator(std::filesystem::path(path))) {
+                if (entry.is_directory()) {
+                    for (const auto &sub_path : get_subdirectories(entry.path())) {
+                        result.push_back(sub_path);
+                    }
+                    result.push_back(entry.path());
+                }
+            }
+            return result;
+        }
 
         FolderInfo get_directory(const StringType &path) {
-            const auto folder = inotify_init();
-            if (folder < 0) {
+            const auto inotify_handle = inotify_init();
+            if (inotify_handle < 0) {
                 throw std::system_error(errno, std::system_category());
             }
 
@@ -579,12 +595,16 @@ namespace filewatch {
                 }
             }();
 
-            const auto watch =
-                inotify_add_watch(folder, watch_path.c_str(), IN_MODIFY | IN_CREATE | IN_DELETE);
-            if (watch < 0) {
-                throw std::system_error(errno, std::system_category());
+            std::unordered_map<int, std::filesystem::path> watches;
+            for (auto &subdir_path : get_subdirectories(watch_path)) {
+                const auto watch_fd = inotify_add_watch(inotify_handle, subdir_path.c_str(),
+                                                        IN_MODIFY | IN_CREATE | IN_DELETE);
+                watches[watch_fd] = subdir_path;
+                if (watch_fd < 0) {
+                    throw std::system_error(errno, std::system_category());
+                }
             }
-            return {folder, watch};
+            return {inotify_handle, watches};
         }
 
         void monitor_directory() {
@@ -593,7 +613,7 @@ namespace filewatch {
             _running.set_value();
             while (_destory == false) {
                 const auto length =
-                    read(_directory.folder, static_cast<void *>(buffer.data()), buffer.size());
+                    read(_directory.inotify_handle, static_cast<void *>(buffer.data()), buffer.size());
                 if (length > 0) {
                     int i = 0;
                     std::vector<std::pair<StringType, Event>> parsed_information;
@@ -601,14 +621,22 @@ namespace filewatch {
                         struct inotify_event *event =
                             reinterpret_cast<struct inotify_event *>(&buffer[i]);  // NOLINT
                         if (event->len) {
-                            const UnderpinningString changed_file{event->name};
+                            const UnderpinningString changed_file{(_directory.watches[event->wd] / event->name).c_str()};
                             if (pass_filter(changed_file)) {
                                 if (event->mask & IN_CREATE) {
                                     parsed_information.emplace_back(StringType{changed_file},
                                                                     Event::added);
+                                    if (std::filesystem::is_directory(changed_file)) {
+                                        int new_watch_fd = inotify_add_watch(_directory.inotify_handle, changed_file.c_str(), IN_MODIFY | IN_CREATE | IN_DELETE);
+                                        _directory.watches[new_watch_fd] = changed_file;
+                                    }
                                 } else if (event->mask & IN_DELETE) {
                                     parsed_information.emplace_back(StringType{changed_file},
                                                                     Event::removed);
+                                    if (std::filesystem::is_directory(changed_file)) {
+                                        inotify_rm_watch(_directory.inotify_handle, event->wd);
+                                        _directory.watches.erase(event->wd);
+                                    }
                                 } else if (event->mask & IN_MODIFY) {
                                     parsed_information.emplace_back(StringType{changed_file},
                                                                     Event::modified);
@@ -698,7 +726,7 @@ namespace filewatch {
 #elif _WIN32
         static StringType absolute_path_of(const StringType &path) {
             constexpr size_t size = IsWChar<C>::value ? MAX_PATH : 32767 * sizeof(wchar_t);
-            char buf[size * 10]        = {};
+            char buf[size * 10]   = {};
 
             DWORD length =
                 IsWChar<C>::value
