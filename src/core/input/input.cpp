@@ -294,5 +294,8 @@ namespace Toolbox::Input {
 
         ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
     }
+    bool operator!(KeyModifier mod) {
+        return ((u8)mod == 0);
+    }
 
 }  // namespace Toolbox::Input

@@ -402,7 +402,7 @@ namespace Toolbox::UI {
             [this](const ModelIndex &index) { m_selected_indices_ctx = m_selected_indices; });
 
         m_folder_view_context_menu.addOption(
-            "Open", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_O}),
+            "Open", KeyBind({KeyCode::KEY_O}, KeyModifier::KEY_CTRL),
             [this]() {
                 return m_selected_indices_ctx.size() > 0 &&
                        std::all_of(m_selected_indices_ctx.begin(), m_selected_indices_ctx.end(),
@@ -415,7 +415,7 @@ namespace Toolbox::UI {
 
         m_folder_view_context_menu.addOption(
             "Open in Explorer",
-            KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O}),
+            KeyBind({KeyCode::KEY_O}, KeyModifier::KEY_CTRL | KeyModifier::KEY_SHIFT),
             [this]() {
                 return std::all_of(
                     m_selected_indices_ctx.begin(), m_selected_indices_ctx.end(),
@@ -443,8 +443,7 @@ namespace Toolbox::UI {
         m_folder_view_context_menu.addDivider();
 
         m_folder_view_context_menu.addOption(
-            "Copy Path",
-            KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C}),
+            "Copy Path", KeyBind({KeyCode::KEY_C}, KeyModifier::KEY_CTRL | KeyModifier::KEY_SHIFT),
             [this]() { return true; },
             [this](auto) {
                 std::string paths;
@@ -462,11 +461,11 @@ namespace Toolbox::UI {
         m_folder_view_context_menu.addDivider();
 
         m_folder_view_context_menu.addOption(
-            "Cut", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_X}),
+            "Cut", KeyBind({KeyCode::KEY_X}, KeyModifier::KEY_CTRL),
             [this]() { return m_selected_indices_ctx.size() > 0; }, [this](auto) {});
 
         m_folder_view_context_menu.addOption(
-            "Copy", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C}),
+            "Copy", KeyBind({KeyCode::KEY_C}, KeyModifier::KEY_CTRL),
             [this]() { return m_selected_indices_ctx.size() > 0; },
             [this](auto) { actionCopyIndexes(m_selected_indices_ctx); });
 
@@ -484,12 +483,12 @@ namespace Toolbox::UI {
             });
 
         m_folder_view_context_menu.addOption(
-            "Rename", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R}),
+            "Rename", KeyBind({KeyCode::KEY_R}, KeyModifier::KEY_CTRL),
             [this]() { return m_selected_indices_ctx.size() == 1; },
             [this](auto) { actionRenameIndex(m_selected_indices_ctx[0]); });
 
         m_folder_view_context_menu.addOption(
-            "Paste", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V}),
+            "Paste", KeyBind({KeyCode::KEY_V}, KeyModifier::KEY_CTRL),
             [this]() { return m_selected_indices_ctx.size() == 0; },
             [this](auto) {
                 auto content_types = SystemClipboard::instance().getAvailableContentFormats();
@@ -512,8 +511,7 @@ namespace Toolbox::UI {
         m_folder_view_context_menu.addDivider();
 
         m_folder_view_context_menu.addOption(
-            "New Folder",
-            KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_N}),
+            "New Folder", KeyBind({KeyCode::KEY_N}, KeyModifier::KEY_CTRL | KeyModifier::KEY_SHIFT),
             [this]() { return m_selected_indices_ctx.size() == 0; },
             [this](const ModelIndex &view_index) {
                 std::string folder_name =
@@ -528,7 +526,7 @@ namespace Toolbox::UI {
             });
 
         m_folder_view_context_menu.addOption(
-            "New Item...", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N}),
+            "New Item...", KeyBind({KeyCode::KEY_N}, KeyModifier::KEY_CTRL),
             [this]() { return m_selected_indices_ctx.size() == 0; },
             [this](const ModelIndex &view_index) {
                 RefPtr<NewItemWindow> window =
