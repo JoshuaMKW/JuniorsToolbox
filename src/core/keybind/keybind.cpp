@@ -72,7 +72,7 @@ namespace Toolbox {
     bool KeyBind::isInputMatching() const {
         return std::all_of(m_key_combo.begin(), m_key_combo.end(),
                            [](Input::KeyCode keybind) { return Input::GetKey(keybind); }) &&
-            (Input::GetPressedKeyModifiers() & m_key_mods) == m_key_mods;
+               (Input::GetPressedKeyModifiers() & m_key_mods) == m_key_mods;
     }
 
     std::string KeyBind::toString() const {
@@ -102,7 +102,8 @@ namespace Toolbox {
     bool KeyBind::scanNextInputKey() {
         // Check if any of the keys are still being held
         bool any_keys_held = std::any_of(m_key_combo.begin(), m_key_combo.end(),
-                                         [](Input::KeyCode key) { return Input::GetKey(key); }) || !!(Input::GetPressedKeyModifiers() & m_key_mods);
+                                         [](Input::KeyCode key) { return Input::GetKey(key); }) ||
+                             !!(Input::GetPressedKeyModifiers() & m_key_mods);
         if (m_key_combo.size() > 0 && !any_keys_held) {
             return true;
         }
