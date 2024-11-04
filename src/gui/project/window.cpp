@@ -910,15 +910,11 @@ namespace Toolbox::UI {
             name.starts_with("NUL.")) {
             return false;
         }
-        if ((name.starts_with("COM") ||
-             name.starts_with("LPT")) &&
-            name.length() == 4 &&
+        if ((name.starts_with("COM") || name.starts_with("LPT")) && name.length() == 4 &&
             (isdigit(name.back()) ||
              // The escapes for superscript 1, 2, and 3, which are
              // also disallowed after these patterns.
-             name.back() == '\XB6' ||
-             name.back() == '\XB2' ||
-             name.back() == '\XB3')){
+             name.back() == '\XB6' || name.back() == '\XB2' || name.back() == '\XB3')) {
             return false;
         }
 #endif
