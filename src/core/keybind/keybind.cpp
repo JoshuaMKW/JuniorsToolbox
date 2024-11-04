@@ -6,14 +6,37 @@
 #include <string_view>
 #include <vector>
 
+#include "core/assert.hpp"
 #include "core/input/input.hpp"
 #include "core/keybind/keybind.hpp"
 
 namespace Toolbox {
-    KeyBind::KeyBind(std::initializer_list<Input::KeyCode> keys) : m_key_combo(keys) {}
+    KeyBind::KeyBind(std::initializer_list<Input::KeyCode> keys) : m_key_combo(keys) {
+        for (auto &key : keys) {
+            TOOLBOX_ASSERT(
+                key != Input::KeyCode::KEY_LEFTSHIFT && key != Input::KeyCode::KEY_RIGHTSHIFT &&
+                    key != Input::KeyCode::KEY_LEFTCONTROL &&
+                    key != Input::KeyCode::KEY_RIGHTCONTROL && key != Input::KeyCode::KEY_LEFTALT &&
+                    key != Input::KeyCode::KEY_RIGHTALT && key != Input::KeyCode::KEY_LEFTSUPER &&
+                    key != Input::KeyCode::KEY_RIGHTSUPER,
+                "Cannot use explicit modifier keys as part of keybind, pass them as modifiers "
+                "instead as a second argument bitmask")
+        }
+    }
 
     KeyBind::KeyBind(const Input::KeyCodes &keys, const Input::KeyModifiers &mods)
-        : m_key_combo(keys), m_key_mods(mods) {}
+        : m_key_combo(keys), m_key_mods(mods) {
+        for (auto &key : keys) {
+            TOOLBOX_ASSERT(
+                key != Input::KeyCode::KEY_LEFTSHIFT && key != Input::KeyCode::KEY_RIGHTSHIFT &&
+                    key != Input::KeyCode::KEY_LEFTCONTROL &&
+                    key != Input::KeyCode::KEY_RIGHTCONTROL && key != Input::KeyCode::KEY_LEFTALT &&
+                    key != Input::KeyCode::KEY_RIGHTALT && key != Input::KeyCode::KEY_LEFTSUPER &&
+                    key != Input::KeyCode::KEY_RIGHTSUPER,
+                "Cannot use explicit modifier keys as part of keybind, pass them as modifiers "
+                "instead as a second argument bitmask")
+        }
+    }
 
     KeyBind KeyBind::FromString(const std::string &bind_str) {
         KeyBind result;
