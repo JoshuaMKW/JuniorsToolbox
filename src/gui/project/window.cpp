@@ -253,7 +253,7 @@ namespace Toolbox::UI {
                     ImLengthSqr(mouse_pos - m_last_reg_mouse_pos) > 10.0f) {
                     if (DragDropManager::instance().getCurrentDragAction() == nullptr) {
                         RefPtr<DragAction> action = DragDropManager::instance().createDragAction(
-                            getUUID(), std::move(buildFolderViewMimeData()));
+                            getUUID(), getLowHandle(), std::move(buildFolderViewMimeData()));
                         if (action) {
                             action->setHotSpot(mouse_pos);
                             action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {

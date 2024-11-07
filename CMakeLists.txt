@@ -53,6 +53,7 @@ file(GLOB TOOLBOX_SRC
     "src/gui/event/*.cpp"
     "include/gui/event/*.hpp"
     "src/gui/dragdrop/*.cpp"
+    "src/gui/dragdrop/p_*.hpp"
     "include/gui/dragdrop/*.hpp"
     "src/gui/image/*.cpp"
     "include/gui/image/*.hpp"
@@ -153,7 +154,7 @@ endif()
 
 target_compile_definitions(JuniorsToolbox PRIVATE NOMINMAX IMGUI_DEFINE_MATH_OPERATORS)
 
-target_include_directories(JuniorsToolbox PRIVATE "include" "lib" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/libbti" "lib/ImGuiFileDialog" "lib/glfw" "lib/nativefiledialog-extended/src/include")
+target_include_directories(JuniorsToolbox PRIVATE "include" "src" "lib" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/libbti" "lib/ImGuiFileDialog" "lib/glfw" "lib/nativefiledialog-extended/src/include")
 
 
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD

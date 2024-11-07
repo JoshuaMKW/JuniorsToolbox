@@ -145,6 +145,8 @@ namespace Toolbox {
         bool registerDragDropTarget(Platform::LowWindow window);
         void deregisterDragDropTarget(Platform::LowWindow window);
 
+        bool startDragAction(Platform::LowWindow source, RefPtr<DragAction> action);
+
         void registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
                                     SceneWindow::render_layer_cb cb);
         void deregisterDolphinOverlay(UUID64 scene_uuid, const std::string &name);

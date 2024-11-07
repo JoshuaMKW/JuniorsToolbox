@@ -111,6 +111,8 @@ namespace Toolbox::UI {
 
         [[nodiscard]] std::string title() const;
 
+        [[nodiscard]] Platform::LowWindow getLowHandle() const noexcept { return m_low_handle; }
+
     protected:
         void setLayerSize(const ImVec2 &size) noexcept { ImProcessLayer::setSize(size); }
         void setLayerPos(const ImVec2 &pos) noexcept { ImProcessLayer::setPos(pos); }
@@ -149,6 +151,8 @@ namespace Toolbox::UI {
 
         int m_z_order = -1;
         int m_im_order = -1;
+
+        Platform::LowWindow m_low_handle = nullptr;
     };
 
     inline std::string ImWindowComponentTitle(const ImWindow &window_layer,

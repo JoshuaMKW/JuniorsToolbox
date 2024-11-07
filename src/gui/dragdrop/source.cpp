@@ -5,6 +5,8 @@
 #include "gui/event/dropevent.hpp"
 #include "gui/window.hpp"
 
+#include "gui/dragdrop/p_windataobj.hpp"
+
 #include "image/imagebuilder.hpp"
 
 #include <imgui.h>
@@ -17,8 +19,6 @@ namespace Toolbox::UI {
 #include <objidl.h>
 #include <shlobj.h>
 #include <shobjidl.h>
-
-#include "p_windataobj.hpp"
 
     static DWORD convertDropTypes(DropTypes type) {
         DWORD drop_type = DROPEFFECT_NONE;

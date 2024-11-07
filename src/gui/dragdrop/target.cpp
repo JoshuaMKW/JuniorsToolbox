@@ -11,30 +11,32 @@
 
 namespace Toolbox::UI {
 
-    static UUID64 searchDropTarget(const ImVec2 &mouse_pos) {
+    static std::pair<UUID64, Platform::LowWindow> searchDropTarget(const ImVec2 &mouse_pos) {
         std::vector<RefPtr<ImWindow>> windows = GUIApplication::instance().getWindows();
 
-        UUID64 target_uuid  = 0;
-        int target_z_order  = std::numeric_limits<int>::max();
-        int target_im_index = std::numeric_limits<int>::min();
+        std::pair<UUID64, Platform::LowWindow> target = {0, 0};
+        int target_z_order                            = std::numeric_limits<int>::max();
+        int target_im_index                           = std::numeric_limits<int>::min();
 
         for (RefPtr<ImWindow> window : windows) {
             ImRect rect = {window->getPos(), window->getPos() + window->getSize()};
             if (rect.Contains(mouse_pos)) {
                 if (window->getZOrder() < target_z_order) {
-                    target_uuid     = window->getUUID();
+                    target.first    = window->getUUID();
+                    target.second   = window->getLowHandle();
                     target_z_order  = window->getZOrder();
                     target_im_index = window->getImOrder();
                 } else if (window->getZOrder() == target_z_order) {
                     if (window->getImOrder() >= target_im_index) {
-                        target_uuid     = window->getUUID();
+                        target.first    = window->getUUID();
+                        target.second   = window->getLowHandle();
                         target_im_index = window->getImOrder();
                     }
                 }
             }
         }
 
-        return target_uuid;
+        return target;
     }
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
@@ -258,9 +260,13 @@ namespace Toolbox::UI {
                                                        POINTL pt, DWORD *pdwEffect) {
         RefPtr<DragAction> action = DragDropManager::instance().getCurrentDragAction();
         if (!action) {
+            std::pair<UUID64, Platform::LowWindow> target = searchDropTarget(ImVec2((float)pt.x, (float)pt.y));
+
             DragDropManager::instance().setSystemAction(true);
             MimeData mime_data = createMimeDataFromDataObject(pDataObj);
-            action = DragDropManager::instance().createDragAction(0, std::move(mime_data), false);
+
+            action = DragDropManager::instance().createDragAction(target.first, target.second, std::move(mime_data),
+                                                                  false);
             DragDropManager::instance().setSystemAction(false);
 
             action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {
@@ -324,8 +330,12 @@ namespace Toolbox::UI {
                                                   POINTL pt, DWORD *pdwEffect) {
         RefPtr<DragAction> action = DragDropManager::instance().getCurrentDragAction();
         if (!action) {
+            std::pair<UUID64, Platform::LowWindow> target =
+                searchDropTarget(ImVec2((float)pt.x, (float)pt.y));
+
             MimeData mime_data = createMimeDataFromDataObject(pDataObj);
-            action = DragDropManager::instance().createDragAction(0, std::move(mime_data));
+            action = DragDropManager::instance().createDragAction(target.first, target.second,
+                                                                  std::move(mime_data));
 
             action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {
                 auto maybe_urls = action->getPayload().get_urls();
@@ -369,7 +379,7 @@ namespace Toolbox::UI {
     void WindowsDragDropTargetDelegate::onDragEnter(RefPtr<DragAction> action) {
         ImVec2 mouse_pos = action->getHotSpot();
         UUID64 prev_uuid = action->getTargetUUID();
-        UUID64 new_uuid  = searchDropTarget(mouse_pos);
+        UUID64 new_uuid  = searchDropTarget(mouse_pos).first;
 
         if (prev_uuid != new_uuid) {
             if (prev_uuid != 0) {
@@ -389,7 +399,7 @@ namespace Toolbox::UI {
     void WindowsDragDropTargetDelegate::onDragLeave(RefPtr<DragAction> action) {
         ImVec2 mouse_pos = action->getHotSpot();
         UUID64 prev_uuid = action->getTargetUUID();
-        UUID64 new_uuid  = searchDropTarget(mouse_pos);
+        UUID64 new_uuid  = searchDropTarget(mouse_pos).first;
 
         if (prev_uuid != new_uuid && prev_uuid != 0) {
             GUIApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_LEAVE, mouse_pos.x,
@@ -402,7 +412,7 @@ namespace Toolbox::UI {
     void WindowsDragDropTargetDelegate::onDragMove(RefPtr<DragAction> action) {
         ImVec2 mouse_pos = action->getHotSpot();
         UUID64 prev_uuid = action->getTargetUUID();
-        UUID64 new_uuid  = searchDropTarget(mouse_pos);
+        UUID64 new_uuid  = searchDropTarget(mouse_pos).first;
 
         if (prev_uuid != new_uuid) {
             if (!m_block_implicit_drag_events && prev_uuid != 0) {
@@ -428,7 +438,7 @@ namespace Toolbox::UI {
     void WindowsDragDropTargetDelegate::onDrop(RefPtr<DragAction> action) {
         ImVec2 mouse_pos = action->getHotSpot();
 
-        UUID64 new_uuid = searchDropTarget(mouse_pos);
+        UUID64 new_uuid = searchDropTarget(mouse_pos).first;
         action->setTargetUUID(new_uuid);
 
         if (new_uuid != 0) {

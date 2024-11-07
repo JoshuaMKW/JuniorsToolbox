@@ -196,13 +196,14 @@ namespace Toolbox::UI {
                     glfwSetWindowUserPointer(window, this);
                     /*glfwSetDropCallback(static_cast<GLFWwindow *>(viewport->PlatformHandle),
                                         privDropCallback);*/
-                    Platform::LowWindow low_window =
+                    m_low_handle =
                         (Platform::LowWindow)viewport->PlatformHandleRaw;
-                    if (!Platform::GetWindowZOrder(low_window, m_z_order)) {
+                    if (!Platform::GetWindowZOrder(m_low_handle, m_z_order)) {
                         m_z_order = -1;
                     }
 
-                    GUIApplication::instance().registerDragDropTarget(low_window);
+                    GUIApplication::instance().registerDragDropSource(m_low_handle);
+                    GUIApplication::instance().registerDragDropTarget(m_low_handle);
                 }
 
                 if ((flags_ & ImGuiWindowFlags_NoBackground)) {

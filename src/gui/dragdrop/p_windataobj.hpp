@@ -20,22 +20,21 @@ namespace Toolbox::UI {
         virtual ~WindowsOleDataObject() = default;
 
         // IUnknown
-        STDMETHOD(QueryInterface)(REFIID riid, void **ppvObject) override;
-        STDMETHOD_(ULONG, AddRef)() override;
-        STDMETHOD_(ULONG, Release)() override;
+        HRESULT QueryInterface(REFIID riid, void **ppvObject) override;
+        ULONG AddRef() override;
+        ULONG Release() override;
 
         // IDataObject
-        STDMETHOD(GetData)(FORMATETC *pformatetcIn, STGMEDIUM *pmedium) override;
-        STDMETHOD(GetDataHere)(FORMATETC *pformatetc, STGMEDIUM *pmedium) override;
-        STDMETHOD(QueryGetData)(FORMATETC *pformatetc) override;
-        STDMETHOD(GetCanonicalFormatEtc)
-        (FORMATETC *pformatectIn, FORMATETC *pformatetcOut) override;
-        STDMETHOD(SetData)(FORMATETC *pformatetc, STGMEDIUM *pmedium, BOOL fRelease) override;
-        STDMETHOD(EnumFormatEtc)(DWORD dwDirection, IEnumFORMATETC **ppenumFormatEtc) override;
-        STDMETHOD(DAdvise)
-        (FORMATETC *pformatetc, DWORD advf, IAdviseSink *pAdvSink, DWORD *pdwConnection) override;
-        STDMETHOD(DUnadvise)(DWORD dwConnection) override;
-        STDMETHOD(EnumDAdvise)(IEnumSTATDATA **ppenumAdvise) override;
+        HRESULT GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium) override;
+        HRESULT GetDataHere(FORMATETC *pformatetc, STGMEDIUM *pmedium) override;
+        HRESULT QueryGetData(FORMATETC *pformatetc) override;
+        HRESULT GetCanonicalFormatEtc(FORMATETC *pformatectIn, FORMATETC *pformatetcOut) override;
+        HRESULT SetData(FORMATETC *pformatetc, STGMEDIUM *pmedium, BOOL fRelease) override;
+        HRESULT EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC **ppenumFormatEtc) override;
+        HRESULT DAdvise(FORMATETC *pformatetc, DWORD advf, IAdviseSink *pAdvSink,
+                        DWORD *pdwConnection) override;
+        HRESULT DUnadvise(DWORD dwConnection) override;
+        HRESULT EnumDAdvise(IEnumSTATDATA **ppenumAdvise) override;
 
         void setMimeData(MimeData &&mime_data) { m_mime_data = std::move(mime_data); }
 

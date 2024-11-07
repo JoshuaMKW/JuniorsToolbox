@@ -6,6 +6,7 @@
 #include "core/mimedata/mimedata.hpp"
 #include "gui/dragdrop/dragaction.hpp"
 #include "gui/dragdrop/dropaction.hpp"
+#include "gui/application.hpp"
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
@@ -17,12 +18,15 @@
 
 namespace Toolbox::UI {
 
-    RefPtr<DragAction> DragDropManager::createDragAction(UUID64 source_uuid, MimeData &&data,
+    RefPtr<DragAction> DragDropManager::createDragAction(UUID64 source_uuid, Platform::LowWindow low_window, MimeData &&data,
                                                          bool system_level) {
         m_current_drag_action = make_referable<DragAction>(source_uuid);
         m_current_drag_action->setPayload(data);
         if (system_level) {
-            createSystemDragDropSource(std::move(data));
+            createSystemDragDropSource(std::move(data)).and_then([&]() {
+                GUIApplication::instance().startDragAction(low_window, m_current_drag_action);
+                return Result<void, BaseError>();
+            });
         }
         return m_current_drag_action;
     }

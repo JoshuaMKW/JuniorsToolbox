@@ -328,9 +328,13 @@ namespace Toolbox {
         return result;
     }
 
-    bool GUIApplication::registerDragDropSource(Platform::LowWindow window) { return false; }
+    bool GUIApplication::registerDragDropSource(Platform::LowWindow window) {
+        return m_drag_drop_source_delegate->initializeForWindow(window);
+    }
 
-    void GUIApplication::deregisterDragDropSource(Platform::LowWindow window) {}
+    void GUIApplication::deregisterDragDropSource(Platform::LowWindow window) {
+        m_drag_drop_source_delegate->shutdownForWindow(window);
+    }
 
     bool GUIApplication::registerDragDropTarget(Platform::LowWindow window) {
         return m_drag_drop_target_delegate->initializeForWindow(window);
@@ -338,6 +342,15 @@ namespace Toolbox {
 
     void GUIApplication::deregisterDragDropTarget(Platform::LowWindow window) {
         m_drag_drop_target_delegate->shutdownForWindow(window);
+    }
+
+    bool GUIApplication::startDragAction(Platform::LowWindow source, RefPtr<DragAction> action) {
+        MimeData data = action->getPayload();
+        DropType out;
+        bool result = m_drag_drop_source_delegate->startDragDrop(source, std::move(data),
+                                                          action->getSupportedDropTypes(), &out);
+        TOOLBOX_DEBUG_LOG_V("DragDropSourceDelegate::startDragDrop action type: {}", int(out));
+        return result;
     }
 
     void GUIApplication::registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
