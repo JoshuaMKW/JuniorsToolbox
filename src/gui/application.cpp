@@ -521,10 +521,18 @@ namespace Toolbox {
 
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem(ICON_FK_FOLDER_OPEN " Open...")) {
-                m_is_file_dialog_open = true;
+                if (!FileDialog::instance()->isAlreadyOpen()) {
+                    FileDialogFilter filter;
+                    filter.addFilter("Nintendo Scene Archive", "szs,arc");
+                    FileDialog::instance()->openDialog(m_load_path, m_render_window, false, filter);
+                }
+                m_browsing_dir = false;
             }
             if (ImGui::MenuItem(ICON_FK_FOLDER_OPEN " Open Folder...")) {
-                m_is_dir_dialog_open = true;
+                m_browsing_dir = true;
+                if (!FileDialog::instance()->isAlreadyOpen()) {
+                    FileDialog::instance()->openDialog(m_load_path, m_render_window, true);
+                }
             }
 
             ImGui::Separator();
@@ -569,13 +577,7 @@ namespace Toolbox {
 
         ImGui::EndMainMenuBar();
 
-        if (m_is_dir_dialog_open) {
-            if (!FileDialog::instance()->isAlreadyOpen()) {
-                FileDialog::instance()->openDialog(m_load_path, m_render_window, true);
-            }
-            m_is_dir_dialog_open = false;
-        }
-        if (FileDialog::instance()->isDone()) {
+        if (FileDialog::instance()->isDone() && m_browsing_dir) {
             FileDialog::instance()->close();
             if (FileDialog::instance()->isOk()) {
                 std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();
@@ -591,15 +593,7 @@ namespace Toolbox {
             }
         }
 
-        if (m_is_file_dialog_open) {
-            if (!FileDialog::instance()->isAlreadyOpen()) {
-                FileDialogFilter filter;
-                filter.addFilter("Nintendo Scene Archive", "szs,arc");
-                FileDialog::instance()->openDialog(m_load_path, m_render_window, false, filter);
-            }
-            m_is_file_dialog_open = false;
-        }
-        if (FileDialog::instance()->isDone()) {
+        if (FileDialog::instance()->isDone() && !m_browsing_dir) {
             FileDialog::instance()->close();
             if (FileDialog::instance()->isOk()) {
                 std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();

@@ -204,8 +204,7 @@ namespace Toolbox {
         bool m_dockspace_built;
 
         bool m_opening_options_window = false;
-        bool m_is_file_dialog_open    = false;
-        bool m_is_dir_dialog_open     = false;
+        bool m_browsing_dir = false;
 
         std::thread m_thread_templates_init;
         DolphinCommunicator m_dolphin_communicator;
