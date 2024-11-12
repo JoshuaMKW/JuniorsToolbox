@@ -33,6 +33,7 @@
 #include "gui/logging/window.hpp"
 #include "gui/pad/window.hpp"
 #include "gui/project/window.hpp"
+#include "gui/messages/window.hpp"
 #include "gui/scene/ImGuizmo.h"
 #include "gui/scene/window.hpp"
 #include "gui/settings/window.hpp"
@@ -524,6 +525,7 @@ namespace Toolbox {
                 if (!FileDialog::instance()->isAlreadyOpen()) {
                     FileDialogFilter filter;
                     filter.addFilter("Nintendo Scene Archive", "szs,arc");
+                    filter.addFilter("Nintendo Message Format", "bmg");
                     FileDialog::instance()->openDialog(m_load_path, m_render_window, false, filter);
                 }
                 m_browsing_dir = false;
@@ -599,6 +601,11 @@ namespace Toolbox {
                 std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();
                 if (selected_path.extension() == ".szs" || selected_path.extension() == ".arc") {
                     RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
+                    if (!window->onLoadData(selected_path)) {
+                        window->close();
+                    }
+                } else if (selected_path.extension() == ".bmg") {
+                    RefPtr<BMGWindow> window = createWindow<BMGWindow>("Messages Editor");
                     if (!window->onLoadData(selected_path)) {
                         window->close();
                     }
