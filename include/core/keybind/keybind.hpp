@@ -19,7 +19,8 @@ namespace Toolbox {
         ~KeyBind()                   = default;
 
         KeyBind(std::initializer_list<Input::KeyCode> keys);
-        explicit KeyBind(const Input::KeyCodes &keys);
+        explicit KeyBind(const Input::KeyCodes &keys,
+                         const Input::KeyModifiers &mods = Input::KeyModifiers::KEY_NONE);
 
         [[nodiscard]] static KeyBind FromString(const std::string &);
 
@@ -45,6 +46,7 @@ namespace Toolbox {
 
     private:
         Input::KeyCodes m_key_combo;
+        Input::KeyModifiers m_key_mods = Input::KeyModifiers::KEY_NONE;
     };
 
 }  // namespace Toolbox

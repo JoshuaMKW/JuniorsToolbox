@@ -6,13 +6,37 @@
 #include <string_view>
 #include <vector>
 
+#include "core/assert.hpp"
 #include "core/input/input.hpp"
 #include "core/keybind/keybind.hpp"
 
 namespace Toolbox {
-    KeyBind::KeyBind(std::initializer_list<Input::KeyCode> keys) : m_key_combo(keys) {}
+    KeyBind::KeyBind(std::initializer_list<Input::KeyCode> keys) : m_key_combo(keys) {
+        for (auto &key : keys) {
+            TOOLBOX_ASSERT(
+                key != Input::KeyCode::KEY_LEFTSHIFT && key != Input::KeyCode::KEY_RIGHTSHIFT &&
+                    key != Input::KeyCode::KEY_LEFTCONTROL &&
+                    key != Input::KeyCode::KEY_RIGHTCONTROL && key != Input::KeyCode::KEY_LEFTALT &&
+                    key != Input::KeyCode::KEY_RIGHTALT && key != Input::KeyCode::KEY_LEFTSUPER &&
+                    key != Input::KeyCode::KEY_RIGHTSUPER,
+                "Cannot use explicit modifier keys as part of keybind, pass them as modifiers "
+                "instead as a second argument bitmask")
+        }
+    }
 
-    KeyBind::KeyBind(const Input::KeyCodes &keys) : m_key_combo(keys) {}
+    KeyBind::KeyBind(const Input::KeyCodes &keys, const Input::KeyModifiers &mods)
+        : m_key_combo(keys), m_key_mods(mods) {
+        for (auto &key : keys) {
+            TOOLBOX_ASSERT(
+                key != Input::KeyCode::KEY_LEFTSHIFT && key != Input::KeyCode::KEY_RIGHTSHIFT &&
+                    key != Input::KeyCode::KEY_LEFTCONTROL &&
+                    key != Input::KeyCode::KEY_RIGHTCONTROL && key != Input::KeyCode::KEY_LEFTALT &&
+                    key != Input::KeyCode::KEY_RIGHTALT && key != Input::KeyCode::KEY_LEFTSUPER &&
+                    key != Input::KeyCode::KEY_RIGHTSUPER,
+                "Cannot use explicit modifier keys as part of keybind, pass them as modifiers "
+                "instead as a second argument bitmask")
+        }
+    }
 
     KeyBind KeyBind::FromString(const std::string &bind_str) {
         KeyBind result;
@@ -22,7 +46,17 @@ namespace Toolbox {
             size_t next_delimiter_index = bind_str.find('+', key_begin_index);
             std::string key_name =
                 bind_str.substr(key_begin_index, next_delimiter_index - key_begin_index);
-            result.m_key_combo.push_back(KeyNameToEnum(key_name));
+            if (key_name == "Shift") {
+                result.m_key_mods |= Input::KeyModifier::KEY_SHIFT;
+            } else if (key_name == "Ctrl") {
+                result.m_key_mods |= Input::KeyModifier::KEY_CTRL;
+            } else if (key_name == "Alt") {
+                result.m_key_mods |= Input::KeyModifier::KEY_ALT;
+            } else if (key_name == "Super") {
+                result.m_key_mods |= Input::KeyModifier::KEY_SUPER;
+            } else {
+                result.m_key_combo.push_back(KeyNameToEnum(key_name));
+            }
 
             // Last character is + or we reached end of string
             if (next_delimiter_index >= std::string::npos - 1) {
@@ -37,11 +71,24 @@ namespace Toolbox {
 
     bool KeyBind::isInputMatching() const {
         return std::all_of(m_key_combo.begin(), m_key_combo.end(),
-                           [](Input::KeyCode keybind) { return Input::GetKey(keybind); });
+                           [](Input::KeyCode keybind) { return Input::GetKey(keybind); }) &&
+               (Input::GetPressedKeyModifiers() & m_key_mods) == m_key_mods;
     }
 
     std::string KeyBind::toString() const {
         std::string keybind_name = "";
+        if (!!(m_key_mods & Input::KeyModifier::KEY_CTRL)) {
+            keybind_name += "Ctrl+";
+        }
+        if (!!(m_key_mods & Input::KeyModifier::KEY_SHIFT)) {
+            keybind_name += "Shift+";
+        }
+        if (!!(m_key_mods & Input::KeyModifier::KEY_ALT)) {
+            keybind_name += "Alt+";
+        }
+        if (!!(m_key_mods & Input::KeyModifier::KEY_SUPER)) {
+            keybind_name += "Super+";
+        }
         for (size_t j = 0; j < m_key_combo.size(); ++j) {
             Input::KeyCode key = m_key_combo.at(j);
             keybind_name += KeyNameFromEnum(key);
@@ -55,7 +102,8 @@ namespace Toolbox {
     bool KeyBind::scanNextInputKey() {
         // Check if any of the keys are still being held
         bool any_keys_held = std::any_of(m_key_combo.begin(), m_key_combo.end(),
-                                         [](Input::KeyCode key) { return Input::GetKey(key); });
+                                         [](Input::KeyCode key) { return Input::GetKey(key); }) ||
+                             !!(Input::GetPressedKeyModifiers() & m_key_mods);
         if (m_key_combo.size() > 0 && !any_keys_held) {
             return true;
         }
@@ -73,11 +121,11 @@ namespace Toolbox {
     }
 
     bool KeyBind::operator==(const KeyBind &other) const {
-        return m_key_combo == other.m_key_combo;
+        return m_key_combo == other.m_key_combo && m_key_mods == other.m_key_mods;
     }
 
     bool KeyBind::operator!=(const KeyBind &other) const {
-        return m_key_combo != other.m_key_combo;
+        return m_key_combo != other.m_key_combo || m_key_mods != other.m_key_mods;
     }
 
 }  // namespace Toolbox

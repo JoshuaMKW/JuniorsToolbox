@@ -146,6 +146,7 @@ namespace Toolbox::Input {
         KEY_SUPER = (1 << 3),
     };
     TOOLBOX_BITWISE_ENUM(KeyModifier);
+    bool operator!(KeyModifier mod);
 
     using KeyModifiers = KeyModifier;
 

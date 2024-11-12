@@ -152,6 +152,10 @@ namespace Toolbox::UI {
                     return Result<void, SerialError>();
                 });
 
+            if (result) {
+                m_io_context_path = path;
+            }
+
             return result;
         }
 
@@ -161,6 +165,11 @@ namespace Toolbox::UI {
 
     bool SceneWindow::onSaveData(std::optional<std::filesystem::path> path) {
         std::filesystem::path root_path;
+
+        if (!m_current_scene) {
+            TOOLBOX_ERROR("(SCENE) Failed to save the scene due to lack of a scene instance.");
+            return false;
+        }
 
         if (!path) {
             auto opt_path = m_current_scene->rootPath();
@@ -237,6 +246,10 @@ namespace Toolbox::UI {
             }
         } else {
             m_is_game_edit_mode = false;
+        }
+
+        if (!m_current_scene) {
+            return;
         }
 
         std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
@@ -369,10 +382,15 @@ namespace Toolbox::UI {
         case SCENE_CREATE_RAIL_EVENT: {
             auto event = std::static_pointer_cast<SceneCreateRailEvent>(ev);
             if (event) {
-                const Rail::Rail &rail = event->getRail();
-                m_current_scene->getRailData().addRail(rail);
-                m_rail_visible_map[rail.getUUID()] = true;
-                ev->accept();
+                if (m_current_scene) {
+                    const Rail::Rail &rail = event->getRail();
+                    m_current_scene->getRailData().addRail(rail);
+                    m_rail_visible_map[rail.getUUID()] = true;
+                    ev->accept();
+                } else {
+                    TOOLBOX_ERROR("Failed to create rail due to lack of a scene instance.");
+                    ev->ignore();
+                }
             }
             break;
         }
@@ -431,8 +449,8 @@ void SceneWindow::renderHierarchy() {
 
         // Render Objects
 
-        if (m_current_scene != nullptr) {
-            auto root = m_current_scene->getObjHierarchy().getRoot();
+        if (m_current_scene) {
+            RefPtr<Object::GroupSceneObject> root = m_current_scene->getObjHierarchy().getRoot();
             renderTree(0, root);
         }
 
@@ -440,8 +458,8 @@ void SceneWindow::renderHierarchy() {
         ImGui::Text("Scene Info");
         ImGui::Separator();
 
-        if (m_current_scene != nullptr) {
-            auto root = m_current_scene->getTableHierarchy().getRoot();
+        if (m_current_scene) {
+            RefPtr<Object::GroupSceneObject> root = m_current_scene->getTableHierarchy().getRoot();
             renderTree(0, root);
         }
     }
@@ -990,6 +1008,10 @@ void SceneWindow::reassignAllActorPtrs(u32 param) {
 }
 
 void SceneWindow::renderRailEditor() {
+    if (!m_current_scene) {
+        return;
+    }
+
     const std::string rail_editor_str = ImWindowComponentTitle(*this, "Rail Editor");
 
     const ImGuiTreeNodeFlags rail_flags = ImGuiTreeNodeFlags_OpenOnArrow |
@@ -1216,7 +1238,7 @@ void SceneWindow::renderScene(TimeStep delta_time) {
     std::vector<J3DLight> lights;
 
     // perhaps find a way to limit this so it only happens when we need to re-render?
-    if (m_current_scene != nullptr) {
+    if (m_current_scene) {
         if (m_update_render_objs || !settings.m_is_rendering_simple) {
             m_renderables.clear();
             auto perform_result = m_current_scene->getObjHierarchy().getRoot()->performScene(
@@ -1438,7 +1460,7 @@ void SceneWindow::buildContextMenuVirtualObj() {
     m_hierarchy_virtual_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
     m_hierarchy_virtual_node_menu.addOption(
-        "Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+        "Insert Object Before...", KeyBind({KeyCode::KEY_N}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
             m_create_obj_dialog.open();
@@ -1446,7 +1468,7 @@ void SceneWindow::buildContextMenuVirtualObj() {
         });
 
     m_hierarchy_virtual_node_menu.addOption(
-        "Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+        "Insert Object After...", KeyBind({KeyCode::KEY_N}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
             m_create_obj_dialog.open();
@@ -1455,18 +1477,18 @@ void SceneWindow::buildContextMenuVirtualObj() {
 
     m_hierarchy_virtual_node_menu.addDivider();
 
-    m_hierarchy_virtual_node_menu.addOption("Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
-                                            [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                                                m_rename_obj_dialog.open();
-                                                m_rename_obj_dialog.setOriginalName(
-                                                    info.m_selected->getNameRef().name());
-                                                return;
-                                            });
+    m_hierarchy_virtual_node_menu.addOption(
+        "Rename...", KeyBind({KeyCode::KEY_R}, KeyModifier::KEY_CTRL),
+        [this](SelectionNodeInfo<Object::ISceneObject> info) {
+            m_rename_obj_dialog.open();
+            m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
+            return;
+        });
 
     m_hierarchy_virtual_node_menu.addDivider();
 
     m_hierarchy_virtual_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+        "Copy", KeyBind({KeyCode::KEY_C}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
             GUIApplication::instance().getSceneObjectClipboard().setData(info);
@@ -1474,7 +1496,7 @@ void SceneWindow::buildContextMenuVirtualObj() {
         });
 
     m_hierarchy_virtual_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+        "Paste", KeyBind({KeyCode::KEY_V}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             auto nodes       = GUIApplication::instance().getSceneObjectClipboard().getData();
             auto this_parent = info.m_selected->getParent();
@@ -1530,7 +1552,7 @@ void SceneWindow::buildContextMenuGroupObj() {
     m_hierarchy_group_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
     m_hierarchy_group_node_menu.addOption(
-        "Add Child Object...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+        "Add Child Object...", KeyBind({KeyCode::KEY_N}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_CHILD);
             m_create_obj_dialog.open();
@@ -1538,7 +1560,7 @@ void SceneWindow::buildContextMenuGroupObj() {
         });
 
     m_hierarchy_group_node_menu.addOption(
-        "Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+        "Insert Object Before...", KeyBind({KeyCode::KEY_N}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
             m_create_obj_dialog.open();
@@ -1546,7 +1568,7 @@ void SceneWindow::buildContextMenuGroupObj() {
         });
 
     m_hierarchy_group_node_menu.addOption(
-        "Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+        "Insert Object After...", KeyBind({KeyCode::KEY_N}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
             m_create_obj_dialog.open();
@@ -1555,18 +1577,18 @@ void SceneWindow::buildContextMenuGroupObj() {
 
     m_hierarchy_group_node_menu.addDivider();
 
-    m_hierarchy_group_node_menu.addOption("Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
-                                          [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                                              m_rename_obj_dialog.open();
-                                              m_rename_obj_dialog.setOriginalName(
-                                                  info.m_selected->getNameRef().name());
-                                              return;
-                                          });
+    m_hierarchy_group_node_menu.addOption(
+        "Rename...", KeyBind({KeyCode::KEY_R}, KeyModifier::KEY_CTRL),
+        [this](SelectionNodeInfo<Object::ISceneObject> info) {
+            m_rename_obj_dialog.open();
+            m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
+            return;
+        });
 
     m_hierarchy_group_node_menu.addDivider();
 
     m_hierarchy_group_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+        "Copy", KeyBind({KeyCode::KEY_C}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
             GUIApplication::instance().getSceneObjectClipboard().setData(info);
@@ -1574,7 +1596,7 @@ void SceneWindow::buildContextMenuGroupObj() {
         });
 
     m_hierarchy_group_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+        "Paste", KeyBind({KeyCode::KEY_V}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             auto nodes       = GUIApplication::instance().getSceneObjectClipboard().getData();
             auto this_parent = std::reinterpret_pointer_cast<GroupSceneObject>(info.m_selected);
@@ -1630,7 +1652,7 @@ void SceneWindow::buildContextMenuPhysicalObj() {
     m_hierarchy_physical_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
     m_hierarchy_physical_node_menu.addOption(
-        "Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+        "Insert Object Before...", KeyBind({KeyCode::KEY_N}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
             m_create_obj_dialog.open();
@@ -1638,7 +1660,7 @@ void SceneWindow::buildContextMenuPhysicalObj() {
         });
 
     m_hierarchy_physical_node_menu.addOption(
-        "Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+        "Insert Object After...", KeyBind({KeyCode::KEY_N}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
             m_create_obj_dialog.open();
@@ -1648,7 +1670,7 @@ void SceneWindow::buildContextMenuPhysicalObj() {
     m_hierarchy_physical_node_menu.addDivider();
 
     m_hierarchy_physical_node_menu.addOption(
-        "Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
+        "Rename...", KeyBind({KeyCode::KEY_R}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             m_rename_obj_dialog.open();
             m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
@@ -1658,7 +1680,7 @@ void SceneWindow::buildContextMenuPhysicalObj() {
     m_hierarchy_physical_node_menu.addDivider();
 
     m_hierarchy_physical_node_menu.addOption(
-        "View in Scene", {KeyCode::KEY_LEFTALT, KeyCode::KEY_V},
+        "View in Scene", KeyBind({KeyCode::KEY_V}, KeyModifier::KEY_ALT),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             auto member_result = info.m_selected->getMember("Transform");
             if (!member_result) {
@@ -1686,7 +1708,7 @@ void SceneWindow::buildContextMenuPhysicalObj() {
         });
 
     m_hierarchy_physical_node_menu.addOption(
-        "Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
+        "Move to Camera", KeyBind({KeyCode::KEY_C}, KeyModifier::KEY_ALT),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             auto member_result = info.m_selected->getMember("Transform");
             if (!member_result) {
@@ -1720,7 +1742,7 @@ void SceneWindow::buildContextMenuPhysicalObj() {
     m_hierarchy_physical_node_menu.addDivider();
 
     m_hierarchy_physical_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+        "Copy", KeyBind({KeyCode::KEY_C}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
             GUIApplication::instance().getSceneObjectClipboard().setData(info);
@@ -1728,7 +1750,7 @@ void SceneWindow::buildContextMenuPhysicalObj() {
         });
 
     m_hierarchy_physical_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+        "Paste", KeyBind({KeyCode::KEY_V}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Object::ISceneObject> info) {
             auto nodes       = GUIApplication::instance().getSceneObjectClipboard().getData();
             auto this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
@@ -1782,7 +1804,8 @@ void SceneWindow::buildContextMenuPhysicalObj() {
     m_hierarchy_physical_node_menu.addDivider();
 
     m_hierarchy_physical_node_menu.addOption(
-        "Copy Player Transform", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
+        "Copy Player Transform",
+        KeyBind({KeyCode::KEY_P}, KeyModifier::KEY_CTRL | KeyModifier::KEY_ALT),
         [this]() {
             Game::TaskCommunicator &task_communicator =
                 GUIApplication::instance().getTaskCommunicator();
@@ -1798,7 +1821,8 @@ void SceneWindow::buildContextMenuPhysicalObj() {
         });
 
     m_hierarchy_physical_node_menu.addOption(
-        "Copy Player Position", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
+        "Copy Player Position",
+        KeyBind({KeyCode::KEY_P}, KeyModifier::KEY_CTRL | KeyModifier::KEY_ALT),
         [this]() {
             Game::TaskCommunicator &task_communicator =
                 GUIApplication::instance().getTaskCommunicator();
@@ -1819,7 +1843,7 @@ void SceneWindow::buildContextMenuMultiObj() {
         ContextMenu<std::vector<SelectionNodeInfo<Object::ISceneObject>>>();
 
     m_hierarchy_multi_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+        "Copy", KeyBind({KeyCode::KEY_C}, KeyModifier::KEY_CTRL),
         [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
             for (auto &info : infos) {
                 info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
@@ -1829,7 +1853,7 @@ void SceneWindow::buildContextMenuMultiObj() {
         });
 
     m_hierarchy_multi_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+        "Paste", KeyBind({KeyCode::KEY_V}, KeyModifier::KEY_CTRL),
         [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
             auto nodes = GUIApplication::instance().getSceneObjectClipboard().getData();
             for (auto &info : infos) {
@@ -1893,7 +1917,7 @@ void SceneWindow::buildContextMenuRail() {
     m_rail_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::Rail>>();
 
     m_rail_list_single_node_menu.addOption("Insert Rail Here...",
-                                           {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                                           KeyBind({KeyCode::KEY_N}, KeyModifier::KEY_CTRL),
                                            [this](SelectionNodeInfo<Rail::Rail> info) {
                                                m_create_rail_dialog.open();
                                                return;
@@ -1901,13 +1925,13 @@ void SceneWindow::buildContextMenuRail() {
 
     m_rail_list_single_node_menu.addDivider();
 
-    m_rail_list_single_node_menu.addOption("Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
-                                           [this](SelectionNodeInfo<Rail::Rail> info) {
-                                               m_rename_rail_dialog.open();
-                                               m_rename_rail_dialog.setOriginalName(
-                                                   info.m_selected->name());
-                                               return;
-                                           });
+    m_rail_list_single_node_menu.addOption(
+        "Rename...", KeyBind({KeyCode::KEY_R}, KeyModifier::KEY_CTRL),
+        [this](SelectionNodeInfo<Rail::Rail> info) {
+            m_rename_rail_dialog.open();
+            m_rename_rail_dialog.setOriginalName(info.m_selected->name());
+            return;
+        });
 
     // m_rail_list_single_node_menu.addDivider();
     //
@@ -1916,7 +1940,7 @@ void SceneWindow::buildContextMenuRail() {
     m_rail_list_single_node_menu.addDivider();
 
     m_rail_list_single_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+        "Copy", KeyBind({KeyCode::KEY_C}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Rail::Rail> info) {
             info.m_selected = make_deep_clone<Rail::Rail>(info.m_selected);
             GUIApplication::instance().getSceneRailClipboard().setData(info);
@@ -1924,7 +1948,7 @@ void SceneWindow::buildContextMenuRail() {
         });
 
     m_rail_list_single_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+        "Paste", KeyBind({KeyCode::KEY_V}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Rail::Rail> info) {
             auto nodes = GUIApplication::instance().getSceneRailClipboard().getData();
             if (nodes.size() > 0) {
@@ -1962,7 +1986,7 @@ void SceneWindow::buildContextMenuMultiRail() {
     m_rail_list_multi_node_menu = ContextMenu<std::vector<SelectionNodeInfo<Rail::Rail>>>();
 
     m_rail_list_multi_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+        "Copy", KeyBind({KeyCode::KEY_C}, KeyModifier::KEY_CTRL),
         [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
             for (auto &select : info) {
                 select.m_selected = make_deep_clone<Rail::Rail>(select.m_selected);
@@ -1972,7 +1996,7 @@ void SceneWindow::buildContextMenuMultiRail() {
         });
 
     m_rail_list_multi_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+        "Paste", KeyBind({KeyCode::KEY_V}, KeyModifier::KEY_CTRL),
         [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
             auto nodes = GUIApplication::instance().getSceneRailClipboard().getData();
             if (nodes.size() > 0) {
@@ -2013,7 +2037,7 @@ void SceneWindow::buildContextMenuRailNode() {
     m_rail_node_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::RailNode>>();
 
     m_rail_node_list_single_node_menu.addOption("Insert Node Here...",
-                                                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                                                KeyBind({KeyCode::KEY_N}, KeyModifier::KEY_CTRL),
                                                 [this](SelectionNodeInfo<Rail::RailNode> info) {
                                                     m_create_rail_dialog.open();
                                                     return Result<void>();
@@ -2022,7 +2046,7 @@ void SceneWindow::buildContextMenuRailNode() {
     m_rail_node_list_single_node_menu.addDivider();
 
     m_rail_node_list_single_node_menu.addOption(
-        "View in Scene", {KeyCode::KEY_LEFTALT, KeyCode::KEY_V},
+        "View in Scene", KeyBind({KeyCode::KEY_V}, KeyModifier::KEY_ALT),
         [this](SelectionNodeInfo<Rail::RailNode> info) {
             glm::vec3 translation = info.m_selected->getPosition();
 
@@ -2033,7 +2057,7 @@ void SceneWindow::buildContextMenuRailNode() {
         });
 
     m_rail_node_list_single_node_menu.addOption(
-        "Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
+        "Move to Camera", KeyBind({KeyCode::KEY_C}, KeyModifier::KEY_ALT),
         [this](SelectionNodeInfo<Rail::RailNode> info) {
             RefPtr<Rail::Rail> rail =
                 m_current_scene->getRailData().getRail(info.m_selected->getRailUUID());
@@ -2054,7 +2078,7 @@ void SceneWindow::buildContextMenuRailNode() {
     m_rail_node_list_single_node_menu.addDivider();
 
     m_rail_node_list_single_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+        "Copy", KeyBind({KeyCode::KEY_C}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Rail::RailNode> info) {
             info.m_selected = make_deep_clone<Rail::RailNode>(info.m_selected);
             GUIApplication::instance().getSceneRailNodeClipboard().setData(info);
@@ -2062,7 +2086,7 @@ void SceneWindow::buildContextMenuRailNode() {
         });
 
     m_rail_node_list_single_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+        "Paste", KeyBind({KeyCode::KEY_V}, KeyModifier::KEY_CTRL),
         [this](SelectionNodeInfo<Rail::RailNode> info) {
             RefPtr<Rail::Rail> rail =
                 m_current_scene->getRailData().getRail(info.m_selected->getRailUUID());
@@ -2095,7 +2119,7 @@ void SceneWindow::buildContextMenuMultiRailNode() {
         ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>>();
 
     m_rail_node_list_multi_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+        "Copy", KeyBind({KeyCode::KEY_C}, KeyModifier::KEY_CTRL),
         [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
             for (auto &select : info) {
                 select.m_selected = make_deep_clone<Rail::RailNode>(select.m_selected);
@@ -2105,7 +2129,7 @@ void SceneWindow::buildContextMenuMultiRailNode() {
         });
 
     m_rail_node_list_multi_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+        "Paste", KeyBind({KeyCode::KEY_V}, KeyModifier::KEY_CTRL),
         [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
             RefPtr<Rail::Rail> rail =
                 m_current_scene->getRailData().getRail(info[0].m_selected->getRailUUID());
@@ -2661,15 +2685,16 @@ void SceneWindow::onRenderMenuBar() {
 
     if (m_is_save_default_ready) {
         m_is_save_default_ready = false;
-        if (m_current_scene->rootPath())
-            (void)onSaveData(m_current_scene->rootPath());
-        else
+        if (!m_io_context_path.empty()) {
+            (void)onSaveData(m_io_context_path);
+        } else {
             m_is_save_as_dialog_open = true;
+        }
     }
 
     if (m_is_save_as_dialog_open) {
-        ImGuiFileDialog::Instance()->OpenDialog("SaveSceneDialog", "Choose Directory", nullptr, "",
-                                                "");
+        ImGuiFileDialog::Instance()->OpenDialog("SaveSceneDialog", "Choose Directory", nullptr,
+                                                m_io_context_path.string(), "");
     }
 
     if (ImGuiFileDialog::Instance()->Display("SaveSceneDialog")) {

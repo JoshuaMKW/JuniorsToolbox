@@ -65,7 +65,8 @@ namespace ImGui {
                           const char *label_end, bool focused);
     bool TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *label,
                           const char *label_end, bool focused, bool *visible);
-
+    bool BeginPopupContextItem(const char *str_id, ImGuiPopupFlags popup_flags,
+                                      ImGuiHoveredFlags hover_flags);
     bool DrawCircle(const ImVec2 &center, float radius, ImU32 color,
                     ImU32 fill_color = IM_COL32_BLACK_TRANS, float thickness = 1.0f);
     bool DrawSquare(const ImVec2 &center, float size, ImU32 color,

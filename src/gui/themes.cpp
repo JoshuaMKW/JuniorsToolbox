@@ -240,21 +240,7 @@ namespace Toolbox::UI {
             }
         }
 
-        /*return Toolbox::Filesystem::current_path().and_then([this](std::filesystem::path &&cwd) {
-            for (auto &subpath : Toolbox::Filesystem::directory_iterator{cwd / "Themes"}) {
-                try {
-                    auto theme = make_referable<ConfigTheme>(subpath.path().stem().string());
-                    if (theme->name() == "Default") {
-                        theme->apply();
-                        m_active_theme = m_themes.size();
-                    }
-                    m_themes.emplace_back(theme);
-                } catch (std::runtime_error &e) {
-                    return make_fs_error<void>(std::error_code(), {e.what()});
-                }
-            }
-            return Result<void, FSError>();
-        });*/
+        return {};
     }
 
 }  // namespace Toolbox::UI

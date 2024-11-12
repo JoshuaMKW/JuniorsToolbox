@@ -12,6 +12,7 @@
 #include "IconsForkAwesome.h"
 
 #include <imgui.h>
+#include "imgui_ext.hpp"
 
 #include "core/input/input.hpp"
 #include "core/keybind/keybind.hpp"
@@ -22,8 +23,9 @@ namespace Toolbox::UI {
 
     template <typename _DataT> class ContextMenu {
     public:
-        using operator_t  = std::function<void(_DataT)>;
-        using condition_t = std::function<bool()>;
+        using operator_t   = std::function<void(_DataT)>;
+        using condition_t  = std::function<bool()>;
+        using open_event_t = std::function<void(_DataT)>;
 
         struct ContextOp {
             std::string m_name;
@@ -43,7 +45,10 @@ namespace Toolbox::UI {
 
         void addDivider();
 
-        void render(std::optional<std::string> label, _DataT ctx);
+        void render(std::optional<std::string> label, _DataT ctx,
+                    ImGuiHoveredFlags hover_flags = ImGuiHoveredFlags_AllowWhenBlockedByPopup);
+
+        void onOpen(open_event_t open) { m_open_event = open; }
 
     protected:
         void processKeybinds(_DataT ctx);
@@ -51,6 +56,8 @@ namespace Toolbox::UI {
     private:
         std::vector<ContextOp> m_options;
         std::set<size_t> m_dividers;
+        open_event_t m_open_event;
+        bool m_was_open = false;
     };
 
     template <typename _DataT>
@@ -78,11 +85,20 @@ namespace Toolbox::UI {
     }
 
     template <typename _DataT>
-    inline void ContextMenu<_DataT>::render(std::optional<std::string> label, _DataT ctx) {
+    inline void ContextMenu<_DataT>::render(std::optional<std::string> label, _DataT ctx, ImGuiHoveredFlags hover_flags) {
         processKeybinds(ctx);
 
-        if (!ImGui::BeginPopupContextItem(label ? label->c_str() : nullptr))
+        if (!ImGui::BeginPopupContextItem(label ? label->c_str() : nullptr, 1, hover_flags)) {
+            m_was_open = false;
             return;
+        }
+
+        if (!m_was_open && m_open_event) {
+            m_open_event(ctx);
+        }
+        m_was_open = true;
+
+        size_t prev_opt_index = 0;
 
         for (size_t i = 0; i < m_options.size(); ++i) {
             ContextOp &option = m_options.at(i);
@@ -90,9 +106,10 @@ namespace Toolbox::UI {
                 continue;
             }
 
-            if (m_dividers.find(i) != m_dividers.end()) {
+            if (prev_opt_index > 0 && m_dividers.find(prev_opt_index + 1) != m_dividers.end()) {
                 ImGui::Separator();
             }
+            prev_opt_index = i;
 
             std::string keybind_name = option.m_keybind.toString();
 
@@ -117,11 +134,16 @@ namespace Toolbox::UI {
             bool keybind_pressed = option.m_keybind.isInputMatching();
 
             if (keybind_pressed && !option.m_keybind_used) {
-                option.m_keybind_used = true;
-                option.m_op(ctx);
+                if (m_open_event) {
+                    m_open_event(ctx);
+                }
+                if (option.m_condition()) {
+                    option.m_keybind_used = true;
+                    option.m_op(ctx);
+                }
             }
 
-            if (!keybind_pressed) {
+            if (!keybind_pressed || !option.m_condition()) {
                 option.m_keybind_used = false;
             }
         }
