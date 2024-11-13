@@ -1,4 +1,7 @@
 #include "gui/messages/window.hpp"
+#include "resource/resource.hpp"
+#include "gui/application.hpp"
+#include <iostream>
 
 namespace Toolbox::UI {
 
@@ -25,17 +28,23 @@ namespace Toolbox::UI {
         ImGui::SameLine();
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
-        renderSoundFrame();
-        ImGui::SameLine();
-        renderBackgroundPanel();
-        renderDialogText();
-        ImGui::SameLine();
-        renderDialogMockup();
+        if (ImGui::BeginChild("Right Panel")) {
+            if (ImGui::BeginChild("Options Panel", {500, 100})) {
+                renderSoundFrame();
+                ImGui::SameLine();
+                renderBackgroundPanel();
+            }
+            ImGui::EndChild();
+            renderDialogText();
+            ImGui::SameLine();
+            renderDialogMockup();
+        }
+        ImGui::EndChild();
     }
 
     void BMGWindow::renderIndexPanel() {
-        if (ImGui::BeginChild("Index Panel", {350, 0}, 0, ImGuiWindowFlags_NoDecoration)) {
-            if (ImGui::BeginChild("Buttons", {150, 40}, 0)) {
+        if (ImGui::BeginChild("Index Panel", {225, 0}, 0, ImGuiWindowFlags_NoDecoration)) {
+            if (ImGui::BeginChild("Buttons", {150, 40})) {
                 if (ImGui::Button("New")) {
                 }
                 ImGui::SameLine();
@@ -46,12 +55,13 @@ namespace Toolbox::UI {
                 }
             }
             ImGui::EndChild();
-            if (ImGui::BeginChild("Search", {0, 30})) {
+            if (ImGui::BeginChild("Search", {230, 40})) {
+                ImGui::SetNextItemWidth(225);
                 ImGui::InputText("##search", m_search_buffer, IM_ARRAYSIZE(m_search_buffer), 0);
             }
             ImGui::EndChild();
-            if (ImGui::BeginChild("List")) {
-                if (ImGui::BeginListBox("##messages")) {
+            if (ImGui::BeginChild("List", {230, 0})) {
+                if (ImGui::BeginListBox("##messages", {225, 0})) {
                     ImGui::Selectable("Message 1");
                     ImGui::Selectable("Message 2");
                     ImGui::Selectable("Message 3");
@@ -63,7 +73,7 @@ namespace Toolbox::UI {
         ImGui::EndChild();
     }
     void BMGWindow::renderSoundFrame() {
-        if (ImGui::BeginChild("Sound Frame")) {
+        if (ImGui::BeginChild("Sound Frame", {250, 0})) {
             if (ImGui::BeginCombo("Sound ID", "MALE_PIANTA_SURPRISE")) {
                 ImGui::Selectable("MALE_PIANTA_SURPRISE");
                 ImGui::EndCombo();
@@ -74,12 +84,14 @@ namespace Toolbox::UI {
         ImGui::EndChild();
     }
     void BMGWindow::renderBackgroundPanel() {
-        if (ImGui::BeginChild("Background Panel")) {
+        if (ImGui::BeginChild("Background Panel", {185, 0})) {
             ImGui::Text("Background");
+            ImGui::SetNextItemWidth(170);
             if (ImGui::BeginCombo("##character", "Pianta")){
                 ImGui::Selectable("Pianta");
                 ImGui::EndCombo();
             }
+            ImGui::SetNextItemWidth(170);
             if (ImGui::BeginCombo("##role", "NPC")){
                 ImGui::Selectable("NPC");
                 ImGui::EndCombo();
@@ -88,16 +100,32 @@ namespace Toolbox::UI {
         ImGui::EndChild();
     }
     void BMGWindow::renderDialogText() {
-        if (ImGui::BeginChild("Dialog Text")) {
+        if (ImGui::BeginChild("Dialog Text", {200, 0})) {
             ImGui::Text("This is some placeholder dialog");
         }
         ImGui::EndChild();
     }
     void BMGWindow::renderDialogMockup() {
-        if (ImGui::BeginChild("Dialog Mockup")) {
+        const ImGuiStyle &style = ImGui::GetStyle();
+        if (ImGui::BeginChild("Dialog Mockup", {0, 0}, true)) {
+            ImVec2 pos       = ImGui::GetCursorScreenPos() + style.WindowPadding;
+            const float box_width   = 400.0f;
+            ImVec2 icon_size = ImVec2(box_width - style.WindowPadding.x * 2.0f,
+                                      box_width - style.WindowPadding.x * 2.0f);
+            m_image_painter.render(m_background_image, pos, icon_size);
         }
         ImGui::EndChild();
     }
 
-    bool BMGWindow::onLoadData(std::filesystem::path data_path) { return true; }
+    bool BMGWindow::onLoadData(std::filesystem::path data_path) {
+        const ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
+        UUID64 fs_icons_uuid = res_manager.getResourcePathUUID("Images/medit/backgrounds");
+        auto result = res_manager.getImageHandle("bmg_preview_shades_pianta.png", fs_icons_uuid);
+        if (result) {
+            m_background_image = *result.value();
+        } else {
+            TOOLBOX_ERROR_V("[Medit] Failed to load background: {}, {}", "bmg_preview_shades_pianta.png", result.error().m_message[0]);
+        }
+        return true;
+    }
 }  // namespace Toolbox::UI

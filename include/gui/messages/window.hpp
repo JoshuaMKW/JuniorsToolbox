@@ -6,6 +6,7 @@
 
 #include "gui/window.hpp"
 #include "core/time/timestep.hpp"
+#include "gui/image/imagepainter.hpp"
 
 namespace Toolbox::UI {
     class BMGWindow final : public ImWindow {
@@ -15,7 +16,7 @@ namespace Toolbox::UI {
         bool onLoadData(std::filesystem::path data_path);
         std::optional<ImVec2> minSize() const override {
             return {
-                {600, 400}
+                {710, 400}
             };
         }
         ImGuiWindowFlags flags() const override {
@@ -34,5 +35,8 @@ namespace Toolbox::UI {
         char m_search_buffer[256] = "";
         int m_start_frame_val = 0;
         int m_end_frame_val = 0;
+
+        ImagePainter m_image_painter;
+        ImageHandle m_background_image;
     };
 }
