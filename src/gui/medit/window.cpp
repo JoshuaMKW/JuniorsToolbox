@@ -97,8 +97,12 @@ namespace Toolbox::UI {
         if (ImGui::BeginChild("Background Panel", {185, 0})) {
             ImGui::Text("Background");
             ImGui::SetNextItemWidth(170);
-            if (ImGui::BeginCombo("##character", "Pianta")) {
-                ImGui::Selectable("Pianta");
+            if (ImGui::BeginCombo("##character", m_selected_background.c_str())) {
+                for (auto &[key, value] : BackgroundMap()) {
+                    if (ImGui::Selectable(key.c_str())) {
+                        m_selected_background = key;
+                    }
+                }
                 ImGui::EndCombo();
             }
             ImGui::SetNextItemWidth(170);
@@ -119,11 +123,12 @@ namespace Toolbox::UI {
         const ImGuiStyle &style = ImGui::GetStyle();
         if (ImGui::BeginChild("Dialog Mockup", {0, 0})) {
             ImVec2 pos = ImGui::GetCursorScreenPos() + style.WindowPadding;
-            ImVec2 image_size(m_background_image->size().first, m_background_image->size().second);
+            RefPtr<const ImageHandle> background_image = m_background_images[m_selected_background];
+            ImVec2 image_size(background_image->size().first, background_image->size().second);
             float aspect_ratio = image_size.y / image_size.x;
             ImVec2 avail       = ImGui::GetContentRegionAvail() - (style.WindowPadding * 2);
             ImVec2 computed_size(avail.x, avail.x * aspect_ratio);
-            m_image_painter.render(*m_background_image, pos, computed_size);
+            m_image_painter.render(*background_image, pos, computed_size);
         }
         ImGui::EndChild();
     }
@@ -131,13 +136,25 @@ namespace Toolbox::UI {
     bool MeditWindow::onLoadData(std::filesystem::path data_path) {
         const ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
         UUID64 fs_icons_uuid = res_manager.getResourcePathUUID("Images/Medit/Backgrounds");
-        auto result = res_manager.getImageHandle("bmg_preview_shades_pianta.png", fs_icons_uuid);
-        if (result) {
-            m_background_image = result.value();
-        } else {
-            TOOLBOX_ERROR_V("[Medit] Failed to load background: {}, {}",
-                            "bmg_preview_shades_pianta.png", result.error().m_message[0]);
+        for (auto &[key, value] : BackgroundMap()) {
+            auto result = res_manager.getImageHandle(value, fs_icons_uuid);
+            if (result) {
+                m_background_images[key] = result.value();
+            } else {
+                TOOLBOX_ERROR_V("[Medit] Failed to load background: {}, {}",
+                                value.string(), result.error().m_message[0]);
+            }
         }
+        m_selected_background = BackgroundMap()[0].first;
         return true;
+    }
+
+    const std::vector<std::pair<std::string, fs_path>> &MeditWindow::BackgroundMap() {
+        static std::vector<std::pair<std::string, fs_path>> s_background_map = {
+            {"Pianta", "bmg_preview_shades_pianta.png"},
+            {"Tanooki", "bmg_preview_tanooki.png"},
+            {"Noki", "bmg_preview_old_noki.png"}
+        };
+        return s_background_map;
     }
 }  // namespace Toolbox::UI

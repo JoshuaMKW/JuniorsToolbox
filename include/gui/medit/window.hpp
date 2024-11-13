@@ -1,12 +1,11 @@
 #pragma once
 
-#include <filesystem>
-
 #include <imgui.h>
 
 #include "gui/window.hpp"
 #include "core/time/timestep.hpp"
 #include "gui/image/imagepainter.hpp"
+#include "fsystem.hpp"
 
 namespace Toolbox::UI {
     class MeditWindow final : public ImWindow {
@@ -37,6 +36,9 @@ namespace Toolbox::UI {
         int m_end_frame_val = 0;
 
         ImagePainter m_image_painter;
-        RefPtr<const ImageHandle> m_background_image;
+        std::unordered_map<std::string, RefPtr<const ImageHandle>> m_background_images;
+        std::string m_selected_background;
+
+        static const std::vector<std::pair<std::string, fs_path>> &BackgroundMap();
     };
 }
