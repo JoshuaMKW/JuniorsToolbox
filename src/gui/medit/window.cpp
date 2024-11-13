@@ -1,7 +1,6 @@
 #include "gui/medit/window.hpp"
 #include "gui/application.hpp"
 #include "resource/resource.hpp"
-#include <iostream>
 
 namespace Toolbox::UI {
 

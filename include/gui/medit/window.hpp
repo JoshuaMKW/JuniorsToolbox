@@ -12,7 +12,7 @@ namespace Toolbox::UI {
     public:
         MeditWindow(const std::string &name);
         ~MeditWindow() = default;
-        bool onLoadData(std::filesystem::path data_path);
+        bool onLoadData(fs_path data_path);
         std::optional<ImVec2> minSize() const override {
             return {
                 {710, 400}
