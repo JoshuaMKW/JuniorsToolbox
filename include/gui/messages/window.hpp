@@ -13,8 +13,26 @@ namespace Toolbox::UI {
         BMGWindow(const std::string &name);
         ~BMGWindow() = default;
         bool onLoadData(std::filesystem::path data_path);
+        std::optional<ImVec2> minSize() const override {
+            return {
+                {600, 400}
+            };
+        }
+        ImGuiWindowFlags flags() const override {
+            return ImWindow::flags() | ImGuiWindowFlags_MenuBar;
+        }
     protected:
         void onRenderMenuBar() override;
         void onRenderBody(TimeStep delta_time) override;
+    private:
+        void renderIndexPanel();
+        void renderSoundFrame();
+        void renderBackgroundPanel();
+        void renderDialogText();
+        void renderDialogMockup();
+
+        char m_search_buffer[256] = "";
+        int m_start_frame_val = 0;
+        int m_end_frame_val = 0;
     };
 }
