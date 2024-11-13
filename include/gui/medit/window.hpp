@@ -40,5 +40,12 @@ namespace Toolbox::UI {
         std::string m_selected_background;
 
         static const std::vector<std::pair<std::string, fs_path>> &BackgroundMap();
+
+        enum Region {
+            NTSCU,
+            PAL,
+        };
+        Region m_region = NTSCU;
+        int m_packet_size = 12;
     };
 }

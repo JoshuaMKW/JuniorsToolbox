@@ -8,16 +8,25 @@ namespace Toolbox::UI {
     MeditWindow::MeditWindow(const std::string &name) : ImWindow(name) {}
     void MeditWindow::onRenderMenuBar() {
         if (ImGui::BeginMenuBar()) {
-            if (ImGui::BeginMenu("File", true)) {
-                ImGui::EndMenu();
-            }
             if (ImGui::BeginMenu("Region", true)) {
+                if (ImGui::RadioButton("NTSC-U", m_region == NTSCU)) {
+                    m_region = NTSCU;
+                }
+                if (ImGui::RadioButton("PAL", m_region == PAL)) {
+                    m_region = PAL;
+                }
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Packet Size", true)) {
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Other", true)) {
+                if (ImGui::RadioButton("4 (System)", m_packet_size == 4)) {
+                    m_packet_size = 4;
+                }
+                if (ImGui::RadioButton("8 (Unknown)", m_packet_size == 8)) {
+                    m_packet_size = 8;
+                }
+                if (ImGui::RadioButton("12 (NPC)", m_packet_size == 12)) {
+                    m_packet_size = 12;
+                }
                 ImGui::EndMenu();
             }
             ImGui::EndMenuBar();
