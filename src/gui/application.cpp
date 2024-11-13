@@ -33,7 +33,7 @@
 #include "gui/logging/window.hpp"
 #include "gui/pad/window.hpp"
 #include "gui/project/window.hpp"
-#include "gui/messages/window.hpp"
+#include "gui/medit/window.hpp"
 #include "gui/scene/ImGuizmo.h"
 #include "gui/scene/window.hpp"
 #include "gui/settings/window.hpp"
@@ -96,8 +96,8 @@ namespace Toolbox {
             m_resource_manager.includeResourcePath(cwd / "Images", true);
             m_resource_manager.includeResourcePath(cwd / "Images/Icons", true);
             m_resource_manager.includeResourcePath(cwd / "Images/Icons/Filesystem", true);
-            m_resource_manager.includeResourcePath(cwd / "Images/medit", true);
-            m_resource_manager.includeResourcePath(cwd / "Images/medit/backgrounds", true);
+            m_resource_manager.includeResourcePath(cwd / "Images/Medit", true);
+            m_resource_manager.includeResourcePath(cwd / "Images/Medit/Backgrounds", true);
             m_resource_manager.includeResourcePath(cwd / "Templates", false);
             m_resource_manager.includeResourcePath(cwd / "Themes", true);
         }
@@ -607,7 +607,7 @@ namespace Toolbox {
                         window->close();
                     }
                 } else if (selected_path.extension() == ".bmg") {
-                    RefPtr<BMGWindow> window = createWindow<BMGWindow>("Messages Editor");
+                    RefPtr<MeditWindow> window = createWindow<MeditWindow>("Messages Editor");
                     if (!window->onLoadData(selected_path)) {
                         window->close();
                     }
