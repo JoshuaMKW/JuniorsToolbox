@@ -1,6 +1,6 @@
 #include "gui/messages/window.hpp"
-#include "resource/resource.hpp"
 #include "gui/application.hpp"
+#include "resource/resource.hpp"
 #include <iostream>
 
 namespace Toolbox::UI {
@@ -32,9 +32,12 @@ namespace Toolbox::UI {
             if (ImGui::BeginChild("Options Panel", {500, 100})) {
                 renderSoundFrame();
                 ImGui::SameLine();
+                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+                ImGui::SameLine();
                 renderBackgroundPanel();
             }
             ImGui::EndChild();
+            ImGui::Separator();
             renderDialogText();
             ImGui::SameLine();
             renderDialogMockup();
@@ -57,7 +60,8 @@ namespace Toolbox::UI {
             ImGui::EndChild();
             if (ImGui::BeginChild("Search", {230, 40})) {
                 ImGui::SetNextItemWidth(225);
-                ImGui::InputText("##search", m_search_buffer, IM_ARRAYSIZE(m_search_buffer), 0);
+                ImGui::InputTextWithHint("##search", "*Search for text here*", m_search_buffer,
+                                         IM_ARRAYSIZE(m_search_buffer), 0);
             }
             ImGui::EndChild();
             if (ImGui::BeginChild("List", {230, 0})) {
@@ -74,12 +78,18 @@ namespace Toolbox::UI {
     }
     void BMGWindow::renderSoundFrame() {
         if (ImGui::BeginChild("Sound Frame", {250, 0})) {
-            if (ImGui::BeginCombo("Sound ID", "MALE_PIANTA_SURPRISE")) {
+            ImGui::Text("Sound ID:");
+            ImGui::SameLine();
+            if (ImGui::BeginCombo("##Sound ID", "MALE_PIANTA_SURPRISE")) {
                 ImGui::Selectable("MALE_PIANTA_SURPRISE");
                 ImGui::EndCombo();
             }
-            ImGui::InputInt("Start Frame", &m_start_frame_val);
-            ImGui::InputInt("End Frame", &m_end_frame_val);
+            ImGui::Text("Start Frame");
+            ImGui::SameLine();
+            ImGui::InputInt("##Start Frame", &m_start_frame_val);
+            ImGui::Text("End Frame");
+            ImGui::SameLine();
+            ImGui::InputInt("##End Frame", &m_end_frame_val);
         }
         ImGui::EndChild();
     }
@@ -87,12 +97,12 @@ namespace Toolbox::UI {
         if (ImGui::BeginChild("Background Panel", {185, 0})) {
             ImGui::Text("Background");
             ImGui::SetNextItemWidth(170);
-            if (ImGui::BeginCombo("##character", "Pianta")){
+            if (ImGui::BeginCombo("##character", "Pianta")) {
                 ImGui::Selectable("Pianta");
                 ImGui::EndCombo();
             }
             ImGui::SetNextItemWidth(170);
-            if (ImGui::BeginCombo("##role", "NPC")){
+            if (ImGui::BeginCombo("##role", "NPC")) {
                 ImGui::Selectable("NPC");
                 ImGui::EndCombo();
             }
@@ -100,19 +110,20 @@ namespace Toolbox::UI {
         ImGui::EndChild();
     }
     void BMGWindow::renderDialogText() {
-        if (ImGui::BeginChild("Dialog Text", {200, 0})) {
+        if (ImGui::BeginChild("Dialog Text", {200, 0}, ImGuiChildFlags_Borders)) {
             ImGui::Text("This is some placeholder dialog");
         }
         ImGui::EndChild();
     }
     void BMGWindow::renderDialogMockup() {
         const ImGuiStyle &style = ImGui::GetStyle();
-        if (ImGui::BeginChild("Dialog Mockup", {0, 0}, true)) {
-            ImVec2 pos       = ImGui::GetCursorScreenPos() + style.WindowPadding;
-            const float box_width   = 400.0f;
-            ImVec2 icon_size = ImVec2(box_width - style.WindowPadding.x * 2.0f,
-                                      box_width - style.WindowPadding.x * 2.0f);
-            m_image_painter.render(m_background_image, pos, icon_size);
+        if (ImGui::BeginChild("Dialog Mockup", {0, 0})) {
+            ImVec2 pos = ImGui::GetCursorScreenPos() + style.WindowPadding;
+            ImVec2 image_size(m_background_image->size().first, m_background_image->size().second);
+            float aspect_ratio = image_size.y / image_size.x;
+            ImVec2 avail       = ImGui::GetContentRegionAvail() - (style.WindowPadding * 2);
+            ImVec2 computed_size(avail.x, avail.x * aspect_ratio);
+            m_image_painter.render(*m_background_image, pos, computed_size);
         }
         ImGui::EndChild();
     }
@@ -122,9 +133,10 @@ namespace Toolbox::UI {
         UUID64 fs_icons_uuid = res_manager.getResourcePathUUID("Images/medit/backgrounds");
         auto result = res_manager.getImageHandle("bmg_preview_shades_pianta.png", fs_icons_uuid);
         if (result) {
-            m_background_image = *result.value();
+            m_background_image = result.value();
         } else {
-            TOOLBOX_ERROR_V("[Medit] Failed to load background: {}, {}", "bmg_preview_shades_pianta.png", result.error().m_message[0]);
+            TOOLBOX_ERROR_V("[Medit] Failed to load background: {}, {}",
+                            "bmg_preview_shades_pianta.png", result.error().m_message[0]);
         }
         return true;
     }

@@ -89,14 +89,12 @@ namespace Toolbox {
         if (resource_path_uuid) {
             std::optional<fs_path> result = getResourcePath(resource_path_uuid);
             if (!result.has_value()) {
-                TOOLBOX_INFO("Couldn't find resource folder");
                 return false;
             }
             resource_path = std::move(result.value());
         } else {
             std::optional<fs_path> result = findResourcePath(path);
             if (!result.has_value()) {
-                TOOLBOX_INFO("Couldn't find file");
                 return false;
             }
             resource_path = std::move(result.value());

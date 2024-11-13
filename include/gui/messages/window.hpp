@@ -37,6 +37,6 @@ namespace Toolbox::UI {
         int m_end_frame_val = 0;
 
         ImagePainter m_image_painter;
-        ImageHandle m_background_image;
+        RefPtr<const ImageHandle> m_background_image;
     };
 }
