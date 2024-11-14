@@ -51,5 +51,6 @@ namespace Toolbox::UI {
 
         Toolbox::BMG::MessageData m_data;
         size_t m_selected_msg_idx = 0;
+        Toolbox::BMG::MessageSound m_sound = Toolbox::BMG::MessageSound::MALE_PIANTA_SURPRISE;
     };
 }

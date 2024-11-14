@@ -100,8 +100,12 @@ namespace Toolbox::UI {
         if (ImGui::BeginChild("Sound Frame", {250, 0})) {
             ImGui::Text("Sound ID:");
             ImGui::SameLine();
-            if (ImGui::BeginCombo("##Sound ID", "MALE_PIANTA_SURPRISE")) {
-                ImGui::Selectable("MALE_PIANTA_SURPRISE");
+            if (ImGui::BeginCombo("##Sound ID", ppMessageSound(m_sound))) {
+                for (int i = 0; i < IM_ARRAYSIZE(Toolbox::BMG::ordered_sounds); i++) {
+                    if (ImGui::Selectable(ppMessageSound(Toolbox::BMG::ordered_sounds[i]))) {
+                        m_sound = Toolbox::BMG::ordered_sounds[i];
+                    }
+                }
                 ImGui::EndCombo();
             }
             ImGui::Text("Start Frame");
@@ -128,6 +132,8 @@ namespace Toolbox::UI {
             ImGui::SetNextItemWidth(170);
             if (ImGui::BeginCombo("##role", "NPC")) {
                 ImGui::Selectable("NPC");
+                ImGui::Selectable("Board");
+                ImGui::Selectable("DEBS");
                 ImGui::EndCombo();
             }
         }
