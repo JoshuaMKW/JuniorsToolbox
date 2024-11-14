@@ -152,26 +152,15 @@ namespace Toolbox::UI {
             if (result) {
                 m_background_images[key] = result.value();
             } else {
-                TOOLBOX_ERROR_V("[Medit] Failed to load background: {}, {}",
-                                value.string(), result.error().m_message[0]);
+                TOOLBOX_ERROR_V("[Medit] Failed to load background: {}, {}", value.string(),
+                                result.error().m_message[0]);
             }
         }
         m_selected_background = BackgroundMap()[0].first;
-        return openBMG(data_path);
-    }
+        std::ifstream file(data_path, std::ios::in | std::ios::binary);
+        Deserializer in(file.rdbuf(), data_path.string());
 
-    uint32_t readUInt32(std::ifstream &stream);
-    bool MeditWindow::openBMG(fs_path data_path){
-        std::ifstream input(data_path, std::ios::binary);
-        char magic_numbers[sizeof(MAGIC)];
-        input.get(magic_numbers, sizeof(MAGIC));
-        if (strcmp(MAGIC, magic_numbers) != 0) {
-            TOOLBOX_ERROR_V("BMG data at {} has invalid magic number: got {}, expected {}", data_path.string(), magic_numbers, MAGIC);
-            return false;
-        }
-        uint32_t size = readUInt32(input) * 32;
-        if (std::filesystem::file_size(data_path) != size) {
-            TOOLBOX_ERROR_V("BMG data at {} has wrong size in header: header says {}, but file has {} bytes.", data_path.string(), size, std::filesystem::file_size(data_path));
+        if (!m_data.deserialize(in)){
             return false;
         }
         return true;
@@ -184,10 +173,5 @@ namespace Toolbox::UI {
             {"Noki", "bmg_preview_old_noki.png"}
         };
         return s_background_map;
-    }
-    uint32_t readUInt32(std::ifstream &stream){
-        char int_bytes[5];
-        stream.get(int_bytes, 5);
-        return ((uint32_t)int_bytes[3]) | (((uint32_t)int_bytes[2]) << 8) | (((uint32_t)int_bytes[1]) << 16) | (((uint32_t)int_bytes[0]) << 24);
     }
 }  // namespace Toolbox::UI

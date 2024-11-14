@@ -6,6 +6,7 @@
 #include "core/time/timestep.hpp"
 #include "gui/image/imagepainter.hpp"
 #include "fsystem.hpp"
+#include "bmg/bmg.hpp"
 
 namespace Toolbox::UI {
     class MeditWindow final : public ImWindow {
@@ -31,8 +32,6 @@ namespace Toolbox::UI {
         void renderDialogText();
         void renderDialogMockup();
 
-        bool openBMG(fs_path data_path);
-
         char m_search_buffer[256] = "";
         int m_start_frame_val = 0;
         int m_end_frame_val = 0;
@@ -50,6 +49,6 @@ namespace Toolbox::UI {
         Region m_region = NTSCU;
         int m_packet_size = 12;
 
-        inline static const char MAGIC[9] = "MESGbmg1";
+        Toolbox::BMG::MessageData m_data;
     };
 }
