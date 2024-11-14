@@ -171,7 +171,7 @@ namespace Toolbox::UI {
         std::ifstream file(data_path, std::ios::in | std::ios::binary);
         Deserializer in(file.rdbuf(), data_path.string());
 
-        if (!m_data.deserialize(in)){
+        if (!m_data.deserialize(in)) {
             return false;
         }
         return true;
