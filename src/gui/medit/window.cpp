@@ -1,8 +1,8 @@
-#include <fstream>
 #include <cstdint>
+#include <fstream>
 
-#include "gui/medit/window.hpp"
 #include "gui/application.hpp"
+#include "gui/medit/window.hpp"
 #include "resource/resource.hpp"
 
 namespace Toolbox::UI {
@@ -168,9 +168,9 @@ namespace Toolbox::UI {
 
     const std::vector<std::pair<std::string, fs_path>> &MeditWindow::BackgroundMap() {
         static std::vector<std::pair<std::string, fs_path>> s_background_map = {
-            {"Pianta", "bmg_preview_shades_pianta.png"},
-            {"Tanooki", "bmg_preview_tanooki.png"},
-            {"Noki", "bmg_preview_old_noki.png"}
+            {"Pianta",  "bmg_preview_shades_pianta.png"},
+            {"Tanooki", "bmg_preview_tanooki.png"      },
+            {"Noki",    "bmg_preview_old_noki.png"     }
         };
         return s_background_map;
     }
