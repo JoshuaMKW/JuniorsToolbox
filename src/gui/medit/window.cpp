@@ -76,10 +76,19 @@ namespace Toolbox::UI {
             }
             ImGui::EndChild();
             if (ImGui::BeginChild("List", {230, 0})) {
+                int unk_msg_num = 0;
                 if (ImGui::BeginListBox("##messages", {225, 0})) {
-                    ImGui::Selectable("Message 1");
-                    ImGui::Selectable("Message 2");
-                    ImGui::Selectable("Message 3");
+                    for (auto const &[idx, entry] : std::views::enumerate(m_data.entries())) {
+                        std::string message_name;
+                        if (entry.m_name == "") {
+                            message_name = std::format("message_unk_{}", idx);
+                        } else {
+                            message_name = entry.m_name;
+                        }
+                        if (ImGui::Selectable(message_name.c_str(), m_selected_msg_idx == idx)) {
+                            m_selected_msg_idx = idx;
+                        }
+                    }
                     ImGui::EndListBox();
                 }
             }
@@ -126,7 +135,9 @@ namespace Toolbox::UI {
     }
     void MeditWindow::renderDialogText() {
         if (ImGui::BeginChild("Dialog Text", {200, 0}, ImGuiChildFlags_Borders)) {
-            ImGui::Text("This is some placeholder dialog");
+            auto entry = m_data.getEntry(m_selected_msg_idx);
+            TOOLBOX_ASSERT(entry.has_value(), "selected_msg_index out of bounds!");
+            ImGui::Text(entry.value().m_message.getSimpleString().c_str());
         }
         ImGui::EndChild();
     }
@@ -144,7 +155,7 @@ namespace Toolbox::UI {
         ImGui::EndChild();
     }
 
-    bool MeditWindow::onLoadData(std::filesystem::path data_path) {
+    bool MeditWindow::onLoadData(fs_path data_path) {
         const ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
         UUID64 fs_icons_uuid = res_manager.getResourcePathUUID("Images/Medit/Backgrounds");
         for (auto &[key, value] : BackgroundMap()) {

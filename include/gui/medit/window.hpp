@@ -50,5 +50,6 @@ namespace Toolbox::UI {
         int m_packet_size = 12;
 
         Toolbox::BMG::MessageData m_data;
+        size_t m_selected_msg_idx = 0;
     };
 }
