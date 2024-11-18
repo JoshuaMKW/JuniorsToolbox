@@ -320,7 +320,6 @@ namespace Toolbox::BMG {
         MessageSound::ITEM_NOT_COLLECT,
         MessageSound::BGM_FANFARE,
     };
-    const char* ppMessageSound(MessageSound snd);
 
     class MessageData : public ISerializable {
     public:
