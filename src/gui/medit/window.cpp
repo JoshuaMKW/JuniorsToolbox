@@ -100,9 +100,11 @@ namespace Toolbox::UI {
         if (ImGui::BeginChild("Sound Frame", {250, 0})) {
             ImGui::Text("Sound ID:");
             ImGui::SameLine();
-            if (ImGui::BeginCombo("##Sound ID", magic_enum::enum_name(m_sound))) {
+            std::string cur_sound_name(magic_enum::enum_name(m_sound));
+            if (ImGui::BeginCombo("##Sound ID", cur_sound_name.c_str())) {
                 for (int i = 0; i < IM_ARRAYSIZE(Toolbox::BMG::ordered_sounds); i++) {
-                    if (ImGui::Selectable(magic_enum::enum_name(Toolbox::BMG::ordered_sounds[i]))) {
+                    std::string sound_name_i(magic_enum::enum_name(Toolbox::BMG::ordered_sounds[i]));
+                    if (ImGui::Selectable(sound_name_i.c_str())) {
                         m_sound = Toolbox::BMG::ordered_sounds[i];
                     }
                 }
