@@ -10,7 +10,6 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include <iconv.h>
 #include <stb/stb_image.h>
 
 namespace Toolbox::UI {

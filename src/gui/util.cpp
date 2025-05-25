@@ -1,5 +1,4 @@
 #include "gui/util.hpp"
-#include <iconv.h>
 #include <cmath>
 
 namespace Toolbox::UI::Util {
