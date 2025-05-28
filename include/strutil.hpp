@@ -18,6 +18,10 @@
 #define GAME_ENCODING  "SHIFT_JIS"
 #define IMGUI_ENCODING "UTF-8"
 #else
+//#ifndef TOOLBOX_USE_EXPLICIT_ICU_CONVERTERS
+//#define TOOLBOX_USE_EXPLICIT_ICU_CONVERTERS
+//#endif
+
 #define GAME_ENCODING  "Shift_JIS"
 #define IMGUI_ENCODING "UTF-8"
 #endif
@@ -69,10 +73,10 @@ namespace Toolbox::String {
 
 #else
 
-    static inline Result<uint32_t, EncodingError> getCharacterCount(UConverter *converter,
-                                                                    std::string_view value) {
+    static inline Result<uint32_t, EncodingError> getCharacterCount(std::string_view value, std::string_view from, std::string_view to) {
         UErrorCode status = U_ZERO_ERROR;
 
+        #if 0
         int32_t utf16_length =
             ucnv_toUChars(converter, nullptr, 0, value.data(), value.size(), &status);
         if (status != U_BUFFER_OVERFLOW_ERROR && U_FAILURE(status)) {
@@ -95,6 +99,14 @@ namespace Toolbox::String {
             return make_encoding_error<uint32_t>(
                 "ICU", "Failed to determine the character count for the given string", "", "");
         }
+        #else
+        int32_t count = ucnv_convert(to.data(), from.data(), nullptr, 0, value.data(),
+                                     (int32_t)value.size(), &status);
+        if (status != U_BUFFER_OVERFLOW_ERROR && U_FAILURE(status)) {
+            return make_encoding_error<uint32_t>(
+                "ICU", "Failed to determine the character count for the given string", "", "");
+        }
+        #endif
         return count;
     }
 
@@ -102,8 +114,7 @@ namespace Toolbox::String {
     asEncoding(std::string_view value, std::string_view from, std::string_view to) {
         UErrorCode status = U_ZERO_ERROR;
 
-        u_init(&status);
-
+        #ifdef TOOLBOX_USE_EXPLICIT_ICU_CONVERTERS
         UConverter *converter = ucnv_open(from.data(), &status);
         if (U_FAILURE(status)) {
             ucnv_close(converter);
@@ -120,14 +131,16 @@ namespace Toolbox::String {
             return make_encoding_error<std::string>(
                 "ICU", std::format("Failed to open converter to {} from {}", to, from), from, to);
         }
+        #endif
 
         status = U_ZERO_ERROR;
 
-        Result<std::string, EncodingError> result = getCharacterCount(converter, value)
+        Result<std::string, EncodingError> result = getCharacterCount(value, from, to)
             .and_then([&](size_t string_size) {
                 // With the character count result, we can more effectively
                 // convert the string to the new encoding.
 
+          #ifdef TOOLBOX_USE_EXPLICIT_ICU_CONVERTERS
                 icu::UnicodeString unicode_str = icu::UnicodeString::fromUTF8(value);
                 icu::UnicodeString converted_str;
 
@@ -143,7 +156,7 @@ namespace Toolbox::String {
                 // Set up arguments
                 char *target     = reinterpret_cast<char *>(buffer);
                 char *target_start = target;
-                const char *target_end = target_start + string_size;
+                const char *target_end = target_start + value.size();
 
                 const char *source_start     = reinterpret_cast<const char *>(value.data());
                 const char *source_end = source_start + value.size();
@@ -167,6 +180,19 @@ namespace Toolbox::String {
                 }
 
                 return Result<std::string, EncodingError>(std::string(target, string_size));
+            #else
+                    std::string output;
+                    output.resize(string_size);
+
+                    ucnv_convert(to.data(), from.data(), output.data(), (int32_t)output.size(),
+                                 value.data(), (int32_t)value.size(), &status);
+                    if (U_FAILURE(status)) {
+                        return make_encoding_error<std::string>(
+                            "ICU", "Failed to convert string encoding", from, to);
+                    }
+
+                    return Result<std::string, EncodingError>(output);
+          #endif
             })
             .or_else(
                 [](const EncodingError &error) -> Result<std::string, EncodingError> {

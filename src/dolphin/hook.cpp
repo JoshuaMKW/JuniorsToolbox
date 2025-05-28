@@ -170,15 +170,21 @@ namespace Toolbox::Dolphin {
             return {};
         }
 
+        if (m_dolphin_path.empty()) {
+            return make_error<void>(
+                "DOLPHIN", "Dolphin executable path is not set! Please set it in the settings.");
+        }
+
         std::string dolphin_args =
-          std::format("-e {}/sys/main.dol -a HLE", application.getProjectManager().getProjectFolder().string());
+            std::format("-e {}/sys/main.dol -a HLE",
+                        application.getProjectManager().getProjectFolder().string());
 
         size_t last_not_null    = m_dolphin_path.string().find_last_not_of('\000');
         std::string used_substr = m_dolphin_path.string().substr(last_not_null - 5, last_not_null);
         if (!used_substr.starts_with("-nogui"sv)) {
             dolphin_args += "-d -c";
         }
-      
+
 #ifdef TOOLBOX_PLATFORM_LINUX
         // Force dolphin to run on X11 instead of Wayland if running on Linux
         putenv("QT_QPA_PLATFORM=xcb");

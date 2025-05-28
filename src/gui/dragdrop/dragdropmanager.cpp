@@ -36,6 +36,38 @@ namespace Toolbox::UI {
     }
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
+
+    class DropSource;
+    class FileDropDataObject;
+
+    // This method is a message handler specific to Windows
+    // ---
+    // It's purpose is for handling the drag-and-drop operation
+    // this operates in accordance with the Windows OLE API
+    // ---
+    //static LRESULT CALLBACK DragDropMessageHandler(HWND hwnd, UINT msg, WPARAM wParam,
+    //                                               LPARAM lParam) {
+    //    if (msg == WM_DROPFILES) {
+    //        HDROP hDrop     = reinterpret_cast<HDROP>(wParam);
+    //        UINT file_count = DragQueryFile(hDrop, 0xFFFFFFFF, nullptr, 0);
+    //        std::vector<std::string> file_paths;
+    //        file_paths.reserve(file_count);
+    //        for (UINT i = 0; i < file_count; ++i) {
+    //            char file_path[MAX_PATH];
+    //            DragQueryFile(hDrop, i, file_path, sizeof(file_path));
+    //            file_paths.emplace_back(file_path);
+    //        }
+    //        DragFinish(hDrop);
+    //        // Create a FileDropDataObject and start the drag-and-drop operation
+    //        auto data_object = make_referable<FileDropDataObject>(file_paths);
+    //        auto drop_source = make_referable<DropSource>();
+    //        // Start the drag-and-drop operation
+    //        return DoDragDrop(data_object.get(), drop_source.get(),
+    //                          DROPEFFECT_COPY | DROPEFFECT_MOVE, nullptr);
+    //    }
+    //    return DefWindowProc(hwnd, msg, wParam, lParam);
+    //}
+
     bool DragDropManager::initialize() { return OleInitialize(nullptr) >= 0; }
 
     void DragDropManager::shutdown() {
@@ -125,6 +157,11 @@ namespace Toolbox::UI {
             m_stg_medium.hGlobal =
                 GlobalAlloc(GHND, sizeof(DROPFILES) + total_path_size * sizeof(WCHAR));
             m_stg_medium.pUnkForRelease = nullptr;
+
+            if (!m_stg_medium.hGlobal) {
+                TOOLBOX_ERROR("Failed to allocate global memory for DROPFILES structure");
+                return;
+            }
             
             DROPFILES *drop_files = static_cast<DROPFILES *>(GlobalLock(m_stg_medium.hGlobal));
             if (!drop_files) {
@@ -135,6 +172,11 @@ namespace Toolbox::UI {
             drop_files->pFiles    = sizeof(DROPFILES);
             drop_files->fWide     = TRUE;
 
+            // Here we convert the file paths to wide strings
+            // and write them into the buffer.
+            // Each string is null-terminated, which acts as
+            // a delimiter to the list in accordance with the CF_HDROP format.
+            // ---
             WCHAR *file_path_buffer =
                 reinterpret_cast<WCHAR *>((CHAR *)drop_files + drop_files->pFiles);
             for (const std::string &file_path : file_paths) {
@@ -181,6 +223,8 @@ namespace Toolbox::UI {
                 return DV_E_TYMED;  // Unsupported medium
             }
 
+            // Check if the requested format is CF_HDROP
+            // When it is, we return the global memory handle
             if (pFormatEtc->cfFormat == CF_HDROP) {
                 pMedium->tymed          = TYMED_HGLOBAL;
                 pMedium->hGlobal         = m_stg_medium.hGlobal;

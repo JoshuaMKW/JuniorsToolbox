@@ -106,6 +106,7 @@ namespace Toolbox::UI {
         }
 
         void onAttach() override;
+        void onDetach() override;
         void onImGuiRender(TimeStep delta_time) override final;
         void onWindowEvent(RefPtr<WindowEvent> ev) override;
 

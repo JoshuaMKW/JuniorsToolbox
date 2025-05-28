@@ -138,6 +138,8 @@ namespace Toolbox {
 
         ProjectManager &getProjectManager() { return m_project_manager; }
         const ProjectManager &getProjectManager() const { return m_project_manager; }
+
+        RefPtr<ImWindow> getImWindowFromPlatformWindow(Platform::LowWindow window);
         
         bool registerDragDropSource(Platform::LowWindow window);
         void deregisterDragDropSource(Platform::LowWindow window);
@@ -205,6 +207,9 @@ namespace Toolbox {
         ScopePtr<IDragDropSourceDelegate> m_drag_drop_source_delegate;
         ImGuiViewport *m_drag_drop_viewport = nullptr;
         bool m_await_drag_drop_destroy      = false;
+
+        RefPtr<DragAction> m_pending_drag_action;
+        Platform::LowWindow m_pending_drag_window;
 
         std::unordered_map<UUID64, bool> m_docked_map;
         ImGuiID m_dockspace_id;

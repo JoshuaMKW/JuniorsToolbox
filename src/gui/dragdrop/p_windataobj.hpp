@@ -19,6 +19,12 @@ namespace Toolbox::UI {
         WindowsOleDataObject()          = default;
         virtual ~WindowsOleDataObject() = default;
 
+        // -- INTERFACE -- //
+
+        void setMimeData(const MimeData &mime_data);
+
+        // ----- END ----- //
+
         // IUnknown
         HRESULT QueryInterface(REFIID riid, void **ppvObject) override;
         ULONG AddRef() override;
@@ -36,11 +42,14 @@ namespace Toolbox::UI {
         HRESULT DUnadvise(DWORD dwConnection) override;
         HRESULT EnumDAdvise(IEnumSTATDATA **ppenumAdvise) override;
 
-        void setMimeData(MimeData &&mime_data) { m_mime_data = std::move(mime_data); }
-
     private:
+        struct FormatEntry {
+            FORMATETC m_fmt;
+            STGMEDIUM m_stg;
+        };
+
         ULONG m_ref_count = 0;
-        MimeData m_mime_data;
+        std::vector<FormatEntry> m_entries;
     };
 
 }  // namespace Toolbox::UI

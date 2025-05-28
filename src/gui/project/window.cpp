@@ -294,7 +294,7 @@ namespace Toolbox::UI {
                     if (m_selected_indices_ctx.size() == 1) {
                         message = TOOLBOX_FORMAT_FN(
                             "Are you sure you want to delete {}?",
-                            m_file_system_model->getDisplayText(m_selected_indices[0]));
+                            m_file_system_model->getDisplayText(m_selected_indices_ctx[0]));
                     } else if (m_selected_indices_ctx.size() > 1) {
                         message = TOOLBOX_FORMAT_FN(
                             "Are you sure you want to delete the {} selected files?",

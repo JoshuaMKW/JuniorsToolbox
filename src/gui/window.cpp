@@ -129,6 +129,14 @@ namespace Toolbox::UI {
         setSize(init_size);
     }
 
+    void ImWindow::onDetach() {
+        if (m_low_handle) {
+            GUIApplication::instance().deregisterDragDropSource(m_low_handle);
+            GUIApplication::instance().deregisterDragDropTarget(m_low_handle);
+        }
+        m_low_handle = nullptr;
+    }
+
     void ImWindow::onImGuiRender(TimeStep delta_time) {
         std::string window_name = std::format("{}###{}", title(), getUUID());
         ImGuiWindow *window     = ImGui::FindWindowByName(window_name.c_str());

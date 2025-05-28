@@ -92,11 +92,11 @@ namespace Toolbox {
         set_data("text/html", std::move(_tmp));
     }
 
-    [[nodiscard]] std::optional<Buffer> MimeData::get_image() const {
+    [[nodiscard]] std::optional<ImageData> MimeData::get_image() const {
         TOOLBOX_DEBUG_LOG("Image mimedata unsupported");
         return {};
     }
-    void MimeData::set_image(const Buffer &data) {
+    void MimeData::set_image(const ImageData &data) {
         TOOLBOX_DEBUG_LOG("Image mimedata unsupported");
     }
 

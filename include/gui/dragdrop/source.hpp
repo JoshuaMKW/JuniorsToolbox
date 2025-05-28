@@ -16,7 +16,7 @@ namespace Toolbox::UI {
             STATE_DROP,
         };
 
-        virtual bool startDragDrop(Platform::LowWindow source, MimeData &&data,
+        virtual bool startDragDrop(Platform::LowWindow source, const MimeData &data,
                                    DropTypes allowed_types, DropType *result_type_out) = 0;
         virtual DragDropSourceState queryActiveDrag()                                  = 0;
         virtual ImGuiMouseCursor provideCursor()                                       = 0;

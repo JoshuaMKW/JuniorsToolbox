@@ -13,11 +13,72 @@
 
 namespace Toolbox::UI {
 
-    using pixel_pix_op_t   = std::function<u8(u8, u8)>;
-    using pixel_color_op_t = std::function<void(u8 *, const u8 *, const u8 *, int, int, int)>;
+    using pixel_pix_op_1_t   = std::function<u8(u8)>;
+    using pixel_color_op_1_t = std::function<void(u8 *, const u8 *, int)>;
+
+    using pixel_pix_op_2_t   = std::function<u8(u8, u8)>;
+    using pixel_color_op_2_t = std::function<void(u8 *, const u8 *, const u8 *, int, int, int)>;
+
+    static ScopePtr<ImageData> _ImageApplyOperationPix(const ImageData &a,
+                                                       pixel_pix_op_1_t operation) {
+        const u8 *A = a.getData();
+
+        int channels = a.getChannels();
+        int height   = a.getHeight();
+        int width    = a.getWidth();
+
+        Buffer result_buf;
+        result_buf.alloc(width * height * channels);
+
+        // Apply the operation to the overlapping region
+        for (int row = 0; row < height; ++row) {
+            for (int col = 0; col < width; ++col) {
+                // Process for channels in A and B
+                for (int ch = 0; ch < channels; ++ch) {
+                    int ind  = row * width * channels + col * channels + ch;
+                    u8 pixel = (ch < channels) ? A[ind] : 0;
+
+                    // Store in the result image
+                    int ind_res         = row * width * channels + col * channels + ch;
+                    result_buf[ind_res] = operation(pixel);
+                }
+            }
+        }
+
+        return make_scoped<ImageData>(std::move(result_buf), channels, width, height);
+    }
+
+    static ScopePtr<ImageData> _ImageApplyOperationColor(const ImageData &a,
+                                                         pixel_color_op_1_t operation) {
+        const u8 *A = a.getData();
+
+        int channels = a.getChannels();
+        int height   = a.getHeight();
+        int width    = a.getWidth();
+
+        Buffer result_buf;
+        result_buf.alloc(width * height * channels);
+
+        // Apply the operation to the overlapping region
+        for (int row = 0; row < height; ++row) {
+            for (int col = 0; col < width; ++col) {
+                // Process for channels in A and B
+                for (int ch = 0; ch < channels; ++ch) {
+                    int ind  = row * width * channels + col * channels + ch;
+                    u8 pixel = (ch < channels) ? A[ind] : 0;
+
+                    // Store in the result image
+                    int ind_res         = row * width * channels + col * channels + ch;
+                    operation(result_buf.buf<u8>() + ind_res, A + ind, channels);
+                }
+            }
+        }
+
+        return make_scoped<ImageData>(std::move(result_buf), channels, width, height);
+    }
 
     static ScopePtr<ImageData> _ImageApplyOperationPix(const ImageData &a, const ImageData &b,
-                                                       pixel_pix_op_t operation) {
+                                                       pixel_pix_op_2_t operation) {
         const u8 *A = a.getData();
         const u8 *B = b.getData();
 
@@ -92,7 +153,7 @@ namespace Toolbox::UI {
     }
 
     static ScopePtr<ImageData> _ImageApplyOperationColor(const ImageData &a, const ImageData &b,
-                                                         pixel_color_op_t operation) {
+                                                         pixel_color_op_2_t operation) {
         const u8 *A = a.getData();
         const u8 *B = b.getData();
 
@@ -330,6 +391,16 @@ namespace Toolbox::UI {
         };
 
         return _ImageApplyOperationPix(a, b, sub_pixel);
+    }
+
+    ScopePtr<ImageData> ImageBuilder::ImageSwizzle(const ImageData &a, const SwizzleMatrix &mtx) {
+        auto sub_pixel = [&mtx](u8 *dst, const u8 *a, int ch) -> void {
+            for (int i = 0; i < ch; ++i) {
+                dst[i] = a[mtx[i]];
+            }
+        };
+
+        return _ImageApplyOperationColor(a, sub_pixel);
     }
 
     ScopePtr<ImageData> ImageBuilder::ImageAND(const ImageData &a, const ImageData &b) {

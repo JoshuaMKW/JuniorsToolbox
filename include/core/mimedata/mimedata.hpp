@@ -10,6 +10,8 @@
 #include "color.hpp"
 #include "core/memory.hpp"
 
+#include "image/imagedata.hpp"
+
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
 #elif defined(TOOLBOX_PLATFORM_LINUX)
@@ -53,8 +55,8 @@ namespace Toolbox {
         [[nodiscard]] std::optional<std::string> get_html() const;
         void set_html(std::string_view data);
 
-        [[nodiscard]] std::optional<Buffer> get_image() const;
-        void set_image(const Buffer &data);
+        [[nodiscard]] std::optional<ImageData> get_image() const;
+        void set_image(const ImageData &data);
 
         [[nodiscard]] std::optional<std::string> get_text() const;
         void set_text(std::string_view data);

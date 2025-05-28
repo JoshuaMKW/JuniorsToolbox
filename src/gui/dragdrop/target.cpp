@@ -1,11 +1,14 @@
-#include "gui/dragdrop/target.hpp"
 #include "gui/application.hpp"
+#include "gui/dragdrop/target.hpp"
 #include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/event/dragevent.hpp"
 #include "gui/event/dropevent.hpp"
+#include "gui/logging/errors.hpp"
 #include "gui/window.hpp"
 
 #include "image/imagebuilder.hpp"
+
+#include "p_common.hpp"
 
 #include <imgui.h>
 
@@ -260,8 +263,18 @@ namespace Toolbox::UI {
                                                        POINTL pt, DWORD *pdwEffect) {
         RefPtr<DragAction> action = DragDropManager::instance().getCurrentDragAction();
         if (!action) {
+            // If during DragEnter the action is nullptr, that means
+            // that Windows signaled DragEnter itself, mneaning we can
+            // assume that the following operations are based on
+            // system data (consider: Windows Explorer drag action).
+            // ---
+            // Thus we construct a new drag action with the
+            // assumption that it is from the system and not
+            // internal to the application.
+            // ---
             std::pair<UUID64, Platform::LowWindow> target = searchDropTarget(ImVec2((float)pt.x, (float)pt.y));
 
+            // Flag the manager that this is a system action we are making
             DragDropManager::instance().setSystemAction(true);
             MimeData mime_data = createMimeDataFromDataObject(pDataObj);
 
@@ -294,6 +307,8 @@ namespace Toolbox::UI {
             });
         }
 
+        s_last_buttons = Input::GetPressedMouseButtons();
+
         action->setHotSpot(ImVec2((float)pt.x, (float)pt.y));
 
         DropTypes supported_drop_types = DropType::ACTION_NONE;
@@ -315,6 +330,12 @@ namespace Toolbox::UI {
     HRESULT __stdcall WindowsDragDropTarget::DragOver(DWORD grfKeyState, POINTL pt,
                                                       DWORD *pdwEffect) {
         RefPtr<DragAction> action = DragDropManager::instance().getCurrentDragAction();
+        if (!action) {
+            BaseError err = make_error<HRESULT>("OLE_DRAG_OVER", "DragAction was nullptr!").error();
+            UI::LogError(err);
+            return E_POINTER;
+        }
+
         action->setHotSpot(ImVec2((float)pt.x, (float)pt.y));
         m_delegate->onDragMove(action);
         return S_OK;
@@ -322,6 +343,14 @@ namespace Toolbox::UI {
 
     HRESULT __stdcall WindowsDragDropTarget::DragLeave() {
         RefPtr<DragAction> action = DragDropManager::instance().getCurrentDragAction();
+        if (!action) {
+            BaseError err = make_error<HRESULT>("OLE_DRAG_LEAVE", "DragAction was nullptr!").error();
+            UI::LogError(err);
+            return E_POINTER;
+        }
+
+        s_last_buttons = Input::GetPressedMouseButtons();
+
         m_delegate->onDragLeave(action);
         return S_OK;
     }
@@ -358,6 +387,8 @@ namespace Toolbox::UI {
             });
         }
 
+        s_last_buttons = Input::GetPressedMouseButtons();
+
         action->setHotSpot(ImVec2((float)pt.x, (float)pt.y));
 
         DropTypes supported_drop_types = DropType::ACTION_NONE;
@@ -381,7 +412,11 @@ namespace Toolbox::UI {
         UUID64 prev_uuid = action->getTargetUUID();
         UUID64 new_uuid  = searchDropTarget(mouse_pos).first;
 
+        // If the target UUID has changed, we need to dispatch
+        // drag enter/leave events accordingly.
         if (prev_uuid != new_uuid) {
+            // If we are blocking implicit drag events, we don't
+            // dispatch drag leave events for the previous target.
             if (prev_uuid != 0) {
                 GUIApplication::instance().dispatchEvent<DragEvent, true>(
                     EVENT_DRAG_LEAVE, mouse_pos.x, mouse_pos.y, action);
@@ -389,6 +424,7 @@ namespace Toolbox::UI {
 
             action->setTargetUUID(new_uuid);
 
+            // If the new target UUID is valid, we dispatch a drag enter event.
             if (new_uuid != 0) {
                 GUIApplication::instance().dispatchEvent<DragEvent, true>(
                     EVENT_DRAG_ENTER, mouse_pos.x, mouse_pos.y, action);
@@ -401,6 +437,8 @@ namespace Toolbox::UI {
         UUID64 prev_uuid = action->getTargetUUID();
         UUID64 new_uuid  = searchDropTarget(mouse_pos).first;
 
+        // If the target UUID has changed, we need to dispatch
+        // drag leave events accordingly.
         if (prev_uuid != new_uuid && prev_uuid != 0) {
             GUIApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_LEAVE, mouse_pos.x,
                                                                       mouse_pos.y, action);
@@ -414,7 +452,11 @@ namespace Toolbox::UI {
         UUID64 prev_uuid = action->getTargetUUID();
         UUID64 new_uuid  = searchDropTarget(mouse_pos).first;
 
+        // If the target UUID has changed, we need to dispatch
+        // drag enter/leave events accordingly.
         if (prev_uuid != new_uuid) {
+            // If we are blocking implicit drag events, we don't
+            // dispatch drag leave events for the previous target.
             if (!m_block_implicit_drag_events && prev_uuid != 0) {
                 GUIApplication::instance().dispatchEvent<DragEvent, true>(
                     EVENT_DRAG_LEAVE, mouse_pos.x, mouse_pos.y, action);
@@ -423,12 +465,19 @@ namespace Toolbox::UI {
             m_block_implicit_drag_events = false;
             action->setTargetUUID(new_uuid);
 
+            // If the new target UUID is valid, we dispatch a drag enter event.
             if (new_uuid != 0) {
                 GUIApplication::instance().dispatchEvent<DragEvent, true>(
                     EVENT_DRAG_ENTER, mouse_pos.x, mouse_pos.y, action);
             }
         }
 
+        // Update the target UUID regardless of whether it has changed or not.
+        action->setTargetUUID(new_uuid);
+
+        // Regardless of whether the target UUID has changed or not,
+        // we always dispatch a drag move event to update the
+        // position of the drag action.
         if (new_uuid != 0) {
             GUIApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_MOVE, mouse_pos.x,
                                                                       mouse_pos.y, action);
@@ -454,6 +503,10 @@ namespace Toolbox::UI {
             return true;
         }
 
+        // Create a new drag drop target for the window
+        // This will register the window as a drop target
+        // with the Windows OLE system.
+        // ---
         WindowsDragDropTarget *target = new WindowsDragDropTarget(this, window);
         if (FAILED(target->Initialize())) {
             TOOLBOX_ERROR("Failed to initialize drag drop target");
@@ -475,13 +528,17 @@ namespace Toolbox::UI {
             return;
         }
 
+        // When shutting down the target, the internal
+        // method Release() gets called within Shutdown()
+        // by Windows, so we don't have to delete target
+        // since Release() does it for us...
+        // ---
         WindowsDragDropTarget *target = *target_it;
         if (FAILED(target->Shutdown())) {
             TOOLBOX_ERROR("Failed to shutdown drag drop target");
         }
 
         m_targets.erase(target_it);
-        delete target;
     }
 
 #elif defined(TOOLBOX_PLATFORM_LINUX)

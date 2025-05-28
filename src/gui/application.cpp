@@ -328,6 +328,16 @@ namespace Toolbox {
         return result;
     }
 
+    RefPtr<ImWindow> GUIApplication::getImWindowFromPlatformWindow(Platform::LowWindow low_window) {
+        for (RefPtr<ImWindow> window : m_windows) {
+            if (window->getLowHandle() == low_window) {
+                return window;
+            }
+        }
+
+        return nullptr;
+    }
+
     bool GUIApplication::registerDragDropSource(Platform::LowWindow window) {
         return m_drag_drop_source_delegate->initializeForWindow(window);
     }
@@ -345,12 +355,9 @@ namespace Toolbox {
     }
 
     bool GUIApplication::startDragAction(Platform::LowWindow source, RefPtr<DragAction> action) {
-        MimeData data = action->getPayload();
-        DropType out;
-        bool result = m_drag_drop_source_delegate->startDragDrop(source, std::move(data),
-                                                          action->getSupportedDropTypes(), &out);
-        TOOLBOX_DEBUG_LOG_V("DragDropSourceDelegate::startDragDrop action type: {}", int(out));
-        return result;
+        m_pending_drag_action = action;
+        m_pending_drag_window = source;
+        return true;
     }
 
     void GUIApplication::registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
@@ -531,6 +538,14 @@ namespace Toolbox {
         {
             ImGui::Render();
             finalizeFrame();
+        }
+
+        if (m_pending_drag_action) {
+            const MimeData &data = m_pending_drag_action->getPayload();
+            DropType out;
+            bool result = m_drag_drop_source_delegate->startDragDrop(
+                m_pending_drag_window, data, m_pending_drag_action->getSupportedDropTypes(), &out);
+            TOOLBOX_DEBUG_LOG_V("DragDropSourceDelegate::startDragDrop action type: {}", int(out));
         }
     }
 
