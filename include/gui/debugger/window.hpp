@@ -58,23 +58,11 @@ namespace Toolbox::UI {
 
         std::optional<ImVec2> minSize() const override {
             return {
-                {600, 400}
+                {700, 400}
             };
         }
 
-        [[nodiscard]] std::string context() const override {
-            if (m_attached_scene_uuid == 0) {
-                return "MRAM";
-            }
-
-            RefPtr<ImWindow> scene_window =
-                GUIApplication::instance().findWindow(m_attached_scene_uuid);
-            if (!scene_window) {
-                return "MRAM";
-            }
-
-            return std::format("MRAM ({})", scene_window->context());
-        }
+        [[nodiscard]] std::string context() const override;
 
         [[nodiscard]] bool unsaved() const override { return false; }
 
@@ -95,10 +83,18 @@ namespace Toolbox::UI {
         void onDropEvent(RefPtr<DropEvent> ev) override;
 
     private:
+        struct HistoryPair {
+            u32 m_address;
+            std::string m_label;
+        };
+
         UUID64 m_attached_scene_uuid = 0;
 
-        u32 m_base_address = 0;
-        std::vector<u32> m_address_search_history = {};
+        u32 m_base_address = 0x80000000;
+        u8 m_byte_width    = 1;
+
+        std::array<char, 32> m_address_input;
+        std::vector<HistoryPair> m_address_search_history = {};
 
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;

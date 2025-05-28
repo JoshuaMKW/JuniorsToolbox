@@ -26,6 +26,7 @@
 #include "core/input/input.hpp"
 #include "dolphin/hook.hpp"
 #include "gui/application.hpp"
+#include "gui/debugger/window.hpp"
 #include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
@@ -591,8 +592,22 @@ namespace Toolbox {
         }
 
         if (ImGui::BeginMenu("Window")) {
-            if (ImGui::MenuItem("BMG")) {
+            ImGui::SeparatorText("Utilities");
+
+            if (ImGui::MenuItem("Application Log")) {
+                createWindow<LoggingWindow>("Application Log");
             }
+
+            if (ImGui::MenuItem("Debugger")) {
+                createWindow<DebuggerWindow>("Debugger");
+            }
+
+            ImGui::SeparatorText("Asset Editors");
+
+            if (ImGui::MenuItem("BMG")) {
+                // TODO: createWindow<BMGEditorWindow>("BMG Editor");
+            }
+
             if (ImGui::MenuItem("PAD")) {
                 createWindow<PadInputWindow>("Pad Recorder");
             }

@@ -66,7 +66,7 @@ namespace ImGui {
     bool TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *label,
                           const char *label_end, bool focused, bool *visible);
     bool BeginPopupContextItem(const char *str_id, ImGuiPopupFlags popup_flags,
-                                      ImGuiHoveredFlags hover_flags);
+                               ImGuiHoveredFlags hover_flags);
     bool DrawCircle(const ImVec2 &center, float radius, ImU32 color,
                     ImU32 fill_color = IM_COL32_BLACK_TRANS, float thickness = 1.0f);
     bool DrawSquare(const ImVec2 &center, float size, ImU32 color,
@@ -78,6 +78,10 @@ namespace ImGui {
                            ImU32 fill_color = IM_COL32_BLACK_TRANS, float thickness = 1.0f);
     bool DrawConcavePolygon(const ImVec2 *points, int num_points, ImU32 color,
                             ImU32 fill_color = IM_COL32_BLACK_TRANS, float thickness = 1.0f);
+
+    bool InputComboTextBox(const char *label, char *buffer, size_t buffer_len, const char **items,
+                           int items_count, int *selected_out, ImGuiComboFlags flags = 0,
+                           ImGuiInputTextFlags input_text_flags = 0);
 
     bool IsDragDropSource(ImGuiDragDropFlags flags = ImGuiDragDropFlags_None);
     void RenderDragDropTargetRect(const ImRect &bb, const ImRect &item_clip_rect,

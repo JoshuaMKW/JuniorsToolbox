@@ -1359,6 +1359,64 @@ bool ImGui::DrawConcavePolygon(const ImVec2 *points, int num_points, ImU32 color
     return true;
 }
 
+bool ImGui::InputComboTextBox(const char *label, char *buffer, size_t buffer_len,
+                              const char **items, int items_count, int *selected_out,
+                              ImGuiComboFlags flags, ImGuiInputTextFlags input_text_flags) {
+    ImGui::PushID(label);
+
+    bool ret = ImGui::InputText(label, buffer, buffer_len, input_text_flags);
+
+    ImVec2 popup_pos = ImGui::GetItemRectMin();
+    ImVec2 popup_size = ImGui::GetItemRectSize();
+
+    ImGui::SameLine(0, 0);
+
+    bool is_combo_expanded = ImGui::IsPopupOpen("##combo_popup");
+    ImGuiDir arrow_dir     = is_combo_expanded ? ImGuiDir_Down : ImGuiDir_Left;
+
+    if (ImGui::ArrowButton("##combo_arrow", arrow_dir)) {
+        if (is_combo_expanded) {
+            ImGui::CloseCurrentPopup();
+        } else {
+            ImGui::OpenPopup("##combo_popup");
+        }
+    }
+
+    popup_pos.y += popup_size.y;
+    popup_size.x +=
+        ImGui::GetItemRectSize().x;  // Make sure the popup is wide enough to fit the arrow button
+    popup_size.y = ImGui::GetTextLineHeightWithSpacing() * ImClamp(items_count, 1, 10);
+    
+    ImGui::SetNextWindowPos(popup_pos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(popup_size, ImGuiCond_Always);
+
+    if (ImGui::BeginPopup("##combo_popup", ImGuiWindowFlags_NoMove)) {
+        //ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 2));
+        for (int i = 0; i < items_count; i++) {
+            if (ImGui::Selectable(items[i], false)) {
+                if (selected_out)
+                    *selected_out = i;
+
+                if (buffer) {
+                    size_t len = strlen(items[i]);
+                    len        = ImMin(len, buffer_len - 1);
+                    memcpy(buffer, items[i], len);
+                    buffer[len] = '\0';  // Ensure null-termination
+                }
+
+                ret = true;
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        //ImGui::PopStyleVar();
+        ImGui::EndPopup();
+    }
+
+    ImGui::PopID();
+
+    return ret;
+}
+
 bool ImGui::IsDragDropSource(ImGuiDragDropFlags flags) {
     ImGuiContext &g     = *GImGui;
     ImGuiWindow *window = g.CurrentWindow;
