@@ -541,11 +541,17 @@ namespace Toolbox {
         }
 
         if (m_pending_drag_action) {
+#if 0
             const MimeData &data = m_pending_drag_action->getPayload();
             DropType out;
             bool result = m_drag_drop_source_delegate->startDragDrop(
                 m_pending_drag_window, data, m_pending_drag_action->getSupportedDropTypes(), &out);
             TOOLBOX_DEBUG_LOG_V("DragDropSourceDelegate::startDragDrop action type: {}", int(out));
+#else
+            // TODO: Fix DoDragDrop locking ImGui/GLFW
+            DragDropManager::instance().destroyDragAction(m_pending_drag_action);
+            m_pending_drag_action = nullptr;
+#endif
         }
     }
 
