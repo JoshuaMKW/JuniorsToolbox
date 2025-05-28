@@ -35,8 +35,6 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
-#include <iconv.h>
-
 #if WIN32
 #include <windows.h>
 #endif
@@ -152,6 +150,10 @@ namespace Toolbox::UI {
                     return Result<void, SerialError>();
                 });
 
+            if (result) {
+                m_io_context_path = path;
+            }
+
             return result;
         }
 
@@ -161,6 +163,11 @@ namespace Toolbox::UI {
 
     bool SceneWindow::onSaveData(std::optional<std::filesystem::path> path) {
         std::filesystem::path root_path;
+
+        if (!m_current_scene) {
+            TOOLBOX_ERROR("(SCENE) Failed to save the scene due to lack of a scene instance.");
+            return false;
+        }
 
         if (!path) {
             auto opt_path = m_current_scene->rootPath();
@@ -237,6 +244,10 @@ namespace Toolbox::UI {
             }
         } else {
             m_is_game_edit_mode = false;
+        }
+
+        if (!m_current_scene) {
+            return;
         }
 
         std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
@@ -369,10 +380,15 @@ namespace Toolbox::UI {
         case SCENE_CREATE_RAIL_EVENT: {
             auto event = std::static_pointer_cast<SceneCreateRailEvent>(ev);
             if (event) {
-                const Rail::Rail &rail = event->getRail();
-                m_current_scene->getRailData().addRail(rail);
-                m_rail_visible_map[rail.getUUID()] = true;
-                ev->accept();
+                if (m_current_scene) {
+                    const Rail::Rail &rail = event->getRail();
+                    m_current_scene->getRailData().addRail(rail);
+                    m_rail_visible_map[rail.getUUID()] = true;
+                    ev->accept();
+                } else {
+                    TOOLBOX_ERROR("Failed to create rail due to lack of a scene instance.");
+                    ev->ignore();
+                }
             }
             break;
         }
@@ -431,8 +447,8 @@ void SceneWindow::renderHierarchy() {
 
         // Render Objects
 
-        if (m_current_scene != nullptr) {
-            auto root = m_current_scene->getObjHierarchy().getRoot();
+        if (m_current_scene) {
+            RefPtr<Object::GroupSceneObject> root = m_current_scene->getObjHierarchy().getRoot();
             renderTree(0, root);
         }
 
@@ -440,8 +456,8 @@ void SceneWindow::renderHierarchy() {
         ImGui::Text("Scene Info");
         ImGui::Separator();
 
-        if (m_current_scene != nullptr) {
-            auto root = m_current_scene->getTableHierarchy().getRoot();
+        if (m_current_scene) {
+            RefPtr<Object::GroupSceneObject> root = m_current_scene->getTableHierarchy().getRoot();
             renderTree(0, root);
         }
     }
@@ -990,6 +1006,10 @@ void SceneWindow::reassignAllActorPtrs(u32 param) {
 }
 
 void SceneWindow::renderRailEditor() {
+    if (!m_current_scene) {
+        return;
+    }
+
     const std::string rail_editor_str = ImWindowComponentTitle(*this, "Rail Editor");
 
     const ImGuiTreeNodeFlags rail_flags = ImGuiTreeNodeFlags_OpenOnArrow |
@@ -1216,7 +1236,7 @@ void SceneWindow::renderScene(TimeStep delta_time) {
     std::vector<J3DLight> lights;
 
     // perhaps find a way to limit this so it only happens when we need to re-render?
-    if (m_current_scene != nullptr) {
+    if (m_current_scene) {
         if (m_update_render_objs || !settings.m_is_rendering_simple) {
             m_renderables.clear();
             auto perform_result = m_current_scene->getObjHierarchy().getRoot()->performScene(
@@ -2661,15 +2681,16 @@ void SceneWindow::onRenderMenuBar() {
 
     if (m_is_save_default_ready) {
         m_is_save_default_ready = false;
-        if (m_current_scene->rootPath())
-            (void)onSaveData(m_current_scene->rootPath());
-        else
+        if (!m_io_context_path.empty()) {
+            (void)onSaveData(m_io_context_path);
+        } else {
             m_is_save_as_dialog_open = true;
+        }
     }
 
     if (m_is_save_as_dialog_open) {
-        ImGuiFileDialog::Instance()->OpenDialog("SaveSceneDialog", "Choose Directory", nullptr, "",
-                                                "");
+        ImGuiFileDialog::Instance()->OpenDialog("SaveSceneDialog", "Choose Directory", nullptr,
+                                                m_io_context_path.string(), "");
     }
 
     if (ImGuiFileDialog::Instance()->Display("SaveSceneDialog")) {

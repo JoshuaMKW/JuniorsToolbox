@@ -1,5 +1,7 @@
 #include "gui/window.hpp"
 #include "gui/application.hpp"
+#include "gui/dragdrop/dragdropmanager.hpp"
+#include "gui/event/dropevent.hpp"
 #include "gui/util.hpp"
 
 #include <lib/bStream/bstream.h>
@@ -8,7 +10,6 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include <iconv.h>
 #include <stb/stb_image.h>
 
 namespace Toolbox::UI {
@@ -27,6 +28,21 @@ namespace Toolbox::UI {
         }
     }
 
+    void ImWindow::setSize(const ImVec2 &size) noexcept {
+        if (size == getSize()) {
+            return;
+        }
+        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_RESIZE,
+                                                                    size);
+    }
+    void ImWindow::setPos(const ImVec2 &pos) noexcept {
+        if (pos == getPos()) {
+            return;
+        }
+        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_MOVE,
+                                                                    pos);
+    }
+
     void ImWindow::setIcon(const std::string &icon_name) {
         ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
         UUID64 icon_dir              = res_manager.getResourcePathUUID("Images/Icons");
@@ -41,8 +57,8 @@ namespace Toolbox::UI {
 
         // Load image data
         {
-            stbi_uc *data =
-                stbi_load_from_memory(result.value().data(), result.value().size(), &width, &height, &channels, 4);
+            stbi_uc *data = stbi_load_from_memory(result.value().data(), result.value().size(),
+                                                  &width, &height, &channels, 4);
 
             data_buf.alloc(static_cast<size_t>(width * height * channels));
             std::memcpy(data_buf.buf<u8>(), data, data_buf.size());
@@ -113,6 +129,14 @@ namespace Toolbox::UI {
         setSize(init_size);
     }
 
+    void ImWindow::onDetach() {
+        if (m_low_handle) {
+            GUIApplication::instance().deregisterDragDropSource(m_low_handle);
+            GUIApplication::instance().deregisterDragDropTarget(m_low_handle);
+        }
+        m_low_handle = nullptr;
+    }
+
     void ImWindow::onImGuiRender(TimeStep delta_time) {
         std::string window_name = std::format("{}###{}", title(), getUUID());
         ImGuiWindow *window     = ImGui::FindWindowByName(window_name.c_str());
@@ -135,8 +159,8 @@ namespace Toolbox::UI {
         bool was_open    = is_open;
 
         if (is_open) {
-            ImVec2 pos  = getPos();
-            ImVec2 size = getSize();
+            m_prev_pos  = getPos();
+            m_prev_size = getSize();
 
             ImVec2 default_min = {0, 0};
             ImVec2 default_max = {FLT_MAX, FLT_MAX};
@@ -154,31 +178,40 @@ namespace Toolbox::UI {
                 flags_ |= ImGuiWindowFlags_UnsavedDocument;
             }
 
-            // Establish window constraints
-            if (window) {
-                if (size != m_next_size && m_is_resized) {
-                    if (m_next_size.x >= 0.0f && m_next_size.y >= 0.0f) {
-                        ImGui::SetNextWindowSize(size);
-                        GUIApplication::instance().dispatchEvent<WindowEvent, true>(
-                            getUUID(), EVENT_WINDOW_RESIZE, m_next_size);
-                    }
-                    m_is_resized = false;
-                }
-                if (pos != m_next_pos && m_is_repositioned) {
-                    ImGui::SetNextWindowPos(m_next_pos);
-                    GUIApplication::instance().dispatchEvent<WindowEvent, true>(
-                        getUUID(), EVENT_WINDOW_MOVE, m_next_pos);
-                    m_is_repositioned = false;
-                }
-            }
-
             if ((flags_ & ImGuiWindowFlags_NoBackground)) {
                 ImGui::SetNextWindowBgAlpha(0.0f);
             }
 
             // Render the window
             if (ImGui::Begin(window_name.c_str(), &is_open, flags_)) {
+                ImGuiWindow *im_window = ImGui::GetCurrentWindow();
+                if (im_window) {
+                    m_im_order = im_window->BeginOrderWithinContext;
+                }
+
+                if (m_first_render) {
+                    m_prev_pos  = ImGui::GetWindowPos();
+                    m_prev_size = ImGui::GetWindowSize();
+                    setSize(m_prev_size);
+                    setPos(m_prev_pos);
+                    m_first_render = false;
+                }
+
                 ImGuiViewport *viewport = ImGui::GetCurrentWindow()->Viewport;
+                GLFWwindow *window      = static_cast<GLFWwindow *>(viewport->PlatformHandle);
+                if (window) {
+                    glfwSetWindowUserPointer(window, this);
+                    /*glfwSetDropCallback(static_cast<GLFWwindow *>(viewport->PlatformHandle),
+                                        privDropCallback);*/
+                    m_low_handle =
+                        (Platform::LowWindow)viewport->PlatformHandleRaw;
+                    if (!Platform::GetWindowZOrder(m_low_handle, m_z_order)) {
+                        m_z_order = -1;
+                    }
+
+                    GUIApplication::instance().registerDragDropSource(m_low_handle);
+                    GUIApplication::instance().registerDragDropTarget(m_low_handle);
+                }
 
                 if ((flags_ & ImGuiWindowFlags_NoBackground)) {
                     viewport->Flags |= ImGuiViewportFlags_TransparentFrameBuffer;
@@ -194,6 +227,23 @@ namespace Toolbox::UI {
                 m_viewport = nullptr;
             }
             ImGui::End();
+        }
+
+        // Establish window constraints
+        if (window) {
+            if (window->Size != m_prev_size) {
+                if (m_next_size.x >= 0.0f && m_next_size.y >= 0.0f) {
+                    GUIApplication::instance().dispatchEvent<WindowEvent, true>(
+                        getUUID(), EVENT_WINDOW_RESIZE, window->Size);
+                }
+                ImGui::SetWindowSize(window, m_prev_size, ImGuiCond_Always);
+            }
+
+            if (window->Pos != m_prev_pos) {
+                GUIApplication::instance().dispatchEvent<WindowEvent, true>(
+                    getUUID(), EVENT_WINDOW_MOVE, window->Pos);
+                ImGui::SetWindowPos(window, m_prev_pos, ImGuiCond_Always);
+            }
         }
 
         // Handle open/close and focus/defocus
@@ -221,6 +271,14 @@ namespace Toolbox::UI {
     void ImWindow::onWindowEvent(RefPtr<WindowEvent> ev) {
         ImProcessLayer::onWindowEvent(ev);
         switch (ev->getType()) {
+        case EVENT_WINDOW_MOVE: {
+            ImVec2 win_pos = ev->getGlobalPoint();
+            setLayerPos(win_pos);
+            std::string window_name = std::format("{}###{}", title(), ev->getTargetId());
+            ImGui::SetWindowPos(window_name.c_str(), win_pos, ImGuiCond_Always);
+            ev->accept();
+            break;
+        }
         case EVENT_WINDOW_RESIZE: {
             ImVec2 win_size = ev->getSize();
             if (m_min_size) {
@@ -232,6 +290,8 @@ namespace Toolbox::UI {
                 win_size.y = std::min(win_size.y, m_max_size->y);
             }
             setLayerSize(win_size);
+            std::string window_name = std::format("{}###{}", title(), ev->getTargetId());
+            ImGui::SetWindowSize(window_name.c_str(), win_size, ImGuiCond_Always);
             ev->accept();
             break;
         }

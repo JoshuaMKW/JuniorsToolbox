@@ -35,11 +35,7 @@ namespace Toolbox {
             onUpdate(m_delta_time);
 
             // Process delayed events
-            m_event_mutex.lock();
-            std::for_each(std::execution::par, m_events.begin(), m_events.end(),
-                          [&](auto &ev) { onEvent(ev); });
-            m_events.clear();
-            m_event_mutex.unlock();
+            processEvents();
 
             m_frame_counter += 1;
             m_last_frame_time = this_frame_time;
@@ -73,6 +69,14 @@ namespace Toolbox {
         if (!ev->isHandled()) {
             TOOLBOX_DEBUG_LOG_V("[EVENT] Unhandled event of TypeID {}", ev->getType());
         }
+    }
+
+    void CoreApplication::processEvents() {
+        m_event_mutex.lock();
+        std::for_each(std::execution::par, m_events.begin(), m_events.end(),
+                      [&](auto &ev) { onEvent(ev); });
+        m_events.clear();
+        m_event_mutex.unlock();
     }
 
     void CoreApplication::addLayer(RefPtr<ProcessLayer> layer) {

@@ -59,8 +59,8 @@ namespace Toolbox {
 
         [[nodiscard]] bool isSystemEvent() const noexcept { return m_is_system_event; }
 
-        void accept();
-        void ignore();
+        virtual void accept();
+        virtual void ignore();
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 

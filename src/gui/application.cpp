@@ -16,17 +16,23 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_internal.h>
+
+#ifndef STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#endif
 #include <stb/stb_image.h>
 
 #include "core/core.hpp"
 #include "core/input/input.hpp"
 #include "dolphin/hook.hpp"
 #include "gui/application.hpp"
+#include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
 #include "gui/logging/errors.hpp"
 #include "gui/logging/window.hpp"
 #include "gui/pad/window.hpp"
+#include "gui/project/window.hpp"
 #include "gui/scene/ImGuizmo.h"
 #include "gui/scene/window.hpp"
 #include "gui/settings/window.hpp"
@@ -87,7 +93,8 @@ namespace Toolbox {
             m_resource_manager.includeResourcePath(cwd / "Fonts", true);
             m_resource_manager.includeResourcePath(cwd / "Images", true);
             m_resource_manager.includeResourcePath(cwd / "Images", true);
-            m_resource_manager.includeResourcePath(cwd / fs_path("Images") / "Icons", true);
+            m_resource_manager.includeResourcePath(cwd / "Images/Icons", true);
+            m_resource_manager.includeResourcePath(cwd / "Images/Icons/Filesystem", true);
             m_resource_manager.includeResourcePath(cwd / "Templates", false);
             m_resource_manager.includeResourcePath(cwd / "Themes", true);
         }
@@ -167,6 +174,10 @@ namespace Toolbox {
         platform_io.Platform_CreateWindow = ImGui_ImplGlfw_CreateWindow_Ex;
         platform_io.Renderer_RenderWindow = ImGui_ImplOpenGL3_RenderWindow_Ex;
 
+        DragDropManager::instance().initialize();
+        m_drag_drop_source_delegate = DragDropDelegateFactory::createDragDropSourceDelegate();
+        m_drag_drop_target_delegate = DragDropDelegateFactory::createDragDropTargetDelegate();
+
         if (!m_settings_manager.initialize()) {
             TOOLBOX_ERROR("[INIT] Failed to initialize settings manager!");
         }
@@ -189,10 +200,10 @@ namespace Toolbox {
 
         m_task_communicator.tStart(false, nullptr);
 
-
         createWindow<LoggingWindow>("Application Log");
 
         determineEnvironmentConflicts();
+        hookClipboardIntoGLFW();
     }
 
     void GUIApplication::onUpdate(TimeStep delta_time) {
@@ -252,7 +263,47 @@ namespace Toolbox {
         m_dolphin_communicator.tKill(true);
         m_task_communicator.tKill(true);
 
+        DragDropManager::instance().shutdown();
+
         NFD_Quit();
+    }
+
+    void GUIApplication::onEvent(RefPtr<BaseEvent> ev) {
+        CoreApplication::onEvent(ev);
+
+        if (ev->getType() == EVENT_DROP) {
+            DragDropManager::instance().destroyDragAction(
+                DragDropManager::instance().getCurrentDragAction());
+        } else if (ev->getType() == EVENT_DRAG_MOVE || ev->getType() == EVENT_DRAG_ENTER ||
+                   ev->getType() == EVENT_DRAG_LEAVE) {
+            if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT, true)) {
+                DragDropManager::instance().destroyDragAction(
+                    DragDropManager::instance().getCurrentDragAction());
+            }
+        }
+
+        switch (ev->getType()) {
+        case EVENT_DRAG_ENTER:
+        case EVENT_DRAG_MOVE: {
+            if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT, true)) {
+                DragDropManager::instance().destroyDragAction(
+                    DragDropManager::instance().getCurrentDragAction());
+            }
+            break;
+        }
+        case EVENT_DRAG_LEAVE: {
+            if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT, true)) {
+                DragDropManager::instance().destroyDragAction(
+                    DragDropManager::instance().getCurrentDragAction());
+            } else {
+                RefPtr<DragAction> action = DragDropManager::instance().getCurrentDragAction();
+                if (action) {
+                    action->setTargetUUID(0);
+                }
+            }
+            break;
+        }
+        }
     }
 
     RefPtr<ImWindow> GUIApplication::findWindow(UUID64 uuid) {
@@ -265,7 +316,7 @@ namespace Toolbox {
                                                 const std::string &context) {
         auto it = std::find_if(m_windows.begin(), m_windows.end(),
                                [&title, &context](const auto &window) {
-                                   return window->title() == title && window->context() == context;
+                                   return window->name() == title && window->context() == context;
                                });
         return it != m_windows.end() ? *it : nullptr;
     }
@@ -275,6 +326,38 @@ namespace Toolbox {
         std::copy_if(m_windows.begin(), m_windows.end(), std::back_inserter(result),
                      [&title](RefPtr<ImWindow> window) { return window->title() == title; });
         return result;
+    }
+
+    RefPtr<ImWindow> GUIApplication::getImWindowFromPlatformWindow(Platform::LowWindow low_window) {
+        for (RefPtr<ImWindow> window : m_windows) {
+            if (window->getLowHandle() == low_window) {
+                return window;
+            }
+        }
+
+        return nullptr;
+    }
+
+    bool GUIApplication::registerDragDropSource(Platform::LowWindow window) {
+        return m_drag_drop_source_delegate->initializeForWindow(window);
+    }
+
+    void GUIApplication::deregisterDragDropSource(Platform::LowWindow window) {
+        m_drag_drop_source_delegate->shutdownForWindow(window);
+    }
+
+    bool GUIApplication::registerDragDropTarget(Platform::LowWindow window) {
+        return m_drag_drop_target_delegate->initializeForWindow(window);
+    }
+
+    void GUIApplication::deregisterDragDropTarget(Platform::LowWindow window) {
+        m_drag_drop_target_delegate->shutdownForWindow(window);
+    }
+
+    bool GUIApplication::startDragAction(Platform::LowWindow source, RefPtr<DragAction> action) {
+        m_pending_drag_action = action;
+        m_pending_drag_window = source;
+        return true;
     }
 
     void GUIApplication::registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
@@ -356,14 +439,113 @@ namespace Toolbox {
 
         // UPDATE LOOP: We update layers here so the ImGui dockspaces can take effect first.
         {
+            m_windows_processing = true;
             CoreApplication::onUpdate(delta_time);
+            m_windows_processing = false;
+
+            for (size_t i = 0; i < m_windows_to_add.size(); ++i) {
+                RefPtr<ImWindow> window = m_windows_to_add.front();
+                m_windows_to_add.pop();
+
+                addLayer(window);
+                m_windows.push_back(window);
+            }
+
+            for (size_t i = 0; i < m_windows_to_gc.size(); ++i) {
+                RefPtr<ImWindow> window = m_windows_to_gc.front();
+                m_windows_to_gc.pop();
+
+                removeLayer(window);
+                std::erase(m_windows, window);
+            }
+
             gcClosedWindows();
+        }
+
+        // Render drag icon
+        {
+            if (m_await_drag_drop_destroy) {
+                DragDropManager::instance().destroyDragAction(
+                    DragDropManager::instance().getCurrentDragAction());
+                m_await_drag_drop_destroy = false;
+            }
+
+            if (DragDropManager::instance().getCurrentDragAction() &&
+                Input::GetMouseButtonUp(MouseButton::BUTTON_LEFT, true)) {
+                m_await_drag_drop_destroy = true;
+            }
+
+            if (RefPtr<DragAction> action = DragDropManager::instance().getCurrentDragAction()) {
+                double x, y;
+                Input::GetMousePosition(x, y);
+
+                action->setHotSpot({(float)x, (float)y});
+
+                const ImVec2 &hotspot = action->getHotSpot();
+
+                ImGuiViewportP *viewport =
+                    ImGui::FindHoveredViewportFromPlatformWindowStack(hotspot);
+                if (viewport) {
+                    const ImVec2 size = {96, 96};
+                    const ImVec2 pos  = {hotspot.x - size.x / 2.0f, hotspot.y - size.y / 1.1f};
+
+                    ImGuiStyle &style = ImGui::GetStyle();
+
+                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+                    // ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 5.0f);
+                    ImGui::PushStyleColor(ImGuiCol_WindowBg,
+                                          ImGui::GetStyleColorVec4(ImGuiCol_Text));
+
+                    ImGui::SetNextWindowBgAlpha(1.0f);
+                    ImGui::SetNextWindowPos(pos);
+                    ImGui::SetNextWindowSize(size);
+                    if (ImGui::Begin("###Drag Icon", nullptr,
+                                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs)) {
+                        action->render(size);
+
+                        ImVec2 status_size = {16, 16};
+                        ImGui::SetCursorScreenPos(pos + size - status_size);
+
+                        ImGui::DrawSquare(
+                            pos + size - (status_size / 2), status_size.x, IM_COL32_WHITE,
+                            ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_HeaderActive]));
+
+                        const DragAction::DropState &state = action->getDropState();
+                        if (state.m_valid_target) {
+
+                        } else {
+                        }
+
+                        if (ImGuiWindow *win = ImGui::GetCurrentWindow()) {
+                            if (win->Viewport != ImGui::GetMainViewport()) {
+                                Platform::SetWindowClickThrough(
+                                    (Platform::LowWindow)win->Viewport->PlatformHandleRaw, true);
+                                m_drag_drop_viewport = win->Viewport;
+                            } else {
+                                m_drag_drop_viewport = nullptr;
+                            }
+                        }
+                    }
+                    ImGui::End();
+
+                    ImGui::PopStyleColor(1);
+                    ImGui::PopStyleVar(1);
+                }
+            }
         }
 
         // Render imgui frame
         {
             ImGui::Render();
             finalizeFrame();
+        }
+
+        if (m_pending_drag_action) {
+            const MimeData &data = m_pending_drag_action->getPayload();
+            DropType out;
+            bool result = m_drag_drop_source_delegate->startDragDrop(
+                m_pending_drag_window, data, m_pending_drag_action->getSupportedDropTypes(), &out);
+            TOOLBOX_DEBUG_LOG_V("DragDropSourceDelegate::startDragDrop action type: {}", int(out));
         }
     }
 
@@ -430,34 +612,13 @@ namespace Toolbox {
             FileDialog::instance()->close();
             if (FileDialog::instance()->isOk()) {
                 std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();
-                std::cout << "Selected path is " << selected_path.string() << std::endl;
-                if (selected_path.filename() == "scene") {
-                    RefPtr<ImWindow> existing_editor =
-                        findWindow("Scene Editor", selected_path.string());
-                    if (existing_editor) {
-                        existing_editor->focus();
-                    } else {
-                        RefPtr<SceneWindow> scene_window =
-                            createWindow<SceneWindow, true>("Scene Editor");
-                        if (!scene_window->onLoadData(selected_path)) {
-                            scene_window->close();
-                        }
-                    }
-                } else {
-                    auto sys_path   = std::filesystem::path(selected_path) / "sys";
-                    auto files_path = std::filesystem::path(selected_path) / "files";
-
-                    auto sys_result   = Toolbox::Filesystem::is_directory(sys_path);
-                    auto files_result = Toolbox::Filesystem::is_directory(files_path);
-
-                    if ((sys_result && sys_result.value()) &&
-                        (files_result && files_result.value())) {
-                        // TODO: Open project folder view
-                        m_project_root = selected_path;
-
-                        // Process the stageArc.bin
-                        fs_path layout_path = selected_path / "files" / "data" / "stageArc.bin";
-                        m_scene_layout_manager->loadFromPath(layout_path);
+                if (m_project_manager.loadProjectFolder(selected_path)) {
+                    TOOLBOX_INFO_V("Loaded project folder: {}", selected_path.string());
+                    RefPtr<ProjectViewWindow> project_window =
+                        createWindow<ProjectViewWindow>("Project View");
+                    if (!project_window->onLoadData(selected_path)) {
+                        TOOLBOX_ERROR("Failed to open project folder view!");
+                        project_window->close();
                     }
                 }
             }
@@ -585,11 +746,11 @@ namespace Toolbox {
                 int num_filters                = 0;
                 nfdu8filteritem_t *nfd_filters = nullptr;
                 if (maybe_filters) {
-                    auto filters = maybe_filters.value();
-                    num_filters  = filters.numFilters();
+                    FileDialogFilter filters = std::move(maybe_filters.value());
+                    num_filters              = filters.numFilters();
                     filters.copyFiltersOutU8(m_filters);
                     nfd_filters = new nfdu8filteritem_t[num_filters];
-                    for (int i = 0; i < filters.numFilters(); ++i) {
+                    for (int i = 0; i < num_filters; ++i) {
                         nfd_filters[i] = {m_filters[i].first.c_str(), m_filters[i].second.c_str()};
                     }
                 }

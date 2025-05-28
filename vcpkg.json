@@ -2,7 +2,7 @@
   "name": "juniorstoolbox",
   "version-string": "juniorstoolbox-win",
   "dependencies": [
-    "libiconv"
+    "icu"
   ],
-  "builtin-baseline": "5016afa7ed49f8bac5dc801555b7d6af9fe79f58"
+  "builtin-baseline": "2c401863dd54a640aeb26ed736c55489c079323b"
 }

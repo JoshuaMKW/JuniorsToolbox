@@ -16,6 +16,7 @@
 #undef GLFW_INCLUDE_NONE
 
 #include "gui/dolphin/overlay.hpp"
+#include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/scene/window.hpp"
 #include "gui/window.hpp"
 
@@ -25,6 +26,8 @@
 #include "gui/font.hpp"
 #include "gui/settings.hpp"
 #include "resource/resource.hpp"
+#include "project/project.hpp"
+
 #include "scene/layout.hpp"
 #include "themes.hpp"
 #include <nfd.h>
@@ -52,14 +55,24 @@ namespace Toolbox {
         virtual void onUpdate(TimeStep delta_time) override;
         virtual void onExit() override;
 
+        void onEvent(RefPtr<BaseEvent> ev) override;
+
         void addWindow(RefPtr<ImWindow> window) {
-            addLayer(window);
-            m_windows.push_back(window);
+            if (!m_windows_processing) {
+                addLayer(window);
+                m_windows.push_back(window);
+            } else {
+                m_windows_to_add.push(window);
+            }
         }
 
         void removeWindow(RefPtr<ImWindow> window) {
-            removeLayer(window);
-            std::erase(m_windows, window);
+            if (!m_windows_processing) {
+                removeLayer(window);
+                std::erase(m_windows, window);
+            } else {
+                m_windows_to_gc.push(window);
+            }
         }
 
         const std::vector<RefPtr<ImWindow>> &getWindows() const & { return m_windows; }
@@ -118,11 +131,23 @@ namespace Toolbox {
         DolphinCommunicator &getDolphinCommunicator() { return m_dolphin_communicator; }
         Game::TaskCommunicator &getTaskCommunicator() { return m_task_communicator; }
 
-        std::filesystem::path getProjectRoot() const { return m_project_root; }
         ResourceManager &getResourceManager() { return m_resource_manager; }
         ThemeManager &getThemeManager() { return m_theme_manager; }
         SettingsManager &getSettingsManager() { return m_settings_manager; }
         FontManager &getFontManager() { return m_font_manager; }
+
+        ProjectManager &getProjectManager() { return m_project_manager; }
+        const ProjectManager &getProjectManager() const { return m_project_manager; }
+
+        RefPtr<ImWindow> getImWindowFromPlatformWindow(Platform::LowWindow window);
+        
+        bool registerDragDropSource(Platform::LowWindow window);
+        void deregisterDragDropSource(Platform::LowWindow window);
+
+        bool registerDragDropTarget(Platform::LowWindow window);
+        void deregisterDragDropTarget(Platform::LowWindow window);
+
+        bool startDragAction(Platform::LowWindow source, RefPtr<DragAction> action);
 
         void registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
                                     SceneWindow::render_layer_cb cb);
@@ -160,7 +185,8 @@ namespace Toolbox {
         TypedDataClipboard<SelectionNodeInfo<Rail::Rail>> m_rail_clipboard;
         TypedDataClipboard<SelectionNodeInfo<Rail::RailNode>> m_rail_node_clipboard;
 
-        std::filesystem::path m_project_root = std::filesystem::current_path();
+        ProjectManager m_project_manager;
+
         std::filesystem::path m_load_path    = std::filesystem::current_path();
         std::filesystem::path m_save_path    = std::filesystem::current_path();
 
@@ -173,6 +199,17 @@ namespace Toolbox {
 
         GLFWwindow *m_render_window;
         std::vector<RefPtr<ImWindow>> m_windows;
+        std::queue<RefPtr<ImWindow>> m_windows_to_gc;
+        std::queue<RefPtr<ImWindow>> m_windows_to_add;
+        bool m_windows_processing = false;
+
+        ScopePtr<IDragDropTargetDelegate> m_drag_drop_target_delegate;
+        ScopePtr<IDragDropSourceDelegate> m_drag_drop_source_delegate;
+        ImGuiViewport *m_drag_drop_viewport = nullptr;
+        bool m_await_drag_drop_destroy      = false;
+
+        RefPtr<DragAction> m_pending_drag_action;
+        Platform::LowWindow m_pending_drag_window;
 
         std::unordered_map<UUID64, bool> m_docked_map;
         ImGuiID m_dockspace_id;
@@ -218,10 +255,10 @@ namespace Toolbox {
                         bool is_directory = false,
                         std::optional<FileDialogFilter>
                             maybe_filters = std::nullopt);
-        bool isAlreadyOpen() { return m_thread_running; }
-        bool isDone() { return !m_thread_running && !m_closed && m_thread_initialized; }
-        bool isOk() { return m_result == NFD_OKAY; }
-        std::filesystem::path getFilenameResult() { return m_selected_path; }
+        bool isAlreadyOpen() const { return m_thread_running; }
+        bool isDone() const { return !m_thread_running && !m_closed && m_thread_initialized; }
+        bool isOk() const { return m_result == NFD_OKAY; }
+        std::filesystem::path getFilenameResult() const { return m_selected_path; }
         void close() { m_closed = true; }
 
     private:
@@ -229,8 +266,8 @@ namespace Toolbox {
         std::vector<std::pair<std::string, std::string>> m_filters;
 
         // The result of the last dialog box.
-        nfdu8char_t *m_selected_path;
-        nfdresult_t m_result;
+        nfdu8char_t *m_selected_path = nullptr;
+        nfdresult_t m_result = NFD_OKAY;
         // The thread that we run the dialog in. If
         // m_thread_initialized is true, this should be an initialized
         // thread object.

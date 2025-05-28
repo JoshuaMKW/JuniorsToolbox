@@ -34,3 +34,6 @@
 # Visual Studio
 .vs/*
 out/*
+/enc_temp_folder
+/.idea
+vcpkg_installed/*

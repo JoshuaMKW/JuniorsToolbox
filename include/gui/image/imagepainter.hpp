@@ -24,6 +24,8 @@ namespace Toolbox::UI {
         bool render(const ImageHandle &image, const ImVec2 &size) const;
         bool render(const ImageHandle &image, const ImVec2 &pos, const ImVec2 &size) const;
 
+        bool renderOverlay(const ImageHandle &image, const ImVec2 &pos, const ImVec2 &size) const;
+
     private:
         ImVec2 m_uv0 = {0, 0};
         ImVec2 m_uv1 = {1, 1};

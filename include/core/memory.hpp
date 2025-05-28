@@ -73,6 +73,8 @@ namespace Toolbox {
         void free() {
             if (m_buf && m_owns_buf) {
                 delete[] m_buf;
+                m_buf = nullptr;
+                m_owns_buf = false;
             }
             m_size = 0;
         }
@@ -81,7 +83,7 @@ namespace Toolbox {
             if (m_buf && size == m_size) {
                 return;
             }
-            void *new_buf = new u8[size];
+            byte_t *new_buf = new byte_t[size];
             if (m_buf && m_size > 0) {
                 memcpy(new_buf, m_buf, std::min(size, m_size));
                 delete[] m_buf;
@@ -98,9 +100,9 @@ namespace Toolbox {
         template <typename T = void> const T *buf() const { return reinterpret_cast<T *>(m_buf); }
 
         void setBuf(void *buf, size_t size) {
-            if (m_buf != buf) {
+            if (m_buf != (byte_t*)buf) {
                 free();
-                m_buf      = buf;
+                m_buf      = (byte_t*)buf;
                 m_owns_buf = false;
             }
             m_size = size;
@@ -152,7 +154,7 @@ namespace Toolbox {
         bool operator==(const Buffer &other) { return m_buf == other.m_buf; }
 
     private:
-        void *m_buf     = nullptr;
+        byte_t *m_buf   = nullptr;
         size_t m_size   = 0;
         bool m_owns_buf = true;
     };

@@ -19,11 +19,14 @@ namespace Toolbox::Input {
     bool GetKeyUp(KeyCode key);
 
     MouseButtons GetPressedMouseButtons();
-    bool GetMouseButton(MouseButton button);
-    bool GetMouseButtonDown(MouseButton button);
-    bool GetMouseButtonUp(MouseButton button);
+    bool GetMouseButton(MouseButton button, bool include_external = false);
+    bool GetMouseButtonDown(MouseButton button, bool include_external = false);
+    bool GetMouseButtonUp(MouseButton button, bool include_external = false);
 
-    void GetMouseViewportPosition(float &x, float &y);
+    // This gets the mouse position only when within a GLFW window
+    void GetMouseViewportPosition(double &x, double &y);
+    // This gets the mouse position even when outside the window
+    void GetMousePosition(double &x, double &y);
     void SetMousePosition(double x, double y, bool overwrite_delta = true);
 
     void GetMouseDelta(double &x, double &y);

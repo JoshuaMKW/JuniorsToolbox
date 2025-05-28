@@ -10,6 +10,8 @@
 #include "color.hpp"
 #include "core/memory.hpp"
 
+#include "image/imagedata.hpp"
+
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>
 #elif defined(TOOLBOX_PLATFORM_LINUX)
@@ -29,6 +31,14 @@ namespace Toolbox {
         [[nodiscard]] bool has_format(std::string_view type) const {
             return m_data_map.contains(std::string(type));
         }
+        std::vector<std::string> get_all_formats() const {
+            std::vector<std::string> formats;
+            formats.reserve(m_data_map.size());
+            for (auto &[k, v] : m_data_map) {
+                formats.push_back(k);
+            }
+            return formats;
+        }
 
         [[nodiscard]] bool has_color() const;
         [[nodiscard]] bool has_html() const;
@@ -45,14 +55,14 @@ namespace Toolbox {
         [[nodiscard]] std::optional<std::string> get_html() const;
         void set_html(std::string_view data);
 
-        [[nodiscard]] std::optional<Buffer> get_image() const;
-        void set_image(const Buffer &data);
+        [[nodiscard]] std::optional<ImageData> get_image() const;
+        void set_image(const ImageData &data);
 
         [[nodiscard]] std::optional<std::string> get_text() const;
         void set_text(std::string_view data);
 
-        [[nodiscard]] std::optional<std::string> get_urls() const;
-        void set_urls(std::string_view data);
+        [[nodiscard]] std::optional<std::vector<std::string>> get_urls() const;
+        void set_urls(const std::vector<std::string> &data);
 
         void clear();
 
@@ -66,14 +76,10 @@ namespace Toolbox {
             return *this;
         }
 
-    protected:
-#ifdef TOOLBOX_PLATFORM_WINDOWS
-        static FORMATETC FormatForMime(std::string_view mimetype);
-        static std::string MimeForFormat(FORMATETC format);
-#elif defined(TOOLBOX_PLATFORM_LINUX)
-        static std::string UTIForMime(std::string_view mimetype);
-        static std::string MimeForUTI(std::string_view uti);
-#endif
+        static bool isMimeTarget(const std::string &target) {
+            return target.starts_with("image/") || target.starts_with("application/") ||
+                   target.starts_with("text/");
+        }
 
     private:
         mutable std::unordered_map<std::string, Buffer> m_data_map;

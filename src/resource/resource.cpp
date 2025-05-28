@@ -149,14 +149,80 @@ namespace Toolbox {
         return result;
     }
 
-    Result<RefPtr<ImageHandle>, FSError>
+    Result<RefPtr<const ImageData>, FSError>
+    ResourceManager::getImageData(const fs_path &path, const UUID64 &resource_path_uuid) const {
+        if (!hasDataPath(path, resource_path_uuid)) {
+            return make_fs_error<RefPtr<const ImageData>>(std::error_code(),
+                                                          {"Resource path not found"});
+        }
+
+        if (m_data_preload_cache.find(path) != m_data_preload_cache.end()) {
+            const ResourceData &data = m_data_preload_cache[path];
+
+            std::span<u8> data_span(static_cast<u8 *>(data.m_data_ptr), data.m_data_size);
+            RefPtr<const ImageData> handle = make_referable<const ImageData>(data_span);
+
+            if (!handle->isValid()) {
+                return make_fs_error<RefPtr<const ImageData>>(std::error_code(),
+                                                              {"Failed to load image"});
+            }
+
+            return handle;
+        }
+
+        fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
+        fs_path abs_path      = resource_path / path;
+
+        RefPtr<const ImageData> handle = make_referable<const ImageData>(abs_path);
+        if (!handle->isValid()) {
+            return make_fs_error<RefPtr<const ImageData>>(std::error_code(),
+                                                            {"Failed to load image"});
+        }
+
+        return handle;
+    }
+
+    Result<RefPtr<const ImageData>, FSError>
+    ResourceManager::getImageData(fs_path &&path, const UUID64 &resource_path_uuid) const {
+        if (!hasDataPath(path, resource_path_uuid)) {
+            return make_fs_error<RefPtr<const ImageData>>(std::error_code(),
+                                                          {"Resource path not found"});
+        }
+
+        if (m_data_preload_cache.find(path) != m_data_preload_cache.end()) {
+            const ResourceData &data = m_data_preload_cache[path];
+
+            std::span<u8> data_span(static_cast<u8 *>(data.m_data_ptr), data.m_data_size);
+            RefPtr<const ImageData> handle = make_referable<const ImageData>(data_span);
+
+            if (!handle->isValid()) {
+                return make_fs_error<RefPtr<const ImageData>>(std::error_code(),
+                                                              {"Failed to load image"});
+            }
+
+            return handle;
+        }
+
+        fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
+        fs_path abs_path      = resource_path / path;
+
+        RefPtr<const ImageData> handle = make_referable<const ImageData>(abs_path);
+        if (!handle->isValid()) {
+            return make_fs_error<RefPtr<const ImageData>>(std::error_code(),
+                                                          {"Failed to load image"});
+        }
+
+        return handle;
+    }
+
+    Result<RefPtr<const ImageHandle>, FSError>
     ResourceManager::getImageHandle(const fs_path &path, const UUID64 &resource_path_uuid) const {
         if (m_image_handle_cache.find(path) != m_image_handle_cache.end()) {
-            return Result<RefPtr<ImageHandle>, FSError>(m_image_handle_cache[path]);
+            return Result<RefPtr<const ImageHandle>, FSError>(m_image_handle_cache[path]);
         }
 
         if (!hasDataPath(path, resource_path_uuid)) {
-            return make_fs_error<RefPtr<ImageHandle>>(std::error_code(),
+            return make_fs_error<RefPtr<const ImageHandle>>(std::error_code(),
                                                       {"Resource path not found"});
         }
 
@@ -164,10 +230,10 @@ namespace Toolbox {
             const ResourceData &data = m_data_preload_cache[path];
 
             std::span<u8> data_span(static_cast<u8 *>(data.m_data_ptr), data.m_data_size);
-            RefPtr<ImageHandle> handle = make_referable<ImageHandle>(data_span);
+            RefPtr<const ImageHandle> handle = make_referable<const ImageHandle>(data_span);
 
             if (!handle->isValid()) {
-                return make_fs_error<RefPtr<ImageHandle>>(std::error_code(),
+                return make_fs_error<RefPtr<const ImageHandle>>(std::error_code(),
                                                           {"Failed to load image"});
             }
 
@@ -178,23 +244,23 @@ namespace Toolbox {
         fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
         fs_path abs_path      = resource_path / path;
 
-        RefPtr<ImageHandle> handle = make_referable<ImageHandle>(abs_path);
+        RefPtr<const ImageHandle> handle = make_referable<const ImageHandle>(abs_path);
         if (!handle->isValid()) {
-            return make_fs_error<RefPtr<ImageHandle>>(std::error_code(), {"Failed to load image"});
+            return make_fs_error<RefPtr<const ImageHandle>>(std::error_code(), {"Failed to load image"});
         }
 
         m_image_handle_cache[path] = handle;
         return handle;
     }
 
-    Result<RefPtr<ImageHandle>, FSError>
+    Result<RefPtr<const ImageHandle>, FSError>
     ResourceManager::getImageHandle(fs_path &&path, const UUID64 &resource_path_uuid) const {
         if (m_image_handle_cache.find(path) != m_image_handle_cache.end()) {
-            return Result<RefPtr<ImageHandle>, FSError>(m_image_handle_cache[path]);
+            return Result<RefPtr<const ImageHandle>, FSError>(m_image_handle_cache[path]);
         }
 
         if (!hasDataPath(path, resource_path_uuid)) {
-            return make_fs_error<RefPtr<ImageHandle>>(std::error_code(),
+            return make_fs_error<RefPtr<const ImageHandle>>(std::error_code(),
                                                       {"Resource path not found"});
         }
 
@@ -202,10 +268,10 @@ namespace Toolbox {
             const ResourceData &data = m_data_preload_cache[path];
 
             std::span<u8> data_span(static_cast<u8 *>(data.m_data_ptr), data.m_data_size);
-            RefPtr<ImageHandle> handle = make_referable<ImageHandle>(data_span);
+            RefPtr<const ImageHandle> handle = make_referable<const ImageHandle>(data_span);
 
             if (!handle->isValid()) {
-                return make_fs_error<RefPtr<ImageHandle>>(std::error_code(),
+                return make_fs_error<RefPtr<const ImageHandle>>(std::error_code(),
                                                           {"Failed to load image"});
             }
 
@@ -216,9 +282,9 @@ namespace Toolbox {
         fs_path resource_path = getResourcePath(resource_path_uuid).value_or(fs_path());
         fs_path abs_path      = resource_path / path;
 
-        RefPtr<ImageHandle> handle = make_referable<ImageHandle>(abs_path);
+        RefPtr<const ImageHandle> handle = make_referable<const ImageHandle>(abs_path);
         if (!handle->isValid()) {
-            return make_fs_error<RefPtr<ImageHandle>>(std::error_code(), {"Failed to load image"});
+            return make_fs_error<RefPtr<const ImageHandle>>(std::error_code(), {"Failed to load image"});
         }
 
         m_image_handle_cache[path] = handle;

@@ -59,7 +59,7 @@ namespace Toolbox {
 
         // ------------------------------------------------------
 
-        virtual void onEvent(RefPtr<BaseEvent> ev) override final;
+        virtual void onEvent(RefPtr<BaseEvent> ev) override;
 
         template <typename _Event, bool _Queue, typename... _Args>
         void dispatchEvent(_Args &&...args) {
@@ -74,6 +74,8 @@ namespace Toolbox {
                 onEvent(ev);
             }
         }
+
+        void processEvents();
 
         void addLayer(RefPtr<ProcessLayer> layer);
         void removeLayer(RefPtr<ProcessLayer> layer);

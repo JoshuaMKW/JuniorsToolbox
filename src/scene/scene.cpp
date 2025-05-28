@@ -12,59 +12,59 @@ namespace Toolbox {
 
     Result<ScopePtr<SceneInstance>, SerialError>
     SceneInstance::FromPath(const std::filesystem::path &root) {
-        ScopePtr<SceneInstance> scene         = make_scoped<SceneInstance>();
-        scene->m_root_path = root;
+        ScopePtr<SceneInstance> scene = make_scoped<SceneInstance>();
+        scene->m_root_path            = root;
 
-        auto scene_bin   = root / "map/scene.bin";
-        auto tables_bin  = root / "map/tables.bin";
-        auto rail_bin    = root / "map/scene.ral";
-        auto message_bin = root / "map/message.bmg";
+        scene->m_map_objects   = ObjectHierarchy("Map");
+        scene->m_table_objects = ObjectHierarchy("Table");
 
-        ObjectFactory::create_t map_root_obj;
-        ObjectFactory::create_t table_root_obj;
+        fs_path scene_bin   = root / "map/scene.bin";
+        fs_path tables_bin  = root / "map/tables.bin";
+        fs_path rail_bin    = root / "map/scene.ral";
+        fs_path message_bin = root / "map/message.bmg";
 
+        // Load the scene data
         {
             std::ifstream file(scene_bin, std::ios::in | std::ios::binary);
             Deserializer in(file.rdbuf(), scene_bin.string());
 
-            map_root_obj = ObjectFactory::create(in);
-            if (!map_root_obj) {
-                return std::unexpected(map_root_obj.error());
+            Result<void, SerialError> result = scene->m_map_objects.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
             }
         }
 
+        // Load the table data
         {
             std::ifstream file(tables_bin, std::ios::in | std::ios::binary);
             Deserializer in(file.rdbuf());
 
-            table_root_obj = ObjectFactory::create(in);
-            if (!table_root_obj) {
-                return std::unexpected(table_root_obj.error());
+            Result<void, SerialError> result = scene->m_table_objects.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
             }
         }
 
-        RefPtr<Object::GroupSceneObject> map_root_obj_ptr =
-            std::static_pointer_cast<GroupSceneObject, ISceneObject>(
-                std::move(map_root_obj.value()));
-        RefPtr<Object::GroupSceneObject> table_root_obj_ptr =
-            std::static_pointer_cast<GroupSceneObject, ISceneObject>(
-                std::move(table_root_obj.value()));
-
-        scene->m_map_objects   = ObjectHierarchy("Map", map_root_obj_ptr);
-        scene->m_table_objects = ObjectHierarchy("Table", table_root_obj_ptr);
-
+        // Load the rail data
         {
             std::ifstream file(rail_bin, std::ios::in | std::ios::binary);
             Deserializer in(file.rdbuf());
 
-            scene->m_rail_info.deserialize(in);
+            Result<void, SerialError> result = scene->m_rail_info.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
         }
 
+        // Load the message data
         {
             std::ifstream file(message_bin, std::ios::in | std::ios::binary);
             Deserializer in(file.rdbuf());
 
-            scene->m_message_data.deserialize(in);
+            Result<void, SerialError> result = scene->m_message_data.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
         }
 
         return scene;
@@ -88,7 +88,7 @@ namespace Toolbox {
             std::ofstream file(scene_bin, std::ios::out | std::ios::binary);
             Serializer out(file.rdbuf(), scene_bin.string());
 
-            auto result = m_map_objects.getRoot()->serialize(out);
+            auto result = m_map_objects.serialize(out);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -98,7 +98,7 @@ namespace Toolbox {
             std::ofstream file(tables_bin, std::ios::out | std::ios::binary);
             Serializer out(file.rdbuf(), scene_bin.string());
 
-            auto result = m_table_objects.getRoot()->serialize(out);
+            auto result = m_table_objects.serialize(out);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -144,14 +144,14 @@ namespace Toolbox {
     }
 
     ScopePtr<ISmartResource> SceneInstance::clone(bool deep) const {
-        auto scene_instance = make_scoped<SceneInstance>();
+        auto scene_instance         = make_scoped<SceneInstance>();
         scene_instance->m_root_path = m_root_path;
-        
+
         if (deep) {
-            scene_instance->m_map_objects = *make_deep_clone(m_map_objects);
+            scene_instance->m_map_objects   = *make_deep_clone(m_map_objects);
             scene_instance->m_table_objects = *make_deep_clone(m_table_objects);
-            scene_instance->m_rail_info = *make_deep_clone(m_rail_info);
-            scene_instance->m_message_data = m_message_data;
+            scene_instance->m_rail_info     = *make_deep_clone(m_rail_info);
+            scene_instance->m_message_data  = m_message_data;
             return scene_instance;
         }
 
@@ -162,4 +162,4 @@ namespace Toolbox {
         return scene_instance;
     }
 
-}  // namespace Toolbox::Scene
+}  // namespace Toolbox

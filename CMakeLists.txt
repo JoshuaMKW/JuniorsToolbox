@@ -15,7 +15,6 @@ endif()
 
 project(JuniorsToolbox)
 
-
 file(GLOB TOOLBOX_SRC
     "lib/*.hpp"
     "lib/*.cpp"
@@ -53,23 +52,32 @@ file(GLOB TOOLBOX_SRC
     "src/gui/event/*.cpp"
     "include/gui/event/*.hpp"
     "src/gui/dragdrop/*.cpp"
+    "src/gui/dragdrop/p_*.hpp"
     "include/gui/dragdrop/*.hpp"
     "src/gui/image/*.cpp"
     "include/gui/image/*.hpp"
     "src/gui/layer/*.cpp"
     "include/gui/layer/*.hpp"
+    "src/gui/new_item/*.cpp"
+    "include/gui/new_item/*.hpp"
     "src/gui/pad/*.cpp"
     "include/gui/pad/*.hpp"
+    "src/gui/project/*.cpp"
+    "include/gui/project/*.hpp"
     "src/gui/widget/*.cpp"
     "include/gui/widget/*.hpp"
     "src/image/*.cpp"
     "include/image/*.hpp"
+    "src/model/*.cpp"
+    "include/model/*.hpp"
     "src/objlib/*.cpp"
     "include/objlib/*.hpp"
     "src/pad/*.cpp"
     "include/pad/*.hpp"
     "src/platform/*.cpp"
     "include/platform/*.hpp"
+    "src/project/*.cpp"
+    "include/project/*.hpp"
     "src/rail/*.cpp"
     "include/rail/*.hpp"
     "src/rarc/*.cpp"
@@ -82,6 +90,8 @@ file(GLOB TOOLBOX_SRC
     "include/window/*.hpp"
     "src/objlib/meta/*.cpp"
     "include/objlib/meta/*.hpp"
+    "src/watchdog/*.cpp"
+    "include/watchdog/*.hpp"
     "src/io/*.cpp"
     "src/gui/*.cpp"
     "include/gui/*.hpp"
@@ -114,8 +124,8 @@ else()
     # target_compile_options(j3dultra PRIVATE -w)
 endif()
 
-# find_package(ICU 61.0 COMPONENTS uc i18n REQUIRED)
-find_package(Iconv REQUIRED)
+find_package(ICU REQUIRED COMPONENTS uc i18n)
+# find_package(Iconv REQUIRED)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
   find_package(PkgConfig REQUIRED)
@@ -128,8 +138,8 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     target_link_libraries(JuniorsToolbox PRIVATE stdc++_libbacktrace)
   endif()
 else()
-#  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ICU::uc ICU::i18n)
-  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw Iconv::Iconv)
+  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ICU::uc ICU::i18n)
+#  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw Iconv::Iconv)
 endif()
 
 
@@ -138,12 +148,24 @@ target_link_libraries(JuniorsToolbox PRIVATE nfd)
 if (WIN32)
 #  link this library so we can find Nahimic service
 #  this is because it crashes window corner resizing :P
-    target_link_libraries(JuniorsToolbox PRIVATE Advapi32)
+    target_link_libraries(JuniorsToolbox PRIVATE Advapi32 Comctl32)
 endif()
 
 target_compile_definitions(JuniorsToolbox PRIVATE NOMINMAX IMGUI_DEFINE_MATH_OPERATORS)
 
-target_include_directories(JuniorsToolbox PRIVATE "include" "lib" "lib/imgui" "lib/imgui/backends" "lib/nlohmann" "lib/glm::glm" "lib/J3DUltra" "lib/libbti" "lib/ImGuiFileDialog" "lib/glfw" "lib/nativefiledialog-extended/src/include")
+target_include_directories(JuniorsToolbox PRIVATE
+    "include"
+    "src"
+    "lib"
+    "lib/imgui"
+    "lib/imgui/backends"
+    "lib/nlohmann"
+    "lib/glfw"
+    "lib/glm::glm"
+    "lib/J3DUltra"
+    "lib/libbti"
+    "lib/ImGuiFileDialog"
+    "lib/nativefiledialog-extended/src/include")
 
 
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
