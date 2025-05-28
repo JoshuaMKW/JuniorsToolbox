@@ -911,7 +911,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
 
     const float text_offset_x =
         g.FontSize +
-        (display_frame ? padding.x * 3 : padding.x * 2);  // Collapsing arrow width + Spacing
+        (display_frame ? padding.x * 3 : padding.x * 2);  // Eye width + Collapsing arrow width + Spacing
     const float text_offset_y =
         ImMax(padding.y, window->DC.CurrLineTextBaseOffset);  // Latch before ItemSize changes it
     const float text_width = g.FontSize + label_size.x + padding.x * 2;  // Include collapsing arrow
@@ -942,11 +942,15 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
 
     ImVec2 eye_pos(frame_bb.Min.x + padding.x, window->DC.CursorPos.y);
 
-    ImVec2 text_pos(window->DC.CursorPos.x + text_offset_x, window->DC.CursorPos.y + text_offset_y);
+    ImVec2 text_pos(window->DC.CursorPos.x + text_offset_x + ImGui::GetFontSize(),
+                    window->DC.CursorPos.y + text_offset_y);
     ItemSize(ImVec2(text_width, frame_height), padding.y);
 
     ImRect eye_interact_bb = frame_bb;
     eye_interact_bb.Max.x  = frame_bb.Min.x + eye_size.x + style.ItemSpacing.x;
+
+    ImGuiID eye_interact_id = GetID("eye_button##internal");
+    ItemAdd(eye_interact_bb, eye_interact_id);
 
     // For regular tree nodes, we arbitrary allow to click past 2 worth of ItemSpacing
     ImRect interact_bb = frame_bb;
@@ -976,9 +980,6 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     } else {
         is_visible = ItemAdd(interact_bb, id);
     }
-
-    ImGuiID eye_interact_id = GetID("eye_button##internal");
-    ItemAdd(eye_interact_bb, eye_interact_id);
 
     g.LastItemData.StatusFlags |= ImGuiItemStatusFlags_HasDisplayRect;
     g.LastItemData.DisplayRect = frame_bb;
@@ -1213,6 +1214,14 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
             RenderTextClipped(text_pos, frame_bb.Max, label, label_end, &label_size);
         else
             RenderText(text_pos, label, label_end, false);
+
+        ImGui::PushStyleColor(ImGuiCol_Button, {0, 0, 0, 0});
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0, 0, 0, 0});
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0, 0, 0, 0});
+
+        ImGui::RenderText(eye_pos, *visible ? ICON_FK_EYE : ICON_FK_EYE_SLASH, nullptr, false);
+
+        ImGui::PopStyleColor(3);
     }
 
     if (store_tree_node_stack_data && is_open)
