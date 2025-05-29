@@ -585,8 +585,8 @@ void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneOb
                                 break;
                             }
                         }
-                        ImGui::EndDragDropTarget();
                     }
+                    ImGui::EndDragDropTarget();
                 }
             }
 
@@ -1610,7 +1610,7 @@ void SceneWindow::buildContextMenuGroupObj() {
                 sibling_names.push_back(std::string(child->getNameRef().name()));
             }
             for (auto &node : nodes) {
-                auto new_object  = make_deep_clone<ISceneObject>(node.m_selected);
+                RefPtr<ISceneObject> new_object  = ref_cast<ISceneObject>(make_deep_clone<ISceneObject>(node.m_selected));
                 NameRef node_ref = new_object->getNameRef();
                 node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
                 new_object->setNameRef(node_ref);
@@ -1764,7 +1764,7 @@ void SceneWindow::buildContextMenuPhysicalObj() {
                 sibling_names.push_back(std::string(child->getNameRef().name()));
             }
             for (auto &node : nodes) {
-                auto new_object  = make_deep_clone<ISceneObject>(node.m_selected);
+                RefPtr<ISceneObject> new_object  = ref_cast<ISceneObject>(make_deep_clone<ISceneObject>(node.m_selected));
                 NameRef node_ref = new_object->getNameRef();
                 node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
                 new_object->setNameRef(node_ref);
@@ -1867,7 +1867,7 @@ void SceneWindow::buildContextMenuMultiObj() {
                     sibling_names.push_back(std::string(child->getNameRef().name()));
                 }
                 for (auto &node : nodes) {
-                    auto new_object  = make_deep_clone<ISceneObject>(node.m_selected);
+                    RefPtr<ISceneObject> new_object  = ref_cast<ISceneObject>(make_deep_clone<ISceneObject>(node.m_selected));
                     NameRef node_ref = new_object->getNameRef();
                     node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
                     new_object->setNameRef(node_ref);

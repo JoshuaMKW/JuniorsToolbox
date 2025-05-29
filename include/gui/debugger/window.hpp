@@ -35,6 +35,7 @@ namespace Toolbox::UI {
         void onRenderMenuBar() override;
         void onRenderBody(TimeStep delta_time) override;
 
+        void renderMemoryAddressBar();
         void renderMemoryView();
         void renderMemoryWatchList();
 
@@ -58,7 +59,7 @@ namespace Toolbox::UI {
 
         std::optional<ImVec2> minSize() const override {
             return {
-                {700, 400}
+                {800, 400}
             };
         }
 
@@ -93,8 +94,15 @@ namespace Toolbox::UI {
         u32 m_base_address = 0x80000000;
         u8 m_byte_width    = 1;
 
+        bool m_initialized_splitter_widths = false;
+        float m_list_width = 0.0f;
+        float m_view_width = 0.0f;
+
         std::array<char, 32> m_address_input;
         std::vector<HistoryPair> m_address_search_history = {};
+
+        size_t m_column_count_idx = 0;
+        size_t m_byte_width_idx = 0;
 
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;

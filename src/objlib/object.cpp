@@ -248,8 +248,8 @@ namespace Toolbox::Object {
                 return std::unexpected(err);*/
                 break;
             }
-            auto &m          = wizard->m_init_members[i];
-            auto this_member = make_deep_clone<MetaMember>(m);
+            auto &m                        = wizard->m_init_members[i];
+            RefPtr<MetaMember> this_member = ref_cast<MetaMember>(make_deep_clone<MetaMember>(m));
             this_member->updateReferenceToList(m_members);
             auto result = this_member->deserialize(in);
             if (!result) {
@@ -566,8 +566,8 @@ namespace Toolbox::Object {
                 return std::unexpected(err);*/
                 break;
             }
-            auto &m          = wizard->m_init_members[i];
-            auto this_member = make_deep_clone<MetaMember>(m);
+            auto &m                        = wizard->m_init_members[i];
+            RefPtr<MetaMember> this_member = ref_cast<MetaMember>(make_deep_clone<MetaMember>(m));
             this_member->updateReferenceToList(m_members);
             auto result = this_member->deserialize(in);
             if (!result) {
@@ -783,7 +783,8 @@ namespace Toolbox::Object {
     void PhysicalSceneObject::applyWizard(const TemplateWizard &wizard) {
         m_nameref.setName(wizard.m_name);
         for (auto &member : wizard.m_init_members) {
-            auto new_member = make_deep_clone<MetaMember>(member);
+            RefPtr<MetaMember> new_member =
+                ref_cast<MetaMember>(make_deep_clone<MetaMember>(member));
             new_member->updateReferenceToList(m_members);
             m_members.emplace_back(new_member);
         }
@@ -1016,8 +1017,8 @@ namespace Toolbox::Object {
 
         // Members
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
-            auto &m          = wizard->m_init_members[i];
-            auto this_member = make_deep_clone<MetaMember>(m);
+            auto &m                        = wizard->m_init_members[i];
+            RefPtr<MetaMember> this_member = ref_cast<MetaMember>(make_deep_clone<MetaMember>(m));
             this_member->updateReferenceToList(m_members);
             if (in.tell() < endpos) {
                 auto result = this_member->deserialize(in);

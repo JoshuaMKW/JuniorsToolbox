@@ -171,6 +171,20 @@ namespace Toolbox::Object {
 
         [[nodiscard]] value_type defaultValue() const { return m_default; }
 
+        [[nodiscard]] size_t computeSize() const {
+            size_t size = 0;
+            for (const auto &value : m_values) {
+                if (std::holds_alternative<RefPtr<MetaValue>>(value)) {
+                    size += std::get<RefPtr<MetaValue>>(value)->computeSize();
+                } else if (std::holds_alternative<RefPtr<MetaEnum>>(value)) {
+                    size += std::get<RefPtr<MetaEnum>>(value)->computeSize();
+                } else if (std::holds_alternative<RefPtr<MetaStruct>>(value)) {
+                    size += std::get<RefPtr<MetaStruct>>(value)->computeSize();
+                }
+            }
+            return size;
+        }
+
         [[nodiscard]] u32 arraysize() const {
             if (std::holds_alternative<ReferenceInfo>(m_arraysize)) {
                 auto vptr = std::get<ReferenceInfo>(m_arraysize);

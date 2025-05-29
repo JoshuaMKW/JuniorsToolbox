@@ -83,6 +83,11 @@ namespace ImGui {
                            int items_count, int *selected_out, ImGuiComboFlags flags = 0,
                            ImGuiInputTextFlags input_text_flags = 0);
 
+    bool SplitterBehavior(ImGuiID id, ImGuiAxis axis, float line_width, float *a_size,
+                          float *b_size,
+                  float a_min_size = 50.0f, float b_min_size = 50.0f,
+                  ImGuiWindowFlags window_flags = ImGuiWindowFlags_None);
+
     bool IsDragDropSource(ImGuiDragDropFlags flags = ImGuiDragDropFlags_None);
     void RenderDragDropTargetRect(const ImRect &bb, const ImRect &item_clip_rect,
                                   ImGuiDropFlags flags);

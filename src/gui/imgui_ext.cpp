@@ -1372,7 +1372,7 @@ bool ImGui::InputComboTextBox(const char *label, char *buffer, size_t buffer_len
     ImGui::SameLine(0, 0);
 
     bool is_combo_expanded = ImGui::IsPopupOpen("##combo_popup");
-    ImGuiDir arrow_dir     = is_combo_expanded ? ImGuiDir_Down : ImGuiDir_Left;
+    ImGuiDir arrow_dir     = ImGuiDir_Down;
 
     if (ImGui::ArrowButton("##combo_arrow", arrow_dir)) {
         if (is_combo_expanded) {
@@ -1415,6 +1415,36 @@ bool ImGui::InputComboTextBox(const char *label, char *buffer, size_t buffer_len
     ImGui::PopID();
 
     return ret;
+}
+
+bool ImGui::SplitterBehavior(ImGuiID id, ImGuiAxis axis, float line_width, float *a_size, float *b_size, float a_size_min, float b_size_min, ImGuiWindowFlags flags) {
+    ImGuiContext &g = *GImGui;
+    ImGuiWindow *window = g.CurrentWindow;
+
+    if (window->SkipItems)
+        return false;
+
+    ImVec2 mx = (window->DC.CurrentColumns || g.CurrentTable) ? window->WorkRect.Max
+                                                              : window->ContentRegionRect.Max;
+    mx -= window->DC.CursorPos;
+
+    ImGuiID splitter_id = GetID(id);
+
+    // Calculate the size and position of the splitter
+    ImRect bb;
+    if (axis == ImGuiAxis_X) {
+        bb.Min.x = window->DC.CursorPos.x + *a_size;
+        bb.Max.x = bb.Min.x + line_width;
+        bb.Min.y = window->DC.CursorPos.y;
+        bb.Max.y = window->DC.CursorPos.y + mx.y;
+    } else {
+        bb.Min.x = window->DC.CursorPos.x;
+        bb.Max.x = window->DC.CursorPos.x + mx.x;
+        bb.Min.y = window->DC.CursorPos.y + *a_size;
+        bb.Max.y = bb.Min.y + line_width + *a_size;
+    }
+
+    return ImGui::SplitterBehavior(bb, splitter_id, axis, a_size, b_size, a_size_min, b_size_min);;
 }
 
 bool ImGui::IsDragDropSource(ImGuiDragDropFlags flags) {

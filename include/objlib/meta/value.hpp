@@ -336,6 +336,8 @@ namespace Toolbox::Object {
 
         [[nodiscard]] MetaType type() const { return m_type; }
 
+        [[nodiscard]] size_t computeSize() const;
+
         template <typename T> [[nodiscard]] Result<T, std::string> get() const {
             return getBuf<T>(m_type, m_value_buf);
         }

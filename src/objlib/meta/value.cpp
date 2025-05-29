@@ -8,6 +8,42 @@
 
 namespace Toolbox::Object {
 
+    size_t MetaValue::computeSize() const {
+        switch (m_type) {
+        case MetaType::BOOL:
+        case MetaType::S8:
+        case MetaType::U8:
+            return sizeof(u8);
+        case MetaType::S16:
+        case MetaType::U16:
+            return sizeof(u16);
+        case MetaType::S32:
+        case MetaType::U32:
+            return sizeof(u32);
+        case MetaType::F32:
+            return sizeof(f32);
+        case MetaType::F64:
+            return sizeof(f64);
+        case MetaType::STRING: {
+            // Strings are stored as a null-terminated array of characters.
+            // We return the size of the string plus one for the null terminator.
+            return m_value_buf.size() + 1;
+        }
+        case MetaType::VEC3:
+            return sizeof(f32) * 3;
+        case MetaType::TRANSFORM:
+            return sizeof(f32) * 12;  // 3 for translation, 3 for rotation, 3 for scale
+        case MetaType::RGB:
+            return sizeof(u8) * 3;  // RGB is 3 bytes
+        case MetaType::RGBA:
+            return sizeof(u8) * 4;  // RGBA is 4 bytes
+        default:
+            TOOLBOX_WARN("[MetaValue] Unknown type for size computation: {}",
+                         magic_enum::enum_name(m_type));
+            return 0;  // Unknown type or no value
+        }
+    }
+
     Result<void, JSONError> MetaValue::loadJSON(const nlohmann::json &json_value) {
         return tryJSON(json_value, [this](const json &j) {
             switch (m_type) {
@@ -237,9 +273,9 @@ namespace Toolbox::Object {
             }
             case MetaType::VEC3:
                 glm::vec3 vec;
-                vec.x   = in.read<f32, std::endian::big>();
-                vec.y   = in.read<f32, std::endian::big>();
-                vec.z   = in.read<f32, std::endian::big>();
+                vec.x = in.read<f32, std::endian::big>();
+                vec.y = in.read<f32, std::endian::big>();
+                vec.z = in.read<f32, std::endian::big>();
                 set(vec);
                 break;
             case MetaType::TRANSFORM: {

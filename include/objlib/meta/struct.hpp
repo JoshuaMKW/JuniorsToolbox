@@ -1,16 +1,16 @@
 #pragma once
 
 #include "core/memory.hpp"
-#include "smart_resource.hpp"
 #include "errors.hpp"
 #include "objlib/qualname.hpp"
 #include "serial.hpp"
+#include "smart_resource.hpp"
 #include <expected>
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <vector>
 #include <variant>
+#include <vector>
 
 namespace Toolbox::Object {
 
@@ -34,9 +34,7 @@ namespace Toolbox::Object {
     public:
         [[nodiscard]] constexpr std::string_view name() const { return m_name; }
 
-        [[nodiscard]] constexpr std::vector<RefPtr<MetaMember>> members() const {
-            return m_members;
-        }
+        [[nodiscard]] constexpr std::vector<MemberT> members() const { return m_members; }
 
         [[nodiscard]] GetMemberT getMember(std::string_view name) const;
         [[nodiscard]] GetMemberT getMember(const QualifiedName &name) const;
@@ -44,6 +42,8 @@ namespace Toolbox::Object {
         [[nodiscard]] constexpr MetaStruct *parent() const { return m_parent; }
 
         [[nodiscard]] constexpr QualifiedName getQualifiedName() const;
+
+        [[nodiscard]] size_t computeSize() const;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width,
                   bool naked = false) const;
@@ -61,8 +61,8 @@ namespace Toolbox::Object {
 
     private:
         std::string m_name;
-        std::vector<RefPtr<MetaMember>> m_members = {};
-        MetaStruct *m_parent                               = nullptr;
+        std::vector<MemberT> m_members = {};
+        MetaStruct *m_parent           = nullptr;
 
         mutable CacheMemberT m_member_cache;
     };

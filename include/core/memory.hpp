@@ -9,6 +9,8 @@
 namespace Toolbox {
 
     template <typename T> using RefPtr = std::shared_ptr<T>;
+    template <typename T> using ScopePtr = std::unique_ptr<T>;
+
     template <typename T, typename... Args> RefPtr<T> make_referable(Args &&...args) {
         return std::make_shared<T>(std::forward<Args>(args)...);
     }
@@ -21,7 +23,11 @@ namespace Toolbox {
         return std::reinterpret_pointer_cast<T, F>(ref);
     }
 
-    template <typename T> using ScopePtr = std::unique_ptr<T>;
+    template <typename T, typename F> RefPtr<T> ref_cast(ScopePtr<F> &&ptr) {
+        static_assert(std::is_convertible_v<F *, T *>);
+        return RefPtr<T>(static_cast<T*>(ptr.release()), [](T *p) { delete p; });
+    }
+
     template <typename T, typename... Args> ScopePtr<T> make_scoped(Args &&...args) {
         return std::make_unique<T>(std::forward<Args>(args)...);
     }
