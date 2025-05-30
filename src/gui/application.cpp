@@ -599,7 +599,7 @@ namespace Toolbox {
             }
 
             if (ImGui::MenuItem("Debugger")) {
-                createWindow<DebuggerWindow>("Debugger");
+                createWindow<DebuggerWindow>("Dolphin Memory Debugger");
             }
 
             ImGui::SeparatorText("Asset Editors");

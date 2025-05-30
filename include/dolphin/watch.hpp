@@ -28,6 +28,12 @@ namespace Toolbox {
         MemoryWatch &operator=(MemoryWatch &&)      = default;
 
     public:
+        const std::string &getWatchName() const { return m_watch_name; }
+        void setWatchName(const std::string &name) { m_watch_name = name; }
+
+        bool isLocked() const { return m_is_locked; }
+        void setLocked(bool locked) { m_is_locked = locked; }
+
         [[nodiscard]] u32 getWatchAddress() const { return m_watch_address; }
         [[nodiscard]] u32 getWatchSize() const { return m_watch_size; }
 
@@ -45,11 +51,13 @@ namespace Toolbox {
         void notify(void *old_value, void *new_value, u32 value_width);
 
     private:
+        std::string m_watch_name;
         u32 m_watch_address;
         u32 m_watch_size;
         watch_notify_cb m_watch_notify_cb;
         void *m_last_value_buf       = nullptr;
         bool m_last_value_needs_init = true;
+        bool m_is_locked = false;
     };
 
     class MetaWatch {
@@ -69,6 +77,15 @@ namespace Toolbox {
 
         MetaWatch &operator=(const MetaWatch &) = default;
         MetaWatch &operator=(MetaWatch &&)      = default;
+
+    public:
+        const std::string &getWatchName() const { return m_memory_watch.getWatchName(); }
+        void setWatchName(const std::string &name) { m_memory_watch.setWatchName(name); }
+
+        std::string_view getWatchType() const { return m_meta_struct->name(); }
+
+        bool isLocked() const { return m_memory_watch.isLocked(); }
+        void setLocked(bool locked) { m_memory_watch.setLocked(locked); }
 
         [[nodiscard]] u32 getWatchAddress() const;
         [[nodiscard]] u32 getWatchSize() const;

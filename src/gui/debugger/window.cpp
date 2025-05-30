@@ -62,7 +62,10 @@ namespace Toolbox::UI {
         ImGui::SameLine(0);
         // ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::InvisibleButton("##MemorySplitter", ImVec2(splitter_width, avail_region.y));
-        ImGui::SameLine(0, 0);
+
+        ImGuiWindow *window    = ImGui::GetCurrentWindow();
+        window->DC.CursorPos.x = window->DC.CursorPosPrevLine.x - splitter_width;
+        window->DC.CursorPos.y = window->DC.CursorPosPrevLine.y;
 
         // Disable group padding
 
@@ -405,9 +408,150 @@ namespace Toolbox::UI {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
             ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
 
+            ImGuiStyle &style           = ImGui::GetStyle();
+            ImVec2 avail_content_region = ImGui::GetContentRegionAvail();
+
+            float group_button_width = (avail_content_region.x - style.FramePadding.x - style.ItemSpacing.x) * 0.5f;
+            float watch_button_width = group_button_width;
+
+            if (ImGui::Button("Add Group", {group_button_width, 0.0f}, 5.0f,
+                              ImDrawFlags_RoundCornersAll)) {
+                // TODO: Add Watch Dialog here.
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Add Watch", {watch_button_width, 0.0f}, 5.0f,
+                              ImDrawFlags_RoundCornersAll)) {
+                // TODO: Add Watch Dialog here.
+            }
+
+            ImGui::Separator();
+
+            // Name | Type | Address | Lock | Value
+            // ------------------------------------
+            // ---
+            const int columns           = 5;
+            const ImGuiTableFlags flags = ImGuiTableFlags_Resizable;
+            if (ImGui::BeginTable("##MemoryWatchTable", 5, flags)) {
+                for (MetaWatch &w : m_meta_watches) {
+                    renderMemoryWatch(w);
+                }
+
+                for (MemoryWatch &w : m_byte_watches) {
+                    renderMemoryWatch(w);
+                }
+
+                ImGui::EndTable();
+            }
+
             ImGui::PopStyleVar(5);
         }
         ImGui::EndChild();
+    }
+
+    void DebuggerWindow::renderMemoryWatch(MetaWatch &watch) {
+        ImGui::TableNextRow();
+
+        DolphinHookManager &manager = DolphinHookManager::instance();
+        void *mem_view              = manager.getMemoryView();
+        size_t mem_size             = manager.getMemorySize();
+
+        if (ImGui::TableNextColumn()) {
+            ImGui::Text(watch.getWatchName().c_str());
+        }
+
+        if (ImGui::TableNextColumn()) {
+            ImGui::Text(watch.getWatchType().data());
+        }
+
+        if (ImGui::TableNextColumn()) {
+            ImGui::Text("0x%X", watch.getWatchAddress());
+        }
+
+        if (ImGui::TableNextColumn()) {
+            bool is_locked = watch.isLocked();
+            if (ImGui::Checkbox("##lockbox", &is_locked)) {
+                watch.setLocked(!is_locked);
+            }
+        }
+
+        if (ImGui::TableNextColumn()) {
+            u32 true_address = watch.getWatchAddress() & 0x1FFFFFF;
+            u32 watch_size   = watch.getWatchSize();
+
+            if (true_address + watch_size > mem_size) {
+                ImGui::Text("Invalid Watch");
+            } else {
+                ImVec2 avail_region = ImGui::GetContentRegionAvail();
+                float local_pos_x   = 0.0f;
+
+                float byte_render_width = ImGui::CalcTextSize("00").x;
+                float byte_trail_width  = ImGui::CalcTextSize("...").x;
+
+                u8 *watch_view = (u8 *)mem_view + true_address;
+                while (local_pos_x + byte_render_width + byte_trail_width < avail_region.x) {
+                    for (int i = 0; i < watch_size; ++i) {
+                        ImGui::Text("%02X", watch_view[i]);
+                        if (i < watch_size - 1) {
+                            ImGui::SameLine();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    void DebuggerWindow::renderMemoryWatch(MemoryWatch &watch) {
+        ImGui::TableNextRow();
+
+        DolphinHookManager &manager = DolphinHookManager::instance();
+        void *mem_view              = manager.getMemoryView();
+        size_t mem_size             = manager.getMemorySize();
+
+        if (ImGui::TableNextColumn()) {
+            ImGui::Text(watch.getWatchName().c_str());
+        }
+
+        if (ImGui::TableNextColumn()) {
+            ImGui::Text("Bytes [%lu]", watch.getWatchSize());
+        }
+
+        if (ImGui::TableNextColumn()) {
+            ImGui::Text("0x%X", watch.getWatchAddress());
+        }
+
+        if (ImGui::TableNextColumn()) {
+            bool is_locked = watch.isLocked();
+            if (ImGui::Checkbox("##lockbox", &is_locked)) {
+                watch.setLocked(!is_locked);
+            }
+        }
+
+        if (ImGui::TableNextColumn()) {
+            u32 true_address = watch.getWatchAddress() & 0x1FFFFFF;
+            u32 watch_size   = watch.getWatchSize();
+
+            if (true_address + watch_size > mem_size) {
+                ImGui::Text("Invalid Watch");
+            } else {
+                ImVec2 avail_region = ImGui::GetContentRegionAvail();
+                float local_pos_x   = 0.0f;
+
+                float byte_render_width = ImGui::CalcTextSize("00").x;
+                float byte_trail_width  = ImGui::CalcTextSize("...").x;
+
+                u8 *watch_view = (u8 *)mem_view + true_address;
+                while (local_pos_x + byte_render_width + byte_trail_width < avail_region.x) {
+                    for (int i = 0; i < watch_size; ++i) {
+                        ImGui::Text("%02X", watch_view[i]);
+                        if (i < watch_size - 1) {
+                            ImGui::SameLine();
+                        }
+                    }
+                }
+            }
+        }
     }
 
     void DebuggerWindow::onAttach() {

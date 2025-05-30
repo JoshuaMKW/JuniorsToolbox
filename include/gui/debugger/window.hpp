@@ -15,6 +15,7 @@
 #include "smart_resource.hpp"
 
 #include "core/clipboard.hpp"
+#include "dolphin/watch.hpp"
 #include "game/task.hpp"
 #include "gui/context_menu.hpp"
 #include "gui/event/event.hpp"
@@ -38,11 +39,11 @@ namespace Toolbox::UI {
         void renderMemoryAddressBar();
         void renderMemoryView();
         void renderMemoryWatchList();
+        void renderMemoryWatch(MetaWatch &);
+        void renderMemoryWatch(MemoryWatch &);
 
     public:
-        ImGuiWindowFlags flags() const override {
-            return ImWindow::flags() | ImGuiWindowFlags_MenuBar;
-        }
+        ImGuiWindowFlags flags() const override { return ImWindow::flags(); }
 
         const ImGuiWindowClass *windowClass() const override {
             if (parent() && parent()->windowClass()) {
@@ -95,14 +96,17 @@ namespace Toolbox::UI {
         u8 m_byte_width    = 1;
 
         bool m_initialized_splitter_widths = false;
-        float m_list_width = 0.0f;
-        float m_view_width = 0.0f;
+        float m_list_width                 = 0.0f;
+        float m_view_width                 = 0.0f;
 
         std::array<char, 32> m_address_input;
         std::vector<HistoryPair> m_address_search_history = {};
 
         size_t m_column_count_idx = 0;
-        size_t m_byte_width_idx = 0;
+        size_t m_byte_width_idx   = 0;
+
+        std::vector<MetaWatch> m_meta_watches;
+        std::vector<MemoryWatch> m_byte_watches;
 
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;
