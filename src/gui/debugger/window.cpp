@@ -81,6 +81,7 @@ namespace Toolbox::UI {
         }
         ImGui::EndChild();
 
+        m_add_group_dialog.render(m_watch_groups.size() - 1);
         // ImGui::PopStyleVar();
     }
 
@@ -411,12 +412,13 @@ namespace Toolbox::UI {
             ImGuiStyle &style           = ImGui::GetStyle();
             ImVec2 avail_content_region = ImGui::GetContentRegionAvail();
 
-            float group_button_width = (avail_content_region.x - style.FramePadding.x - style.ItemSpacing.x) * 0.5f;
+            float group_button_width =
+                (avail_content_region.x - style.FramePadding.x - style.ItemSpacing.x) * 0.5f;
             float watch_button_width = group_button_width;
 
             if (ImGui::Button("Add Group", {group_button_width, 0.0f}, 5.0f,
                               ImDrawFlags_RoundCornersAll)) {
-                // TODO: Add Watch Dialog here.
+                m_add_group_dialog.open();
             }
 
             ImGui::SameLine();
@@ -434,13 +436,20 @@ namespace Toolbox::UI {
             const int columns           = 5;
             const ImGuiTableFlags flags = ImGuiTableFlags_Resizable;
             if (ImGui::BeginTable("##MemoryWatchTable", 5, flags)) {
-                for (MetaWatch &w : m_meta_watches) {
-                    renderMemoryWatch(w);
+
+                //ImGui::TableSetupScrollFreeze(3, 1);
+                ImGui::TableSetupColumn("Name");
+                ImGui::TableSetupColumn("Type");
+                ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                ImGui::TableSetupColumn("Lock", ImGuiTableColumnFlags_WidthFixed, 30.0f);
+                ImGui::TableSetupColumn("Value");
+                ImGui::TableHeadersRow();
+
+                for (WatchGroup &group : m_watch_groups) {
+                    renderWatchGroup(group);
                 }
 
-                for (MemoryWatch &w : m_byte_watches) {
-                    renderMemoryWatch(w);
-                }
+                renderWatchGroup(m_root_group);
 
                 ImGui::EndTable();
             }
@@ -451,6 +460,8 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::renderMemoryWatch(MetaWatch &watch) {
+        bool open = false;
+
         ImGui::TableNextRow();
 
         DolphinHookManager &manager = DolphinHookManager::instance();
@@ -458,7 +469,7 @@ namespace Toolbox::UI {
         size_t mem_size             = manager.getMemorySize();
 
         if (ImGui::TableNextColumn()) {
-            ImGui::Text(watch.getWatchName().c_str());
+            open = ImGui::TreeNodeEx(watch.getWatchName().c_str(), ImGuiTreeNodeFlags_Leaf);
         }
 
         if (ImGui::TableNextColumn()) {
@@ -500,9 +511,15 @@ namespace Toolbox::UI {
                 }
             }
         }
+
+        if (open) {
+            ImGui::TreePop();
+        }
     }
 
     void DebuggerWindow::renderMemoryWatch(MemoryWatch &watch) {
+        bool open = false;
+
         ImGui::TableNextRow();
 
         DolphinHookManager &manager = DolphinHookManager::instance();
@@ -510,7 +527,7 @@ namespace Toolbox::UI {
         size_t mem_size             = manager.getMemorySize();
 
         if (ImGui::TableNextColumn()) {
-            ImGui::Text(watch.getWatchName().c_str());
+            open = ImGui::TreeNodeEx(watch.getWatchName().c_str(), ImGuiTreeNodeFlags_Leaf);
         }
 
         if (ImGui::TableNextColumn()) {
@@ -552,12 +569,79 @@ namespace Toolbox::UI {
                 }
             }
         }
+
+        if (open) {
+            ImGui::TreePop();
+        }
+    }
+
+    void DebuggerWindow::renderWatchGroup(WatchGroup &group) {
+        bool open = false;
+
+        if (group.m_name == "") {
+            for (MetaWatch &watch : group.m_meta_watches) {
+                renderMemoryWatch(watch);
+            }
+
+            for (MemoryWatch &watch : group.m_byte_watches) {
+                renderMemoryWatch(watch);
+            }
+
+            return;
+        }
+
+        ImGui::TableNextRow();
+
+        if (ImGui::TableNextColumn()) {
+            open = ImGui::TreeNodeEx(group.m_name.c_str());
+        }
+
+        ImGui::TableNextColumn();
+        ImGui::TableNextColumn();
+
+        if (ImGui::TableNextColumn()) {
+            if (ImGui::Checkbox("##lockbox", &group.m_locked)) {
+                for (MetaWatch &watch : group.m_meta_watches) {
+                    watch.setLocked(group.m_locked);
+                }
+
+                for (MemoryWatch &watch : group.m_byte_watches) {
+                    watch.setLocked(group.m_locked);
+                }
+            }
+        }
+
+        ImGui::TableNextColumn();
+
+        if (open) {
+            for (MetaWatch &watch : group.m_meta_watches) {
+                renderMemoryWatch(watch);
+            }
+
+            for (MemoryWatch &watch : group.m_byte_watches) {
+                renderMemoryWatch(watch);
+            }
+
+            ImGui::TreePop();
+        }
     }
 
     void DebuggerWindow::onAttach() {
         ImWindow::onAttach();
 
         m_initialized_splitter_widths = false;
+
+        m_add_group_dialog.setInsertPolicy(
+            AddGroupDialog::InsertPolicy::INSERT_AFTER);  // Insert after the current group
+        m_add_group_dialog.setFilterPredicate([this](std::string_view group_name) -> bool {
+            // Check if the group name is unique
+            for (const auto &group : m_watch_groups) {
+                if (group.m_name == group_name) {
+                    return false;  // Group name already exists
+                }
+            }
+            return true;  // Group name is unique
+        });
         // buildContextMenu();
     }
 

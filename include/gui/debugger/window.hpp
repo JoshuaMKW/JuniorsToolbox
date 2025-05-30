@@ -18,6 +18,7 @@
 #include "dolphin/watch.hpp"
 #include "game/task.hpp"
 #include "gui/context_menu.hpp"
+#include "gui/debugger/dialog.hpp"
 #include "gui/event/event.hpp"
 #include "gui/image/imagepainter.hpp"
 #include "gui/project/asset.hpp"
@@ -26,6 +27,13 @@
 #include <imgui.h>
 
 namespace Toolbox::UI {
+
+    struct WatchGroup {
+        std::string m_name;
+        std::vector<MetaWatch> m_meta_watches;
+        std::vector<MemoryWatch> m_byte_watches;
+        bool m_locked = false;
+    };
 
     class DebuggerWindow final : public ImWindow {
     public:
@@ -41,6 +49,7 @@ namespace Toolbox::UI {
         void renderMemoryWatchList();
         void renderMemoryWatch(MetaWatch &);
         void renderMemoryWatch(MemoryWatch &);
+        void renderWatchGroup(WatchGroup &);
 
     public:
         ImGuiWindowFlags flags() const override { return ImWindow::flags(); }
@@ -105,14 +114,16 @@ namespace Toolbox::UI {
         size_t m_column_count_idx = 0;
         size_t m_byte_width_idx   = 0;
 
-        std::vector<MetaWatch> m_meta_watches;
-        std::vector<MemoryWatch> m_byte_watches;
+        WatchGroup m_root_group;
+        std::vector<WatchGroup> m_watch_groups;
 
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;
 
         ContextMenu<ModelIndex> m_memory_view_context_menu;
         ContextMenu<ModelIndex> m_watch_view_context_menu;
+
+        AddGroupDialog m_add_group_dialog;
     };
 
 }  // namespace Toolbox::UI
