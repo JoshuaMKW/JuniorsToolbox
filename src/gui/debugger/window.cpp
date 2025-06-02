@@ -81,7 +81,7 @@ namespace Toolbox::UI {
         }
         ImGui::EndChild();
 
-        m_add_group_dialog.render(m_watch_groups.size() - 1);
+        m_add_group_dialog.render(m_watch_groups.size() > 0 ? m_watch_groups.size() - 1 : 0);
         // ImGui::PopStyleVar();
     }
 
@@ -437,7 +437,7 @@ namespace Toolbox::UI {
             const ImGuiTableFlags flags = ImGuiTableFlags_Resizable;
             if (ImGui::BeginTable("##MemoryWatchTable", 5, flags)) {
 
-                //ImGui::TableSetupScrollFreeze(3, 1);
+                // ImGui::TableSetupScrollFreeze(3, 1);
                 ImGui::TableSetupColumn("Name");
                 ImGui::TableSetupColumn("Type");
                 ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 80.0f);
@@ -592,9 +592,14 @@ namespace Toolbox::UI {
 
         ImGui::TableNextRow();
 
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, {0, 0, 0, 0});
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, {0, 0, 0, 0});
+
         if (ImGui::TableNextColumn()) {
-            open = ImGui::TreeNodeEx(group.m_name.c_str());
+            open = ImGui::TreeNodeEx(group.m_name.c_str(), ImGuiTreeNodeFlags_SpanAllColumns);
         }
+
+        ImGui::PopStyleColor(2);
 
         ImGui::TableNextColumn();
         ImGui::TableNextColumn();
@@ -642,6 +647,11 @@ namespace Toolbox::UI {
             }
             return true;  // Group name is unique
         });
+        m_add_group_dialog.setActionOnAccept(
+            [&](size_t index, AddGroupDialog::InsertPolicy policy, std::string_view group_name) {
+                WatchGroup &&new_group = WatchGroup{std::string(group_name), {}, {}, false};
+                m_watch_groups.emplace_back(std::move(new_group));
+            });
         // buildContextMenu();
     }
 

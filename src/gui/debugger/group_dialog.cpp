@@ -10,9 +10,15 @@ namespace Toolbox::UI {
                                                                      strlen(m_group_name.data())))
                                : true;
 
+        if (m_opening) {
+            ImGui::OpenPopup("Add Group");
+            m_opening = false;
+            m_open    = true;
+        }
+
         if (ImGui::BeginPopupModal("Add Group", &m_open, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("Name: ");
-            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            ImGui::SetNextItemWidth(300.0f);
 
             ImGui::InputTextWithHint("##group_name", "Enter unique name here...",
                                      m_group_name.data(), m_group_name.size(),
@@ -49,7 +55,9 @@ namespace Toolbox::UI {
             ImGui::SameLine();
 
             if (ImGui::Button("Cancel")) {
-                m_on_reject(selection_index);
+                if (m_on_reject) {
+                    m_on_reject(selection_index);
+                }
                 m_open = false;
             }
 

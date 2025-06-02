@@ -37,7 +37,6 @@ namespace Toolbox::UI {
         void setup();
 
         void open() {
-            m_open    = true;
             m_opening = true;
         }
         void render(size_t selection_index);
