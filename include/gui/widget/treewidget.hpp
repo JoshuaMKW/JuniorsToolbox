@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "gui/widget/widget.hpp"
+#include "model/model.hpp"
 #include "unique.hpp"
 
 #include <imgui.h>
@@ -49,11 +50,19 @@ namespace Toolbox::UI {
     template <> struct TreeNodeRenderProxy<std::string> {
         bool renderBegin(const std::string &node_data, ImRect &out_rect,
                          ImGuiTreeNodeFlags default_flags) {
-            ImGui::TreeNodeEx(node_data.c_str(), default_flags);
+            m_is_open = ImGui::TreeNodeEx(node_data.c_str(), default_flags);
             out_rect.Min = ImGui::GetItemRectMin();
             out_rect.Max = ImGui::GetItemRectMax();
+            return m_is_open;
         }
-        void renderEnd() {}
+        void renderEnd() {
+            if (m_is_open) {
+                ImGui::TreePop();
+            }
+        }
+
+    private:
+        bool m_is_open = false;
     };
 
     struct DropTargetInfo {
@@ -103,6 +112,10 @@ namespace Toolbox::UI {
 
         virtual ~ImTreeWidget() = default;
 
+        void setModel(RefPtr<IDataModel> model) { m_model = model; }
+
+        ModelIndex indexAt(const ImVec2 &point) const;
+
         TreeNodeID rootNode() const { return m_root_node; }
         void setRootNode(const TreeNodeID &root_node) { m_root_node = root_node; }
         void setRootNode(TreeNodeID &&root_node) { m_root_node = std::move(root_node); }
@@ -146,12 +159,13 @@ namespace Toolbox::UI {
     protected:
         void onRenderBody(TimeStep delta_time) override;
 
-        std::optional<TreeNodeID> recursiveFindNode(const ImVec2 &pos,
-                                                    const TreeNodeID &node, size_t index) const;
+        std::optional<TreeNodeID> recursiveFindNode(const ImVec2 &pos, const TreeNodeID &node,
+                                                    size_t index) const;
         DropTargetInfo recursiveFindTarget(const ImVec2 &pos, const TreeNodeID &node,
                                            size_t index) const;
 
     private:
+        RefPtr<IDataModel> m_model;
         TreeNodeID m_root_node;
         mutable std::unordered_map<TreeNodeID, TreeNodeInfo> m_node_info;
     };
@@ -229,7 +243,7 @@ namespace Toolbox::UI {
         return {};
     }
 
-    template <typename _T> TreeNodeID ImTreeWidget<_T>::findNode(const _T& value) const {
+    template <typename _T> TreeNodeID ImTreeWidget<_T>::findNode(const _T &value) const {
         return {};
     }
 

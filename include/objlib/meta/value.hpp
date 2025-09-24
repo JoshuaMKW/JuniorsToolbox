@@ -39,6 +39,7 @@ namespace Toolbox::Object {
         STRING,
         VEC3,
         TRANSFORM,
+        MTX34,
         RGB,
         RGBA,
         UNKNOWN,
@@ -94,6 +95,10 @@ namespace Toolbox::Object {
 
     template <> struct map_to_type_enum<Transform> {
         static constexpr MetaType value = MetaType::TRANSFORM;
+    };
+
+    template <> struct map_to_type_enum<glm::mat3x4> {
+        static constexpr MetaType value = MetaType::MTX34;
     };
 
     template <> struct map_to_type_enum<Color::RGB24> {
@@ -182,7 +187,13 @@ namespace Toolbox::Object {
     template <> struct meta_type_info<MetaType::TRANSFORM> {
         static constexpr std::string_view name = "transform";
         static constexpr size_t size           = 36;
-        static constexpr size_t alignment      = 16;
+        static constexpr size_t alignment      = 4;
+    };
+
+    template <> struct meta_type_info<MetaType::MTX34> {
+        static constexpr std::string_view name = "mtx34";
+        static constexpr size_t size           = 48;
+        static constexpr size_t alignment      = 4;
     };
 
     template <> struct meta_type_info<MetaType::RGB> {
@@ -223,6 +234,8 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::VEC3>::name;
         case MetaType::TRANSFORM:
             return meta_type_info<MetaType::TRANSFORM>::name;
+        case MetaType::MTX34:
+            return meta_type_info<MetaType::MTX34>::name;
         case MetaType::RGB:
             return meta_type_info<MetaType::RGB>::name;
         case MetaType::RGBA:
@@ -255,8 +268,12 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::F64>::size;
         case MetaType::STRING:
             return meta_type_info<MetaType::STRING>::size;
+        case MetaType::VEC3:
+            return meta_type_info<MetaType::VEC3>::size;
         case MetaType::TRANSFORM:
             return meta_type_info<MetaType::TRANSFORM>::size;
+        case MetaType::MTX34:
+            return meta_type_info<MetaType::MTX34>::size;
         case MetaType::RGB:
             return meta_type_info<MetaType::RGB>::size;
         case MetaType::RGBA:
@@ -291,6 +308,8 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::STRING>::alignment;
         case MetaType::TRANSFORM:
             return meta_type_info<MetaType::TRANSFORM>::alignment;
+        case MetaType::MTX34:
+            return meta_type_info<MetaType::MTX34>::alignment;
         case MetaType::RGB:
             return meta_type_info<MetaType::RGB>::alignment;
         case MetaType::RGBA:
@@ -322,6 +341,8 @@ namespace Toolbox::Object {
         }
         MetaValue(const MetaValue &other) = default;
         MetaValue(MetaValue &&other)      = default;
+
+        ~MetaValue() override = default;
 
         MetaValue &operator=(const MetaValue &other) = default;
         MetaValue &operator=(MetaValue &&other)      = default;
@@ -500,6 +521,20 @@ namespace Toolbox::Object {
             switch (type) {
             case MetaType::TRANSFORM:
                 return meta_value->set<Transform>(value);
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value,
+                                                const glm::mat3x4 &value, MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::MTX34:
+                return meta_value->set<glm::mat3x4>(value);
             default:
                 return false;
             }

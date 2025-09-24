@@ -8,6 +8,7 @@
 #include "core/error.hpp"
 #include "core/memory.hpp"
 #include "gui/scene/nodeinfo.hpp"
+#include "model/model.hpp"
 #include "objlib/template.hpp"
 
 namespace Toolbox::UI {
@@ -20,10 +21,9 @@ namespace Toolbox::UI {
             INSERT_CHILD,
         };
 
-        using action_t =
-            std::function<void(size_t, InsertPolicy, std::string_view)>;
-        using cancel_t = std::function<void(size_t)>;
-        using filter_t = std::function<bool(std::string_view)>;
+        using action_t = std::function<void(ModelIndex, size_t, InsertPolicy, std::string_view)>;
+        using cancel_t = std::function<void(ModelIndex)>;
+        using filter_t = std::function<bool(std::string_view, ModelIndex group_idx)>;
 
         AddGroupDialog()  = default;
         ~AddGroupDialog() = default;
@@ -36,16 +36,74 @@ namespace Toolbox::UI {
 
         void setup();
 
-        void open() {
-            m_opening = true;
-        }
-        void render(size_t selection_index);
+        void open() { m_opening = true; }
+        bool is_open() const { return m_open == true; }
+
+        void render(ModelIndex group_idx, size_t row);
 
     private:
         bool m_open    = false;
         bool m_opening = false;
 
         std::array<char, 128> m_group_name = {};
+
+        InsertPolicy m_insert_policy = InsertPolicy::INSERT_BEFORE;
+
+        action_t m_on_accept;
+        cancel_t m_on_reject;
+        filter_t m_filter_predicate;
+    };
+
+    class AddWatchDialog {
+    public:
+        enum class InsertPolicy {
+            INSERT_BEFORE,
+            INSERT_AFTER,
+            INSERT_CHILD,
+        };
+
+        using action_t = std::function<void(ModelIndex, size_t, InsertPolicy, std::string_view, MetaType, u32, u32)>;
+        using cancel_t = std::function<void(ModelIndex)>;
+        using filter_t = std::function<bool(std::string_view, ModelIndex group_idx)>;
+
+        AddWatchDialog()  = default;
+        ~AddWatchDialog() = default;
+
+        void setInsertPolicy(InsertPolicy policy) { m_insert_policy = policy; }
+        void setActionOnAccept(action_t on_accept) { m_on_accept = on_accept; }
+        void setActionOnReject(cancel_t on_reject) { m_on_reject = on_reject; }
+
+        void setFilterPredicate(filter_t filter) { m_filter_predicate = std::move(filter); }
+
+        void setup();
+
+        void open() { m_opening = true; }
+        bool is_open() const { return m_open == true; }
+
+        void render(ModelIndex group_idx, size_t row);
+
+        void renderPreview(f32 label_width, u32 address, size_t address_size);
+        void renderPreviewSingle(f32 label_width, u32 address, size_t address_size);
+        void renderPreviewRGBA(f32 label_width, u32 address);
+        void renderPreviewRGB(f32 label_width, u32 address);
+        void renderPreviewVec3(f32 label_width, u32 address);
+        void renderPreviewTransform(f32 label_width, u32 address);
+        void renderPreviewMatrix34(f32 label_width, u32 address);
+        void calcPreview(char *preview_out, size_t preview_size, u32 address, size_t address_size,
+                         MetaType address_type) const;
+        Color::RGBShader calcColorRGB(u32 address);
+        Color::RGBAShader calcColorRGBA(u32 address);
+
+    private:
+        bool m_open    = false;
+        bool m_opening = false;
+
+        std::array<char, 128> m_watch_name   = {};
+        std::array<char, 32> m_watch_address = {};
+
+        MetaType m_watch_type = MetaType::U8;
+        // std::array<char, 16> m_watch_size = {};
+        size_t m_watch_size = 0;
 
         InsertPolicy m_insert_policy = InsertPolicy::INSERT_BEFORE;
 

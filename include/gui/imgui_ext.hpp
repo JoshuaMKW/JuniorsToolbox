@@ -2,6 +2,9 @@
 
 #include "core/assert.hpp"
 #include "core/core.hpp"
+#include "core/memory.hpp"
+#include "image/imagebuilder.hpp"
+#include "image/imagehandle.hpp"
 
 #ifdef IM_ASSERT
 #undef IM_ASSERT
@@ -51,6 +54,12 @@ namespace ImGui {
                       ImDrawFlags draw_flags);
     bool SwitchButton(const char *label, bool active, ImVec2 size, ImGuiButtonFlags flags,
                       float rounding, ImDrawFlags draw_flags);
+    bool ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image, ImVec2 size = ImVec2{0, 0},
+                     ImGuiButtonFlags flags = ImGuiButtonFlags_None);
+    bool ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image, ImVec2 size,
+                     ImGuiButtonFlags flags, ImDrawFlags draw_flags);
+    bool ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image, ImVec2 size,
+                     ImGuiButtonFlags flags, float rounding, ImDrawFlags draw_flags);
     bool ArrowButtonEx(const char *str_id, ImGuiDir dir, ImVec2 size, ImGuiButtonFlags flags,
                        float arrow_scale);
     bool InputScalarCompact(const char *label, ImGuiDataType data_type, void *p_data,
@@ -84,13 +93,14 @@ namespace ImGui {
                            ImGuiInputTextFlags input_text_flags = 0);
 
     bool SplitterBehavior(ImGuiID id, ImGuiAxis axis, float line_width, float *a_size,
-                          float *b_size,
-                  float a_min_size = 50.0f, float b_min_size = 50.0f,
-                  ImGuiWindowFlags window_flags = ImGuiWindowFlags_None);
+                          float *b_size, float a_min_size = 50.0f, float b_min_size = 50.0f,
+                          ImGuiWindowFlags window_flags = ImGuiWindowFlags_None);
 
     bool IsDragDropSource(ImGuiDragDropFlags flags = ImGuiDragDropFlags_None);
     void RenderDragDropTargetRect(const ImRect &bb, const ImRect &item_clip_rect,
                                   ImGuiDropFlags flags);
+    void TextAndWidth(float width, const char *fmt, ...);
+    void TextColoredAndWidth(float width, ImVec4 col, const char *fmt, ...);
 
 }  // namespace ImGui
 

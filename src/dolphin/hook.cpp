@@ -326,13 +326,14 @@ namespace Toolbox::Dolphin {
                                     "Tried to read bytes without a memory handle!");
         }
 
-        if ((address & 0x7FFFFFFF) >= 0x1800000) {
+        u32 true_address = address & 0x7FFFFFFF;
+        if (true_address >= 0x1800000) {
             return make_error<void>("SHARED_MEMORY",
                                     "Tried to read bytes to a protected memory region!");
         }
 
-        const char *true_address = static_cast<const char *>(m_mem_view) + (address & 0x7FFFFFFF);
-        memcpy(buf, true_address, size);
+        const char *addr_buf = static_cast<const char *>(m_mem_view) + true_address;
+        memcpy(buf, addr_buf, size);
         return {};
     }
 
@@ -343,13 +344,72 @@ namespace Toolbox::Dolphin {
                                     "Tried to write bytes without a memory handle!");
         }
 
-        if ((address & 0x7FFFFFFF) >= 0x1800000) {
+        u32 true_address = address & 0x7FFFFFFF;
+        if (true_address >= 0x1800000) {
             return make_error<void>("SHARED_MEMORY",
                                     "Tried to write bytes to a protected memory region!");
         }
 
-        char *true_address = static_cast<char *>(m_mem_view) + (address & 0x7FFFFFFF);
-        memcpy(true_address, buf, size);
+        char *addr_buf = static_cast<char *>(m_mem_view) + true_address;
+        memcpy(addr_buf, buf, size);
+        return {};
+    }
+
+    Result<void> DolphinHookManager::readCString(char *buf, size_t buf_len, u32 address) {
+        std::unique_lock lock(m_memory_mutex);
+        if (!m_mem_view) {
+            return make_error<void>("SHARED_MEMORY",
+                                    "Tried to read bytes without a memory handle!");
+        }
+
+        u32 true_address = address & 0x7FFFFFFF;
+        if (true_address >= 0x1800000) {
+            return make_error<void>("SHARED_MEMORY",
+                                    "Tried to read bytes to a protected memory region!");
+        }
+
+        const char *addr_buf = static_cast<const char *>(m_mem_view) + true_address;
+
+        size_t i = 0;
+        while (true_address + i < 0x1800000 && i < buf_len) {
+            if (addr_buf[i] == '\0') {
+                buf[i] = '\0';
+                return {};
+            }
+            buf[i] = addr_buf[i];
+            i += 1;
+        }
+
+        buf[i - 1]      = '\0';
+        return {};
+    }
+
+    Result<void> DolphinHookManager::writeCString(const char *buf, u32 address, size_t buf_len) {
+        std::unique_lock lock(m_memory_mutex);
+        if (!m_mem_view) {
+            return make_error<void>("SHARED_MEMORY",
+                                    "Tried to read bytes without a memory handle!");
+        }
+
+        u32 true_address = address & 0x7FFFFFFF;
+        if (true_address >= 0x1800000) {
+            return make_error<void>("SHARED_MEMORY",
+                                    "Tried to read bytes to a protected memory region!");
+        }
+
+        char *addr_buf = static_cast<char *>(m_mem_view) + true_address;
+
+        size_t i = 0;
+        while (true_address + i < 0x1800000 && (buf_len == 0 || i < buf_len)) {
+            if (buf[i] == '\0') {
+                addr_buf[i] = '\0';
+                return {};
+            }
+            addr_buf[i] = buf[i];
+            i += 1;
+        }
+
+        addr_buf[i - 1] = '\0';
         return {};
     }
 

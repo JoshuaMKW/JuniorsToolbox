@@ -317,8 +317,10 @@ bool ImGui::AlignedButton(const char *label, ImVec2 size, ImGuiButtonFlags flags
 
 bool ImGui::AlignedButton(const char *label, ImVec2 size, ImGuiButtonFlags flags,
                           ImDrawFlags draw_flags) {
-    ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
-    ImVec2 text_size     = ImGui::CalcTextSize(label);
+    const ImGuiStyle &style = ImGui::GetStyle();
+
+    ImVec2 frame_padding = style.FramePadding;
+    ImVec2 text_size     = ImGui::CalcTextSize(label, NULL, true);
 
     bool clicked = false;
 
@@ -331,13 +333,18 @@ bool ImGui::AlignedButton(const char *label, ImVec2 size, ImGuiButtonFlags flags
 
         ImGui::SameLine();
 
-        ImGui::SetCursorPos(
-            {button_pos.x + button_size.x * 0.5f - text_size.x * 0.5f,
-             button_pos.y + button_size.y * 0.5f - text_size.y * 0.5f - frame_padding.y * 0.5f});
+        ImRect bb = {};
+        bb.Min    = {button_pos.x + button_size.x * 0.5f - text_size.x * 0.5f,
+                     button_pos.y + button_size.y * 0.5f - text_size.y * 0.5f -
+                         frame_padding.y * 0.5f};
+        bb.Max    = bb.Min + text_size;
         if (GImGui->DisabledStackSize > 0) {
+            RenderTextClipped(bb.Min + frame_padding, bb.Max - frame_padding, label, NULL,
+                              &text_size, style.ButtonTextAlign, &bb);
             ImGui::TextDisabled(label);
         } else {
-            ImGui::Text(label);
+            RenderTextClipped(bb.Min + frame_padding, bb.Max - frame_padding, label, NULL,
+                              &text_size, style.ButtonTextAlign, &bb);
         }
         ImGui::SetCursorPos(button_end_pos);
     }
@@ -380,6 +387,22 @@ bool ImGui::SwitchButton(const char *label, bool active, ImVec2 size, ImGuiButto
         ImGui::PopStyleColor();
     }
     return ret;
+}
+
+bool ImGui::ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image,
+                        ImVec2 size, ImGuiButtonFlags flags) {
+    return false;
+}
+
+bool ImGui::ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image,
+                        ImVec2 size, ImGuiButtonFlags flags, ImDrawFlags draw_flags) {
+    return false;
+}
+
+bool ImGui::ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image,
+                        ImVec2 size, ImGuiButtonFlags flags, float rounding,
+                        ImDrawFlags draw_flags) {
+    return false;
 }
 
 static inline ImGuiInputTextFlags InputScalar_DefaultCharsFilter(ImGuiDataType data_type,
@@ -910,8 +933,9 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     const ImVec2 eye_size   = CalcTextSize(ICON_FK_EYE, nullptr, false);
 
     const float text_offset_x =
-        g.FontSize +
-        (display_frame ? padding.x * 3 : padding.x * 2);  // Eye width + Collapsing arrow width + Spacing
+        g.FontSize + (display_frame
+                          ? padding.x * 3
+                          : padding.x * 2);  // Eye width + Collapsing arrow width + Spacing
     const float text_offset_y =
         ImMax(padding.y, window->DC.CurrLineTextBaseOffset);  // Latch before ItemSize changes it
     const float text_width = g.FontSize + label_size.x + padding.x * 2;  // Include collapsing arrow
@@ -1236,7 +1260,8 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     return is_open;
 }
 
-bool ImGui::BeginPopupContextItem(const char *str_id, ImGuiPopupFlags popup_flags, ImGuiHoveredFlags hover_flags) {
+bool ImGui::BeginPopupContextItem(const char *str_id, ImGuiPopupFlags popup_flags,
+                                  ImGuiHoveredFlags hover_flags) {
     ImGuiContext &g     = *GImGui;
     ImGuiWindow *window = g.CurrentWindow;
     if (window->SkipItems)
@@ -1366,7 +1391,7 @@ bool ImGui::InputComboTextBox(const char *label, char *buffer, size_t buffer_len
 
     bool ret = ImGui::InputText(label, buffer, buffer_len, input_text_flags);
 
-    ImVec2 popup_pos = ImGui::GetItemRectMin();
+    ImVec2 popup_pos  = ImGui::GetItemRectMin();
     ImVec2 popup_size = ImGui::GetItemRectSize();
 
     ImGui::SameLine(0, 0);
@@ -1386,12 +1411,12 @@ bool ImGui::InputComboTextBox(const char *label, char *buffer, size_t buffer_len
     popup_size.x +=
         ImGui::GetItemRectSize().x;  // Make sure the popup is wide enough to fit the arrow button
     popup_size.y = ImGui::GetTextLineHeightWithSpacing() * ImClamp(items_count, 1, 10);
-    
+
     ImGui::SetNextWindowPos(popup_pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(popup_size, ImGuiCond_Always);
 
     if (ImGui::BeginPopup("##combo_popup", ImGuiWindowFlags_NoMove)) {
-        //ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 2));
+        // ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 2));
         for (int i = 0; i < items_count; i++) {
             if (ImGui::Selectable(items[i], false)) {
                 if (selected_out)
@@ -1408,7 +1433,7 @@ bool ImGui::InputComboTextBox(const char *label, char *buffer, size_t buffer_len
                 ImGui::CloseCurrentPopup();
             }
         }
-        //ImGui::PopStyleVar();
+        // ImGui::PopStyleVar();
         ImGui::EndPopup();
     }
 
@@ -1417,8 +1442,10 @@ bool ImGui::InputComboTextBox(const char *label, char *buffer, size_t buffer_len
     return ret;
 }
 
-bool ImGui::SplitterBehavior(ImGuiID id, ImGuiAxis axis, float line_width, float *a_size, float *b_size, float a_size_min, float b_size_min, ImGuiWindowFlags flags) {
-    ImGuiContext &g = *GImGui;
+bool ImGui::SplitterBehavior(ImGuiID id, ImGuiAxis axis, float line_width, float *a_size,
+                             float *b_size, float a_size_min, float b_size_min,
+                             ImGuiWindowFlags flags) {
+    ImGuiContext &g     = *GImGui;
     ImGuiWindow *window = g.CurrentWindow;
 
     if (window->SkipItems)
@@ -1444,7 +1471,8 @@ bool ImGui::SplitterBehavior(ImGuiID id, ImGuiAxis axis, float line_width, float
         bb.Max.y = bb.Min.y + line_width + *a_size;
     }
 
-    return ImGui::SplitterBehavior(bb, splitter_id, axis, a_size, b_size, a_size_min, b_size_min);;
+    return ImGui::SplitterBehavior(bb, splitter_id, axis, a_size, b_size, a_size_min, b_size_min);
+    ;
 }
 
 bool ImGui::IsDragDropSource(ImGuiDragDropFlags flags) {
@@ -1550,6 +1578,30 @@ void ImGui::RenderDragDropTargetRect(const ImRect &bb, const ImRect &item_clip_r
 
     if (push_clip_rect)
         window->DrawList->PopClipRect();
+}
+
+void ImGui::TextAndWidth(float width, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    ImVec2 cursor_pos = ImGui::GetCursorPos();
+    ImGui::TextV(fmt, args);
+    ImGui::SetCursorPos(cursor_pos);
+
+    ImGui::Dummy(ImVec2(width, 0));
+    va_end(args);
+}
+
+void ImGui::TextColoredAndWidth(float width, ImVec4 col, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    ImVec2 cursor_pos = ImGui::GetCursorPos();
+    ImGui::TextColoredV(col, fmt, args);
+    ImGui::SetCursorPos(cursor_pos);
+
+    ImGui::Dummy(ImVec2(width, 0));
+    va_end(args);
 }
 
 bool ImGui::TreeNodeEx(const char *label, ImGuiTreeNodeFlags flags, bool focused, bool *visible) {

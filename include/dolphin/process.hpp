@@ -58,6 +58,14 @@ namespace Toolbox::Dolphin {
             return DolphinHookManager::instance().writeBytes(buf, address, size);
         }
 
+        Result<void> readCString(char *buf, size_t buf_len, u32 address) {
+            return DolphinHookManager::instance().readCString(buf, buf_len, address);
+        }
+
+        Result<void> writeCString(const char *buf, u32 address, size_t buf_len = 0) {
+            return DolphinHookManager::instance().writeCString(buf, address, buf_len);
+        }
+
     protected:
         void tRun(void *param) override;
 

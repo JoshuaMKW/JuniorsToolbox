@@ -1454,6 +1454,11 @@ namespace Toolbox {
         return m_source_model->getData(std::move(source_index), role);
     }
 
+    void FileSystemModelSortFilterProxy::setData(const ModelIndex &index, std::any data, int role) {
+        ModelIndex &&source_index = toSourceIndex(index);
+        m_source_model->setData(std::move(source_index), data, role);
+    }
+
     ModelIndex FileSystemModelSortFilterProxy::mkdir(const ModelIndex &parent,
                                                      const std::string &name) {
         ModelIndex &&source_index = toSourceIndex(parent);

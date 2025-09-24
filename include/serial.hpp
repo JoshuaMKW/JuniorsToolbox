@@ -171,6 +171,11 @@ namespace Toolbox {
             return size;
         }
 
+        bool eof() const { return m_out.eof(); }
+        bool good() const { return m_out.good(); }
+        bool fail() const { return m_out.fail(); }
+        bool bad() const { return m_out.bad(); }
+
         void pushBreakpoint();
         Result<void, SerialError> popBreakpoint();
 
@@ -319,6 +324,19 @@ namespace Toolbox {
             return size;
         }
 
+        size_t remaining() {
+            auto pos = tell();
+            seek(0, std::ios::end);
+            auto size = static_cast<size_t>(tell());
+            seek(pos, std::ios::beg);
+            return size - pos;
+        }
+
+        bool eof() const { return m_in.eof(); }
+        bool good() const { return m_in.good(); }
+        bool fail() const { return m_in.fail(); }
+        bool bad() const { return m_in.bad(); }
+
         void pushBreakpoint();
         Result<void, SerialError> popBreakpoint();
 
@@ -332,6 +350,8 @@ namespace Toolbox {
     public:
         ISerializable() = default;
         ISerializable(Deserializer &in) { deserialize(in); }
+        ISerializable(Serializer &out) { serialize(out); }
+        virtual ~ISerializable() = default;
 
         virtual Result<void, SerialError> serialize(Serializer &out) const = 0;
         virtual Result<void, SerialError> deserialize(Deserializer &in)    = 0;

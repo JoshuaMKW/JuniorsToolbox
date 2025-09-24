@@ -1,3 +1,5 @@
+#include "core/input/keycode.hpp"
+
 #include "gui/debugger/window.hpp"
 #include "gui/application.hpp"
 #include "gui/dragdrop/dragdropmanager.hpp"
@@ -81,8 +83,14 @@ namespace Toolbox::UI {
         }
         ImGui::EndChild();
 
-        m_add_group_dialog.render(m_watch_groups.size() > 0 ? m_watch_groups.size() - 1 : 0);
+        ModelIndex parent_index   = m_proxy_model->getParent(m_last_selected_index);
+        int64_t the_row           = m_proxy_model->getRow(m_last_selected_index);
+
+        m_add_group_dialog.render(m_last_selected_index, the_row);
+        m_add_watch_dialog.render(m_last_selected_index, the_row);
         // ImGui::PopStyleVar();
+
+        m_did_drag_drop = DragDropManager::instance().getCurrentDragAction() != nullptr;
     }
 
     static u32 calculateBytesForRow(u32 byte_limit, u8 column_count, u8 byte_width) {
@@ -208,6 +216,7 @@ namespace Toolbox::UI {
                     input_address = std::stoul(input_str, nullptr, 16);
                 } else {
                     ImGui::SetTooltip("Invalid address format. Use 0xXXXXXXXX format.");
+                    ImGui::EndChild();
                     return;
                 }
 
@@ -416,16 +425,19 @@ namespace Toolbox::UI {
                 (avail_content_region.x - style.FramePadding.x - style.ItemSpacing.x) * 0.5f;
             float watch_button_width = group_button_width;
 
+            bool any_interactive_clicked = false;
             if (ImGui::Button("Add Group", {group_button_width, 0.0f}, 5.0f,
                               ImDrawFlags_RoundCornersAll)) {
                 m_add_group_dialog.open();
+                any_interactive_clicked = true;
             }
 
             ImGui::SameLine();
 
             if (ImGui::Button("Add Watch", {watch_button_width, 0.0f}, 5.0f,
                               ImDrawFlags_RoundCornersAll)) {
-                // TODO: Add Watch Dialog here.
+                m_add_watch_dialog.open();
+                any_interactive_clicked = true;
             }
 
             ImGui::Separator();
@@ -443,192 +455,444 @@ namespace Toolbox::UI {
                 ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 80.0f);
                 ImGui::TableSetupColumn("Lock", ImGuiTableColumnFlags_WidthFixed, 30.0f);
                 ImGui::TableSetupColumn("Value");
+
+                float table_start_x = ImGui::GetCursorPosX() + ImGui::GetWindowPos().x;
+                float table_width = ImGui::GetContentRegionAvail().x;
+
                 ImGui::TableHeadersRow();
 
-                for (WatchGroup &group : m_watch_groups) {
-                    renderWatchGroup(group);
+                int64_t row_count = m_proxy_model->getRowCount(ModelIndex());
+                for (int64_t row = 0; row < row_count; ++row) {
+                    ModelIndex index = m_proxy_model->getIndex(row, 0);
+                    if (m_proxy_model->isIndexGroup(index)) {
+                        renderWatchGroup(index, 0, table_start_x, table_width);
+                    } else {
+                        renderMemoryWatch(index, 0, table_start_x, table_width);
+                    }
                 }
-
-                renderWatchGroup(m_root_group);
 
                 ImGui::EndTable();
             }
 
             ImGui::PopStyleVar(5);
+
+            if (!any_interactive_clicked && !m_add_group_dialog.is_open() &&
+                !m_add_watch_dialog.is_open()) {
+                bool left_click  = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
+                bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
+                if (!m_any_row_clicked && (left_click || right_click) &&
+                    Input::GetPressedKeyModifiers() == KeyModifier::KEY_NONE) {
+                    m_selection.clearSelection();
+                    m_selection_ctx.clearSelection();
+                }
+            }
         }
         ImGui::EndChild();
     }
 
-    void DebuggerWindow::renderMemoryWatch(MetaWatch &watch) {
-        bool open = false;
-
-        ImGui::TableNextRow();
-
-        DolphinHookManager &manager = DolphinHookManager::instance();
-        void *mem_view              = manager.getMemoryView();
-        size_t mem_size             = manager.getMemorySize();
-
-        if (ImGui::TableNextColumn()) {
-            open = ImGui::TreeNodeEx(watch.getWatchName().c_str(), ImGuiTreeNodeFlags_Leaf);
-        }
-
-        if (ImGui::TableNextColumn()) {
-            ImGui::Text(watch.getWatchType().data());
-        }
-
-        if (ImGui::TableNextColumn()) {
-            ImGui::Text("0x%X", watch.getWatchAddress());
-        }
-
-        if (ImGui::TableNextColumn()) {
-            bool is_locked = watch.isLocked();
-            if (ImGui::Checkbox("##lockbox", &is_locked)) {
-                watch.setLocked(!is_locked);
-            }
-        }
-
-        if (ImGui::TableNextColumn()) {
-            u32 true_address = watch.getWatchAddress() & 0x1FFFFFF;
-            u32 watch_size   = watch.getWatchSize();
-
-            if (true_address + watch_size > mem_size) {
-                ImGui::Text("Invalid Watch");
-            } else {
-                ImVec2 avail_region = ImGui::GetContentRegionAvail();
-                float local_pos_x   = 0.0f;
-
-                float byte_render_width = ImGui::CalcTextSize("00").x;
-                float byte_trail_width  = ImGui::CalcTextSize("...").x;
-
-                u8 *watch_view = (u8 *)mem_view + true_address;
-                while (local_pos_x + byte_render_width + byte_trail_width < avail_region.x) {
-                    for (int i = 0; i < watch_size; ++i) {
-                        ImGui::Text("%02X", watch_view[i]);
-                        if (i < watch_size - 1) {
-                            ImGui::SameLine();
-                        }
-                    }
-                }
-            }
-        }
-
-        if (open) {
-            ImGui::TreePop();
-        }
-    }
-
-    void DebuggerWindow::renderMemoryWatch(MemoryWatch &watch) {
-        bool open = false;
-
-        ImGui::TableNextRow();
-
-        DolphinHookManager &manager = DolphinHookManager::instance();
-        void *mem_view              = manager.getMemoryView();
-        size_t mem_size             = manager.getMemorySize();
-
-        if (ImGui::TableNextColumn()) {
-            open = ImGui::TreeNodeEx(watch.getWatchName().c_str(), ImGuiTreeNodeFlags_Leaf);
-        }
-
-        if (ImGui::TableNextColumn()) {
-            ImGui::Text("Bytes [%lu]", watch.getWatchSize());
-        }
-
-        if (ImGui::TableNextColumn()) {
-            ImGui::Text("0x%X", watch.getWatchAddress());
-        }
-
-        if (ImGui::TableNextColumn()) {
-            bool is_locked = watch.isLocked();
-            if (ImGui::Checkbox("##lockbox", &is_locked)) {
-                watch.setLocked(!is_locked);
-            }
-        }
-
-        if (ImGui::TableNextColumn()) {
-            u32 true_address = watch.getWatchAddress() & 0x1FFFFFF;
-            u32 watch_size   = watch.getWatchSize();
-
-            if (true_address + watch_size > mem_size) {
-                ImGui::Text("Invalid Watch");
-            } else {
-                ImVec2 avail_region = ImGui::GetContentRegionAvail();
-                float local_pos_x   = 0.0f;
-
-                float byte_render_width = ImGui::CalcTextSize("00").x;
-                float byte_trail_width  = ImGui::CalcTextSize("...").x;
-
-                u8 *watch_view = (u8 *)mem_view + true_address;
-                while (local_pos_x + byte_render_width + byte_trail_width < avail_region.x) {
-                    for (int i = 0; i < watch_size; ++i) {
-                        ImGui::Text("%02X", watch_view[i]);
-                        if (i < watch_size - 1) {
-                            ImGui::SameLine();
-                        }
-                    }
-                }
-            }
-        }
-
-        if (open) {
-            ImGui::TreePop();
-        }
-    }
-
-    void DebuggerWindow::renderWatchGroup(WatchGroup &group) {
-        bool open = false;
-
-        if (group.m_name == "") {
-            for (MetaWatch &watch : group.m_meta_watches) {
-                renderMemoryWatch(watch);
-            }
-
-            for (MemoryWatch &watch : group.m_byte_watches) {
-                renderMemoryWatch(watch);
-            }
-
+    void DebuggerWindow::renderMemoryWatch(const ModelIndex &watch_idx, int depth,
+                                           float table_start_x,
+                                           float table_width) {
+        if (!m_proxy_model->validateIndex(watch_idx)) {
             return;
         }
 
+        std::string name = m_proxy_model->getDisplayText(watch_idx);
+        if (name.empty()) {
+            return;  // Skip empty groups
+        }
+
+        DolphinHookManager &manager = DolphinHookManager::instance();
+        void *mem_view              = manager.getMemoryView();
+        size_t mem_size             = manager.getMemorySize();
+
+        MetaType meta_type = m_proxy_model->getWatchTypeMeta(watch_idx);
+        u32 address = m_proxy_model->getWatchAddress(watch_idx);
+        u32 size    = m_proxy_model->getWatchSize(watch_idx);
+        bool locked = m_proxy_model->getWatchLock(watch_idx);
+
+        const ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiWindow *window     = ImGui::GetCurrentWindow();
+
+        ImVec2 text_size = ImGui::CalcTextSize(name.c_str(), nullptr, true);
+
+        ImVec2 mouse_pos;
+        {
+            double mouse_x, mouse_y;
+            Input::GetMousePosition(mouse_x, mouse_y);
+            mouse_pos.x = mouse_x;
+            mouse_pos.y = mouse_y;
+        }
+
+        bool is_left_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
+        bool is_left_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_LEFT);
+        bool is_left_drag          = Input::GetMouseButton(MouseButton::BUTTON_LEFT);
+
+        if (!is_left_drag) {
+            m_last_reg_mouse_pos = mouse_pos;
+        }
+
+        bool is_double_left_click   = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
+        bool is_right_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
+        bool is_right_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_RIGHT);
+
+        bool is_selected         = m_selection.is_selected(watch_idx);
+
         ImGui::TableNextRow();
 
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, {0, 0, 0, 0});
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, {0, 0, 0, 0});
+        ImVec2 row_button_pos;
+        ImVec2 row_button_size = {text_size.y, text_size.y};
+        ImRect row_button_bb;
 
-        if (ImGui::TableNextColumn()) {
-            open = ImGui::TreeNodeEx(group.m_name.c_str(), ImGuiTreeNodeFlags_SpanAllColumns);
+        // Establish row metrics for rendering selection box
+        float row_width  = table_width;
+        float row_height = text_size.y + style.ItemSpacing.y * 2;
+
+        ImRect row_rect = {};
+        row_rect.Min    = ImVec2{table_start_x, ImGui::GetCursorPosY() + ImGui::GetWindowPos().y};
+        row_rect.Max    = row_rect.Min + ImVec2{row_width, row_height};
+
+        bool is_rect_hovered = false;
+        {
+            ImGuiContext &g = *GImGui;
+
+            double m_x, m_y;
+            Input::GetMousePosition(m_x, m_y);
+
+            ImVec2 mouse_pos = ImVec2{(float)m_x, (float)m_y};
+
+            // Clip
+            ImRect rect_clipped(row_rect.Min, row_rect.Max);
+
+            // Hit testing, expanded for touch input
+            if (rect_clipped.ContainsWithPad(mouse_pos, g.Style.TouchExtraPadding)) {
+                if (g.MouseViewport->GetMainRect().Overlaps(rect_clipped))
+                    is_rect_hovered = true;
+            }
         }
 
-        ImGui::PopStyleColor(2);
+        bool is_rect_clicked =
+            is_rect_hovered && (Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT) ||
+                                Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT));
 
-        ImGui::TableNextColumn();
-        ImGui::TableNextColumn();
+        bool is_collapse_hovered = false;
+        bool is_collapse_held    = false;
+        bool is_collapse_pressed = false;
+        bool is_lock_hovered     = false;
+        bool is_lock_pressed     = false;
+
+        ImDrawFlags backdrop_flags = ImDrawFlags_None;
+
+        ImVec4 selected_col = style.Colors[ImGuiCol_TabActive];
+        ImVec4 hovered_col  = style.Colors[ImGuiCol_TabHovered];
+
+        selected_col.w = 0.5;
+        hovered_col.w  = 0.5;
+
+        if (is_rect_hovered) {
+            ImGui::RenderFrame(row_rect.Min, row_rect.Max,
+                               ImGui::ColorConvertFloat4ToU32(hovered_col), false, 0.0f,
+                               backdrop_flags);
+        } else if (is_selected) {
+            ImGui::RenderFrame(row_rect.Min, row_rect.Max,
+                               ImGui::ColorConvertFloat4ToU32(selected_col), false, 0.0f,
+                               backdrop_flags);
+        }
+
+        bool any_items_hovered = false;
+
+        ModelIndex src_idx  = m_proxy_model->toSourceIndex(watch_idx);
+        std::string qual_id = buildQualifiedId(src_idx);
+
+        ImGuiID watch_id = ImGui::GetID(qual_id.c_str());
+        ImGui::PushID(watch_id);
 
         if (ImGui::TableNextColumn()) {
-            if (ImGui::Checkbox("##lockbox", &group.m_locked)) {
-                for (MetaWatch &watch : group.m_meta_watches) {
-                    watch.setLocked(group.m_locked);
-                }
+            ImGui::Dummy({style.ItemSpacing.x * depth * 2, style.ItemSpacing.y * 2});
+            ImGui::SameLine();
+            ImGui::Text(name.c_str());
+        }
 
-                for (MemoryWatch &watch : group.m_byte_watches) {
-                    watch.setLocked(group.m_locked);
+        // ImGui::PopStyleColor(3);
+
+        if (ImGui::TableNextColumn()) {
+            if (meta_type == MetaType::UNKNOWN) {
+                ImGui::Text("Bytes [%lu]", size);
+            } else {
+                std::string meta_name = std::string(meta_type_name(meta_type));
+                ImGui::Text(meta_name.c_str());
+            }
+        }
+
+        if (ImGui::TableNextColumn()) {
+            ImGui::Text("0x%X", address);
+        }
+
+        ModelIndex source_group_idx = m_proxy_model->toSourceIndex(watch_idx);
+
+        if (ImGui::TableNextColumn()) {
+            is_lock_pressed = ImGui::Checkbox("##lockbox", &locked);
+            if (is_lock_pressed) {
+                recursiveLock(source_group_idx, locked);
+            }
+
+            is_lock_hovered = ImGui::IsItemHovered();
+        }
+
+        if (ImGui::TableNextColumn()) {
+            u32 true_address = address & 0x1FFFFFF;
+            u32 watch_size   = size;
+
+            if (true_address + watch_size > mem_size) {
+                ImGui::Text("Invalid Watch");
+            } else {
+                MetaType watch_type = m_proxy_model->getWatchTypeMeta(watch_idx);
+                if (watch_type == MetaType::UNKNOWN) {
+                    ImVec2 avail_region = ImGui::GetContentRegionAvail();
+                    float local_pos_x   = 0.0f;
+
+                    float byte_render_width = ImGui::CalcTextSize("00").x;
+                    float byte_trail_width  = ImGui::CalcTextSize("...").x;
+
+                    u8 *watch_view = (u8 *)mem_view + true_address;
+                    while (local_pos_x + byte_render_width + byte_trail_width < avail_region.x) {
+                        for (int i = 0; i < watch_size; ++i) {
+                            ImGui::Text("%02X", watch_view[i]);
+                            if (i < watch_size - 1) {
+                                ImGui::SameLine();
+                            }
+                        }
+                        local_pos_x += byte_render_width + byte_trail_width;
+                    }
+                } else {
+                    f32 column_width = ImGui::GetContentRegionAvail().x;
+                    renderPreview(column_width, address, watch_size, watch_type);
                 }
             }
         }
 
+        // Handle click responses
+        {
+            if (is_rect_clicked && !is_collapse_hovered && !is_lock_hovered) {
+                m_any_row_clicked = true;
+                if ((is_left_click && !is_left_click_release) ||
+                    (is_right_click && !is_right_click_release)) {
+                    actionSelectIndex(watch_idx);
+                } else if (is_left_click_release || is_right_click_release) {
+                    actionClearRequestExcIndex(watch_idx, is_left_click_release);
+                }
+            }
+        }
+
+        ImGui::PopID();
+    }
+
+    void DebuggerWindow::renderWatchGroup(const ModelIndex &group_idx, int depth,
+                                          float table_start_x,
+                                          float table_width) {
+        if (!m_proxy_model->validateIndex(group_idx)) {
+            return;
+        }
+
+        bool open = false;
+
+        std::string name = m_proxy_model->getDisplayText(group_idx);
+        if (name.empty()) {
+            return;  // Skip empty groups
+        }
+
+        bool locked = m_proxy_model->getWatchLock(group_idx);
+
+        const ImGuiStyle &style = ImGui::GetStyle();
+        ImGuiWindow *window     = ImGui::GetCurrentWindow();
+
+        ImVec2 text_size = ImGui::CalcTextSize(name.c_str(), nullptr, true);
+
+        ImVec2 mouse_pos;
+        {
+            double mouse_x, mouse_y;
+            Input::GetMousePosition(mouse_x, mouse_y);
+            mouse_pos.x = mouse_x;
+            mouse_pos.y = mouse_y;
+        }
+
+        bool is_left_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
+        bool is_left_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_LEFT);
+        bool is_left_drag          = Input::GetMouseButton(MouseButton::BUTTON_LEFT);
+
+        if (!is_left_drag) {
+            m_last_reg_mouse_pos = mouse_pos;
+        }
+
+        bool is_double_left_click   = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
+        bool is_right_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
+        bool is_right_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_RIGHT);
+
+        bool is_selected         = m_selection.is_selected(group_idx);
+
+        ImGui::TableNextRow();
+
+        ImVec2 row_button_pos;
+        ImVec2 row_button_size = {text_size.y, text_size.y};
+        ImRect row_button_bb;
+
+        // Establish row metrics for rendering selection box
+        float row_width  = table_width;
+        float row_height = text_size.y + style.ItemSpacing.y * 2;
+
+        ImRect row_rect = {};
+        row_rect.Min    = ImVec2{table_start_x, ImGui::GetCursorPosY() + ImGui::GetWindowPos().y};
+        row_rect.Max    = row_rect.Min + ImVec2{row_width, row_height};
+
+        bool is_rect_hovered = false;
+        {
+            ImGuiContext &g = *GImGui;
+
+            double m_x, m_y;
+            Input::GetMousePosition(m_x, m_y);
+
+            ImVec2 mouse_pos = ImVec2{(float)m_x, (float)m_y};
+
+            // Clip
+            ImRect rect_clipped(row_rect.Min, row_rect.Max);
+
+            // Hit testing, expanded for touch input
+            if (rect_clipped.ContainsWithPad(mouse_pos, g.Style.TouchExtraPadding)) {
+                if (g.MouseViewport->GetMainRect().Overlaps(rect_clipped))
+                    is_rect_hovered = true;
+            }
+        }
+
+        bool is_rect_clicked =
+            is_rect_hovered && (Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT) ||
+                                Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT));
+
+        bool is_collapse_hovered = false;
+        bool is_collapse_held    = false;
+        bool is_collapse_pressed = false;
+        bool is_lock_hovered     = false;
+        bool is_lock_pressed     = false;
+
+        ImDrawFlags backdrop_flags = ImDrawFlags_None;
+
+        ImVec4 selected_col = style.Colors[ImGuiCol_TabActive];
+        ImVec4 hovered_col  = style.Colors[ImGuiCol_TabHovered];
+
+        selected_col.w = 0.5;
+        hovered_col.w = 0.5;
+
+        if (is_rect_hovered) {
+            ImGui::RenderFrame(row_rect.Min, row_rect.Max,
+                               ImGui::ColorConvertFloat4ToU32(hovered_col), false, 0.0f,
+                               backdrop_flags);
+        } else if (is_selected) {
+            ImGui::RenderFrame(row_rect.Min, row_rect.Max,
+                               ImGui::ColorConvertFloat4ToU32(selected_col), false, 0.0f,
+                               backdrop_flags);
+        }
+
+        bool any_items_hovered = false;
+
+        ModelIndex src_idx  = m_proxy_model->toSourceIndex(group_idx);
+        std::string qual_id = buildQualifiedId(src_idx);
+
+        ImGuiID group_id = ImGui::GetID(qual_id.c_str());
+        ImGui::PushID(group_id);
+
+        if (ImGui::TableNextColumn()) {
+#if 0
+            ImGuiTreeNodeFlags flags = is_selected ? ImGuiTreeNodeFlags_Selected
+                                                   : ImGuiTreeNodeFlags_None;
+            flags |= ImGuiTreeNodeFlags_AllowOverlap;
+            flags |= ImGuiTreeNodeFlags_SpanAllColumns;
+
+            open = ImGui::TreeNodeEx(name.c_str(), flags);
+#else
+            std::string button_id_str = "##node_behavior";
+            ImGuiID button_id         = ImGui::GetID(button_id_str.c_str());
+
+            row_button_pos =
+                ImGui::GetCursorPos() + ImGui::GetWindowPos() + style.ItemSpacing;
+            row_button_pos.x += style.ItemSpacing.x * depth * 2;
+            row_button_bb   = {
+                row_button_pos,
+                row_button_pos + row_button_size,
+            };
+
+            ImVec2 spoof_item_size = row_button_size;
+            spoof_item_size.x += style.ItemSpacing.x * depth * 2;
+
+            ImGui::ItemSize(spoof_item_size, style.FramePadding.y);
+            if (!ImGui::ItemAdd(row_button_bb, button_id)) {
+                ImGui::PopID();
+                return;
+            }
+
+            is_collapse_hovered = false;
+            is_collapse_held    = false;
+            is_collapse_pressed =
+                ImGui::ButtonBehavior(row_button_bb, button_id, &is_collapse_hovered,
+                                      &is_collapse_held, ImGuiButtonFlags_MouseButtonLeft);
+
+            open = (m_node_open_state[button_id] ^= is_collapse_pressed);
+
+            ImGuiDir direction = open == true ? ImGuiDir_Down : ImGuiDir_Right;
+            ImGui::RenderArrow(ImGui::GetForegroundDrawList(), row_button_pos,
+                               ImGui::ColorConvertFloat4ToU32({1.0, 1.0, 1.0, 1.0}), direction);
+
+            ImGui::SameLine();
+
+            ImGui::Text(name.c_str());
+#endif
+        }
+
+        // ImGui::PopStyleColor(3);
+
         ImGui::TableNextColumn();
+        ImGui::TableNextColumn();
+
+        ModelIndex source_group_idx = m_proxy_model->toSourceIndex(group_idx);
+
+        if (ImGui::TableNextColumn()) {
+            is_lock_pressed = ImGui::Checkbox("##lockbox", &locked);
+            if (is_lock_pressed) {
+                recursiveLock(source_group_idx, locked);
+            }
+
+            is_lock_hovered = ImGui::IsItemHovered();
+        }
+
+        ImGui::TableNextColumn();
+
+        // Handle click responses
+        {
+            if (is_rect_clicked && !is_collapse_hovered && !is_lock_hovered) {
+                m_any_row_clicked = true;
+                if ((is_left_click && !is_left_click_release) ||
+                    (is_right_click && !is_right_click_release)) {
+                    actionSelectIndex(group_idx);
+                } else if (is_left_click_release || is_right_click_release) {
+                    actionClearRequestExcIndex(group_idx, is_left_click_release);
+                }
+            }
+        }
 
         if (open) {
-            for (MetaWatch &watch : group.m_meta_watches) {
-                renderMemoryWatch(watch);
+            for (size_t i = 0; i < m_proxy_model->getRowCount(group_idx); ++i) {
+                ModelIndex index = m_proxy_model->getIndex(i, 0, group_idx);
+                if (m_proxy_model->isIndexGroup(index)) {
+                    renderWatchGroup(index, depth + 1, table_start_x, table_width);
+                } else {
+                    renderMemoryWatch(index, depth + 1, table_start_x, table_width);
+                }
             }
 
-            for (MemoryWatch &watch : group.m_byte_watches) {
-                renderMemoryWatch(watch);
-            }
-
+#if 0
             ImGui::TreePop();
+#endif
         }
+
+        ImGui::PopID();
     }
 
     void DebuggerWindow::onAttach() {
@@ -636,21 +900,55 @@ namespace Toolbox::UI {
 
         m_initialized_splitter_widths = false;
 
+        m_watch_model = make_referable<WatchDataModel>();
+        m_watch_model->initialize();
+
+        m_proxy_model = make_referable<WatchDataModelSortFilterProxy>();
+        m_proxy_model->setSourceModel(m_watch_model);
+        m_proxy_model->setSortOrder(ModelSortOrder::SORT_ASCENDING);
+        m_proxy_model->setSortRole(WatchModelSortRole::SORT_ROLE_NAME);
+
+        m_selection.setModel(m_proxy_model);
+        m_selection_ctx.setModel(m_proxy_model);
+
         m_add_group_dialog.setInsertPolicy(
             AddGroupDialog::InsertPolicy::INSERT_AFTER);  // Insert after the current group
-        m_add_group_dialog.setFilterPredicate([this](std::string_view group_name) -> bool {
-            // Check if the group name is unique
-            for (const auto &group : m_watch_groups) {
-                if (group.m_name == group_name) {
-                    return false;  // Group name already exists
+        m_add_group_dialog.setFilterPredicate(
+            [this](std::string_view group_name, ModelIndex group_idx) -> bool {
+                // Check if the group name is unique
+                ModelIndex src_idx = m_proxy_model->toSourceIndex(group_idx);
+                for (size_t i = 0; i < m_watch_model->getRowCount(src_idx); ++i) {
+                    ModelIndex child_idx   = m_watch_model->getIndex(i, 0, src_idx);
+                    std::string child_name = m_watch_model->getDisplayText(child_idx);
+                    if (child_name == group_name) {
+                        return false;
+                    }
                 }
-            }
-            return true;  // Group name is unique
-        });
+                return true;  // Group name is unique
+            });
         m_add_group_dialog.setActionOnAccept(
-            [&](size_t index, AddGroupDialog::InsertPolicy policy, std::string_view group_name) {
-                WatchGroup &&new_group = WatchGroup{std::string(group_name), {}, {}, false};
-                m_watch_groups.emplace_back(std::move(new_group));
+            [&](ModelIndex group_idx, size_t row, AddGroupDialog::InsertPolicy policy,
+                std::string_view group_name) { insertGroup(group_idx, row, policy, group_name); });
+
+        m_add_watch_dialog.setInsertPolicy(
+            AddWatchDialog::InsertPolicy::INSERT_AFTER);  // Insert after the current group
+        m_add_watch_dialog.setFilterPredicate(
+            [this](std::string_view watch_name, ModelIndex group_idx) -> bool {
+                // Check if the watch name is unique
+                ModelIndex src_idx = m_proxy_model->toSourceIndex(group_idx);
+                for (size_t i = 0; i < m_watch_model->getRowCount(src_idx); ++i) {
+                    ModelIndex child_idx   = m_watch_model->getIndex(i, 0, src_idx);
+                    std::string child_name = m_watch_model->getDisplayText(child_idx);
+                    if (child_name == watch_name) {
+                        return false;
+                    }
+                }
+                return true;  // Watch name is unique
+            });
+        m_add_watch_dialog.setActionOnAccept(
+            [&](ModelIndex group_idx, size_t row, AddWatchDialog::InsertPolicy policy,
+                std::string_view watch_name, MetaType type, u32 address, u32 size) {
+                insertWatch(group_idx, row, policy, watch_name, type, address, size);
             });
         // buildContextMenu();
     }
@@ -675,5 +973,636 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::onDropEvent(RefPtr<DropEvent> ev) { ev->accept(); }
+
+    void DebuggerWindow::actionDeleteIndexes(std::vector<ModelIndex> &indices) {}
+
+    void DebuggerWindow::actionOpenIndexes(const std::vector<ModelIndex> &indices) {}
+
+    void DebuggerWindow::actionRenameIndex(const ModelIndex &index) {}
+
+    void DebuggerWindow::actionPasteIntoIndex(const ModelIndex &index,
+                                              const std::vector<fs_path> &data) {}
+
+    void DebuggerWindow::actionCopyIndexes(const std::vector<ModelIndex> &indices) {
+
+        // Build a json from the index data
+        // ---
+        MimeData data;
+        data.set_text("UNIMPLEMENTED");
+
+        auto result = SystemClipboard::instance().setContent(data);
+        if (!result) {
+            TOOLBOX_ERROR("[PROJECT] Failed to set contents of clipboard");
+        }
+    }
+
+    void DebuggerWindow::actionSelectIndex(const ModelIndex &index) {
+        if (m_did_drag_drop) {
+            return;
+        }
+
+        if (Input::GetKey(KeyCode::KEY_LEFTCONTROL) || Input::GetKey(KeyCode::KEY_RIGHTCONTROL)) {
+            if (m_selection.is_selected(index)) {
+                m_selection.deselect(index);
+            } else {
+                m_selection.selectSingle(index, true);
+            }
+        } else {
+            if (Input::GetKey(KeyCode::KEY_LEFTSHIFT) || Input::GetKey(KeyCode::KEY_RIGHTSHIFT)) {
+                if (m_watch_model->validateIndex(m_last_selected_index)) {
+                    m_selection.selectSpan(index, m_last_selected_index, false, true);
+                } else {
+                    m_selection.selectSingle(index);
+                }
+            } else {
+                m_selection.selectSingle(index);
+            }
+        }
+
+        m_last_selected_index = index;
+    }
+
+    void DebuggerWindow::actionClearRequestExcIndex(const ModelIndex &index, bool is_left_button) {
+        if (m_did_drag_drop) {
+            return;
+        }
+
+        if (Input::GetKey(KeyCode::KEY_LEFTCONTROL) || Input::GetKey(KeyCode::KEY_RIGHTCONTROL)) {
+            return;
+        }
+
+        if (Input::GetKey(KeyCode::KEY_LEFTSHIFT) || Input::GetKey(KeyCode::KEY_RIGHTSHIFT)) {
+            return;
+        }
+
+        if (is_left_button) {
+            if (m_selection.count() > 0) {
+                m_last_selected_index = ModelIndex();
+                if (m_selection.selectSingle(index)) {
+                    m_last_selected_index = index;
+                }
+            }
+        } else {
+            if (!m_proxy_model->validateIndex(index)) {
+                m_selection.clearSelection();
+            }
+            m_selection_ctx       = m_selection;
+            m_last_selected_index = ModelIndex();
+        }
+    }
+
+    void DebuggerWindow::recursiveLock(ModelIndex src_idx, bool lock) {
+        m_watch_model->setWatchLock(src_idx, lock);
+        for (size_t i = 0; i < m_watch_model->getRowCount(src_idx); ++i) {
+            ModelIndex src_child_idx = m_watch_model->getIndex(i, 0, src_idx);
+            recursiveLock(src_child_idx, lock);
+        }
+    }
+
+    ModelIndex DebuggerWindow::insertGroup(ModelIndex group_index, size_t row,
+                                           AddGroupDialog::InsertPolicy policy,
+                                           std::string_view group_name) {
+        ModelIndex src_group_idx  = m_proxy_model->toSourceIndex(group_index);
+        ModelIndex target_idx     = m_proxy_model->getIndex(row, 0, group_index);
+        ModelIndex src_target_idx = m_proxy_model->toSourceIndex(target_idx);
+
+        int64_t src_row = m_watch_model->getRow(src_target_idx);
+        if (src_row == -1) {
+            src_row = 0;
+        }
+
+        int64_t sibling_count = m_watch_model->getRowCount(src_group_idx);
+
+        switch (policy) {
+        case AddGroupDialog::InsertPolicy::INSERT_BEFORE: {
+            return m_watch_model->makeGroupIndex(std::string(group_name),
+                                                 std::min(sibling_count, src_row), src_group_idx);
+        }
+        case AddGroupDialog::InsertPolicy::INSERT_AFTER: {
+            return m_watch_model->makeGroupIndex(
+                std::string(group_name), std::min(sibling_count, src_row + 1), src_group_idx);
+        }
+        case AddGroupDialog::InsertPolicy::INSERT_CHILD: {
+            int64_t row_count = m_watch_model->getRowCount(src_target_idx);
+            return m_watch_model->makeGroupIndex(std::string(group_name), row_count,
+                                                 src_target_idx);
+        }
+        }
+
+        return ModelIndex();
+    }
+
+    ModelIndex DebuggerWindow::insertWatch(ModelIndex group_index, size_t row,
+                                           AddWatchDialog::InsertPolicy policy,
+                                           std::string_view watch_name, MetaType watch_type,
+                                           u32 watch_address, u32 watch_size) {
+        ModelIndex src_group_idx  = m_proxy_model->toSourceIndex(group_index);
+        ModelIndex target_idx     = m_proxy_model->getIndex(row, 0, group_index);
+        ModelIndex src_target_idx = m_proxy_model->toSourceIndex(target_idx);
+
+        int64_t src_row = m_proxy_model->getRow(src_target_idx);
+        if (src_row == -1) {
+            src_row = 0;
+        }
+
+        int64_t sibling_count = m_watch_model->getRowCount(src_group_idx);
+
+        switch (policy) {
+        case AddWatchDialog::InsertPolicy::INSERT_BEFORE: {
+            return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, watch_address,
+                                                 watch_size, std::min(sibling_count, src_row), src_group_idx);
+        }
+        case AddWatchDialog::InsertPolicy::INSERT_AFTER: {
+            return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, watch_address,
+                                                 watch_size, std::min(sibling_count, src_row + 1), src_group_idx);
+        }
+        case AddWatchDialog::InsertPolicy::INSERT_CHILD: {
+            int64_t row_count = m_watch_model->getRowCount(src_target_idx);
+            return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, watch_address,
+                                                 watch_size, row_count, src_target_idx);
+        }
+        }
+
+        return ModelIndex();
+    }
+
+    std::string DebuggerWindow::buildQualifiedId(ModelIndex src_index) const {
+        if (!m_watch_model->validateIndex(src_index)) {
+            return "";
+        }
+
+        std::string result;
+        result.reserve(256);
+        result.append("##");
+        result.append(m_watch_model->getDisplayText(src_index));
+
+        ModelIndex parent_idx = m_watch_model->getParent(src_index);
+        while (m_watch_model->validateIndex(parent_idx)) {
+            result.append(",");
+            result.append(m_watch_model->getDisplayText(parent_idx));
+            parent_idx = m_watch_model->getParent(parent_idx);
+        }
+
+        return result;
+    }
+
+    void DebuggerWindow::renderPreview(f32 label_width, u32 address, size_t address_size, MetaType watch_type) {
+        ImGuiStyle &style = ImGui::GetStyle();
+
+        switch (watch_type) {
+        default:
+            renderPreviewSingle(label_width, address, address_size, watch_type);
+            break;
+        case MetaType::RGB:
+            renderPreviewRGB(label_width, address, watch_type);
+            break;
+        case MetaType::RGBA:
+            renderPreviewRGBA(label_width, address, watch_type);
+            break;
+        case MetaType::VEC3:
+            renderPreviewVec3(label_width, address);
+            break;
+        case MetaType::TRANSFORM:
+            renderPreviewTransform(label_width, address);
+            break;
+        case MetaType::MTX34:
+            renderPreviewMatrix34(label_width, address);
+            break;
+        case MetaType::STRING:
+            renderPreviewSingle(label_width, address, address_size, watch_type);
+            break;
+        }
+    }
+
+    void DebuggerWindow::renderPreviewSingle(f32 column_width, u32 address, size_t address_size,
+                                             MetaType watch_type) {
+        ImVec2 cursor_pos  = ImGui::GetCursorPos();
+
+        size_t preview_size = 4096;
+
+        char *value_buf = new char[preview_size];
+        calcPreview(value_buf, preview_size, address, address_size, watch_type);
+
+        if (address_size < 8) {
+            ImGui::SetNextItemWidth(200.0f);
+        } else {
+            ImGui::SetNextItemWidth(350.0f);
+        }
+
+        ImGui::InputText("##single_preview", value_buf, preview_size,
+                         ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
+        
+        delete[] value_buf;
+    }
+
+    void DebuggerWindow::renderPreviewRGBA(f32 column_width, u32 address, MetaType watch_type) {
+        ImGuiStyle &style  = ImGui::GetStyle();
+        ImVec2 cursor_pos  = ImGui::GetCursorPos();
+
+        char value_buf[32] = {};
+        calcPreview(value_buf, sizeof(value_buf), address, 4, watch_type);
+
+        ImGui::SetNextItemWidth(400.0f - ImGui::GetFrameHeight() - style.ItemSpacing.x);
+        ImGui::InputText("##single_preview", value_buf, sizeof(value_buf),
+                         ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
+
+        ImGui::SameLine();
+
+        Color::RGBAShader calc_color = calcColorRGBA(address);
+        ImVec4 color_rgba = {calc_color.m_r, calc_color.m_g, calc_color.m_b, calc_color.m_a};
+
+        if (ImGui::ColorButton("##color_rgb_preview", color_rgba,
+                               ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop |
+                                   ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_NoInputs)) {
+            // Color button clicked, do nothing
+        }
+    }
+
+    void DebuggerWindow::renderPreviewRGB(f32 column_width, u32 address, MetaType watch_type) {
+        ImGuiStyle &style = ImGui::GetStyle();
+
+        char value_buf[32] = {};
+        calcPreview(value_buf, sizeof(value_buf), address, 3, watch_type);
+
+        ImGui::SetNextItemWidth(400.0f - ImGui::GetFrameHeight() - style.ItemSpacing.x);
+        ImGui::InputText("##single_preview", value_buf, sizeof(value_buf),
+                         ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
+
+        ImGui::SameLine();
+
+        Color::RGBShader calc_color = calcColorRGB(address);
+        ImVec4 color_rgba           = {calc_color.m_r, calc_color.m_g, calc_color.m_b, 1.0f};
+
+        if (ImGui::ColorButton("##color_rgb_preview", color_rgba,
+                               ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop |
+                                   ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_NoInputs)) {
+            // Color button clicked, do nothing
+        }
+    }
+
+    void DebuggerWindow::renderPreviewVec3(f32 column_width, u32 address) {
+        ImGuiStyle &style    = ImGui::GetStyle();
+        ImVec2 cursor_origin = ImGui::GetCursorPos();
+
+        ImVec2 preview_size = {0, 0};
+        preview_size.x      = 100.0f;
+        preview_size.y      = ImGui::GetFrameHeight();
+
+        ImVec2 preview_pos = cursor_origin;
+        preview_pos.x      = ImGui::GetCursorPosX();
+
+        ImGui::SetCursorPos(preview_pos);
+
+        ImGuiWindow *window            = ImGui::GetCurrentWindow();
+        window->DC.CursorPosPrevLine.y = window->Pos.y + preview_pos.y;
+
+        ImGui::BeginGroup();
+        {
+
+            for (int i = 0; i < 3; ++i) {
+                char value_buf[32] = {};
+                calcPreview(value_buf, sizeof(value_buf), address + i * 4, 4, MetaType::F32);
+
+                ImGui::PushID(i);
+
+                ImGui::SetNextItemWidth(100.0f);
+                ImGui::InputText("##vec3_f32_preview", value_buf, sizeof(value_buf),
+                                 ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
+
+                if (i < 2) {
+                    ImGui::SameLine();
+                }
+
+                ImGui::PopID();
+            }
+        }
+        ImGui::EndGroup();
+
+        ImRect bb = {
+            {preview_pos.x - style.ItemSpacing.x,     preview_pos.y                 },
+            {preview_pos.x - style.ItemSpacing.x + 2, preview_pos.y + preview_size.y}
+        };
+        bb.Translate(window->Pos);
+        window->DrawList->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Separator));
+    }
+
+    void DebuggerWindow::renderPreviewTransform(f32 column_width, u32 address) {
+        ImGuiStyle &style = ImGui::GetStyle();
+
+        ImVec2 preview_size    = {0, 0};
+        float column_width_vec = ImGui::CalcTextSize("R:").x;
+
+        preview_size.x = 100.0f * 3.0f;
+        preview_size.x += column_width_vec;
+        preview_size.x += style.ItemSpacing.x * 3.0f;  // Add spacing for padding
+
+        preview_size.y = ImGui::GetFrameHeight() * 3.0f;
+        preview_size.y += style.ItemSpacing.y * 2.0f;  // Add spacing for padding
+
+        ImVec2 cursor_origin = ImGui::GetCursorPos();
+
+        ImVec2 preview_pos = cursor_origin;
+        preview_pos.x      = ImGui::GetCursorPosX();
+
+        ImGui::SetCursorPos(preview_pos);
+
+        ImGuiWindow *window            = ImGui::GetCurrentWindow();
+        window->DC.CursorPosPrevLine.y = window->Pos.y + preview_pos.y;
+
+        ImGui::BeginGroup();
+        {
+            // In Sunshine, transforms have the following memory layout...
+            // Translation: (ofs: 0x0)  3 x f32 (12 bytes)
+            // Rotation:    (ofs: 0x14) 3 x f32 (12 bytes)
+            // Scale:       (ofs: 0x20) 3 x f32 (12 bytes)
+            // ---
+
+            ImGui::TextAndWidth(column_width_vec, "T:");
+            ImGui::SameLine();
+
+            for (int i = 0; i < 3; ++i) {
+                char value_buf[32] = {};
+                calcPreview(value_buf, sizeof(value_buf), address + i * 4, 4, MetaType::F32);
+
+                ImGui::PushID(i);
+
+                ImGui::SetNextItemWidth(100.0f);
+                ImGui::InputText("##vec3_f32_preview_trans", value_buf, sizeof(value_buf),
+                                 ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
+
+                if (i < 2) {
+                    ImGui::SameLine();
+                }
+
+                ImGui::PopID();
+            }
+
+            ImGui::TextAndWidth(column_width_vec, "R:");
+            ImGui::SameLine();
+
+            for (int i = 0; i < 3; ++i) {
+                char value_buf[32] = {};
+                calcPreview(value_buf, sizeof(value_buf), address + i * 4 + 0x14, 4, MetaType::F32);
+
+                ImGui::PushID(i);
+
+                ImGui::SetNextItemWidth(100.0f);
+                ImGui::InputText("##vec3_f32_preview_rot", value_buf, sizeof(value_buf),
+                                 ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
+
+                if (i < 2) {
+                    ImGui::SameLine();
+                }
+
+                ImGui::PopID();
+            }
+
+            ImGui::TextAndWidth(column_width_vec, "S:");
+            ImGui::SameLine();
+
+            for (int i = 0; i < 3; ++i) {
+                char value_buf[32] = {};
+                calcPreview(value_buf, sizeof(value_buf), address + i * 4 + 0x20, 4, MetaType::F32);
+
+                ImGui::PushID(i);
+
+                ImGui::SetNextItemWidth(100.0f);
+                ImGui::InputText("##transform_f32_preview_scale", value_buf, sizeof(value_buf),
+                                 ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
+
+                if (i < 2) {
+                    ImGui::SameLine();
+                }
+
+                ImGui::PopID();
+            }
+        }
+        ImGui::EndGroup();
+
+        ImRect bb = {
+            {preview_pos.x - style.ItemSpacing.x,     preview_pos.y                 },
+            {preview_pos.x - style.ItemSpacing.x + 2, preview_pos.y + preview_size.y}
+        };
+        bb.Translate(window->Pos);
+        window->DrawList->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Separator));
+    }
+
+    void DebuggerWindow::renderPreviewMatrix34(f32 column_width, u32 address) {
+        // view_mtx[0][0] = communicator.read<f32>(view_mtx_ptr + 0x00).value();
+        // view_mtx[1][0] = communicator.read<f32>(view_mtx_ptr + 0x04).value();
+        // view_mtx[2][0] = communicator.read<f32>(view_mtx_ptr + 0x08).value();
+        // view_mtx[0][1] = communicator.read<f32>(view_mtx_ptr + 0x10).value();
+        // view_mtx[1][1] = communicator.read<f32>(view_mtx_ptr + 0x14).value();
+        // view_mtx[2][1] = communicator.read<f32>(view_mtx_ptr + 0x18).value();
+        // view_mtx[0][2] = -communicator.read<f32>(view_mtx_ptr + 0x20).value();
+        // view_mtx[1][2] = -communicator.read<f32>(view_mtx_ptr + 0x24).value();
+        // view_mtx[2][2] = -communicator.read<f32>(view_mtx_ptr + 0x28).value();
+        // view_mtx[3][0] = communicator.read<f32>(view_mtx_ptr + 0x0C).value();
+        // view_mtx[3][1] = communicator.read<f32>(view_mtx_ptr + 0x1C).value();
+        // view_mtx[3][2] = -communicator.read<f32>(view_mtx_ptr + 0x2C).value();
+
+        ImGuiStyle &style = ImGui::GetStyle();
+
+        ImVec2 preview_size = {0, 0};
+
+        preview_size.x = 100.0f * 4.0f;
+        preview_size.x += style.ItemSpacing.x * 3.0f;  // Add spacing for padding
+
+        preview_size.y = ImGui::GetFrameHeight() * 3.0f;
+        preview_size.y += style.ItemSpacing.y * 2.0f;  // Add spacing for padding
+
+        ImVec2 cursor_origin = ImGui::GetCursorPos();
+
+        ImVec2 preview_pos = cursor_origin;
+        preview_pos.x      = ImGui::GetCursorPosX();
+
+        ImGui::SetCursorPos(preview_pos);
+
+        ImGuiWindow *window            = ImGui::GetCurrentWindow();
+        window->DC.CursorPosPrevLine.y = window->Pos.y + preview_pos.y;
+
+        ImGui::BeginGroup();
+        {
+            for (int j = 0; j < 3; ++j) {
+                for (int i = 0; i < 4; ++i) {
+                    char value_buf[32] = {};
+                    calcPreview(value_buf, sizeof(value_buf), address + i * 4 + j * 16, 4,
+                                MetaType::F32);
+
+                    ImGui::PushID(i);
+
+                    ImGui::SetNextItemWidth(100.0f);
+                    ImGui::InputText("##mtx34_f32_preview", value_buf, sizeof(value_buf),
+                                     ImGuiInputTextFlags_ReadOnly |
+                                         ImGuiInputTextFlags_AutoSelectAll);
+
+                    if (i < 3) {
+                        ImGui::SameLine();
+                    }
+
+                    ImGui::PopID();
+                }
+            }
+        }
+        ImGui::EndGroup();
+
+        ImRect bb = {
+            {preview_pos.x - style.ItemSpacing.x,     preview_pos.y                 },
+            {preview_pos.x - style.ItemSpacing.x + 2, preview_pos.y + preview_size.y}
+        };
+        bb.Translate(window->Pos);
+        window->DrawList->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Separator));
+    }
+
+    void DebuggerWindow::calcPreview(char *preview_out, size_t preview_size, u32 address,
+                                     size_t address_size, MetaType address_type) const {
+        if (preview_out == nullptr || preview_size == 0) {
+            return;
+        }
+
+        if (address_size == 0) {
+            snprintf(preview_out, preview_size, "???");
+            return;
+        }
+
+        if (preview_size < meta_type_size(address_type)) {
+            snprintf(preview_out, preview_size, "???");
+            return;
+        }
+
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        if (!communicator.manager().isHooked()) {
+            snprintf(preview_out, preview_size, "???");
+            return;
+        }
+
+        void *mem_view  = communicator.manager().getMemoryView();
+        size_t mem_size = communicator.manager().getMemorySize();
+
+        u32 true_address = address & 0x1FFFFFF;
+        if (true_address + address_size > mem_size) {
+            snprintf(preview_out, preview_size, "???");
+            return;
+        }
+
+        switch (address_type) {
+        case MetaType::BOOL: {
+            bool value = communicator.read<bool>(true_address).value_or(false);
+            snprintf(preview_out, preview_size, "%s", value ? "true" : "false");
+            break;
+        }
+        case MetaType::S8: {
+            s8 value = communicator.read<s8>(true_address).value_or(0);
+            snprintf(preview_out, preview_size, "%d", (u8)value);
+            break;
+        }
+        case MetaType::U8: {
+            u8 value = communicator.read<u8>(true_address).value_or(0);
+            snprintf(preview_out, preview_size, "%u", value);
+            break;
+        }
+        case MetaType::S16: {
+            s16 value = communicator.read<s16>(true_address).value_or(0);
+            snprintf(preview_out, preview_size, "%d", (u16)value);
+            break;
+        }
+        case MetaType::U16: {
+            u16 value = communicator.read<u16>(true_address).value_or(0);
+            snprintf(preview_out, preview_size, "%u", value);
+            break;
+        }
+        case MetaType::S32: {
+            s32 value = communicator.read<s32>(true_address).value_or(0);
+            snprintf(preview_out, preview_size, "%ld", (u32)value);
+            break;
+        }
+        case MetaType::U32: {
+            u32 value = communicator.read<u32>(true_address).value_or(0);
+            snprintf(preview_out, preview_size, "%lu", value);
+            break;
+        }
+        case MetaType::F32: {
+            f32 value = communicator.read<f32>(true_address).value_or(0.0f);
+            snprintf(preview_out, preview_size, "%.6f", value);
+            break;
+        }
+        case MetaType::F64: {
+            f64 value = communicator.read<f64>(true_address).value_or(0.0);
+            snprintf(preview_out, preview_size, "%.6f", value);
+            break;
+        }
+        case MetaType::STRING: {
+            communicator.readCString(preview_out, preview_size, true_address)
+                .or_else([&](const BaseError &err) {
+                    snprintf(preview_out, preview_size, "Error: %s", err.m_message[0]);
+                    return Result<void>{};
+                });
+            break;
+        }
+        case MetaType::RGB: {
+            u32 value = communicator.read<u32>(true_address).value_or(0);
+            value &= 0xFFFFFF00;  // Mask to RGB only
+            snprintf(preview_out, preview_size, "#%06X", value);
+            break;
+        }
+        case MetaType::RGBA: {
+            u32 value = communicator.read<u32>(true_address).value_or(0);
+            value &= 0xFFFFFFFF;  // Mask to RGB only
+            snprintf(preview_out, preview_size, "#%08X", value);
+            break;
+        }
+        default:
+            snprintf(preview_out, preview_size, "Unsupported type");
+            break;
+        }
+    }
+
+    Color::RGBShader DebuggerWindow::calcColorRGB(u32 address) {
+
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        if (!communicator.manager().isHooked()) {
+            return Color::RGBShader(0.0f, 0.0f, 0.0f);
+        }
+
+        void *mem_view  = communicator.manager().getMemoryView();
+        size_t mem_size = communicator.manager().getMemorySize();
+
+        u32 true_address = address & 0x1FFFFFF;
+        if (true_address + 3 > mem_size) {
+            return Color::RGBShader(0.0f, 0.0f, 0.0f);
+        }
+
+        u32 value = communicator.read<u32>(true_address).value_or(0);
+        Color::RGB24 rgba_color((u8)((value >> 24) & 0xFF), (u8)((value >> 16) & 0xFF),
+                                (u8)((value >> 8) & 0xFF));
+        f32 r, g, b, a;
+        rgba_color.getColor(r, g, b, a);
+
+        return Color::RGBShader(r, g, b);
+    }
+
+    Color::RGBAShader DebuggerWindow::calcColorRGBA(u32 address) {
+
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        if (!communicator.manager().isHooked()) {
+            return Color::RGBAShader(0.0f, 0.0f, 0.0f, 0.0f);
+        }
+
+        void *mem_view  = communicator.manager().getMemoryView();
+        size_t mem_size = communicator.manager().getMemorySize();
+
+        u32 true_address = address & 0x1FFFFFF;
+        if (true_address + 4 > mem_size) {
+            return Color::RGBAShader(0.0f, 0.0f, 0.0f, 0.0f);
+        }
+
+        u32 value = communicator.read<u32>(true_address).value_or(0);
+        Color::RGBA32 rgba_color((u8)((value >> 24) & 0xFF), (u8)((value >> 16) & 0xFF),
+                                 (u8)((value >> 8) & 0xFF), (u8)(value & 0xFF));
+        f32 r, g, b, a;
+        rgba_color.getColor(r, g, b, a);
+
+        return Color::RGBAShader(r, g, b, a);
+    }
 
 }  // namespace Toolbox::UI

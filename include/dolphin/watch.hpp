@@ -5,6 +5,9 @@
 #include "dolphin/hook.hpp"
 #include "dolphin/process.hpp"
 #include "objlib/meta/struct.hpp"
+#include "objlib/meta/value.hpp"
+
+using namespace Toolbox::Object;
 
 namespace Toolbox {
 
@@ -57,32 +60,36 @@ namespace Toolbox {
         watch_notify_cb m_watch_notify_cb;
         void *m_last_value_buf       = nullptr;
         bool m_last_value_needs_init = true;
-        bool m_is_locked = false;
+        bool m_is_locked             = false;
     };
 
-    class MetaWatch {
+    class MetaWatch : public IUnique {
     public:
         // MetaWatch is a specialized MemoryWatch that uses
         // a MetaStruct to determine the watch address and size.
         using meta_watch_notify_cb =
-            std::function<void(const Object::MetaStruct &, const Object::MetaStruct &)>;
+            std::function<void(const Object::MetaValue &, const Object::MetaValue &)>;
 
     public:
-        MetaWatch(const Object::MetaStruct &meta_struct);
-        MetaWatch(Object::MetaStruct &&meta_struct);
+        MetaWatch(MetaType type);
 
-        MetaWatch()                  = delete;
         MetaWatch(const MetaWatch &) = default;
         MetaWatch(MetaWatch &&)      = default;
 
         MetaWatch &operator=(const MetaWatch &) = default;
         MetaWatch &operator=(MetaWatch &&)      = default;
 
+    protected:
+        MetaWatch() = default;
+
     public:
+        [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
+
         const std::string &getWatchName() const { return m_memory_watch.getWatchName(); }
         void setWatchName(const std::string &name) { m_memory_watch.setWatchName(name); }
 
-        std::string_view getWatchType() const { return m_meta_struct->name(); }
+        MetaType getWatchType() const;
+        const MetaValue &getMetaValue() const { return m_last_value; }
 
         bool isLocked() const { return m_memory_watch.isLocked(); }
         void setLocked(bool locked) { m_memory_watch.setLocked(locked); }
@@ -101,9 +108,10 @@ namespace Toolbox {
         void processWatch() { m_memory_watch.processWatch(); }
 
     private:
+        UUID64 m_uuid;
         MemoryWatch m_memory_watch;
-        ScopePtr<Object::MetaStruct> m_last_struct;
-        ScopePtr<Object::MetaStruct> m_meta_struct;
+        MetaType m_meta_type;
+        MetaValue m_last_value;
         size_t m_precompute_size = 0;
         meta_watch_notify_cb m_watch_notify_cb;
     };

@@ -1,0 +1,48 @@
+#pragma once
+
+#include <functional>
+#include <unordered_set>
+
+#include "model/model.hpp"
+
+namespace Toolbox {
+
+    class ModelSelectionState {
+    public:
+        ModelSelectionState()                                = default;
+        ModelSelectionState(const ModelSelectionState &)     = default;
+        ModelSelectionState(ModelSelectionState &&) noexcept = default;
+
+        ~ModelSelectionState() = default;
+
+        RefPtr<IDataModel> getModel() const { return m_ref_model; }
+        void setModel(RefPtr<IDataModel> model) { m_ref_model = model; }
+
+        size_t count() const { return m_selection.size(); }
+        bool is_selected(const ModelIndex &index) const {
+            return m_selection.find(index) != m_selection.end();
+        }
+
+        void clearSelection() { m_selection.clear(); }
+
+        bool deselect(const ModelIndex &index);
+        bool selectSingle(const ModelIndex &index, bool additive = false);
+        bool selectSpan(const ModelIndex &a, const ModelIndex &b, bool additive, bool deep = false);
+        bool selectAll();
+
+        using dispatch_fn = std::function<void(RefPtr<IDataModel>, const ModelIndex &)>;
+        void dispatchToSelection(dispatch_fn fn);
+
+    public:
+        ModelSelectionState &operator=(const ModelSelectionState &other) {
+            m_ref_model = other.m_ref_model;
+            m_selection = other.m_selection;
+            return *this;
+        }
+
+    private:
+        RefPtr<IDataModel> m_ref_model;
+        std::unordered_set<ModelIndex> m_selection;
+    };
+
+}  // namespace Toolbox

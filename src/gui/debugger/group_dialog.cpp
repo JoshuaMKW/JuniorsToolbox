@@ -4,10 +4,10 @@ namespace Toolbox::UI {
 
     void AddGroupDialog::setup() { memset(m_group_name.data(), 0, m_group_name.size()); }
 
-    void AddGroupDialog::render(size_t selection_index) {
+    void AddGroupDialog::render(ModelIndex group_idx, size_t row) {
         const bool state_valid =
             m_filter_predicate ? m_filter_predicate(std::string_view(m_group_name.data(),
-                                                                     strlen(m_group_name.data())))
+                                                                     strlen(m_group_name.data())), group_idx)
                                : true;
 
         if (m_opening) {
@@ -41,7 +41,7 @@ namespace Toolbox::UI {
             }
 
             if (ImGui::Button("Create")) {
-                m_on_accept(selection_index, m_insert_policy, group_name_view);
+                m_on_accept(group_idx, row, m_insert_policy, group_name_view);
                 m_open = false;
             }
 
@@ -56,7 +56,7 @@ namespace Toolbox::UI {
 
             if (ImGui::Button("Cancel")) {
                 if (m_on_reject) {
-                    m_on_reject(selection_index);
+                    m_on_reject(group_idx);
                 }
                 m_open = false;
             }

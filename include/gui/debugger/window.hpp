@@ -23,6 +23,8 @@
 #include "gui/image/imagepainter.hpp"
 #include "gui/project/asset.hpp"
 #include "gui/window.hpp"
+#include "model/watchmodel.hpp"
+#include "model/selection.hpp"
 
 #include <imgui.h>
 
@@ -47,9 +49,8 @@ namespace Toolbox::UI {
         void renderMemoryAddressBar();
         void renderMemoryView();
         void renderMemoryWatchList();
-        void renderMemoryWatch(MetaWatch &);
-        void renderMemoryWatch(MemoryWatch &);
-        void renderWatchGroup(WatchGroup &);
+        void renderMemoryWatch(const ModelIndex &index, int depth, float table_start_x, float table_width);
+        void renderWatchGroup(const ModelIndex &index, int depth, float table_start_x, float table_width);
 
     public:
         ImGuiWindowFlags flags() const override { return ImWindow::flags(); }
@@ -93,7 +94,40 @@ namespace Toolbox::UI {
         void onDragEvent(RefPtr<DragEvent> ev) override;
         void onDropEvent(RefPtr<DropEvent> ev) override;
 
+        // Selection actions
+        void actionDeleteIndexes(std::vector<ModelIndex> &indices);
+        void actionOpenIndexes(const std::vector<ModelIndex> &indices);
+        void actionRenameIndex(const ModelIndex &index);
+        void actionPasteIntoIndex(const ModelIndex &index, const std::vector<fs_path> &data);
+        void actionCopyIndexes(const std::vector<ModelIndex> &indices);
+
+        void actionSelectIndex(const ModelIndex &child_index);
+        void actionClearRequestExcIndex(const ModelIndex &child_index,
+                                        bool is_left_button);
+
     private:
+        void recursiveLock(ModelIndex src_idx, bool lock);
+        ModelIndex insertGroup(ModelIndex group_index, size_t row,
+                               AddGroupDialog::InsertPolicy policy, std::string_view group_name);
+        ModelIndex insertWatch(ModelIndex group_index, size_t row,
+                               AddWatchDialog::InsertPolicy policy, std::string_view watch_name,
+                               MetaType watch_type, u32 watch_address, u32 watch_size);
+        std::string buildQualifiedId(ModelIndex index) const;
+
+        // ----
+        void renderPreview(f32 column_width, u32 address, size_t address_size, MetaType watch_type);
+        void renderPreviewSingle(f32 column_width, u32 address, size_t address_size,
+                                 MetaType watch_type);
+        void renderPreviewRGBA(f32 column_width, u32 address, MetaType watch_type);
+        void renderPreviewRGB(f32 column_width, u32 address, MetaType watch_type);
+        void renderPreviewVec3(f32 column_width, u32 address);
+        void renderPreviewTransform(f32 column_width, u32 address);
+        void renderPreviewMatrix34(f32 column_width, u32 address);
+        void calcPreview(char *preview_out, size_t preview_size, u32 address, size_t address_size,
+                         MetaType address_type) const;
+        Color::RGBShader calcColorRGB(u32 address);
+        Color::RGBAShader calcColorRGBA(u32 address);
+
         struct HistoryPair {
             u32 m_address;
             std::string m_label;
@@ -114,9 +148,6 @@ namespace Toolbox::UI {
         size_t m_column_count_idx = 0;
         size_t m_byte_width_idx   = 0;
 
-        WatchGroup m_root_group;
-        std::vector<WatchGroup> m_watch_groups;
-
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;
 
@@ -124,6 +155,21 @@ namespace Toolbox::UI {
         ContextMenu<ModelIndex> m_watch_view_context_menu;
 
         AddGroupDialog m_add_group_dialog;
+        AddWatchDialog m_add_watch_dialog;
+
+        RefPtr<WatchDataModel> m_watch_model;
+        RefPtr<WatchDataModelSortFilterProxy> m_proxy_model;
+
+        ModelIndex m_last_selected_index;
+        ModelSelectionState m_selection;
+        ModelSelectionState m_selection_ctx;
+
+        bool m_did_drag_drop;
+        bool m_any_row_clicked;
+
+        ImVec2 m_last_reg_mouse_pos;
+
+        std::unordered_map<ImGuiID, bool> m_node_open_state;
     };
 
 }  // namespace Toolbox::UI

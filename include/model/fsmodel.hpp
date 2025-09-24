@@ -103,6 +103,7 @@ namespace Toolbox {
         }
 
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
+        void setData(const ModelIndex &index, std::any data, int role) override {}
 
         [[nodiscard]] std::string findUniqueName(const ModelIndex &index,
                                                  const std::string &name) const;
@@ -198,7 +199,7 @@ namespace Toolbox {
         void fetchMore_(const ModelIndex &index);
         // -- END -- //
 
-        ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) override;
+        virtual ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent);
 
         ModelIndex getParentArchive(const ModelIndex &index) const;
 
@@ -275,6 +276,7 @@ namespace Toolbox {
 
         [[nodiscard]] std::string getType(const ModelIndex &index) const;
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
+        void setData(const ModelIndex &index, std::any data, int role) override;
 
         ModelIndex mkdir(const ModelIndex &parent, const std::string &name);
         ModelIndex touch(const ModelIndex &parent, const std::string &name);
@@ -319,7 +321,7 @@ namespace Toolbox {
         void cacheIndex(const ModelIndex &index) const;
         void cacheIndex_(const ModelIndex &index) const;
 
-        ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) override {
+        ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) {
             return ModelIndex();
         }
 
