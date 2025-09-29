@@ -346,7 +346,7 @@ namespace Toolbox {
                 MetaWatch *watch = new MetaWatch(watch_type);
                 watch->setWatchName(name);
                 watch->setLocked(locked);
-                watch->startWatch(address);
+                watch->startWatch(address, size);
 
                 _WatchIndexData *data = new _WatchIndexData;
                 data->m_parent        = parent;
@@ -384,6 +384,7 @@ namespace Toolbox {
             case _WatchIndexData::Type::WATCH:
                 return data->m_watch->getWatchName();
             }
+            return {};
         case ModelDataRole::DATA_ROLE_TOOLTIP:
             return "Tooltip unimplemented!";
         case ModelDataRole::DATA_ROLE_DECORATION: {
@@ -396,14 +397,16 @@ namespace Toolbox {
             case _WatchIndexData::Type::WATCH:
                 return std::string(meta_type_name(data->m_watch->getWatchType()));
             }
+            return {};
         }
-        case WatchDataRole::WATCH_DATA_ROLE_TYPE_META: {
+        case WatchDataRole::WATCH_DATA_ROLE_VALUE_META: {
             switch (data->m_type) {
             case _WatchIndexData::Type::GROUP:
-                return MetaType::UNKNOWN;
+                return {};
             case _WatchIndexData::Type::WATCH:
-                return data->m_watch->getWatchType();
+                return data->m_watch->getMetaValue();
             }
+            return {};
         }
         case WatchDataRole::WATCH_DATA_ROLE_ADDRESS: {
             switch (data->m_type) {
@@ -412,6 +415,7 @@ namespace Toolbox {
             case _WatchIndexData::Type::WATCH:
                 return data->m_watch->getWatchAddress();
             }
+            return {};
         }
         case WatchDataRole::WATCH_DATA_ROLE_LOCK: {
             switch (data->m_type) {
@@ -420,6 +424,7 @@ namespace Toolbox {
             case _WatchIndexData::Type::WATCH:
                 return data->m_watch->isLocked();
             }
+            return {};
         }
         case WatchDataRole::WATCH_DATA_ROLE_SIZE: {
             switch (data->m_type) {
@@ -428,6 +433,7 @@ namespace Toolbox {
             case _WatchIndexData::Type::WATCH:
                 return (u32)data->m_watch->getWatchSize();
             }
+            return {};
         }
         default:
             return {};
@@ -462,7 +468,7 @@ namespace Toolbox {
         case WatchDataRole::WATCH_DATA_ROLE_TYPE: {
             return;
         }
-        case WatchDataRole::WATCH_DATA_ROLE_TYPE_META: {
+        case WatchDataRole::WATCH_DATA_ROLE_VALUE_META: {
             return;
         }
         case WatchDataRole::WATCH_DATA_ROLE_ADDRESS: {
@@ -472,7 +478,7 @@ namespace Toolbox {
             case _WatchIndexData::Type::WATCH:
                 u32 watch_size = idata->m_watch->getWatchSize();
                 idata->m_watch->stopWatch();
-                idata->m_watch->startWatch(std::any_cast<u32>(data));
+                idata->m_watch->startWatch(std::any_cast<u32>(data), watch_size);
                 return;
             }
             return;
@@ -677,7 +683,7 @@ namespace Toolbox {
         _WatchIndexData *data = new _WatchIndexData;
         data->m_type          = _WatchIndexData::Type::WATCH;
         data->m_watch         = new MetaWatch(type);
-        if (!data->m_watch->startWatch(address)) {
+        if (!data->m_watch->startWatch(address, size)) {
             return ModelIndex();
         }
 

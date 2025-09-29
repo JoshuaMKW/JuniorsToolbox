@@ -1,7 +1,7 @@
 #include "core/input/keycode.hpp"
 
-#include "gui/debugger/window.hpp"
 #include "gui/application.hpp"
+#include "gui/debugger/window.hpp"
 #include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/new_item/window.hpp"
 #include "model/fsmodel.hpp"
@@ -83,12 +83,13 @@ namespace Toolbox::UI {
         }
         ImGui::EndChild();
 
-        ModelIndex parent_index   = m_proxy_model->getParent(m_last_selected_index);
-        int64_t the_row           = m_proxy_model->getRow(m_last_selected_index);
+        // ImGui::PopStyleVar();
+
+        ModelIndex parent_index = m_proxy_model->getParent(m_last_selected_index);
+        int64_t the_row         = m_proxy_model->getRow(m_last_selected_index);
 
         m_add_group_dialog.render(m_last_selected_index, the_row);
         m_add_watch_dialog.render(m_last_selected_index, the_row);
-        // ImGui::PopStyleVar();
 
         m_did_drag_drop = DragDropManager::instance().getCurrentDragAction() != nullptr;
     }
@@ -410,6 +411,9 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::renderMemoryWatchList() {
+        m_any_row_clicked            = false;
+        bool any_interactive_clicked = false;
+
         if (ImGui::BeginChild("##MemoryWatchList", {m_list_width, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2, 2});
@@ -425,7 +429,6 @@ namespace Toolbox::UI {
                 (avail_content_region.x - style.FramePadding.x - style.ItemSpacing.x) * 0.5f;
             float watch_button_width = group_button_width;
 
-            bool any_interactive_clicked = false;
             if (ImGui::Button("Add Group", {group_button_width, 0.0f}, 5.0f,
                               ImDrawFlags_RoundCornersAll)) {
                 m_add_group_dialog.open();
@@ -445,9 +448,14 @@ namespace Toolbox::UI {
             // Name | Type | Address | Lock | Value
             // ------------------------------------
             // ---
-            const int columns           = 5;
-            const ImGuiTableFlags flags = ImGuiTableFlags_Resizable;
-            if (ImGui::BeginTable("##MemoryWatchTable", 5, flags)) {
+            const int columns = 5;
+            const ImGuiTableFlags flags =
+                ImGuiTableFlags_Resizable | ImGuiTableFlags_Sortable | ImGuiTableFlags_ScrollY;
+            const ImVec2 desired_size = ImGui::GetContentRegionAvail();
+
+            ImVec2 table_pos  = ImGui::GetWindowPos() + ImGui::GetCursorPos(),
+                   table_size = desired_size;
+            if (ImGui::BeginTable("##MemoryWatchTable", 5, flags, desired_size)) {
 
                 // ImGui::TableSetupScrollFreeze(3, 1);
                 ImGui::TableSetupColumn("Name");
@@ -457,7 +465,7 @@ namespace Toolbox::UI {
                 ImGui::TableSetupColumn("Value");
 
                 float table_start_x = ImGui::GetCursorPosX() + ImGui::GetWindowPos().x;
-                float table_width = ImGui::GetContentRegionAvail().x;
+                float table_width   = ImGui::GetContentRegionAvail().x;
 
                 ImGui::TableHeadersRow();
 
@@ -476,14 +484,18 @@ namespace Toolbox::UI {
 
             ImGui::PopStyleVar(5);
 
-            if (!any_interactive_clicked && !m_add_group_dialog.is_open() &&
-                !m_add_watch_dialog.is_open()) {
-                bool left_click  = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
-                bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
-                if (!m_any_row_clicked && (left_click || right_click) &&
+            bool left_click  = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
+            bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
+
+            ImRect window_rect  = ImRect{table_pos, table_size};
+            bool mouse_captured = ImGui::IsMouseHoveringRect(window_rect.Min, window_rect.Max);
+
+            if (!m_add_group_dialog.is_open() && !m_add_watch_dialog.is_open()) {
+                if (!m_any_row_clicked && mouse_captured && (left_click || right_click) &&
                     Input::GetPressedKeyModifiers() == KeyModifier::KEY_NONE) {
                     m_selection.clearSelection();
                     m_selection_ctx.clearSelection();
+                    m_last_selected_index = ModelIndex();
                 }
             }
         }
@@ -491,8 +503,7 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::renderMemoryWatch(const ModelIndex &watch_idx, int depth,
-                                           float table_start_x,
-                                           float table_width) {
+                                           float table_start_x, float table_width) {
         if (!m_proxy_model->validateIndex(watch_idx)) {
             return;
         }
@@ -506,10 +517,10 @@ namespace Toolbox::UI {
         void *mem_view              = manager.getMemoryView();
         size_t mem_size             = manager.getMemorySize();
 
-        MetaType meta_type = m_proxy_model->getWatchTypeMeta(watch_idx);
-        u32 address = m_proxy_model->getWatchAddress(watch_idx);
-        u32 size    = m_proxy_model->getWatchSize(watch_idx);
-        bool locked = m_proxy_model->getWatchLock(watch_idx);
+        MetaValue meta_value = m_proxy_model->getWatchValueMeta(watch_idx);
+        u32 address          = m_proxy_model->getWatchAddress(watch_idx);
+        u32 size             = m_proxy_model->getWatchSize(watch_idx);
+        bool locked          = m_proxy_model->getWatchLock(watch_idx);
 
         const ImGuiStyle &style = ImGui::GetStyle();
         ImGuiWindow *window     = ImGui::GetCurrentWindow();
@@ -536,7 +547,7 @@ namespace Toolbox::UI {
         bool is_right_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
         bool is_right_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_RIGHT);
 
-        bool is_selected         = m_selection.is_selected(watch_idx);
+        bool is_selected = m_selection.is_selected(watch_idx);
 
         ImGui::TableNextRow();
 
@@ -616,10 +627,13 @@ namespace Toolbox::UI {
         // ImGui::PopStyleColor(3);
 
         if (ImGui::TableNextColumn()) {
-            if (meta_type == MetaType::UNKNOWN) {
-                ImGui::Text("Bytes [%lu]", size);
+            if (meta_value.type() == MetaType::UNKNOWN) {
+                ImGui::Text("bytes [%lu]", size);
+            } else if (meta_value.type() == MetaType::STRING) {
+                std::string meta_name = std::string(meta_type_name(meta_value.type()));
+                ImGui::Text("%s [%lu]", meta_name.c_str(), size);
             } else {
-                std::string meta_name = std::string(meta_type_name(meta_type));
+                std::string meta_name = std::string(meta_type_name(meta_value.type()));
                 ImGui::Text(meta_name.c_str());
             }
         }
@@ -646,8 +660,7 @@ namespace Toolbox::UI {
             if (true_address + watch_size > mem_size) {
                 ImGui::Text("Invalid Watch");
             } else {
-                MetaType watch_type = m_proxy_model->getWatchTypeMeta(watch_idx);
-                if (watch_type == MetaType::UNKNOWN) {
+                if (meta_value.type() == MetaType::UNKNOWN) {
                     ImVec2 avail_region = ImGui::GetContentRegionAvail();
                     float local_pos_x   = 0.0f;
 
@@ -666,7 +679,7 @@ namespace Toolbox::UI {
                     }
                 } else {
                     f32 column_width = ImGui::GetContentRegionAvail().x;
-                    renderPreview(column_width, address, watch_size, watch_type);
+                    renderPreview(column_width, meta_value);
                 }
             }
         }
@@ -688,8 +701,7 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::renderWatchGroup(const ModelIndex &group_idx, int depth,
-                                          float table_start_x,
-                                          float table_width) {
+                                          float table_start_x, float table_width) {
         if (!m_proxy_model->validateIndex(group_idx)) {
             return;
         }
@@ -728,7 +740,7 @@ namespace Toolbox::UI {
         bool is_right_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
         bool is_right_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_RIGHT);
 
-        bool is_selected         = m_selection.is_selected(group_idx);
+        bool is_selected = m_selection.is_selected(group_idx);
 
         ImGui::TableNextRow();
 
@@ -779,7 +791,7 @@ namespace Toolbox::UI {
         ImVec4 hovered_col  = style.Colors[ImGuiCol_TabHovered];
 
         selected_col.w = 0.5;
-        hovered_col.w = 0.5;
+        hovered_col.w  = 0.5;
 
         if (is_rect_hovered) {
             ImGui::RenderFrame(row_rect.Min, row_rect.Max,
@@ -811,10 +823,9 @@ namespace Toolbox::UI {
             std::string button_id_str = "##node_behavior";
             ImGuiID button_id         = ImGui::GetID(button_id_str.c_str());
 
-            row_button_pos =
-                ImGui::GetCursorPos() + ImGui::GetWindowPos() + style.ItemSpacing;
+            row_button_pos = ImGui::GetCursorPos() + ImGui::GetWindowPos() + style.ItemSpacing;
             row_button_pos.x += style.ItemSpacing.x * depth * 2;
-            row_button_bb   = {
+            row_button_bb = {
                 row_button_pos,
                 row_button_pos + row_button_size,
             };
@@ -1110,11 +1121,13 @@ namespace Toolbox::UI {
         switch (policy) {
         case AddWatchDialog::InsertPolicy::INSERT_BEFORE: {
             return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, watch_address,
-                                                 watch_size, std::min(sibling_count, src_row), src_group_idx);
+                                                 watch_size, std::min(sibling_count, src_row),
+                                                 src_group_idx);
         }
         case AddWatchDialog::InsertPolicy::INSERT_AFTER: {
             return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, watch_address,
-                                                 watch_size, std::min(sibling_count, src_row + 1), src_group_idx);
+                                                 watch_size, std::min(sibling_count, src_row + 1),
+                                                 src_group_idx);
         }
         case AddWatchDialog::InsertPolicy::INSERT_CHILD: {
             int64_t row_count = m_watch_model->getRowCount(src_target_idx);
@@ -1146,44 +1159,43 @@ namespace Toolbox::UI {
         return result;
     }
 
-    void DebuggerWindow::renderPreview(f32 label_width, u32 address, size_t address_size, MetaType watch_type) {
+    void DebuggerWindow::renderPreview(f32 label_width, const MetaValue &value) {
         ImGuiStyle &style = ImGui::GetStyle();
 
-        switch (watch_type) {
+        switch (value.type()) {
         default:
-            renderPreviewSingle(label_width, address, address_size, watch_type);
+            renderPreviewSingle(label_width, value);
             break;
         case MetaType::RGB:
-            renderPreviewRGB(label_width, address, watch_type);
+            renderPreviewRGB(label_width, value);
             break;
         case MetaType::RGBA:
-            renderPreviewRGBA(label_width, address, watch_type);
+            renderPreviewRGBA(label_width, value);
             break;
         case MetaType::VEC3:
-            renderPreviewVec3(label_width, address);
+            renderPreviewVec3(label_width, value);
             break;
         case MetaType::TRANSFORM:
-            renderPreviewTransform(label_width, address);
+            renderPreviewTransform(label_width, value);
             break;
         case MetaType::MTX34:
-            renderPreviewMatrix34(label_width, address);
+            renderPreviewMatrix34(label_width, value);
             break;
         case MetaType::STRING:
-            renderPreviewSingle(label_width, address, address_size, watch_type);
+            renderPreviewSingle(label_width, value);
             break;
         }
     }
 
-    void DebuggerWindow::renderPreviewSingle(f32 column_width, u32 address, size_t address_size,
-                                             MetaType watch_type) {
-        ImVec2 cursor_pos  = ImGui::GetCursorPos();
+    void DebuggerWindow::renderPreviewSingle(f32 column_width, const MetaValue &value) {
+        ImVec2 cursor_pos = ImGui::GetCursorPos();
 
         size_t preview_size = 4096;
 
         char *value_buf = new char[preview_size];
-        calcPreview(value_buf, preview_size, address, address_size, watch_type);
+        calcPreview(value_buf, preview_size, value);
 
-        if (address_size < 8) {
+        if (value.computeSize() < 8) {
             ImGui::SetNextItemWidth(200.0f);
         } else {
             ImGui::SetNextItemWidth(350.0f);
@@ -1191,16 +1203,16 @@ namespace Toolbox::UI {
 
         ImGui::InputText("##single_preview", value_buf, preview_size,
                          ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
-        
+
         delete[] value_buf;
     }
 
-    void DebuggerWindow::renderPreviewRGBA(f32 column_width, u32 address, MetaType watch_type) {
-        ImGuiStyle &style  = ImGui::GetStyle();
-        ImVec2 cursor_pos  = ImGui::GetCursorPos();
+    void DebuggerWindow::renderPreviewRGBA(f32 column_width, const MetaValue &value) {
+        ImGuiStyle &style = ImGui::GetStyle();
+        ImVec2 cursor_pos = ImGui::GetCursorPos();
 
         char value_buf[32] = {};
-        calcPreview(value_buf, sizeof(value_buf), address, 4, watch_type);
+        calcPreview(value_buf, sizeof(value_buf), value);
 
         ImGui::SetNextItemWidth(400.0f - ImGui::GetFrameHeight() - style.ItemSpacing.x);
         ImGui::InputText("##single_preview", value_buf, sizeof(value_buf),
@@ -1208,7 +1220,7 @@ namespace Toolbox::UI {
 
         ImGui::SameLine();
 
-        Color::RGBAShader calc_color = calcColorRGBA(address);
+        Color::RGBAShader calc_color = calcColorRGBA(value);
         ImVec4 color_rgba = {calc_color.m_r, calc_color.m_g, calc_color.m_b, calc_color.m_a};
 
         if (ImGui::ColorButton("##color_rgb_preview", color_rgba,
@@ -1218,11 +1230,11 @@ namespace Toolbox::UI {
         }
     }
 
-    void DebuggerWindow::renderPreviewRGB(f32 column_width, u32 address, MetaType watch_type) {
+    void DebuggerWindow::renderPreviewRGB(f32 column_width, const MetaValue &value) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         char value_buf[32] = {};
-        calcPreview(value_buf, sizeof(value_buf), address, 3, watch_type);
+        calcPreview(value_buf, sizeof(value_buf), value);
 
         ImGui::SetNextItemWidth(400.0f - ImGui::GetFrameHeight() - style.ItemSpacing.x);
         ImGui::InputText("##single_preview", value_buf, sizeof(value_buf),
@@ -1230,7 +1242,7 @@ namespace Toolbox::UI {
 
         ImGui::SameLine();
 
-        Color::RGBShader calc_color = calcColorRGB(address);
+        Color::RGBShader calc_color = calcColorRGB(value);
         ImVec4 color_rgba           = {calc_color.m_r, calc_color.m_g, calc_color.m_b, 1.0f};
 
         if (ImGui::ColorButton("##color_rgb_preview", color_rgba,
@@ -1240,7 +1252,7 @@ namespace Toolbox::UI {
         }
     }
 
-    void DebuggerWindow::renderPreviewVec3(f32 column_width, u32 address) {
+    void DebuggerWindow::renderPreviewVec3(f32 column_width, const MetaValue &value) {
         ImGuiStyle &style    = ImGui::GetStyle();
         ImVec2 cursor_origin = ImGui::GetCursorPos();
 
@@ -1261,7 +1273,7 @@ namespace Toolbox::UI {
 
             for (int i = 0; i < 3; ++i) {
                 char value_buf[32] = {};
-                calcPreview(value_buf, sizeof(value_buf), address + i * 4, 4, MetaType::F32);
+                calcPreview(value_buf, sizeof(value_buf), value);
 
                 ImGui::PushID(i);
 
@@ -1286,7 +1298,7 @@ namespace Toolbox::UI {
         window->DrawList->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Separator));
     }
 
-    void DebuggerWindow::renderPreviewTransform(f32 column_width, u32 address) {
+    void DebuggerWindow::renderPreviewTransform(f32 column_width, const MetaValue &value) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         ImVec2 preview_size    = {0, 0};
@@ -1322,7 +1334,7 @@ namespace Toolbox::UI {
 
             for (int i = 0; i < 3; ++i) {
                 char value_buf[32] = {};
-                calcPreview(value_buf, sizeof(value_buf), address + i * 4, 4, MetaType::F32);
+                calcPreview(value_buf, sizeof(value_buf), value);
 
                 ImGui::PushID(i);
 
@@ -1342,7 +1354,7 @@ namespace Toolbox::UI {
 
             for (int i = 0; i < 3; ++i) {
                 char value_buf[32] = {};
-                calcPreview(value_buf, sizeof(value_buf), address + i * 4 + 0x14, 4, MetaType::F32);
+                calcPreview(value_buf, sizeof(value_buf), value);
 
                 ImGui::PushID(i);
 
@@ -1362,7 +1374,7 @@ namespace Toolbox::UI {
 
             for (int i = 0; i < 3; ++i) {
                 char value_buf[32] = {};
-                calcPreview(value_buf, sizeof(value_buf), address + i * 4 + 0x20, 4, MetaType::F32);
+                calcPreview(value_buf, sizeof(value_buf), value);
 
                 ImGui::PushID(i);
 
@@ -1387,7 +1399,7 @@ namespace Toolbox::UI {
         window->DrawList->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Separator));
     }
 
-    void DebuggerWindow::renderPreviewMatrix34(f32 column_width, u32 address) {
+    void DebuggerWindow::renderPreviewMatrix34(f32 column_width, const MetaValue &value) {
         // view_mtx[0][0] = communicator.read<f32>(view_mtx_ptr + 0x00).value();
         // view_mtx[1][0] = communicator.read<f32>(view_mtx_ptr + 0x04).value();
         // view_mtx[2][0] = communicator.read<f32>(view_mtx_ptr + 0x08).value();
@@ -1426,8 +1438,7 @@ namespace Toolbox::UI {
             for (int j = 0; j < 3; ++j) {
                 for (int i = 0; i < 4; ++i) {
                     char value_buf[32] = {};
-                    calcPreview(value_buf, sizeof(value_buf), address + i * 4 + j * 16, 4,
-                                MetaType::F32);
+                    calcPreview(value_buf, sizeof(value_buf), value);
 
                     ImGui::PushID(i);
 
@@ -1454,22 +1465,25 @@ namespace Toolbox::UI {
         window->DrawList->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Separator));
     }
 
-    void DebuggerWindow::calcPreview(char *preview_out, size_t preview_size, u32 address,
-                                     size_t address_size, MetaType address_type) const {
+    void DebuggerWindow::calcPreview(char *preview_out, size_t preview_size,
+                                     const MetaValue &value) const {
         if (preview_out == nullptr || preview_size == 0) {
             return;
         }
+
+        size_t address_size = value.computeSize();
 
         if (address_size == 0) {
             snprintf(preview_out, preview_size, "???");
             return;
         }
 
-        if (preview_size < meta_type_size(address_type)) {
+        if (preview_size < address_size) {
             snprintf(preview_out, preview_size, "???");
             return;
         }
 
+#if 0
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             snprintf(preview_out, preview_size, "???");
@@ -1555,10 +1569,164 @@ namespace Toolbox::UI {
             snprintf(preview_out, preview_size, "Unsupported type");
             break;
         }
+#else
+        switch (value.type()) {
+        case MetaType::BOOL: {
+            value.get<bool>()
+                .and_then([&](bool result) {
+                    snprintf(preview_out, preview_size, "%s", result ? "true" : "false");
+                    return Result<bool, std::string>();
+                })
+                .or_else([&](std::string &&error) {
+                    snprintf(preview_out, preview_size, "%s", error.c_str());
+                    return Result<bool, std::string>();
+                });
+            break;
+        }
+        case MetaType::S8: {
+            value.get<s8>()
+                .and_then([&](s8 result) {
+                    snprintf(preview_out, preview_size, "%d", result);
+                    return Result<s8, std::string>();
+                })
+                .or_else([&](std::string &&error) {
+                    snprintf(preview_out, preview_size, "%s", error.c_str());
+                    return Result<s8, std::string>();
+                });
+            break;
+        }
+        case MetaType::U8: {
+            value.get<u8>()
+                .and_then([&](u8 result) {
+                    snprintf(preview_out, preview_size, "%u", result);
+                    return Result<u8, std::string>();
+                })
+                .or_else([&](std::string &&error) {
+                    snprintf(preview_out, preview_size, "%s", error.c_str());
+                    return Result<u8, std::string>();
+                });
+            break;
+        }
+        case MetaType::S16: {
+            value.get<s16>()
+                .and_then([&](s16 result) {
+                    snprintf(preview_out, preview_size, "%d", result);
+                    return Result<s16, std::string>();
+                })
+                .or_else([&](std::string &&error) {
+                    snprintf(preview_out, preview_size, "%s", error.c_str());
+                    return Result<s16, std::string>();
+                });
+            break;
+        }
+        case MetaType::U16: {
+            value.get<u16>()
+                .and_then([&](u16 result) {
+                    snprintf(preview_out, preview_size, "%u", result);
+                    return Result<u16, std::string>();
+                })
+                .or_else([&](std::string &&error) {
+                    snprintf(preview_out, preview_size, "%s", error.c_str());
+                    return Result<u16, std::string>();
+                });
+            break;
+        }
+        case MetaType::S32: {
+            value.get<s32>()
+                .and_then([&](s32 result) {
+                    snprintf(preview_out, preview_size, "%ld", result);
+                    return Result<s32, std::string>();
+                })
+                .or_else([&](std::string &&error) {
+                    snprintf(preview_out, preview_size, "%s", error.c_str());
+                    return Result<s32, std::string>();
+                });
+            break;
+        }
+        case MetaType::U32: {
+            value.get<u32>()
+                .and_then([&](u32 result) {
+                    snprintf(preview_out, preview_size, "%lu", result);
+                    return Result<u32, std::string>();
+                })
+                .or_else([&](std::string &&error) {
+                    snprintf(preview_out, preview_size, "%s", error.c_str());
+                    return Result<u32, std::string>();
+                });
+            break;
+        }
+        case MetaType::F32: {
+            value.get<f32>()
+                .and_then([&](f32 result) {
+                    snprintf(preview_out, preview_size, "%.6f", result);
+                    return Result<f32, std::string>();
+                })
+                .or_else([&](std::string &&error) {
+                    snprintf(preview_out, preview_size, "%s", error.c_str());
+                    return Result<f32, std::string>();
+                });
+            break;
+        }
+        case MetaType::F64: {
+            value.get<f64>()
+                .and_then([&](f64 result) {
+                    snprintf(preview_out, preview_size, "%.6f", result);
+                    return Result<f64, std::string>();
+                })
+                .or_else([&](std::string &&error) {
+                    snprintf(preview_out, preview_size, "%s", error.c_str());
+                    return Result<f64, std::string>();
+                });
+            break;
+        }
+        case MetaType::STRING: {
+            value.get<std::string>()
+                .and_then([&](const std::string &result) {
+                    snprintf(preview_out, preview_size, "%s", result.c_str());
+                    return Result<std::string, std::string>();
+                })
+                .or_else([&](std::string &&error) {
+                    snprintf(preview_out, preview_size, "%s", error.c_str());
+                    return Result<std::string, std::string>();
+                });
+            break;
+        }
+        case MetaType::RGB: {
+            value.get<Color::RGB24>()
+                .and_then([&](Color::RGB24 result) {
+                    u32 value = (result.m_r << 16) | (result.m_g << 8) | result.m_b;
+                    snprintf(preview_out, preview_size, "#%06X", value);
+                    return Result<Color::RGB24, std::string>();
+                })
+                .or_else([&](std::string &&error) {
+                    snprintf(preview_out, preview_size, "%s", error.c_str());
+                    return Result<Color::RGB24, std::string>();
+                });
+            break;
+        }
+        case MetaType::RGBA: {
+            value.get<Color::RGBA32>()
+                .and_then([&](Color::RGBA32 result) {
+                    u32 value =
+                        (result.m_r << 24) | (result.m_g << 16) | (result.m_b << 8) | result.m_a;
+                    snprintf(preview_out, preview_size, "#%08X", value);
+                    return Result<Color::RGBA32, std::string>();
+                })
+                .or_else([&](std::string &&error) {
+                    snprintf(preview_out, preview_size, "%s", error.c_str());
+                    return Result<Color::RGBA32, std::string>();
+                });
+            break;
+        }
+        default:
+            snprintf(preview_out, preview_size, "Unsupported type");
+            break;
+        }
+#endif
     }
 
-    Color::RGBShader DebuggerWindow::calcColorRGB(u32 address) {
-
+    Color::RGBShader DebuggerWindow::calcColorRGB(const MetaValue &value) {
+#if 0
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             return Color::RGBShader(0.0f, 0.0f, 0.0f);
@@ -1572,17 +1740,20 @@ namespace Toolbox::UI {
             return Color::RGBShader(0.0f, 0.0f, 0.0f);
         }
 
-        u32 value = communicator.read<u32>(true_address).value_or(0);
-        Color::RGB24 rgba_color((u8)((value >> 24) & 0xFF), (u8)((value >> 16) & 0xFF),
-                                (u8)((value >> 8) & 0xFF));
+        u32 val = communicator.read<u32>(true_address).value_or(0);
+#else
+        Color::RGB24 rgba_color = value.get<Color::RGB24>().value_or(Color::RGB24());
+#endif
+        // Color::RGB24 rgba_color((u8)((val >> 24) & 0xFF), (u8)((val >> 16) & 0xFF),
+        //                         (u8)((val >> 8) & 0xFF));
         f32 r, g, b, a;
         rgba_color.getColor(r, g, b, a);
 
         return Color::RGBShader(r, g, b);
     }
 
-    Color::RGBAShader DebuggerWindow::calcColorRGBA(u32 address) {
-
+    Color::RGBAShader DebuggerWindow::calcColorRGBA(const MetaValue &value) {
+#if 0
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             return Color::RGBAShader(0.0f, 0.0f, 0.0f, 0.0f);
@@ -1597,8 +1768,11 @@ namespace Toolbox::UI {
         }
 
         u32 value = communicator.read<u32>(true_address).value_or(0);
-        Color::RGBA32 rgba_color((u8)((value >> 24) & 0xFF), (u8)((value >> 16) & 0xFF),
-                                 (u8)((value >> 8) & 0xFF), (u8)(value & 0xFF));
+#else
+        Color::RGBA32 rgba_color = value.get<Color::RGBA32>().value_or(Color::RGBA32());
+#endif
+        // Color::RGBA32 rgba_color((u8)((val >> 24) & 0xFF), (u8)((val >> 16) & 0xFF),
+        //                          (u8)((val >> 8) & 0xFF), (u8)(val & 0xFF));
         f32 r, g, b, a;
         rgba_color.getColor(r, g, b, a);
 

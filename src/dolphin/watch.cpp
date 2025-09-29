@@ -43,7 +43,7 @@ namespace Toolbox {
         }
 
         std::string value = std::string(length, '\0');
-        communicator.readBytes(value.data(), address, length)
+        communicator.readCString(value.data(), length, address)
             .and_then([&]() { return Result<void>{}; })
             .or_else([&](const BaseError &err) {
                 TOOLBOX_ERROR("Failed to read string from memory: %s", err.m_message);
@@ -91,7 +91,7 @@ namespace Toolbox {
             return Transform();
         }
 
-        Transform value     = {};
+        Transform value       = {};
         value.m_translation.x = communicator.read<f32>(address).value_or(0.0f);
         value.m_translation.y = communicator.read<f32>(address + 0x04).value_or(0.0f);
         value.m_translation.z = communicator.read<f32>(address + 0x08).value_or(0.0f);
@@ -143,14 +143,15 @@ namespace Toolbox {
         }
 
         m_watch_address = address;
-        m_watch_size    = size;
+        m_watch_size    = std::min<u32>(size, WATCH_MAX_BUFFER_SIZE);
 
         if (m_watch_address == 0 || m_watch_size == 0) {
             TOOLBOX_ERROR("Invalid watch address or size.");
             return false;
         }
 
-        m_last_value_buf        = new u8[m_watch_size];
+        m_buf_size              = m_watch_size;
+        m_last_value_buf        = new u8[m_buf_size];
         m_last_value_needs_init = true;
         return true;
     }
@@ -185,6 +186,7 @@ namespace Toolbox {
 
         void *current_value_buf = (u8 *)mem_view + true_address;
         if (m_last_value_needs_init) {
+            notify(m_last_value_buf, current_value_buf, m_watch_size);
             memcpy(m_last_value_buf, current_value_buf, m_watch_size);
             m_last_value_needs_init = false;
             return;
@@ -208,12 +210,12 @@ namespace Toolbox {
     }
 
     MetaWatch::MetaWatch(MetaType type) : m_last_value(type) {
-        m_meta_type  = type;
+        m_meta_type = type;
 
         if (type != MetaType::STRING) {
             m_precompute_size = meta_type_size(type);
         } else {
-            m_precompute_size = 128;
+            m_precompute_size = 0;
         }
 
         m_memory_watch.onWatchNotify([this](void *old_value, void *new_value, u32 value_width) {
@@ -221,71 +223,81 @@ namespace Toolbox {
             MetaValue new_meta_value(m_meta_type);
             u32 watch_address = m_memory_watch.getWatchAddress();
 
+            if (meta_type_size(m_meta_type) > value_width) {
+                TOOLBOX_ERROR_V("[META_WATCH] Watch notified with width {} but needs width {}",
+                                value_width, meta_type_size(m_meta_type));
+                return;
+            }
+
+            Buffer value_buf;
+            value_buf.setBuf(new_value, value_width);
+
             switch (m_meta_type) {
             case MetaType::BOOL: {
-                new_meta_value.set(readSingleFromMem<bool>(watch_address));
+                new_meta_value.set(*static_cast<bool *>(new_value));
                 break;
             }
             case MetaType::S8: {
-                new_meta_value.set(readSingleFromMem<s8>(watch_address));
+                new_meta_value.set(*static_cast<s8 *>(new_value));
                 break;
             }
             case MetaType::U8: {
-                new_meta_value.set(readSingleFromMem<u8>(watch_address));
+                new_meta_value.set(*static_cast<u8 *>(new_value));
                 break;
             }
             case MetaType::S16: {
-                new_meta_value.set(readSingleFromMem<s16>(watch_address));
+                new_meta_value.set(*static_cast<s16 *>(new_value));
                 break;
             }
             case MetaType::U16: {
-                new_meta_value.set(readSingleFromMem<u16>(watch_address));
+                new_meta_value.set(*static_cast<u16 *>(new_value));
                 break;
             }
             case MetaType::S32: {
-                new_meta_value.set(readSingleFromMem<s32>(watch_address));
+                new_meta_value.set(*static_cast<s32 *>(new_value));
                 break;
             }
             case MetaType::U32: {
-                new_meta_value.set(readSingleFromMem<u32>(watch_address));
+                new_meta_value.set(*static_cast<u32 *>(new_value));
                 break;
             }
             case MetaType::F32: {
-                new_meta_value.set(readSingleFromMem<float>(watch_address));
+                new_meta_value.set(*static_cast<float *>(new_value));
                 break;
             }
             case MetaType::F64: {
-                new_meta_value.set(readSingleFromMem<double>(watch_address));
+                new_meta_value.set(*static_cast<double *>(new_value));
                 break;
             }
             case MetaType::STRING: {
-                if (m_precompute_size == 0) {
-                    DolphinHookManager &manager = DolphinHookManager::instance();
-                    if (!manager.isHooked()) {
-                        break;
-                    }
-                    u32 rel_addr = watch_address & 0x1FFFFFF;
-                    u8 *mem_view = ((u8 *)manager.getMemoryView()) + rel_addr;
-                    for (int32_t i = 0; i < std::min<int32_t>(256, 0x1800000 - rel_addr); ++i) {
-                        if (mem_view[i] == '\0') {
-                            m_precompute_size = i;
-                            break;
-                        }
-                    }
-                }
-                new_meta_value.set(readStringFromMem(watch_address, m_precompute_size));
+                const char *raw_str = static_cast<const char *>(new_value);
+                size_t len          = strnlen(raw_str, value_width);
+                std::string str     = std::string(raw_str, len);
+                new_meta_value.set(str);
                 break;
             }
             case MetaType::VEC3: {
-                new_meta_value.set<glm::vec3>(readVec3FromMem(watch_address));
+                new_meta_value.set<glm::vec3>(*static_cast<glm::vec3 *>(new_value));
                 break;
             }
             case MetaType::TRANSFORM: {
-                new_meta_value.set<Transform>(readTransformFromMem(watch_address));
+                new_meta_value.set<Transform>(*static_cast<Transform *>(new_value));
                 break;
             }
             case MetaType::MTX34: {
-                new_meta_value.set<glm::mat3x4>(readMtx34FromMem(watch_address));
+                new_meta_value.set<glm::mat3x4>(*static_cast<glm::mat3x4 *>(new_value));
+                break;
+            }
+            case MetaType::RGB: {
+                Color::RGB24 new_color;
+                Deserializer::BytesToObject(value_buf, new_color);
+                new_meta_value.set<Color::RGB24>(new_color);
+                break;
+            }
+            case MetaType::RGBA: {
+                Color::RGBA32 new_color;
+                Deserializer::BytesToObject(value_buf, new_color);
+                new_meta_value.set<Color::RGBA32>(new_color);
                 break;
             }
             }
@@ -306,7 +318,23 @@ namespace Toolbox {
 
     u32 MetaWatch::getWatchSize() const { return m_memory_watch.getWatchSize(); }
 
-    bool MetaWatch::startWatch(u32 address) {
+    bool MetaWatch::startWatch(u32 address, u32 size) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        #if 0
+        if (m_precompute_size == 0) {
+            if (m_meta_type == MetaType::STRING) {
+                char tmp_buf[WATCH_MAX_BUFFER_SIZE];
+                communicator.readCString(tmp_buf, WATCH_MAX_BUFFER_SIZE - 1, address);
+                m_precompute_size = strnlen(tmp_buf, WATCH_MAX_BUFFER_SIZE - 1);
+            }
+        }
+        #else
+        if (m_precompute_size == 0) {
+            m_precompute_size = size;
+        }
+        #endif
+
         return m_memory_watch.startWatch(address, m_precompute_size);
     }
 

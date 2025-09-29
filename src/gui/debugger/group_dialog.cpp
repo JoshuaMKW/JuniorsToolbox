@@ -12,11 +12,12 @@ namespace Toolbox::UI {
 
         if (m_opening) {
             ImGui::OpenPopup("Add Group");
-            m_opening = false;
             m_open    = true;
         }
 
         if (ImGui::BeginPopupModal("Add Group", &m_open, ImGuiWindowFlags_AlwaysAutoResize)) {
+            m_opening = false;
+
             ImGui::Text("Name: ");
             ImGui::SetNextItemWidth(300.0f);
 

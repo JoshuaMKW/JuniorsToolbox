@@ -387,6 +387,7 @@ namespace Toolbox::Object {
             return std::unexpected("Type record mismatch");
         return m_value_buf.get<T>(0);
     }
+
     template <> [[nodiscard]]
     inline Result<std::string, std::string> getBuf(const MetaType &m_type,
                                                   const Buffer &m_value_buf) {
@@ -400,6 +401,7 @@ namespace Toolbox::Object {
         }
         return out;
     }
+
     template <typename T> [[nodiscard]]
     inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, const T &value) {
         m_type = map_to_type_enum<T>::value;

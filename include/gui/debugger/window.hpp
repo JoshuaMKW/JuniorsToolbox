@@ -115,18 +115,16 @@ namespace Toolbox::UI {
         std::string buildQualifiedId(ModelIndex index) const;
 
         // ----
-        void renderPreview(f32 column_width, u32 address, size_t address_size, MetaType watch_type);
-        void renderPreviewSingle(f32 column_width, u32 address, size_t address_size,
-                                 MetaType watch_type);
-        void renderPreviewRGBA(f32 column_width, u32 address, MetaType watch_type);
-        void renderPreviewRGB(f32 column_width, u32 address, MetaType watch_type);
-        void renderPreviewVec3(f32 column_width, u32 address);
-        void renderPreviewTransform(f32 column_width, u32 address);
-        void renderPreviewMatrix34(f32 column_width, u32 address);
-        void calcPreview(char *preview_out, size_t preview_size, u32 address, size_t address_size,
-                         MetaType address_type) const;
-        Color::RGBShader calcColorRGB(u32 address);
-        Color::RGBAShader calcColorRGBA(u32 address);
+        void renderPreview(f32 column_width, const MetaValue &value);
+        void renderPreviewSingle(f32 column_width, const MetaValue &value);
+        void renderPreviewRGBA(f32 column_width, const MetaValue &value);
+        void renderPreviewRGB(f32 column_width, const MetaValue &value);
+        void renderPreviewVec3(f32 column_width, const MetaValue &value);
+        void renderPreviewTransform(f32 column_width, const MetaValue &value);
+        void renderPreviewMatrix34(f32 column_width, const MetaValue &value);
+        void calcPreview(char *preview_out, size_t preview_size, const MetaValue &value) const;
+        Color::RGBShader calcColorRGB(const MetaValue &value);
+        Color::RGBAShader calcColorRGBA(const MetaValue &value);
 
         struct HistoryPair {
             u32 m_address;

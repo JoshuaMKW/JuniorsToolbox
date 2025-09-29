@@ -9,6 +9,8 @@
 
 using namespace Toolbox::Object;
 
+#define WATCH_MAX_BUFFER_SIZE 1024
+
 namespace Toolbox {
 
     class MemoryWatch {
@@ -59,6 +61,7 @@ namespace Toolbox {
         u32 m_watch_size;
         watch_notify_cb m_watch_notify_cb;
         void *m_last_value_buf       = nullptr;
+        u32 m_buf_size               = 0;
         bool m_last_value_needs_init = true;
         bool m_is_locked             = false;
     };
@@ -97,7 +100,7 @@ namespace Toolbox {
         [[nodiscard]] u32 getWatchAddress() const;
         [[nodiscard]] u32 getWatchSize() const;
 
-        [[nodiscard]] bool startWatch(u32 address);
+        [[nodiscard]] bool startWatch(u32 address, u32 size = 0);
         void stopWatch();
 
         void onWatchNotify(meta_watch_notify_cb cb) { m_watch_notify_cb = std::move(cb); }

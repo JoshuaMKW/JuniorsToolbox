@@ -37,7 +37,7 @@ namespace Toolbox::UI {
         void setup();
 
         void open() { m_opening = true; }
-        bool is_open() const { return m_open == true; }
+        bool is_open() const { return m_open == true || m_opening == true; }
 
         void render(ModelIndex group_idx, size_t row);
 
@@ -78,7 +78,7 @@ namespace Toolbox::UI {
         void setup();
 
         void open() { m_opening = true; }
-        bool is_open() const { return m_open == true; }
+        bool is_open() const { return m_open == true || m_opening == true; }
 
         void render(ModelIndex group_idx, size_t row);
 

@@ -16,8 +16,8 @@
         },
         "Members": {
             "SinkCount": {
-                "Type": "INT",
-                "ArraySize": 1
+              "Type": "U32",
+              "ArraySize": 1
             },
             "VTXStart": {
                 "Type": "INT",

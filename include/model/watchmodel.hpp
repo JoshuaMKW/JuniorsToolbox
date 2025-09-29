@@ -99,7 +99,7 @@ namespace Toolbox {
 
     enum WatchDataRole {
         WATCH_DATA_ROLE_TYPE = ModelDataRole::DATA_ROLE_USER,
-        WATCH_DATA_ROLE_TYPE_META,
+        WATCH_DATA_ROLE_VALUE_META,
         WATCH_DATA_ROLE_ADDRESS,
         WATCH_DATA_ROLE_LOCK,
         WATCH_DATA_ROLE_SIZE,
@@ -121,9 +121,9 @@ namespace Toolbox {
             return std::any_cast<std::string>(getData(index, WatchDataRole::WATCH_DATA_ROLE_TYPE));
         }
 
-        [[nodiscard]] MetaType getWatchTypeMeta(const ModelIndex &index) const {
-            return std::any_cast<MetaType>(
-                getData(index, WatchDataRole::WATCH_DATA_ROLE_TYPE_META));
+        [[nodiscard]] MetaValue getWatchValueMeta(const ModelIndex &index) const {
+            return std::any_cast<MetaValue>(
+                getData(index, WatchDataRole::WATCH_DATA_ROLE_VALUE_META));
         }
 
         [[nodiscard]] u32 getWatchAddress(const ModelIndex &index) const {
@@ -266,8 +266,9 @@ namespace Toolbox {
             return std::any_cast<std::string>(getData(index, WatchDataRole::WATCH_DATA_ROLE_TYPE));
         }
 
-        [[nodiscard]] MetaType getWatchTypeMeta(const ModelIndex &index) const {
-            return std::any_cast<MetaType>(getData(index, WatchDataRole::WATCH_DATA_ROLE_TYPE_META));
+        [[nodiscard]] MetaValue getWatchValueMeta(const ModelIndex &index) const {
+            return std::any_cast<MetaValue>(
+                getData(index, WatchDataRole::WATCH_DATA_ROLE_VALUE_META));
         }
 
         [[nodiscard]] u32 getWatchAddress(const ModelIndex &index) const {

@@ -13,30 +13,29 @@ namespace Toolbox::Object {
         case MetaType::BOOL:
         case MetaType::S8:
         case MetaType::U8:
-            return sizeof(u8);
+            return 1;
         case MetaType::S16:
         case MetaType::U16:
-            return sizeof(u16);
+            return 2;
         case MetaType::S32:
         case MetaType::U32:
-            return sizeof(u32);
+            return 4;
         case MetaType::F32:
-            return sizeof(f32);
+            return 4;
         case MetaType::F64:
-            return sizeof(f64);
-        case MetaType::STRING: {
-            // Strings are stored as a null-terminated array of characters.
-            // We return the size of the string plus one for the null terminator.
-            return m_value_buf.size() + 1;
-        }
+            return 8;
+        case MetaType::STRING:
+            return strnlen(m_value_buf.buf<const char>(), m_value_buf.size());
         case MetaType::VEC3:
-            return sizeof(f32) * 3;
+            return 12;
         case MetaType::TRANSFORM:
-            return sizeof(f32) * 12;  // 3 for translation, 3 for rotation, 3 for scale
+            return 36;  // 3 for translation, 3 for rotation, 3 for scale
+        case MetaType::MTX34:
+            return 48;
         case MetaType::RGB:
-            return sizeof(u8) * 3;  // RGB is 3 bytes
+            return 3;  // RGB is 3 bytes
         case MetaType::RGBA:
-            return sizeof(u8) * 4;  // RGBA is 4 bytes
+            return 4;  // RGBA is 4 bytes
         default:
             TOOLBOX_WARN("[MetaValue] Unknown type for size computation: {}",
                          magic_enum::enum_name(m_type));

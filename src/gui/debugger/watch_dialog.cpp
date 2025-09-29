@@ -1,4 +1,5 @@
 #include "dolphin/process.hpp"
+#include "dolphin/watch.hpp"
 #include "gui/application.hpp"
 #include "gui/debugger/dialog.hpp"
 
@@ -19,11 +20,12 @@ namespace Toolbox::UI {
 
         if (m_opening) {
             ImGui::OpenPopup("Add Watch");
-            m_opening = false;
             m_open    = true;
         }
 
         if (ImGui::BeginPopupModal("Add Watch", &m_open, ImGuiWindowFlags_AlwaysAutoResize)) {
+            m_opening = false;
+
             // Render the watch name input box
             // ---
             {
@@ -71,6 +73,17 @@ namespace Toolbox::UI {
                 }
             }
 
+            if (m_watch_type == MetaType::STRING) {
+                ImGui::TextAndWidth(label_width, "Type: ");
+                ImGui::SameLine();
+
+                int value = (int)m_watch_size;
+                ImGui::InputInt("##watch_length", &value, 1, 10, ImGuiInputTextFlags_CharsNoBlank);
+                m_watch_size = std::clamp<int>(value, 1, WATCH_MAX_BUFFER_SIZE - 1);
+            } else {
+                m_watch_size = 0;
+            }
+
             size_t watch_name_length = strlen(m_watch_name.data());
             std::string_view watch_name_view(m_watch_name.data(), watch_name_length);
 
@@ -79,9 +92,9 @@ namespace Toolbox::UI {
             u32 address = strtoul(m_watch_address.data(), nullptr, 16);
             size_t address_size;
             if (m_watch_type == MetaType::STRING) {
-                address_size = 128;
+                address_size = m_watch_size;
             } else {
-                address_size = m_watch_size ? m_watch_size : meta_type_size(m_watch_type);
+                address_size = meta_type_size(m_watch_type);
             }
 
             {
@@ -549,7 +562,7 @@ namespace Toolbox::UI {
             break;
         }
         case MetaType::STRING: {
-            communicator.readCString(preview_out, preview_size, true_address)
+            communicator.readCString(preview_out, address_size, true_address)
                 .or_else([&](const BaseError &err) {
                     snprintf(preview_out, preview_size, "Error: %s", err.m_message[0].c_str());
                     return Result<void>{};

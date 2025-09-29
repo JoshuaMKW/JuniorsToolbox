@@ -380,7 +380,7 @@ namespace Toolbox::Dolphin {
             i += 1;
         }
 
-        buf[i - 1]      = '\0';
+        buf[i]      = '\0';
         return {};
     }
 
@@ -409,7 +409,7 @@ namespace Toolbox::Dolphin {
             i += 1;
         }
 
-        addr_buf[i - 1] = '\0';
+        addr_buf[i] = '\0';
         return {};
     }
 
