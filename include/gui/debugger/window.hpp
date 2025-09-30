@@ -48,6 +48,8 @@ namespace Toolbox::UI {
 
         void renderMemoryAddressBar();
         void renderMemoryView();
+        u32 renderMemoryRow(void *handle, u32 base_address, u32 byte_limit, u8 column_count,
+                            u8 byte_width);
         void renderMemoryWatchList();
         void renderMemoryWatch(const ModelIndex &index, int depth, float table_start_x, float table_width);
         void renderWatchGroup(const ModelIndex &index, int depth, float table_start_x, float table_width);
@@ -125,6 +127,9 @@ namespace Toolbox::UI {
         void calcPreview(char *preview_out, size_t preview_size, const MetaValue &value) const;
         Color::RGBShader calcColorRGB(const MetaValue &value);
         Color::RGBAShader calcColorRGBA(const MetaValue &value);
+        // ----
+
+        void overwriteNibbleAtCursor(u8 nibble_value);
 
         struct HistoryPair {
             u32 m_address;
@@ -168,6 +173,17 @@ namespace Toolbox::UI {
         ImVec2 m_last_reg_mouse_pos;
 
         std::unordered_map<ImGuiID, bool> m_node_open_state;
+
+        bool m_address_selection_new = false;
+        ImVec2 m_address_selection_mouse_start = {};
+        u32 m_address_selection_begin = 0;
+        u32 m_address_selection_end = 0;
+        u32 m_address_cursor = 0;
+        u8 m_address_cursor_nibble = 0;
+
+        float m_cursor_step_timer = -0.3f;
+        float m_cursor_anim_timer = 0.0f;
+        float m_delta_time        = 0.0f;
     };
 
 }  // namespace Toolbox::UI

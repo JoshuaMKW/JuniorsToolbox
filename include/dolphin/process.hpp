@@ -28,7 +28,7 @@ namespace Toolbox::Dolphin {
         s64 getRefreshRate() const { return m_refresh_rate; }
         void setRefreshRate(s64 milliseconds) { m_refresh_rate = milliseconds; }
 
-        template <typename T> Result<T, BaseError> read(u32 address) {
+        template <typename T> Result<T> read(u32 address) {
             T data;
 
             auto result = DolphinHookManager::instance().readBytes(reinterpret_cast<char *>(&data),
