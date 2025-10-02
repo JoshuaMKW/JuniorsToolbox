@@ -23,8 +23,8 @@
 #include "gui/image/imagepainter.hpp"
 #include "gui/project/asset.hpp"
 #include "gui/window.hpp"
-#include "model/watchmodel.hpp"
 #include "model/selection.hpp"
+#include "model/watchmodel.hpp"
 
 #include <imgui.h>
 
@@ -51,8 +51,10 @@ namespace Toolbox::UI {
         u32 renderMemoryRow(void *handle, u32 base_address, u32 byte_limit, u8 column_count,
                             u8 byte_width);
         void renderMemoryWatchList();
-        void renderMemoryWatch(const ModelIndex &index, int depth, float table_start_x, float table_width);
-        void renderWatchGroup(const ModelIndex &index, int depth, float table_start_x, float table_width);
+        void renderMemoryWatch(const ModelIndex &index, int depth, float table_start_x,
+                               float table_width);
+        void renderWatchGroup(const ModelIndex &index, int depth, float table_start_x,
+                              float table_width);
 
     public:
         ImGuiWindowFlags flags() const override { return ImWindow::flags(); }
@@ -104,8 +106,7 @@ namespace Toolbox::UI {
         void actionCopyIndexes(const std::vector<ModelIndex> &indices);
 
         void actionSelectIndex(const ModelIndex &child_index);
-        void actionClearRequestExcIndex(const ModelIndex &child_index,
-                                        bool is_left_button);
+        void actionClearRequestExcIndex(const ModelIndex &child_index, bool is_left_button);
 
     private:
         void recursiveLock(ModelIndex src_idx, bool lock);
@@ -130,6 +131,7 @@ namespace Toolbox::UI {
         // ----
 
         void overwriteNibbleAtCursor(u8 nibble_value);
+        void overwriteCharAtCursor(char char_value);
 
         struct HistoryPair {
             u32 m_address;
@@ -174,12 +176,15 @@ namespace Toolbox::UI {
 
         std::unordered_map<ImGuiID, bool> m_node_open_state;
 
-        bool m_address_selection_new = false;
+        bool m_selection_was_ascii             = false;
+        bool m_address_selection_new           = false;
         ImVec2 m_address_selection_mouse_start = {};
-        u32 m_address_selection_begin = 0;
-        u32 m_address_selection_end = 0;
-        u32 m_address_cursor = 0;
-        u8 m_address_cursor_nibble = 0;
+        u32 m_address_selection_begin          = 0;
+        u32 m_address_selection_begin_nibble   = 0;
+        u32 m_address_selection_end            = 0;
+        u32 m_address_selection_end_nibble     = 0;
+        u32 m_address_cursor                   = 0;
+        u8 m_address_cursor_nibble             = 0;
 
         float m_cursor_step_timer = -0.3f;
         float m_cursor_anim_timer = 0.0f;

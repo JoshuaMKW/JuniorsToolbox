@@ -32,6 +32,24 @@ template <typename _T> constexpr static _T OverwriteNibble(_T value, u8 nibble_i
     return new_value;
 }
 
+template <typename _T> constexpr static _T OverwriteByte(_T value, u8 byte_idx, u8 byte_val) {
+    static_assert(std::is_integral_v<_T>, "_T must be a basic integral type");
+
+    constexpr size_t byte_width   = sizeof(_T);
+
+    if (byte_idx >= byte_width) {
+        return value;
+    }
+
+    byte_val &= 0b11111111;
+
+    _T byte_idx_big = ((byte_width - 1) - byte_idx);
+    _T byte_mask    = static_cast<_T>(0b11111111) << (byte_idx_big * 8);
+    _T new_value    = (value & ~byte_mask) | (static_cast<_T>(byte_val) << (byte_idx_big * 8));
+
+    return new_value;
+}
+
 namespace Toolbox::UI {
 
     DebuggerWindow::DebuggerWindow(const std::string &name) : ImWindow(name), m_address_input() {}
@@ -132,104 +150,310 @@ namespace Toolbox::UI {
 
         const bool window_focused = ImGui::IsWindowFocused();
         const float font_width    = ImGui::GetFontSize();
-        float ch_width            = ImGui::CalcTextSize("0").x;
+        const float ch_width      = ImGui::CalcTextSize("0").x;
+        const float ch_height     = ImGui::CalcTextSize("0").y;
 
         // Render the address
         // ---
         ImGui::Text("0x%08X", base_address);
         ImGui::SameLine();
 
+        const int16_t nibble_width = byte_width * 2;
+
         byte_width              = std::min<u8>(byte_width, 4);
-        const char formatter[8] = {'%', '0', '0' + byte_width * 2, 'X', '\0'};
+        const char formatter[8] = {'%', '0', '0' + nibble_width, 'X', '\0'};
 
         u64 value = 0;
 
         void *mem_ptr = handle;
         u32 b_limit   = byte_limit;
 
-        // Calculate the selection quad for this row
-        u32 base_address_end = base_address + column_count * byte_width;
+        // This is the end of the row as an address.
+        const u32 base_address_end = base_address + column_count * byte_width;
 
-        u32 selection_start = std::min<u32>(m_address_selection_begin, m_address_selection_end);
-        u32 selection_end   = std::max<u32>(m_address_selection_begin, m_address_selection_end);
+        u32 selection_start;
+        u32 selection_end;
+        int16_t selection_start_nibble;
+        int16_t selection_end_nibble;
 
-        if (selection_start < base_address_end && selection_end > base_address &&
-            selection_start != 0 && selection_end != 0) {
-            u32 addr_beg = std::max<u32>(selection_start, base_address);
-            u32 addr_end = std::min<u32>(selection_end, base_address_end);
+        if (m_address_selection_begin <= m_address_selection_end) {
+            selection_start        = m_address_selection_begin;
+            selection_start_nibble = m_address_selection_begin_nibble;
+            selection_end          = m_address_selection_end;
+            selection_end_nibble   = m_address_selection_end_nibble;
+        } else {
+            selection_end          = m_address_selection_begin;
+            selection_end_nibble   = m_address_selection_begin_nibble;
+            selection_start        = m_address_selection_end;
+            selection_start_nibble = m_address_selection_end_nibble;
+        }
 
-            u8 col_start = (addr_beg - base_address) / byte_width;
-            u8 col_end   = (addr_end - base_address) / byte_width;
+        if (selection_start < base_address) {
+            selection_start_nibble = 0;
+        }
 
-            if (col_start < col_end) {
-                char spoof_buf[16];
-                snprintf(spoof_buf, sizeof(spoof_buf), formatter, 0);
+        if (selection_end > base_address_end) {
+            selection_end_nibble = 0;
+        }
 
-                ImVec2 text_size  = ImGui::CalcTextSize(spoof_buf);
+        const bool selection_at_column_start = selection_start_nibble % nibble_width == 0;
+        const bool selection_at_column_end   = selection_end_nibble % nibble_width == 0;
+
+        // HEXADECIMAL DISPLAY
+        {
+
+            // Here we actually render the selection span slice as a quad.
+            if (selection_start < base_address_end && selection_end >= base_address &&
+                selection_start != 0 && selection_end != 0) {
+                u32 addr_beg = std::max<u32>(selection_start, base_address);
+                u32 addr_end = std::min<u32>(selection_end, base_address_end);
+
+                int16_t col_start = (addr_beg - base_address) / byte_width;
+                int16_t col_end   = (addr_end - base_address) / byte_width;
+                int16_t col_span  = col_end - col_start;
+
+                bool valid_span = col_start < col_end;
+                valid_span |=
+                    col_start == col_end && (selection_start_nibble < selection_end_nibble);
+
+                if (valid_span) {
+                    char spoof_buf[16];
+                    snprintf(spoof_buf, sizeof(spoof_buf), formatter, 0);
+
+                    ImVec2 text_size = ImGui::CalcTextSize(spoof_buf);
+
+                    ImRect text_rect = {};
+                    text_rect.Min    = ImGui::GetWindowPos() + ImGui::GetCursorPos();
+                    text_rect.Min.x += (style.ItemSpacing.x + text_size.x) * col_start;
+                    text_rect.Min.y -= style.ItemSpacing.y / 2;
+
+                    text_rect.Max = text_rect.Min;
+                    text_rect.Max.x += (style.ItemSpacing.x + text_size.x) * col_span;
+                    text_rect.Max.y += style.ItemSpacing.y + text_size.y;
+
+                    if (selection_at_column_start) {
+                        text_rect.Min.x -= style.ItemSpacing.x / 2;
+                    } else if (col_start != column_count) {
+                        text_rect.Min.x += ch_width * selection_start_nibble;
+                    }
+
+                    if (selection_at_column_end) {
+                        text_rect.Max.x -= style.ItemSpacing.x / 2;
+                    } else if (col_span != column_count) {
+                        text_rect.Max.x += ch_width * selection_end_nibble;
+                    }
+
+                    ImVec4 color = style.Colors[ImGuiCol_TabSelected];
+                    if (m_selection_was_ascii) {
+                        color.w *= 0.5f;
+                    }
+
+                    window->DrawList->AddQuadFilled(text_rect.GetTL(), text_rect.GetTR(),
+                                                    text_rect.GetBR(), text_rect.GetBL(),
+                                                    ImGui::ColorConvertFloat4ToU32(color));
+                }
+            }
+
+            // Render each byte group in the row
+            for (u8 column = 0; column < column_count; ++column) {
+                ImGui::SameLine();
+                value = std::byteswap(*((u64 *)mem_ptr));
+
+                u32 cur_address = base_address + column * byte_width;
+
+                // Calculate a big-endian mask
+                // ---
+                // Examples
+                // ---
+                // byte_width = 1 -> 0x00FFFFFF'FFFFFFFF -> 0xFF000000'00000000
+                // byte_width = 2 -> 0x0000FFFF'FFFFFFFF -> 0xFFFF0000'00000000
+                // ...
+                // ---
+                u32 bit_width = std::min<u32>(byte_width, byte_limit) * 8;
+                u64 mask      = ~(0xFFFFFFFF'FFFFFFFF >> bit_width);
+
+                // Calulate the rect of the text for interaction purposes.
+                char text_buf[64];
+                snprintf(text_buf, sizeof(text_buf), formatter, (value & mask) >> (64 - bit_width));
 
                 ImRect text_rect = {};
                 text_rect.Min =
                     ImGui::GetWindowPos() + ImGui::GetCursorPos() - style.ItemSpacing / 2;
-                text_rect.Min.x += (style.ItemSpacing.x + text_size.x) * col_start;
-                text_rect.Max = text_rect.Min;
-                text_rect.Max.x += (style.ItemSpacing.x + text_size.x) * (col_end - col_start);
-                text_rect.Max.y += style.ItemSpacing.y + text_size.y;
+                text_rect.Max = text_rect.Min + ImGui::CalcTextSize(text_buf) + style.ItemSpacing;
 
-                window->DrawList->AddQuadFilled(text_rect.GetTL(), text_rect.GetTR(),
-                                                text_rect.GetBR(), text_rect.GetBL(),
-                                                ImGui::GetColorU32(ImGuiCol_TabSelected));
+                double m_x, m_y;
+                Input::GetMousePosition(m_x, m_y);
+
+                ImVec2 mouse_pos = ImVec2{(float)m_x, (float)m_y};
+
+                bool column_hovered = text_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding);
+                bool column_clicked =
+                    column_hovered && Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
+                if (column_clicked) {
+                    m_selection_was_ascii = false;
+
+                    m_address_selection_new         = true;
+                    m_address_selection_mouse_start = mouse_pos;
+
+                    m_address_selection_begin = cur_address;
+                    m_address_selection_end   = cur_address;
+
+                    m_address_cursor        = cur_address;
+                    m_address_cursor_nibble = ImClamp<u8>(
+                        (mouse_pos.x - text_rect.Min.x) / ch_width, 0, nibble_width - 1);
+
+                    // Set the nibble to an even index so it traverses whole bytes
+                    m_address_selection_begin_nibble = m_address_cursor_nibble & ~1;
+                    m_address_selection_end_nibble   = m_address_selection_begin_nibble;
+
+                    m_cursor_anim_timer = -0.3f;
+                } else if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT)) {
+                    m_address_selection_new = false;
+                }
+
+                // In this case we check for selection dragging
+                if (!m_selection_was_ascii && m_address_selection_new &&
+                    Input::GetMouseButton(MouseButton::BUTTON_LEFT) && column_hovered) {
+                    ImVec2 difference = mouse_pos - m_address_selection_mouse_start;
+                    if (ImLengthSqr(difference) > 25.0f) {
+                        m_address_selection_end = cur_address < m_address_selection_begin
+                                                      ? cur_address
+                                                      : cur_address + byte_width;
+                        m_address_selection_end_nibble =
+                            ImClamp<u8>((mouse_pos.x - text_rect.Min.x) / ch_width, 0,
+                                        nibble_width - 1) &
+                            ~1;
+                        // TOOLBOX_INFO_V("mpx: {}, trx: {}, v: {}", mouse_pos.x, text_rect.Min.x,
+                        //                (mouse_pos.x - text_rect.Min.x) / ch_width);
+                    }
+                } else if (column_hovered) {
+                    window->DrawList->AddRectFilled(text_rect.Min, text_rect.Max,
+                                                    ImGui::GetColorU32(ImGuiCol_TabHovered));
+                }
+
+                ImGui::Text(text_buf);
+
+                if (!m_selection_was_ascii && m_address_cursor == cur_address) {
+                    m_cursor_anim_timer += m_delta_time;
+                    bool cursor_visible = (m_cursor_anim_timer <= 0.0f) ||
+                                          ImFmod(m_cursor_anim_timer, 1.20f) <= 0.80f;
+                    if (cursor_visible) {
+                        ImVec2 tl = text_rect.GetTL();
+                        ImVec2 bl = text_rect.GetBL();
+                        tl.x += ch_width * m_address_cursor_nibble + style.ItemSpacing.x / 2 - 1;
+                        bl.x += ch_width * m_address_cursor_nibble + style.ItemSpacing.x / 2 - 1;
+                        window->DrawList->AddLine(tl, bl, 0xA03030FF, 2.0f);
+                    }
+                }
+
+                mem_ptr = (u8 *)mem_ptr + byte_width;
+                b_limit -= byte_width;
             }
         }
+        // --------------
 
-        // Render each byte group in the row
-        for (u8 column = 0; column < column_count; ++column) {
-            ImGui::SameLine();
-            value = std::byteswap(*((u64 *)mem_ptr));
+        mem_ptr = handle;
+        b_limit = byte_limit;
 
-            u32 cur_address = base_address + column * byte_width;
+        ImGui::SameLine();
 
-            // Calculate a big-endian mask
-            // ---
-            // Examples
-            // ---
-            // byte_width = 1 -> 0x00FFFFFF'FFFFFFFF -> 0xFF000000'00000000
-            // byte_width = 2 -> 0x0000FFFF'FFFFFFFF -> 0xFFFF0000'00000000
-            // ...
-            // ---
-            u32 bit_width = std::min<u32>(byte_width, byte_limit) * 8;
-            u64 mask      = ~(0xFFFFFFFF'FFFFFFFF >> bit_width);
+        u32 char_width = calculateBytesForRow(b_limit, column_count, byte_width);
 
-            // Calulate the rect of the text for interaction purposes.
-            char text_buf[64];
-            snprintf(text_buf, sizeof(text_buf), formatter, (value & mask) >> (64 - bit_width));
+        // ASCII DISPLAY
+        {
+
+            char *ascii_buf = new char[char_width];
+            for (int i = 0; i < char_width; ++i) {
+                int ch = ((char *)mem_ptr)[i];
+                ch &= 0xFF;
+                if (std::isprint(ch)) {
+                    ascii_buf[i] = ch;
+                } else {
+                    ascii_buf[i] = '.';
+                }
+            }
+
+            // Calculate the selection quad for this row
+            u32 base_address_end = base_address + char_width;
+
+            // Here we actually render the selection span slice as a quad.
+            if (selection_start < base_address_end && selection_end > base_address &&
+                selection_start != 0 && selection_end != 0) {
+                u32 addr_beg = std::max<u32>(selection_start, base_address);
+                u32 addr_end = std::min<u32>(selection_end, base_address_end);
+
+                u8 col_start = (addr_beg - base_address) + (selection_start_nibble / 2);
+                u8 col_end   = (addr_end - base_address) + (selection_end_nibble / 2);
+
+                if (col_start < col_end) {
+                    char spoof_buf[16];
+                    snprintf(spoof_buf, sizeof(spoof_buf), formatter, 0);
+
+                    ImVec2 text_size = ImGui::CalcTextSize(spoof_buf);
+
+                    ImRect text_rect = {};
+                    text_rect.Min    = ImGui::GetWindowPos() + ImGui::GetCursorPos();
+                    text_rect.Min.x += ch_width * col_start;
+                    text_rect.Min.y -= style.ItemSpacing.y / 2;
+                    text_rect.Max = text_rect.Min;
+                    text_rect.Max.x += ch_width * (col_end - col_start);
+                    text_rect.Max.y += style.ItemSpacing.y + text_size.y;
+
+                    ImVec4 color = style.Colors[ImGuiCol_TabSelected];
+                    if (!m_selection_was_ascii) {
+                        color.w *= 0.5f;
+                    }
+
+                    window->DrawList->AddQuadFilled(text_rect.GetTL(), text_rect.GetTR(),
+                                                    text_rect.GetBR(), text_rect.GetBL(),
+                                                    ImGui::ColorConvertFloat4ToU32(color));
+                }
+            }
+
+#if 1
+            ImRect char_rect = {};
+            char_rect.Min    = ImGui::GetWindowPos() + ImGui::GetCursorPos();
+            char_rect.Min.y -= style.ItemSpacing.y / 2;
+            char_rect.Max = char_rect.Min;
+            char_rect.Max.x += ch_width;
+            char_rect.Max.y += ch_height + style.ItemSpacing.y;
 
             ImRect text_rect = {};
-            text_rect.Min = ImGui::GetWindowPos() + ImGui::GetCursorPos() - style.ItemSpacing / 2;
-            text_rect.Max = text_rect.Min + ImGui::CalcTextSize(text_buf) + style.ItemSpacing;
+            text_rect.Min    = char_rect.Min;
+            text_rect.Max.x  = text_rect.Min.x + ch_width * char_width;
+            text_rect.Max.y  = char_rect.Max.y;
 
             double m_x, m_y;
             Input::GetMousePosition(m_x, m_y);
 
             ImVec2 mouse_pos = ImVec2{(float)m_x, (float)m_y};
 
-            bool column_hovered = text_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding);
-            if (column_hovered) {
-                window->DrawList->AddRectFilled(text_rect.Min, text_rect.Max,
-                                                ImGui::GetColorU32(ImGuiCol_TabHovered));
+            int64_t column_hovered = -1;
+            for (int64_t i = 0; i < char_width; ++i) {
+                bool ch_hovered = char_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding);
+                if (ch_hovered) {
+                    window->DrawList->AddRectFilled(char_rect.Min, char_rect.Max,
+                                                    ImGui::GetColorU32(ImGuiCol_TabHovered));
+                    column_hovered = i;
+                    break;
+                }
+                char_rect.TranslateX(ch_width);
             }
 
             bool column_clicked =
-                column_hovered && Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
+                column_hovered >= 0 && Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
             if (column_clicked) {
+                m_selection_was_ascii = true;
+
                 m_address_selection_new         = true;
                 m_address_selection_mouse_start = mouse_pos;
 
-                m_address_selection_begin = cur_address;
-                m_address_selection_end   = cur_address;
+                m_address_selection_begin = base_address + column_hovered;
+                m_address_selection_end   = base_address + column_hovered;
 
-                m_address_cursor = cur_address;
+                m_address_cursor = base_address + column_hovered;
                 m_address_cursor_nibble =
-                    ImClamp<u8>((mouse_pos.x - text_rect.Min.x) / ch_width, 0, byte_width * 2 - 1);
+                    ImClamp<u8>((mouse_pos.x - char_rect.Min.x) / ch_width, 0, byte_width * 2 - 1);
 
                 m_cursor_anim_timer = -0.3f;
             } else if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT)) {
@@ -237,52 +461,38 @@ namespace Toolbox::UI {
             }
 
             // In this case we check for selection dragging
-            if (m_address_selection_new && Input::GetMouseButton(MouseButton::BUTTON_LEFT) &&
-                column_hovered) {
+            if (m_selection_was_ascii && m_address_selection_new &&
+                Input::GetMouseButton(MouseButton::BUTTON_LEFT) && column_hovered >= 0) {
                 ImVec2 difference = mouse_pos - m_address_selection_mouse_start;
-                if (ImLengthSqr(difference) > 100.0f) {
-                    m_address_selection_end = cur_address + byte_width;
+                if (ImLengthSqr(difference) > 25.0f) {
+                    int64_t remainder = column_hovered % byte_width;
+                    m_address_selection_end =
+                        base_address + ((int64_t)(column_hovered / byte_width) * byte_width) + 1;
+                    m_address_selection_end_nibble = remainder * 2;
                 }
+            } else if (column_hovered >= 0) {
+                window->DrawList->AddRectFilled(char_rect.Min, char_rect.Max,
+                                                ImGui::GetColorU32(ImGuiCol_TabHovered));
             }
 
-            ImGui::Text(text_buf);
-
-            if (m_address_cursor == cur_address) {
+            int16_t cursor_idx = (m_address_cursor + m_address_cursor_nibble) - base_address;
+            if (m_selection_was_ascii && cursor_idx >= 0 && cursor_idx < column_count) {
                 m_cursor_anim_timer += m_delta_time;
                 bool cursor_visible = (m_cursor_anim_timer <= 0.0f) ||
                                       ImFmod(m_cursor_anim_timer, 1.20f) <= 0.80f;
                 if (cursor_visible) {
                     ImVec2 tl = text_rect.GetTL();
                     ImVec2 bl = text_rect.GetBL();
-                    tl.x += ch_width * m_address_cursor_nibble + style.ItemSpacing.x / 2 - 1;
-                    bl.x += ch_width * m_address_cursor_nibble + style.ItemSpacing.x / 2 - 1;
+                    tl.x += ch_width * cursor_idx - 1;
+                    bl.x += ch_width * cursor_idx - 1;
                     window->DrawList->AddLine(tl, bl, 0xA03030FF, 2.0f);
                 }
             }
+#endif
 
-            mem_ptr = (u8 *)mem_ptr + byte_width;
-            b_limit -= byte_width;
+            ImGui::TextEx(ascii_buf, ascii_buf + char_width);
+            delete[] ascii_buf;
         }
-
-        mem_ptr = handle;
-        b_limit = byte_limit;
-
-        ImGui::SameLine();
-
-        u32 char_width  = calculateBytesForRow(b_limit, column_count, byte_width);
-        char *ascii_buf = new char[char_width];
-        for (int i = 0; i < char_width; ++i) {
-            int ch = ((char *)mem_ptr)[i];
-            ch &= 0xFF;
-            if (std::isprint(ch)) {
-                ascii_buf[i] = ch;
-            } else {
-                ascii_buf[i] = '.';
-            }
-        }
-
-        ImGui::TextEx(ascii_buf, ascii_buf + char_width);
-        delete[] ascii_buf;
 
         return char_width;
     }
@@ -487,7 +697,7 @@ namespace Toolbox::UI {
             u32 memory_size    = manager.getMemorySize();
             u32 memory_address = m_base_address;
 
-            auto advanceCursor = [this]() {
+            auto advanceCursorNibble = [this]() {
                 if (m_address_cursor_nibble + 1 >= m_byte_width * 2) {
                     if (m_address_cursor + m_byte_width <= 0x81800000 - m_byte_width) {
                         m_address_cursor += m_byte_width;
@@ -498,7 +708,18 @@ namespace Toolbox::UI {
                 }
             };
 
-            auto reverseCursor = [this]() {
+            auto advanceCursorChar = [this]() {
+                if (m_address_cursor_nibble + 2 >= m_byte_width * 2) {
+                    if (m_address_cursor + m_byte_width <= 0x81800000 - m_byte_width) {
+                        m_address_cursor += m_byte_width;
+                        m_address_cursor_nibble = (m_address_cursor_nibble + 2) - m_byte_width * 2;
+                    }
+                } else {
+                    m_address_cursor_nibble += 2;
+                }
+            };
+
+            auto reverseCursorNibble = [this]() {
                 if (m_address_cursor_nibble == 0) {
                     if (m_address_cursor - m_byte_width >= 0x80000000) {
                         m_address_cursor -= m_byte_width;
@@ -506,6 +727,17 @@ namespace Toolbox::UI {
                     }
                 } else {
                     m_address_cursor_nibble -= 1;
+                }
+            };
+
+            auto reverseCursorChar = [this]() {
+                if (m_address_cursor_nibble < 2) {
+                    if (m_address_cursor - m_byte_width >= 0x80000000) {
+                        m_address_cursor -= m_byte_width;
+                        m_address_cursor_nibble = m_byte_width * 2 - (2 - m_address_cursor_nibble);
+                    }
+                } else {
+                    m_address_cursor_nibble -= 2;
                 }
             };
 
@@ -529,36 +761,55 @@ namespace Toolbox::UI {
 
                 bool key_held = false;
 
+                // TODO: Enhance held input logic so it doesn't
+                // stutter and drop inputs during many keys pressing across frames.
+
                 KeyCodes pressed_keys = Input::GetPressedKeys();
                 for (const KeyCode &key : pressed_keys) {
-                    if (key >= KeyCode::KEY_D0 && key <= KeyCode::KEY_D9) {
+                    if (m_selection_was_ascii) {
+                        KeyModifiers mods = GetPressedKeyModifiers();
+                        KeyModifier code_mod = mods & KeyModifier::KEY_SHIFT;
+                        char ch             = GetCharForKeyCode(key, code_mod);
+                        if (ch != -1) {
+                            key_held = true;
+                            if (!cursor_moves) {
+                                continue;
+                            }
+                            overwriteCharAtCursor(ch);
+                            advanceCursorChar();
+                        }
+                    } else {
+                        if (key >= KeyCode::KEY_D0 && key <= KeyCode::KEY_D9) {
+                            key_held = true;
+                            if (!cursor_moves) {
+                                continue;
+                            }
+                            u8 nibble_value = (u8)key - (u8)KeyCode::KEY_D0;
+                            overwriteNibbleAtCursor(nibble_value);
+                            advanceCursorNibble();
+                        } else if (key >= KeyCode::KEY_A && key <= KeyCode::KEY_F) {
+                            key_held = true;
+                            if (!cursor_moves) {
+                                continue;
+                            }
+                            u8 nibble_value = ((u8)key - (u8)KeyCode::KEY_A) + 10;
+                            overwriteNibbleAtCursor(nibble_value);
+                            advanceCursorNibble();
+                        }
+                    }
+
+                    if (key == KeyCode::KEY_RIGHT) {
                         key_held = true;
                         if (!cursor_moves) {
                             continue;
                         }
-                        u8 nibble_value = (u8)key - (u8)KeyCode::KEY_D0;
-                        overwriteNibbleAtCursor(nibble_value);
-                        advanceCursor();
-                    } else if (key >= KeyCode::KEY_A && key <= KeyCode::KEY_F) {
-                        key_held = true;
-                        if (!cursor_moves) {
-                            continue;
-                        }
-                        u8 nibble_value = ((u8)key - (u8)KeyCode::KEY_A) + 10;
-                        overwriteNibbleAtCursor(nibble_value);
-                        advanceCursor();
-                    } else if (key == KeyCode::KEY_RIGHT) {
-                        key_held = true;
-                        if (!cursor_moves) {
-                            continue;
-                        }
-                        advanceCursor();
+                        advanceCursorNibble();
                     } else if (key == KeyCode::KEY_LEFT) {
                         key_held = true;
                         if (!cursor_moves) {
                             continue;
                         }
-                        reverseCursor();
+                        reverseCursorNibble();
                     } else if (key == KeyCode::KEY_DOWN) {
                         key_held = true;
                         if (!cursor_moves) {
@@ -2050,6 +2301,67 @@ namespace Toolbox::UI {
             communicator.read<u64>(m_address_cursor)
                 .and_then([&](u64 value) {
                     u64 new_value = OverwriteNibble(value, m_address_cursor_nibble, nibble_value);
+                    return communicator.write<u64>(m_address_cursor, new_value);
+                })
+                .or_else([](const BaseError &error) {
+                    LogError(error);
+                    return Result<void>();
+                });
+            break;
+        }
+        }
+    }
+
+    void DebuggerWindow::overwriteCharAtCursor(char char_value) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        if ((m_address_cursor & 0x1FFFFFF) + (m_address_cursor_nibble / 2) >=
+            communicator.manager().getMemorySize()) {
+            TOOLBOX_ERROR_V("[MEMORY VIEW] Tried to overwrite nibble at invalid address");
+            return;
+        }
+
+        switch (m_byte_width) {
+        case 1: {
+            communicator.read<u8>(m_address_cursor)
+                .and_then([&](u8 value) {
+                    u8 new_value = OverwriteByte(value, m_address_cursor_nibble / 2, char_value);
+                    return communicator.write<u8>(m_address_cursor, new_value);
+                })
+                .or_else([](const BaseError &error) {
+                    LogError(error);
+                    return Result<void>();
+                });
+            break;
+        }
+        case 2: {
+            communicator.read<u16>(m_address_cursor)
+                .and_then([&](u16 value) {
+                    u16 new_value = OverwriteByte(value, m_address_cursor_nibble / 2, char_value);
+                    return communicator.write<u16>(m_address_cursor, new_value);
+                })
+                .or_else([](const BaseError &error) {
+                    LogError(error);
+                    return Result<void>();
+                });
+            break;
+        }
+        case 4: {
+            communicator.read<u32>(m_address_cursor)
+                .and_then([&](u32 value) {
+                    u32 new_value = OverwriteByte(value, m_address_cursor_nibble, char_value);
+                    return communicator.write<u32>(m_address_cursor, new_value);
+                })
+                .or_else([](const BaseError &error) {
+                    LogError(error);
+                    return Result<void>();
+                });
+            break;
+        }
+        case 8: {
+            communicator.read<u64>(m_address_cursor)
+                .and_then([&](u64 value) {
+                    u64 new_value = OverwriteByte(value, m_address_cursor_nibble, char_value);
                     return communicator.write<u64>(m_address_cursor, new_value);
                 })
                 .or_else([](const BaseError &error) {

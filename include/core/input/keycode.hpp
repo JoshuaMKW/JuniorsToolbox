@@ -2,6 +2,7 @@
 
 #include <array>
 #include <ostream>
+#include <unordered_map>
 #include <vector>
 
 #include "core/types.hpp"
@@ -11,7 +12,7 @@ using namespace Toolbox;
 namespace Toolbox::Input {
 
     enum class KeyCode : u16 {
-        KEY_NONE = std::numeric_limits<u16>::max(),
+        KEY_NONE         = std::numeric_limits<u16>::max(),
         KEY_SPACE        = 32,
         KEY_APOSTROPHE   = 39, /* ' */
         KEY_COMMA        = 44, /* , */
@@ -283,6 +284,70 @@ namespace Toolbox::Input {
             KeyCode::KEY_RIGHTSUPER,
             KeyCode::KEY_MENU,
         };
+    }
+
+    inline char GetCharForKeyCode(KeyCode key, KeyModifier modifier = KeyModifier::KEY_NONE) {
+        static std::unordered_map<KeyCode, std::pair<char, char>> s_key_map = {
+            {KeyCode::KEY_SPACE,        {' ' ,' '}},
+            {KeyCode::KEY_APOSTROPHE,   {'\'','"'}}, /* ' */
+            {KeyCode::KEY_COMMA,        {',' ,'<'}},
+            {KeyCode::KEY_MINUS,        {'-' ,'_'}}, /* - */
+            {KeyCode::KEY_PERIOD,       {'.' ,'>'}}, /* . */
+            {KeyCode::KEY_SLASH,        {'/' ,'?'}}, /* / */
+            {KeyCode::KEY_D0,           {'0' ,')'}}, /* 0 */
+            {KeyCode::KEY_D1,           {'1' ,'!'}}, /* 1 */
+            {KeyCode::KEY_D2,           {'2' ,'@'}}, /* 2 */
+            {KeyCode::KEY_D3,           {'3' ,'#'}}, /* 3 */
+            {KeyCode::KEY_D4,           {'4' ,'$'}}, /* 4 */
+            {KeyCode::KEY_D5,           {'5' ,'%'}}, /* 5 */
+            {KeyCode::KEY_D6,           {'6' ,'^'}}, /* 6 */
+            {KeyCode::KEY_D7,           {'7' ,'&'}}, /* 7 */
+            {KeyCode::KEY_D8,           {'8' ,'*'}}, /* 8 */
+            {KeyCode::KEY_D9,           {'9' ,'('}}, /* 9 */
+            {KeyCode::KEY_SEMICOLON,    {';' ,':'}}, /* ; */
+            {KeyCode::KEY_EQUAL,        {'=' ,'+'}}, /* = */
+            {KeyCode::KEY_A,            {'a' ,'A'}},
+            {KeyCode::KEY_B,            {'b' ,'B'}},
+            {KeyCode::KEY_C,            {'c' ,'C'}},
+            {KeyCode::KEY_D,            {'d' ,'D'}},
+            {KeyCode::KEY_E,            {'e' ,'E'}},
+            {KeyCode::KEY_F,            {'f' ,'F'}},
+            {KeyCode::KEY_G,            {'g' ,'G'}},
+            {KeyCode::KEY_H,            {'h' ,'H'}},
+            {KeyCode::KEY_I,            {'i' ,'I'}},
+            {KeyCode::KEY_J,            {'j' ,'J'}},
+            {KeyCode::KEY_K,            {'k' ,'K'}},
+            {KeyCode::KEY_L,            {'l' ,'L'}},
+            {KeyCode::KEY_M,            {'m' ,'M'}},
+            {KeyCode::KEY_N,            {'n' ,'N'}},
+            {KeyCode::KEY_O,            {'o' ,'O'}},
+            {KeyCode::KEY_P,            {'p' ,'P'}},
+            {KeyCode::KEY_Q,            {'q' ,'Q'}},
+            {KeyCode::KEY_R,            {'r' ,'R'}},
+            {KeyCode::KEY_S,            {'s' ,'S'}},
+            {KeyCode::KEY_T,            {'t' ,'T'}},
+            {KeyCode::KEY_U,            {'u' ,'U'}},
+            {KeyCode::KEY_V,            {'v' ,'V'}},
+            {KeyCode::KEY_W,            {'w' ,'W'}},
+            {KeyCode::KEY_X,            {'x' ,'X'}},
+            {KeyCode::KEY_Y,            {'y' ,'Y'}},
+            {KeyCode::KEY_Z,            {'z' ,'Z'}},
+            {KeyCode::KEY_LEFTBRACKET,  {'[' ,'{'}}, /* [ */
+            {KeyCode::KEY_BACKSLASH,    {'\\','|'}}, /* \ */
+            {KeyCode::KEY_RIGHTBRACKET, {']' ,'}'}}, /* ] */
+            {KeyCode::KEY_GRAVEACCENT,  {'`' ,'~'}}, /* ` */
+        };
+
+        if (s_key_map.find(key) == s_key_map.end()) {
+            return -1;
+        }
+
+        const std::pair<char, char>& ch = s_key_map.at(key);
+        if (modifier == KeyModifier::KEY_SHIFT) {
+            return ch.second;
+        }
+
+        return ch.first;
     }
 
 }  // namespace Toolbox::Input
