@@ -630,6 +630,11 @@ namespace Toolbox::UI {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
             ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
 
+            if (!ImGui::IsWindowFocused()) {
+                m_address_cursor = 0;
+                m_address_cursor_nibble = 0;
+            }
+
             ImFont *mono_font = GUIApplication::instance().getFontManager().getFont(
                 "NanumGothicCoding-Bold", 12.0f);
             if (mono_font) {
