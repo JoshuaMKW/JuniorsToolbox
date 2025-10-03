@@ -9,6 +9,18 @@ namespace Toolbox::UI {
 
     void AddWatchDialog::setup() { memset(m_watch_name.data(), 0, m_watch_name.size()); }
 
+    void AddWatchDialog::openToAddress(u32 address) {
+        open();
+        snprintf(m_watch_address.data(), m_watch_address.size(), "%08X", address);
+    }
+
+    void AddWatchDialog::openToAddressAsBytes(u32 address, size_t address_size) {
+        open();
+        snprintf(m_watch_address.data(), m_watch_address.size(), "%08X", address);
+        m_watch_type = MetaType::UNKNOWN;
+        m_watch_size = address_size;
+    }
+
     void AddWatchDialog::render(ModelIndex group_idx, size_t row) {
         const bool state_valid =
             m_filter_predicate
@@ -20,7 +32,7 @@ namespace Toolbox::UI {
 
         if (m_opening) {
             ImGui::OpenPopup("Add Watch");
-            m_open    = true;
+            m_open = true;
         }
 
         if (ImGui::BeginPopupModal("Add Watch", &m_open, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -56,9 +68,9 @@ namespace Toolbox::UI {
                 ImGui::TextAndWidth(label_width, "Type: ");
                 ImGui::SameLine();
 
-                const char *watch_type_items[] = {"BOOL", "S8",        "U8",    "S16", "U16",
-                                                  "S32",  "U32",       "F32",   "F64", "STRING",
-                                                  "VEC3", "TRANSFORM", "MTX34", "RGB", "RGBA"};
+                const char *watch_type_items[] = {
+                    "BOOL", "S8",     "U8",   "S16",       "U16",   "S32", "U32",  "F32",
+                    "F64",  "STRING", "VEC3", "TRANSFORM", "MTX34", "RGB", "RGBA", "BYTES"};
                 const char *current_watch_type = watch_type_items[static_cast<int>(m_watch_type)];
 
                 // ImGui::SetNextItemWidth(150.0f);
@@ -73,8 +85,8 @@ namespace Toolbox::UI {
                 }
             }
 
-            if (m_watch_type == MetaType::STRING) {
-                ImGui::TextAndWidth(label_width, "Type: ");
+            if (m_watch_type == MetaType::STRING || m_watch_type == MetaType::UNKNOWN) {
+                ImGui::TextAndWidth(label_width, "Length: ");
                 ImGui::SameLine();
 
                 int value = (int)m_watch_size;
@@ -91,7 +103,7 @@ namespace Toolbox::UI {
             // ---
             u32 address = strtoul(m_watch_address.data(), nullptr, 16);
             size_t address_size;
-            if (m_watch_type == MetaType::STRING) {
+            if (m_watch_type == MetaType::STRING || m_watch_type == MetaType::UNKNOWN) {
                 address_size = m_watch_size;
             } else {
                 address_size = meta_type_size(m_watch_type);
@@ -165,6 +177,9 @@ namespace Toolbox::UI {
             renderPreviewMatrix34(label_width, address);
             break;
         case MetaType::STRING:
+            renderPreviewSingle(label_width, address, address_size);
+            break;
+        case MetaType::UNKNOWN:
             renderPreviewSingle(label_width, address, address_size);
             break;
         }
@@ -562,7 +577,9 @@ namespace Toolbox::UI {
             break;
         }
         case MetaType::STRING: {
-            communicator.readCString(preview_out, address_size, true_address)
+            communicator
+                .readCString(preview_out, std::min<size_t>(preview_size, address_size),
+                             true_address)
                 .or_else([&](const BaseError &err) {
                     snprintf(preview_out, preview_size, "Error: %s", err.m_message[0].c_str());
                     return Result<void>{};
@@ -579,6 +596,34 @@ namespace Toolbox::UI {
             u32 value = communicator.read<u32>(true_address).value_or(0);
             value &= 0xFFFFFFFF;  // Mask to RGB only
             snprintf(preview_out, preview_size, "#%08X", value);
+            break;
+        }
+        case MetaType::UNKNOWN: {
+            size_t tmp_size   = std::min<size_t>(preview_size / 3, address_size);
+            size_t final_size = std::min<size_t>(preview_size, address_size);
+
+            char *tmp_buf = new char[tmp_size];
+
+            communicator.readBytes(tmp_buf, true_address, tmp_size)
+                .or_else([&](const BaseError &err) {
+                    snprintf(preview_out, preview_size, "Error: %s", err.m_message[0].c_str());
+                    return Result<void>{};
+                });
+
+            size_t i, j = 0;
+            for (i = 0; i < tmp_size; ++i) {
+                uint8_t ch = ((uint8_t*)tmp_buf)[i];
+                snprintf(preview_out + j, preview_size - j, "%02X ", ch);
+                j += 3;
+            }
+
+            if (j > 0) {
+                preview_out[j - 1] = '\0';
+            } else {
+                preview_out[j] = '\0';
+            }
+
+            delete[] tmp_buf;
             break;
         }
         default:

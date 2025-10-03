@@ -11,8 +11,8 @@
 
 #include "IconsForkAwesome.h"
 
-#include <imgui.h>
 #include "imgui_ext.hpp"
+#include <imgui.h>
 
 #include "core/input/input.hpp"
 #include "core/keybind/keybind.hpp"
@@ -45,6 +45,11 @@ namespace Toolbox::UI {
 
         void addDivider();
 
+        const ImRect &rect() const { return m_rect; }
+        bool is_open() const { return m_was_open; }
+
+        void setCanOpen(bool can_open) { m_can_open = can_open; }
+
         void render(std::optional<std::string> label, _DataT ctx,
                     ImGuiHoveredFlags hover_flags = ImGuiHoveredFlags_AllowWhenBlockedByPopup);
 
@@ -58,6 +63,8 @@ namespace Toolbox::UI {
         std::set<size_t> m_dividers;
         open_event_t m_open_event;
         bool m_was_open = false;
+        bool m_can_open = true;
+        ImRect m_rect   = {};
     };
 
     template <typename _DataT>
@@ -85,13 +92,30 @@ namespace Toolbox::UI {
     }
 
     template <typename _DataT>
-    inline void ContextMenu<_DataT>::render(std::optional<std::string> label, _DataT ctx, ImGuiHoveredFlags hover_flags) {
+    inline void ContextMenu<_DataT>::render(std::optional<std::string> label, _DataT ctx,
+                                            ImGuiHoveredFlags hover_flags) {
+        if (!m_can_open && !m_was_open) {
+            return;
+        }
+
         processKeybinds(ctx);
 
         if (!ImGui::BeginPopupContextItem(label ? label->c_str() : nullptr, 1, hover_flags)) {
             m_was_open = false;
+            m_rect     = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
             return;
         }
+
+        if (!m_can_open) {
+            m_was_open = false;
+            ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
+            m_rect = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
+            return;
+        }
+
+        m_rect.Min = ImGui::GetWindowPos();
+        m_rect.Max = m_rect.Min + ImGui::GetWindowSize();
 
         if (!m_was_open && m_open_event) {
             m_open_event(ctx);
@@ -127,7 +151,6 @@ namespace Toolbox::UI {
     }
 
     template <typename _DataT> inline void ContextMenu<_DataT>::processKeybinds(_DataT ctx) {
-        ImGuiIO &io = ImGui::GetIO();
         for (size_t i = 0; i < m_options.size(); ++i) {
             ContextOp &option = m_options.at(i);
 

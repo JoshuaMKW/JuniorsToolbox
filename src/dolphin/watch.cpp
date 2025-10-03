@@ -219,7 +219,6 @@ namespace Toolbox {
         }
 
         m_memory_watch.onWatchNotify([this](void *old_value, void *new_value, u32 value_width) {
-            // TODO: Write each method of reading in from DolphinCommunicator
             MetaValue new_meta_value(m_meta_type);
             u32 watch_address = m_memory_watch.getWatchAddress();
 
@@ -300,6 +299,10 @@ namespace Toolbox {
                 new_meta_value.set<Color::RGBA32>(new_color);
                 break;
             }
+            case MetaType::UNKNOWN: {
+                new_meta_value.set<Buffer>(value_buf);
+                break;
+            }
             }
 
             if (m_watch_notify_cb) {
@@ -321,7 +324,7 @@ namespace Toolbox {
     bool MetaWatch::startWatch(u32 address, u32 size) {
         DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
 
-        #if 0
+#if 0
         if (m_precompute_size == 0) {
             if (m_meta_type == MetaType::STRING) {
                 char tmp_buf[WATCH_MAX_BUFFER_SIZE];
@@ -329,11 +332,11 @@ namespace Toolbox {
                 m_precompute_size = strnlen(tmp_buf, WATCH_MAX_BUFFER_SIZE - 1);
             }
         }
-        #else
+#else
         if (m_precompute_size == 0) {
             m_precompute_size = size;
         }
-        #endif
+#endif
 
         return m_memory_watch.startWatch(address, m_precompute_size);
     }

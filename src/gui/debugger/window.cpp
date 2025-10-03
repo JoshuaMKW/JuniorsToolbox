@@ -35,7 +35,7 @@ template <typename _T> constexpr static _T OverwriteNibble(_T value, u8 nibble_i
 template <typename _T> constexpr static _T OverwriteByte(_T value, u8 byte_idx, u8 byte_val) {
     static_assert(std::is_integral_v<_T>, "_T must be a basic integral type");
 
-    constexpr size_t byte_width   = sizeof(_T);
+    constexpr size_t byte_width = sizeof(_T);
 
     if (byte_idx >= byte_width) {
         return value;
@@ -120,6 +120,12 @@ namespace Toolbox::UI {
             renderMemoryAddressBar();
             ImGui::Separator();
             renderMemoryView();
+
+            AddressSpan span = {m_address_selection_begin + m_address_selection_begin_nibble / 2,
+                                m_address_selection_end + m_address_selection_end_nibble / 2};
+
+            m_ascii_view_context_menu.render("ASCII View", span);
+            m_byte_view_context_menu.render("Byte View", span);
         }
         ImGui::EndChild();
 
@@ -130,6 +136,8 @@ namespace Toolbox::UI {
 
         m_add_group_dialog.render(m_last_selected_index, the_row);
         m_add_watch_dialog.render(m_last_selected_index, the_row);
+
+        m_watch_view_context_menu.render("Memory Watch", m_last_selected_index);
 
         m_did_drag_drop = DragDropManager::instance().getCurrentDragAction() != nullptr;
     }
@@ -198,6 +206,13 @@ namespace Toolbox::UI {
 
         const bool selection_at_column_start = selection_start_nibble % nibble_width == 0;
         const bool selection_at_column_end   = selection_end_nibble % nibble_width == 0;
+
+        ImRect context_menu_rect;
+        if (m_byte_view_context_menu.is_open()) {
+            context_menu_rect = m_byte_view_context_menu.rect();
+        } else {
+            context_menu_rect = m_ascii_view_context_menu.rect();
+        }
 
         // HEXADECIMAL DISPLAY
         {
@@ -286,7 +301,10 @@ namespace Toolbox::UI {
 
                 ImVec2 mouse_pos = ImVec2{(float)m_x, (float)m_y};
 
-                bool column_hovered = text_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding);
+                bool column_hovered =
+                    text_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding) &&
+                    !m_byte_view_context_menu.rect().ContainsWithPad(mouse_pos,
+                                                                     style.TouchExtraPadding);
                 bool column_clicked =
                     column_hovered && Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
                 if (column_clicked) {
@@ -315,7 +333,7 @@ namespace Toolbox::UI {
                 if (!m_selection_was_ascii && m_address_selection_new &&
                     Input::GetMouseButton(MouseButton::BUTTON_LEFT) && column_hovered) {
                     ImVec2 difference = mouse_pos - m_address_selection_mouse_start;
-                    if (ImLengthSqr(difference) > 25.0f) {
+                    if (ImLengthSqr(difference) > 10.0f) {
                         m_address_selection_end = cur_address < m_address_selection_begin
                                                       ? cur_address
                                                       : cur_address + byte_width;
@@ -323,8 +341,10 @@ namespace Toolbox::UI {
                             ImClamp<u8>((mouse_pos.x - text_rect.Min.x) / ch_width, 0,
                                         nibble_width - 1) &
                             ~1;
-                        // TOOLBOX_INFO_V("mpx: {}, trx: {}, v: {}", mouse_pos.x, text_rect.Min.x,
-                        //                (mouse_pos.x - text_rect.Min.x) / ch_width);
+
+                        m_byte_view_context_menu.setCanOpen(true);
+                        m_ascii_view_context_menu.setCanOpen(false);
+                        m_watch_view_context_menu.setCanOpen(false);
                     }
                 } else if (column_hovered) {
                     window->DrawList->AddRectFilled(text_rect.Min, text_rect.Max,
@@ -430,7 +450,9 @@ namespace Toolbox::UI {
 
             int64_t column_hovered = -1;
             for (int64_t i = 0; i < char_width; ++i) {
-                bool ch_hovered = char_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding);
+                bool ch_hovered = char_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding) &&
+                                  !m_ascii_view_context_menu.rect().ContainsWithPad(
+                                      mouse_pos, style.TouchExtraPadding);
                 if (ch_hovered) {
                     window->DrawList->AddRectFilled(char_rect.Min, char_rect.Max,
                                                     ImGui::GetColorU32(ImGuiCol_TabHovered));
@@ -440,9 +462,13 @@ namespace Toolbox::UI {
                 char_rect.TranslateX(ch_width);
             }
 
-            bool column_clicked =
+            bool column_clicked_down =
                 column_hovered >= 0 && Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
-            if (column_clicked) {
+
+            bool column_clicked_up =
+                column_hovered >= 0 && Input::GetMouseButtonUp(MouseButton::BUTTON_LEFT);
+
+            if (column_clicked_down) {
                 m_selection_was_ascii = true;
 
                 m_address_selection_new         = true;
@@ -464,11 +490,15 @@ namespace Toolbox::UI {
             if (m_selection_was_ascii && m_address_selection_new &&
                 Input::GetMouseButton(MouseButton::BUTTON_LEFT) && column_hovered >= 0) {
                 ImVec2 difference = mouse_pos - m_address_selection_mouse_start;
-                if (ImLengthSqr(difference) > 25.0f) {
+                if (ImLengthSqr(difference) > 10.0f) {
                     int64_t remainder = column_hovered % byte_width;
                     m_address_selection_end =
                         base_address + ((int64_t)(column_hovered / byte_width) * byte_width) + 1;
                     m_address_selection_end_nibble = remainder * 2;
+
+                    m_byte_view_context_menu.setCanOpen(false);
+                    m_ascii_view_context_menu.setCanOpen(true);
+                    m_watch_view_context_menu.setCanOpen(false);
                 }
             } else if (column_hovered >= 0) {
                 window->DrawList->AddRectFilled(char_rect.Min, char_rect.Max,
@@ -631,7 +661,7 @@ namespace Toolbox::UI {
             ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
 
             if (!ImGui::IsWindowFocused()) {
-                m_address_cursor = 0;
+                m_address_cursor        = 0;
                 m_address_cursor_nibble = 0;
             }
 
@@ -702,142 +732,14 @@ namespace Toolbox::UI {
             u32 memory_size    = manager.getMemorySize();
             u32 memory_address = m_base_address;
 
-            auto advanceCursorNibble = [this]() {
-                if (m_address_cursor_nibble + 1 >= m_byte_width * 2) {
-                    if (m_address_cursor + m_byte_width <= 0x81800000 - m_byte_width) {
-                        m_address_cursor += m_byte_width;
-                        m_address_cursor_nibble = 0;
-                    }
-                } else {
-                    m_address_cursor_nibble += 1;
-                }
-            };
-
-            auto advanceCursorChar = [this]() {
-                if (m_address_cursor_nibble + 2 >= m_byte_width * 2) {
-                    if (m_address_cursor + m_byte_width <= 0x81800000 - m_byte_width) {
-                        m_address_cursor += m_byte_width;
-                        m_address_cursor_nibble = (m_address_cursor_nibble + 2) - m_byte_width * 2;
-                    }
-                } else {
-                    m_address_cursor_nibble += 2;
-                }
-            };
-
-            auto reverseCursorNibble = [this]() {
-                if (m_address_cursor_nibble == 0) {
-                    if (m_address_cursor - m_byte_width >= 0x80000000) {
-                        m_address_cursor -= m_byte_width;
-                        m_address_cursor_nibble = m_byte_width * 2 - 1;
-                    }
-                } else {
-                    m_address_cursor_nibble -= 1;
-                }
-            };
-
-            auto reverseCursorChar = [this]() {
-                if (m_address_cursor_nibble < 2) {
-                    if (m_address_cursor - m_byte_width >= 0x80000000) {
-                        m_address_cursor -= m_byte_width;
-                        m_address_cursor_nibble = m_byte_width * 2 - (2 - m_address_cursor_nibble);
-                    }
-                } else {
-                    m_address_cursor_nibble -= 2;
-                }
-            };
-
-            auto advanceCursorLine = [this, column_count]() {
-                u32 desired_address_cursor = m_address_cursor + m_byte_width * column_count;
-                if (desired_address_cursor < 0x81800000 - m_byte_width) {
-                    m_address_cursor = desired_address_cursor;
-                }
-            };
-
-            auto reverseCursorLine = [this, column_count]() {
-                u32 desired_address_cursor = m_address_cursor - m_byte_width * column_count;
-                if (desired_address_cursor >= 0x80000000) {
-                    m_address_cursor = desired_address_cursor;
-                }
-            };
-
             // Process controls
             if (m_address_cursor != 0) {
-                bool cursor_moves = m_cursor_step_timer > 0.10f || m_cursor_step_timer == -0.3f;
-
-                bool key_held = false;
-
                 // TODO: Enhance held input logic so it doesn't
                 // stutter and drop inputs during many keys pressing across frames.
-
-                KeyCodes pressed_keys = Input::GetPressedKeys();
-                for (const KeyCode &key : pressed_keys) {
-                    if (m_selection_was_ascii) {
-                        KeyModifiers mods = GetPressedKeyModifiers();
-                        KeyModifier code_mod = mods & KeyModifier::KEY_SHIFT;
-                        char ch             = GetCharForKeyCode(key, code_mod);
-                        if (ch != -1) {
-                            key_held = true;
-                            if (!cursor_moves) {
-                                continue;
-                            }
-                            overwriteCharAtCursor(ch);
-                            advanceCursorChar();
-                        }
-                    } else {
-                        if (key >= KeyCode::KEY_D0 && key <= KeyCode::KEY_D9) {
-                            key_held = true;
-                            if (!cursor_moves) {
-                                continue;
-                            }
-                            u8 nibble_value = (u8)key - (u8)KeyCode::KEY_D0;
-                            overwriteNibbleAtCursor(nibble_value);
-                            advanceCursorNibble();
-                        } else if (key >= KeyCode::KEY_A && key <= KeyCode::KEY_F) {
-                            key_held = true;
-                            if (!cursor_moves) {
-                                continue;
-                            }
-                            u8 nibble_value = ((u8)key - (u8)KeyCode::KEY_A) + 10;
-                            overwriteNibbleAtCursor(nibble_value);
-                            advanceCursorNibble();
-                        }
-                    }
-
-                    if (key == KeyCode::KEY_RIGHT) {
-                        key_held = true;
-                        if (!cursor_moves) {
-                            continue;
-                        }
-                        advanceCursorNibble();
-                    } else if (key == KeyCode::KEY_LEFT) {
-                        key_held = true;
-                        if (!cursor_moves) {
-                            continue;
-                        }
-                        reverseCursorNibble();
-                    } else if (key == KeyCode::KEY_DOWN) {
-                        key_held = true;
-                        if (!cursor_moves) {
-                            continue;
-                        }
-                        advanceCursorLine();
-                    } else if (key == KeyCode::KEY_UP) {
-                        key_held = true;
-                        if (!cursor_moves) {
-                            continue;
-                        }
-                        reverseCursorLine();
-                    }
-                }
-
-                if (key_held) {
-                    if (cursor_moves && m_cursor_step_timer > 0.0f) {
-                        m_cursor_step_timer = m_delta_time;
-                    } else {
-                        m_cursor_step_timer += m_delta_time;
-                    }
-                } else {
-                    m_cursor_step_timer = -0.3f;
+                KeyModifiers mods    = GetPressedKeyModifiers();
+                KeyModifier ctrl_mod = mods & KeyModifier::KEY_CTRL;
+                if (ctrl_mod == KeyModifier::KEY_NONE) {
+                    processKeyInputsAtAddress(column_count);
                 }
             }
 
@@ -1137,27 +1039,8 @@ namespace Toolbox::UI {
             if (true_address + watch_size > mem_size) {
                 ImGui::Text("Invalid Watch");
             } else {
-                if (meta_value.type() == MetaType::UNKNOWN) {
-                    ImVec2 avail_region = ImGui::GetContentRegionAvail();
-                    float local_pos_x   = 0.0f;
-
-                    float byte_render_width = ImGui::CalcTextSize("00").x;
-                    float byte_trail_width  = ImGui::CalcTextSize("...").x;
-
-                    u8 *watch_view = (u8 *)mem_view + true_address;
-                    while (local_pos_x + byte_render_width + byte_trail_width < avail_region.x) {
-                        for (int i = 0; i < watch_size; ++i) {
-                            ImGui::Text("%02X", watch_view[i]);
-                            if (i < watch_size - 1) {
-                                ImGui::SameLine();
-                            }
-                        }
-                        local_pos_x += byte_render_width + byte_trail_width;
-                    }
-                } else {
-                    f32 column_width = ImGui::GetContentRegionAvail().x;
-                    renderPreview(column_width, meta_value);
-                }
+                f32 column_width = ImGui::GetContentRegionAvail().x;
+                renderPreview(column_width, meta_value);
             }
         }
 
@@ -1438,7 +1321,8 @@ namespace Toolbox::UI {
                 std::string_view watch_name, MetaType type, u32 address, u32 size) {
                 insertWatch(group_idx, row, policy, watch_name, type, address, size);
             });
-        // buildContextMenu();
+
+        buildContextMenus();
     }
 
     void DebuggerWindow::onDetach() { ImWindow::onDetach(); }
@@ -1537,6 +1421,80 @@ namespace Toolbox::UI {
             m_selection_ctx       = m_selection;
             m_last_selected_index = ModelIndex();
         }
+    }
+
+    void DebuggerWindow::buildContextMenus() {
+        m_byte_view_context_menu.addOption(
+            "Copy Selection as Bytes", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+            [](AddressSpan span) { CopyBytesFromAddressSpan(span); });
+
+        m_byte_view_context_menu.addOption(
+            "Copy Selection as ASCII",
+            {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C},
+            [](AddressSpan span) { CopyASCIIFromAddressSpan(span); });
+
+        m_byte_view_context_menu.addDivider();
+
+        m_byte_view_context_menu.addOption(
+            "Fill Selection...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_F},
+            [](AddressSpan span) {});
+
+        m_byte_view_context_menu.addDivider();
+
+        m_byte_view_context_menu.addOption(
+            "Add Selection as Bytes...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_B},
+            [&](AddressSpan span) {
+                u32 begin = std::min<u32>(span.m_begin, span.m_end);
+                u32 end   = std::max<u32>(span.m_begin, span.m_end);
+                begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
+                end       = std::clamp<u32>(end, 0x80000000, 0x817FFFFF);
+                m_add_watch_dialog.openToAddressAsBytes(begin, (size_t)end - begin);
+            });
+
+        m_byte_view_context_menu.addOption(
+            "Add Watch at Cursor Address...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_W},
+            [&](AddressSpan span) {
+                u32 begin = std::min<u32>(span.m_begin, span.m_end);
+                begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
+                m_add_watch_dialog.openToAddress(begin);
+            });
+
+        // -----------------------------------------
+
+        m_ascii_view_context_menu.addOption(
+            "Copy Selection as Bytes",
+            {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C},
+            [](AddressSpan span) { CopyBytesFromAddressSpan(span); });
+
+        m_ascii_view_context_menu.addOption(
+            "Copy Selection as ASCII", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+            [](AddressSpan span) { CopyASCIIFromAddressSpan(span); });
+
+        m_ascii_view_context_menu.addDivider();
+
+        m_ascii_view_context_menu.addOption(
+            "Fill Selection...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_F},
+            [](AddressSpan span) {});
+
+        m_ascii_view_context_menu.addDivider();
+
+        m_ascii_view_context_menu.addOption(
+            "Add Selection as Bytes...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_B},
+            [&](AddressSpan span) {
+                u32 begin = std::min<u32>(span.m_begin, span.m_end);
+                u32 end   = std::max<u32>(span.m_begin, span.m_end);
+                begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
+                end       = std::clamp<u32>(end, 0x80000000, 0x817FFFFF);
+                m_add_watch_dialog.openToAddressAsBytes(begin, (size_t)end - begin);
+            });
+
+        m_ascii_view_context_menu.addOption(
+            "Add Watch at Cursor Address...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_W},
+            [&](AddressSpan span) {
+                u32 begin = std::min<u32>(span.m_begin, span.m_end);
+                begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
+                m_add_watch_dialog.openToAddress(begin);
+            });
     }
 
     void DebuggerWindow::recursiveLock(ModelIndex src_idx, bool lock) {
@@ -1659,6 +1617,9 @@ namespace Toolbox::UI {
             renderPreviewMatrix34(label_width, value);
             break;
         case MetaType::STRING:
+            renderPreviewSingle(label_width, value);
+            break;
+        case MetaType::UNKNOWN:
             renderPreviewSingle(label_width, value);
             break;
         }
@@ -1949,6 +1910,9 @@ namespace Toolbox::UI {
         }
 
         size_t address_size = value.computeSize();
+        //if (value.type() == MetaType::UNKNOWN) {
+        //    
+        //}
 
         if (address_size == 0) {
             snprintf(preview_out, preview_size, "???");
@@ -1960,93 +1924,6 @@ namespace Toolbox::UI {
             return;
         }
 
-#if 0
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
-        if (!communicator.manager().isHooked()) {
-            snprintf(preview_out, preview_size, "???");
-            return;
-        }
-
-        void *mem_view  = communicator.manager().getMemoryView();
-        size_t mem_size = communicator.manager().getMemorySize();
-
-        u32 true_address = address & 0x1FFFFFF;
-        if (true_address + address_size > mem_size) {
-            snprintf(preview_out, preview_size, "???");
-            return;
-        }
-
-        switch (address_type) {
-        case MetaType::BOOL: {
-            bool value = communicator.read<bool>(true_address).value_or(false);
-            snprintf(preview_out, preview_size, "%s", value ? "true" : "false");
-            break;
-        }
-        case MetaType::S8: {
-            s8 value = communicator.read<s8>(true_address).value_or(0);
-            snprintf(preview_out, preview_size, "%d", (u8)value);
-            break;
-        }
-        case MetaType::U8: {
-            u8 value = communicator.read<u8>(true_address).value_or(0);
-            snprintf(preview_out, preview_size, "%u", value);
-            break;
-        }
-        case MetaType::S16: {
-            s16 value = communicator.read<s16>(true_address).value_or(0);
-            snprintf(preview_out, preview_size, "%d", (u16)value);
-            break;
-        }
-        case MetaType::U16: {
-            u16 value = communicator.read<u16>(true_address).value_or(0);
-            snprintf(preview_out, preview_size, "%u", value);
-            break;
-        }
-        case MetaType::S32: {
-            s32 value = communicator.read<s32>(true_address).value_or(0);
-            snprintf(preview_out, preview_size, "%ld", (u32)value);
-            break;
-        }
-        case MetaType::U32: {
-            u32 value = communicator.read<u32>(true_address).value_or(0);
-            snprintf(preview_out, preview_size, "%lu", value);
-            break;
-        }
-        case MetaType::F32: {
-            f32 value = communicator.read<f32>(true_address).value_or(0.0f);
-            snprintf(preview_out, preview_size, "%.6f", value);
-            break;
-        }
-        case MetaType::F64: {
-            f64 value = communicator.read<f64>(true_address).value_or(0.0);
-            snprintf(preview_out, preview_size, "%.6f", value);
-            break;
-        }
-        case MetaType::STRING: {
-            communicator.readCString(preview_out, preview_size, true_address)
-                .or_else([&](const BaseError &err) {
-                    snprintf(preview_out, preview_size, "Error: %s", err.m_message[0]);
-                    return Result<void>{};
-                });
-            break;
-        }
-        case MetaType::RGB: {
-            u32 value = communicator.read<u32>(true_address).value_or(0);
-            value &= 0xFFFFFF00;  // Mask to RGB only
-            snprintf(preview_out, preview_size, "#%06X", value);
-            break;
-        }
-        case MetaType::RGBA: {
-            u32 value = communicator.read<u32>(true_address).value_or(0);
-            value &= 0xFFFFFFFF;  // Mask to RGB only
-            snprintf(preview_out, preview_size, "#%08X", value);
-            break;
-        }
-        default:
-            snprintf(preview_out, preview_size, "Unsupported type");
-            break;
-        }
-#else
         switch (value.type()) {
         case MetaType::BOOL: {
             value.get<bool>()
@@ -2195,11 +2072,39 @@ namespace Toolbox::UI {
                 });
             break;
         }
+        case MetaType::UNKNOWN: {
+            size_t tmp_size   = std::min<size_t>(preview_size / 3, address_size);
+            size_t final_size = std::min<size_t>(preview_size, address_size);
+
+#if 0
+            communicator.readBytes(tmp_buf, true_address, tmp_size)
+                .or_else([&](const BaseError &err) {
+                    snprintf(preview_out, preview_size, "Error: %s", err.m_message[0].c_str());
+                    return Result<void>{};
+                });
+#else
+            const char *byte_buf = value.buf().buf<char>();
+#endif
+
+            size_t i, j = 0;
+            for (i = 0; i < tmp_size; ++i) {
+                uint8_t ch = ((uint8_t *)byte_buf)[i];
+                snprintf(preview_out + j, preview_size - j, "%02X ", ch);
+                j += 3;
+            }
+
+            if (j > 0) {
+                preview_out[j - 1] = '\0';
+            } else {
+                preview_out[j] = '\0';
+            }
+
+            break;
+        }
         default:
             snprintf(preview_out, preview_size, "Unsupported type");
             break;
         }
-#endif
     }
 
     Color::RGBShader DebuggerWindow::calcColorRGB(const MetaValue &value) {
@@ -2376,6 +2281,201 @@ namespace Toolbox::UI {
             break;
         }
         }
+    }
+
+    void DebuggerWindow::processKeyInputsAtAddress(int32_t column_count) {
+        KeyCodes pressed_keys = Input::GetPressedKeys();
+        KeyModifiers mods     = GetPressedKeyModifiers();
+        KeyModifier shift_mod = mods & KeyModifier::KEY_SHIFT;
+        KeyModifier ctrl_mod  = mods & KeyModifier::KEY_CTRL;
+
+        bool cursor_moves = m_cursor_step_timer > 0.10f || m_cursor_step_timer == -0.3f;
+        bool key_held     = false;
+
+        auto advanceCursorNibble = [this]() {
+            if (m_address_cursor_nibble + 1 >= m_byte_width * 2) {
+                if (m_address_cursor + m_byte_width <= 0x81800000 - m_byte_width) {
+                    m_address_cursor += m_byte_width;
+                    m_address_cursor_nibble = 0;
+                }
+            } else {
+                m_address_cursor_nibble += 1;
+            }
+        };
+
+        auto advanceCursorChar = [this]() {
+            if (m_address_cursor_nibble + 2 >= m_byte_width * 2) {
+                if (m_address_cursor + m_byte_width <= 0x81800000 - m_byte_width) {
+                    m_address_cursor += m_byte_width;
+                    m_address_cursor_nibble = (m_address_cursor_nibble + 2) - m_byte_width * 2;
+                }
+            } else {
+                m_address_cursor_nibble += 2;
+            }
+        };
+
+        auto reverseCursorNibble = [this]() {
+            if (m_address_cursor_nibble == 0) {
+                if (m_address_cursor - m_byte_width >= 0x80000000) {
+                    m_address_cursor -= m_byte_width;
+                    m_address_cursor_nibble = m_byte_width * 2 - 1;
+                }
+            } else {
+                m_address_cursor_nibble -= 1;
+            }
+        };
+
+        auto reverseCursorChar = [this]() {
+            if (m_address_cursor_nibble < 2) {
+                if (m_address_cursor - m_byte_width >= 0x80000000) {
+                    m_address_cursor -= m_byte_width;
+                    m_address_cursor_nibble = m_byte_width * 2 - (2 - m_address_cursor_nibble);
+                }
+            } else {
+                m_address_cursor_nibble -= 2;
+            }
+        };
+
+        auto advanceCursorLine = [this, column_count]() {
+            u32 desired_address_cursor = m_address_cursor + m_byte_width * column_count;
+            if (desired_address_cursor < 0x81800000 - m_byte_width) {
+                m_address_cursor = desired_address_cursor;
+            }
+        };
+
+        auto reverseCursorLine = [this, column_count]() {
+            u32 desired_address_cursor = m_address_cursor - m_byte_width * column_count;
+            if (desired_address_cursor >= 0x80000000) {
+                m_address_cursor = desired_address_cursor;
+            }
+        };
+
+        for (const KeyCode &key : pressed_keys) {
+            if (m_selection_was_ascii) {
+                char ch = GetCharForKeyCode(key, shift_mod);
+                if (ch != -1) {
+                    key_held = true;
+                    if (!cursor_moves) {
+                        continue;
+                    }
+                    overwriteCharAtCursor(ch);
+                    advanceCursorChar();
+                }
+            } else {
+                if (key >= KeyCode::KEY_D0 && key <= KeyCode::KEY_D9) {
+                    key_held = true;
+                    if (!cursor_moves) {
+                        continue;
+                    }
+                    u8 nibble_value = (u8)key - (u8)KeyCode::KEY_D0;
+                    overwriteNibbleAtCursor(nibble_value);
+                    advanceCursorNibble();
+                } else if (key >= KeyCode::KEY_A && key <= KeyCode::KEY_F) {
+                    key_held = true;
+                    if (!cursor_moves) {
+                        continue;
+                    }
+                    u8 nibble_value = ((u8)key - (u8)KeyCode::KEY_A) + 10;
+                    overwriteNibbleAtCursor(nibble_value);
+                    advanceCursorNibble();
+                }
+            }
+
+            if (key == KeyCode::KEY_RIGHT) {
+                key_held = true;
+                if (!cursor_moves) {
+                    continue;
+                }
+                advanceCursorNibble();
+            } else if (key == KeyCode::KEY_LEFT) {
+                key_held = true;
+                if (!cursor_moves) {
+                    continue;
+                }
+                reverseCursorNibble();
+            } else if (key == KeyCode::KEY_DOWN) {
+                key_held = true;
+                if (!cursor_moves) {
+                    continue;
+                }
+                advanceCursorLine();
+            } else if (key == KeyCode::KEY_UP) {
+                key_held = true;
+                if (!cursor_moves) {
+                    continue;
+                }
+                reverseCursorLine();
+            }
+        }
+
+        if (key_held) {
+            if (cursor_moves && m_cursor_step_timer > 0.0f) {
+                m_cursor_step_timer = m_delta_time;
+            } else {
+                m_cursor_step_timer += m_delta_time;
+            }
+        } else {
+            m_cursor_step_timer = -0.3f;
+        }
+    }
+
+    void DebuggerWindow::CopyBytesFromAddressSpan(const AddressSpan &span) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        u32 begin = std::min<u32>(span.m_begin, span.m_end);
+        u32 end   = std::max<u32>(span.m_begin, span.m_end);
+        begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
+        end       = std::clamp<u32>(end, 0x80000000, 0x817FFFFF);
+        u32 width = std::min<u32>(end - begin, 0x10000);  // Investigate a sensible limit?
+
+        std::string text;
+        text.resize(width);
+
+        std::string bytes;
+        bytes.reserve(width * 4);
+
+        communicator.readBytes(text.data(), begin, width);
+
+        size_t i = 0;
+        for (char ch : text) {
+            std::string byte = std::format("{:02X}", ch);
+            bytes.append(byte);
+            if ((++i % 16) == 0) {
+                bytes.push_back('\n');
+            } else {
+                bytes.push_back(' ');
+            }
+        }
+
+        // Remove trailing space.
+        if (bytes.length() > 0) {
+            bytes.pop_back();
+        }
+
+        SystemClipboard::instance().setText(bytes).or_else([](const ClipboardError &error) {
+            LogError(error);
+            return Result<void, ClipboardError>();
+        });
+    }
+
+    void DebuggerWindow::CopyASCIIFromAddressSpan(const AddressSpan &span) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        u32 begin = std::min<u32>(span.m_begin, span.m_end);
+        u32 end   = std::max<u32>(span.m_begin, span.m_end);
+        begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
+        end       = std::clamp<u32>(end, 0x80000000, 0x817FFFFF);
+        u32 width = std::min<u32>(end - begin, 0x10000);  // Investigate a sensible limit?
+
+        std::string text;
+        text.resize(width);
+
+        communicator.readBytes(text.data(), begin, width);
+
+        SystemClipboard::instance().setText(text).or_else([](const ClipboardError &error) {
+            LogError(error);
+            return Result<void, ClipboardError>();
+        });
     }
 
 }  // namespace Toolbox::UI

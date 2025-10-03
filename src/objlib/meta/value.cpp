@@ -37,9 +37,9 @@ namespace Toolbox::Object {
         case MetaType::RGBA:
             return 4;  // RGBA is 4 bytes
         default:
-            TOOLBOX_WARN("[MetaValue] Unknown type for size computation: {}",
-                         magic_enum::enum_name(m_type));
-            return 0;  // Unknown type or no value
+            /*TOOLBOX_WARN("[MetaValue] Unknown type for size computation: {}",
+                         magic_enum::enum_name(m_type));*/
+            return m_value_len;  // Unknown type or no value
         }
     }
 

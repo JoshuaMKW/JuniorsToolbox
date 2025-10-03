@@ -82,6 +82,10 @@ namespace Toolbox::UI {
 
         void render(ModelIndex group_idx, size_t row);
 
+        void openToAddress(u32 address);
+        void openToAddressAsBytes(u32 address, size_t address_size);
+
+    protected:
         void renderPreview(f32 label_width, u32 address, size_t address_size);
         void renderPreviewSingle(f32 label_width, u32 address, size_t address_size);
         void renderPreviewRGBA(f32 label_width, u32 address);

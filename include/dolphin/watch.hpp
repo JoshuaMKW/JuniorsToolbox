@@ -9,7 +9,7 @@
 
 using namespace Toolbox::Object;
 
-#define WATCH_MAX_BUFFER_SIZE 1024
+#define WATCH_MAX_BUFFER_SIZE 65536
 
 namespace Toolbox {
 

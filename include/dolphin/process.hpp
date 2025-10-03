@@ -29,6 +29,9 @@ namespace Toolbox::Dolphin {
         void setRefreshRate(s64 milliseconds) { m_refresh_rate = milliseconds; }
 
         template <typename T> Result<T> read(u32 address) {
+            static_assert(std::is_standard_layout_v<T>,
+                          "T is not a POD type or data type otherwise.");
+
             T data;
 
             auto result = DolphinHookManager::instance().readBytes(reinterpret_cast<char *>(&data),
@@ -41,6 +44,9 @@ namespace Toolbox::Dolphin {
         }
 
         template <typename T> Result<void> write(u32 address, const T &value) {
+            static_assert(std::is_standard_layout_v<T>,
+                          "T is not a POD type or data type otherwise.");
+
             T swapped_v = *endian_swapped_t<T>(value);
             auto result = DolphinHookManager::instance().writeBytes(
                 reinterpret_cast<const char *>(std::addressof(swapped_v)), address, sizeof(T));

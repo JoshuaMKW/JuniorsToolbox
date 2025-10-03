@@ -338,6 +338,7 @@ namespace Toolbox::Object {
             default:
                 break;
             }
+            m_value_len = meta_type_size(type);
         }
         MetaValue(const MetaValue &other) = default;
         MetaValue(MetaValue &&other)      = default;
@@ -359,13 +360,17 @@ namespace Toolbox::Object {
 
         [[nodiscard]] size_t computeSize() const;
 
+        [[nodiscard]] const Buffer &buf() const { return m_value_buf; }
+
         template <typename T> [[nodiscard]] Result<T, std::string> get() const {
-            return getBuf<T>(m_type, m_value_buf);
+            return getBuf<T>(m_type, m_value_buf, m_value_len);
         }
 
         template <typename T> bool set(const T &value) {
-            return setBuf(m_type, m_value_buf, value);
+            return setBuf(m_type, m_value_buf, m_value_len, value);
         }
+
+        void setExplicitSize(size_t size) { m_value_len = size; }
 
         Result<void, JSONError> loadJSON(const nlohmann::json &json_value);
 
@@ -378,19 +383,23 @@ namespace Toolbox::Object {
 
     private:
         Buffer m_value_buf;
-        MetaType m_type = MetaType::UNKNOWN;
+        MetaType m_type    = MetaType::UNKNOWN;
+        size_t m_value_len = 0;
     };
 
-    template <typename T> [[nodiscard]]
-    inline Result<T, std::string> getBuf(const MetaType &m_type, const Buffer &m_value_buf) {
+    template <typename T>
+    [[nodiscard]]
+    inline Result<T, std::string> getBuf(const MetaType &m_type, const Buffer &m_value_buf,
+                                         size_t m_value_len) {
         if (m_type != map_to_type_enum<T>::value)
             return std::unexpected("Type record mismatch");
         return m_value_buf.get<T>(0);
     }
 
-    template <> [[nodiscard]]
+    template <>
+    [[nodiscard]]
     inline Result<std::string, std::string> getBuf(const MetaType &m_type,
-                                                  const Buffer &m_value_buf) {
+                                                   const Buffer &m_value_buf, size_t m_value_len) {
         std::string out;
         for (size_t i = 0; i < m_value_buf.size(); ++i) {
             char ch = m_value_buf.get<char>(i);
@@ -402,15 +411,18 @@ namespace Toolbox::Object {
         return out;
     }
 
-    template <typename T> [[nodiscard]]
-    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, const T &value) {
+    template <typename T>
+    [[nodiscard]]
+    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, size_t &m_value_len, const T &value) {
         m_type = map_to_type_enum<T>::value;
         m_value_buf.set<T>(0, value);
+        m_value_len = meta_type_size(m_type);
         return true;
     }
-    template <> [[nodiscard]]
-    inline bool setBuf(MetaType &m_type,
-                       Buffer &m_value_buf,
+
+    template <>
+    [[nodiscard]]
+    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, size_t &m_value_len,
                        const std::string &value) {
         m_type = MetaType::STRING;
         if (value.size() > m_value_buf.size() + 1) {
@@ -420,6 +432,23 @@ namespace Toolbox::Object {
         for (size_t i = 0; i < value.size(); ++i) {
             m_value_buf.set<char>(i, value[i]);
         }
+        m_value_len = meta_type_size(m_type);
+        return true;
+    }
+
+    template <>
+    [[nodiscard]]
+    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, size_t &m_value_len,
+                       const Buffer &value) {
+        m_type = MetaType::UNKNOWN;
+        if (value.size() > m_value_buf.size() + 1) {
+            m_value_buf.resize(static_cast<size_t>(value.size() * 1.5f));
+        }
+        m_value_buf.initTo('\0');
+        for (size_t i = 0; i < value.size(); ++i) {
+            m_value_buf.set<char>(i, value[i]);
+        }
+        m_value_len = value.size();
         return true;
     }
 

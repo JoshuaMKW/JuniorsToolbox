@@ -109,6 +109,18 @@ namespace Toolbox::UI {
         void actionClearRequestExcIndex(const ModelIndex &child_index, bool is_left_button);
 
     private:
+        struct HistoryPair {
+            u32 m_address;
+            std::string m_label;
+        };
+
+        struct AddressSpan {
+            u32 m_begin;
+            u32 m_end;
+        };
+
+        void buildContextMenus();
+
         void recursiveLock(ModelIndex src_idx, bool lock);
         ModelIndex insertGroup(ModelIndex group_index, size_t row,
                                AddGroupDialog::InsertPolicy policy, std::string_view group_name);
@@ -132,11 +144,10 @@ namespace Toolbox::UI {
 
         void overwriteNibbleAtCursor(u8 nibble_value);
         void overwriteCharAtCursor(char char_value);
+        void processKeyInputsAtAddress(int32_t column_count);
 
-        struct HistoryPair {
-            u32 m_address;
-            std::string m_label;
-        };
+        static void CopyBytesFromAddressSpan(const AddressSpan &);
+        static void CopyASCIIFromAddressSpan(const AddressSpan &);
 
         UUID64 m_attached_scene_uuid = 0;
 
@@ -156,7 +167,8 @@ namespace Toolbox::UI {
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;
 
-        ContextMenu<ModelIndex> m_memory_view_context_menu;
+        ContextMenu<AddressSpan> m_ascii_view_context_menu;
+        ContextMenu<AddressSpan> m_byte_view_context_menu;
         ContextMenu<ModelIndex> m_watch_view_context_menu;
 
         AddGroupDialog m_add_group_dialog;
