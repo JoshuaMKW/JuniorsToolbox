@@ -233,7 +233,7 @@ namespace Toolbox {
         std::string_view filepath() const { return m_file_path; }
 
         template <typename _S, std::endian E = std::endian::native>
-        static Result<void, SerialError> BytesToObject(Buffer &serial_data, _S &obj,
+        static Result<void, SerialError> BytesToObject(const Buffer &serial_data, _S &obj,
                                                        size_t offset = 0) {
             if constexpr (std::is_base_of_v<ISerializable, _S>) {
                 std::stringstream str_in(
@@ -242,7 +242,7 @@ namespace Toolbox {
                 Deserializer in(str_in.rdbuf());
                 return obj.deserialize(in);
             } else if constexpr (std::is_standard_layout_v<_S>) {
-                obj = *reinterpret_cast<_S *>(serial_data.buf<char>() + offset);
+                obj = *reinterpret_cast<const _S *>(serial_data.buf<char>() + offset);
                 return {};
             } else {
                 return make_serial_error<void>(

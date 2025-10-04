@@ -12,6 +12,8 @@ namespace Toolbox::UI {
     void AddWatchDialog::openToAddress(u32 address) {
         open();
         snprintf(m_watch_address.data(), m_watch_address.size(), "%08X", address);
+        m_watch_type = MetaType::U8;
+        m_watch_size = 1;
     }
 
     void AddWatchDialog::openToAddressAsBytes(u32 address, size_t address_size) {

@@ -391,9 +391,12 @@ namespace Toolbox::Object {
     [[nodiscard]]
     inline Result<T, std::string> getBuf(const MetaType &m_type, const Buffer &m_value_buf,
                                          size_t m_value_len) {
-        if (m_type != map_to_type_enum<T>::value)
-            return std::unexpected("Type record mismatch");
-        return m_value_buf.get<T>(0);
+        T value{};
+        if (Deserializer::BytesToObject(m_value_buf, value, 0).has_value()) {
+            return value;
+        } else {
+            return std::unexpected("Failed to deserialize data into higher type");
+        }
     }
 
     template <>
@@ -414,10 +417,10 @@ namespace Toolbox::Object {
     template <typename T>
     [[nodiscard]]
     inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, size_t &m_value_len, const T &value) {
-        m_type = map_to_type_enum<T>::value;
-        m_value_buf.set<T>(0, value);
-        m_value_len = meta_type_size(m_type);
-        return true;
+        bool ret = Serializer::ObjectToBytes(value, m_value_buf, 0).has_value();
+        m_value_len = m_value_buf.size();
+        m_type      = map_to_type_enum<T>::value;
+        return ret;
     }
 
     template <>
@@ -432,7 +435,7 @@ namespace Toolbox::Object {
         for (size_t i = 0; i < value.size(); ++i) {
             m_value_buf.set<char>(i, value[i]);
         }
-        m_value_len = meta_type_size(m_type);
+        m_value_len = value.size();
         return true;
     }
 

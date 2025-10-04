@@ -795,11 +795,12 @@ namespace Toolbox::UI {
 
         if (ImGui::BeginChild("##MemoryWatchList", {m_list_width, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2, 2});
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
+            //ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2, 2});
+            //ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            //ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
+            //ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
+            //ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, {4.0f, 6.0f});
 
             ImGuiStyle &style           = ImGui::GetStyle();
             ImVec2 avail_content_region = ImGui::GetContentRegionAvail();
@@ -835,8 +836,8 @@ namespace Toolbox::UI {
             ImVec2 table_pos  = ImGui::GetWindowPos() + ImGui::GetCursorPos(),
                    table_size = desired_size;
             if (ImGui::BeginTable("##MemoryWatchTable", 5, flags, desired_size)) {
+                ImGui::TableSetupScrollFreeze(5, 1);
 
-                // ImGui::TableSetupScrollFreeze(3, 1);
                 ImGui::TableSetupColumn("Name");
                 ImGui::TableSetupColumn("Type");
                 ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 80.0f);
@@ -861,7 +862,7 @@ namespace Toolbox::UI {
                 ImGui::EndTable();
             }
 
-            ImGui::PopStyleVar(5);
+            ImGui::PopStyleVar(1);
 
             bool left_click  = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
             bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
@@ -1663,7 +1664,7 @@ namespace Toolbox::UI {
 
         if (ImGui::ColorButton("##color_rgb_preview", color_rgba,
                                ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop |
-                                   ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_NoInputs)) {
+                                   /*ImGuiColorEditFlags_NoPicker*/ ImGuiColorEditFlags_NoInputs)) {
             // Color button clicked, do nothing
         }
     }
@@ -1685,7 +1686,7 @@ namespace Toolbox::UI {
 
         if (ImGui::ColorButton("##color_rgb_preview", color_rgba,
                                ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop |
-                                   ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_NoInputs)) {
+                                   /*ImGuiColorEditFlags_NoPicker*/ ImGuiColorEditFlags_NoInputs)) {
             // Color button clicked, do nothing
         }
     }
@@ -1708,10 +1709,13 @@ namespace Toolbox::UI {
 
         ImGui::BeginGroup();
         {
+            glm::vec3 vec = value.get<glm::vec3>().value_or(glm::vec3());
 
             for (int i = 0; i < 3; ++i) {
+                MetaValue flt_val = MetaValue(vec[i]);
+
                 char value_buf[32] = {};
-                calcPreview(value_buf, sizeof(value_buf), value);
+                calcPreview(value_buf, sizeof(value_buf), flt_val);
 
                 ImGui::PushID(i);
 
@@ -1727,13 +1731,6 @@ namespace Toolbox::UI {
             }
         }
         ImGui::EndGroup();
-
-        ImRect bb = {
-            {preview_pos.x - style.ItemSpacing.x,     preview_pos.y                 },
-            {preview_pos.x - style.ItemSpacing.x + 2, preview_pos.y + preview_size.y}
-        };
-        bb.Translate(window->Pos);
-        window->DrawList->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Separator));
     }
 
     void DebuggerWindow::renderPreviewTransform(f32 column_width, const MetaValue &value) {
@@ -1770,9 +1767,13 @@ namespace Toolbox::UI {
             ImGui::TextAndWidth(column_width_vec, "T:");
             ImGui::SameLine();
 
+            Transform t = value.get<Transform>().value_or(Transform());
+
             for (int i = 0; i < 3; ++i) {
+                MetaValue flt_val = MetaValue(t.m_translation[i]);
+
                 char value_buf[32] = {};
-                calcPreview(value_buf, sizeof(value_buf), value);
+                calcPreview(value_buf, sizeof(value_buf), flt_val);
 
                 ImGui::PushID(i);
 
@@ -1791,8 +1792,10 @@ namespace Toolbox::UI {
             ImGui::SameLine();
 
             for (int i = 0; i < 3; ++i) {
+                MetaValue flt_val = MetaValue(t.m_rotation[i]);
+
                 char value_buf[32] = {};
-                calcPreview(value_buf, sizeof(value_buf), value);
+                calcPreview(value_buf, sizeof(value_buf), flt_val);
 
                 ImGui::PushID(i);
 
@@ -1811,8 +1814,10 @@ namespace Toolbox::UI {
             ImGui::SameLine();
 
             for (int i = 0; i < 3; ++i) {
+                MetaValue flt_val = MetaValue(t.m_scale[i]);
+
                 char value_buf[32] = {};
-                calcPreview(value_buf, sizeof(value_buf), value);
+                calcPreview(value_buf, sizeof(value_buf), flt_val);
 
                 ImGui::PushID(i);
 
@@ -1828,13 +1833,6 @@ namespace Toolbox::UI {
             }
         }
         ImGui::EndGroup();
-
-        ImRect bb = {
-            {preview_pos.x - style.ItemSpacing.x,     preview_pos.y                 },
-            {preview_pos.x - style.ItemSpacing.x + 2, preview_pos.y + preview_size.y}
-        };
-        bb.Translate(window->Pos);
-        window->DrawList->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Separator));
     }
 
     void DebuggerWindow::renderPreviewMatrix34(f32 column_width, const MetaValue &value) {
@@ -1871,12 +1869,16 @@ namespace Toolbox::UI {
         ImGuiWindow *window            = ImGui::GetCurrentWindow();
         window->DC.CursorPosPrevLine.y = window->Pos.y + preview_pos.y;
 
+        glm::mat3x4 value_mtx = value.get<glm::mat3x4>().value_or(glm::mat3x4());
+
         ImGui::BeginGroup();
         {
             for (int j = 0; j < 3; ++j) {
                 for (int i = 0; i < 4; ++i) {
+                    MetaValue flt_val = MetaValue(value_mtx[j][i]);
+
                     char value_buf[32] = {};
-                    calcPreview(value_buf, sizeof(value_buf), value);
+                    calcPreview(value_buf, sizeof(value_buf), flt_val);
 
                     ImGui::PushID(i);
 
@@ -1894,13 +1896,6 @@ namespace Toolbox::UI {
             }
         }
         ImGui::EndGroup();
-
-        ImRect bb = {
-            {preview_pos.x - style.ItemSpacing.x,     preview_pos.y                 },
-            {preview_pos.x - style.ItemSpacing.x + 2, preview_pos.y + preview_size.y}
-        };
-        bb.Translate(window->Pos);
-        window->DrawList->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Separator));
     }
 
     void DebuggerWindow::calcPreview(char *preview_out, size_t preview_size,
@@ -1910,9 +1905,9 @@ namespace Toolbox::UI {
         }
 
         size_t address_size = value.computeSize();
-        //if (value.type() == MetaType::UNKNOWN) {
-        //    
-        //}
+        // if (value.type() == MetaType::UNKNOWN) {
+        //
+        // }
 
         if (address_size == 0) {
             snprintf(preview_out, preview_size, "???");
