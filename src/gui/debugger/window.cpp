@@ -126,6 +126,7 @@ namespace Toolbox::UI {
 
             m_ascii_view_context_menu.render("ASCII View", span);
             m_byte_view_context_menu.render("Byte View", span);
+            m_fill_bytes_dialog.render(span);
         }
         ImGui::EndChild();
 
@@ -157,6 +158,8 @@ namespace Toolbox::UI {
         ImGuiWindow *window = ImGui::GetCurrentWindow();
 
         const bool window_focused = ImGui::IsWindowFocused();
+        const bool window_hovered = ImGui::IsWindowHovered();
+
         const float font_width    = ImGui::GetFontSize();
         const float ch_width      = ImGui::CalcTextSize("0").x;
         const float ch_height     = ImGui::CalcTextSize("0").y;
@@ -301,10 +304,8 @@ namespace Toolbox::UI {
 
                 ImVec2 mouse_pos = ImVec2{(float)m_x, (float)m_y};
 
-                bool column_hovered =
-                    text_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding) &&
-                    !m_byte_view_context_menu.rect().ContainsWithPad(mouse_pos,
-                                                                     style.TouchExtraPadding);
+                bool column_hovered = window_hovered &&
+                    text_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding);
                 bool column_clicked =
                     column_hovered && Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
                 if (column_clicked) {
@@ -450,9 +451,8 @@ namespace Toolbox::UI {
 
             int64_t column_hovered = -1;
             for (int64_t i = 0; i < char_width; ++i) {
-                bool ch_hovered = char_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding) &&
-                                  !m_ascii_view_context_menu.rect().ContainsWithPad(
-                                      mouse_pos, style.TouchExtraPadding);
+                bool ch_hovered =
+                    window_hovered && char_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding);
                 if (ch_hovered) {
                     window->DrawList->AddRectFilled(char_rect.Min, char_rect.Max,
                                                     ImGui::GetColorU32(ImGuiCol_TabHovered));
@@ -660,7 +660,10 @@ namespace Toolbox::UI {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
             ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
 
-            if (!ImGui::IsWindowFocused()) {
+            const bool window_focused = ImGui::IsWindowFocused();
+            const bool window_hovered = ImGui::IsWindowHovered();
+
+            if (!window_focused) {
                 m_address_cursor        = 0;
                 m_address_cursor_nibble = 0;
             }
@@ -733,7 +736,7 @@ namespace Toolbox::UI {
             u32 memory_address = m_base_address;
 
             // Process controls
-            if (m_address_cursor != 0) {
+            if (m_address_cursor != 0 && ImGui::IsWindowFocused()) {
                 // TODO: Enhance held input logic so it doesn't
                 // stutter and drop inputs during many keys pressing across frames.
                 KeyModifiers mods    = GetPressedKeyModifiers();
@@ -768,7 +771,7 @@ namespace Toolbox::UI {
             ImGui::PopStyleVar(5);
 
             // Check for memory view hover
-            if (ImGui::IsWindowHovered()) {
+            if (window_hovered) {
                 double x, y;
                 Input::GetMouseScrollDelta(x, y);
 
@@ -795,11 +798,11 @@ namespace Toolbox::UI {
 
         if (ImGui::BeginChild("##MemoryWatchList", {m_list_width, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
-            //ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2, 2});
-            //ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-            //ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
-            //ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
-            //ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
+            // ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2, 2});
+            // ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            // ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
+            // ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
+            // ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, {4.0f, 6.0f});
 
             ImGuiStyle &style           = ImGui::GetStyle();
@@ -1323,6 +1326,27 @@ namespace Toolbox::UI {
                 insertWatch(group_idx, row, policy, watch_name, type, address, size);
             });
 
+        m_fill_bytes_dialog.setInsertPolicy(FillBytesDialog::InsertPolicy::INSERT_CONSTANT);
+        m_fill_bytes_dialog.setActionOnAccept(
+            [&](const AddressSpan &span, FillBytesDialog::InsertPolicy policy, u8 byte_value) {
+                switch (policy) {
+                case FillBytesDialog::InsertPolicy::INSERT_CONSTANT: {
+                    FillAddressSpan(span, byte_value, [](u8 val) { return val; });
+                    break;
+                }
+                case FillBytesDialog::InsertPolicy::INSERT_INCREMENT: {
+                    FillAddressSpan(span, byte_value,
+                                    [](u8 val) { return val == 255 ? 255 : val + 1; });
+                    break;
+                }
+                case FillBytesDialog::InsertPolicy::INSERT_DECREMENT: {
+                    FillAddressSpan(span, byte_value,
+                                    [](u8 val) { return val == 0 ? 0 : val - 1; });
+                    break;
+                }
+                }
+            });
+
         buildContextMenus();
     }
 
@@ -1438,7 +1462,7 @@ namespace Toolbox::UI {
 
         m_byte_view_context_menu.addOption(
             "Fill Selection...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_F},
-            [](AddressSpan span) {});
+            [&](AddressSpan span) { m_fill_bytes_dialog.open(); });
 
         m_byte_view_context_menu.addDivider();
 
@@ -1475,7 +1499,7 @@ namespace Toolbox::UI {
 
         m_ascii_view_context_menu.addOption(
             "Fill Selection...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_F},
-            [](AddressSpan span) {});
+            [&](AddressSpan span) { m_fill_bytes_dialog.open(); });
 
         m_ascii_view_context_menu.addDivider();
 
@@ -2471,6 +2495,21 @@ namespace Toolbox::UI {
             LogError(error);
             return Result<void, ClipboardError>();
         });
+    }
+
+    void DebuggerWindow::FillAddressSpan(const AddressSpan &span, u8 initial_val,
+                                         transformer_t transformer) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        u32 start_addr = std::min<u32>(span.m_begin, span.m_end);
+        u32 end_addr   = std::max<u32>(span.m_begin, span.m_end);
+
+        u8 value = initial_val;
+        while (start_addr < end_addr) {
+            communicator.write<u8>(start_addr, value);
+            value = transformer(value);
+            start_addr += 1;
+        }
     }
 
 }  // namespace Toolbox::UI

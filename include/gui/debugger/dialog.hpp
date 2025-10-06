@@ -13,6 +13,11 @@
 
 namespace Toolbox::UI {
 
+    struct AddressSpan {
+        u32 m_begin;
+        u32 m_end;
+    };
+
     class AddGroupDialog {
     public:
         enum class InsertPolicy {
@@ -114,6 +119,43 @@ namespace Toolbox::UI {
         action_t m_on_accept;
         cancel_t m_on_reject;
         filter_t m_filter_predicate;
+    };
+
+    class FillBytesDialog {
+    public:
+        enum class InsertPolicy {
+            INSERT_CONSTANT,
+            INSERT_INCREMENT,
+            INSERT_DECREMENT,
+        };
+
+        using action_t = std::function<void(const AddressSpan &, InsertPolicy, u8)>;
+        using cancel_t = std::function<void(const AddressSpan &)>;
+
+        FillBytesDialog()  = default;
+        ~FillBytesDialog() = default;
+
+        void setInsertPolicy(InsertPolicy policy) { m_insert_policy = policy; }
+        void setActionOnAccept(action_t on_accept) { m_on_accept = on_accept; }
+        void setActionOnReject(cancel_t on_reject) { m_on_reject = on_reject; }
+
+        void setup();
+
+        void open() { m_opening = true; }
+        bool is_open() const { return m_open == true || m_opening == true; }
+
+        void render(const AddressSpan &span);
+
+    private:
+        bool m_open    = false;
+        bool m_opening = false;
+
+        int m_byte_value;
+
+        InsertPolicy m_insert_policy = InsertPolicy::INSERT_CONSTANT;
+
+        action_t m_on_accept;
+        cancel_t m_on_reject;
     };
 
 }  // namespace Toolbox::UI

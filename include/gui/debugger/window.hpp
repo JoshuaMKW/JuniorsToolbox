@@ -114,19 +114,16 @@ namespace Toolbox::UI {
             std::string m_label;
         };
 
-        struct AddressSpan {
-            u32 m_begin;
-            u32 m_end;
-        };
-
         void buildContextMenus();
 
         void recursiveLock(ModelIndex src_idx, bool lock);
+
         ModelIndex insertGroup(ModelIndex group_index, size_t row,
                                AddGroupDialog::InsertPolicy policy, std::string_view group_name);
         ModelIndex insertWatch(ModelIndex group_index, size_t row,
                                AddWatchDialog::InsertPolicy policy, std::string_view watch_name,
                                MetaType watch_type, u32 watch_address, u32 watch_size);
+
         std::string buildQualifiedId(ModelIndex index) const;
 
         // ----
@@ -146,8 +143,11 @@ namespace Toolbox::UI {
         void overwriteCharAtCursor(char char_value);
         void processKeyInputsAtAddress(int32_t column_count);
 
-        static void CopyBytesFromAddressSpan(const AddressSpan &);
-        static void CopyASCIIFromAddressSpan(const AddressSpan &);
+        using transformer_t = std::function<u8(u8)>;
+        static void CopyBytesFromAddressSpan(const AddressSpan &span);
+        static void CopyASCIIFromAddressSpan(const AddressSpan &span);
+        static void FillAddressSpan(const AddressSpan &span, u8 initial_val,
+                                    transformer_t transformer);
 
         UUID64 m_attached_scene_uuid = 0;
 
@@ -173,6 +173,7 @@ namespace Toolbox::UI {
 
         AddGroupDialog m_add_group_dialog;
         AddWatchDialog m_add_watch_dialog;
+        FillBytesDialog m_fill_bytes_dialog;
 
         RefPtr<WatchDataModel> m_watch_model;
         RefPtr<WatchDataModelSortFilterProxy> m_proxy_model;

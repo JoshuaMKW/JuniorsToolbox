@@ -1586,9 +1586,11 @@ void ImGui::TextAndWidth(float width, const char *fmt, ...) {
 
     ImVec2 cursor_pos = ImGui::GetCursorPos();
     ImGui::TextV(fmt, args);
+    ImVec2 new_pos = ImGui::GetCursorPos();
+
     ImGui::SetCursorPos(cursor_pos);
 
-    ImGui::Dummy(ImVec2(width, 0));
+    ImGui::Dummy(ImVec2(width, new_pos.y - cursor_pos.y));
     va_end(args);
 }
 
