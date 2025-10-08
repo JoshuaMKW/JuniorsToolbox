@@ -160,9 +160,9 @@ namespace Toolbox::UI {
         const bool window_focused = ImGui::IsWindowFocused();
         const bool window_hovered = ImGui::IsWindowHovered();
 
-        const float font_width    = ImGui::GetFontSize();
-        const float ch_width      = ImGui::CalcTextSize("0").x;
-        const float ch_height     = ImGui::CalcTextSize("0").y;
+        const float font_width = ImGui::GetFontSize();
+        const float ch_width   = ImGui::CalcTextSize("0").x;
+        const float ch_height  = ImGui::CalcTextSize("0").y;
 
         // Render the address
         // ---
@@ -230,9 +230,8 @@ namespace Toolbox::UI {
                 int16_t col_end   = (addr_end - base_address) / byte_width;
                 int16_t col_span  = col_end - col_start;
 
-                bool valid_span = col_start < col_end;
-                valid_span |=
-                    col_start == col_end && (selection_start_nibble < selection_end_nibble);
+                bool valid_span = col_start <= col_end;
+                valid_span |= (selection_start_nibble < selection_end_nibble);
 
                 if (valid_span) {
                     char spoof_buf[16];
@@ -266,9 +265,18 @@ namespace Toolbox::UI {
                         color.w *= 0.5f;
                     }
 
+                    TOOLBOX_DEBUG_LOG_V("TRx: [{}, {}], snib {}, enib {}, saddr {}, eaddr {}",
+                                    text_rect.GetTL().x, text_rect.GetBR().x,
+                                    selection_start_nibble, selection_end_nibble, selection_start,
+                                    selection_end);
+
                     window->DrawList->AddQuadFilled(text_rect.GetTL(), text_rect.GetTR(),
                                                     text_rect.GetBR(), text_rect.GetBL(),
                                                     ImGui::ColorConvertFloat4ToU32(color));
+                } else {
+                    //TOOLBOX_DEBUG_LOG_V("snib {}, enib {}, saddr {}, eaddr {}",
+                    //                    selection_start_nibble, selection_end_nibble,
+                    //                    selection_start, selection_end);
                 }
             }
 
@@ -304,8 +312,8 @@ namespace Toolbox::UI {
 
                 ImVec2 mouse_pos = ImVec2{(float)m_x, (float)m_y};
 
-                bool column_hovered = window_hovered &&
-                    text_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding);
+                bool column_hovered =
+                    window_hovered && text_rect.ContainsWithPad(mouse_pos, style.TouchExtraPadding);
                 bool column_clicked =
                     column_hovered && Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
                 if (column_clicked) {
@@ -335,13 +343,52 @@ namespace Toolbox::UI {
                     Input::GetMouseButton(MouseButton::BUTTON_LEFT) && column_hovered) {
                     ImVec2 difference = mouse_pos - m_address_selection_mouse_start;
                     if (ImLengthSqr(difference) > 10.0f) {
-                        m_address_selection_end = cur_address < m_address_selection_begin
-                                                      ? cur_address
-                                                      : cur_address + byte_width;
-                        m_address_selection_end_nibble =
-                            ImClamp<u8>((mouse_pos.x - text_rect.Min.x) / ch_width, 0,
-                                        nibble_width - 1) &
-                            ~1;
+                        if (cur_address < m_address_selection_begin) {
+                            m_address_selection_end_nibble =
+                                (ImClamp<u8>((mouse_pos.x - text_rect.Min.x) / ch_width, 0,
+                                             nibble_width - 1) &
+                                 ~1);
+                            m_address_selection_end = cur_address;
+                            /*if (m_address_selection_end_nibble == 0) {
+                                m_address_selection_end_nibble = nibble_width - 2;
+                                m_address_selection_end -= byte_width;
+                            } else {
+                                m_address_selection_end_nibble -= 2;
+                            }*/
+                        } else if (cur_address > m_address_selection_begin) {
+                            m_address_selection_end_nibble =
+                                (ImClamp<u8>((mouse_pos.x - text_rect.Min.x) / ch_width, 0,
+                                             nibble_width - 1) &
+                                 ~1) +
+                                2;
+                            m_address_selection_end = cur_address;
+                            if (m_address_selection_end_nibble == nibble_width) {
+                                m_address_selection_end_nibble = 0;
+                                m_address_selection_end += byte_width;
+                            }
+                        } else {
+                            m_address_selection_end_nibble =
+                                (ImClamp<u8>((mouse_pos.x - text_rect.Min.x) / ch_width, 0,
+                                             nibble_width - 1) &
+                                 ~1);
+                            m_address_selection_end = cur_address;
+                            if (m_address_selection_end_nibble < m_address_selection_begin_nibble) {
+                                //if (m_address_selection_end_nibble == 0) {
+                                //    m_address_selection_end_nibble = nibble_width - 2;
+                                //    m_address_selection_end -= byte_width;
+                                //} else {
+                                //    m_address_selection_end_nibble -= 2;
+                                //}
+                            } else {
+                                m_address_selection_end_nibble += 2;
+                                if (m_address_selection_end_nibble == nibble_width) {
+                                    m_address_selection_end_nibble = 0;
+                                    m_address_selection_end += byte_width;
+                                }
+                            }
+
+
+                        }
 
                         m_byte_view_context_menu.setCanOpen(true);
                         m_ascii_view_context_menu.setCanOpen(false);
