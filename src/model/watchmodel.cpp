@@ -129,7 +129,7 @@ namespace Toolbox {
         m_running      = true;
         m_watch_thread = std::thread([&]() {
             while (m_running) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                std::this_thread::sleep_for(std::chrono::milliseconds(m_refresh_rate));
                 processWatches();
             }
         });

@@ -11,6 +11,7 @@ struct GLFWwindow;
 
 namespace Toolbox::Input {
 
+    bool IsCapsLockOn();
     bool IsKeyModifier(KeyCode key);
     KeyCodes GetPressedKeys(bool include_mods = true);
     KeyModifiers GetPressedKeyModifiers();

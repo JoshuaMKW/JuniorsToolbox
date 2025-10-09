@@ -153,6 +153,8 @@ namespace Toolbox {
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
         void setData(const ModelIndex &index, std::any data, int role) override;
 
+        void setRefreshRate(s64 milliseconds) { m_refresh_rate = milliseconds; }
+
         [[nodiscard]] std::string findUniqueName(const ModelIndex &index,
                                                  const std::string &name) const;
 
@@ -240,6 +242,8 @@ namespace Toolbox {
 
         std::thread m_watch_thread;
         std::atomic<bool> m_running;
+
+        s64 m_refresh_rate;
     };
 
     class WatchDataModelSortFilterProxy : public IDataModel {

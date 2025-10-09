@@ -1,5 +1,5 @@
-#include "core/core.hpp"
 #include "core/input/input.hpp"
+#include "core/core.hpp"
 
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -27,8 +27,6 @@ namespace {
     constexpr size_t c_keys_max    = 512;
     constexpr size_t c_buttons_max = 32;
 
-    using namespace Toolbox::Input;
-
     static double s_mouse_position_glfw_x = 0;
     static double s_mouse_position_glfw_y = 0;
 
@@ -45,6 +43,7 @@ namespace {
     static double s_mouse_scroll_delta_y = 0;
 
     static bool s_mouse_wrapped = false;
+    static bool s_caps_lock     = false;
 
     static bool s_keys_down[c_keys_max]      = {false};
     static bool s_prev_keys_down[c_keys_max] = {false};
@@ -71,6 +70,9 @@ namespace {
 // Externals
 
 namespace Toolbox::Input {
+
+    bool IsCapsLockOn() { return s_caps_lock; }
+
     bool IsKeyModifier(KeyCode key) {
         return key == KeyCode::KEY_LEFTSHIFT || key == KeyCode::KEY_RIGHTSHIFT ||
                key == KeyCode::KEY_LEFTCONTROL || key == KeyCode::KEY_RIGHTCONTROL ||
@@ -209,6 +211,8 @@ namespace Toolbox::Input {
             int states[3]           = {VK_LBUTTON, VK_RBUTTON, VK_MBUTTON};
             s_mouse_buttons_down[i] = GetAsyncKeyState(states[i]) & 0x8000;
         }
+
+        s_caps_lock = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
 #elif defined(TOOLBOX_PLATFORM_LINUX)
         // TODO: Check that this actually works
 
@@ -257,10 +261,11 @@ namespace Toolbox::Input {
         if (key >= c_keys_max)
             return;
 
-        if (action == GLFW_PRESS)
+        if (action == GLFW_PRESS) {
             s_keys_down[key] = true;
-        else if (action == GLFW_RELEASE)
+        } else if (action == GLFW_RELEASE) {
             s_keys_down[key] = false;
+        }
 
         ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
     }
