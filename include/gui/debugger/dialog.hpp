@@ -68,7 +68,7 @@ namespace Toolbox::UI {
         };
 
         using action_t = std::function<void(ModelIndex, size_t, InsertPolicy, std::string_view,
-                                            MetaType, u32, u32)>;
+                                            MetaType, const std::vector<u32> &, u32, bool)>;
         using cancel_t = std::function<void(ModelIndex)>;
         using filter_t = std::function<bool(std::string_view, ModelIndex group_idx)>;
 

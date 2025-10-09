@@ -660,10 +660,12 @@ namespace Toolbox {
 
     void WatchDataModel::fetchMore_(const ModelIndex &index) { return; }
 
-    ModelIndex WatchDataModel::makeWatchIndex(const std::string &name, MetaType type, u32 address,
-                                              u32 size, int64_t row, const ModelIndex &parent) {
+    ModelIndex WatchDataModel::makeWatchIndex(const std::string &name, MetaType type,
+                                              const std::vector<u32> &pointer_chain, u32 size,
+                                              bool is_pointer, int64_t row,
+                                              const ModelIndex &parent) {
         _WatchIndexData *parent_data = nullptr;
-        if (row < 0) {
+        if (row < 0 || pointer_chain.empty()) {
             return ModelIndex();
         }
 
@@ -683,8 +685,15 @@ namespace Toolbox {
         _WatchIndexData *data = new _WatchIndexData;
         data->m_type          = _WatchIndexData::Type::WATCH;
         data->m_watch         = new MetaWatch(type);
-        if (!data->m_watch->startWatch(address, size)) {
-            return ModelIndex();
+
+        if (is_pointer) {
+            if (!data->m_watch->startWatch(pointer_chain, size)) {
+                return ModelIndex();
+            }
+        } else {
+            if (!data->m_watch->startWatch(pointer_chain[0], size)) {
+                return ModelIndex();
+            }
         }
 
         std::string unique_name = findUniqueName_(parent, name);

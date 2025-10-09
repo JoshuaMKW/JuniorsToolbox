@@ -69,7 +69,7 @@ namespace Toolbox {
 
                 // Write padding bytes
                 for (size_t i = 0; i < offset; ++i) {
-                    sout.write<u8>(0);
+                    sout.write<u8, E>(0);
                 }
 
                 sout.pushBreakpoint();

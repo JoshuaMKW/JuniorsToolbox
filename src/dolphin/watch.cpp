@@ -168,8 +168,8 @@ namespace Toolbox {
         m_watch_is_pointer = true;
         m_watch_size       = std::min<u32>(size, WATCH_MAX_BUFFER_SIZE);
 
-        if (m_watch_address == 0 || m_watch_size == 0) {
-            TOOLBOX_ERROR("Invalid watch address or size.");
+        if (m_pointer_chain.empty() || m_watch_size == 0) {
+            TOOLBOX_ERROR("Invalid watch pointer chain or size.");
             return false;
         }
 
@@ -187,7 +187,7 @@ namespace Toolbox {
     }
 
     void MemoryWatch::processWatch() {
-        if (m_watch_address == 0 || m_watch_size == 0) {
+        if (m_watch_size == 0) {
             return;
         }
 
@@ -232,13 +232,13 @@ namespace Toolbox {
             return 0;
         }
 
-        u32 address = readSingleFromMem<u32>(pointer_chain[0]);
+        u32 address = pointer_chain[0];
         if (address == 0) {
             return address;
         }
 
         for (size_t i = 1; i < pointer_chain.size(); ++i) {
-            address = readSingleFromMem<u32>(address + pointer_chain[i]);
+            address = readSingleFromMem<u32>(address) + pointer_chain[i];
             if (address == 0) {
                 return address;
             }
@@ -326,27 +326,27 @@ namespace Toolbox {
                 break;
             }
             case MetaType::S16: {
-                new_meta_value.set(*static_cast<s16 *>(new_value));
+                new_meta_value.set(bs16(*static_cast<s16 *>(new_value)));
                 break;
             }
             case MetaType::U16: {
-                new_meta_value.set(*static_cast<u16 *>(new_value));
+                new_meta_value.set(bu16(*static_cast<u16 *>(new_value)));
                 break;
             }
             case MetaType::S32: {
-                new_meta_value.set(*static_cast<s32 *>(new_value));
+                new_meta_value.set(bs32(*static_cast<s32 *>(new_value)));
                 break;
             }
             case MetaType::U32: {
-                new_meta_value.set(*static_cast<u32 *>(new_value));
+                new_meta_value.set(bu32(*static_cast<u32 *>(new_value)));
                 break;
             }
             case MetaType::F32: {
-                new_meta_value.set(*static_cast<float *>(new_value));
+                new_meta_value.set(bf32(*static_cast<f32 *>(new_value)));
                 break;
             }
             case MetaType::F64: {
-                new_meta_value.set(*static_cast<double *>(new_value));
+                new_meta_value.set(bf64(*static_cast<f64 *>(new_value)));
                 break;
             }
             case MetaType::STRING: {
@@ -357,15 +357,57 @@ namespace Toolbox {
                 break;
             }
             case MetaType::VEC3: {
-                new_meta_value.set<glm::vec3>(*static_cast<glm::vec3 *>(new_value));
+                glm::vec3 new_vec = {
+                    bf32(static_cast<f32 *>(new_value)[0]),
+                    bf32(static_cast<f32 *>(new_value)[1]),
+                    bf32(static_cast<f32 *>(new_value)[2]),
+                };
+                new_meta_value.set<glm::vec3>(new_vec);
                 break;
             }
             case MetaType::TRANSFORM: {
-                new_meta_value.set<Transform>(*static_cast<Transform *>(new_value));
+                Transform new_transform = {
+                    {
+                     bf32(static_cast<f32 *>(new_value)[0]),
+                     bf32(static_cast<f32 *>(new_value)[1]),
+                     bf32(static_cast<f32 *>(new_value)[2]),
+                     },
+                    {
+                     bf32(static_cast<f32 *>(new_value)[3]),
+                     bf32(static_cast<f32 *>(new_value)[4]),
+                     bf32(static_cast<f32 *>(new_value)[5]),
+                     },
+                    {
+                     bf32(static_cast<f32 *>(new_value)[6]),
+                     bf32(static_cast<f32 *>(new_value)[7]),
+                     bf32(static_cast<f32 *>(new_value)[8]),
+                     },
+                };
+                new_meta_value.set<Transform>(new_transform);
                 break;
             }
             case MetaType::MTX34: {
-                new_meta_value.set<glm::mat3x4>(*static_cast<glm::mat3x4 *>(new_value));
+                glm::mat3x4 new_mat = {
+                    {
+                     bf32(static_cast<f32 *>(new_value)[0]),
+                     bf32(static_cast<f32 *>(new_value)[1]),
+                     bf32(static_cast<f32 *>(new_value)[2]),
+                     bf32(static_cast<f32 *>(new_value)[3]),
+                     },
+                    {
+                     bf32(static_cast<f32 *>(new_value)[4]),
+                     bf32(static_cast<f32 *>(new_value)[5]),
+                     bf32(static_cast<f32 *>(new_value)[6]),
+                     bf32(static_cast<f32 *>(new_value)[7]),
+                     },
+                    {
+                     bf32(static_cast<f32 *>(new_value)[8]),
+                     bf32(static_cast<f32 *>(new_value)[9]),
+                     bf32(static_cast<f32 *>(new_value)[10]),
+                     bf32(static_cast<f32 *>(new_value)[11]),
+                     },
+                };
+                new_meta_value.set<glm::mat3x4>(new_mat);
                 break;
             }
             case MetaType::RGB: {

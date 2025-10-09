@@ -119,12 +119,12 @@ namespace Toolbox::UI {
             // Render the preview based on the watch type
             // ---
             std::vector<u32> pointer_chain;
+            pointer_chain.resize(m_watch_p_chain_size);
             for (int i = 0; i < m_watch_p_chain_size; ++i) {
-                pointer_chain.emplace_back(strtoul(m_watch_p_chain[i].data(), nullptr, 16));
+                pointer_chain[i] = strtoul(m_watch_p_chain[i].data(), nullptr, 16);
             }
 
-            std::vector<u32> address_chain =
-                MemoryWatch::ResolvePointerChainAsAddress(pointer_chain);
+            std::vector<u32> address_chain = MemoryWatch::ResolvePointerChainAsAddress(pointer_chain);
 
             float panel_height =
                 ImGui::GetTextLineHeightWithSpacing() + style.FramePadding.y * 2.0f;
@@ -176,7 +176,9 @@ namespace Toolbox::UI {
             size_t watch_name_length = strlen(m_watch_name.data());
             std::string_view watch_name_view(m_watch_name.data(), watch_name_length);
 
-            u32 address = MemoryWatch::TracePointerChainToAddress(pointer_chain);
+            u32 address = m_watch_is_pointer
+                              ? MemoryWatch::TracePointerChainToAddress(pointer_chain)
+                              : pointer_chain[0];
             size_t address_size;
             if (m_watch_type == MetaType::STRING || m_watch_type == MetaType::UNKNOWN) {
                 address_size = m_watch_size;
@@ -204,8 +206,8 @@ namespace Toolbox::UI {
             }
 
             if (ImGui::Button("Create")) {
-                m_on_accept(group_idx, row, m_insert_policy, watch_name_view, m_watch_type, address,
-                            address_size);
+                m_on_accept(group_idx, row, m_insert_policy, watch_name_view, m_watch_type, pointer_chain,
+                            address_size, m_watch_is_pointer);
                 m_open = false;
             }
 

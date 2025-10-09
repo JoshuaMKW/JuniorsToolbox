@@ -122,7 +122,8 @@ namespace Toolbox::UI {
                                AddGroupDialog::InsertPolicy policy, std::string_view group_name);
         ModelIndex insertWatch(ModelIndex group_index, size_t row,
                                AddWatchDialog::InsertPolicy policy, std::string_view watch_name,
-                               MetaType watch_type, u32 watch_address, u32 watch_size);
+                               MetaType watch_type, const std::vector<u32> &pointer_chain,
+                               u32 watch_size, bool is_pointer);
 
         std::string buildQualifiedId(ModelIndex index) const;
 

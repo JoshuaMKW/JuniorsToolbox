@@ -180,7 +180,8 @@ namespace Toolbox {
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
         void fetchMore(const ModelIndex &index) override;
 
-        ModelIndex makeWatchIndex(const std::string &name, MetaType type, u32 address, u32 size,
+        ModelIndex makeWatchIndex(const std::string &name, MetaType type,
+                                  const std::vector<u32> &pointer_chain, u32 size, bool is_pointer,
                                   int64_t row, const ModelIndex &parent);
         ModelIndex makeGroupIndex(const std::string &name, int64_t row, const ModelIndex &parent);
 

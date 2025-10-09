@@ -1369,8 +1369,8 @@ namespace Toolbox::UI {
             });
         m_add_watch_dialog.setActionOnAccept(
             [&](ModelIndex group_idx, size_t row, AddWatchDialog::InsertPolicy policy,
-                std::string_view watch_name, MetaType type, u32 address, u32 size) {
-                insertWatch(group_idx, row, policy, watch_name, type, address, size);
+                std::string_view watch_name, MetaType type, const std::vector<u32> &pointer_chain, u32 size, bool is_pointer) {
+                insertWatch(group_idx, row, policy, watch_name, type, pointer_chain, size, is_pointer);
             });
 
         m_fill_bytes_dialog.setInsertPolicy(FillBytesDialog::InsertPolicy::INSERT_CONSTANT);
@@ -1613,7 +1613,7 @@ namespace Toolbox::UI {
     ModelIndex DebuggerWindow::insertWatch(ModelIndex group_index, size_t row,
                                            AddWatchDialog::InsertPolicy policy,
                                            std::string_view watch_name, MetaType watch_type,
-                                           u32 watch_address, u32 watch_size) {
+                                           const std::vector<u32> &pointer_chain, u32 watch_size, bool is_pointer) {
         ModelIndex src_group_idx  = m_proxy_model->toSourceIndex(group_index);
         ModelIndex target_idx     = m_proxy_model->getIndex(row, 0, group_index);
         ModelIndex src_target_idx = m_proxy_model->toSourceIndex(target_idx);
@@ -1627,19 +1627,19 @@ namespace Toolbox::UI {
 
         switch (policy) {
         case AddWatchDialog::InsertPolicy::INSERT_BEFORE: {
-            return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, watch_address,
-                                                 watch_size, std::min(sibling_count, src_row),
+            return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, pointer_chain,
+                                                 watch_size, is_pointer, std::min(sibling_count, src_row),
                                                  src_group_idx);
         }
         case AddWatchDialog::InsertPolicy::INSERT_AFTER: {
-            return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, watch_address,
-                                                 watch_size, std::min(sibling_count, src_row + 1),
+            return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, pointer_chain,
+                                                 watch_size, is_pointer, std::min(sibling_count, src_row + 1),
                                                  src_group_idx);
         }
         case AddWatchDialog::InsertPolicy::INSERT_CHILD: {
             int64_t row_count = m_watch_model->getRowCount(src_target_idx);
-            return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, watch_address,
-                                                 watch_size, row_count, src_target_idx);
+            return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, pointer_chain,
+                                                 watch_size, is_pointer, row_count, src_target_idx);
         }
         }
 
