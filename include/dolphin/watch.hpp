@@ -33,16 +33,19 @@ namespace Toolbox {
         MemoryWatch &operator=(MemoryWatch &&)      = default;
 
     public:
-        const std::string &getWatchName() const { return m_watch_name; }
+        [[nodiscard]] const std::string &getWatchName() const { return m_watch_name; }
         void setWatchName(const std::string &name) { m_watch_name = name; }
 
-        bool isLocked() const { return m_is_locked; }
+        [[nodiscard]] bool isLocked() const { return m_is_locked; }
         void setLocked(bool locked) { m_is_locked = locked; }
 
+        [[nodiscard]] bool isWatchPointer() const { return m_watch_is_pointer; }
+        [[nodiscard]] std::vector<u32> getPointerChain() const { return m_pointer_chain; }
         [[nodiscard]] u32 getWatchAddress() const { return m_watch_address; }
         [[nodiscard]] u32 getWatchSize() const { return m_watch_size; }
 
         [[nodiscard]] bool startWatch(u32 address, u32 size);
+        [[nodiscard]] bool startWatch(const std::vector<u32> &pointer_chain, u32 size);
         void stopWatch();
 
         void onWatchNotify(watch_notify_cb cb) { m_watch_notify_cb = std::move(cb); }
@@ -52,13 +55,23 @@ namespace Toolbox {
         // notify the listener of changes
         void processWatch();
 
+        static u32 TracePointerChainToAddress(const std::vector<u32> &pointer_chain);
+        static std::vector<u32> ResolvePointerChainAsAddress(const std::vector<u32> &pointer_chain);
+
     protected:
         void notify(void *old_value, void *new_value, u32 value_width);
 
+        u32 traceAddressFromPointerChain() const;
+
     private:
         std::string m_watch_name;
+
+        std::vector<u32> m_pointer_chain;
         u32 m_watch_address;
+        bool m_watch_is_pointer = false;
+
         u32 m_watch_size;
+
         watch_notify_cb m_watch_notify_cb;
         void *m_last_value_buf       = nullptr;
         u32 m_buf_size               = 0;
@@ -97,10 +110,13 @@ namespace Toolbox {
         bool isLocked() const { return m_memory_watch.isLocked(); }
         void setLocked(bool locked) { m_memory_watch.setLocked(locked); }
 
-        [[nodiscard]] u32 getWatchAddress() const;
-        [[nodiscard]] u32 getWatchSize() const;
+        [[nodiscard]] bool isWatchPointer() const { return m_memory_watch.isWatchPointer(); }
+        [[nodiscard]] std::vector<u32> getPointerChain() const { return m_memory_watch.getPointerChain(); }
+        [[nodiscard]] u32 getWatchAddress() const { return m_memory_watch.getWatchAddress(); }
+        [[nodiscard]] u32 getWatchSize() const { return m_memory_watch.getWatchSize(); }
 
         [[nodiscard]] bool startWatch(u32 address, u32 size = 0);
+        [[nodiscard]] bool startWatch(const std::vector<u32> &pointer_chain, u32 size = 0);
         void stopWatch();
 
         void onWatchNotify(meta_watch_notify_cb cb) { m_watch_notify_cb = std::move(cb); }

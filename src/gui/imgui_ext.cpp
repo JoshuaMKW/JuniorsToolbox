@@ -222,8 +222,8 @@ bool ImGui::BeginChildPanel(ImGuiID id, const ImVec2 &size, ImGuiWindowFlags ext
     PushStyleVar(ImGuiStyleVar_ChildBorderSize, style.FrameBorderSize);
     PushStyleVar(ImGuiStyleVar_WindowPadding, style.WindowPadding);
     bool ret =
-        BeginChild(id, size, true,
-                   ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysUseWindowPadding | extra_flags);
+        BeginChild(id, size, ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding,
+                   ImGuiWindowFlags_NoMove | extra_flags);
     PopStyleVar(3);
     PopStyleColor();
     return ret;

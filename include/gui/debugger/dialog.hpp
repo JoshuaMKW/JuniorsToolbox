@@ -67,7 +67,8 @@ namespace Toolbox::UI {
             INSERT_CHILD,
         };
 
-        using action_t = std::function<void(ModelIndex, size_t, InsertPolicy, std::string_view, MetaType, u32, u32)>;
+        using action_t = std::function<void(ModelIndex, size_t, InsertPolicy, std::string_view,
+                                            MetaType, u32, u32)>;
         using cancel_t = std::function<void(ModelIndex)>;
         using filter_t = std::function<bool(std::string_view, ModelIndex group_idx)>;
 
@@ -82,7 +83,10 @@ namespace Toolbox::UI {
 
         void setup();
 
-        void open() { m_opening = true; }
+        void open() {
+            setup();
+            m_opening = true;
+        }
         bool is_open() const { return m_open == true || m_opening == true; }
 
         void render(ModelIndex group_idx, size_t row);
@@ -107,8 +111,11 @@ namespace Toolbox::UI {
         bool m_open    = false;
         bool m_opening = false;
 
-        std::array<char, 128> m_watch_name   = {};
-        std::array<char, 32> m_watch_address = {};
+        std::array<char, 128> m_watch_name = {};
+
+        std::array<char, 32> m_watch_p_chain[8] = {};
+        size_t m_watch_p_chain_size             = 2;
+        bool m_watch_is_pointer                 = false;
 
         MetaType m_watch_type = MetaType::U8;
         // std::array<char, 16> m_watch_size = {};

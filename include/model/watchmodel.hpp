@@ -74,7 +74,7 @@ namespace Toolbox {
         UUID64 m_uuid;
         std::string m_name;
         std::set<UUID64> m_children;
-        bool m_locked;
+        bool m_locked = false;
     };
 
     enum class WatchModelSortRole {

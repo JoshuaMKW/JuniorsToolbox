@@ -142,8 +142,31 @@ namespace Toolbox {
             return false;
         }
 
-        m_watch_address = address;
-        m_watch_size    = std::min<u32>(size, WATCH_MAX_BUFFER_SIZE);
+        m_pointer_chain    = {address};
+        m_watch_address    = address;
+        m_watch_is_pointer = false;
+        m_watch_size       = std::min<u32>(size, WATCH_MAX_BUFFER_SIZE);
+
+        if (m_watch_address == 0 || m_watch_size == 0) {
+            TOOLBOX_ERROR("Invalid watch address or size.");
+            return false;
+        }
+
+        m_buf_size              = m_watch_size;
+        m_last_value_buf        = new u8[m_buf_size];
+        m_last_value_needs_init = true;
+        return true;
+    }
+
+    bool MemoryWatch::startWatch(const std::vector<u32> &pointer_chain, u32 size) {
+        if (m_last_value_buf) {
+            return false;
+        }
+
+        m_pointer_chain    = pointer_chain;
+        m_watch_address    = 0;
+        m_watch_is_pointer = true;
+        m_watch_size       = std::min<u32>(size, WATCH_MAX_BUFFER_SIZE);
 
         if (m_watch_address == 0 || m_watch_size == 0) {
             TOOLBOX_ERROR("Invalid watch address or size.");
@@ -177,6 +200,7 @@ namespace Toolbox {
         void *mem_view = manager.getMemoryView();
         u32 mem_size   = manager.getMemorySize();
 
+        m_watch_address  = traceAddressFromPointerChain();
         u32 true_address = m_watch_address & 0x1FFFFFF;
 
         if (true_address + m_watch_size > mem_size) {
@@ -203,10 +227,67 @@ namespace Toolbox {
         }
     }
 
+    u32 MemoryWatch::TracePointerChainToAddress(const std::vector<u32> &pointer_chain) {
+        if (pointer_chain.empty()) {
+            return 0;
+        }
+
+        u32 address = readSingleFromMem<u32>(pointer_chain[0]);
+        if (address == 0) {
+            return address;
+        }
+
+        for (size_t i = 1; i < pointer_chain.size(); ++i) {
+            address = readSingleFromMem<u32>(address + pointer_chain[i]);
+            if (address == 0) {
+                return address;
+            }
+        }
+
+        return address;
+    }
+
+    std::vector<u32>
+    MemoryWatch::ResolvePointerChainAsAddress(const std::vector<u32> &pointer_chain) {
+        if (pointer_chain.empty()) {
+            return {};
+        }
+
+        std::vector<u32> result;
+        result.resize(pointer_chain.size());
+
+        result[0] = pointer_chain[0];
+        if (result[0] == 0) {
+            return result;
+        }
+
+        for (size_t i = 1; i < pointer_chain.size(); ++i) {
+            result[i] = readSingleFromMem<u32>(result[i - 1]) + pointer_chain[i];
+            if (result[i] == 0) {
+                return result;
+            }
+        }
+
+        return result;
+    }
+
     void MemoryWatch::notify(void *old_value, void *new_value, u32 value_width) {
         if (m_watch_notify_cb) {
             m_watch_notify_cb(old_value, new_value, value_width);
         }
+    }
+
+    u32 MemoryWatch::traceAddressFromPointerChain() const {
+        if (m_pointer_chain.empty()) {
+            return 0;
+        }
+
+        u32 address = m_pointer_chain[0];
+        if (!m_watch_is_pointer) {
+            return address;
+        }
+
+        return TracePointerChainToAddress(m_pointer_chain);
     }
 
     MetaWatch::MetaWatch(MetaType type) : m_last_value(type) {
@@ -317,28 +398,20 @@ namespace Toolbox {
 
     MetaType MetaWatch::getWatchType() const { return m_meta_type; }
 
-    u32 MetaWatch::getWatchAddress() const { return m_memory_watch.getWatchAddress(); }
-
-    u32 MetaWatch::getWatchSize() const { return m_memory_watch.getWatchSize(); }
-
     bool MetaWatch::startWatch(u32 address, u32 size) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
-
-#if 0
-        if (m_precompute_size == 0) {
-            if (m_meta_type == MetaType::STRING) {
-                char tmp_buf[WATCH_MAX_BUFFER_SIZE];
-                communicator.readCString(tmp_buf, WATCH_MAX_BUFFER_SIZE - 1, address);
-                m_precompute_size = strnlen(tmp_buf, WATCH_MAX_BUFFER_SIZE - 1);
-            }
-        }
-#else
         if (m_precompute_size == 0) {
             m_precompute_size = size;
         }
-#endif
 
         return m_memory_watch.startWatch(address, m_precompute_size);
+    }
+
+    bool MetaWatch::startWatch(const std::vector<u32> &pointer_chain, u32 size) {
+        if (m_precompute_size == 0) {
+            m_precompute_size = size;
+        }
+
+        return m_memory_watch.startWatch(pointer_chain, m_precompute_size);
     }
 
     void MetaWatch::stopWatch() { m_memory_watch.stopWatch(); }

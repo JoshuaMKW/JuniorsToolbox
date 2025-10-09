@@ -7,18 +7,24 @@ using namespace Toolbox::Dolphin;
 
 namespace Toolbox::UI {
 
-    void AddWatchDialog::setup() { memset(m_watch_name.data(), 0, m_watch_name.size()); }
+    void AddWatchDialog::setup() {
+        memset(m_watch_name.data(), 0, m_watch_name.size());
+        for (int i = 0; i < 8; ++i) {
+            m_watch_p_chain[i].fill('\0');
+        }
+        m_watch_p_chain_size = 2;
+        m_watch_type         = MetaType::U8;
+        m_watch_size         = 1;
+    }
 
     void AddWatchDialog::openToAddress(u32 address) {
         open();
-        snprintf(m_watch_address.data(), m_watch_address.size(), "%08X", address);
-        m_watch_type = MetaType::U8;
-        m_watch_size = 1;
+        snprintf(m_watch_p_chain[0].data(), m_watch_p_chain[0].size(), "%08X", address);
     }
 
     void AddWatchDialog::openToAddressAsBytes(u32 address, size_t address_size) {
         open();
-        snprintf(m_watch_address.data(), m_watch_address.size(), "%08X", address);
+        snprintf(m_watch_p_chain[0].data(), m_watch_p_chain[0].size(), "%08X", address);
         m_watch_type = MetaType::UNKNOWN;
         m_watch_size = address_size;
     }
@@ -31,6 +37,8 @@ namespace Toolbox::UI {
                 : true;
 
         const float label_width = 4.0f * ImGui::GetFontSize();
+
+        ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_opening) {
             ImGui::OpenPopup("Add Watch");
@@ -49,18 +57,6 @@ namespace Toolbox::UI {
                 // ImGui::SetNextItemWidth(150.0f);
                 ImGui::InputTextWithHint("##watch_name", "Enter unique name here...",
                                          m_watch_name.data(), m_watch_name.size(),
-                                         ImGuiInputTextFlags_AutoSelectAll);
-            }
-
-            // Render the address input box
-            // ---
-            {
-                ImGui::TextAndWidth(label_width, "Address: ");
-                ImGui::SameLine();
-
-                // ImGui::SetNextItemWidth(150.0f);
-                ImGui::InputTextWithHint("##watch_address", "Enter address in hex...",
-                                         m_watch_address.data(), m_watch_address.size(),
                                          ImGuiInputTextFlags_AutoSelectAll);
             }
 
@@ -98,12 +94,89 @@ namespace Toolbox::UI {
                 m_watch_size = 0;
             }
 
-            size_t watch_name_length = strlen(m_watch_name.data());
-            std::string_view watch_name_view(m_watch_name.data(), watch_name_length);
+            // Render the address input box
+            // ---
+            {
+                ImGui::TextAndWidth(label_width, "Address: ");
+                ImGui::SameLine();
+
+                // ImGui::SetNextItemWidth(150.0f);
+                ImGui::InputTextWithHint("##watch_address", "Enter address in hex...",
+                                         m_watch_p_chain[0].data(), m_watch_p_chain[0].size(),
+                                         ImGuiInputTextFlags_AutoSelectAll |
+                                             ImGuiInputTextFlags_CharsHexadecimal);
+            }
+
+            // Render the address pointer checkbox
+            // ---
+            {
+                ImGui::TextAndWidth(label_width, "Is Pointer: ");
+                ImGui::SameLine();
+
+                ImGui::Checkbox("##watch_is_pointer", &m_watch_is_pointer);
+            }
 
             // Render the preview based on the watch type
             // ---
-            u32 address = strtoul(m_watch_address.data(), nullptr, 16);
+            std::vector<u32> pointer_chain;
+            for (int i = 0; i < m_watch_p_chain_size; ++i) {
+                pointer_chain.emplace_back(strtoul(m_watch_p_chain[i].data(), nullptr, 16));
+            }
+
+            std::vector<u32> address_chain =
+                MemoryWatch::ResolvePointerChainAsAddress(pointer_chain);
+
+            float panel_height =
+                ImGui::GetTextLineHeightWithSpacing() + style.FramePadding.y * 2.0f;
+            panel_height *= (address_chain.size() + 1);
+            float panel_width = ImGui::GetContentRegionAvail().x;
+
+            if (m_watch_is_pointer) {
+                ImGuiID addr_panel_id = ImGui::GetID("##addr_panel");
+                if (ImGui::BeginChildPanel(addr_panel_id, {panel_width, panel_height})) {
+                    if (ImGui::Button("Add Offset")) {
+                        m_watch_p_chain_size =
+                            std::clamp<u32>(m_watch_p_chain_size + 1, 2, 8);
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Remove Offset")) {
+                        m_watch_p_chain_size = std::clamp<u32>(m_watch_p_chain_size - 1, 2,
+                                                               8);
+                    }
+
+                    ImGui::Separator();
+
+                    // Render the offset input boxes
+                    // ---
+                    {
+                        // ImGui::SetNextItemWidth(150.0f);
+                        for (int i = 1; i < address_chain.size(); ++i) {
+                            ImGui::TextAndWidth(label_width - style.WindowPadding.x,
+                                                "Level %d: ", i);
+                            ImGui::SameLine();
+
+                            ImGui::SetNextItemWidth(100.0f);
+                            std::string tag = std::format("##watch_address-{}", i);
+                            ImGui::InputTextWithHint(tag.data(), "Enter offset in hex...",
+                                                     m_watch_p_chain[i].data(),
+                                                     m_watch_p_chain[i].size(),
+                                                     ImGuiInputTextFlags_AutoSelectAll |
+                                                         ImGuiInputTextFlags_CharsHexadecimal);
+
+                            ImGui::SameLine();
+                            ImGui::Text("-> %08X", address_chain[i]);
+                        }
+                    }
+                }
+                ImGui::EndChildPanel();
+            }
+
+            size_t watch_name_length = strlen(m_watch_name.data());
+            std::string_view watch_name_view(m_watch_name.data(), watch_name_length);
+
+            u32 address = MemoryWatch::TracePointerChainToAddress(pointer_chain);
             size_t address_size;
             if (m_watch_type == MetaType::STRING || m_watch_type == MetaType::UNKNOWN) {
                 address_size = m_watch_size;
@@ -614,7 +687,7 @@ namespace Toolbox::UI {
 
             size_t i, j = 0;
             for (i = 0; i < tmp_size; ++i) {
-                uint8_t ch = ((uint8_t*)tmp_buf)[i];
+                uint8_t ch = ((uint8_t *)tmp_buf)[i];
                 snprintf(preview_out + j, preview_size - j, "%02X ", ch);
                 j += 3;
             }
