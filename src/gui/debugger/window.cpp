@@ -549,8 +549,6 @@ namespace Toolbox::UI {
                                                 ImGui::GetColorU32(ImGuiCol_TabHovered));
             }
 
-            TOOLBOX_DEBUG_LOG_V("c: {}, n: {}", m_address_cursor, m_address_cursor_nibble);
-
             int16_t cursor_idx = (m_address_cursor + (m_address_cursor_nibble / 2)) - base_address;
             if (m_selection_was_ascii && cursor_idx >= 0 && cursor_idx < char_width) {
                 m_cursor_anim_timer += m_delta_time;
@@ -921,7 +919,7 @@ namespace Toolbox::UI {
             bool left_click  = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
             bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
 
-            ImRect window_rect  = ImRect{table_pos, table_size};
+            ImRect window_rect  = ImRect{table_pos, table_pos + table_size};
             bool mouse_captured = ImGui::IsMouseHoveringRect(window_rect.Min, window_rect.Max);
 
             if (!m_add_group_dialog.is_open() && !m_add_watch_dialog.is_open()) {
@@ -998,7 +996,7 @@ namespace Toolbox::UI {
         row_rect.Max    = row_rect.Min + ImVec2{row_width, row_height};
 
         bool is_rect_hovered = false;
-        {
+        if (ImGui::IsWindowFocused()) {
             ImGuiContext &g = *GImGui;
 
             double m_x, m_y;
@@ -1174,7 +1172,7 @@ namespace Toolbox::UI {
         row_rect.Max    = row_rect.Min + ImVec2{row_width, row_height};
 
         bool is_rect_hovered = false;
-        {
+        if (ImGui::IsWindowFocused()) {
             ImGuiContext &g = *GImGui;
 
             double m_x, m_y;
