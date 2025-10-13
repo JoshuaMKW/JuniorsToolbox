@@ -124,7 +124,8 @@ namespace Toolbox::UI {
                 pointer_chain[i] = strtoul(m_watch_p_chain[i].data(), nullptr, 16);
             }
 
-            std::vector<u32> address_chain = MemoryWatch::ResolvePointerChainAsAddress(pointer_chain);
+            std::vector<u32> address_chain =
+                MemoryWatch::ResolvePointerChainAsAddress(pointer_chain);
 
             float panel_height =
                 ImGui::GetTextLineHeightWithSpacing() + style.FramePadding.y * 2.0f;
@@ -135,15 +136,13 @@ namespace Toolbox::UI {
                 ImGuiID addr_panel_id = ImGui::GetID("##addr_panel");
                 if (ImGui::BeginChildPanel(addr_panel_id, {panel_width, panel_height})) {
                     if (ImGui::Button("Add Offset")) {
-                        m_watch_p_chain_size =
-                            std::clamp<u32>(m_watch_p_chain_size + 1, 2, 8);
+                        m_watch_p_chain_size = std::clamp<u32>(m_watch_p_chain_size + 1, 2, 8);
                     }
 
                     ImGui::SameLine();
 
                     if (ImGui::Button("Remove Offset")) {
-                        m_watch_p_chain_size = std::clamp<u32>(m_watch_p_chain_size - 1, 2,
-                                                               8);
+                        m_watch_p_chain_size = std::clamp<u32>(m_watch_p_chain_size - 1, 2, 8);
                     }
 
                     ImGui::Separator();
@@ -206,8 +205,8 @@ namespace Toolbox::UI {
             }
 
             if (ImGui::Button("Create")) {
-                m_on_accept(group_idx, row, m_insert_policy, watch_name_view, m_watch_type, pointer_chain,
-                            address_size, m_watch_is_pointer);
+                m_on_accept(group_idx, row, m_insert_policy, watch_name_view, m_watch_type,
+                            pointer_chain, address_size, m_watch_is_pointer);
                 m_open = false;
             }
 
@@ -582,18 +581,25 @@ namespace Toolbox::UI {
             return;
         }
 
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        if (!communicator.manager().isHooked()) {
+            snprintf(preview_out, preview_size, "???");
+            return;
+        }
+
+        const u32 start_addr = 0x80000000;
+        const u32 end_addr   = start_addr | communicator.manager().getMemorySize();
+        if (address < start_addr || address >= end_addr) {
+            snprintf(preview_out, preview_size, "???");
+            return;
+        }
+
         if (address_size == 0) {
             snprintf(preview_out, preview_size, "???");
             return;
         }
 
         if (preview_size < meta_type_size(address_type)) {
-            snprintf(preview_out, preview_size, "???");
-            return;
-        }
-
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
-        if (!communicator.manager().isHooked()) {
             snprintf(preview_out, preview_size, "???");
             return;
         }

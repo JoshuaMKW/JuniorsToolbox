@@ -230,8 +230,9 @@ namespace Toolbox::UI {
                 int16_t col_end   = (addr_end - base_address) / byte_width;
                 int16_t col_span  = col_end - col_start;
 
-                bool valid_span = col_start <= col_end;
-                valid_span |= (selection_start_nibble < selection_end_nibble);
+                bool valid_span = col_start < col_end;
+                valid_span |=
+                    col_start == col_end && (selection_start_nibble < selection_end_nibble);
 
                 if (valid_span) {
                     char spoof_buf[16];
@@ -265,18 +266,13 @@ namespace Toolbox::UI {
                         color.w *= 0.5f;
                     }
 
-                    TOOLBOX_DEBUG_LOG_V("TRx: [{}, {}], snib {}, enib {}, saddr {}, eaddr {}",
-                                    text_rect.GetTL().x, text_rect.GetBR().x,
-                                    selection_start_nibble, selection_end_nibble, selection_start,
-                                    selection_end);
-
                     window->DrawList->AddQuadFilled(text_rect.GetTL(), text_rect.GetTR(),
                                                     text_rect.GetBR(), text_rect.GetBL(),
                                                     ImGui::ColorConvertFloat4ToU32(color));
                 } else {
-                    //TOOLBOX_DEBUG_LOG_V("snib {}, enib {}, saddr {}, eaddr {}",
-                    //                    selection_start_nibble, selection_end_nibble,
-                    //                    selection_start, selection_end);
+                    // TOOLBOX_DEBUG_LOG_V("snib {}, enib {}, saddr {}, eaddr {}",
+                    //                     selection_start_nibble, selection_end_nibble,
+                    //                     selection_start, selection_end);
                 }
             }
 
@@ -373,12 +369,12 @@ namespace Toolbox::UI {
                                  ~1);
                             m_address_selection_end = cur_address;
                             if (m_address_selection_end_nibble < m_address_selection_begin_nibble) {
-                                //if (m_address_selection_end_nibble == 0) {
-                                //    m_address_selection_end_nibble = nibble_width - 2;
-                                //    m_address_selection_end -= byte_width;
-                                //} else {
-                                //    m_address_selection_end_nibble -= 2;
-                                //}
+                                // if (m_address_selection_end_nibble == 0) {
+                                //     m_address_selection_end_nibble = nibble_width - 2;
+                                //     m_address_selection_end -= byte_width;
+                                // } else {
+                                //     m_address_selection_end_nibble -= 2;
+                                // }
                             } else {
                                 m_address_selection_end_nibble += 2;
                                 if (m_address_selection_end_nibble == nibble_width) {
@@ -386,8 +382,6 @@ namespace Toolbox::UI {
                                     m_address_selection_end += byte_width;
                                 }
                             }
-
-
                         }
 
                         m_byte_view_context_menu.setCanOpen(true);
@@ -521,12 +515,15 @@ namespace Toolbox::UI {
                 m_address_selection_new         = true;
                 m_address_selection_mouse_start = mouse_pos;
 
-                m_address_selection_begin = base_address + column_hovered;
-                m_address_selection_end   = base_address + column_hovered;
+                m_address_selection_begin = base_address;
+                m_address_selection_end   = base_address;
 
-                m_address_cursor = base_address + column_hovered;
-                m_address_cursor_nibble =
-                    ImClamp<u8>((mouse_pos.x - char_rect.Min.x) / ch_width, 0, byte_width * 2 - 1);
+                m_address_cursor        = (base_address + column_hovered) & ~(byte_width - 1);
+                m_address_cursor_nibble = (column_hovered * 2) % nibble_width;
+
+                // Set the nibble to an even index so it traverses whole bytes
+                m_address_selection_begin_nibble = m_address_cursor_nibble & ~1;
+                m_address_selection_end_nibble   = m_address_selection_begin_nibble;
 
                 m_cursor_anim_timer = -0.3f;
             } else if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT)) {
@@ -552,8 +549,8 @@ namespace Toolbox::UI {
                                                 ImGui::GetColorU32(ImGuiCol_TabHovered));
             }
 
-            int16_t cursor_idx = (m_address_cursor + m_address_cursor_nibble) - base_address;
-            if (m_selection_was_ascii && cursor_idx >= 0 && cursor_idx < column_count) {
+            int16_t cursor_idx = (m_address_cursor + (m_address_cursor_nibble / 2)) - base_address;
+            if (m_selection_was_ascii && cursor_idx >= 0 && cursor_idx < char_width) {
                 m_cursor_anim_timer += m_delta_time;
                 bool cursor_visible = (m_cursor_anim_timer <= 0.0f) ||
                                       ImFmod(m_cursor_anim_timer, 1.20f) <= 0.80f;
@@ -843,6 +840,11 @@ namespace Toolbox::UI {
         m_any_row_clicked            = false;
         bool any_interactive_clicked = false;
 
+        const AppSettings &settings =
+            GUIApplication::instance().getSettingsManager().getCurrentProfile();
+
+        m_watch_model->setRefreshRate(settings.m_dolphin_refresh_rate);
+
         if (ImGui::BeginChild("##MemoryWatchList", {m_list_width, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
             // ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2, 2});
@@ -917,7 +919,7 @@ namespace Toolbox::UI {
             bool left_click  = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
             bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
 
-            ImRect window_rect  = ImRect{table_pos, table_size};
+            ImRect window_rect  = ImRect{table_pos, table_pos + table_size};
             bool mouse_captured = ImGui::IsMouseHoveringRect(window_rect.Min, window_rect.Max);
 
             if (!m_add_group_dialog.is_open() && !m_add_watch_dialog.is_open()) {
@@ -987,14 +989,14 @@ namespace Toolbox::UI {
 
         // Establish row metrics for rendering selection box
         float row_width  = table_width;
-        float row_height = text_size.y + style.ItemSpacing.y * 2;
+        float row_height = text_size.y + style.ItemSpacing.y + style.CellPadding.y * 2;
 
         ImRect row_rect = {};
         row_rect.Min    = ImVec2{table_start_x, ImGui::GetCursorPosY() + ImGui::GetWindowPos().y};
         row_rect.Max    = row_rect.Min + ImVec2{row_width, row_height};
 
         bool is_rect_hovered = false;
-        {
+        if (ImGui::IsWindowFocused()) {
             ImGuiContext &g = *GImGui;
 
             double m_x, m_y;
@@ -1084,10 +1086,12 @@ namespace Toolbox::UI {
         }
 
         if (ImGui::TableNextColumn()) {
-            u32 true_address = address & 0x1FFFFFF;
-            u32 watch_size   = size;
+            const u32 start_addr = 0x80000000;
+            const u32 end_addr   = start_addr | mem_size;
 
-            if (true_address + watch_size > mem_size) {
+            if (mem_size == 0) {
+                ImGui::Text("Dolphin Not Found");
+            } else if (address < start_addr || address + size >= end_addr) {
                 ImGui::Text("Invalid Watch");
             } else {
                 f32 column_width = ImGui::GetContentRegionAvail().x;
@@ -1168,7 +1172,7 @@ namespace Toolbox::UI {
         row_rect.Max    = row_rect.Min + ImVec2{row_width, row_height};
 
         bool is_rect_hovered = false;
-        {
+        if (ImGui::IsWindowFocused()) {
             ImGuiContext &g = *GImGui;
 
             double m_x, m_y;
@@ -1325,6 +1329,11 @@ namespace Toolbox::UI {
         m_watch_model = make_referable<WatchDataModel>();
         m_watch_model->initialize();
 
+        const AppSettings &settings =
+            GUIApplication::instance().getSettingsManager().getCurrentProfile();
+
+        m_watch_model->setRefreshRate(settings.m_dolphin_refresh_rate);
+
         m_proxy_model = make_referable<WatchDataModelSortFilterProxy>();
         m_proxy_model->setSourceModel(m_watch_model);
         m_proxy_model->setSortOrder(ModelSortOrder::SORT_ASCENDING);
@@ -1367,11 +1376,13 @@ namespace Toolbox::UI {
                 }
                 return true;  // Watch name is unique
             });
-        m_add_watch_dialog.setActionOnAccept(
-            [&](ModelIndex group_idx, size_t row, AddWatchDialog::InsertPolicy policy,
-                std::string_view watch_name, MetaType type, const std::vector<u32> &pointer_chain, u32 size, bool is_pointer) {
-                insertWatch(group_idx, row, policy, watch_name, type, pointer_chain, size, is_pointer);
-            });
+        m_add_watch_dialog.setActionOnAccept([&](ModelIndex group_idx, size_t row,
+                                                 AddWatchDialog::InsertPolicy policy,
+                                                 std::string_view watch_name, MetaType type,
+                                                 const std::vector<u32> &pointer_chain, u32 size,
+                                                 bool is_pointer) {
+            insertWatch(group_idx, row, policy, watch_name, type, pointer_chain, size, is_pointer);
+        });
 
         m_fill_bytes_dialog.setInsertPolicy(FillBytesDialog::InsertPolicy::INSERT_CONSTANT);
         m_fill_bytes_dialog.setActionOnAccept(
@@ -1613,7 +1624,8 @@ namespace Toolbox::UI {
     ModelIndex DebuggerWindow::insertWatch(ModelIndex group_index, size_t row,
                                            AddWatchDialog::InsertPolicy policy,
                                            std::string_view watch_name, MetaType watch_type,
-                                           const std::vector<u32> &pointer_chain, u32 watch_size, bool is_pointer) {
+                                           const std::vector<u32> &pointer_chain, u32 watch_size,
+                                           bool is_pointer) {
         ModelIndex src_group_idx  = m_proxy_model->toSourceIndex(group_index);
         ModelIndex target_idx     = m_proxy_model->getIndex(row, 0, group_index);
         ModelIndex src_target_idx = m_proxy_model->toSourceIndex(target_idx);
@@ -1628,13 +1640,13 @@ namespace Toolbox::UI {
         switch (policy) {
         case AddWatchDialog::InsertPolicy::INSERT_BEFORE: {
             return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, pointer_chain,
-                                                 watch_size, is_pointer, std::min(sibling_count, src_row),
-                                                 src_group_idx);
+                                                 watch_size, is_pointer,
+                                                 std::min(sibling_count, src_row), src_group_idx);
         }
         case AddWatchDialog::InsertPolicy::INSERT_AFTER: {
-            return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, pointer_chain,
-                                                 watch_size, is_pointer, std::min(sibling_count, src_row + 1),
-                                                 src_group_idx);
+            return m_watch_model->makeWatchIndex(
+                std::string(watch_name), watch_type, pointer_chain, watch_size, is_pointer,
+                std::min(sibling_count, src_row + 1), src_group_idx);
         }
         case AddWatchDialog::InsertPolicy::INSERT_CHILD: {
             int64_t row_count = m_watch_model->getRowCount(src_target_idx);
@@ -2325,7 +2337,7 @@ namespace Toolbox::UI {
         case 4: {
             communicator.read<u32>(m_address_cursor)
                 .and_then([&](u32 value) {
-                    u32 new_value = OverwriteByte(value, m_address_cursor_nibble, char_value);
+                    u32 new_value = OverwriteByte(value, m_address_cursor_nibble / 2, char_value);
                     return communicator.write<u32>(m_address_cursor, new_value);
                 })
                 .or_else([](const BaseError &error) {
@@ -2337,7 +2349,7 @@ namespace Toolbox::UI {
         case 8: {
             communicator.read<u64>(m_address_cursor)
                 .and_then([&](u64 value) {
-                    u64 new_value = OverwriteByte(value, m_address_cursor_nibble, char_value);
+                    u64 new_value = OverwriteByte(value, m_address_cursor_nibble / 2, char_value);
                     return communicator.write<u64>(m_address_cursor, new_value);
                 })
                 .or_else([](const BaseError &error) {
@@ -2354,6 +2366,11 @@ namespace Toolbox::UI {
         KeyModifiers mods     = GetPressedKeyModifiers();
         KeyModifier shift_mod = mods & KeyModifier::KEY_SHIFT;
         KeyModifier ctrl_mod  = mods & KeyModifier::KEY_CTRL;
+
+        bool caps_lock = Input::IsCapsLockOn();
+        if (caps_lock) {
+            shift_mod ^= KeyModifier::KEY_SHIFT;
+        }
 
         bool cursor_moves = m_cursor_step_timer > 0.10f || m_cursor_step_timer == -0.3f;
         bool key_held     = false;
@@ -2427,6 +2444,32 @@ namespace Toolbox::UI {
                     overwriteCharAtCursor(ch);
                     advanceCursorChar();
                 }
+
+                if (key == KeyCode::KEY_RIGHT) {
+                    key_held = true;
+                    if (!cursor_moves) {
+                        continue;
+                    }
+                    advanceCursorChar();
+                } else if (key == KeyCode::KEY_LEFT) {
+                    key_held = true;
+                    if (!cursor_moves) {
+                        continue;
+                    }
+                    reverseCursorChar();
+                } else if (key == KeyCode::KEY_DOWN) {
+                    key_held = true;
+                    if (!cursor_moves) {
+                        continue;
+                    }
+                    advanceCursorLine();
+                } else if (key == KeyCode::KEY_UP) {
+                    key_held = true;
+                    if (!cursor_moves) {
+                        continue;
+                    }
+                    reverseCursorLine();
+                }
             } else {
                 if (key >= KeyCode::KEY_D0 && key <= KeyCode::KEY_D9) {
                     key_held = true;
@@ -2445,32 +2488,32 @@ namespace Toolbox::UI {
                     overwriteNibbleAtCursor(nibble_value);
                     advanceCursorNibble();
                 }
-            }
 
-            if (key == KeyCode::KEY_RIGHT) {
-                key_held = true;
-                if (!cursor_moves) {
-                    continue;
+                if (key == KeyCode::KEY_RIGHT) {
+                    key_held = true;
+                    if (!cursor_moves) {
+                        continue;
+                    }
+                    advanceCursorNibble();
+                } else if (key == KeyCode::KEY_LEFT) {
+                    key_held = true;
+                    if (!cursor_moves) {
+                        continue;
+                    }
+                    reverseCursorNibble();
+                } else if (key == KeyCode::KEY_DOWN) {
+                    key_held = true;
+                    if (!cursor_moves) {
+                        continue;
+                    }
+                    advanceCursorLine();
+                } else if (key == KeyCode::KEY_UP) {
+                    key_held = true;
+                    if (!cursor_moves) {
+                        continue;
+                    }
+                    reverseCursorLine();
                 }
-                advanceCursorNibble();
-            } else if (key == KeyCode::KEY_LEFT) {
-                key_held = true;
-                if (!cursor_moves) {
-                    continue;
-                }
-                reverseCursorNibble();
-            } else if (key == KeyCode::KEY_DOWN) {
-                key_held = true;
-                if (!cursor_moves) {
-                    continue;
-                }
-                advanceCursorLine();
-            } else if (key == KeyCode::KEY_UP) {
-                key_held = true;
-                if (!cursor_moves) {
-                    continue;
-                }
-                reverseCursorLine();
             }
         }
 

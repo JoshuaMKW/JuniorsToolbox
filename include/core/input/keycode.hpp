@@ -343,7 +343,7 @@ namespace Toolbox::Input {
         }
 
         const std::pair<char, char>& ch = s_key_map.at(key);
-        if (modifier == KeyModifier::KEY_SHIFT) {
+        if ((modifier & KeyModifier::KEY_SHIFT) == KeyModifier::KEY_SHIFT) {
             return ch.second;
         }
 
