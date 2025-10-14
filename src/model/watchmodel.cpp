@@ -232,6 +232,19 @@ namespace Toolbox {
         return fetchMore_(index);
     }
 
+    void WatchDataModel::reset() {
+        std::scoped_lock lock(m_mutex);
+
+        for (auto &[key, val] : m_index_map) {
+            _WatchIndexData *p = val.data<_WatchIndexData>();
+            if (p) {
+                delete p;
+            }
+        }
+
+        m_index_map.clear();
+    }
+
     void WatchDataModel::addEventListener(UUID64 uuid, event_listener_t listener,
                                           WatchModelEventFlags flags) {
         m_listeners[uuid] = {listener, flags};
@@ -873,7 +886,7 @@ namespace Toolbox {
 
     ModelIndex WatchDataModelSortFilterProxy::getSibling(int64_t row, int64_t column,
                                                          const ModelIndex &index) const {
-        std::unique_lock lock(m_cache_mutex);
+        std::scoped_lock lock(m_cache_mutex);
 
         ModelIndex source_index       = toSourceIndex(index);
         ModelIndex src_parent         = m_source_model->getParent(source_index);
@@ -969,6 +982,13 @@ namespace Toolbox {
         m_source_model->fetchMore(std::move(source_index));
     }
 
+    void WatchDataModelSortFilterProxy::reset() {
+        std::scoped_lock lock(m_cache_mutex);
+        m_source_model->reset();
+        m_filter_map.clear();
+        m_row_map.clear();
+    }
+
     ModelIndex WatchDataModelSortFilterProxy::toSourceIndex(const ModelIndex &index) const {
         if (m_source_model->validateIndex(index)) {
             return index;
@@ -996,7 +1016,7 @@ namespace Toolbox {
 
     ModelIndex WatchDataModelSortFilterProxy::toProxyIndex(int64_t row, int64_t column,
                                                            const ModelIndex &src_parent) const {
-        std::unique_lock lock(m_cache_mutex);
+        std::scoped_lock lock(m_cache_mutex);
 
         const UUID64 &src_parent_uuid = src_parent.getUUID();
 
@@ -1033,7 +1053,7 @@ namespace Toolbox {
     }
 
     void WatchDataModelSortFilterProxy::cacheIndex(const ModelIndex &dir_index) const {
-        std::unique_lock lock(m_cache_mutex);
+        std::scoped_lock lock(m_cache_mutex);
         cacheIndex_(dir_index);
     }
 

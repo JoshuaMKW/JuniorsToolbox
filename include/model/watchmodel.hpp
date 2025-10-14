@@ -182,6 +182,8 @@ namespace Toolbox {
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
         void fetchMore(const ModelIndex &index) override;
 
+        void reset() override;
+
         ModelIndex makeWatchIndex(const std::string &name, MetaType type,
                                   const std::vector<u32> &pointer_chain, u32 size, bool is_pointer,
                                   int64_t row, const ModelIndex &parent);
@@ -238,7 +240,7 @@ namespace Toolbox {
 
         std::unordered_map<UUID64, std::pair<event_listener_t, WatchModelEventFlags>> m_listeners;
 
-        mutable std::unordered_map<UUID64, ModelIndex> m_index_map;
+        mutable std::map<UUID64, ModelIndex> m_index_map;
 
         std::thread m_watch_thread;
         std::atomic<bool> m_running;
@@ -325,6 +327,8 @@ namespace Toolbox {
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
         void fetchMore(const ModelIndex &index) override;
+
+        void reset() override;
 
         [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;

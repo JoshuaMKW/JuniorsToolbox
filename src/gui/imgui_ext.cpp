@@ -334,17 +334,23 @@ bool ImGui::AlignedButton(const char *label, ImVec2 size, ImGuiButtonFlags flags
         ImGui::SameLine();
 
         ImRect bb = {};
-        bb.Min    = {button_pos.x + button_size.x * 0.5f - text_size.x * 0.5f,
-                     button_pos.y + button_size.y * 0.5f - text_size.y * 0.5f -
-                         frame_padding.y * 0.5f};
-        bb.Max    = bb.Min + text_size;
+        bb.Min =
+            ImGui::GetWindowPos() + ImVec2{button_pos.x + button_size.x * 0.5f - text_size.x * 0.5f,
+                                           button_pos.y + button_size.y * 0.5f -
+                                               text_size.y * 0.5f - frame_padding.y * 0.5f};
+        bb.Max = bb.Min + text_size;
+
+        ImRect clip_rect = bb;
+        clip_rect.Expand(4.0f);
+
         if (GImGui->DisabledStackSize > 0) {
-            RenderTextClipped(bb.Min + frame_padding, bb.Max - frame_padding, label, NULL,
-                              &text_size, style.ButtonTextAlign, &bb);
-            ImGui::TextDisabled(label);
+            PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
+            RenderTextClipped(bb.Min + frame_padding / 2, bb.Max - frame_padding / 2, label, NULL,
+                              &text_size, style.ButtonTextAlign, &clip_rect);
+            PopStyleColor();
         } else {
-            RenderTextClipped(bb.Min + frame_padding, bb.Max - frame_padding, label, NULL,
-                              &text_size, style.ButtonTextAlign, &bb);
+            RenderTextClipped(bb.Min + frame_padding / 2, bb.Max - frame_padding / 2, label, NULL,
+                              &text_size, style.ButtonTextAlign, &clip_rect);
         }
         ImGui::SetCursorPos(button_end_pos);
     }
@@ -1468,11 +1474,11 @@ bool ImGui::SplitterBehavior(ImGuiID id, ImGuiAxis axis, float line_width, float
         bb.Min.x = window->DC.CursorPos.x;
         bb.Max.x = window->DC.CursorPos.x + mx.x;
         bb.Min.y = window->DC.CursorPos.y + *a_size;
-        bb.Max.y = bb.Min.y + line_width + *a_size;
+        bb.Max.y = bb.Min.y + line_width;
     }
 
-    return ImGui::SplitterBehavior(bb, splitter_id, axis, a_size, b_size, a_size_min, b_size_min);
-    ;
+    return ImGui::SplitterBehavior(bb, splitter_id, axis, a_size, b_size, a_size_min, b_size_min,
+                                   2.0f);
 }
 
 bool ImGui::IsDragDropSource(ImGuiDragDropFlags flags) {

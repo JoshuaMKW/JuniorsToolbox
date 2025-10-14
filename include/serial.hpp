@@ -85,12 +85,12 @@ namespace Toolbox {
 
                 size_t objsize = static_cast<size_t>(endpos - startpos);
 
-                buf_out.alloc(objsize);
+                buf_out.resize(objsize);
                 strstream.read(buf_out.buf<char>(), objsize);
 
                 return result;
             } else if constexpr (std::is_standard_layout_v<_S>) {
-                buf_out.alloc(offset + sizeof(_S));
+                buf_out.resize(offset + sizeof(_S));
                 _S *out_obj = reinterpret_cast<_S *>(buf_out.buf<char>() + offset);
                 *out_obj    = _s;
                 return {};

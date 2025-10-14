@@ -143,6 +143,8 @@ namespace Toolbox {
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
         void fetchMore(const ModelIndex &index) override;
 
+        void reset() override;
+
         using event_listener_t = std::function<void(const fs_path &, FileSystemModelEventFlags)>;
         void addEventListener(UUID64 uuid, event_listener_t listener,
                               FileSystemModelEventFlags flags);
@@ -308,6 +310,8 @@ namespace Toolbox {
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
         void fetchMore(const ModelIndex &index) override;
+
+        void reset() override;
 
         [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;

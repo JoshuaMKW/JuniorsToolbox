@@ -80,30 +80,68 @@ namespace Toolbox::UI {
 
         const ImGuiStyle &style = ImGui::GetStyle();
 
-        if (!m_initialized_splitter_widths) {
-            m_initialized_splitter_widths = true;
+        if (!m_initialized_splitters) {
+            m_initialized_splitters = true;
 
-            m_list_width = std::max(min_size.x * 0.25f, avail_region.x * 0.25f);
-            m_view_width = std::max(min_size.x * 0.75f, avail_region.x * 0.75f);
+            m_scan_height = std::max(min_size.y * 0.7f, avail_region.x * 0.7f);
+            m_list_height = std::max(min_size.y * 0.3f, avail_region.x * 0.3f);
+            m_list_width  = std::max(min_size.x * 0.3f, avail_region.x * 0.3f);
+            m_view_width  = std::max(min_size.x * 0.7f, avail_region.x * 0.7f);
         }
 
-        float last_total_width = m_list_width + m_view_width;
+        float last_total_height = m_scan_height + m_list_height;
+        float last_total_width  = m_list_width + m_view_width;
 
-        ImGuiID splitter_id = ImGui::GetID("##MemorySplitter");
-        ImGui::SplitterBehavior(splitter_id, ImGuiAxis_X, splitter_width, &m_list_width,
-                                &m_view_width, min_size.x * 0.1f, min_size.x * 0.7f);
+        {
+            ImGuiID splitter_id = ImGui::GetID("##WatchMemorySplitter");
+            ImGui::SplitterBehavior(splitter_id, ImGuiAxis_X, splitter_width, &m_list_width,
+                                    &m_view_width, min_size.x * 0.4f, min_size.x * 0.6f);
+        }
 
         m_view_width = (m_view_width / last_total_width) * (avail_region.x - splitter_width);
-        m_view_width = std::max(m_view_width, min_size.x * 0.7f);
+        m_view_width = std::max(m_view_width, min_size.x * 0.6f);
 
         m_list_width = (m_list_width / last_total_width) * (avail_region.x - splitter_width);
-        m_list_width = std::max(m_list_width, min_size.x * 0.1f);
+        m_list_width = std::max(m_list_width, min_size.x * 0.4f);
 
-        renderMemoryWatchList();
+        // ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2, 2});
+        // ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        // ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
+
+        if (ImGui::BeginChild("MemoryWatchScanner", {m_list_width, 0}, true,
+                              ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
+            m_scan_height = (m_scan_height / last_total_height) * (avail_region.y - splitter_width);
+            m_scan_height = std::max(m_scan_height, min_size.y * 0.7f);
+
+            m_list_height = (m_list_height / last_total_height) * (avail_region.y - splitter_width);
+            m_list_height = std::max(m_list_height, min_size.y * 0.3f);
+
+            {
+                ImGuiID splitter_id = ImGui::GetID("##ScannerWatchSplitter");
+                ImGui::SplitterBehavior(splitter_id, ImGuiAxis_Y, splitter_width, &m_scan_height,
+                                        &m_list_height, min_size.y * 0.7f, min_size.y * 0.3f);
+            }
+
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
+            {
+
+                renderMemoryScanner();
+
+                ImGui::InvisibleButton("##ScannerWatchSplitter",
+                                       ImVec2(avail_region.x, splitter_width));
+
+                renderMemoryWatchList();
+            }
+            ImGui::PopStyleVar(2);
+        }
+        ImGui::EndChild();
+
+        // ImGui::PopStyleVar(3);
 
         ImGui::SameLine(0);
         // ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-        ImGui::InvisibleButton("##MemorySplitter", ImVec2(splitter_width, avail_region.y));
+        ImGui::InvisibleButton("##WatchMemorySplitter", ImVec2(splitter_width, avail_region.y));
 
         ImGuiWindow *window    = ImGui::GetCurrentWindow();
         window->DC.CursorPos.x = window->DC.CursorPosPrevLine.x - splitter_width;
@@ -132,8 +170,8 @@ namespace Toolbox::UI {
 
         // ImGui::PopStyleVar();
 
-        ModelIndex parent_index = m_proxy_model->getParent(m_last_selected_index);
-        int64_t the_row         = m_proxy_model->getRow(m_last_selected_index);
+        ModelIndex parent_index = m_watch_proxy_model->getParent(m_last_selected_index);
+        int64_t the_row         = m_watch_proxy_model->getRow(m_last_selected_index);
 
         m_add_group_dialog.render(m_last_selected_index, the_row);
         m_add_watch_dialog.render(m_last_selected_index, the_row);
@@ -571,6 +609,452 @@ namespace Toolbox::UI {
         return char_width;
     }
 
+    void DebuggerWindow::renderMemoryScanner() {
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {5.0f, 5.0f});
+        if (ImGui::BeginChild("##MemoryScannerView", {0, m_scan_height}, true,
+                              ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
+            ImVec2 avail_size       = ImGui::GetContentRegionAvail();
+            const ImGuiStyle &style = ImGui::GetStyle();
+
+            if (ImGui::BeginChild("##ScanResultView", {avail_size.x / 2, 0}, true,
+                                  ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
+                size_t results = m_scan_model->getRowCount(ModelIndex());
+                if (m_scan_active) {
+                    if (results == 1) {
+                        ImGui::Text("1 result found");
+                    } else {
+                        ImGui::Text("%d results found", results);
+                    }
+                } else {
+                    ImGui::NewLine();
+                }
+
+                ImVec2 scan_view_avail = ImGui::GetContentRegionAvail();
+
+                ImVec2 scan_table_size = scan_view_avail;
+                scan_table_size.y -= ImGui::GetTextLineHeightWithSpacing() * 2;
+
+                if (ImGui::BeginTable("##ResultsTable", 3,
+                                      ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersInnerV |
+                                          ImGuiTableFlags_Resizable |
+                                          ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollY,
+                                      scan_table_size)) {
+
+                    ImGui::TableSetupScrollFreeze(0, 1);
+                    ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_PreferSortAscending,
+                                            150.0f);
+                    ImGui::TableSetupColumn("Scanned", ImGuiTableColumnFlags_None, 150.0f);
+                    ImGui::TableSetupColumn("Current", ImGuiTableColumnFlags_None, 150.0f);
+
+                    ImGui::TableHeadersRow();
+
+                    ImGuiListClipper clipper;
+                    clipper.Begin(results);
+
+                    while (clipper.Step()) {
+                        for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; n++) {
+                            ModelIndex idx = m_scan_model->getIndex(n, 0);
+
+                            std::string addr_str    = m_scan_model->getDisplayText(idx);
+                            std::string scanned_str;
+                            std::string current_str;
+                            
+                            switch (m_scan_radix) {
+                            case ScanRadix::RADIX_BINARY:
+                                scanned_str = m_scan_model->getScanValue(idx).toString(2);
+                                current_str = m_scan_model->getCurrentValue(idx).toString(2);
+                                break;
+                            case ScanRadix::RADIX_OCTAL:
+                                scanned_str = m_scan_model->getScanValue(idx).toString(8);
+                                current_str = m_scan_model->getCurrentValue(idx).toString(8);
+                                break;
+                            case ScanRadix::RADIX_DECIMAL:
+                                scanned_str = m_scan_model->getScanValue(idx).toString(10);
+                                current_str = m_scan_model->getCurrentValue(idx).toString(10);
+                                break;
+                            case ScanRadix::RADIX_HEXADECIMAL:
+                                scanned_str = m_scan_model->getScanValue(idx).toString(16);
+                                current_str = m_scan_model->getCurrentValue(idx).toString(16);
+                                break;
+                            }
+
+                            ImGui::TableNextRow();
+
+                            ImGui::TableNextColumn();
+
+                            ImGui::Text("%s", addr_str.c_str());
+
+                            ImGui::TableNextColumn();
+
+                            ImGui::Text("%s", scanned_str.c_str());
+
+                            ImGui::TableNextColumn();
+
+                            ImGui::Text("%s", current_str.c_str());
+                        }
+                    }
+
+                    ImGui::EndTable();
+                }
+
+                ImVec2 avail       = ImGui::GetContentRegionAvail();
+                float button_width = (avail.x - style.ItemSpacing.x * 2) / 3.0f;
+
+                if (ImGui::Button("Add Selection", {button_width, 0.0f}, 5.0f,
+                                  ImDrawFlags_RoundCornersAll)) {
+                }
+
+                ImGui::SameLine();
+
+                if (ImGui::Button("Add All", {button_width, 0.0f}, 5.0f,
+                                  ImDrawFlags_RoundCornersAll)) {
+                }
+
+                ImGui::SameLine();
+
+                if (ImGui::Button("Remove Selection", {button_width, 0.0f}, 5.0f,
+                                  ImDrawFlags_RoundCornersAll)) {
+                }
+            }
+            ImGui::EndChild();
+
+            ImGui::SameLine();
+
+            if (ImGui::BeginChild("##ScanControlView", {0, 0}, true,
+                                  ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
+                ImVec2 avail = ImGui::GetContentRegionAvail();
+
+                if (m_scan_active) {
+                    float button_width = (avail.x - style.ItemSpacing.x * 2) / 3.0f;
+
+                    if (ImGui::Button("Next Scan", {button_width, 0.0f}, 5.0f,
+                                      ImDrawFlags_RoundCornersAll)) {
+                        u32 address_begin =
+                            strlen(m_scan_begin_input.data()) > 0
+                                ? std::strtol(m_scan_begin_input.data(), nullptr, 16)
+                                : 0x80000000;
+                        u32 address_end = strlen(m_scan_end_input.data()) > 0
+                                              ? std::strtol(m_scan_end_input.data(), nullptr, 16)
+                                              : 0x81800000;
+
+                        std::string str_a = std::string(m_scan_value_input_a.data());
+                        std::string str_b = std::string(m_scan_value_input_b.data());
+
+                        int radix = 0;
+                        switch (m_scan_radix) {
+                        case ScanRadix::RADIX_BINARY:
+                            radix = 2;
+                            break;
+                        case ScanRadix::RADIX_OCTAL:
+                            radix = 8;
+                            break;
+                        case ScanRadix::RADIX_DECIMAL:
+                            radix = 10;
+                            break;
+                        case ScanRadix::RADIX_HEXADECIMAL:
+                            radix = 16;
+                            break;
+                        }
+
+                        m_scan_active = m_scan_model->requestScan(
+                            address_begin, address_end - address_begin, m_scan_type,
+                            m_scan_operator, str_a, str_b, radix, m_scan_enforce_alignment, false,
+                            500000, 8);
+                        if (!m_scan_active) {
+                            TOOLBOX_ERROR_V(
+                                "[MEM_SCANNER] Failed to initialize the requested memory scan!");
+                        }
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Undo Scan", {button_width, 0.0f}, 5.0f,
+                                      ImDrawFlags_RoundCornersAll)) {
+                        m_scan_model->undoScan();
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Reset Scan", {button_width, 0.0f}, 5.0f,
+                                      ImDrawFlags_RoundCornersAll)) {
+                        m_scan_active = false;
+                        m_scan_model->reset();
+                    }
+                } else {
+                    float addr_width   = (avail.x - style.ItemSpacing.x) / 2.0f;
+                    float button_width = avail.x;
+
+                    ImGui::SetNextItemWidth(addr_width);
+                    ImGui::InputTextWithHint("##SearchBeginInput", "Search Begin (Optional)",
+                                             m_scan_begin_input.data(), m_scan_begin_input.size(),
+                                             ImGuiInputTextFlags_AutoSelectAll |
+                                                 ImGuiInputTextFlags_CharsHexadecimal);
+
+                    ImGui::SameLine();
+
+                    ImGui::SetNextItemWidth(addr_width);
+                    ImGui::InputTextWithHint("##SearchEndInput", "Search End (Optional)",
+                                             m_scan_end_input.data(), m_scan_end_input.size(),
+                                             ImGuiInputTextFlags_AutoSelectAll |
+                                                 ImGuiInputTextFlags_CharsHexadecimal);
+
+                    if (ImGui::Button("First Scan", {button_width, 0.0f}, 5.0f,
+                                      ImDrawFlags_RoundCornersAll)) {
+                        u32 address_begin =
+                            strlen(m_scan_begin_input.data()) > 0
+                                ? std::strtol(m_scan_begin_input.data(), nullptr, 16)
+                                : 0x80000000;
+                        u32 address_end = strlen(m_scan_end_input.data()) > 0
+                                              ? std::strtol(m_scan_end_input.data(), nullptr, 16)
+                                              : 0x81800000;
+
+                        std::string str_a = std::string(m_scan_value_input_a.data());
+                        std::string str_b = std::string(m_scan_value_input_b.data());
+
+                        int radix = 0;
+                        switch (m_scan_radix) {
+                        case ScanRadix::RADIX_BINARY:
+                            radix = 2;
+                            break;
+                        case ScanRadix::RADIX_OCTAL:
+                            radix = 8;
+                            break;
+                        case ScanRadix::RADIX_DECIMAL:
+                            radix = 10;
+                            break;
+                        case ScanRadix::RADIX_HEXADECIMAL:
+                            radix = 16;
+                            break;
+                        }
+                        m_scan_active = m_scan_model->requestScan(
+                            address_begin, address_end - address_begin, m_scan_type,
+                            m_scan_operator, str_a, str_b, radix, m_scan_enforce_alignment, true,
+                            500000, 8);
+                        if (!m_scan_active) {
+                            TOOLBOX_ERROR_V(
+                                "[MEM_SCANNER] Failed to initialize the requested memory scan!");
+                        }
+                    }
+                }
+
+                if (m_scan_active) {
+                    ImGui::BeginDisabled();
+                }
+
+                static const std::vector<MetaType> type_list = {
+                    MetaType::BOOL,   MetaType::S8,      MetaType::U8,  MetaType::S16,
+                    MetaType::U16,    MetaType::U32,     MetaType::F32, MetaType::F64,
+                    MetaType::STRING, MetaType::UNKNOWN,
+                };
+
+                ImGui::SetNextItemWidth(avail.x);
+
+                std::string_view meta_label = meta_type_name(m_scan_type);
+                if (ImGui::BeginCombo("##ScanTypeCombo", meta_label.data(), ImGuiComboFlags_None)) {
+                    for (size_t i = 0; i < type_list.size(); ++i) {
+                        bool selected          = type_list[i] == m_scan_type;
+                        std::string_view mname = meta_type_name(type_list[i]);
+                        if (ImGui::Selectable(mname.data(), &selected)) {
+                            m_scan_type = type_list[i];
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+
+                if (m_scan_active) {
+                    ImGui::EndDisabled();
+                }
+
+                if (m_scan_type == MetaType::STRING || m_scan_type == MetaType::UNKNOWN) {
+                    m_scan_operator = MemScanModel::ScanOperator::OP_EXACT;
+
+                    ImGui::BeginDisabled();
+                    ImGui::SetNextItemWidth(avail.x);
+                    if (ImGui::BeginCombo("##ScanOpCombo", "Exact Value", ImGuiComboFlags_None)) {
+                        bool selected = true;
+                        ImGui::Selectable("Exact Value", &selected);
+                        ImGui::EndCombo();
+                    }
+                    ImGui::EndDisabled();
+                } else {
+                    static const std::vector<MemScanModel::ScanOperator> scan_list = {
+                        MemScanModel::ScanOperator::OP_EXACT,
+                        MemScanModel::ScanOperator::OP_INCREASED_BY,
+                        MemScanModel::ScanOperator::OP_DECREASED_BY,
+                        MemScanModel::ScanOperator::OP_BETWEEN,
+                        MemScanModel::ScanOperator::OP_BIGGER_THAN,
+                        MemScanModel::ScanOperator::OP_SMALLER_THAN,
+                        MemScanModel::ScanOperator::OP_INCREASED,
+                        MemScanModel::ScanOperator::OP_DECREASED,
+                        MemScanModel::ScanOperator::OP_CHANGED,
+                        MemScanModel::ScanOperator::OP_UNCHANGED,
+                        MemScanModel::ScanOperator::OP_UNKNOWN_INITIAL,
+                    };
+
+                    static const std::vector<std::string> scan_name_list = {
+                        "Exact Value", "Increased By", "Decreased By",    "Between",
+                        "Bigger Than", "Smaller Than", "Increased",       "Decreased",
+                        "Changed",     "Unchanged",    "Unknown Initial Value",
+                    };
+
+                    if (m_scan_active) {
+                        static const std::vector<size_t> scan_list_idxs = {
+                          0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+                        };
+
+                        std::string op_label;
+                        for (size_t i = 0; i < scan_list_idxs.size(); ++i) {
+                            size_t j = scan_list_idxs[i];
+                            if (scan_list[j] == m_scan_operator) {
+                                op_label = scan_name_list[j];
+                                break;
+                            }
+                        }
+
+                        if (op_label.empty()) {
+                            m_scan_operator = scan_list[scan_list_idxs[0]];
+                            op_label        = scan_name_list[scan_list_idxs[0]];
+                        }
+
+                        ImGui::SetNextItemWidth(avail.x);
+                        if (ImGui::BeginCombo("##ScanOpCombo", op_label.c_str(),
+                                              ImGuiComboFlags_None)) {
+                            for (size_t i = 0; i < scan_list_idxs.size(); ++i) {
+                                size_t j                 = scan_list_idxs[i];
+                                bool selected            = scan_list[j] == m_scan_operator;
+                                const std::string &mname = scan_name_list[j];
+                                if (ImGui::Selectable(mname.c_str(), &selected)) {
+                                    m_scan_operator = scan_list[j];
+                                }
+                            }
+                            ImGui::EndCombo();
+                        }
+                    } else {
+                        static const std::vector<size_t> scan_list_idxs = {0, 3, 4,
+                                                                        5, 10};
+
+                        std::string op_label;
+                        for (size_t i = 0; i < scan_list_idxs.size(); ++i) {
+                            size_t j = scan_list_idxs[i];
+                            if (scan_list[j] == m_scan_operator) {
+                                op_label = scan_name_list[j];
+                                break;
+                            }
+                        }
+
+                        if (op_label.empty()) {
+                            m_scan_operator = scan_list[scan_list_idxs[0]];
+                            op_label = scan_name_list[scan_list_idxs[0]];
+                        }
+
+                        ImGui::SetNextItemWidth(avail.x);
+                        if (ImGui::BeginCombo("##ScanOpCombo", op_label.c_str(),
+                                              ImGuiComboFlags_None)) {
+                            for (size_t i = 0; i < scan_list_idxs.size(); ++i) {
+                                size_t j                 = scan_list_idxs[i];
+                                bool selected            = scan_list[j] == m_scan_operator;
+                                const std::string &mname = scan_name_list[j];
+                                if (ImGui::Selectable(mname.c_str(), &selected)) {
+                                    m_scan_operator = scan_list[j];
+                                }
+                            }
+                            ImGui::EndCombo();
+                        }
+                    }
+                }
+
+                switch (m_scan_operator) {
+                case MemScanModel::ScanOperator::OP_INCREASED:
+                case MemScanModel::ScanOperator::OP_DECREASED:
+                case MemScanModel::ScanOperator::OP_CHANGED:
+                case MemScanModel::ScanOperator::OP_UNCHANGED:
+                case MemScanModel::ScanOperator::OP_UNKNOWN_INITIAL:
+                    break;
+                case MemScanModel::ScanOperator::OP_EXACT:
+                case MemScanModel::ScanOperator::OP_INCREASED_BY:
+                case MemScanModel::ScanOperator::OP_DECREASED_BY:
+                case MemScanModel::ScanOperator::OP_BIGGER_THAN:
+                case MemScanModel::ScanOperator::OP_SMALLER_THAN: {
+                    float input_width = avail.x;
+                    ImGui::SetNextItemWidth(input_width);
+                    ImGui::InputText("##ScanValueInputA", m_scan_value_input_a.data(),
+                                     m_scan_value_input_a.size(),
+                                     ImGuiInputTextFlags_AutoSelectAll |
+                                         ImGuiInputTextFlags_CharsHexadecimal |
+                                         ImGuiInputTextFlags_CharsScientific);
+                    break;
+                }
+                case MemScanModel::ScanOperator::OP_BETWEEN: {
+                    float input_width = (avail.x - style.ItemSpacing.x) / 2.0f;
+                    ImGui::SetNextItemWidth(input_width);
+                    ImGui::InputText("##ScanValueInputA", m_scan_value_input_a.data(),
+                                     m_scan_value_input_a.size(),
+                                     ImGuiInputTextFlags_AutoSelectAll |
+                                         ImGuiInputTextFlags_CharsHexadecimal |
+                                         ImGuiInputTextFlags_CharsScientific);
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(input_width);
+                    ImGui::InputText("##ScanValueInputB", m_scan_value_input_b.data(),
+                                     m_scan_value_input_b.size(),
+                                     ImGuiInputTextFlags_AutoSelectAll |
+                                         ImGuiInputTextFlags_CharsHexadecimal |
+                                         ImGuiInputTextFlags_CharsScientific);
+                    break;
+                }
+                }
+
+                if (m_scan_active) {
+                    ImGui::BeginDisabled();
+                }
+
+                ImGui::Text("Base To Use:");
+
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {10.0f, 10.0f});
+                ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 2.0f);
+                ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
+                if (ImGui::BeginChild(
+                        "Base to Use##xyz",
+                        {avail.x, ImGui::GetTextLineHeight() + style.FramePadding.y * 2 +
+                                      style.WindowPadding.y * 2},
+                        true, ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
+                    if (ImGui::RadioButton("Decimal", m_scan_radix == ScanRadix::RADIX_DECIMAL)) {
+                        m_scan_radix = ScanRadix::RADIX_DECIMAL;
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::RadioButton("Hexadecimal",
+                                           m_scan_radix == ScanRadix::RADIX_HEXADECIMAL)) {
+                        m_scan_radix = ScanRadix::RADIX_HEXADECIMAL;
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::RadioButton("Octal", m_scan_radix == ScanRadix::RADIX_OCTAL)) {
+                        m_scan_radix = ScanRadix::RADIX_OCTAL;
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::RadioButton("Binary", m_scan_radix == ScanRadix::RADIX_BINARY)) {
+                        m_scan_radix = ScanRadix::RADIX_BINARY;
+                    }
+                }
+                ImGui::EndChild();
+                ImGui::PopStyleVar(3);
+
+                if (m_scan_active) {
+                    ImGui::EndDisabled();
+                }
+
+                ImGui::Checkbox("Enforce Alignment##xyz", &m_scan_enforce_alignment);
+            }
+            ImGui::EndChild();
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleVar();
+    }
+
     static float predictColumnWidth(u8 byte_width) {
         byte_width              = std::min<u8>(byte_width, 4);
         const char formatter[8] = {'%', '0', '0' + byte_width * 2, 'X', '\0'};
@@ -845,7 +1329,7 @@ namespace Toolbox::UI {
 
         m_watch_model->setRefreshRate(settings.m_dolphin_refresh_rate);
 
-        if (ImGui::BeginChild("##MemoryWatchList", {m_list_width, 0}, true,
+        if (ImGui::BeginChild("##MemoryWatchList", {0, m_list_height}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
             // ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2, 2});
             // ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
@@ -901,10 +1385,10 @@ namespace Toolbox::UI {
 
                 ImGui::TableHeadersRow();
 
-                int64_t row_count = m_proxy_model->getRowCount(ModelIndex());
+                int64_t row_count = m_watch_proxy_model->getRowCount(ModelIndex());
                 for (int64_t row = 0; row < row_count; ++row) {
-                    ModelIndex index = m_proxy_model->getIndex(row, 0);
-                    if (m_proxy_model->isIndexGroup(index)) {
+                    ModelIndex index = m_watch_proxy_model->getIndex(row, 0);
+                    if (m_watch_proxy_model->isIndexGroup(index)) {
                         renderWatchGroup(index, 0, table_start_x, table_width);
                     } else {
                         renderMemoryWatch(index, 0, table_start_x, table_width);
@@ -925,8 +1409,8 @@ namespace Toolbox::UI {
             if (!m_add_group_dialog.is_open() && !m_add_watch_dialog.is_open()) {
                 if (!m_any_row_clicked && mouse_captured && (left_click || right_click) &&
                     Input::GetPressedKeyModifiers() == KeyModifier::KEY_NONE) {
-                    m_selection.clearSelection();
-                    m_selection_ctx.clearSelection();
+                    m_watch_selection.clearSelection();
+                    m_watch_selection_ctx.clearSelection();
                     m_last_selected_index = ModelIndex();
                 }
             }
@@ -936,11 +1420,11 @@ namespace Toolbox::UI {
 
     void DebuggerWindow::renderMemoryWatch(const ModelIndex &watch_idx, int depth,
                                            float table_start_x, float table_width) {
-        if (!m_proxy_model->validateIndex(watch_idx)) {
+        if (!m_watch_proxy_model->validateIndex(watch_idx)) {
             return;
         }
 
-        std::string name = m_proxy_model->getDisplayText(watch_idx);
+        std::string name = m_watch_proxy_model->getDisplayText(watch_idx);
         if (name.empty()) {
             return;  // Skip empty groups
         }
@@ -949,10 +1433,10 @@ namespace Toolbox::UI {
         void *mem_view              = manager.getMemoryView();
         size_t mem_size             = manager.getMemorySize();
 
-        MetaValue meta_value = m_proxy_model->getWatchValueMeta(watch_idx);
-        u32 address          = m_proxy_model->getWatchAddress(watch_idx);
-        u32 size             = m_proxy_model->getWatchSize(watch_idx);
-        bool locked          = m_proxy_model->getWatchLock(watch_idx);
+        MetaValue meta_value = m_watch_proxy_model->getWatchValueMeta(watch_idx);
+        u32 address          = m_watch_proxy_model->getWatchAddress(watch_idx);
+        u32 size             = m_watch_proxy_model->getWatchSize(watch_idx);
+        bool locked          = m_watch_proxy_model->getWatchLock(watch_idx);
 
         const ImGuiStyle &style = ImGui::GetStyle();
         ImGuiWindow *window     = ImGui::GetCurrentWindow();
@@ -979,7 +1463,7 @@ namespace Toolbox::UI {
         bool is_right_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
         bool is_right_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_RIGHT);
 
-        bool is_selected = m_selection.is_selected(watch_idx);
+        bool is_selected = m_watch_selection.is_selected(watch_idx);
 
         ImGui::TableNextRow();
 
@@ -1044,7 +1528,7 @@ namespace Toolbox::UI {
 
         bool any_items_hovered = false;
 
-        ModelIndex src_idx  = m_proxy_model->toSourceIndex(watch_idx);
+        ModelIndex src_idx  = m_watch_proxy_model->toSourceIndex(watch_idx);
         std::string qual_id = buildQualifiedId(src_idx);
 
         ImGuiID watch_id = ImGui::GetID(qual_id.c_str());
@@ -1074,7 +1558,7 @@ namespace Toolbox::UI {
             ImGui::Text("0x%X", address);
         }
 
-        ModelIndex source_group_idx = m_proxy_model->toSourceIndex(watch_idx);
+        ModelIndex source_group_idx = m_watch_proxy_model->toSourceIndex(watch_idx);
 
         if (ImGui::TableNextColumn()) {
             is_lock_pressed = ImGui::Checkbox("##lockbox", &locked);
@@ -1117,18 +1601,18 @@ namespace Toolbox::UI {
 
     void DebuggerWindow::renderWatchGroup(const ModelIndex &group_idx, int depth,
                                           float table_start_x, float table_width) {
-        if (!m_proxy_model->validateIndex(group_idx)) {
+        if (!m_watch_proxy_model->validateIndex(group_idx)) {
             return;
         }
 
         bool open = false;
 
-        std::string name = m_proxy_model->getDisplayText(group_idx);
+        std::string name = m_watch_proxy_model->getDisplayText(group_idx);
         if (name.empty()) {
             return;  // Skip empty groups
         }
 
-        bool locked = m_proxy_model->getWatchLock(group_idx);
+        bool locked = m_watch_proxy_model->getWatchLock(group_idx);
 
         const ImGuiStyle &style = ImGui::GetStyle();
         ImGuiWindow *window     = ImGui::GetCurrentWindow();
@@ -1155,7 +1639,7 @@ namespace Toolbox::UI {
         bool is_right_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
         bool is_right_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_RIGHT);
 
-        bool is_selected = m_selection.is_selected(group_idx);
+        bool is_selected = m_watch_selection.is_selected(group_idx);
 
         ImGui::TableNextRow();
 
@@ -1220,7 +1704,7 @@ namespace Toolbox::UI {
 
         bool any_items_hovered = false;
 
-        ModelIndex src_idx  = m_proxy_model->toSourceIndex(group_idx);
+        ModelIndex src_idx  = m_watch_proxy_model->toSourceIndex(group_idx);
         std::string qual_id = buildQualifiedId(src_idx);
 
         ImGuiID group_id = ImGui::GetID(qual_id.c_str());
@@ -1277,7 +1761,7 @@ namespace Toolbox::UI {
         ImGui::TableNextColumn();
         ImGui::TableNextColumn();
 
-        ModelIndex source_group_idx = m_proxy_model->toSourceIndex(group_idx);
+        ModelIndex source_group_idx = m_watch_proxy_model->toSourceIndex(group_idx);
 
         if (ImGui::TableNextColumn()) {
             is_lock_pressed = ImGui::Checkbox("##lockbox", &locked);
@@ -1304,9 +1788,9 @@ namespace Toolbox::UI {
         }
 
         if (open) {
-            for (size_t i = 0; i < m_proxy_model->getRowCount(group_idx); ++i) {
-                ModelIndex index = m_proxy_model->getIndex(i, 0, group_idx);
-                if (m_proxy_model->isIndexGroup(index)) {
+            for (size_t i = 0; i < m_watch_proxy_model->getRowCount(group_idx); ++i) {
+                ModelIndex index = m_watch_proxy_model->getIndex(i, 0, group_idx);
+                if (m_watch_proxy_model->isIndexGroup(index)) {
                     renderWatchGroup(index, depth + 1, table_start_x, table_width);
                 } else {
                     renderMemoryWatch(index, depth + 1, table_start_x, table_width);
@@ -1324,7 +1808,7 @@ namespace Toolbox::UI {
     void DebuggerWindow::onAttach() {
         ImWindow::onAttach();
 
-        m_initialized_splitter_widths = false;
+        m_initialized_splitters = false;
 
         m_watch_model = make_referable<WatchDataModel>();
         m_watch_model->initialize();
@@ -1334,20 +1818,37 @@ namespace Toolbox::UI {
 
         m_watch_model->setRefreshRate(settings.m_dolphin_refresh_rate);
 
-        m_proxy_model = make_referable<WatchDataModelSortFilterProxy>();
-        m_proxy_model->setSourceModel(m_watch_model);
-        m_proxy_model->setSortOrder(ModelSortOrder::SORT_ASCENDING);
-        m_proxy_model->setSortRole(WatchModelSortRole::SORT_ROLE_NAME);
+        m_watch_proxy_model = make_referable<WatchDataModelSortFilterProxy>();
+        m_watch_proxy_model->setSourceModel(m_watch_model);
+        m_watch_proxy_model->setSortOrder(ModelSortOrder::SORT_ASCENDING);
+        m_watch_proxy_model->setSortRole(WatchModelSortRole::SORT_ROLE_NAME);
 
-        m_selection.setModel(m_proxy_model);
-        m_selection_ctx.setModel(m_proxy_model);
+        m_watch_selection.setModel(m_watch_proxy_model);
+        m_watch_selection_ctx.setModel(m_watch_proxy_model);
+
+        m_scan_model = make_referable<MemScanModel>();
+        m_scan_model->initialize();
+
+        m_scan_proxy_model = make_referable<MemScanModelSortFilterProxy>();
+        m_scan_proxy_model->setSourceModel(m_scan_model);
+        m_scan_proxy_model->setSortOrder(ModelSortOrder::SORT_ASCENDING);
+        m_scan_proxy_model->setSortRole(MemScanModelSortRole::SORT_ROLE_ADDRESS);
+
+        m_scan_active = false;
+        m_scan_begin_input.fill('\0');
+        m_scan_end_input.fill('\0');
+        m_scan_operator = MemScanModel::ScanOperator::OP_EXACT;
+        m_scan_value_input_a.fill('\0');
+        m_scan_value_input_b.fill('\0');
+        m_scan_radix             = ScanRadix::RADIX_DECIMAL;
+        m_scan_enforce_alignment = true;
 
         m_add_group_dialog.setInsertPolicy(
             AddGroupDialog::InsertPolicy::INSERT_AFTER);  // Insert after the current group
         m_add_group_dialog.setFilterPredicate(
             [this](std::string_view group_name, ModelIndex group_idx) -> bool {
                 // Check if the group name is unique
-                ModelIndex src_idx = m_proxy_model->toSourceIndex(group_idx);
+                ModelIndex src_idx = m_watch_proxy_model->toSourceIndex(group_idx);
                 for (size_t i = 0; i < m_watch_model->getRowCount(src_idx); ++i) {
                     ModelIndex child_idx   = m_watch_model->getIndex(i, 0, src_idx);
                     std::string child_name = m_watch_model->getDisplayText(child_idx);
@@ -1366,7 +1867,7 @@ namespace Toolbox::UI {
         m_add_watch_dialog.setFilterPredicate(
             [this](std::string_view watch_name, ModelIndex group_idx) -> bool {
                 // Check if the watch name is unique
-                ModelIndex src_idx = m_proxy_model->toSourceIndex(group_idx);
+                ModelIndex src_idx = m_watch_proxy_model->toSourceIndex(group_idx);
                 for (size_t i = 0; i < m_watch_model->getRowCount(src_idx); ++i) {
                     ModelIndex child_idx   = m_watch_model->getIndex(i, 0, src_idx);
                     std::string child_name = m_watch_model->getDisplayText(child_idx);
@@ -1457,20 +1958,20 @@ namespace Toolbox::UI {
         }
 
         if (Input::GetKey(KeyCode::KEY_LEFTCONTROL) || Input::GetKey(KeyCode::KEY_RIGHTCONTROL)) {
-            if (m_selection.is_selected(index)) {
-                m_selection.deselect(index);
+            if (m_watch_selection.is_selected(index)) {
+                m_watch_selection.deselect(index);
             } else {
-                m_selection.selectSingle(index, true);
+                m_watch_selection.selectSingle(index, true);
             }
         } else {
             if (Input::GetKey(KeyCode::KEY_LEFTSHIFT) || Input::GetKey(KeyCode::KEY_RIGHTSHIFT)) {
                 if (m_watch_model->validateIndex(m_last_selected_index)) {
-                    m_selection.selectSpan(index, m_last_selected_index, false, true);
+                    m_watch_selection.selectSpan(index, m_last_selected_index, false, true);
                 } else {
-                    m_selection.selectSingle(index);
+                    m_watch_selection.selectSingle(index);
                 }
             } else {
-                m_selection.selectSingle(index);
+                m_watch_selection.selectSingle(index);
             }
         }
 
@@ -1491,17 +1992,17 @@ namespace Toolbox::UI {
         }
 
         if (is_left_button) {
-            if (m_selection.count() > 0) {
+            if (m_watch_selection.count() > 0) {
                 m_last_selected_index = ModelIndex();
-                if (m_selection.selectSingle(index)) {
+                if (m_watch_selection.selectSingle(index)) {
                     m_last_selected_index = index;
                 }
             }
         } else {
-            if (!m_proxy_model->validateIndex(index)) {
-                m_selection.clearSelection();
+            if (!m_watch_proxy_model->validateIndex(index)) {
+                m_watch_selection.clearSelection();
             }
-            m_selection_ctx       = m_selection;
+            m_watch_selection_ctx = m_watch_selection;
             m_last_selected_index = ModelIndex();
         }
     }
@@ -1591,9 +2092,9 @@ namespace Toolbox::UI {
     ModelIndex DebuggerWindow::insertGroup(ModelIndex group_index, size_t row,
                                            AddGroupDialog::InsertPolicy policy,
                                            std::string_view group_name) {
-        ModelIndex src_group_idx  = m_proxy_model->toSourceIndex(group_index);
-        ModelIndex target_idx     = m_proxy_model->getIndex(row, 0, group_index);
-        ModelIndex src_target_idx = m_proxy_model->toSourceIndex(target_idx);
+        ModelIndex src_group_idx  = m_watch_proxy_model->toSourceIndex(group_index);
+        ModelIndex target_idx     = m_watch_proxy_model->getIndex(row, 0, group_index);
+        ModelIndex src_target_idx = m_watch_proxy_model->toSourceIndex(target_idx);
 
         int64_t src_row = m_watch_model->getRow(src_target_idx);
         if (src_row == -1) {
@@ -1626,11 +2127,11 @@ namespace Toolbox::UI {
                                            std::string_view watch_name, MetaType watch_type,
                                            const std::vector<u32> &pointer_chain, u32 watch_size,
                                            bool is_pointer) {
-        ModelIndex src_group_idx  = m_proxy_model->toSourceIndex(group_index);
-        ModelIndex target_idx     = m_proxy_model->getIndex(row, 0, group_index);
-        ModelIndex src_target_idx = m_proxy_model->toSourceIndex(target_idx);
+        ModelIndex src_group_idx  = m_watch_proxy_model->toSourceIndex(group_index);
+        ModelIndex target_idx     = m_watch_proxy_model->getIndex(row, 0, group_index);
+        ModelIndex src_target_idx = m_watch_proxy_model->toSourceIndex(target_idx);
 
-        int64_t src_row = m_proxy_model->getRow(src_target_idx);
+        int64_t src_row = m_watch_proxy_model->getRow(src_target_idx);
         if (src_row == -1) {
             src_row = 0;
         }

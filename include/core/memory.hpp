@@ -147,6 +147,11 @@ namespace Toolbox {
             return ((byte_t *)m_buf)[index];
         }
 
+        Buffer &operator=(const Buffer &other) {
+            other.copyTo(*this);
+            return *this;
+        }
+
         Buffer &operator=(Buffer &&other) noexcept {
             m_buf            = std::move(other.m_buf);
             m_size           = other.m_size;

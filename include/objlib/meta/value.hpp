@@ -113,9 +113,9 @@ namespace Toolbox::Object {
     static constexpr MetaType template_type_v = map_to_type_enum<T>::value;
 
     template <MetaType T> struct meta_type_info {
-        static constexpr std::string_view name = "unknown";
+        static constexpr std::string_view name = "bytes";
         static constexpr size_t size           = 0;
-        static constexpr size_t alignment      = 0;
+        static constexpr size_t alignment      = alignof(char);
     };
 
     template <> struct meta_type_info<MetaType::BOOL> {
@@ -322,14 +322,14 @@ namespace Toolbox::Object {
 
     class MetaValue : public ISerializable {
     public:
-        MetaValue() = delete;
-        template <typename T> explicit MetaValue(T value) : m_value_buf() {
-            m_value_buf.alloc(128);
+        MetaValue() {
             m_value_buf.initTo(0);
-            set<T>(value);
+            m_value_len = 0;
+            m_type      = MetaType::UNKNOWN;
         }
+        template <typename T> explicit MetaValue(T value) : m_value_buf() { set<T>(value); }
         explicit MetaValue(MetaType type) : m_type(type), m_value_buf() {
-            m_value_buf.alloc(128);
+            m_value_buf.alloc(meta_type_size(type));
             m_value_buf.initTo(0);
             switch (type) {
             case MetaType::TRANSFORM:
@@ -340,10 +340,15 @@ namespace Toolbox::Object {
             }
             m_value_len = meta_type_size(type);
         }
-        MetaValue(const MetaValue &other) = default;
-        MetaValue(MetaValue &&other)      = default;
 
-        ~MetaValue() override = default;
+        MetaValue(const MetaValue &other) = default;
+        MetaValue(MetaValue &&other) {
+            m_type      = other.m_type;
+            m_value_buf = std::move(other.m_value_buf);
+            m_value_len = other.m_value_len;
+        }
+
+        ~MetaValue() override { m_value_buf.free(); }
 
         MetaValue &operator=(const MetaValue &other) = default;
         MetaValue &operator=(MetaValue &&other)      = default;
@@ -367,14 +372,18 @@ namespace Toolbox::Object {
         }
 
         template <typename T> bool set(const T &value) {
-            return setBuf(m_type, m_value_buf, m_value_len, value);
+            return setBuf<T>(m_type, m_value_buf, m_value_len, value);
         }
+
+        // NOTE: This does not change the underlying type, it only attempts
+        // to assign the variant value as the existing type, or it returns false.
+        bool setVariant(const std::any &variant);
 
         void setExplicitSize(size_t size) { m_value_len = size; }
 
         Result<void, JSONError> loadJSON(const nlohmann::json &json_value);
 
-        [[nodiscard]] std::string toString() const;
+        [[nodiscard]] std::string toString(int radix = 10) const;
 
         bool operator==(const MetaValue &other) const;
 
@@ -417,7 +426,7 @@ namespace Toolbox::Object {
     template <typename T>
     [[nodiscard]]
     inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, size_t &m_value_len, const T &value) {
-        bool ret = Serializer::ObjectToBytes(value, m_value_buf, 0).has_value();
+        bool ret    = Serializer::ObjectToBytes(value, m_value_buf, 0).has_value();
         m_value_len = m_value_buf.size();
         m_type      = map_to_type_enum<T>::value;
         return ret;

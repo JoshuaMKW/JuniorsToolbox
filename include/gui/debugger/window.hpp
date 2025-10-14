@@ -23,10 +23,13 @@
 #include "gui/image/imagepainter.hpp"
 #include "gui/project/asset.hpp"
 #include "gui/window.hpp"
+#include "model/memscanmodel.hpp"
 #include "model/selection.hpp"
 #include "model/watchmodel.hpp"
 
 #include <imgui.h>
+
+#define SCAN_INPUT_MAX_LEN 1024
 
 namespace Toolbox::UI {
 
@@ -50,6 +53,7 @@ namespace Toolbox::UI {
         void renderMemoryView();
         u32 renderMemoryRow(void *handle, u32 base_address, u32 byte_limit, u8 column_count,
                             u8 byte_width);
+        void renderMemoryScanner();
         void renderMemoryWatchList();
         void renderMemoryWatch(const ModelIndex &index, int depth, float table_start_x,
                                float table_width);
@@ -74,7 +78,7 @@ namespace Toolbox::UI {
 
         std::optional<ImVec2> minSize() const override {
             return {
-                {800, 400}
+                {1100, 600}
             };
         }
 
@@ -109,6 +113,13 @@ namespace Toolbox::UI {
         void actionClearRequestExcIndex(const ModelIndex &child_index, bool is_left_button);
 
     private:
+        enum class ScanRadix {
+            RADIX_BINARY,
+            RADIX_OCTAL,
+            RADIX_DECIMAL,
+            RADIX_HEXADECIMAL,
+        };
+
         struct HistoryPair {
             u32 m_address;
             std::string m_label;
@@ -155,9 +166,21 @@ namespace Toolbox::UI {
         u32 m_base_address = 0x80000000;
         u8 m_byte_width    = 1;
 
-        bool m_initialized_splitter_widths = false;
-        float m_list_width                 = 0.0f;
-        float m_view_width                 = 0.0f;
+        bool m_initialized_splitters = false;
+        float m_scan_height          = 0.0f;
+        float m_list_height          = 0.0f;
+        float m_list_width           = 0.0f;
+        float m_view_width           = 0.0f;
+
+        std::array<char, 32> m_scan_begin_input;
+        std::array<char, 32> m_scan_end_input;
+        std::array<char, SCAN_INPUT_MAX_LEN> m_scan_value_input_a;
+        std::array<char, SCAN_INPUT_MAX_LEN> m_scan_value_input_b;
+        bool m_scan_enforce_alignment = true;
+
+        MetaType m_scan_type = MetaType::BOOL;
+        MemScanModel::ScanOperator m_scan_operator;
+        ScanRadix m_scan_radix = ScanRadix::RADIX_DECIMAL;
 
         std::array<char, 32> m_address_input;
         std::vector<HistoryPair> m_address_search_history = {};
@@ -177,11 +200,15 @@ namespace Toolbox::UI {
         FillBytesDialog m_fill_bytes_dialog;
 
         RefPtr<WatchDataModel> m_watch_model;
-        RefPtr<WatchDataModelSortFilterProxy> m_proxy_model;
+        RefPtr<WatchDataModelSortFilterProxy> m_watch_proxy_model;
+
+        RefPtr<MemScanModel> m_scan_model;
+        RefPtr<MemScanModelSortFilterProxy> m_scan_proxy_model;
+        bool m_scan_active = false;
 
         ModelIndex m_last_selected_index;
-        ModelSelectionState m_selection;
-        ModelSelectionState m_selection_ctx;
+        ModelSelectionState m_watch_selection;
+        ModelSelectionState m_watch_selection_ctx;
 
         bool m_did_drag_drop;
         bool m_any_row_clicked;

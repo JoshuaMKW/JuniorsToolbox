@@ -248,7 +248,7 @@ namespace Toolbox::Object {
         values.reserve(asize);
 
         for (size_t i = 0; i < asize; ++i) {
-            values.emplace_back(MetaValue(vtype.value()));
+            values.emplace_back(vtype.value());
         }
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
             return MetaMember(name, values, std::get<MetaMember::ReferenceInfo>(array_size),
@@ -334,7 +334,7 @@ namespace Toolbox::Object {
                 auto struct_ = default_member.value<MetaStruct>(i).value();
                 for (auto &mbr : struct_->members()) {
                     auto &mbr_json = member_json[mbr->name()];
-                    inst_struct_members.push_back(loadWizardMember(mbr_json, *mbr));
+                    inst_struct_members.emplace_back(loadWizardMember(mbr_json, *mbr));
                 }
                 inst_structs.emplace_back(struct_->name(), inst_struct_members);
             }
@@ -398,7 +398,7 @@ namespace Toolbox::Object {
                     default_wizard.m_init_members.begin(), default_wizard.m_init_members.end(),
                     [&](const auto &e) { return e.name() == member_name; });
                 if (member_it != default_wizard.m_init_members.end()) {
-                    auto member = loadWizardMember(member_info, *member_it);
+                    MetaMember member = loadWizardMember(member_info, *member_it);
                     wizard.m_init_members.emplace_back(member);
                 }
             }

@@ -40,13 +40,21 @@ namespace Toolbox {
         ModelIndex(UUID64 model_uuid) : m_model_uuid(model_uuid) {}
         ModelIndex(UUID64 model_uuid, UUID64 self_uuid) : m_model_uuid(model_uuid), m_uuid(self_uuid) {}
         ModelIndex(const ModelIndex &other)
-            : m_uuid(other.m_uuid), m_model_uuid(other.m_model_uuid),
-              m_user_data(other.m_user_data) {}
+            : m_uuid(other.m_uuid), m_model_uuid(other.m_model_uuid) {
+            m_data.m_inline = other.m_data.m_inline;
+        }
 
         template <typename T = void> [[nodiscard]] T *data() const {
-            return reinterpret_cast<T *>(m_user_data);
+            return reinterpret_cast<T *>(m_data.m_ptr);
         }
-        void setData(void *data) { m_user_data = data; }
+        void setData(void *data) { m_data.m_ptr = data; }
+
+        // If using inline data, it is 8 bytes and overwrites the data ptr.
+        [[nodiscard]] u64 inlineData() const {
+            return m_data.m_inline;
+        }
+        // If using inline data, it is 8 bytes and overwrites the data ptr.
+        void setInlineData(u64 data) const { m_data.m_inline = data; }
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
         [[nodiscard]] UUID64 getModelUUID() const { return m_model_uuid; }
@@ -54,7 +62,7 @@ namespace Toolbox {
         ModelIndex &operator=(const ModelIndex &other) {
             m_uuid       = other.m_uuid;
             m_model_uuid = other.m_model_uuid;
-            m_user_data  = other.m_user_data;
+            m_data.m_inline  = other.m_data.m_inline;
             return *this;
         }
 
@@ -66,7 +74,10 @@ namespace Toolbox {
         UUID64 m_uuid;
         UUID64 m_model_uuid = 0;
 
-        void *m_user_data = nullptr;
+        mutable union {
+            void *m_ptr;
+            u64 m_inline;
+        } m_data;
     };
 
     class IDataModel : public IUnique {
@@ -124,6 +135,8 @@ namespace Toolbox {
 
         [[nodiscard]] virtual bool canFetchMore(const ModelIndex &index) = 0;
         virtual void fetchMore(const ModelIndex &index)                  = 0;
+
+        virtual void reset() = 0;
 
     protected:
         static void setIndexUUID(ModelIndex &index, UUID64 uuid) { index.m_uuid = uuid; }

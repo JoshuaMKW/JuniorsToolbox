@@ -18,6 +18,10 @@ namespace Toolbox {
         // Starts the detached thread
         void tStart(bool detached, void *param) {
             if (!_m_started) {
+                // Reset state
+                _m_killed   = false;
+                _m_kill_flag.store(false);
+
                 _m_thread = std::thread(&Threaded::tRun_, this, param);
                 _m_detached = detached;
                 if (detached)
@@ -79,6 +83,7 @@ namespace Toolbox {
                     _m_exit_cb(ret);
                 }
             }
+            _m_started = false;
             _m_killed = true;
             _m_kill_condition.notify_all();
         }
@@ -94,7 +99,7 @@ namespace Toolbox {
         std::condition_variable _m_kill_condition;
 
         std::function<void()> _m_start_cb;
-        std::function<void()> _m_exit_cb;
+        std::function<void(_ExitT)> _m_exit_cb;
     };
 
     template <typename _ExitT> class TaskThread : public Threaded<_ExitT> {
