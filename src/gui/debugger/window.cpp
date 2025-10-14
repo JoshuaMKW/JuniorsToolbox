@@ -771,6 +771,10 @@ namespace Toolbox::UI {
                     if (ImGui::Button("Undo Scan", {button_width, 0.0f}, 5.0f,
                                       ImDrawFlags_RoundCornersAll)) {
                         m_scan_model->undoScan();
+                        if (!m_scan_model->canUndoScan()) {
+                            m_scan_active = false;
+                            m_scan_model->reset();
+                        }
                     }
 
                     ImGui::SameLine();

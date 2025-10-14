@@ -166,7 +166,7 @@ namespace Toolbox {
 
         if (profile.m_search_size == 0 || begin_address < 0x80000000 ||
             end_address > (0x80000000 | DolphinHookManager::instance().getMemorySize())) {
-            return {};
+            return 0;
         }
 
         const u32 val_width = profile.m_scan_a.computeSize();
@@ -182,7 +182,9 @@ namespace Toolbox {
                 val_width;  // Since alignment is forced, each entry has to be n bytes apart.
         }
 
-        model.reserveScan(O_estimate);
+        if (!model.reserveScan(profile.m_scan_type, O_estimate)) {
+            return 0;
+        }
 
         T val_a = profile.m_scan_a.get<T>().value_or(T());
         T val_b = profile.m_scan_b.get<T>().value_or(T());
@@ -220,17 +222,20 @@ namespace Toolbox {
 
         if (profile.m_search_size == 0 || begin_address < 0x80000000 ||
             end_address >= (0x80000000 | DolphinHookManager::instance().getMemorySize())) {
-            return {};
+            return 0;
         }
 
         std::string val_a = profile.m_scan_a.get<std::string>().value_or(std::string());
         if (val_a.empty()) {
-            return {};
+            return 0;
         }
 
         // Reserve an estimate allocation that should be sane.
         size_t O_estimate = profile.m_search_size / 1000;
-        model.reserveScan(O_estimate);
+
+        if (!model.reserveScan(profile.m_scan_type, O_estimate)) {
+            return 0;
+        }
 
         u32 address = begin_address;
 
@@ -263,12 +268,15 @@ namespace Toolbox {
 
         if (profile.m_search_size == 0 || begin_address < 0x80000000 ||
             end_address >= (0x80000000 | DolphinHookManager::instance().getMemorySize())) {
-            return {};
+            return 0;
         }
 
         // Reserve an estimate allocation that should be sane.
         size_t O_estimate = profile.m_search_size / 1000;
-        model.reserveScan(O_estimate);
+
+        if (!model.reserveScan(profile.m_scan_type, O_estimate)) {
+            return 0;
+        }
 
         Buffer val_a = profile.m_scan_a.get<Buffer>().value_or(Buffer());
 
@@ -310,13 +318,16 @@ namespace Toolbox {
         const MemScanModel::ScanHistoryEntry &recent_scan = model.getScanHistory();
 
         size_t row_count = recent_scan.m_scan_results.size();
-        model.reserveScan(row_count);
+
+        if (!model.reserveScan(profile.m_scan_type, row_count)) {
+            return 0;
+        }
 
         size_t i = 0;
         while (i < row_count) {
-            ModelIndex index = recent_scan.m_scan_results[i];
-            u32 address      = model.getScanAddress(index);
-            MetaValue value  = model.getScanValue(index);
+            const MemScanResult &result = recent_scan.m_scan_results[i];
+            u32 address                 = result.getAddress();
+            MetaValue value             = MetaValue(recent_scan.m_scan_type, result.getValueBuf());
 
             T val = value.get<T>().value_or(T());
             T mem_val;
@@ -362,13 +373,16 @@ namespace Toolbox {
         const MemScanModel::ScanHistoryEntry &recent_scan = model.getScanHistory();
 
         size_t row_count = recent_scan.m_scan_results.size();
-        model.reserveScan(row_count);
+
+        if (!model.reserveScan(profile.m_scan_type, row_count)) {
+            return 0;
+        }
 
         size_t i = 0;
         while (i < row_count) {
-            ModelIndex index = recent_scan.m_scan_results[i];
-            u32 address      = model.getScanAddress(index);
-            MetaValue value  = model.getScanValue(index);
+            const MemScanResult &result = recent_scan.m_scan_results[i];
+            u32 address                 = result.getAddress();
+            MetaValue value             = MetaValue(recent_scan.m_scan_type, result.getValueBuf());
 
             std::string mem_val;
 
@@ -409,13 +423,16 @@ namespace Toolbox {
         const MemScanModel::ScanHistoryEntry &recent_scan = model.getScanHistory();
 
         size_t row_count = recent_scan.m_scan_results.size();
-        model.reserveScan(row_count);
+
+        if (!model.reserveScan(profile.m_scan_type, row_count)) {
+            return 0;
+        }
 
         size_t i = 0;
         while (i < row_count) {
-            ModelIndex index = recent_scan.m_scan_results[i];
-            u32 address      = model.getScanAddress(index);
-            MetaValue value  = model.getScanValue(index);
+            const MemScanResult &result = recent_scan.m_scan_results[i];
+            u32 address                 = result.getAddress();
+            MetaValue value             = MetaValue(recent_scan.m_scan_type, result.getValueBuf());
 
             Buffer mem_val;
 
@@ -541,16 +558,13 @@ namespace Toolbox {
     void MemScanModel::reset() {
         std::scoped_lock lock(m_mutex);
 
-        for (const ScanHistoryEntry &scan_entry : m_index_map_history) {
-            for (const ModelIndex &a : scan_entry.m_scan_results) {
-                MemScanResult *p = a.data<MemScanResult>();
-                if (p) {
-                    delete p;
-                }
-            }
+        for (size_t i = 0; i < m_history_size; ++i) {
+            m_index_map_history[i].m_scan_type = MetaType::UNKNOWN;
+            m_index_map_history[i].m_scan_results.clear();
+            m_index_map_history[i].m_scan_results.shrink_to_fit();
         }
 
-        m_index_map_history.clear();
+        m_history_size = 0;
     }
 
     bool MemScanModel::requestScan(u32 search_start, u32 search_size, MetaType val_type,
@@ -632,6 +646,9 @@ namespace Toolbox {
                                    ScanOperator scan_op, MetaValue &&a, MetaValue &&b,
                                    bool enforce_alignment, bool new_scan, size_t sleep_granularity,
                                    s64 sleep_duration) {
+        m_scan_type = val_type;
+        m_scan_size = search_size;
+
         m_scan_profile.m_search_start      = search_start;
         m_scan_profile.m_search_size       = search_size;
         m_scan_profile.m_scan_type         = val_type;
@@ -654,7 +671,11 @@ namespace Toolbox {
         }
 
         std::scoped_lock<std::mutex> lock(m_mutex);
-        m_index_map_history.pop_back();
+
+        ScanHistoryEntry &entry = m_index_map_history[m_history_size - 1];
+        entry.m_scan_results.clear();
+        entry.m_scan_results.shrink_to_fit();
+        m_history_size--;
         return true;
     }
 
@@ -668,22 +689,19 @@ namespace Toolbox {
     Result<void, SerialError> MemScanModel::serialize(Serializer &out) const {
         std::scoped_lock lock(m_mutex);
 
-        if (m_index_map_history.empty()) {
+        if (m_history_size == 0) {
             return Result<void, SerialError>();
         }
 
-        const ScanHistoryEntry &newest_scan = m_index_map_history.back();
+        const ScanHistoryEntry &newest_scan = m_index_map_history[m_history_size - 1];
 
         out.write<u32>(static_cast<u32>(m_scan_type));
         out.write<u32>(static_cast<u32>(newest_scan.m_scan_results.size()));
 
-        for (const ModelIndex &index : newest_scan.m_scan_results) {
-            MemScanResult *result = index.data<MemScanResult>();
+        for (const MemScanResult &result : newest_scan.m_scan_results) {
+            out.write<u32>(result.getAddress());
 
-            out.write<UUID64>(index.getUUID());
-            out.write<u32>(result->getAddress());
-
-            MetaValue val = MetaValue(newest_scan.m_scan_type, result->getValueBuf());
+            MetaValue val = MetaValue(newest_scan.m_scan_type, result.getValueBuf());
             val.serialize(out);
         }
 
@@ -699,7 +717,7 @@ namespace Toolbox {
 
         const u32 count = in.read<u32>();
 
-        reserveScan(count);
+        reserveScan(m_scan_type, count);
 
         for (int i = 0; i < count; ++i) {
             UUID64 uuid = in.read<UUID64>();
@@ -721,7 +739,7 @@ namespace Toolbox {
             return {};
         }
 
-        if (m_index_map_history.size() == 0) {
+        if (m_history_size == 0) {
             return {};
         }
 
@@ -799,44 +817,27 @@ namespace Toolbox {
     }
 
     ModelIndex MemScanModel::getIndex_(const u32 &address) const {
-        if (m_index_map_history.empty()) {
+        if (m_history_size == 0) {
             return ModelIndex();
         }
 
-        const ScanHistoryEntry &recent_scan = m_index_map_history.back();
+        const ScanHistoryEntry &recent_scan = m_index_map_history[m_history_size - 1];
 
-        auto it =
-            std::lower_bound(recent_scan.m_scan_results.begin(), recent_scan.m_scan_results.end(),
-                             address, [](const ModelIndex &it, u32 address) {
-                                 MemScanResult *lhs = it.data<MemScanResult>();
-                                 return lhs->getAddress() < address;
-                             });
+        auto it = std::lower_bound(
+            recent_scan.m_scan_results.begin(), recent_scan.m_scan_results.end(), address,
+            [](const MemScanResult &it, u32 address) { return it.getAddress() < address; });
         if (it == recent_scan.m_scan_results.end()) {
             return ModelIndex();
         }
 
-        MemScanResult *lhs = it->data<MemScanResult>();
-        if (lhs->getAddress() != address) {
+        MemScanResult &lhs = *it;
+        if (lhs.getAddress() != address) {
             return ModelIndex();
         }
 
-        return *it;
-    }
-
-    ModelIndex MemScanModel::getIndex_(const UUID64 &uuid) const {
-        if (m_index_map_history.empty()) {
-            return ModelIndex();
-        }
-
-        const ScanHistoryEntry &recent_scan = m_index_map_history.back();
-
-        auto it = std::find_if(recent_scan.m_scan_results.begin(), recent_scan.m_scan_results.end(),
-                               [&](const ModelIndex &it) { return it.getUUID() == uuid; });
-        if (it == recent_scan.m_scan_results.end()) {
-            return ModelIndex();
-        }
-
-        return *it;
+        ModelIndex index(getUUID());
+        index.setData(std::addressof(lhs));
+        return index;
     }
 
     ModelIndex MemScanModel::getIndex_(int64_t row, int64_t column,
@@ -849,17 +850,19 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        if (m_index_map_history.empty()) {
+        if (m_history_size == 0) {
             return ModelIndex();
         }
 
-        const ScanHistoryEntry &recent_scan = m_index_map_history.back();
+        const ScanHistoryEntry &recent_scan = m_index_map_history[m_history_size - 1];
 
         if (row >= recent_scan.m_scan_results.size()) {
             return ModelIndex();
         }
 
-        return recent_scan.m_scan_results[row];
+        ModelIndex index(getUUID());
+        index.setData(&recent_scan.m_scan_results[row]);
+        return index;
     }
 
     ModelIndex MemScanModel::getParent_(const ModelIndex &index) const { return ModelIndex(); }
@@ -879,11 +882,11 @@ namespace Toolbox {
             return 0;
         }
 
-        if (m_index_map_history.empty()) {
+        if (m_history_size == 0) {
             return 0;
         }
 
-        const ScanHistoryEntry &recent_scan = m_index_map_history.back();
+        const ScanHistoryEntry &recent_scan = m_index_map_history[m_history_size - 1];
 
         return recent_scan.m_scan_results.size();
     }
@@ -902,27 +905,29 @@ namespace Toolbox {
             return -1;
         }
 
-        if (m_index_map_history.empty()) {
+        if (m_history_size == 0) {
             return -1;
         }
 
-        const ScanHistoryEntry &recent_scan = m_index_map_history.back();
+        const ScanHistoryEntry &recent_scan = m_index_map_history[m_history_size - 1];
+        const MemScanResult *index_scan     = index.data<MemScanResult>();
+        if (!index_scan) {
+            return -1;
+        }
 
         auto it =
             std::lower_bound(recent_scan.m_scan_results.begin(), recent_scan.m_scan_results.end(),
-                             index, [](const ModelIndex &it, const ModelIndex &val) {
-                                 MemScanResult *lhs = it.data<MemScanResult>();
-                                 MemScanResult *rhs = val.data<MemScanResult>();
-                                 return lhs->getAddress() < rhs->getAddress();
+                             *index_scan, [](const MemScanResult &it, const MemScanResult &val) {
+                                 return it.getAddress() < val.getAddress();
                              });
         if (it == recent_scan.m_scan_results.end()) {
             return -1;
         }
 
         // Make sure we have a real match, since lower_bound may return the closest element.
-        MemScanResult *lhs = it->data<MemScanResult>();
-        MemScanResult *rhs = index.data<MemScanResult>();
-        if (lhs->getAddress() != rhs->getAddress()) {
+        const MemScanResult &lhs = *it;
+        const MemScanResult &rhs = *index.data<MemScanResult>();
+        if (lhs.getAddress() != rhs.getAddress()) {
             return -1;
         }
 
@@ -983,40 +988,32 @@ namespace Toolbox {
     }
 
     void MemScanModel::makeScanIndex(u32 address, MetaValue &&value) {
-        if (m_index_map_history.empty()) {
+        if (m_history_size == 0) {
             return;
         }
 
-        ScanHistoryEntry &recent_scan = m_index_map_history.back();
-
-        ModelIndex new_index(getUUID());
-
-        MemScanResult *result =
-            new MemScanResult(address, value.buf(), m_index_map_history.size() - 1);
-        new_index.setData(result);
+        ScanHistoryEntry &recent_scan = m_index_map_history[m_history_size - 1];
 
         {
             std::scoped_lock lock(m_mutex);
-            recent_scan.m_scan_results.emplace_back(std::move(new_index));
+            recent_scan.m_scan_results.emplace_back(address, value.buf(), m_history_size - 1);
         }
     }
 
     const MemScanModel::ScanHistoryEntry &MemScanModel::getScanHistory() const {
-        // TODO: insert return statement here
         static ScanHistoryEntry empty_set = {};
-        if (m_index_map_history.empty()) {
+        if (m_history_size == 0) {
             return empty_set;
         }
-        return m_index_map_history.back();
+        return m_index_map_history[m_history_size - 1];
     }
 
     const MemScanModel::ScanHistoryEntry &MemScanModel::getScanHistory(size_t i) const {
-        // TODO: insert return statement here
         static ScanHistoryEntry empty_set = {};
-        if (i >= m_index_map_history.size()) {
+        if (i >= m_history_size) {
             return empty_set;
         }
-        return m_index_map_history.at(i);
+        return m_index_map_history[i];
     }
 
     size_t MemScanModel::pollChildren(const ModelIndex &index) const { return 0; }

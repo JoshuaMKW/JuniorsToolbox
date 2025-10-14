@@ -43,6 +43,8 @@ namespace Toolbox {
             m_scanned_value = std::move(value);
         }
 
+        ~MemScanResult() { m_scanned_value.~Buffer(); }
+
         const Buffer &getValueBuf() const { return m_scanned_value; }
 
         u32 getAddress() const { return 0x80000000 | (m_bit_data & addr_mask); }
@@ -95,8 +97,8 @@ namespace Toolbox {
         };
 
         struct ScanHistoryEntry {
-            MetaType m_scan_type                   = MetaType::UNKNOWN;
-            std::vector<ModelIndex> m_scan_results = {};
+            MetaType m_scan_type                              = MetaType::UNKNOWN;
+            mutable std::vector<MemScanResult> m_scan_results = {};
         };
 
     public:
@@ -170,7 +172,7 @@ namespace Toolbox {
                          bool new_scan = true, size_t sleep_granularity = 100000,
                          s64 sleep_duration = 16);
 
-        bool canUndoScan() const { return !m_index_map_history.empty(); }
+        bool canUndoScan() const { return m_history_size > 0; }
         bool undoScan();
 
         using event_listener_t = std::function<void(const ModelIndex &, MemScanModelEventFlags)>;
@@ -182,10 +184,15 @@ namespace Toolbox {
 
         void makeScanIndex(u32 address, MetaValue &&value);
 
-        void reserveScan(size_t indexes) {
+        bool reserveScan(MetaType scan_type, size_t indexes) {
+            if (m_history_size >= m_index_map_history.max_size()) {
+                return false;
+            }
+
             ScanHistoryEntry entry;
+            entry.m_scan_type = scan_type;
             entry.m_scan_results.reserve(indexes);
-            m_index_map_history.emplace_back(std::move(entry));
+            m_index_map_history[m_history_size++] = std::move(entry);
         }
 
         const ScanHistoryEntry &getScanHistory() const;
@@ -210,7 +217,6 @@ namespace Toolbox {
         void setData_(const ModelIndex &index, std::any data, int role);
 
         [[nodiscard]] ModelIndex getIndex_(const u32 &address) const;
-        [[nodiscard]] ModelIndex getIndex_(const UUID64 &path) const;
         [[nodiscard]] ModelIndex getIndex_(int64_t row, int64_t column,
                                            const ModelIndex &parent = ModelIndex()) const;
 
@@ -248,7 +254,9 @@ namespace Toolbox {
 
         // This will necessarily always be sorted
         // by means of linear construction
-        mutable std::vector<ScanHistoryEntry> m_index_map_history;
+        mutable std::array<ScanHistoryEntry, 32> m_index_map_history;
+        size_t m_history_size = 0;
+
         MetaType m_scan_type;
         u32 m_scan_size;
 
