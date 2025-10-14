@@ -14,7 +14,7 @@
 #include "fsystem.hpp"
 #include "image/imagehandle.hpp"
 #include "model/model.hpp"
-#include "objlib/meta/value.hpp "
+#include "objlib/meta/value.hpp"
 #include "serial.hpp"
 #include "unique.hpp"
 
@@ -24,10 +24,36 @@ namespace Toolbox {
 
     class MemoryScanner;
 
-    struct MemScanResult {
-        u32 m_address;
-        MetaValue m_scanned_value;
-        int m_scan_history_index;
+    class MemScanResult {
+        u32 m_bit_data;
+        Buffer m_scanned_value;
+
+        static constexpr u32 addr_mask = 0x1FFFFFFF;
+        static constexpr u32 idx_mask  = ~addr_mask;
+        static constexpr u32 idx_shift = 29;
+
+    public:
+        MemScanResult(u32 address, const Buffer &value, int history_index) {
+            m_bit_data      = ((history_index << idx_shift) & idx_mask) | (address & addr_mask);
+            m_scanned_value = value;
+        }
+
+        MemScanResult(u32 address, Buffer &&value, int history_index) {
+            m_bit_data      = ((history_index << idx_shift) & idx_mask) | (address & addr_mask);
+            m_scanned_value = std::move(value);
+        }
+
+        const Buffer &getValueBuf() const { return m_scanned_value; }
+
+        u32 getAddress() const { return 0x80000000 | (m_bit_data & addr_mask); }
+        int getHistoryIndex() const { return (m_bit_data & ~addr_mask) >> idx_shift; }
+
+        void setAddress(u32 address) {
+            m_bit_data = (m_bit_data & idx_mask) | (address & addr_mask);
+        }
+        void setHistoryIndex(int index) {
+            m_bit_data = (m_bit_data & addr_mask) | ((index << idx_shift) & addr_mask);
+        }
     };
 
     enum class MemScanModelSortRole {
@@ -66,6 +92,11 @@ namespace Toolbox {
             OP_CHANGED,
             OP_UNCHANGED,
             OP_UNKNOWN_INITIAL,
+        };
+
+        struct ScanHistoryEntry {
+            MetaType m_scan_type                   = MetaType::UNKNOWN;
+            std::vector<ModelIndex> m_scan_results = {};
         };
 
     public:
@@ -152,13 +183,13 @@ namespace Toolbox {
         void makeScanIndex(u32 address, MetaValue &&value);
 
         void reserveScan(size_t indexes) {
-            std::vector<ModelIndex> index_map;
-            index_map.reserve(indexes);
-            m_index_map_history.emplace_back(std::move(index_map));
+            ScanHistoryEntry entry;
+            entry.m_scan_results.reserve(indexes);
+            m_index_map_history.emplace_back(std::move(entry));
         }
 
-        const std::vector<ModelIndex> &getScanHistory() const;
-        const std::vector<ModelIndex> &getScanHistory(size_t i) const;
+        const ScanHistoryEntry &getScanHistory() const;
+        const ScanHistoryEntry &getScanHistory(size_t i) const;
 
         struct MemScanProfile {
             u32 m_search_start;
@@ -217,7 +248,7 @@ namespace Toolbox {
 
         // This will necessarily always be sorted
         // by means of linear construction
-        mutable std::vector<std::vector<ModelIndex>> m_index_map_history;
+        mutable std::vector<ScanHistoryEntry> m_index_map_history;
         MetaType m_scan_type;
         u32 m_scan_size;
 
@@ -229,106 +260,6 @@ namespace Toolbox {
         bool m_wants_scan = false;
         MemScanProfile m_scan_profile;
         size_t m_scan_result_num = 0;
-    };
-
-    class MemScanModelSortFilterProxy : public IDataModel {
-    public:
-        MemScanModelSortFilterProxy()  = default;
-        ~MemScanModelSortFilterProxy() = default;
-
-        [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
-
-        [[nodiscard]] RefPtr<MemScanModel> getSourceModel() const;
-        void setSourceModel(RefPtr<MemScanModel> model);
-
-        [[nodiscard]] ModelSortOrder getSortOrder() const;
-        void setSortOrder(ModelSortOrder order);
-
-        [[nodiscard]] MemScanModelSortRole getSortRole() const;
-        void setSortRole(MemScanModelSortRole role);
-
-        [[nodiscard]] const std::string &getFilter() const &;
-        void setFilter(const std::string &filter);
-
-        [[nodiscard]] MetaType getScanType(const ModelIndex &index) const {
-            return std::any_cast<MetaType>(getData(index, MemScanRole::MEMSCAN_ROLE_TYPE));
-        }
-
-        [[nodiscard]] u32 getScanAddress(const ModelIndex &index) const {
-            return std::any_cast<u32>(getData(index, MemScanRole::MEMSCAN_ROLE_ADDRESS));
-        }
-
-        [[nodiscard]] u32 getScanSize(const ModelIndex &index) const {
-            return std::any_cast<u32>(getData(index, MemScanRole::MEMSCAN_ROLE_SIZE));
-        }
-
-        [[nodiscard]] MetaValue getScanValue(const ModelIndex &index) const {
-            return std::any_cast<MetaValue>(getData(index, MemScanRole::MEMSCAN_ROLE_VALUE));
-        }
-
-        void setScanValue(const ModelIndex &index, MetaValue &&value) {
-            setData(index, std::move(value), MemScanRole::MEMSCAN_ROLE_VALUE);
-        }
-
-        [[nodiscard]] MetaValue getCurrentValue(const ModelIndex &index) const {
-            return std::any_cast<MetaValue>(getData(index, MemScanRole::MEMSCAN_ROLE_VALUE_MEM));
-        }
-
-        [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
-        void setData(const ModelIndex &index, std::any data, int role) override;
-
-        [[nodiscard]] ModelIndex getIndex(const UUID64 &path) const override;
-        [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
-                                          const ModelIndex &parent = ModelIndex()) const override;
-
-        [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
-        [[nodiscard]] ModelIndex getSibling(int64_t row, int64_t column,
-                                            const ModelIndex &index) const override;
-
-        [[nodiscard]] size_t getColumnCount(const ModelIndex &index) const override;
-        [[nodiscard]] size_t getRowCount(const ModelIndex &index) const override;
-
-        [[nodiscard]] int64_t getColumn(const ModelIndex &index) const override;
-        [[nodiscard]] int64_t getRow(const ModelIndex &index) const override;
-
-        [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
-
-        [[nodiscard]] ScopePtr<MimeData>
-        createMimeData(const std::vector<ModelIndex> &indexes) const override;
-        [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
-
-        [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
-        void fetchMore(const ModelIndex &index) override;
-
-        void reset() override;
-
-        [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
-        [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;
-
-    protected:
-        [[nodiscard]] ModelIndex toProxyIndex(int64_t row, int64_t column,
-                                              const ModelIndex &parent = ModelIndex()) const;
-
-        [[nodiscard]] bool isFiltered(const UUID64 &uuid) const;
-
-        void cacheIndex(const ModelIndex &index) const;
-        void cacheIndex_(const ModelIndex &index) const;
-
-        void watchDataUpdateEvent(const ModelIndex &index, MemScanModelEventFlags flags);
-
-    private:
-        UUID64 m_uuid;
-
-        RefPtr<MemScanModel> m_source_model = nullptr;
-        ModelSortOrder m_sort_order         = ModelSortOrder::SORT_ASCENDING;
-        MemScanModelSortRole m_sort_role    = MemScanModelSortRole::SORT_ROLE_NONE;
-        std::string m_filter                = "";
-
-        bool m_dirs_only = false;
-
-        mutable std::mutex m_cache_mutex;
-        mutable std::unordered_map<UUID64, bool> m_filter_map;
-        mutable std::unordered_map<UUID64, std::vector<int64_t>> m_row_map;
     };
 
     class MemoryScanner : public TaskThread<size_t> {

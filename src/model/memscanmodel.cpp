@@ -174,7 +174,9 @@ namespace Toolbox {
         const u32 addr_inc  = profile.m_enforce_alignment ? std::min<u32>(val_width, 4) : 1;
 
         // Reserve an estimate allocation that should be sane.
-        size_t O_estimate = profile.m_search_size / 4;
+        size_t O_estimate = profile.m_scan_op == MemScanModel::ScanOperator::OP_UNKNOWN_INITIAL
+                                ? profile.m_search_size
+                                : profile.m_search_size / 100;
         if (profile.m_enforce_alignment) {
             O_estimate /=
                 val_width;  // Since alignment is forced, each entry has to be n bytes apart.
@@ -305,14 +307,14 @@ namespace Toolbox {
         size_t match_counter = 0;
         size_t sleep_counter = 0;
 
-        const std::vector<ModelIndex> recent_scan = model.getScanHistory();
+        const MemScanModel::ScanHistoryEntry &recent_scan = model.getScanHistory();
 
-        size_t row_count = recent_scan.size();
+        size_t row_count = recent_scan.m_scan_results.size();
         model.reserveScan(row_count);
 
-        size_t i         = 0;
+        size_t i = 0;
         while (i < row_count) {
-            ModelIndex index = recent_scan[i];
+            ModelIndex index = recent_scan.m_scan_results[i];
             u32 address      = model.getScanAddress(index);
             MetaValue value  = model.getScanValue(index);
 
@@ -357,12 +359,14 @@ namespace Toolbox {
         size_t match_counter = 0;
         size_t sleep_counter = 0;
 
-        size_t row_count = model.getRowCount(ModelIndex());
+        const MemScanModel::ScanHistoryEntry &recent_scan = model.getScanHistory();
+
+        size_t row_count = recent_scan.m_scan_results.size();
         model.reserveScan(row_count);
 
-        size_t i         = 0;
+        size_t i = 0;
         while (i < row_count) {
-            ModelIndex index = model.getIndex(i, 0);
+            ModelIndex index = recent_scan.m_scan_results[i];
             u32 address      = model.getScanAddress(index);
             MetaValue value  = model.getScanValue(index);
 
@@ -402,12 +406,14 @@ namespace Toolbox {
         size_t match_counter = 0;
         size_t sleep_counter = 0;
 
-        size_t row_count = model.getRowCount(ModelIndex());
+        const MemScanModel::ScanHistoryEntry &recent_scan = model.getScanHistory();
+
+        size_t row_count = recent_scan.m_scan_results.size();
         model.reserveScan(row_count);
 
-        size_t i         = 0;
+        size_t i = 0;
         while (i < row_count) {
-            ModelIndex index = model.getIndex(i, 0);
+            ModelIndex index = recent_scan.m_scan_results[i];
             u32 address      = model.getScanAddress(index);
             MetaValue value  = model.getScanValue(index);
 
@@ -434,9 +440,9 @@ namespace Toolbox {
                                                ModelSortOrder order) {
         // Sort by address
         if (order == ModelSortOrder::SORT_ASCENDING) {
-            return lhs.m_address < rhs.m_address;
+            return lhs.getAddress() < rhs.getAddress();
         } else {
-            return lhs.m_address > rhs.m_address;
+            return lhs.getAddress() > rhs.getAddress();
         }
     }
 
@@ -535,8 +541,8 @@ namespace Toolbox {
     void MemScanModel::reset() {
         std::scoped_lock lock(m_mutex);
 
-        for (const std::vector<ModelIndex> &index_map : m_index_map_history) {
-            for (const ModelIndex &a : index_map) {
+        for (const ScanHistoryEntry &scan_entry : m_index_map_history) {
+            for (const ModelIndex &a : scan_entry.m_scan_results) {
                 MemScanResult *p = a.data<MemScanResult>();
                 if (p) {
                     delete p;
@@ -666,17 +672,19 @@ namespace Toolbox {
             return Result<void, SerialError>();
         }
 
-        const std::vector<ModelIndex> &newest_scan = m_index_map_history.back();
+        const ScanHistoryEntry &newest_scan = m_index_map_history.back();
 
         out.write<u32>(static_cast<u32>(m_scan_type));
-        out.write<u32>(static_cast<u32>(newest_scan.size()));
+        out.write<u32>(static_cast<u32>(newest_scan.m_scan_results.size()));
 
-        for (const ModelIndex &index : newest_scan) {
+        for (const ModelIndex &index : newest_scan.m_scan_results) {
             MemScanResult *result = index.data<MemScanResult>();
 
             out.write<UUID64>(index.getUUID());
-            out.write<u32>(result->m_address);
-            result->m_scanned_value.serialize(out);
+            out.write<u32>(result->getAddress());
+
+            MetaValue val = MetaValue(newest_scan.m_scan_type, result->getValueBuf());
+            val.serialize(out);
         }
 
         return Result<void, SerialError>();
@@ -691,8 +699,7 @@ namespace Toolbox {
 
         const u32 count = in.read<u32>();
 
-        std::vector<ModelIndex> the_scan;
-        the_scan.reserve(count);
+        reserveScan(count);
 
         for (int i = 0; i < count; ++i) {
             UUID64 uuid = in.read<UUID64>();
@@ -703,20 +710,18 @@ namespace Toolbox {
             MetaValue mv = MetaValue(MetaType::UNKNOWN);
             mv.deserialize(in);
 
-            MemScanResult *result = new MemScanResult{address, std::move(mv), 0};
-            index.setData(result);
-
-            std::scoped_lock lock(m_mutex);
-            the_scan.emplace_back(std::move(index));
+            makeScanIndex(address, std::move(mv));
         }
-
-        m_index_map_history.emplace_back(std::move(the_scan));
 
         return Result<void, SerialError>();
     }
 
     std::any MemScanModel::getData_(const ModelIndex &index, int role) const {
         if (!validateIndex(index)) {
+            return {};
+        }
+
+        if (m_index_map_history.size() == 0) {
             return {};
         }
 
@@ -727,7 +732,7 @@ namespace Toolbox {
 
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY: {
-            std::string disp_name = std::format("{:08X}", result->m_address);
+            std::string disp_name = std::format("{:08X}", result->getAddress());
             return disp_name;
         }
         case ModelDataRole::DATA_ROLE_TOOLTIP:
@@ -736,16 +741,18 @@ namespace Toolbox {
             return {};
         }
         case MemScanRole::MEMSCAN_ROLE_ADDRESS: {
-            return static_cast<u32>(result->m_address);
+            return static_cast<u32>(result->getAddress());
         }
         case MemScanRole::MEMSCAN_ROLE_SIZE: {
             return m_scan_size;
         }
         case MemScanRole::MEMSCAN_ROLE_TYPE: {
-            return result->m_scanned_value.type();
+            const ScanHistoryEntry &entry = getScanHistory(result->getHistoryIndex());
+            return entry.m_scan_type;
         }
         case MemScanRole::MEMSCAN_ROLE_VALUE: {
-            return result->m_scanned_value;
+            const ScanHistoryEntry &entry = getScanHistory(result->getHistoryIndex());
+            return MetaValue(entry.m_scan_type, result->getValueBuf());
         }
         case MemScanRole::MEMSCAN_ROLE_VALUE_MEM: {
             return getMetaValueFromMemory(index);
@@ -775,7 +782,6 @@ namespace Toolbox {
             return;
         }
         case MemScanRole::MEMSCAN_ROLE_ADDRESS: {
-            result->m_address = std::any_cast<u32>(data);
             return;
         }
         case MemScanRole::MEMSCAN_ROLE_SIZE: {
@@ -785,7 +791,6 @@ namespace Toolbox {
             return;
         }
         case MemScanRole::MEMSCAN_ROLE_VALUE: {
-            result->m_scanned_value = std::any_cast<MetaValue>(data);
             return;
         }
         default:
@@ -798,19 +803,20 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        const std::vector<ModelIndex> &recent_scan = m_index_map_history.back();
+        const ScanHistoryEntry &recent_scan = m_index_map_history.back();
 
-        auto it = std::lower_bound(recent_scan.begin(), recent_scan.end(), address,
-                                   [](const ModelIndex &it, u32 address) {
-                                       MemScanResult *lhs = it.data<MemScanResult>();
-                                       return lhs->m_address < address;
-                                   });
-        if (it == recent_scan.end()) {
+        auto it =
+            std::lower_bound(recent_scan.m_scan_results.begin(), recent_scan.m_scan_results.end(),
+                             address, [](const ModelIndex &it, u32 address) {
+                                 MemScanResult *lhs = it.data<MemScanResult>();
+                                 return lhs->getAddress() < address;
+                             });
+        if (it == recent_scan.m_scan_results.end()) {
             return ModelIndex();
         }
 
         MemScanResult *lhs = it->data<MemScanResult>();
-        if (lhs->m_address != address) {
+        if (lhs->getAddress() != address) {
             return ModelIndex();
         }
 
@@ -822,12 +828,11 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        const std::vector<ModelIndex> &recent_scan = m_index_map_history.back();
+        const ScanHistoryEntry &recent_scan = m_index_map_history.back();
 
-        auto it =
-            std::find_if(recent_scan.begin(), recent_scan.end(),
-                         [&](const ModelIndex &it) { return it.getUUID() == uuid; });
-        if (it == recent_scan.end()) {
+        auto it = std::find_if(recent_scan.m_scan_results.begin(), recent_scan.m_scan_results.end(),
+                               [&](const ModelIndex &it) { return it.getUUID() == uuid; });
+        if (it == recent_scan.m_scan_results.end()) {
             return ModelIndex();
         }
 
@@ -848,13 +853,13 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        const std::vector<ModelIndex> &recent_scan = m_index_map_history.back();
+        const ScanHistoryEntry &recent_scan = m_index_map_history.back();
 
-        if (row >= recent_scan.size()) {
+        if (row >= recent_scan.m_scan_results.size()) {
             return ModelIndex();
         }
 
-        return recent_scan[row];
+        return recent_scan.m_scan_results[row];
     }
 
     ModelIndex MemScanModel::getParent_(const ModelIndex &index) const { return ModelIndex(); }
@@ -878,9 +883,9 @@ namespace Toolbox {
             return 0;
         }
 
-        const std::vector<ModelIndex> &recent_scan = m_index_map_history.back();
+        const ScanHistoryEntry &recent_scan = m_index_map_history.back();
 
-        return recent_scan.size();
+        return recent_scan.m_scan_results.size();
     }
 
     int64_t MemScanModel::getColumn_(const ModelIndex &index) const {
@@ -901,26 +906,27 @@ namespace Toolbox {
             return -1;
         }
 
-        const std::vector<ModelIndex> &recent_scan = m_index_map_history.back();
+        const ScanHistoryEntry &recent_scan = m_index_map_history.back();
 
-        auto it = std::lower_bound(recent_scan.begin(), recent_scan.end(), index,
-                                   [](const ModelIndex &it, const ModelIndex &val) {
-                                       MemScanResult *lhs = it.data<MemScanResult>();
-                                       MemScanResult *rhs = val.data<MemScanResult>();
-                                       return lhs->m_address < rhs->m_address;
-                                   });
-        if (it == recent_scan.end()) {
+        auto it =
+            std::lower_bound(recent_scan.m_scan_results.begin(), recent_scan.m_scan_results.end(),
+                             index, [](const ModelIndex &it, const ModelIndex &val) {
+                                 MemScanResult *lhs = it.data<MemScanResult>();
+                                 MemScanResult *rhs = val.data<MemScanResult>();
+                                 return lhs->getAddress() < rhs->getAddress();
+                             });
+        if (it == recent_scan.m_scan_results.end()) {
             return -1;
         }
 
         // Make sure we have a real match, since lower_bound may return the closest element.
         MemScanResult *lhs = it->data<MemScanResult>();
         MemScanResult *rhs = index.data<MemScanResult>();
-        if (lhs->m_address != rhs->m_address) {
+        if (lhs->getAddress() != rhs->getAddress()) {
             return -1;
         }
 
-        int64_t row = std::distance(recent_scan.begin(), it);
+        int64_t row = std::distance(recent_scan.m_scan_results.begin(), it);
         return row;
     }
 
@@ -945,8 +951,10 @@ namespace Toolbox {
             return MetaValue(MetaType::UNKNOWN);
         }
 
-        u32 address = result->m_address;
-        switch (result->m_scanned_value.type()) {
+        const ScanHistoryEntry &this_scan = getScanHistory(result->getHistoryIndex());
+
+        u32 address = result->getAddress();
+        switch (this_scan.m_scan_type) {
         case MetaType::BOOL:
             return MetaValue(readSingle<bool>(address));
         case MetaType::S8:
@@ -966,9 +974,9 @@ namespace Toolbox {
         case MetaType::F64:
             return MetaValue(readSingle<f64>(address));
         case MetaType::STRING:
-            return MetaValue(readString(address, result->m_scanned_value.computeSize()));
+            return MetaValue(readString(address, result->getValueBuf().size()));
         case MetaType::UNKNOWN:
-            return MetaValue(readBytes(address, result->m_scanned_value.computeSize()));
+            return MetaValue(readBytes(address, result->getValueBuf().size()));
         default:
             return MetaValue(MetaType::UNKNOWN);
         }
@@ -979,31 +987,32 @@ namespace Toolbox {
             return;
         }
 
-        std::vector<ModelIndex> &recent_scan = m_index_map_history.back();
+        ScanHistoryEntry &recent_scan = m_index_map_history.back();
 
         ModelIndex new_index(getUUID());
 
-        MemScanResult *result = new MemScanResult{address, std::move(value)};
+        MemScanResult *result =
+            new MemScanResult(address, value.buf(), m_index_map_history.size() - 1);
         new_index.setData(result);
 
         {
             std::scoped_lock lock(m_mutex);
-            recent_scan.emplace_back(std::move(new_index));
+            recent_scan.m_scan_results.emplace_back(std::move(new_index));
         }
     }
 
-    const std::vector<ModelIndex> &MemScanModel::getScanHistory() const {
+    const MemScanModel::ScanHistoryEntry &MemScanModel::getScanHistory() const {
         // TODO: insert return statement here
-        static std::vector<ModelIndex> empty_set = {};
+        static ScanHistoryEntry empty_set = {};
         if (m_index_map_history.empty()) {
             return empty_set;
         }
         return m_index_map_history.back();
     }
 
-    const std::vector<ModelIndex> &MemScanModel::getScanHistory(size_t i) const {
+    const MemScanModel::ScanHistoryEntry &MemScanModel::getScanHistory(size_t i) const {
         // TODO: insert return statement here
-        static std::vector<ModelIndex> empty_set = {};
+        static ScanHistoryEntry empty_set = {};
         if (i >= m_index_map_history.size()) {
             return empty_set;
         }
@@ -1017,300 +1026,6 @@ namespace Toolbox {
             if ((listener.second & flags) != MemScanModelEventFlags::NONE) {
                 listener.first(index, flags);
             }
-        }
-    }
-
-    RefPtr<MemScanModel> MemScanModelSortFilterProxy::getSourceModel() const {
-        return m_source_model;
-    }
-
-    void MemScanModelSortFilterProxy::setSourceModel(RefPtr<MemScanModel> model) {
-        if (m_source_model == model) {
-            return;
-        }
-
-        if (m_source_model) {
-            m_source_model->removeEventListener(getUUID());
-        }
-
-        m_source_model = model;
-
-        if (m_source_model) {
-            m_source_model->addEventListener(getUUID(), TOOLBOX_BIND_EVENT_FN(watchDataUpdateEvent),
-                                             MemScanModelEventFlags::EVENT_SCAN_ANY);
-        }
-    }
-
-    ModelSortOrder MemScanModelSortFilterProxy::getSortOrder() const { return m_sort_order; }
-    void MemScanModelSortFilterProxy::setSortOrder(ModelSortOrder order) { m_sort_order = order; }
-
-    MemScanModelSortRole MemScanModelSortFilterProxy::getSortRole() const { return m_sort_role; }
-    void MemScanModelSortFilterProxy::setSortRole(MemScanModelSortRole role) { m_sort_role = role; }
-
-    const std::string &MemScanModelSortFilterProxy::getFilter() const & { return m_filter; }
-    void MemScanModelSortFilterProxy::setFilter(const std::string &filter) { m_filter = filter; }
-
-    std::any MemScanModelSortFilterProxy::getData(const ModelIndex &index, int role) const {
-        ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->getData(std::move(source_index), role);
-    }
-
-    void MemScanModelSortFilterProxy::setData(const ModelIndex &index, std::any data, int role) {
-        ModelIndex &&source_index = toSourceIndex(index);
-        m_source_model->setData(std::move(source_index), data, role);
-    }
-
-    ModelIndex MemScanModelSortFilterProxy::getIndex(const UUID64 &uuid) const {
-        ModelIndex index = m_source_model->getIndex(uuid);
-        return toProxyIndex(index);
-    }
-
-    ModelIndex MemScanModelSortFilterProxy::getIndex(int64_t row, int64_t column,
-                                                     const ModelIndex &parent) const {
-        ModelIndex parent_src = toSourceIndex(parent);
-        return toProxyIndex(row, column, parent_src);
-    }
-
-    ModelIndex MemScanModelSortFilterProxy::getParent(const ModelIndex &index) const {
-        ModelIndex source_index = toSourceIndex(index);
-        return toProxyIndex(m_source_model->getParent(std::move(source_index)));
-    }
-
-    ModelIndex MemScanModelSortFilterProxy::getSibling(int64_t row, int64_t column,
-                                                       const ModelIndex &index) const {
-        std::scoped_lock lock(m_cache_mutex);
-
-        ModelIndex source_index       = toSourceIndex(index);
-        ModelIndex src_parent         = m_source_model->getParent(source_index);
-        const UUID64 &src_parent_uuid = src_parent.getUUID();
-
-        u64 map_key = src_parent_uuid;
-        if (!m_source_model->validateIndex(src_parent)) {
-            map_key = 0;
-        }
-
-        if (m_row_map.find(map_key) == m_row_map.end()) {
-            cacheIndex_(src_parent);
-        }
-
-        if (row < m_row_map[map_key].size()) {
-            int64_t the_row = m_row_map[map_key][row];
-            return toProxyIndex(m_source_model->getIndex(the_row, column, src_parent));
-        }
-
-        return ModelIndex();
-    }
-
-    size_t MemScanModelSortFilterProxy::getColumnCount(const ModelIndex &index) const {
-        ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->getColumnCount(source_index);
-    }
-
-    size_t MemScanModelSortFilterProxy::getRowCount(const ModelIndex &index) const {
-        ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->getRowCount(source_index);
-    }
-
-    int64_t MemScanModelSortFilterProxy::getColumn(const ModelIndex &index) const {
-        ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->getColumn(source_index);
-    }
-
-    int64_t MemScanModelSortFilterProxy::getRow(const ModelIndex &index) const {
-
-        ModelIndex &&source_index     = toSourceIndex(index);
-        ModelIndex src_parent         = m_source_model->getParent(source_index);
-        const UUID64 &src_parent_uuid = src_parent.getUUID();
-
-        u64 map_key = src_parent_uuid;
-        if (!m_source_model->validateIndex(src_parent)) {
-            map_key = 0;
-        }
-
-        if (m_row_map.find(map_key) == m_row_map.end()) {
-            cacheIndex_(src_parent);
-        }
-
-        int64_t src_row = m_source_model->getRow(source_index);
-        if (src_row == -1) {
-            return src_row;
-        }
-
-        const std::vector<int64_t> &row_map = m_row_map[map_key];
-        for (size_t i = 0; i < row_map.size(); ++i) {
-            if (src_row == row_map[i]) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    bool MemScanModelSortFilterProxy::hasChildren(const ModelIndex &parent) const {
-        ModelIndex &&source_index = toSourceIndex(parent);
-        return m_source_model->hasChildren(source_index);
-    }
-
-    ScopePtr<MimeData>
-    MemScanModelSortFilterProxy::createMimeData(const std::vector<ModelIndex> &indexes) const {
-        std::vector<ModelIndex> indexes_copy = indexes;
-        std::transform(indexes.begin(), indexes.end(), indexes_copy.begin(),
-                       [&](const ModelIndex &index) { return toSourceIndex(index); });
-
-        return m_source_model->createMimeData(indexes);
-    }
-
-    std::vector<std::string> MemScanModelSortFilterProxy::getSupportedMimeTypes() const {
-        return m_source_model->getSupportedMimeTypes();
-    }
-
-    bool MemScanModelSortFilterProxy::canFetchMore(const ModelIndex &index) {
-        ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->canFetchMore(std::move(source_index));
-    }
-
-    void MemScanModelSortFilterProxy::fetchMore(const ModelIndex &index) {
-        ModelIndex &&source_index = toSourceIndex(index);
-        m_source_model->fetchMore(std::move(source_index));
-    }
-
-    void MemScanModelSortFilterProxy::reset() {
-        std::scoped_lock lock(m_cache_mutex);
-        m_source_model->reset();
-        m_filter_map.clear();
-        m_row_map.clear();
-    }
-
-    ModelIndex MemScanModelSortFilterProxy::toSourceIndex(const ModelIndex &index) const {
-        if (m_source_model->validateIndex(index)) {
-            return index;
-        }
-
-        if (!validateIndex(index)) {
-            return ModelIndex();
-        }
-
-        return m_source_model->getIndex(index.data<MemScanResult>()->m_address);
-    }
-
-    ModelIndex MemScanModelSortFilterProxy::toProxyIndex(const ModelIndex &index) const {
-        if (!m_source_model->validateIndex(index)) {
-            return ModelIndex();
-        }
-
-        ModelIndex proxy_index = ModelIndex(getUUID());
-        proxy_index.setData(index.data<MemScanResult>());
-
-        IDataModel::setIndexUUID(proxy_index, index.getUUID());
-
-        return proxy_index;
-    }
-
-    ModelIndex MemScanModelSortFilterProxy::toProxyIndex(int64_t row, int64_t column,
-                                                         const ModelIndex &src_parent) const {
-        std::scoped_lock lock(m_cache_mutex);
-
-        const UUID64 &src_parent_uuid = src_parent.getUUID();
-
-        u64 map_key = src_parent_uuid;
-        if (!m_source_model->validateIndex(src_parent)) {
-            map_key = 0;
-        }
-
-        if (m_row_map.find(map_key) == m_row_map.end()) {
-            cacheIndex_(src_parent);
-        }
-
-        if (row < m_row_map[map_key].size()) {
-            int64_t the_row = m_row_map[map_key][row];
-            return toProxyIndex(m_source_model->getIndex(the_row, column, src_parent));
-        }
-
-        return ModelIndex();
-    }
-
-    bool MemScanModelSortFilterProxy::isFiltered(const UUID64 &uuid) const { return false; }
-
-    void MemScanModelSortFilterProxy::cacheIndex(const ModelIndex &dir_index) const {
-        std::scoped_lock lock(m_cache_mutex);
-        cacheIndex_(dir_index);
-    }
-
-    void MemScanModelSortFilterProxy::cacheIndex_(const ModelIndex &dir_index) const {
-        std::vector<UUID64> orig_children  = {};
-        std::vector<UUID64> proxy_children = {};
-
-        ModelIndex src_parent         = toSourceIndex(dir_index);
-        const UUID64 &src_parent_uuid = src_parent.getUUID();
-
-        u64 map_key = src_parent_uuid;
-        if (!m_source_model->validateIndex(src_parent)) {
-            map_key = 0;
-        }
-
-        size_t i          = 0;
-        ModelIndex root_s = m_source_model->getIndex(i++, 0, src_parent);
-        while (m_source_model->validateIndex(root_s)) {
-            orig_children.push_back(root_s.getUUID());
-            if (isFiltered(root_s.getUUID())) {
-                root_s = m_source_model->getIndex(i++, 0, src_parent);
-                continue;
-            }
-            proxy_children.push_back(root_s.getUUID());
-            root_s = m_source_model->getIndex(i++, 0, src_parent);
-        }
-
-        if (proxy_children.empty()) {
-            return;
-        }
-
-        switch (m_sort_role) {
-        case MemScanModelSortRole::SORT_ROLE_ADDRESS: {
-            std::sort(proxy_children.begin(), proxy_children.end(),
-                      [&](const UUID64 &lhs, const UUID64 &rhs) {
-                          return _MemScanResultCompareByAddress(
-                              *m_source_model->getIndex(lhs).data<MemScanResult>(),
-                              *m_source_model->getIndex(rhs).data<MemScanResult>(), m_sort_order);
-                      });
-            break;
-        }
-        default:
-            break;
-        }
-
-        // Build the row map
-        m_row_map[map_key] = {};
-        m_row_map[map_key].resize(proxy_children.size());
-        for (size_t i = 0; i < proxy_children.size(); i++) {
-            for (size_t j = 0; j < orig_children.size(); j++) {
-                if (proxy_children[i] == orig_children[j]) {
-                    m_row_map[map_key][i] = j;
-                }
-            }
-        }
-    }
-
-    void MemScanModelSortFilterProxy::watchDataUpdateEvent(const ModelIndex &index,
-                                                           MemScanModelEventFlags flags) {
-        if ((flags & MemScanModelEventFlags::EVENT_SCAN_ANY) == MemScanModelEventFlags::NONE) {
-            return;
-        }
-
-        ModelIndex proxy_index = toProxyIndex(index);
-        if (!validateIndex(proxy_index)) {
-            return;
-        }
-
-        if ((flags & MemScanModelEventFlags::EVENT_SCAN_ADDED) != MemScanModelEventFlags::NONE) {
-            cacheIndex(getParent(proxy_index));
-            return;
-        }
-
-        {
-            std::scoped_lock lock(m_cache_mutex);
-
-            m_filter_map.clear();
-            m_row_map.clear();
         }
     }
 

@@ -26,7 +26,7 @@ template <> struct std::formatter<glm::vec3> : std::formatter<string_view> {
 
 namespace Toolbox::Object {
 
-    enum class MetaType {
+    enum class MetaType : u8 {
         BOOL,
         S8,
         U8,
@@ -324,10 +324,11 @@ namespace Toolbox::Object {
     public:
         MetaValue() {
             m_value_buf.initTo(0);
-            m_value_len = 0;
             m_type      = MetaType::UNKNOWN;
         }
+
         template <typename T> explicit MetaValue(T value) : m_value_buf() { set<T>(value); }
+
         explicit MetaValue(MetaType type) : m_type(type), m_value_buf() {
             m_value_buf.alloc(meta_type_size(type));
             m_value_buf.initTo(0);
@@ -338,14 +339,17 @@ namespace Toolbox::Object {
             default:
                 break;
             }
-            m_value_len = meta_type_size(type);
         }
+
+        MetaValue(MetaType type, Buffer &&value_buf)
+            : m_type(type), m_value_buf(std::move(value_buf)) {}
+        MetaValue(MetaType type, const Buffer &value_buf)
+            : m_type(type), m_value_buf(value_buf) {}
 
         MetaValue(const MetaValue &other) = default;
         MetaValue(MetaValue &&other) {
             m_type      = other.m_type;
             m_value_buf = std::move(other.m_value_buf);
-            m_value_len = other.m_value_len;
         }
 
         ~MetaValue() override { m_value_buf.free(); }
@@ -368,18 +372,16 @@ namespace Toolbox::Object {
         [[nodiscard]] const Buffer &buf() const { return m_value_buf; }
 
         template <typename T> [[nodiscard]] Result<T, std::string> get() const {
-            return getBuf<T>(m_type, m_value_buf, m_value_len);
+            return getBuf<T>(m_type, m_value_buf);
         }
 
         template <typename T> bool set(const T &value) {
-            return setBuf<T>(m_type, m_value_buf, m_value_len, value);
+            return setBuf<T>(m_type, m_value_buf, value);
         }
 
         // NOTE: This does not change the underlying type, it only attempts
         // to assign the variant value as the existing type, or it returns false.
         bool setVariant(const std::any &variant);
-
-        void setExplicitSize(size_t size) { m_value_len = size; }
 
         Result<void, JSONError> loadJSON(const nlohmann::json &json_value);
 
@@ -393,13 +395,11 @@ namespace Toolbox::Object {
     private:
         Buffer m_value_buf;
         MetaType m_type    = MetaType::UNKNOWN;
-        size_t m_value_len = 0;
     };
 
     template <typename T>
     [[nodiscard]]
-    inline Result<T, std::string> getBuf(const MetaType &m_type, const Buffer &m_value_buf,
-                                         size_t m_value_len) {
+    inline Result<T, std::string> getBuf(const MetaType &m_type, const Buffer &m_value_buf) {
         T value{};
         if (Deserializer::BytesToObject(m_value_buf, value, 0).has_value()) {
             return value;
@@ -411,7 +411,7 @@ namespace Toolbox::Object {
     template <>
     [[nodiscard]]
     inline Result<std::string, std::string> getBuf(const MetaType &m_type,
-                                                   const Buffer &m_value_buf, size_t m_value_len) {
+                                                   const Buffer &m_value_buf) {
         std::string out;
         for (size_t i = 0; i < m_value_buf.size(); ++i) {
             char ch = m_value_buf.get<char>(i);
@@ -425,42 +425,31 @@ namespace Toolbox::Object {
 
     template <typename T>
     [[nodiscard]]
-    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, size_t &m_value_len, const T &value) {
+    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, const T &value) {
         bool ret    = Serializer::ObjectToBytes(value, m_value_buf, 0).has_value();
-        m_value_len = m_value_buf.size();
         m_type      = map_to_type_enum<T>::value;
         return ret;
     }
 
     template <>
     [[nodiscard]]
-    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, size_t &m_value_len,
+    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf,
                        const std::string &value) {
         m_type = MetaType::STRING;
-        if (value.size() > m_value_buf.size() + 1) {
-            m_value_buf.resize(static_cast<size_t>(value.size() * 1.5f));
-        }
-        m_value_buf.initTo('\0');
+        m_value_buf.resize(value.size() + 1);
         for (size_t i = 0; i < value.size(); ++i) {
             m_value_buf.set<char>(i, value[i]);
         }
-        m_value_len = value.size();
+        m_value_buf.set<char>(value.size(), '\0');
         return true;
     }
 
     template <>
     [[nodiscard]]
-    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, size_t &m_value_len,
+    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf,
                        const Buffer &value) {
         m_type = MetaType::UNKNOWN;
-        if (value.size() > m_value_buf.size() + 1) {
-            m_value_buf.resize(static_cast<size_t>(value.size() * 1.5f));
-        }
-        m_value_buf.initTo('\0');
-        for (size_t i = 0; i < value.size(); ++i) {
-            m_value_buf.set<char>(i, value[i]);
-        }
-        m_value_len = value.size();
+        value.copyTo(m_value_buf);
         return true;
     }
 

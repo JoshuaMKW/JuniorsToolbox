@@ -203,7 +203,6 @@ namespace Toolbox::UI {
         RefPtr<WatchDataModelSortFilterProxy> m_watch_proxy_model;
 
         RefPtr<MemScanModel> m_scan_model;
-        RefPtr<MemScanModelSortFilterProxy> m_scan_proxy_model;
         bool m_scan_active = false;
 
         ModelIndex m_last_selected_index;

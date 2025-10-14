@@ -39,7 +39,7 @@ namespace Toolbox::Object {
         default:
             /*TOOLBOX_WARN("[MetaValue] Unknown type for size computation: {}",
                          magic_enum::enum_name(m_type));*/
-            return m_value_len;  // Unknown type or no value
+            return m_value_buf.size();  // Unknown type or no value
         }
     }
 

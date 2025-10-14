@@ -1829,11 +1829,6 @@ namespace Toolbox::UI {
         m_scan_model = make_referable<MemScanModel>();
         m_scan_model->initialize();
 
-        m_scan_proxy_model = make_referable<MemScanModelSortFilterProxy>();
-        m_scan_proxy_model->setSourceModel(m_scan_model);
-        m_scan_proxy_model->setSortOrder(ModelSortOrder::SORT_ASCENDING);
-        m_scan_proxy_model->setSortRole(MemScanModelSortRole::SORT_ROLE_ADDRESS);
-
         m_scan_active = false;
         m_scan_begin_input.fill('\0');
         m_scan_end_input.fill('\0');

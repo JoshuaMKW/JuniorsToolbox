@@ -1,14 +1,14 @@
 #pragma once
 
-#include <memory>
 #include <cstring>
+#include <memory>
 
 #include "core/assert.hpp"
 #include "core/types.hpp"
 
 namespace Toolbox {
 
-    template <typename T> using RefPtr = std::shared_ptr<T>;
+    template <typename T> using RefPtr   = std::shared_ptr<T>;
     template <typename T> using ScopePtr = std::unique_ptr<T>;
 
     template <typename T, typename... Args> RefPtr<T> make_referable(Args &&...args) {
@@ -25,15 +25,14 @@ namespace Toolbox {
 
     template <typename T, typename F> RefPtr<T> ref_cast(ScopePtr<F> &&ptr) {
         static_assert(std::is_convertible_v<F *, T *>);
-        return RefPtr<T>(static_cast<T*>(ptr.release()), [](T *p) { delete p; });
+        return RefPtr<T>(static_cast<T *>(ptr.release()), [](T *p) { delete p; });
     }
 
     template <typename T, typename... Args> ScopePtr<T> make_scoped(Args &&...args) {
         return std::make_unique<T>(std::forward<Args>(args)...);
     }
 
-    template <typename _T>
-    using Referable = std::enable_shared_from_this<_T>;
+    template <typename _T> using Referable = std::enable_shared_from_this<_T>;
 
     class Buffer {
     public:
@@ -42,109 +41,188 @@ namespace Toolbox {
         Buffer() = default;
         Buffer(const Buffer &other) { other.copyTo(*this); }
         Buffer(Buffer &&other) noexcept {
-            m_buf            = std::move(other.m_buf);
-            m_size           = other.m_size;
-            m_owns_buf       = other.m_owns_buf;
-            other.m_buf      = nullptr;
-            other.m_size     = 0;
-            other.m_owns_buf = false;
+            m_buf.m_ext       = other.m_buf.m_ext;
+            m_size            = other.m_size;
+            m_owns_buf        = other.m_owns_buf;
+            other.m_buf.m_ext = nullptr;
+            other.m_size      = 0;
+            other.m_owns_buf  = false;
         }
         ~Buffer() { free(); }
 
-        bool alloc(size_t size) {
-            free();
-            if (size == 0)
+        bool alloc(uint32_t size) {
+            if (size == 0) {
                 return false;
-            m_buf = new byte_t[size];
-            if (m_buf)
-                m_size = size;
-            m_owns_buf = true;
-            return m_buf != nullptr;
+            }
+            if (m_owns_buf && !free()) {
+                return false;
+            }
+            bool ret = true;
+            if (!isSizeInline(size)) {
+                m_buf.m_ext = static_cast<byte_t *>(std::malloc(size));
+                ret &= m_buf.m_ext != nullptr;
+            }
+            if (ret) {
+                m_size     = size;
+                m_owns_buf = true;
+            }
+            return ret;
         }
 
         bool copyTo(Buffer &other) const {
-            if (!other.alloc(m_size))
+#if 0
+            other.resize(m_size);
+            memcpy(other.buf(), buf(), m_size);
+#else
+            if (!other.resize(m_size))
                 return false;
-            memcpy(other.m_buf, m_buf, m_size);
+            memcpy(other.buf(), buf(), m_size);
+#endif
             return true;
         }
 
         bool initTo(char fill) {
-            if (m_buf == nullptr)
+            byte_t *bf = buf<byte_t>();
+            if (bf == nullptr)
                 return false;
-            memset(m_buf, fill, m_size);
+            memset(bf, fill, m_size);
             return true;
         }
 
-        void free() {
-            if (m_buf && m_owns_buf) {
-                delete[] m_buf;
-                m_buf = nullptr;
-                m_owns_buf = false;
+        bool free() {
+            if (!m_owns_buf) {
+                return false;
             }
+
+            if (!isInlineBuf()) {
+                std::free(m_buf.m_ext);
+                m_buf.m_ext = nullptr;
+                m_owns_buf  = false;
+            }
+
             m_size = 0;
         }
 
-        void resize(size_t size) {
-            if (m_buf && size == m_size) {
-                return;
+        bool resize(uint32_t size) {
+            if (size == m_size) {
+                return true;
             }
-            byte_t *new_buf = new byte_t[size];
-            if (m_buf && m_size > 0) {
-                memcpy(new_buf, m_buf, std::min(size, m_size));
-                delete[] m_buf;
+
+            if (size == 0) {
+                return free();
             }
-            m_buf  = new_buf;
-            m_size = size;
+
+            if (!m_owns_buf) {
+                if (m_size != 0) {
+                    // Called resize on shared buf
+                    return false;
+                }
+
+                return alloc(size);
+            }
+
+            uint32_t to_cpy = std::min(size, m_size);
+
+            if (size < m_size) {
+                if (!isInlineBuf()) {
+                    if (isSizeInline(size)) {
+                        byte_t *to_del = m_buf.m_ext;
+                        memcpy(&m_buf.m_inline, to_del, to_cpy);
+                        std::free(to_del);
+                        m_size = size;
+                    } else {
+                        m_size = size;
+                    }
+                } else {
+                    m_size = size;
+                }
+            } else {
+                if (!isInlineBuf()) {
+                    byte_t *new_buf = new byte_t[size];
+                    memcpy(new_buf, m_buf.m_ext, to_cpy);
+                    std::free(m_buf.m_ext);
+                    setOwnBuf(new_buf, size);
+                } else {
+                    if (isSizeInline(size)) {
+                        m_size = size;
+                    } else {
+                        byte_t *new_buf = new byte_t[size];
+                        memcpy(new_buf, &m_buf.m_inline, to_cpy);
+                        setOwnBuf(new_buf, size);
+                    }
+                }
+            }
+
+            return true;
         }
 
-        size_t size() const { return m_size; }
+        uint32_t size() const noexcept { return m_size; }
 
         template <typename T> T &as() { return get<T>(0); }
 
-        template <typename T = void> T *buf() { return reinterpret_cast<T *>(m_buf); }
-        template <typename T = void> const T *buf() const { return reinterpret_cast<T *>(m_buf); }
-
-        void setBuf(void *buf, size_t size) {
-            if (m_buf != (byte_t*)buf) {
-                free();
-                m_buf      = (byte_t*)buf;
-                m_owns_buf = false;
+        template <typename T = void> T *buf() noexcept {
+            if (!isInlineBuf()) {
+                return reinterpret_cast<T *>(m_buf.m_ext);
             }
-            m_size = size;
+            return reinterpret_cast<T *>(&m_buf.m_inline);
         }
 
-        template <typename T> T &get(size_t ofs) {
-            TOOLBOX_CORE_ASSERT(m_buf);
-            return *reinterpret_cast<std::decay_t<T> *>(reinterpret_cast<char *>(m_buf) + ofs);
+        template <typename T = void> const T *buf() const noexcept {
+            if (!isInlineBuf()) {
+                return reinterpret_cast<const T *>(m_buf.m_ext);
+            }
+            return reinterpret_cast<const T *>(&m_buf.m_inline);
         }
 
-        template <typename T> T get(size_t ofs) const {
-            TOOLBOX_CORE_ASSERT(m_buf);
-            return *reinterpret_cast<std::decay_t<T> *>(reinterpret_cast<char *>(m_buf) + ofs);
+        void setBuf(void *buf, uint32_t size) {
+            if (m_buf.m_ext == (byte_t *)buf) {
+                return;
+            }
+
+            free();
+            m_buf.m_ext = (byte_t *)buf;
+            m_owns_buf  =  false;
+            m_size      = size;
         }
 
-        template <typename T> void set(size_t ofs, const T &value) {
-            TOOLBOX_CORE_ASSERT(m_buf);
-            *reinterpret_cast<std::decay_t<T> *>(reinterpret_cast<char *>(m_buf) + ofs) = value;
+        template <typename T> T &get(uint32_t ofs) {
+            byte_t *bf = buf<byte_t>();
+            TOOLBOX_CORE_ASSERT(bf);
+            return *reinterpret_cast<std::decay_t<T> *>(bf + ofs);
         }
 
-        template <typename T> void set(size_t ofs, T &&value) {
-            TOOLBOX_CORE_ASSERT(m_buf);
-            *reinterpret_cast<std::decay_t<T> *>(reinterpret_cast<char *>(m_buf) + ofs) = value;
+        template <typename T> T get(uint32_t ofs) const {
+            const byte_t *bf = buf<byte_t>();
+            TOOLBOX_CORE_ASSERT(bf);
+            return *reinterpret_cast<const std::decay_t<T> *>(bf + ofs);
         }
 
-        template <typename T> bool goodFor() { return sizeof(T) <= m_size && m_buf != nullptr; }
+        template <typename T> void set(uint32_t ofs, const T &value) {
+            byte_t *bf = buf<byte_t>();
+            TOOLBOX_CORE_ASSERT(bf);
+            *reinterpret_cast<std::decay_t<T> *>(bf + ofs) = value;
+        }
 
-        operator bool() const { return m_buf != nullptr; }
+        template <typename T> void set(uint32_t ofs, T &&value) {
+            byte_t *bf = buf<byte_t>();
+            TOOLBOX_CORE_ASSERT(bf);
+            *reinterpret_cast<std::decay_t<T> *>(bf + ofs) = std::move(value);
+        }
+
+        template <typename T> bool goodFor() const noexcept { return sizeof(T) <= m_size; }
+
+        operator bool() const { return m_size > 0; }
 
         byte_t &operator[](int index) {
-            TOOLBOX_CORE_ASSERT(m_buf);
-            return ((byte_t *)m_buf)[index];
+            byte_t *bf = buf<byte_t>();
+            TOOLBOX_CORE_ASSERT(bf && index < m_size);
+            return bf[index];
         }
+
         byte_t operator[](int index) const {
-            TOOLBOX_CORE_ASSERT(m_buf);
-            return ((byte_t *)m_buf)[index];
+            const byte_t *bf = buf<byte_t>();
+            TOOLBOX_CORE_ASSERT(bf && index < m_size);
+            return bf[index];
         }
 
         Buffer &operator=(const Buffer &other) {
@@ -153,21 +231,45 @@ namespace Toolbox {
         }
 
         Buffer &operator=(Buffer &&other) noexcept {
-            m_buf            = std::move(other.m_buf);
-            m_size           = other.m_size;
-            m_owns_buf       = other.m_owns_buf;
-            other.m_buf      = nullptr;
-            other.m_size     = 0;
-            other.m_owns_buf = false;
+            m_buf.m_ext       = other.m_buf.m_ext;
+            m_size            = other.m_size;
+            m_owns_buf        = other.m_owns_buf;
+            other.m_buf.m_ext = nullptr;
+            other.m_size      = 0;
+            other.m_owns_buf  = false;
             return *this;
         }
 
-        bool operator==(const Buffer &other) { return m_buf == other.m_buf; }
+        bool operator==(const Buffer &other) noexcept {
+            return m_buf.m_ext == other.m_buf.m_ext && m_size == other.m_size;
+        }
 
     private:
-        byte_t *m_buf   = nullptr;
-        size_t m_size   = 0;
-        bool m_owns_buf = true;
+        inline bool isInlineBuf() const noexcept {
+            return m_size <= sizeof(m_buf.m_inline) && m_owns_buf;
+        }
+
+        inline bool isSizeInline(uint32_t size) const noexcept {
+            return size <= sizeof(m_buf.m_inline);
+        }
+
+        void setOwnBuf(void *buf, uint32_t size) {
+            if (m_buf.m_ext == (byte_t *)buf) {
+                return;
+            }
+
+            free();
+            m_buf.m_ext = (byte_t *)buf;
+            m_owns_buf  = true;
+            m_size      = size;
+        }
+
+        union {
+            byte_t *m_ext;
+            uint64_t m_inline;
+        } m_buf;
+        uint32_t m_size   = 0;
+        bool m_owns_buf = false;
     };
 
 }  // namespace Toolbox
