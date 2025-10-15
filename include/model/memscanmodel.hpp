@@ -157,6 +157,9 @@ namespace Toolbox {
 
         void reset() override;
 
+        bool isScanBusy() const;
+        double getScanProgress() const;
+
         bool requestScan(u32 search_start, u32 search_size, MetaType val_type, ScanOperator scan_op,
                          const std::string &a, const std::string &b, int desired_radix = 10,
                          bool enforce_alignment = true, bool new_scan = true,
@@ -276,6 +279,30 @@ namespace Toolbox {
 
     private:
         size_t searchAddressSpan(const MemScanModel::MemScanProfile &profile);
+
+        size_t scanAllBools(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanAllS8s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanAllU8s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanAllS16s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanAllU16s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanAllS32s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanAllU32s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanAllF32s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanAllF64s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanAllStrings(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanAllByteArrays(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+
+        size_t scanExistingBools(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanExistingS8s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanExistingU8s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanExistingS16s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanExistingU16s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanExistingS32s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanExistingU32s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanExistingF32s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanExistingF64s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanExistingStrings(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanExistingByteArrays(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
 
         MemScanModel *m_scan_model;
     };

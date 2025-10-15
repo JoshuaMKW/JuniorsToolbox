@@ -238,7 +238,8 @@ namespace Toolbox {
     }
 
     template <typename T>
-    static size_t scanAllSingles(MemScanModel &model, const MemScanModel::MemScanProfile &profile) {
+    static size_t scanAllSingles(MemScanModel &model, const MemScanModel::MemScanProfile &profile,
+                                 std::function<void(double)> prog_setter) {
         const u32 begin_address = profile.m_search_start;
         const u32 end_address   = begin_address + profile.m_search_size;
 
@@ -291,117 +292,12 @@ namespace Toolbox {
 
             address += addr_inc;
 
-            if (sleep_counter++ >= profile.m_sleep_granularity) {
-                sleep_counter = 0;
-                std::this_thread::sleep_for(std::chrono::milliseconds(profile.m_sleep_duration));
-            }
-        }
+            prog_setter((double)(address - begin_address) / (double)profile.m_search_size);
 
-        return match_counter;
-    }
-
-    static size_t scanAllStrings(MemScanModel &model, const MemScanModel::MemScanProfile &profile) {
-        const u32 begin_address = profile.m_search_start;
-        const u32 end_address   = begin_address + profile.m_search_size;
-
-        if (profile.m_search_size == 0 || begin_address < 0x80000000 ||
-            end_address >= (0x80000000 | DolphinHookManager::instance().getMemorySize())) {
-            return 0;
-        }
-
-        std::string val_a = profile.m_scan_a.get<std::string>().value_or(std::string());
-        if (val_a.empty()) {
-            return 0;
-        }
-
-        // Reserve an estimate allocation that should be sane.
-        size_t O_estimate = profile.m_search_size / 1000;
-
-        if (!model.reserveScan(profile.m_scan_type, val_a.size(), O_estimate)) {
-            return 0;
-        }
-
-        if (!model.captureMemForCache()) {
-            return 0;
-        }
-
-        const MemScanModel::ScanHistoryEntry &entry = model.getScanHistory();
-
-        u32 address = begin_address;
-
-        size_t match_counter = 0;
-        size_t sleep_counter = 0;
-        while (address < end_address) {
-            std::string mem_val;
-
-            bool is_match =
-                compareString(entry.m_scan_buffer, address, val_a, profile.m_scan_op, &mem_val);
-            if (is_match) {
-                model.makeScanIndex(address);
-                match_counter += 1;
-            }
-
-            address += 1;
-
-            if (sleep_counter++ >= profile.m_sleep_granularity) {
-                sleep_counter = 0;
-                std::this_thread::sleep_for(std::chrono::milliseconds(profile.m_sleep_duration));
-            }
-        }
-
-        return match_counter;
-    }
-
-    static size_t scanAllByteArrays(MemScanModel &model,
-                                    const MemScanModel::MemScanProfile &profile) {
-        const u32 begin_address = profile.m_search_start;
-        const u32 end_address   = begin_address + profile.m_search_size;
-
-        if (profile.m_search_size == 0 || begin_address < 0x80000000 ||
-            end_address >= (0x80000000 | DolphinHookManager::instance().getMemorySize())) {
-            return 0;
-        }
-
-        auto result = profile.m_scan_a.get<Buffer>();
-        if (!result.has_value()) {
-            return 0;
-        }
-
-        const Buffer &val_a = result.value();
-
-        // Reserve an estimate allocation that should be sane.
-        size_t O_estimate = profile.m_search_size / 1000;
-
-        if (!model.reserveScan(profile.m_scan_type, val_a.size(), O_estimate)) {
-            return 0;
-        }
-
-        if (!model.captureMemForCache()) {
-            return 0;
-        }
-
-        const MemScanModel::ScanHistoryEntry &entry = model.getScanHistory();
-
-        u32 address = begin_address;
-
-        size_t match_counter = 0;
-        size_t sleep_counter = 0;
-        while (address < end_address) {
-            Buffer mem_val;
-
-            bool is_match =
-                compareBytes(entry.m_scan_buffer, address, val_a, profile.m_scan_op, &mem_val);
-            if (is_match) {
-                model.makeScanIndex(address);
-                match_counter += 1;
-            }
-
-            address += 1;
-
-            if (sleep_counter++ >= profile.m_sleep_granularity) {
-                sleep_counter = 0;
-                std::this_thread::sleep_for(std::chrono::milliseconds(profile.m_sleep_duration));
-            }
+            // if (sleep_counter++ >= profile.m_sleep_granularity) {
+            //     sleep_counter = 0;
+            //     std::this_thread::sleep_for(std::chrono::milliseconds(profile.m_sleep_duration));
+            // }
         }
 
         return match_counter;
@@ -409,7 +305,8 @@ namespace Toolbox {
 
     template <typename T>
     static size_t scanExistingSingles(MemScanModel &model,
-                                      const MemScanModel::MemScanProfile &profile) {
+                                      const MemScanModel::MemScanProfile &profile,
+                                      std::function<void(double)> prog_setter) {
         const u32 val_width = profile.m_scan_a.computeSize();
 
         T val_a = profile.m_scan_a.get<T>().value_or(T());
@@ -449,136 +346,14 @@ namespace Toolbox {
                 match_counter += 1;
             }
 
-            if (sleep_counter++ >= profile.m_sleep_granularity) {
-                sleep_counter = 0;
-                std::this_thread::sleep_for(std::chrono::milliseconds(profile.m_sleep_duration));
-            }
+            // if (sleep_counter++ >= profile.m_sleep_granularity) {
+            //     sleep_counter = 0;
+            //     std::this_thread::sleep_for(std::chrono::milliseconds(profile.m_sleep_duration));
+            // }
 
             i += 1;
-        }
 
-        return match_counter;
-    }
-
-    static size_t scanExistingStrings(MemScanModel &model,
-                                      const MemScanModel::MemScanProfile &profile) {
-        const u32 begin_address = profile.m_search_start;
-        const u32 end_address   = begin_address + profile.m_search_size;
-
-        if (profile.m_search_size == 0 || begin_address < 0x80000000 ||
-            end_address >= (0x80000000 | DolphinHookManager::instance().getMemorySize())) {
-            return {};
-        }
-
-        std::string val_a = profile.m_scan_a.get<std::string>().value_or(std::string());
-        if (val_a.empty()) {
-            return {};
-        }
-
-        u32 address = begin_address;
-
-        size_t match_counter = 0;
-        size_t sleep_counter = 0;
-
-        const MemScanModel::ScanHistoryEntry &recent_scan = model.getScanHistory();
-
-        size_t row_count = recent_scan.m_scan_results.size();
-
-        if (!model.reserveScan(profile.m_scan_type, val_a.size(), row_count)) {
-            return 0;
-        }
-
-        if (!model.captureMemForCache()) {
-            return 0;
-        }
-
-        const MemScanModel::ScanHistoryEntry &current_scan = model.getScanHistory();
-
-        size_t i = 0;
-        while (i < row_count) {
-            const MemScanResult &result = recent_scan.m_scan_results[i];
-            u32 address                 = result.getAddress();
-
-            MetaValue value = GetMetaValueFromMemCache(recent_scan, result);
-
-            std::string mem_val;
-
-            bool is_match = compareString(current_scan.m_scan_buffer, address, val_a,
-                                          profile.m_scan_op, &mem_val);
-            if (is_match) {
-                model.makeScanIndex(address);
-                match_counter += 1;
-            }
-
-            if (sleep_counter++ >= profile.m_sleep_granularity) {
-                sleep_counter = 0;
-                std::this_thread::sleep_for(std::chrono::milliseconds(profile.m_sleep_duration));
-            }
-
-            i += 1;
-        }
-
-        return match_counter;
-    }
-
-    static size_t scanExistingByteArrays(MemScanModel &model,
-                                         const MemScanModel::MemScanProfile &profile) {
-        const u32 begin_address = profile.m_search_start;
-        const u32 end_address   = begin_address + profile.m_search_size;
-
-        if (profile.m_search_size == 0 || begin_address < 0x80000000 ||
-            end_address >= (0x80000000 | DolphinHookManager::instance().getMemorySize())) {
-            return {};
-        }
-
-        auto result = profile.m_scan_a.get<Buffer>();
-        if (!result.has_value()) {
-            return 0;
-        }
-
-        const Buffer &val_a = result.value();
-
-        u32 address = begin_address;
-
-        size_t match_counter = 0;
-        size_t sleep_counter = 0;
-
-        const MemScanModel::ScanHistoryEntry &recent_scan = model.getScanHistory();
-
-        size_t row_count = recent_scan.m_scan_results.size();
-
-        if (!model.reserveScan(profile.m_scan_type, val_a.size(), row_count)) {
-            return 0;
-        }
-
-        if (!model.captureMemForCache()) {
-            return 0;
-        }
-
-        const MemScanModel::ScanHistoryEntry &current_scan = model.getScanHistory();
-
-        size_t i = 0;
-        while (i < row_count) {
-            const MemScanResult &result = recent_scan.m_scan_results[i];
-            u32 address                 = result.getAddress();
-
-            MetaValue value = GetMetaValueFromMemCache(recent_scan, result);
-
-            Buffer mem_val;
-
-            bool is_match = compareBytes(current_scan.m_scan_buffer, address, val_a,
-                                         profile.m_scan_op, &mem_val);
-            if (is_match) {
-                model.makeScanIndex(address);
-                match_counter += 1;
-            }
-
-            if (sleep_counter++ >= profile.m_sleep_granularity) {
-                sleep_counter = 0;
-                std::this_thread::sleep_for(std::chrono::milliseconds(profile.m_sleep_duration));
-            }
-
-            i += 1;
+            prog_setter((double)i / (double)row_count);
         }
 
         return match_counter;
@@ -697,6 +472,12 @@ namespace Toolbox {
         }
 
         m_history_size = 0;
+    }
+
+    bool MemScanModel::isScanBusy() const { return m_scanner->tIsAlive(); }
+
+    double MemScanModel::getScanProgress() const {
+        return isScanBusy() ? m_scanner->getProgress() : 0.0;
     }
 
     bool MemScanModel::requestScan(u32 search_start, u32 search_size, MetaType val_type,
@@ -1093,12 +874,11 @@ namespace Toolbox {
         }
 
         const ScanHistoryEntry &this_scan = getScanHistory(result->getHistoryIndex());
-        
+
         DolphinHookManager &manager = DolphinHookManager::instance();
         Buffer mem_buf;
         mem_buf.setBuf(manager.getMemoryView(), manager.getMemorySize());
 
-        
         u32 address = result->getAddress();
         switch (this_scan.m_scan_type) {
         case MetaType::BOOL:
@@ -1198,6 +978,8 @@ namespace Toolbox {
     }
 
     size_t MemoryScanner::searchAddressSpan(const MemScanModel::MemScanProfile &profile) {
+        setProgress(0.0);
+
         if (!m_scan_model) {
             return 0;
         }
@@ -1207,23 +989,23 @@ namespace Toolbox {
 
             switch (profile.m_scan_type) {
             case MetaType::BOOL:
-                return scanAllSingles<bool>(*m_scan_model, profile);
+                return scanAllBools(*m_scan_model, profile);
             case MetaType::S8:
-                return scanAllSingles<s8>(*m_scan_model, profile);
+                return scanAllS8s(*m_scan_model, profile);
             case MetaType::U8:
-                return scanAllSingles<u8>(*m_scan_model, profile);
+                return scanAllU8s(*m_scan_model, profile);
             case MetaType::S16:
-                return scanAllSingles<s16>(*m_scan_model, profile);
+                return scanAllS16s(*m_scan_model, profile);
             case MetaType::U16:
-                return scanAllSingles<u16>(*m_scan_model, profile);
+                return scanAllU16s(*m_scan_model, profile);
             case MetaType::S32:
-                return scanAllSingles<s32>(*m_scan_model, profile);
+                return scanAllS32s(*m_scan_model, profile);
             case MetaType::U32:
-                return scanAllSingles<u32>(*m_scan_model, profile);
+                return scanAllU32s(*m_scan_model, profile);
             case MetaType::F32:
-                return scanAllSingles<f32>(*m_scan_model, profile);
+                return scanAllF32s(*m_scan_model, profile);
             case MetaType::F64:
-                return scanAllSingles<f64>(*m_scan_model, profile);
+                return scanAllF64s(*m_scan_model, profile);
             case MetaType::STRING:
                 return scanAllStrings(*m_scan_model, profile);
             case MetaType::UNKNOWN:
@@ -1234,23 +1016,23 @@ namespace Toolbox {
         } else {
             switch (profile.m_scan_type) {
             case MetaType::BOOL:
-                return scanExistingSingles<bool>(*m_scan_model, profile);
+                return scanExistingBools(*m_scan_model, profile);
             case MetaType::S8:
-                return scanExistingSingles<s8>(*m_scan_model, profile);
+                return scanExistingS8s(*m_scan_model, profile);
             case MetaType::U8:
-                return scanExistingSingles<u8>(*m_scan_model, profile);
+                return scanExistingU8s(*m_scan_model, profile);
             case MetaType::S16:
-                return scanExistingSingles<s16>(*m_scan_model, profile);
+                return scanExistingS16s(*m_scan_model, profile);
             case MetaType::U16:
-                return scanExistingSingles<u16>(*m_scan_model, profile);
+                return scanExistingU16s(*m_scan_model, profile);
             case MetaType::S32:
-                return scanExistingSingles<s32>(*m_scan_model, profile);
+                return scanExistingS32s(*m_scan_model, profile);
             case MetaType::U32:
-                return scanExistingSingles<u32>(*m_scan_model, profile);
+                return scanExistingU32s(*m_scan_model, profile);
             case MetaType::F32:
-                return scanExistingSingles<f32>(*m_scan_model, profile);
+                return scanExistingF32s(*m_scan_model, profile);
             case MetaType::F64:
-                return scanExistingSingles<f64>(*m_scan_model, profile);
+                return scanExistingF64s(*m_scan_model, profile);
             case MetaType::STRING:
                 return scanExistingStrings(*m_scan_model, profile);
             case MetaType::UNKNOWN:
@@ -1259,6 +1041,336 @@ namespace Toolbox {
                 return 0;
             }
         }
+    }
+
+    size_t MemoryScanner::scanAllBools(MemScanModel &model,
+                                       const MemScanModel::MemScanProfile &profile) {
+        return scanAllSingles<bool>(model, profile, [this](double p) { setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanAllS8s(MemScanModel &model,
+                                     const MemScanModel::MemScanProfile &profile) {
+        return scanAllSingles<s8>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanAllU8s(MemScanModel &model,
+                                     const MemScanModel::MemScanProfile &profile) {
+        return scanAllSingles<u8>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanAllS16s(MemScanModel &model,
+                                      const MemScanModel::MemScanProfile &profile) {
+        return scanAllSingles<s16>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanAllU16s(MemScanModel &model,
+                                      const MemScanModel::MemScanProfile &profile) {
+        return scanAllSingles<u16>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanAllS32s(MemScanModel &model,
+                                      const MemScanModel::MemScanProfile &profile) {
+        return scanAllSingles<s32>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanAllU32s(MemScanModel &model,
+                                      const MemScanModel::MemScanProfile &profile) {
+        return scanAllSingles<u32>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanAllF32s(MemScanModel &model,
+                                      const MemScanModel::MemScanProfile &profile) {
+        return scanAllSingles<f32>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanAllF64s(MemScanModel &model,
+                                      const MemScanModel::MemScanProfile &profile) {
+        return scanAllSingles<f64>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanAllStrings(MemScanModel &model,
+                                         const MemScanModel::MemScanProfile &profile) {
+        const u32 begin_address = profile.m_search_start;
+        const u32 end_address   = begin_address + profile.m_search_size;
+
+        if (profile.m_search_size == 0 || begin_address < 0x80000000 ||
+            end_address >= (0x80000000 | DolphinHookManager::instance().getMemorySize())) {
+            return 0;
+        }
+
+        std::string val_a = profile.m_scan_a.get<std::string>().value_or(std::string());
+        if (val_a.empty()) {
+            return 0;
+        }
+
+        // Reserve an estimate allocation that should be sane.
+        size_t O_estimate = profile.m_search_size / 1000;
+
+        if (!model.reserveScan(profile.m_scan_type, val_a.size(), O_estimate)) {
+            return 0;
+        }
+
+        if (!model.captureMemForCache()) {
+            return 0;
+        }
+
+        const MemScanModel::ScanHistoryEntry &entry = model.getScanHistory();
+
+        u32 address = begin_address;
+
+        size_t match_counter = 0;
+        size_t sleep_counter = 0;
+        while (address < end_address) {
+            std::string mem_val;
+
+            bool is_match =
+                compareString(entry.m_scan_buffer, address, val_a, profile.m_scan_op, &mem_val);
+            if (is_match) {
+                model.makeScanIndex(address);
+                match_counter += 1;
+            }
+
+            address += 1;
+
+            setProgress((double)(address - begin_address) / (double)profile.m_search_size);
+
+            // if (sleep_counter++ >= profile.m_sleep_granularity) {
+            //     sleep_counter = 0;
+            //     std::this_thread::sleep_for(std::chrono::milliseconds(profile.m_sleep_duration));
+            // }
+        }
+
+        return match_counter;
+    }
+
+    size_t MemoryScanner::scanAllByteArrays(MemScanModel &model,
+                                            const MemScanModel::MemScanProfile &profile) {
+        const u32 begin_address = profile.m_search_start;
+        const u32 end_address   = begin_address + profile.m_search_size;
+
+        if (profile.m_search_size == 0 || begin_address < 0x80000000 ||
+            end_address >= (0x80000000 | DolphinHookManager::instance().getMemorySize())) {
+            return 0;
+        }
+
+        auto result = profile.m_scan_a.get<Buffer>();
+        if (!result.has_value()) {
+            return 0;
+        }
+
+        const Buffer &val_a = result.value();
+
+        // Reserve an estimate allocation that should be sane.
+        size_t O_estimate = profile.m_search_size / 1000;
+
+        if (!model.reserveScan(profile.m_scan_type, val_a.size(), O_estimate)) {
+            return 0;
+        }
+
+        if (!model.captureMemForCache()) {
+            return 0;
+        }
+
+        const MemScanModel::ScanHistoryEntry &entry = model.getScanHistory();
+
+        u32 address = begin_address;
+
+        size_t match_counter = 0;
+        size_t sleep_counter = 0;
+        while (address < end_address) {
+            Buffer mem_val;
+
+            bool is_match =
+                compareBytes(entry.m_scan_buffer, address, val_a, profile.m_scan_op, &mem_val);
+            if (is_match) {
+                model.makeScanIndex(address);
+                match_counter += 1;
+            }
+
+            address += 1;
+
+            setProgress((double)(address - begin_address) / (double)profile.m_search_size);
+
+            // if (sleep_counter++ >= profile.m_sleep_granularity) {
+            //     sleep_counter = 0;
+            //     std::this_thread::sleep_for(std::chrono::milliseconds(profile.m_sleep_duration));
+            // }
+        }
+
+        return match_counter;
+    }
+
+    size_t MemoryScanner::scanExistingBools(MemScanModel &model,
+                                            const MemScanModel::MemScanProfile &profile) {
+        return scanExistingSingles<bool>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanExistingS8s(MemScanModel &model,
+                                          const MemScanModel::MemScanProfile &profile) {
+        return scanExistingSingles<s8>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanExistingU8s(MemScanModel &model,
+                                          const MemScanModel::MemScanProfile &profile) {
+        return scanExistingSingles<u8>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanExistingS16s(MemScanModel &model,
+                                           const MemScanModel::MemScanProfile &profile) {
+        return scanExistingSingles<s16>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanExistingU16s(MemScanModel &model,
+                                           const MemScanModel::MemScanProfile &profile) {
+        return scanExistingSingles<u16>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanExistingS32s(MemScanModel &model,
+                                           const MemScanModel::MemScanProfile &profile) {
+        return scanExistingSingles<s32>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanExistingU32s(MemScanModel &model,
+                                           const MemScanModel::MemScanProfile &profile) {
+        return scanExistingSingles<u32>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanExistingF32s(MemScanModel &model,
+                                           const MemScanModel::MemScanProfile &profile) {
+        return scanExistingSingles<f32>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanExistingF64s(MemScanModel &model,
+                                           const MemScanModel::MemScanProfile &profile) {
+        return scanExistingSingles<f64>(model, profile, [this](double p){ setProgress(p); });
+    }
+
+    size_t MemoryScanner::scanExistingStrings(MemScanModel &model,
+                                              const MemScanModel::MemScanProfile &profile) {
+        const u32 begin_address = profile.m_search_start;
+        const u32 end_address   = begin_address + profile.m_search_size;
+
+        if (profile.m_search_size == 0 || begin_address < 0x80000000 ||
+            end_address >= (0x80000000 | DolphinHookManager::instance().getMemorySize())) {
+            return {};
+        }
+
+        std::string val_a = profile.m_scan_a.get<std::string>().value_or(std::string());
+        if (val_a.empty()) {
+            return {};
+        }
+
+        u32 address = begin_address;
+
+        size_t match_counter = 0;
+        size_t sleep_counter = 0;
+
+        const MemScanModel::ScanHistoryEntry &recent_scan = model.getScanHistory();
+
+        size_t row_count = recent_scan.m_scan_results.size();
+
+        if (!model.reserveScan(profile.m_scan_type, val_a.size(), row_count)) {
+            return 0;
+        }
+
+        if (!model.captureMemForCache()) {
+            return 0;
+        }
+
+        const MemScanModel::ScanHistoryEntry &current_scan = model.getScanHistory();
+
+        size_t i = 0;
+        while (i < row_count) {
+            const MemScanResult &result = recent_scan.m_scan_results[i];
+            u32 address                 = result.getAddress();
+
+            MetaValue value = GetMetaValueFromMemCache(recent_scan, result);
+
+            std::string mem_val;
+
+            bool is_match = compareString(current_scan.m_scan_buffer, address, val_a,
+                                          profile.m_scan_op, &mem_val);
+            if (is_match) {
+                model.makeScanIndex(address);
+                match_counter += 1;
+            }
+
+            // if (sleep_counter++ >= profile.m_sleep_granularity) {
+            //     sleep_counter = 0;
+            //     std::this_thread::sleep_for(std::chrono::milliseconds(profile.m_sleep_duration));
+            // }
+
+            i += 1;
+
+            setProgress((double)i / (double)row_count);
+        }
+
+        return match_counter;
+    }
+
+    size_t MemoryScanner::scanExistingByteArrays(MemScanModel &model,
+                                                 const MemScanModel::MemScanProfile &profile) {
+        const u32 begin_address = profile.m_search_start;
+        const u32 end_address   = begin_address + profile.m_search_size;
+
+        if (profile.m_search_size == 0 || begin_address < 0x80000000 ||
+            end_address >= (0x80000000 | DolphinHookManager::instance().getMemorySize())) {
+            return {};
+        }
+
+        auto result = profile.m_scan_a.get<Buffer>();
+        if (!result.has_value()) {
+            return 0;
+        }
+
+        const Buffer &val_a = result.value();
+
+        u32 address = begin_address;
+
+        size_t match_counter = 0;
+        size_t sleep_counter = 0;
+
+        const MemScanModel::ScanHistoryEntry &recent_scan = model.getScanHistory();
+
+        size_t row_count = recent_scan.m_scan_results.size();
+
+        if (!model.reserveScan(profile.m_scan_type, val_a.size(), row_count)) {
+            return 0;
+        }
+
+        if (!model.captureMemForCache()) {
+            return 0;
+        }
+
+        const MemScanModel::ScanHistoryEntry &current_scan = model.getScanHistory();
+
+        size_t i = 0;
+        while (i < row_count) {
+            const MemScanResult &result = recent_scan.m_scan_results[i];
+            u32 address                 = result.getAddress();
+
+            MetaValue value = GetMetaValueFromMemCache(recent_scan, result);
+
+            Buffer mem_val;
+
+            bool is_match = compareBytes(current_scan.m_scan_buffer, address, val_a,
+                                         profile.m_scan_op, &mem_val);
+            if (is_match) {
+                model.makeScanIndex(address);
+                match_counter += 1;
+            }
+
+            if (sleep_counter++ >= profile.m_sleep_granularity) {
+                sleep_counter = 0;
+                std::this_thread::sleep_for(std::chrono::milliseconds(profile.m_sleep_duration));
+            }
+
+            i += 1;
+
+            setProgress((double)i / (double)row_count);
+        }
+
+        return match_counter;
     }
 
 }  // namespace Toolbox
