@@ -77,6 +77,8 @@ namespace Toolbox::Dolphin {
         Result<bool> unhook();
         Result<bool> refresh();
 
+        u32 getAddressAsOffset(u32 address) const { return address & 0x7FFFFFFF; }
+
         void *getMemoryView() const { return isHooked() ? m_mem_view : nullptr; }
         size_t getMemorySize() const { return isHooked() ? 0x1800000 : 0; }
 

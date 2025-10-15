@@ -101,6 +101,7 @@ namespace Toolbox {
             }
 
             m_size = 0;
+            return true;
         }
 
         bool resize(uint32_t size) {
@@ -182,6 +183,17 @@ namespace Toolbox {
             free();
             m_buf.m_ext = (byte_t *)buf;
             m_owns_buf  =  false;
+            m_size      = size;
+        }
+
+        void setBuf(const void *buf, uint32_t size) {
+            if (m_buf.m_ext == (byte_t *)buf) {
+                return;
+            }
+
+            free();
+            m_buf.m_ext = (byte_t *)buf;
+            m_owns_buf  = false;
             m_size      = size;
         }
 

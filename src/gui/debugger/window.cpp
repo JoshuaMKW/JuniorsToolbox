@@ -759,7 +759,7 @@ namespace Toolbox::UI {
                         m_scan_active = m_scan_model->requestScan(
                             address_begin, address_end - address_begin, m_scan_type,
                             m_scan_operator, str_a, str_b, radix, m_scan_enforce_alignment, false,
-                            500000, 8);
+                            500000, 16);
                         if (!m_scan_active) {
                             TOOLBOX_ERROR_V(
                                 "[MEM_SCANNER] Failed to initialize the requested memory scan!");
@@ -833,7 +833,7 @@ namespace Toolbox::UI {
                         m_scan_active = m_scan_model->requestScan(
                             address_begin, address_end - address_begin, m_scan_type,
                             m_scan_operator, str_a, str_b, radix, m_scan_enforce_alignment, true,
-                            500000, 8);
+                            500000, 16);
                         if (!m_scan_active) {
                             TOOLBOX_ERROR_V(
                                 "[MEM_SCANNER] Failed to initialize the requested memory scan!");

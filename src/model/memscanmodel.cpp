@@ -11,13 +11,23 @@ using namespace Toolbox::Object;
 
 namespace Toolbox {
 
-    template <typename T> static T readSingle(u32 address) {
+    template <typename T> static T readSingle(const Buffer &mem_buf, u32 address) {
         static_assert(std::is_integral_v<T> || std::is_floating_point_v<T>,
                       "This method requires simple data");
 
-        T mem_val;
         DolphinHookManager &manager = DolphinHookManager::instance();
-        manager.readBytes(reinterpret_cast<char *>(&mem_val), address, sizeof(T));
+        u32 addr_ofs                = manager.getAddressAsOffset(address);
+
+        const char *mem_handle = mem_buf.buf<char>() + addr_ofs;
+        uint32_t mem_size      = mem_buf.size();
+
+        // Bounds check
+        if (addr_ofs + sizeof(T) >= mem_size) {
+            return T();
+        }
+
+        T mem_val;
+        std::memcpy(&mem_val, mem_handle, sizeof(T));
 
         if constexpr (std::is_integral_v<T>) {
             mem_val = std::byteswap(mem_val);
@@ -30,18 +40,33 @@ namespace Toolbox {
         return mem_val;
     }
 
-    static std::string readString(u32 address, size_t val_size) {
+    static std::string readString(const Buffer &mem_buf, u32 address, size_t val_size) {
+
         DolphinHookManager &manager = DolphinHookManager::instance();
-        const char *mem_handle =
-            static_cast<const char *>(manager.getMemoryView()) + (address & 0x7FFFFFFF);
+        u32 addr_ofs                = manager.getAddressAsOffset(address);
+
+        const char *mem_handle = mem_buf.buf<char>() + addr_ofs;
+        uint32_t mem_size      = mem_buf.size();
+
+        // Bounds check
+        if (addr_ofs + val_size >= mem_size) {
+            return std::string();
+        }
 
         return std::string(mem_handle, val_size);
     }
 
-    static Buffer readBytes(u32 address, size_t val_size) {
+    static Buffer readBytes(const Buffer &mem_buf, u32 address, size_t val_size) {
         DolphinHookManager &manager = DolphinHookManager::instance();
-        const char *mem_handle =
-            static_cast<const char *>(manager.getMemoryView()) + (address & 0x7FFFFFFF);
+        u32 addr_ofs                = manager.getAddressAsOffset(address);
+
+        const char *mem_handle = mem_buf.buf<char>() + addr_ofs;
+        uint32_t mem_size      = mem_buf.size();
+
+        // Bounds check
+        if (addr_ofs + val_size >= mem_size) {
+            return Buffer();
+        }
 
         Buffer buf;
         buf.alloc(val_size);
@@ -50,15 +75,56 @@ namespace Toolbox {
         return buf;
     }
 
+    static MetaValue GetMetaValueFromMemCache(const MemScanModel::ScanHistoryEntry &entry,
+                                              const MemScanResult &result) {
+        u32 address = result.getAddress();
+        switch (entry.m_scan_type) {
+        case MetaType::BOOL:
+            return MetaValue(readSingle<bool>(entry.m_scan_buffer, address));
+        case MetaType::S8:
+            return MetaValue(readSingle<s8>(entry.m_scan_buffer, address));
+        case MetaType::U8:
+            return MetaValue(readSingle<u8>(entry.m_scan_buffer, address));
+        case MetaType::S16:
+            return MetaValue(readSingle<s16>(entry.m_scan_buffer, address));
+        case MetaType::U16:
+            return MetaValue(readSingle<u16>(entry.m_scan_buffer, address));
+        case MetaType::S32:
+            return MetaValue(readSingle<s32>(entry.m_scan_buffer, address));
+        case MetaType::U32:
+            return MetaValue(readSingle<u32>(entry.m_scan_buffer, address));
+        case MetaType::F32:
+            return MetaValue(readSingle<f32>(entry.m_scan_buffer, address));
+        case MetaType::F64:
+            return MetaValue(readSingle<f64>(entry.m_scan_buffer, address));
+        case MetaType::STRING:
+            return MetaValue(readString(entry.m_scan_buffer, address, entry.m_scan_size));
+        case MetaType::UNKNOWN:
+            return MetaValue(readBytes(entry.m_scan_buffer, address, entry.m_scan_size));
+        default:
+            return MetaValue(MetaType::UNKNOWN);
+        }
+    }
+
     template <typename T>
-    static bool compareSingle(u32 address, const T &a, const T &b, const T &last,
-                              MemScanModel::ScanOperator op, T *out) {
+    static bool compareSingle(const Buffer &mem_buf, u32 address, const T &a, const T &b,
+                              const T &last, MemScanModel::ScanOperator op, T *out) {
         static_assert(std::is_integral_v<T> || std::is_floating_point_v<T>,
                       "This method requires simple data");
 
-        T mem_val;
         DolphinHookManager &manager = DolphinHookManager::instance();
-        manager.readBytes(reinterpret_cast<char *>(&mem_val), address, sizeof(T));
+        u32 addr_ofs                = manager.getAddressAsOffset(address);
+
+        const char *mem_handle = mem_buf.buf<char>() + addr_ofs;
+        uint32_t mem_size      = mem_buf.size();
+
+        // Bounds check
+        if (addr_ofs + sizeof(a) >= mem_size) {
+            return false;
+        }
+
+        T mem_val;
+        std::memcpy(&mem_val, mem_handle, sizeof(a));
 
         if constexpr (std::is_integral_v<T>) {
             mem_val = std::byteswap(mem_val);
@@ -100,16 +166,22 @@ namespace Toolbox {
         return false;
     }
 
-    static bool compareString(u32 address, const std::string &a, MemScanModel::ScanOperator op,
-                              std::string *out) {
+    static bool compareString(const Buffer &mem_buf, u32 address, const std::string &a,
+                              MemScanModel::ScanOperator op, std::string *out) {
         if (op != MemScanModel::ScanOperator::OP_EXACT) {
             return false;
         }
 
         DolphinHookManager &manager = DolphinHookManager::instance();
-        const char *mem_handle =
-            static_cast<const char *>(manager.getMemoryView()) + (address & 0x7FFFFFFF);
-        size_t mem_size = manager.getMemorySize();
+        u32 addr_ofs                = manager.getAddressAsOffset(address);
+
+        const char *mem_handle = mem_buf.buf<char>() + addr_ofs;
+        uint32_t mem_size      = mem_buf.size();
+
+        // Bounds check
+        if (addr_ofs + a.size() >= mem_size) {
+            return false;
+        }
 
         if (out) {
             out->reserve(a.size());
@@ -129,16 +201,22 @@ namespace Toolbox {
         return true;
     }
 
-    static bool compareBytes(u32 address, const Buffer &a, MemScanModel::ScanOperator op,
-                             Buffer *out) {
+    static bool compareBytes(const Buffer &mem_buf, u32 address, const Buffer &a,
+                             MemScanModel::ScanOperator op, Buffer *out) {
         if (op != MemScanModel::ScanOperator::OP_EXACT) {
             return false;
         }
 
         DolphinHookManager &manager = DolphinHookManager::instance();
-        const char *mem_handle =
-            static_cast<const char *>(manager.getMemoryView()) + (address & 0x7FFFFFFF);
-        size_t mem_size = manager.getMemorySize();
+        u32 addr_ofs                = manager.getAddressAsOffset(address);
+
+        const char *mem_handle = mem_buf.buf<char>() + addr_ofs;
+        uint32_t mem_size      = mem_buf.size();
+
+        // Bounds check
+        if (addr_ofs + a.size() >= mem_size) {
+            return false;
+        }
 
         if (out) {
             out->alloc(a.size());
@@ -182,9 +260,15 @@ namespace Toolbox {
                 val_width;  // Since alignment is forced, each entry has to be n bytes apart.
         }
 
-        if (!model.reserveScan(profile.m_scan_type, O_estimate)) {
+        if (!model.reserveScan(profile.m_scan_type, sizeof(T), O_estimate)) {
             return 0;
         }
+
+        if (!model.captureMemForCache()) {
+            return 0;
+        }
+
+        const MemScanModel::ScanHistoryEntry &entry = model.getScanHistory();
 
         T val_a = profile.m_scan_a.get<T>().value_or(T());
         T val_b = profile.m_scan_b.get<T>().value_or(T());
@@ -198,10 +282,10 @@ namespace Toolbox {
 
             T mem_val;
             bool is_match =
-                compareSingle<T>(address, val_a, val_b, T() /*this is the previous scan*/,
-                                 profile.m_scan_op, &mem_val);
+                compareSingle<T>(entry.m_scan_buffer, address, val_a, val_b,
+                                 T() /*this is the previous scan*/, profile.m_scan_op, &mem_val);
             if (is_match) {
-                model.makeScanIndex(address, MetaValue(mem_val));
+                model.makeScanIndex(address);
                 match_counter += 1;
             }
 
@@ -233,9 +317,15 @@ namespace Toolbox {
         // Reserve an estimate allocation that should be sane.
         size_t O_estimate = profile.m_search_size / 1000;
 
-        if (!model.reserveScan(profile.m_scan_type, O_estimate)) {
+        if (!model.reserveScan(profile.m_scan_type, val_a.size(), O_estimate)) {
             return 0;
         }
+
+        if (!model.captureMemForCache()) {
+            return 0;
+        }
+
+        const MemScanModel::ScanHistoryEntry &entry = model.getScanHistory();
 
         u32 address = begin_address;
 
@@ -244,9 +334,10 @@ namespace Toolbox {
         while (address < end_address) {
             std::string mem_val;
 
-            bool is_match = compareString(address, val_a, profile.m_scan_op, &mem_val);
+            bool is_match =
+                compareString(entry.m_scan_buffer, address, val_a, profile.m_scan_op, &mem_val);
             if (is_match) {
-                model.makeScanIndex(address, MetaValue(mem_val));
+                model.makeScanIndex(address);
                 match_counter += 1;
             }
 
@@ -271,14 +362,25 @@ namespace Toolbox {
             return 0;
         }
 
-        // Reserve an estimate allocation that should be sane.
-        size_t O_estimate = profile.m_search_size / 1000;
-
-        if (!model.reserveScan(profile.m_scan_type, O_estimate)) {
+        auto result = profile.m_scan_a.get<Buffer>();
+        if (!result.has_value()) {
             return 0;
         }
 
-        Buffer val_a = profile.m_scan_a.get<Buffer>().value_or(Buffer());
+        const Buffer &val_a = result.value();
+
+        // Reserve an estimate allocation that should be sane.
+        size_t O_estimate = profile.m_search_size / 1000;
+
+        if (!model.reserveScan(profile.m_scan_type, val_a.size(), O_estimate)) {
+            return 0;
+        }
+
+        if (!model.captureMemForCache()) {
+            return 0;
+        }
+
+        const MemScanModel::ScanHistoryEntry &entry = model.getScanHistory();
 
         u32 address = begin_address;
 
@@ -287,9 +389,10 @@ namespace Toolbox {
         while (address < end_address) {
             Buffer mem_val;
 
-            bool is_match = compareBytes(address, val_a, profile.m_scan_op, &mem_val);
+            bool is_match =
+                compareBytes(entry.m_scan_buffer, address, val_a, profile.m_scan_op, &mem_val);
             if (is_match) {
-                model.makeScanIndex(address, MetaValue(mem_val));
+                model.makeScanIndex(address);
                 match_counter += 1;
             }
 
@@ -319,23 +422,30 @@ namespace Toolbox {
 
         size_t row_count = recent_scan.m_scan_results.size();
 
-        if (!model.reserveScan(profile.m_scan_type, row_count)) {
+        if (!model.reserveScan(profile.m_scan_type, sizeof(T), row_count)) {
             return 0;
         }
+
+        if (!model.captureMemForCache()) {
+            return 0;
+        }
+
+        const MemScanModel::ScanHistoryEntry &current_scan = model.getScanHistory();
 
         size_t i = 0;
         while (i < row_count) {
             const MemScanResult &result = recent_scan.m_scan_results[i];
             u32 address                 = result.getAddress();
-            MetaValue value             = MetaValue(recent_scan.m_scan_type, result.getValueBuf());
+
+            MetaValue value = GetMetaValueFromMemCache(recent_scan, result);
 
             T val = value.get<T>().value_or(T());
             T mem_val;
 
-            bool is_match =
-                compareSingle<T>(address, val_a, val_b, val, profile.m_scan_op, &mem_val);
+            bool is_match = compareSingle<T>(current_scan.m_scan_buffer, address, val_a, val_b, val,
+                                             profile.m_scan_op, &mem_val);
             if (is_match) {
-                model.makeScanIndex(address, MetaValue(mem_val));
+                model.makeScanIndex(address);
                 match_counter += 1;
             }
 
@@ -374,21 +484,29 @@ namespace Toolbox {
 
         size_t row_count = recent_scan.m_scan_results.size();
 
-        if (!model.reserveScan(profile.m_scan_type, row_count)) {
+        if (!model.reserveScan(profile.m_scan_type, val_a.size(), row_count)) {
             return 0;
         }
+
+        if (!model.captureMemForCache()) {
+            return 0;
+        }
+
+        const MemScanModel::ScanHistoryEntry &current_scan = model.getScanHistory();
 
         size_t i = 0;
         while (i < row_count) {
             const MemScanResult &result = recent_scan.m_scan_results[i];
             u32 address                 = result.getAddress();
-            MetaValue value             = MetaValue(recent_scan.m_scan_type, result.getValueBuf());
+
+            MetaValue value = GetMetaValueFromMemCache(recent_scan, result);
 
             std::string mem_val;
 
-            bool is_match = compareString(address, val_a, profile.m_scan_op, &mem_val);
+            bool is_match = compareString(current_scan.m_scan_buffer, address, val_a,
+                                          profile.m_scan_op, &mem_val);
             if (is_match) {
-                model.makeScanIndex(address, MetaValue(mem_val));
+                model.makeScanIndex(address);
                 match_counter += 1;
             }
 
@@ -413,7 +531,12 @@ namespace Toolbox {
             return {};
         }
 
-        Buffer val_a = profile.m_scan_a.get<Buffer>().value_or(Buffer());
+        auto result = profile.m_scan_a.get<Buffer>();
+        if (!result.has_value()) {
+            return 0;
+        }
+
+        const Buffer &val_a = result.value();
 
         u32 address = begin_address;
 
@@ -424,21 +547,29 @@ namespace Toolbox {
 
         size_t row_count = recent_scan.m_scan_results.size();
 
-        if (!model.reserveScan(profile.m_scan_type, row_count)) {
+        if (!model.reserveScan(profile.m_scan_type, val_a.size(), row_count)) {
             return 0;
         }
+
+        if (!model.captureMemForCache()) {
+            return 0;
+        }
+
+        const MemScanModel::ScanHistoryEntry &current_scan = model.getScanHistory();
 
         size_t i = 0;
         while (i < row_count) {
             const MemScanResult &result = recent_scan.m_scan_results[i];
             u32 address                 = result.getAddress();
-            MetaValue value             = MetaValue(recent_scan.m_scan_type, result.getValueBuf());
+
+            MetaValue value = GetMetaValueFromMemCache(recent_scan, result);
 
             Buffer mem_val;
 
-            bool is_match = compareBytes(address, val_a, profile.m_scan_op, &mem_val);
+            bool is_match = compareBytes(current_scan.m_scan_buffer, address, val_a,
+                                         profile.m_scan_op, &mem_val);
             if (is_match) {
-                model.makeScanIndex(address, MetaValue(mem_val));
+                model.makeScanIndex(address);
                 match_counter += 1;
             }
 
@@ -562,6 +693,7 @@ namespace Toolbox {
             m_index_map_history[i].m_scan_type = MetaType::UNKNOWN;
             m_index_map_history[i].m_scan_results.clear();
             m_index_map_history[i].m_scan_results.shrink_to_fit();
+            m_index_map_history[i].m_scan_buffer.free();
         }
 
         m_history_size = 0;
@@ -675,6 +807,7 @@ namespace Toolbox {
         ScanHistoryEntry &entry = m_index_map_history[m_history_size - 1];
         entry.m_scan_results.clear();
         entry.m_scan_results.shrink_to_fit();
+        entry.m_scan_buffer.free();
         m_history_size--;
         return true;
     }
@@ -689,20 +822,19 @@ namespace Toolbox {
     Result<void, SerialError> MemScanModel::serialize(Serializer &out) const {
         std::scoped_lock lock(m_mutex);
 
+        out.write<u32>(static_cast<u32>(m_scan_type));
+        out.write<u32>(static_cast<u32>(m_scan_size));
+
         if (m_history_size == 0) {
+            out.write<u32>(0);  // Empty size
             return Result<void, SerialError>();
         }
 
-        const ScanHistoryEntry &newest_scan = m_index_map_history[m_history_size - 1];
+        ScanHistoryEntry &newest_scan = m_index_map_history[m_history_size - 1];
 
-        out.write<u32>(static_cast<u32>(m_scan_type));
         out.write<u32>(static_cast<u32>(newest_scan.m_scan_results.size()));
-
         for (const MemScanResult &result : newest_scan.m_scan_results) {
             out.write<u32>(result.getAddress());
-
-            MetaValue val = MetaValue(newest_scan.m_scan_type, result.getValueBuf());
-            val.serialize(out);
         }
 
         return Result<void, SerialError>();
@@ -713,22 +845,26 @@ namespace Toolbox {
         {
             std::scoped_lock lock(m_mutex);
             m_scan_type = static_cast<MetaType>(in.read<u32>());
+            m_scan_size = in.read<u32>();
         }
 
         const u32 count = in.read<u32>();
+        if (count == 0) {
+            return Result<void, SerialError>();
+        }
 
-        reserveScan(m_scan_type, count);
+        if (!reserveScan(m_scan_type, m_scan_size, count)) {
+            return make_serial_error<void>(in, "Failed to reserve memory for the scan data.");
+        }
+
+        if (!captureMemForCache()) {
+            reset();
+            return make_serial_error<void>(in, "Failed to capture the current memory frame.");
+        }
 
         for (int i = 0; i < count; ++i) {
-            UUID64 uuid = in.read<UUID64>();
-
-            ModelIndex index = ModelIndex(getUUID(), uuid);
-
-            u32 address  = in.read<u32>();
-            MetaValue mv = MetaValue(MetaType::UNKNOWN);
-            mv.deserialize(in);
-
-            makeScanIndex(address, std::move(mv));
+            u32 address = in.read<u32>();
+            makeScanIndex(address);
         }
 
         return Result<void, SerialError>();
@@ -770,7 +906,7 @@ namespace Toolbox {
         }
         case MemScanRole::MEMSCAN_ROLE_VALUE: {
             const ScanHistoryEntry &entry = getScanHistory(result->getHistoryIndex());
-            return MetaValue(entry.m_scan_type, result->getValueBuf());
+            return GetMetaValueFromMemCache(entry, *result);
         }
         case MemScanRole::MEMSCAN_ROLE_VALUE_MEM: {
             return getMetaValueFromMemory(index);
@@ -957,37 +1093,42 @@ namespace Toolbox {
         }
 
         const ScanHistoryEntry &this_scan = getScanHistory(result->getHistoryIndex());
+        
+        DolphinHookManager &manager = DolphinHookManager::instance();
+        Buffer mem_buf;
+        mem_buf.setBuf(manager.getMemoryView(), manager.getMemorySize());
 
+        
         u32 address = result->getAddress();
         switch (this_scan.m_scan_type) {
         case MetaType::BOOL:
-            return MetaValue(readSingle<bool>(address));
+            return MetaValue(readSingle<bool>(mem_buf, address));
         case MetaType::S8:
-            return MetaValue(readSingle<s8>(address));
+            return MetaValue(readSingle<s8>(mem_buf, address));
         case MetaType::U8:
-            return MetaValue(readSingle<u8>(address));
+            return MetaValue(readSingle<u8>(mem_buf, address));
         case MetaType::S16:
-            return MetaValue(readSingle<s16>(address));
+            return MetaValue(readSingle<s16>(mem_buf, address));
         case MetaType::U16:
-            return MetaValue(readSingle<u16>(address));
+            return MetaValue(readSingle<u16>(mem_buf, address));
         case MetaType::S32:
-            return MetaValue(readSingle<s32>(address));
+            return MetaValue(readSingle<s32>(mem_buf, address));
         case MetaType::U32:
-            return MetaValue(readSingle<u32>(address));
+            return MetaValue(readSingle<u32>(mem_buf, address));
         case MetaType::F32:
-            return MetaValue(readSingle<f32>(address));
+            return MetaValue(readSingle<f32>(mem_buf, address));
         case MetaType::F64:
-            return MetaValue(readSingle<f64>(address));
+            return MetaValue(readSingle<f64>(mem_buf, address));
         case MetaType::STRING:
-            return MetaValue(readString(address, result->getValueBuf().size()));
+            return MetaValue(readString(mem_buf, address, this_scan.m_scan_size));
         case MetaType::UNKNOWN:
-            return MetaValue(readBytes(address, result->getValueBuf().size()));
+            return MetaValue(readBytes(mem_buf, address, this_scan.m_scan_size));
         default:
             return MetaValue(MetaType::UNKNOWN);
         }
     }
 
-    void MemScanModel::makeScanIndex(u32 address, MetaValue &&value) {
+    void MemScanModel::makeScanIndex(u32 address) {
         if (m_history_size == 0) {
             return;
         }
@@ -996,8 +1137,23 @@ namespace Toolbox {
 
         {
             std::scoped_lock lock(m_mutex);
-            recent_scan.m_scan_results.emplace_back(address, value.buf(), m_history_size - 1);
+            recent_scan.m_scan_results.emplace_back(address, m_history_size - 1);
         }
+    }
+
+    bool MemScanModel::captureMemForCache() {
+        if (m_history_size == 0) {
+            return false;
+        }
+
+        DolphinHookManager &manager = DolphinHookManager::instance();
+
+        ScanHistoryEntry &entry = m_index_map_history[m_history_size - 1];
+
+        Buffer the_buf;
+        the_buf.setBuf(manager.getMemoryView(), manager.getMemorySize());
+
+        return the_buf.copyTo(entry.m_scan_buffer);
     }
 
     const MemScanModel::ScanHistoryEntry &MemScanModel::getScanHistory() const {

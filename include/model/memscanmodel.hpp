@@ -26,26 +26,17 @@ namespace Toolbox {
 
     class MemScanResult {
         u32 m_bit_data;
-        Buffer m_scanned_value;
 
         static constexpr u32 addr_mask = 0x1FFFFFFF;
         static constexpr u32 idx_mask  = ~addr_mask;
         static constexpr u32 idx_shift = 29;
 
     public:
-        MemScanResult(u32 address, const Buffer &value, int history_index) {
-            m_bit_data      = ((history_index << idx_shift) & idx_mask) | (address & addr_mask);
-            m_scanned_value = value;
+        MemScanResult(u32 address, int history_index) {
+            m_bit_data = ((history_index << idx_shift) & idx_mask) | (address & addr_mask);
         }
 
-        MemScanResult(u32 address, Buffer &&value, int history_index) {
-            m_bit_data      = ((history_index << idx_shift) & idx_mask) | (address & addr_mask);
-            m_scanned_value = std::move(value);
-        }
-
-        ~MemScanResult() { m_scanned_value.~Buffer(); }
-
-        const Buffer &getValueBuf() const { return m_scanned_value; }
+        ~MemScanResult() = default;
 
         u32 getAddress() const { return 0x80000000 | (m_bit_data & addr_mask); }
         int getHistoryIndex() const { return (m_bit_data & ~addr_mask) >> idx_shift; }
@@ -97,8 +88,11 @@ namespace Toolbox {
         };
 
         struct ScanHistoryEntry {
-            MetaType m_scan_type                              = MetaType::UNKNOWN;
+            MetaType m_scan_type = MetaType::UNKNOWN;
+            u16 m_scan_size;  // UI doesn't allow scans larger than a u16
             mutable std::vector<MemScanResult> m_scan_results = {};
+
+            Buffer m_scan_buffer;
         };
 
     public:
@@ -182,18 +176,21 @@ namespace Toolbox {
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
 
-        void makeScanIndex(u32 address, MetaValue &&value);
+        void makeScanIndex(u32 address);
 
-        bool reserveScan(MetaType scan_type, size_t indexes) {
+        bool reserveScan(MetaType scan_type, size_t scan_size, size_t indexes) {
             if (m_history_size >= m_index_map_history.max_size()) {
                 return false;
             }
 
             ScanHistoryEntry entry;
             entry.m_scan_type = scan_type;
+            entry.m_scan_size = scan_size;
             entry.m_scan_results.reserve(indexes);
             m_index_map_history[m_history_size++] = std::move(entry);
         }
+
+        bool captureMemForCache();
 
         const ScanHistoryEntry &getScanHistory() const;
         const ScanHistoryEntry &getScanHistory(size_t i) const;
