@@ -42,9 +42,7 @@ namespace Toolbox {
         [[nodiscard]] size_t getChildCount() const { return m_children.size(); }
 
         [[nodiscard]] bool isLocked() const { return m_locked; }
-        void setLocked(bool locked) {
-            m_locked = locked;
-        }
+        void setLocked(bool locked) { m_locked = locked; }
 
         [[nodiscard]] bool hasChild(UUID64 uuid) const {
             return m_children.find(uuid) != m_children.end();
@@ -115,6 +113,8 @@ namespace Toolbox {
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
+        [[nodiscard]] bool isReadOnly() const override { return false; }
+
         [[nodiscard]] bool isIndexGroup(const ModelIndex &index) const;
 
         [[nodiscard]] std::string getWatchType(const ModelIndex &index) const {
@@ -162,6 +162,7 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex(const UUID64 &path) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
+        [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
         [[nodiscard]] ModelIndex getSibling(int64_t row, int64_t column,
@@ -176,7 +177,8 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData(const std::vector<ModelIndex> &indexes) const override;
+        createMimeData(const std::unordered_set<ModelIndex> &indexes) const override;
+        [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
@@ -207,6 +209,7 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex_(const UUID64 &path) const;
         [[nodiscard]] ModelIndex getIndex_(int64_t row, int64_t column,
                                            const ModelIndex &parent = ModelIndex()) const;
+        [[nodiscard]] bool removeIndex_(const ModelIndex &index);
 
         [[nodiscard]] ModelIndex getParent_(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex getSibling_(int64_t row, int64_t column,
@@ -221,7 +224,8 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren_(const ModelIndex &parent = ModelIndex()) const;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData_(const std::vector<ModelIndex> &indexes) const;
+        createMimeData_(const std::unordered_set<ModelIndex> &indexes) const;
+        [[nodiscard]] bool insertMimeData_(const ModelIndex &index, const MimeData &data);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index);
         void fetchMore_(const ModelIndex &index);
@@ -254,6 +258,8 @@ namespace Toolbox {
         ~WatchDataModelSortFilterProxy() = default;
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
+
+        [[nodiscard]] bool isReadOnly() const override { return m_source_model->isReadOnly(); }
 
         [[nodiscard]] RefPtr<WatchDataModel> getSourceModel() const;
         void setSourceModel(RefPtr<WatchDataModel> model);
@@ -290,7 +296,7 @@ namespace Toolbox {
             return std::any_cast<bool>(getData(index, WatchDataRole::WATCH_DATA_ROLE_LOCK));
         }
 
-        void setWatchLock(const ModelIndex& index, bool locked) {
+        void setWatchLock(const ModelIndex &index, bool locked) {
             setData(index, locked, WatchDataRole::WATCH_DATA_ROLE_LOCK);
         }
 
@@ -308,6 +314,7 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex(const UUID64 &path) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
+        [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
         [[nodiscard]] ModelIndex getSibling(int64_t row, int64_t column,
@@ -322,7 +329,8 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData(const std::vector<ModelIndex> &indexes) const override;
+        createMimeData(const std::unordered_set<ModelIndex> &indexes) const override;
+        [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
@@ -349,7 +357,7 @@ namespace Toolbox {
 
         RefPtr<WatchDataModel> m_source_model = nullptr;
         ModelSortOrder m_sort_order           = ModelSortOrder::SORT_ASCENDING;
-        WatchModelSortRole m_sort_role    = WatchModelSortRole::SORT_ROLE_NONE;
+        WatchModelSortRole m_sort_role        = WatchModelSortRole::SORT_ROLE_NONE;
         std::string m_filter                  = "";
 
         bool m_dirs_only = false;

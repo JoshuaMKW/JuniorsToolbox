@@ -78,7 +78,7 @@ namespace Toolbox {
         [[nodiscard]] FileSystemModelOptions getOptions() const;
         void setOptions(FileSystemModelOptions options);
 
-        [[nodiscard]] bool isReadOnly() const;
+        [[nodiscard]] bool isReadOnly() const override;
         void setReadOnly(bool read_only);
 
         [[nodiscard]] bool isDirectory(const ModelIndex &index) const;
@@ -122,6 +122,8 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex(const UUID64 &path) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
+        [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
+
         [[nodiscard]] fs_path getPath(const ModelIndex &index) const;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
@@ -137,7 +139,8 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData(const std::vector<ModelIndex> &indexes) const override;
+        createMimeData(const std::unordered_set<ModelIndex> &indexes) const override;
+        [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
@@ -180,6 +183,8 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex_(const UUID64 &path) const;
         [[nodiscard]] ModelIndex getIndex_(int64_t row, int64_t column,
                                            const ModelIndex &parent = ModelIndex()) const;
+        [[nodiscard]] bool removeIndex_(const ModelIndex &index);
+
         [[nodiscard]] fs_path getPath_(const ModelIndex &index) const;
 
         [[nodiscard]] ModelIndex getParent_(const ModelIndex &index) const;
@@ -195,7 +200,8 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren_(const ModelIndex &parent = ModelIndex()) const;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData_(const std::vector<ModelIndex> &indexes) const;
+        createMimeData_(const std::unordered_set<ModelIndex> &indexes) const;
+        [[nodiscard]] bool insertMimeData_(const ModelIndex &index, const MimeData &data);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index);
         void fetchMore_(const ModelIndex &index);
@@ -248,6 +254,8 @@ namespace Toolbox {
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
+        [[nodiscard]] bool isReadOnly() const override { return m_source_model->isReadOnly(); }
+
         [[nodiscard]] bool isDirsOnly() const { return m_dirs_only; }
         void setDirsOnly(bool dirs_only) { m_dirs_only = dirs_only; }
 
@@ -263,7 +271,6 @@ namespace Toolbox {
         [[nodiscard]] const std::string &getFilter() const &;
         void setFilter(const std::string &filter);
 
-        [[nodiscard]] bool isReadOnly() const;
         void setReadOnly(bool read_only);
 
         [[nodiscard]] bool isDirectory(const ModelIndex &index) const;
@@ -290,6 +297,7 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex(const UUID64 &path) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
+        [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
         [[nodiscard]] fs_path getPath(const ModelIndex &index) const;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
@@ -305,7 +313,8 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData(const std::vector<ModelIndex> &indexes) const override;
+        createMimeData(const std::unordered_set<ModelIndex> &indexes) const override;
+        [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;

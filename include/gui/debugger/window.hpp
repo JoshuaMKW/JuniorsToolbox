@@ -102,16 +102,6 @@ namespace Toolbox::UI {
         void onDragEvent(RefPtr<DragEvent> ev) override;
         void onDropEvent(RefPtr<DropEvent> ev) override;
 
-        // Selection actions
-        void actionDeleteIndexes(std::vector<ModelIndex> &indices);
-        void actionOpenIndexes(const std::vector<ModelIndex> &indices);
-        void actionRenameIndex(const ModelIndex &index);
-        void actionPasteIntoIndex(const ModelIndex &index, const std::vector<fs_path> &data);
-        void actionCopyIndexes(const std::vector<ModelIndex> &indices);
-
-        void actionSelectIndex(const ModelIndex &child_index);
-        void actionClearRequestExcIndex(const ModelIndex &child_index, bool is_left_button);
-
     private:
         enum class ScanRadix {
             RADIX_BINARY,
@@ -201,13 +191,14 @@ namespace Toolbox::UI {
 
         RefPtr<WatchDataModel> m_watch_model;
         RefPtr<WatchDataModelSortFilterProxy> m_watch_proxy_model;
+        ModelSelectionState m_watch_selection;
+        ModelSelectionManager m_watch_selection_mgr;
 
         RefPtr<MemScanModel> m_scan_model;
-        bool m_scan_active = false;
+        ModelSelectionState m_scan_selection;
+        ModelSelectionManager m_scan_selection_mgr;
 
-        ModelIndex m_last_selected_index;
-        ModelSelectionState m_watch_selection;
-        ModelSelectionState m_watch_selection_ctx;
+        bool m_scan_active = false;
 
         bool m_did_drag_drop;
         bool m_any_row_clicked;

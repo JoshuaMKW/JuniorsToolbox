@@ -47,6 +47,14 @@ namespace Toolbox {
         void setHistoryIndex(int index) {
             m_bit_data = (m_bit_data & addr_mask) | ((index << idx_shift) & addr_mask);
         }
+
+        bool operator==(const MemScanResult &other) const {
+            return getAddress() == other.getAddress();
+        }
+
+        std::strong_ordering operator<=>(const MemScanResult &other) const {
+            return getAddress() <=> other.getAddress();
+        }
     };
 
     enum class MemScanModelSortRole {
@@ -103,6 +111,8 @@ namespace Toolbox {
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
+        [[nodiscard]] bool isReadOnly() const { return false; }
+
         [[nodiscard]] MetaType getScanType(const ModelIndex &index) const {
             return std::any_cast<MetaType>(getData(index, MemScanRole::MEMSCAN_ROLE_TYPE));
         }
@@ -135,6 +145,7 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex(const UUID64 &uuid) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
+        [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
         [[nodiscard]] ModelIndex getSibling(int64_t row, int64_t column,
@@ -149,7 +160,8 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData(const std::vector<ModelIndex> &indexes) const override;
+        createMimeData(const std::unordered_set<ModelIndex> &indexes) const override;
+        [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
@@ -191,6 +203,7 @@ namespace Toolbox {
             entry.m_scan_size = scan_size;
             entry.m_scan_results.reserve(indexes);
             m_index_map_history[m_history_size++] = std::move(entry);
+            return true;
         }
 
         bool captureMemForCache();
@@ -219,6 +232,7 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex_(const u32 &address) const;
         [[nodiscard]] ModelIndex getIndex_(int64_t row, int64_t column,
                                            const ModelIndex &parent = ModelIndex()) const;
+        [[nodiscard]] bool removeIndex_(const ModelIndex &index);
 
         [[nodiscard]] ModelIndex getParent_(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex getSibling_(int64_t row, int64_t column,
@@ -233,7 +247,8 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren_(const ModelIndex &parent = ModelIndex()) const;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData_(const std::vector<ModelIndex> &indexes) const;
+        createMimeData_(const std::unordered_set<ModelIndex> &indexes) const;
+        [[nodiscard]] bool insertMimeData_(const ModelIndex &index, const MimeData &data);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index);
         void fetchMore_(const ModelIndex &index);
@@ -301,8 +316,10 @@ namespace Toolbox {
         size_t scanExistingU32s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
         size_t scanExistingF32s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
         size_t scanExistingF64s(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
-        size_t scanExistingStrings(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
-        size_t scanExistingByteArrays(MemScanModel &model, const MemScanModel::MemScanProfile &profile);
+        size_t scanExistingStrings(MemScanModel &model,
+                                   const MemScanModel::MemScanProfile &profile);
+        size_t scanExistingByteArrays(MemScanModel &model,
+                                      const MemScanModel::MemScanProfile &profile);
 
         MemScanModel *m_scan_model;
     };

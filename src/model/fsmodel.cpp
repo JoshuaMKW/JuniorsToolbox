@@ -262,6 +262,11 @@ namespace Toolbox {
         return getIndex_(row, column, parent);
     }
 
+    bool FileSystemModel::removeIndex(const ModelIndex &index) {
+        std::scoped_lock lock(m_mutex);
+        return removeIndex_(index);
+    }
+
     fs_path FileSystemModel::getPath(const ModelIndex &index) const {
         std::scoped_lock lock(m_mutex);
         return getPath_(index);
@@ -304,9 +309,14 @@ namespace Toolbox {
     }
 
     ScopePtr<MimeData>
-    FileSystemModel::createMimeData(const std::vector<ModelIndex> &indexes) const {
+    FileSystemModel::createMimeData(const std::unordered_set<ModelIndex> &indexes) const {
         std::scoped_lock lock(m_mutex);
         return createMimeData_(indexes);
+    }
+
+    bool FileSystemModel::insertMimeData(const ModelIndex &index, const MimeData &data) {
+        std::scoped_lock lock(m_mutex);
+        return insertMimeData_(index, data);
     }
 
     std::vector<std::string> FileSystemModel::getSupportedMimeTypes() const {
@@ -949,6 +959,20 @@ namespace Toolbox {
         return m_index_map.at(parent_data->m_children[row]);
     }
 
+    bool FileSystemModel::removeIndex_(const ModelIndex &index) {
+        if (!validateIndex(index) || isReadOnly()) {
+            return false;
+        }
+
+        if (isDirectory_(index)) {
+            return rmdir_(index);
+        } else if (isArchive_(index)) {
+            return remove_(index);
+        } else {
+            return remove_(index);
+        }
+    }
+
     fs_path FileSystemModel::getPath_(const ModelIndex &index) const {
         if (!validateIndex(index)) {
             return fs_path();
@@ -1028,9 +1052,14 @@ namespace Toolbox {
     }
 
     ScopePtr<MimeData>
-    FileSystemModel::createMimeData_(const std::vector<ModelIndex> &indexes) const {
+    FileSystemModel::createMimeData_(const std::unordered_set<ModelIndex> &indexes) const {
         TOOLBOX_ERROR("[FileSystemModel] Mimedata unimplemented!");
         return ScopePtr<MimeData>();
+    }
+
+    bool FileSystemModel::insertMimeData_(const ModelIndex &index, const MimeData &data) {
+        TOOLBOX_ERROR("[FileSystemModel] Mimedata unimplemented!");
+        return false;
     }
 
     bool FileSystemModel::canFetchMore_(const ModelIndex &index) {
@@ -1414,8 +1443,6 @@ namespace Toolbox {
     const std::string &FileSystemModelSortFilterProxy::getFilter() const & { return m_filter; }
     void FileSystemModelSortFilterProxy::setFilter(const std::string &filter) { m_filter = filter; }
 
-    bool FileSystemModelSortFilterProxy::isReadOnly() const { return m_source_model->isReadOnly(); }
-
     void FileSystemModelSortFilterProxy::setReadOnly(bool read_only) {
         m_source_model->setReadOnly(read_only);
     }
@@ -1510,6 +1537,11 @@ namespace Toolbox {
         return toProxyIndex(row, column, parent_src);
     }
 
+    bool FileSystemModelSortFilterProxy::removeIndex(const ModelIndex &index) {
+        ModelIndex source_index = toSourceIndex(index);
+        return m_source_model->removeIndex(source_index);
+    }
+
     fs_path FileSystemModelSortFilterProxy::getPath(const ModelIndex &index) const {
         ModelIndex source_index = toSourceIndex(index);
         return m_source_model->getPath(std::move(source_index));
@@ -1595,13 +1627,21 @@ namespace Toolbox {
         return m_source_model->hasChildren(source_index);
     }
 
-    ScopePtr<MimeData>
-    FileSystemModelSortFilterProxy::createMimeData(const std::vector<ModelIndex> &indexes) const {
-        std::vector<ModelIndex> indexes_copy = indexes;
-        std::transform(indexes.begin(), indexes.end(), indexes_copy.begin(),
-                       [&](const ModelIndex &index) { return toSourceIndex(index); });
+    ScopePtr<MimeData> FileSystemModelSortFilterProxy::createMimeData(
+        const std::unordered_set<ModelIndex> &indexes) const {
+        std::unordered_set<ModelIndex> indexes_copy = indexes;
+
+        for (const ModelIndex &idx : indexes) {
+            indexes_copy.insert(toSourceIndex(idx));
+        }
 
         return m_source_model->createMimeData(indexes);
+    }
+
+    bool FileSystemModelSortFilterProxy::insertMimeData(const ModelIndex &index,
+                                                        const MimeData &data) {
+        ModelIndex &&source_index = toSourceIndex(index);
+        return m_source_model->insertMimeData(std::move(source_index), data);
     }
 
     std::vector<std::string> FileSystemModelSortFilterProxy::getSupportedMimeTypes() const {

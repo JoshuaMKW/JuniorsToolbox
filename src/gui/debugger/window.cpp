@@ -170,13 +170,15 @@ namespace Toolbox::UI {
 
         // ImGui::PopStyleVar();
 
-        ModelIndex parent_index = m_watch_proxy_model->getParent(m_last_selected_index);
-        int64_t the_row         = m_watch_proxy_model->getRow(m_last_selected_index);
+        ModelIndex last_selected_watch = m_watch_selection.getLastSelected();
 
-        m_add_group_dialog.render(m_last_selected_index, the_row);
-        m_add_watch_dialog.render(m_last_selected_index, the_row);
+        ModelIndex parent_index = m_watch_proxy_model->getParent(last_selected_watch);
+        int64_t the_row         = m_watch_proxy_model->getRow(last_selected_watch);
 
-        m_watch_view_context_menu.render("Memory Watch", m_last_selected_index);
+        m_add_group_dialog.render(last_selected_watch, the_row);
+        m_add_watch_dialog.render(last_selected_watch, the_row);
+
+        m_watch_view_context_menu.render("Memory Watch", last_selected_watch);
 
         m_did_drag_drop = DragDropManager::instance().getCurrentDragAction() != nullptr;
     }
@@ -610,6 +612,12 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::renderMemoryScanner() {
+        bool is_left_click          = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
+        bool is_right_click         = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
+        bool is_left_click_release  = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT);
+        bool is_right_click_release = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT);
+        bool outer_window_focused   = ImGui::IsWindowFocused(ImGuiHoveredFlags_ChildWindows);
+
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {5.0f, 5.0f});
         if (ImGui::BeginChild("##MemoryScannerView", {0, m_scan_height}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
@@ -669,6 +677,8 @@ namespace Toolbox::UI {
                     ImGui::TableSetupColumn("Scanned", ImGuiTableColumnFlags_WidthStretch);
                     ImGui::TableSetupColumn("Current", ImGuiTableColumnFlags_WidthStretch);
 
+                    float table_start_x = ImGui::GetCursorPosX() + ImGui::GetWindowPos().x;
+
                     ImGui::TableHeadersRow();
 
                     if (results <= 100000 && !m_scan_model->isScanBusy()) {
@@ -704,6 +714,60 @@ namespace Toolbox::UI {
 
                                 ImGui::TableNextRow();
 
+                                // Establish row metrics for rendering selection box
+                                float row_width  = scan_table_size.x;
+                                float row_height = ImGui::GetTextLineHeight() +
+                                                   style.CellPadding.y * 2;
+
+                                ImRect row_rect = {};
+                                row_rect.Min    = ImVec2{table_start_x, ImGui::GetCursorPosY() +
+                                                                         ImGui::GetWindowPos().y -
+                                                                         ImGui::GetScrollY()};
+                                row_rect.Max    = row_rect.Min + ImVec2{row_width, row_height};
+
+                                bool is_rect_hovered = false;
+                                if (outer_window_focused) {
+                                    ImGuiContext &g = *GImGui;
+
+                                    double m_x, m_y;
+                                    Input::GetMousePosition(m_x, m_y);
+
+                                    ImVec2 mouse_pos = ImVec2{(float)m_x, (float)m_y};
+
+                                    // Clip
+                                    ImRect rect_clipped(row_rect.Min, row_rect.Max);
+
+                                    // Hit testing, expanded for touch input
+                                    if (rect_clipped.ContainsWithPad(mouse_pos,
+                                                                     g.Style.TouchExtraPadding)) {
+                                        if (g.MouseViewport->GetMainRect().Overlaps(rect_clipped))
+                                            is_rect_hovered = true;
+                                    }
+                                }
+
+                                bool is_rect_clicked =
+                                    is_rect_hovered &&
+                                    (Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT) ||
+                                     Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT));
+
+                                ImDrawFlags backdrop_flags = ImDrawFlags_None;
+
+                                ImVec4 selected_col = style.Colors[ImGuiCol_TabActive];
+                                ImVec4 hovered_col  = style.Colors[ImGuiCol_TabHovered];
+
+                                selected_col.w = 0.5;
+                                hovered_col.w  = 0.5;
+
+                                if (is_rect_hovered) {
+                                    ImGui::RenderFrame(row_rect.Min, row_rect.Max,
+                                                       ImGui::ColorConvertFloat4ToU32(hovered_col),
+                                                       false, 0.0f, backdrop_flags);
+                                } else if (m_scan_selection.is_selected(idx)) {
+                                    ImGui::RenderFrame(row_rect.Min, row_rect.Max,
+                                                       ImGui::ColorConvertFloat4ToU32(selected_col),
+                                                       false, 0.0f, backdrop_flags);
+                                }
+
                                 ImGui::TableNextColumn();
 
                                 ImGui::Text("%s", addr_str.c_str());
@@ -715,6 +779,22 @@ namespace Toolbox::UI {
                                 ImGui::TableNextColumn();
 
                                 ImGui::Text("%s", current_str.c_str());
+
+                                // Handle click responses
+                                {
+                                    if (is_rect_clicked) {
+                                        m_any_row_clicked = true;
+                                        if ((is_left_click && !is_left_click_release) ||
+                                            (is_right_click && !is_right_click_release)) {
+                                            m_scan_selection_mgr.actionSelectIndex(
+                                                m_scan_selection, idx);
+                                        } else if (is_left_click_release ||
+                                                   is_right_click_release) {
+                                            m_scan_selection_mgr.actionClearRequestExcIndex(
+                                                m_scan_selection, idx, is_left_click_release);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1364,8 +1444,7 @@ namespace Toolbox::UI {
 
         m_watch_model->setRefreshRate(settings.m_dolphin_refresh_rate);
 
-        if (ImGui::BeginChild("##MemoryWatchList", {0, 0},
-                              true,
+        if (ImGui::BeginChild("##MemoryWatchList", {0, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
             // ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2, 2});
             // ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
@@ -1448,8 +1527,6 @@ namespace Toolbox::UI {
                 if (!m_any_row_clicked && mouse_captured && (left_click || right_click) &&
                     Input::GetPressedKeyModifiers() == KeyModifier::KEY_NONE) {
                     m_watch_selection.clearSelection();
-                    m_watch_selection_ctx.clearSelection();
-                    m_last_selected_index = ModelIndex();
                 }
             }
         }
@@ -1628,9 +1705,10 @@ namespace Toolbox::UI {
                 m_any_row_clicked = true;
                 if ((is_left_click && !is_left_click_release) ||
                     (is_right_click && !is_right_click_release)) {
-                    actionSelectIndex(watch_idx);
+                    m_watch_selection_mgr.actionSelectIndex(m_watch_selection, watch_idx);
                 } else if (is_left_click_release || is_right_click_release) {
-                    actionClearRequestExcIndex(watch_idx, is_left_click_release);
+                    m_watch_selection_mgr.actionClearRequestExcIndex(m_watch_selection, watch_idx,
+                                                                     is_left_click_release);
                 }
             }
         }
@@ -1770,8 +1848,6 @@ namespace Toolbox::UI {
                 row_button_pos + row_button_size,
             };
 
-            
-
             ImVec2 spoof_item_size = row_button_size;
             spoof_item_size.x += style.ItemSpacing.x * depth * 2;
 
@@ -1823,9 +1899,10 @@ namespace Toolbox::UI {
                 m_any_row_clicked = true;
                 if ((is_left_click && !is_left_click_release) ||
                     (is_right_click && !is_right_click_release)) {
-                    actionSelectIndex(group_idx);
+                    m_watch_selection_mgr.actionSelectIndex(m_watch_selection, group_idx);
                 } else if (is_left_click_release || is_right_click_release) {
-                    actionClearRequestExcIndex(group_idx, is_left_click_release);
+                    m_watch_selection_mgr.actionClearRequestExcIndex(m_watch_selection, group_idx,
+                                                                     is_left_click_release);
                 }
             }
         }
@@ -1867,10 +1944,11 @@ namespace Toolbox::UI {
         m_watch_proxy_model->setSortRole(WatchModelSortRole::SORT_ROLE_NAME);
 
         m_watch_selection.setModel(m_watch_proxy_model);
-        m_watch_selection_ctx.setModel(m_watch_proxy_model);
 
         m_scan_model = make_referable<MemScanModel>();
         m_scan_model->initialize();
+
+        m_scan_selection.setModel(m_scan_model);
 
         m_scan_active = false;
         m_scan_begin_input.fill('\0');
@@ -1967,83 +2045,6 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::onDropEvent(RefPtr<DropEvent> ev) { ev->accept(); }
-
-    void DebuggerWindow::actionDeleteIndexes(std::vector<ModelIndex> &indices) {}
-
-    void DebuggerWindow::actionOpenIndexes(const std::vector<ModelIndex> &indices) {}
-
-    void DebuggerWindow::actionRenameIndex(const ModelIndex &index) {}
-
-    void DebuggerWindow::actionPasteIntoIndex(const ModelIndex &index,
-                                              const std::vector<fs_path> &data) {}
-
-    void DebuggerWindow::actionCopyIndexes(const std::vector<ModelIndex> &indices) {
-
-        // Build a json from the index data
-        // ---
-        MimeData data;
-        data.set_text("UNIMPLEMENTED");
-
-        auto result = SystemClipboard::instance().setContent(data);
-        if (!result) {
-            TOOLBOX_ERROR("[PROJECT] Failed to set contents of clipboard");
-        }
-    }
-
-    void DebuggerWindow::actionSelectIndex(const ModelIndex &index) {
-        if (m_did_drag_drop) {
-            return;
-        }
-
-        if (Input::GetKey(KeyCode::KEY_LEFTCONTROL) || Input::GetKey(KeyCode::KEY_RIGHTCONTROL)) {
-            if (m_watch_selection.is_selected(index)) {
-                m_watch_selection.deselect(index);
-            } else {
-                m_watch_selection.selectSingle(index, true);
-            }
-        } else {
-            if (Input::GetKey(KeyCode::KEY_LEFTSHIFT) || Input::GetKey(KeyCode::KEY_RIGHTSHIFT)) {
-                if (m_watch_model->validateIndex(m_last_selected_index)) {
-                    m_watch_selection.selectSpan(index, m_last_selected_index, false, true);
-                } else {
-                    m_watch_selection.selectSingle(index);
-                }
-            } else {
-                m_watch_selection.selectSingle(index);
-            }
-        }
-
-        m_last_selected_index = index;
-    }
-
-    void DebuggerWindow::actionClearRequestExcIndex(const ModelIndex &index, bool is_left_button) {
-        if (m_did_drag_drop) {
-            return;
-        }
-
-        if (Input::GetKey(KeyCode::KEY_LEFTCONTROL) || Input::GetKey(KeyCode::KEY_RIGHTCONTROL)) {
-            return;
-        }
-
-        if (Input::GetKey(KeyCode::KEY_LEFTSHIFT) || Input::GetKey(KeyCode::KEY_RIGHTSHIFT)) {
-            return;
-        }
-
-        if (is_left_button) {
-            if (m_watch_selection.count() > 0) {
-                m_last_selected_index = ModelIndex();
-                if (m_watch_selection.selectSingle(index)) {
-                    m_last_selected_index = index;
-                }
-            }
-        } else {
-            if (!m_watch_proxy_model->validateIndex(index)) {
-                m_watch_selection.clearSelection();
-            }
-            m_watch_selection_ctx = m_watch_selection;
-            m_last_selected_index = ModelIndex();
-        }
-    }
 
     void DebuggerWindow::buildContextMenus() {
         m_byte_view_context_menu.addOption(

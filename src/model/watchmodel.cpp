@@ -176,6 +176,11 @@ namespace Toolbox {
         return getIndex_(row, column, parent);
     }
 
+    bool WatchDataModel::removeIndex(const ModelIndex &index) {
+        std::scoped_lock lock(m_mutex);
+        return removeIndex_(index);
+    }
+
     ModelIndex WatchDataModel::getParent(const ModelIndex &index) const {
         std::scoped_lock lock(m_mutex);
         return getParent_(index);
@@ -213,9 +218,14 @@ namespace Toolbox {
     }
 
     ScopePtr<MimeData>
-    WatchDataModel::createMimeData(const std::vector<ModelIndex> &indexes) const {
+    WatchDataModel::createMimeData(const std::unordered_set<ModelIndex> &indexes) const {
         std::scoped_lock lock(m_mutex);
         return createMimeData_(indexes);
+    }
+
+    bool WatchDataModel::insertMimeData(const ModelIndex &index, const MimeData &data) {
+        std::scoped_lock lock(m_mutex);
+        return insertMimeData_(index, data);
     }
 
     std::vector<std::string> WatchDataModel::getSupportedMimeTypes() const {
@@ -581,6 +591,14 @@ namespace Toolbox {
         return m_index_map.at(child_uuid);
     }
 
+    bool WatchDataModel::removeIndex_(const ModelIndex &index) {
+        if (!validateIndex(index)) {
+            return false;
+        }
+
+        return m_index_map.erase(index.getUUID()) > 0;
+    }
+
     ModelIndex WatchDataModel::getParent_(const ModelIndex &index) const {
         if (!validateIndex(index)) {
             return ModelIndex();
@@ -664,9 +682,13 @@ namespace Toolbox {
     }
 
     ScopePtr<MimeData>
-    WatchDataModel::createMimeData_(const std::vector<ModelIndex> &indexes) const {
+    WatchDataModel::createMimeData_(const std::unordered_set<ModelIndex> &indexes) const {
         TOOLBOX_ERROR("[WatchDataModel] Mimedata unimplemented!");
         return ScopePtr<MimeData>();
+    }
+
+    bool WatchDataModel::insertMimeData_(const ModelIndex &index, const MimeData &data) {
+        return false;
     }
 
     bool WatchDataModel::canFetchMore_(const ModelIndex &index) { return true; }
@@ -879,6 +901,11 @@ namespace Toolbox {
         return toProxyIndex(row, column, parent_src);
     }
 
+    bool WatchDataModelSortFilterProxy::removeIndex(const ModelIndex &index) {
+        ModelIndex source_index = toSourceIndex(index);
+        return m_source_model->removeIndex(source_index);
+    }
+
     ModelIndex WatchDataModelSortFilterProxy::getParent(const ModelIndex &index) const {
         ModelIndex source_index = toSourceIndex(index);
         return toProxyIndex(m_source_model->getParent(std::move(source_index)));
@@ -959,13 +986,20 @@ namespace Toolbox {
         return m_source_model->hasChildren(source_index);
     }
 
-    ScopePtr<MimeData>
-    WatchDataModelSortFilterProxy::createMimeData(const std::vector<ModelIndex> &indexes) const {
-        std::vector<ModelIndex> indexes_copy = indexes;
-        std::transform(indexes.begin(), indexes.end(), indexes_copy.begin(),
-                       [&](const ModelIndex &index) { return toSourceIndex(index); });
+    ScopePtr<MimeData> WatchDataModelSortFilterProxy::createMimeData(
+        const std::unordered_set<ModelIndex> &indexes) const {
+        std::unordered_set<ModelIndex> indexes_copy;
+
+        for (const ModelIndex &idx : indexes) {
+            indexes_copy.insert(toSourceIndex(idx));
+        }
 
         return m_source_model->createMimeData(indexes);
+    }
+
+    bool WatchDataModelSortFilterProxy::insertMimeData(const ModelIndex &index, const MimeData &data) {
+        ModelIndex &&source_index = toSourceIndex(index);
+        return m_source_model->insertMimeData(index, data);
     }
 
     std::vector<std::string> WatchDataModelSortFilterProxy::getSupportedMimeTypes() const {

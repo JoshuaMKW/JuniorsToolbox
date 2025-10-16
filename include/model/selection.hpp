@@ -19,11 +19,22 @@ namespace Toolbox {
         void setModel(RefPtr<IDataModel> model) { m_ref_model = model; }
 
         size_t count() const { return m_selection.size(); }
+
         bool is_selected(const ModelIndex &index) const {
-            return m_selection.find(index) != m_selection.end();
+            return std::find_if(m_selection.begin(), m_selection.end(), [&](const ModelIndex &b) {
+                       return b.inlineData() == index.inlineData() || b.data() == index.data();
+                   }) != m_selection.end();
         }
 
-        void clearSelection() { m_selection.clear(); }
+        ModelIndex getLastSelected() const { return m_last_selected; }
+        void setLastSelected(const ModelIndex &index);
+
+        const std::unordered_set<ModelIndex> &getSelection() const { return m_selection; }
+
+        void clearSelection() {
+            m_selection.clear();
+            m_last_selected = ModelIndex();
+        }
 
         bool deselect(const ModelIndex &index);
         bool selectSingle(const ModelIndex &index, bool additive = false);
@@ -43,6 +54,22 @@ namespace Toolbox {
     private:
         RefPtr<IDataModel> m_ref_model;
         std::unordered_set<ModelIndex> m_selection;
+        ModelIndex m_last_selected;
+    };
+
+    class ModelSelectionManager {
+    public:
+        ModelSelectionManager() = default;
+
+        bool actionDeleteSelection(ModelSelectionState &state);
+        bool actionRenameSelection(const ModelSelectionState &state,
+                                   const std::string &template_name);
+        bool actionPasteIntoSelection(const ModelSelectionState &state, const MimeData &data);
+        ScopePtr<MimeData> actionCopySelection(const ModelSelectionState &state);
+
+        bool actionSelectIndex(ModelSelectionState &state, const ModelIndex &index);
+        bool actionClearRequestExcIndex(ModelSelectionState &state, const ModelIndex &index,
+                                        bool is_left_button);
     };
 
 }  // namespace Toolbox

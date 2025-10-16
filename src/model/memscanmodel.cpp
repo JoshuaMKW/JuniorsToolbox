@@ -406,6 +406,11 @@ namespace Toolbox {
         return getIndex_(row, column, parent);
     }
 
+    bool MemScanModel::removeIndex(const ModelIndex &index) {
+        std::scoped_lock lock(m_mutex);
+        return removeIndex_(index);
+    }
+
     ModelIndex MemScanModel::getParent(const ModelIndex &index) const {
         std::scoped_lock lock(m_mutex);
         return getParent_(index);
@@ -442,9 +447,15 @@ namespace Toolbox {
         return hasChildren_(parent);
     }
 
-    ScopePtr<MimeData> MemScanModel::createMimeData(const std::vector<ModelIndex> &indexes) const {
+    ScopePtr<MimeData>
+    MemScanModel::createMimeData(const std::unordered_set<ModelIndex> &indexes) const {
         std::scoped_lock lock(m_mutex);
         return createMimeData_(indexes);
+    }
+
+    bool MemScanModel::insertMimeData(const ModelIndex &index, const MimeData &data) {
+        std::scoped_lock lock(m_mutex);
+        return insertMimeData_(index, data);
     }
 
     std::vector<std::string> MemScanModel::getSupportedMimeTypes() const {
@@ -782,6 +793,20 @@ namespace Toolbox {
         return index;
     }
 
+    bool MemScanModel::removeIndex_(const ModelIndex &index) {
+        if (m_history_size == 0) {
+            return false;
+        }
+
+        MemScanResult *result = index.data<MemScanResult>();
+        if (!result) {
+            return false;
+        }
+
+        ScanHistoryEntry &recent_scan = m_index_map_history[m_history_size - 1];
+        return std::erase(recent_scan.m_scan_results, *result) > 0;
+    }
+
     ModelIndex MemScanModel::getParent_(const ModelIndex &index) const { return ModelIndex(); }
 
     ModelIndex MemScanModel::getSibling_(int64_t row, int64_t column,
@@ -854,9 +879,14 @@ namespace Toolbox {
 
     bool MemScanModel::hasChildren_(const ModelIndex &parent) const { return false; }
 
-    ScopePtr<MimeData> MemScanModel::createMimeData_(const std::vector<ModelIndex> &indexes) const {
+    ScopePtr<MimeData>
+    MemScanModel::createMimeData_(const std::unordered_set<ModelIndex> &indexes) const {
         TOOLBOX_ERROR("[MemScanModel] Mimedata unimplemented!");
         return ScopePtr<MimeData>();
+    }
+
+    bool MemScanModel::insertMimeData_(const ModelIndex &index, const MimeData &data) {
+        return false;
     }
 
     bool MemScanModel::canFetchMore_(const ModelIndex &index) { return false; }
@@ -1050,42 +1080,42 @@ namespace Toolbox {
 
     size_t MemoryScanner::scanAllS8s(MemScanModel &model,
                                      const MemScanModel::MemScanProfile &profile) {
-        return scanAllSingles<s8>(model, profile, [this](double p){ setProgress(p); });
+        return scanAllSingles<s8>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanAllU8s(MemScanModel &model,
                                      const MemScanModel::MemScanProfile &profile) {
-        return scanAllSingles<u8>(model, profile, [this](double p){ setProgress(p); });
+        return scanAllSingles<u8>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanAllS16s(MemScanModel &model,
                                       const MemScanModel::MemScanProfile &profile) {
-        return scanAllSingles<s16>(model, profile, [this](double p){ setProgress(p); });
+        return scanAllSingles<s16>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanAllU16s(MemScanModel &model,
                                       const MemScanModel::MemScanProfile &profile) {
-        return scanAllSingles<u16>(model, profile, [this](double p){ setProgress(p); });
+        return scanAllSingles<u16>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanAllS32s(MemScanModel &model,
                                       const MemScanModel::MemScanProfile &profile) {
-        return scanAllSingles<s32>(model, profile, [this](double p){ setProgress(p); });
+        return scanAllSingles<s32>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanAllU32s(MemScanModel &model,
                                       const MemScanModel::MemScanProfile &profile) {
-        return scanAllSingles<u32>(model, profile, [this](double p){ setProgress(p); });
+        return scanAllSingles<u32>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanAllF32s(MemScanModel &model,
                                       const MemScanModel::MemScanProfile &profile) {
-        return scanAllSingles<f32>(model, profile, [this](double p){ setProgress(p); });
+        return scanAllSingles<f32>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanAllF64s(MemScanModel &model,
                                       const MemScanModel::MemScanProfile &profile) {
-        return scanAllSingles<f64>(model, profile, [this](double p){ setProgress(p); });
+        return scanAllSingles<f64>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanAllStrings(MemScanModel &model,
@@ -1202,47 +1232,47 @@ namespace Toolbox {
 
     size_t MemoryScanner::scanExistingBools(MemScanModel &model,
                                             const MemScanModel::MemScanProfile &profile) {
-        return scanExistingSingles<bool>(model, profile, [this](double p){ setProgress(p); });
+        return scanExistingSingles<bool>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanExistingS8s(MemScanModel &model,
                                           const MemScanModel::MemScanProfile &profile) {
-        return scanExistingSingles<s8>(model, profile, [this](double p){ setProgress(p); });
+        return scanExistingSingles<s8>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanExistingU8s(MemScanModel &model,
                                           const MemScanModel::MemScanProfile &profile) {
-        return scanExistingSingles<u8>(model, profile, [this](double p){ setProgress(p); });
+        return scanExistingSingles<u8>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanExistingS16s(MemScanModel &model,
                                            const MemScanModel::MemScanProfile &profile) {
-        return scanExistingSingles<s16>(model, profile, [this](double p){ setProgress(p); });
+        return scanExistingSingles<s16>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanExistingU16s(MemScanModel &model,
                                            const MemScanModel::MemScanProfile &profile) {
-        return scanExistingSingles<u16>(model, profile, [this](double p){ setProgress(p); });
+        return scanExistingSingles<u16>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanExistingS32s(MemScanModel &model,
                                            const MemScanModel::MemScanProfile &profile) {
-        return scanExistingSingles<s32>(model, profile, [this](double p){ setProgress(p); });
+        return scanExistingSingles<s32>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanExistingU32s(MemScanModel &model,
                                            const MemScanModel::MemScanProfile &profile) {
-        return scanExistingSingles<u32>(model, profile, [this](double p){ setProgress(p); });
+        return scanExistingSingles<u32>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanExistingF32s(MemScanModel &model,
                                            const MemScanModel::MemScanProfile &profile) {
-        return scanExistingSingles<f32>(model, profile, [this](double p){ setProgress(p); });
+        return scanExistingSingles<f32>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanExistingF64s(MemScanModel &model,
                                            const MemScanModel::MemScanProfile &profile) {
-        return scanExistingSingles<f64>(model, profile, [this](double p){ setProgress(p); });
+        return scanExistingSingles<f64>(model, profile, [this](double p) { setProgress(p); });
     }
 
     size_t MemoryScanner::scanExistingStrings(MemScanModel &model,
