@@ -67,7 +67,7 @@ namespace Toolbox {
         bool actionPasteIntoSelection(const ModelSelectionState &state, const MimeData &data);
         ScopePtr<MimeData> actionCopySelection(const ModelSelectionState &state);
 
-        bool actionSelectIndex(ModelSelectionState &state, const ModelIndex &index);
+        bool actionSelectIndex(ModelSelectionState &state, const ModelIndex &index, bool force_single = false);
         bool actionClearRequestExcIndex(ModelSelectionState &state, const ModelIndex &index,
                                         bool is_left_button);
     };

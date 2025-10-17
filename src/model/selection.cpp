@@ -48,7 +48,7 @@ namespace Toolbox {
         }
 
         if (!additive) {
-            clearSelection();
+            m_selection.clear();
         }
 
         if (a == b) {
@@ -71,7 +71,7 @@ namespace Toolbox {
 
         ModelIndex this_a = a;
         while (row_a < row_b) {
-            m_selection.insert(a);
+            m_selection.insert(this_a);
             if (deep) {
                 int64_t child_count = m_ref_model->getRowCount(a);
                 if (child_count > 0) {
@@ -86,8 +86,8 @@ namespace Toolbox {
         }
 
         ModelIndex this_b = b;
-        while (row_b < row_a) {
-            m_selection.insert(b);
+        while (row_b <= row_a) {
+            m_selection.insert(this_b);
             if (deep) {
                 int64_t child_count = m_ref_model->getRowCount(b);
                 if (child_count > 0) {
@@ -188,10 +188,16 @@ namespace Toolbox {
     }
 
     bool ModelSelectionManager::actionSelectIndex(ModelSelectionState &selection,
-                                                  const ModelIndex &index) {
+                                                  const ModelIndex &index, bool force_single) {
         RefPtr<IDataModel> model = selection.getModel();
         if (!model) {
             return false;
+        }
+
+        if (force_single) {
+            selection.selectSingle(index);
+            selection.setLastSelected(index);
+            return true;
         }
 
         if (Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) ||
@@ -201,19 +207,22 @@ namespace Toolbox {
             } else {
                 selection.selectSingle(index, true);
             }
-        } else {
-            if (Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT) ||
-                Input::GetKey(Input::KeyCode::KEY_RIGHTSHIFT)) {
-                if (model->validateIndex(selection.getLastSelected())) {
-                    selection.selectSpan(index, selection.getLastSelected(), false, true);
-                } else {
-                    selection.selectSingle(index);
-                }
-            } else {
-                selection.selectSingle(index);
-            }
+            selection.setLastSelected(index);
+            return true;
         }
 
+        if (Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT) ||
+            Input::GetKey(Input::KeyCode::KEY_RIGHTSHIFT)) {
+            if (model->validateIndex(selection.getLastSelected())) {
+                selection.selectSpan(selection.getLastSelected(), index, false, true);
+            } else {
+                selection.selectSingle(index);
+                selection.setLastSelected(index);
+            }
+            return true;
+        }
+
+        selection.selectSingle(index);
         selection.setLastSelected(index);
         return true;
     }

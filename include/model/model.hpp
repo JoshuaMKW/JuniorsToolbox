@@ -8,9 +8,9 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <variant>
 #include <vector>
-#include <unordered_set>
 
 #include "core/mimedata/mimedata.hpp"
 #include "core/types.hpp"
@@ -67,7 +67,9 @@ namespace Toolbox {
         }
 
         [[nodiscard]] bool operator==(const ModelIndex &other) const {
-            return m_uuid == other.m_uuid && m_model_uuid == other.m_model_uuid;
+            return (m_uuid == other.m_uuid) ||
+                   (m_model_uuid == other.m_model_uuid &&
+                    (data() == other.data() || inlineData() == other.inlineData()));
         }
 
     private:
