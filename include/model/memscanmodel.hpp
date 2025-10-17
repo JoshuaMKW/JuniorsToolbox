@@ -121,8 +121,8 @@ namespace Toolbox {
             return std::any_cast<u32>(getData(index, MemScanRole::MEMSCAN_ROLE_ADDRESS));
         }
 
-        [[nodiscard]] u32 getScanSize(const ModelIndex &index) const {
-            return std::any_cast<u32>(getData(index, MemScanRole::MEMSCAN_ROLE_SIZE));
+        [[nodiscard]] u16 getScanSize(const ModelIndex &index) const {
+            return std::any_cast<u16>(getData(index, MemScanRole::MEMSCAN_ROLE_SIZE));
         }
 
         [[nodiscard]] MetaValue getScanValue(const ModelIndex &index) const {
@@ -272,8 +272,8 @@ namespace Toolbox {
         mutable std::array<ScanHistoryEntry, 32> m_index_map_history;
         size_t m_history_size = 0;
 
-        MetaType m_scan_type;
-        u32 m_scan_size;
+        MetaType m_scan_type = MetaType::UNKNOWN;
+        u32 m_scan_size      = 0;
 
         std::thread m_scan_thread;
         std::atomic<bool> m_running;

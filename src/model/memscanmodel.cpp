@@ -690,7 +690,8 @@ namespace Toolbox {
             return static_cast<u32>(result->getAddress());
         }
         case MemScanRole::MEMSCAN_ROLE_SIZE: {
-            return m_scan_size;
+            const ScanHistoryEntry &entry = getScanHistory(result->getHistoryIndex());
+            return entry.m_scan_size;
         }
         case MemScanRole::MEMSCAN_ROLE_TYPE: {
             const ScanHistoryEntry &entry = getScanHistory(result->getHistoryIndex());

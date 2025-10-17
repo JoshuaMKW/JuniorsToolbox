@@ -250,6 +250,24 @@ void ImGui::RenderFrame(ImVec2 p_min, ImVec2 p_max, ImU32 fill_col, bool border,
     }
 }
 
+// Render a rectangle shaped with optional rounding and borders
+void ImGui::RenderBackgroundFrame(ImVec2 p_min, ImVec2 p_max, ImU32 fill_col, bool border,
+                                  float rounding, ImDrawFlags draw_flags) {
+    ImGuiContext &g     = *GImGui;
+    ImGuiWindow *window = g.CurrentWindow;
+
+    ImDrawList *list = GetBackgroundDrawList(window->Viewport);
+
+    list->AddRectFilled(p_min, p_max, fill_col, rounding, draw_flags);
+    const float border_size = g.Style.FrameBorderSize;
+    if (border && border_size > 0.0f) {
+        list->AddRect(p_min + ImVec2(1, 1), p_max + ImVec2(1, 1),
+                      GetColorU32(ImGuiCol_BorderShadow), rounding, draw_flags, border_size);
+        list->AddRect(p_min, p_max, GetColorU32(ImGuiCol_Border), rounding, draw_flags,
+                                  border_size);
+    }
+}
+
 bool ImGui::ButtonEx(const char *label, const ImVec2 &size_arg, ImGuiButtonFlags flags,
                      ImDrawFlags draw_flags) {
     ImGuiWindow *window = GetCurrentWindow();

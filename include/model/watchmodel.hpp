@@ -38,17 +38,21 @@ namespace Toolbox {
 
         [[nodiscard]] bool isEmpty() const { return m_children.empty(); }
 
-        [[nodiscard]] const std::set<UUID64> &getChildren() const { return m_children; }
+        [[nodiscard]] const std::vector<UUID64> &getChildren() const { return m_children; }
         [[nodiscard]] size_t getChildCount() const { return m_children.size(); }
 
         [[nodiscard]] bool isLocked() const { return m_locked; }
         void setLocked(bool locked) { m_locked = locked; }
 
         [[nodiscard]] bool hasChild(UUID64 uuid) const {
-            return m_children.find(uuid) != m_children.end();
+            return std::any_of(m_children.begin(), m_children.end(),
+                               [&uuid](const UUID64 &it) { return it == uuid; });
         }
 
-        bool addChild(UUID64 uuid) { return m_children.emplace(uuid).second; }
+        bool addChild(UUID64 uuid) {
+            m_children.emplace_back(uuid);
+            return true;
+        }
         bool insertChild(int64_t row, UUID64 uuid) {
             if (row < 0 || row > static_cast<int64_t>(m_children.size())) {
                 return false;
@@ -58,7 +62,7 @@ namespace Toolbox {
             m_children.insert(it, uuid);
             return true;
         }
-        bool removeChild(UUID64 uuid) { m_children.erase(uuid) > 0; }
+        bool removeChild(UUID64 uuid) { return std::erase(m_children, uuid) > 0; }
 
         [[nodiscard]] UUID64 getChildUUID(size_t index) const {
             if (index >= m_children.size()) {
@@ -71,7 +75,7 @@ namespace Toolbox {
     private:
         UUID64 m_uuid;
         std::string m_name;
-        std::set<UUID64> m_children;
+        std::vector<UUID64> m_children;
         bool m_locked = false;
     };
 
@@ -188,8 +192,9 @@ namespace Toolbox {
 
         ModelIndex makeWatchIndex(const std::string &name, MetaType type,
                                   const std::vector<u32> &pointer_chain, u32 size, bool is_pointer,
-                                  int64_t row, const ModelIndex &parent);
-        ModelIndex makeGroupIndex(const std::string &name, int64_t row, const ModelIndex &parent);
+                                  int64_t row, const ModelIndex &parent, bool find_unique_name = true);
+        ModelIndex makeGroupIndex(const std::string &name, int64_t row, const ModelIndex &parent,
+                                  bool find_unique_name = true);
 
         using event_listener_t = std::function<void(const ModelIndex &, WatchModelEventFlags)>;
         void addEventListener(UUID64 uuid, event_listener_t listener, WatchModelEventFlags flags);
@@ -197,6 +202,8 @@ namespace Toolbox {
 
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
+
+        void signalEventListeners(const ModelIndex &index, WatchModelEventFlags flags);
 
     protected:
         // Implementation of public API for mutex locking reasons
@@ -232,8 +239,6 @@ namespace Toolbox {
         // -- END -- //
 
         size_t pollChildren(const ModelIndex &index) const;
-
-        void signalEventListeners(const ModelIndex &index, WatchModelEventFlags flags);
 
         void processWatches();
 

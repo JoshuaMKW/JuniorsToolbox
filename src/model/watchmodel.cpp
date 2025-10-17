@@ -133,6 +133,7 @@ namespace Toolbox {
                 processWatches();
             }
         });
+        m_watch_thread.detach();
     }
 
     bool WatchDataModel::isIndexGroup(const ModelIndex &index) const {
@@ -279,8 +280,8 @@ namespace Toolbox {
             // ---
 
             if (_WatchIndexDataIsGroup(*data)) {
-                const std::string &name          = data->m_group->getName();
-                const std::set<UUID64> &children = data->m_group->getChildren();
+                const std::string &name             = data->m_group->getName();
+                const std::vector<UUID64> &children = data->m_group->getChildren();
 
                 out.write<u8>((u8)_WatchIndexData::Type::GROUP);
                 out.writeString(name);
@@ -352,8 +353,6 @@ namespace Toolbox {
                 index.setData(data);
 
                 m_index_map[index.getUUID()] = index;
-
-                signalEventListeners(index, WatchModelEventFlags::EVENT_GROUP_ADDED);
             } else if (type == _WatchIndexData::Type::WATCH) {
                 const size_t watch_size = sizeof(u16) + sizeof(u32) * 2 + sizeof(u8) + sizeof(bool);
                 if (remaining < watch_size) {
@@ -655,7 +654,14 @@ namespace Toolbox {
 
         ModelIndex parent = getParent_(index);
         if (!validateIndex(parent)) {
-            return 0;
+            size_t i = 0;
+            for (const auto &[k, v] : m_index_map) {
+                if (v == index) {
+                    return i;
+                }
+                i += (int)(getParent_(v) == ModelIndex());
+            }
+            return -1;
         }
 
         _WatchIndexData *parent_data = parent.data<_WatchIndexData>();
@@ -698,7 +704,7 @@ namespace Toolbox {
     ModelIndex WatchDataModel::makeWatchIndex(const std::string &name, MetaType type,
                                               const std::vector<u32> &pointer_chain, u32 size,
                                               bool is_pointer, int64_t row,
-                                              const ModelIndex &parent) {
+                                              const ModelIndex &parent, bool find_unique_name) {
         _WatchIndexData *parent_data = nullptr;
         if (row < 0 || pointer_chain.empty()) {
             return ModelIndex();
@@ -731,12 +737,14 @@ namespace Toolbox {
             }
         }
 
-        std::string unique_name = findUniqueName_(parent, name);
+        std::string unique_name = find_unique_name ? findUniqueName_(parent, name) : name;
         data->m_group->setName(unique_name);
         data->m_group->setLocked(false);
 
         ModelIndex index  = ModelIndex(getUUID());
         data->m_self_uuid = index.getUUID();
+
+        std::scoped_lock lock(m_mutex);
 
         if (!parent_data) {
             index.setData(data);
@@ -753,13 +761,11 @@ namespace Toolbox {
             m_index_map[index.getUUID()] = std::move(index);
         }
 
-        signalEventListeners(index, WatchModelEventFlags::EVENT_WATCH_ADDED);
-
         return index;
     }
 
     ModelIndex WatchDataModel::makeGroupIndex(const std::string &name, int64_t row,
-                                              const ModelIndex &parent) {
+                                              const ModelIndex &parent, bool find_unique_name) {
         _WatchIndexData *parent_data = nullptr;
         if (row < 0) {
             return ModelIndex();
@@ -782,12 +788,14 @@ namespace Toolbox {
         data->m_type          = _WatchIndexData::Type::GROUP;
         data->m_group         = new WatchGroup;
 
-        std::string unique_name = findUniqueName_(parent, name);
+        std::string unique_name = find_unique_name ? findUniqueName_(parent, name) : name;
         data->m_group->setName(unique_name);
         data->m_group->setLocked(false);
 
         ModelIndex index  = ModelIndex(getUUID());
         data->m_self_uuid = index.getUUID();
+
+        std::scoped_lock lock(m_mutex);
 
         if (!validateIndex(parent)) {
             index.setData(data);
@@ -803,8 +811,6 @@ namespace Toolbox {
 
             m_index_map[index.getUUID()] = std::move(index);
         }
-
-        signalEventListeners(index, WatchModelEventFlags::EVENT_GROUP_ADDED);
 
         return index;
     }
@@ -997,7 +1003,8 @@ namespace Toolbox {
         return m_source_model->createMimeData(indexes);
     }
 
-    bool WatchDataModelSortFilterProxy::insertMimeData(const ModelIndex &index, const MimeData &data) {
+    bool WatchDataModelSortFilterProxy::insertMimeData(const ModelIndex &index,
+                                                       const MimeData &data) {
         ModelIndex &&source_index = toSourceIndex(index);
         return m_source_model->insertMimeData(index, data);
     }

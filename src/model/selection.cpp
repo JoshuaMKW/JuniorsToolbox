@@ -16,8 +16,7 @@ namespace Toolbox {
             return false;
         }
 
-        m_selection.erase(index);
-        return true;
+        return std::erase_if(m_selection, [&](const ModelIndex &it) { return index == it; }) > 0;
     }
 
     bool ModelSelectionState::selectSingle(const ModelIndex &index, bool additive) {
@@ -56,28 +55,40 @@ namespace Toolbox {
             return true;
         }
 
-        ModelIndex parent_a = m_ref_model->getParent(a);
-        ModelIndex parent_b = m_ref_model->getParent(b);
+        ModelIndex this_a = a;
+        ModelIndex this_b = b;
+
+        int64_t row_a = m_ref_model->getRow(a);
+        int64_t row_b = m_ref_model->getRow(b);
+        if (row_a > row_b) {
+            int64_t tmp = row_a;
+            row_a       = row_b;
+            row_b       = tmp;
+            this_a      = b;
+            this_b      = a;
+        }
+
+        int64_t column_a = m_ref_model->getColumn(this_a);
+        int64_t column_b = m_ref_model->getColumn(this_b);
+        if (column_a != column_b) {
+            return false;
+        }
+
+        ModelIndex parent_a = m_ref_model->getParent(this_a);
+        ModelIndex parent_b = m_ref_model->getParent(this_b);
 
         if (parent_a != parent_b) {
             return false;
         }
 
-        int64_t row_a = m_ref_model->getRow(a);
-        int64_t row_b = m_ref_model->getRow(b);
-
-        int64_t column_a = m_ref_model->getColumn(a);
-        int64_t column_b = m_ref_model->getColumn(b);
-
-        ModelIndex this_a = a;
         while (row_a < row_b) {
             m_selection.insert(this_a);
             if (deep) {
-                int64_t child_count = m_ref_model->getRowCount(a);
+                int64_t child_count = m_ref_model->getRowCount(this_a);
                 if (child_count > 0) {
-                    ModelIndex c_a = m_ref_model->getIndex(0, column_a, a);
-                    ModelIndex c_b = m_ref_model->getIndex(child_count - 1, column_b, a);
-                    if (!selectSpan(c_a, c_b, deep)) {
+                    ModelIndex c_a = m_ref_model->getIndex(0, column_a, this_a);
+                    ModelIndex c_b = m_ref_model->getIndex(child_count - 1, column_a, this_a);
+                    if (!selectSpan(c_a, c_b, true, deep)) {
                         return false;
                     }
                 }
@@ -85,22 +96,7 @@ namespace Toolbox {
             this_a = m_ref_model->getIndex(++row_a, 0, parent_a);
         }
 
-        ModelIndex this_b = b;
-        while (row_b <= row_a) {
-            m_selection.insert(this_b);
-            if (deep) {
-                int64_t child_count = m_ref_model->getRowCount(b);
-                if (child_count > 0) {
-                    ModelIndex c_a = m_ref_model->getIndex(0, column_a, b);
-                    ModelIndex c_b = m_ref_model->getIndex(child_count - 1, column_b, b);
-                    if (!selectSpan(c_a, c_b, deep)) {
-                        return false;
-                    }
-                }
-            }
-            this_b = m_ref_model->getIndex(++row_b, 0, parent_b);
-        }
-
+        m_selection.insert(this_b);
         return true;
     }
 
@@ -113,7 +109,7 @@ namespace Toolbox {
         if (root_count > 0) {
             ModelIndex c_a = m_ref_model->getIndex(0, 0);
             ModelIndex c_b = m_ref_model->getIndex(root_count - 1, 0);
-            return selectSpan(c_a, c_b, true);
+            return selectSpan(c_a, c_b, false);
         }
 
         return true;
@@ -139,6 +135,8 @@ namespace Toolbox {
         for (const ModelIndex &s : selection.getSelection()) {
             result &= model->removeIndex(s);
         }
+
+        selection.clearSelection();
 
         return result;
     }
@@ -202,7 +200,7 @@ namespace Toolbox {
 
         if (Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) ||
             Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
-            if (selection.is_selected(index)) {
+            if (selection.isSelected(index)) {
                 selection.deselect(index);
             } else {
                 selection.selectSingle(index, true);

@@ -7,11 +7,16 @@
 #include "gui/new_item/window.hpp"
 #include "model/fsmodel.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <execution>
 #include <imgui/imgui.h>
+#include <ranges>
 
 #include "gui/imgui_ext.hpp"
+
+#define SCANNER_TABLE_MAX_RENDER_COUNT 1000
 
 template <typename _T> constexpr static _T OverwriteNibble(_T value, u8 nibble_idx, u8 nibble_val) {
     static_assert(std::is_integral_v<_T>, "_T must be a basic integral type");
@@ -639,12 +644,14 @@ namespace Toolbox::UI {
                     progress_bar_rect.Min + ImVec2((scan_view_avail.x / 2) - style.ItemSpacing.x,
                                                    ImGui::GetTextLineHeight());
 
+                const bool scan_busy = m_scan_model->isScanBusy();
+
                 ImGui::SetCursorPos(progress_bar_rect.Min);
-                if (!m_scan_model->isScanBusy()) {
+                if (!scan_busy) {
                     ImGui::BeginDisabled();
                 }
                 ImGui::ProgressBar((float)progress, progress_bar_rect.GetSize());
-                if (!m_scan_model->isScanBusy()) {
+                if (!scan_busy) {
                     ImGui::EndDisabled();
                 }
                 ImGui::SetCursorPos(results_pos);
@@ -678,10 +685,11 @@ namespace Toolbox::UI {
                     ImGui::TableSetupColumn("Current", ImGuiTableColumnFlags_WidthStretch);
 
                     float table_start_x = ImGui::GetCursorPosX() + ImGui::GetWindowPos().x;
+                    float table_width   = ImGui::GetContentRegionAvail().x;
 
                     ImGui::TableHeadersRow();
 
-                    if (results <= 100000 && !m_scan_model->isScanBusy()) {
+                    if (results <= SCANNER_TABLE_MAX_RENDER_COUNT && !m_scan_model->isScanBusy()) {
                         ImGuiListClipper clipper;
                         clipper.Begin(results);
 
@@ -715,9 +723,9 @@ namespace Toolbox::UI {
                                 ImGui::TableNextRow();
 
                                 // Establish row metrics for rendering selection box
-                                float row_width  = scan_table_size.x;
-                                float row_height = ImGui::GetTextLineHeight() +
-                                                   style.CellPadding.y * 2;
+                                float row_width = table_width;
+                                float row_height =
+                                    ImGui::GetTextLineHeight() + style.CellPadding.y * 2;
 
                                 ImRect row_rect = {};
                                 row_rect.Min    = ImVec2{table_start_x, ImGui::GetCursorPosY() +
@@ -758,15 +766,21 @@ namespace Toolbox::UI {
                                 selected_col.w = 0.5;
                                 hovered_col.w  = 0.5;
 
+                                bool last_selected = m_scan_selection.getLastSelected() == idx;
+
+                                ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+
                                 if (is_rect_hovered) {
                                     ImGui::RenderFrame(row_rect.Min, row_rect.Max,
                                                        ImGui::ColorConvertFloat4ToU32(hovered_col),
-                                                       false, 0.0f, backdrop_flags);
-                                } else if (m_scan_selection.is_selected(idx)) {
+                                                       last_selected, 0.0f, backdrop_flags);
+                                } else if (m_scan_selection.isSelected(idx)) {
                                     ImGui::RenderFrame(row_rect.Min, row_rect.Max,
                                                        ImGui::ColorConvertFloat4ToU32(selected_col),
-                                                       false, 0.0f, backdrop_flags);
+                                                       last_selected, 0.0f, backdrop_flags);
                                 }
+
+                                ImGui::PopStyleVar();
 
                                 ImGui::TableNextColumn();
 
@@ -786,8 +800,8 @@ namespace Toolbox::UI {
                                         m_any_row_clicked = true;
                                         if ((is_left_click && !is_left_click_release) ||
                                             (is_right_click && !is_right_click_release)) {
-                                            m_scan_selection_mgr.actionSelectIndex(
-                                                m_scan_selection, idx);
+                                            m_scan_selection_mgr.actionSelectIndex(m_scan_selection,
+                                                                                   idx);
                                         } else if (is_left_click_release ||
                                                    is_right_click_release) {
                                             m_scan_selection_mgr.actionClearRequestExcIndex(
@@ -799,26 +813,71 @@ namespace Toolbox::UI {
                         }
                     }
 
+                    // Handle CTRL+A
+                    if (ImGui::IsWindowFocused()) {
+                        KeyBind select_all_bind = {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_A};
+                        if (!m_keybind_wait_for_keyup && select_all_bind.isInputMatching()) {
+                            if (m_scan_selection.selectAll()) {
+                                m_keybind_wait_for_keyup = true;
+                            }
+                        } else {
+                            m_keybind_wait_for_keyup = false;
+                        }
+                    }
+
                     ImGui::EndTable();
                 }
 
                 ImVec2 avail       = ImGui::GetContentRegionAvail();
                 float button_width = (avail.x - style.ItemSpacing.x * 2) / 3.0f;
 
+                const size_t selection_size = m_scan_selection.getSelection().size();
+
+                const bool can_add_selection = selection_size > 0;
+                const bool can_add_all = 0 < results && results <= SCANNER_TABLE_MAX_RENDER_COUNT;
+                const bool can_remove_selection = can_add_selection;
+
+                if (!can_add_selection) {
+                    ImGui::BeginDisabled();
+                }
+
                 if (ImGui::Button("Add Selection", {button_width, 0.0f}, 5.0f,
                                   ImDrawFlags_RoundCornersAll)) {
+                    createWatchGroupFromScanSelection();
+                }
+
+                if (!can_add_selection) {
+                    ImGui::EndDisabled();
                 }
 
                 ImGui::SameLine();
+
+                if (!can_add_all) {
+                    ImGui::BeginDisabled();
+                }
 
                 if (ImGui::Button("Add All", {button_width, 0.0f}, 5.0f,
                                   ImDrawFlags_RoundCornersAll)) {
+                    createWatchGroupFromScanAll();
+                }
+
+                if (!can_add_all) {
+                    ImGui::EndDisabled();
                 }
 
                 ImGui::SameLine();
 
+                if (!can_remove_selection) {
+                    ImGui::BeginDisabled();
+                }
+
                 if (ImGui::Button("Remove Selection", {button_width, 0.0f}, 5.0f,
                                   ImDrawFlags_RoundCornersAll)) {
+                    removeScanSelection();
+                }
+
+                if (!can_remove_selection) {
+                    ImGui::EndDisabled();
                 }
             }
             ImGui::EndChild();
@@ -1491,7 +1550,7 @@ namespace Toolbox::UI {
             if (ImGui::BeginTable("##MemoryWatchTable", 5, flags, desired_size)) {
                 ImGui::TableSetupScrollFreeze(5, 1);
 
-                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 200.0f);
                 ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 80.0f);
                 ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 80.0f);
                 ImGui::TableSetupColumn("Lock", ImGuiTableColumnFlags_WidthFixed, 50.0f);
@@ -1503,12 +1562,47 @@ namespace Toolbox::UI {
                 ImGui::TableHeadersRow();
 
                 int64_t row_count = m_watch_proxy_model->getRowCount(ModelIndex());
-                for (int64_t row = 0; row < row_count; ++row) {
+
+                int rows_rendered = 0;
+                for (int row = 0; row < row_count; ++row) {
                     ModelIndex index = m_watch_proxy_model->getIndex(row, 0);
                     if (m_watch_proxy_model->isIndexGroup(index)) {
-                        renderWatchGroup(index, 0, table_start_x, table_width);
+                        countWatchGroup(index, &rows_rendered);
                     } else {
-                        renderMemoryWatch(index, 0, table_start_x, table_width);
+                        countMemoryWatch(index, &rows_rendered);
+                    }
+                }
+
+                //TODO:FIX WHATEVER THE FUCK IS GOING WRONG HERE!!!!11!11!
+                ImGuiListClipper clipper;
+                clipper.Begin(rows_rendered);
+
+                while (clipper.Step()) {  // Header row
+                    int clip_row = 0;
+                    for (int row = 0; row < row_count; ++row) {
+                        ModelIndex index = m_watch_proxy_model->getIndex(row, 0);
+                        if (m_watch_proxy_model->isIndexGroup(index)) {
+                            renderWatchGroup(index, 0, table_start_x, table_width, clipper,
+                                             &clip_row);
+                        } else {
+                            renderMemoryWatch(index, 0, table_start_x, table_width, clipper,
+                                              &clip_row);
+                        }
+                        if (clip_row == -1) {
+                            break;
+                        }
+                    }
+                }
+
+                // Handle CTRL+A
+                if (ImGui::IsWindowFocused()) {
+                    KeyBind select_all_bind = {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_A};
+                    if (!m_keybind_wait_for_keyup && select_all_bind.isInputMatching()) {
+                        if (m_watch_selection.selectAll()) {
+                            m_keybind_wait_for_keyup = true;
+                        }
+                    } else {
+                        m_keybind_wait_for_keyup = false;
                     }
                 }
 
@@ -1534,7 +1628,8 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::renderMemoryWatch(const ModelIndex &watch_idx, int depth,
-                                           float table_start_x, float table_width) {
+                                           float table_start_x, float table_width,
+                                           ImGuiListClipper &clipper, int *row) {
         if (!m_watch_proxy_model->validateIndex(watch_idx)) {
             return;
         }
@@ -1542,6 +1637,19 @@ namespace Toolbox::UI {
         std::string name = m_watch_proxy_model->getDisplayText(watch_idx);
         if (name.empty()) {
             return;  // Skip empty groups
+        }
+
+        while (*row >= clipper.DisplayEnd - 1) {
+            if (!clipper.Step()) {
+                *row = -1;
+                return;
+            }
+        }
+
+        // Only process the row layout
+        if (*row < clipper.DisplayStart - 1) {
+            *row += 1;
+            return;
         }
 
         DolphinHookManager &manager = DolphinHookManager::instance();
@@ -1578,7 +1686,7 @@ namespace Toolbox::UI {
         bool is_right_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
         bool is_right_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_RIGHT);
 
-        bool is_selected = m_watch_selection.is_selected(watch_idx);
+        bool is_selected = m_watch_selection.isSelected(watch_idx);
 
         ImGui::TableNextRow();
 
@@ -1632,13 +1740,15 @@ namespace Toolbox::UI {
         selected_col.w = 0.5;
         hovered_col.w  = 0.5;
 
+        bool last_selected = m_watch_selection.getLastSelected() == watch_idx;
+
         if (is_rect_hovered) {
             ImGui::RenderFrame(row_rect.Min, row_rect.Max,
-                               ImGui::ColorConvertFloat4ToU32(hovered_col), false, 0.0f,
+                               ImGui::ColorConvertFloat4ToU32(hovered_col), last_selected, 0.0f,
                                backdrop_flags);
         } else if (is_selected) {
             ImGui::RenderFrame(row_rect.Min, row_rect.Max,
-                               ImGui::ColorConvertFloat4ToU32(selected_col), false, 0.0f,
+                               ImGui::ColorConvertFloat4ToU32(selected_col), last_selected, 0.0f,
                                backdrop_flags);
         }
 
@@ -1717,17 +1827,52 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::renderWatchGroup(const ModelIndex &group_idx, int depth,
-                                          float table_start_x, float table_width) {
+                                          float table_start_x, float table_width,
+                                          ImGuiListClipper &clipper, int *row) {
         if (!m_watch_proxy_model->validateIndex(group_idx)) {
             return;
         }
-
-        bool open = false;
 
         std::string name = m_watch_proxy_model->getDisplayText(group_idx);
         if (name.empty()) {
             return;  // Skip empty groups
         }
+
+        while (*row >= clipper.DisplayEnd - 1) {
+            if (!clipper.Step()) {
+                *row = -1;
+                return;
+            }
+        }
+
+        // Only process the row layout
+        if (*row < clipper.DisplayStart - 1) {
+            *row += 1;
+
+            bool open = m_node_open_state[group_idx.getUUID()];
+            if (open) {
+                for (size_t i = 0; i < m_watch_proxy_model->getRowCount(group_idx); ++i) {
+                    ModelIndex index = m_watch_proxy_model->getIndex(i, 0, group_idx);
+                    if (m_watch_proxy_model->isIndexGroup(index)) {
+                        renderWatchGroup(index, depth + 1, table_start_x, table_width, clipper,
+                                         row);
+                    } else {
+                        renderMemoryWatch(index, depth + 1, table_start_x, table_width, clipper,
+                                          row);
+                    }
+                    if (*row == -1) {
+                        return;
+                    }
+                }
+
+#if 0
+            ImGui::TreePop();
+#endif
+            }
+            return;
+        }
+
+        bool open = false;
 
         bool locked = m_watch_proxy_model->getWatchLock(group_idx);
 
@@ -1756,7 +1901,7 @@ namespace Toolbox::UI {
         bool is_right_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
         bool is_right_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_RIGHT);
 
-        bool is_selected = m_watch_selection.is_selected(group_idx);
+        bool is_selected = m_watch_selection.isSelected(group_idx);
 
         ImGui::TableNextRow();
 
@@ -1810,13 +1955,15 @@ namespace Toolbox::UI {
         selected_col.w = 0.5;
         hovered_col.w  = 0.5;
 
+        bool last_selected = m_watch_selection.getLastSelected() == group_idx;
+
         if (is_rect_hovered) {
             ImGui::RenderFrame(row_rect.Min, row_rect.Max,
-                               ImGui::ColorConvertFloat4ToU32(hovered_col), false, 0.0f,
+                               ImGui::ColorConvertFloat4ToU32(hovered_col), last_selected, 0.0f,
                                backdrop_flags);
         } else if (is_selected) {
             ImGui::RenderFrame(row_rect.Min, row_rect.Max,
-                               ImGui::ColorConvertFloat4ToU32(selected_col), false, 0.0f,
+                               ImGui::ColorConvertFloat4ToU32(selected_col), last_selected, 0.0f,
                                backdrop_flags);
         }
 
@@ -1852,22 +1999,20 @@ namespace Toolbox::UI {
             spoof_item_size.x += style.ItemSpacing.x * depth * 2;
 
             ImGui::ItemSize(spoof_item_size, style.FramePadding.y);
-            if (!ImGui::ItemAdd(row_button_bb, button_id)) {
-                ImGui::PopID();
-                return;
+            if (ImGui::ItemAdd(row_button_bb, button_id, nullptr
+                               /*ImGuiItemFlags_AllowOverlap*/)) {
+                is_collapse_hovered = false;
+                is_collapse_held    = false;
+                is_collapse_pressed =
+                    ImGui::ButtonBehavior(row_button_bb, button_id, &is_collapse_hovered,
+                                          &is_collapse_held, ImGuiButtonFlags_MouseButtonLeft);
+
+                open = (m_node_open_state[group_idx.getUUID()] ^= is_collapse_pressed);
+
+                ImGuiDir direction = open == true ? ImGuiDir_Down : ImGuiDir_Right;
+                ImGui::RenderArrow(window->DrawList, row_button_pos,
+                                   ImGui::ColorConvertFloat4ToU32({1.0, 1.0, 1.0, 1.0}), direction);
             }
-
-            is_collapse_hovered = false;
-            is_collapse_held    = false;
-            is_collapse_pressed =
-                ImGui::ButtonBehavior(row_button_bb, button_id, &is_collapse_hovered,
-                                      &is_collapse_held, ImGuiButtonFlags_MouseButtonLeft);
-
-            open = (m_node_open_state[button_id] ^= is_collapse_pressed);
-
-            ImGuiDir direction = open == true ? ImGuiDir_Down : ImGuiDir_Right;
-            ImGui::RenderArrow(window->DrawList, row_button_pos,
-                               ImGui::ColorConvertFloat4ToU32({1.0, 1.0, 1.0, 1.0}), direction);
 
             ImGui::SameLine();
 
@@ -1907,13 +2052,19 @@ namespace Toolbox::UI {
             }
         }
 
+        *row += 1;
+
         if (open) {
             for (size_t i = 0; i < m_watch_proxy_model->getRowCount(group_idx); ++i) {
                 ModelIndex index = m_watch_proxy_model->getIndex(i, 0, group_idx);
                 if (m_watch_proxy_model->isIndexGroup(index)) {
-                    renderWatchGroup(index, depth + 1, table_start_x, table_width);
+                    renderWatchGroup(index, depth + 1, table_start_x, table_width, clipper, row);
                 } else {
-                    renderMemoryWatch(index, depth + 1, table_start_x, table_width);
+                    renderMemoryWatch(index, depth + 1, table_start_x, table_width, clipper, row);
+                }
+                if (*row == -1) {
+                    ImGui::PopID();
+                    return;
                 }
             }
 
@@ -1923,6 +2074,34 @@ namespace Toolbox::UI {
         }
 
         ImGui::PopID();
+    }
+
+    void DebuggerWindow::countMemoryWatch(const ModelIndex &index, int *row) {
+        if (!m_watch_proxy_model->validateIndex(index)) {
+            return;
+        }
+        *row += 1;
+    }
+
+    void DebuggerWindow::countWatchGroup(const ModelIndex &index, int *row) {
+        if (!m_watch_proxy_model->validateIndex(index)) {
+            return;
+        }
+
+        *row += 1;
+
+        bool open = m_node_open_state[index.getUUID()];
+        if (open) {
+            size_t row_count = m_watch_proxy_model->getRowCount(index);
+            for (size_t i = row_count; i < row_count; ++i) {
+                ModelIndex child_idx = m_watch_proxy_model->getIndex(i, 0, index);
+                if (m_watch_proxy_model->isIndexGroup(child_idx)) {
+                    countWatchGroup(child_idx, row);
+                } else {
+                    countMemoryWatch(child_idx, row);
+                }
+            }
+        }
     }
 
     void DebuggerWindow::onAttach() {
@@ -2144,17 +2323,23 @@ namespace Toolbox::UI {
 
         switch (policy) {
         case AddGroupDialog::InsertPolicy::INSERT_BEFORE: {
-            return m_watch_model->makeGroupIndex(std::string(group_name),
-                                                 std::min(sibling_count, src_row), src_group_idx);
+            ModelIndex index = m_watch_model->makeGroupIndex(
+                std::string(group_name), std::min(sibling_count, src_row), src_group_idx);
+            m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_GROUP_ADDED);
+            return index;
         }
         case AddGroupDialog::InsertPolicy::INSERT_AFTER: {
-            return m_watch_model->makeGroupIndex(
+            ModelIndex index = m_watch_model->makeGroupIndex(
                 std::string(group_name), std::min(sibling_count, src_row + 1), src_group_idx);
+            m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_GROUP_ADDED);
+            return index;
         }
         case AddGroupDialog::InsertPolicy::INSERT_CHILD: {
             int64_t row_count = m_watch_model->getRowCount(src_target_idx);
-            return m_watch_model->makeGroupIndex(std::string(group_name), row_count,
-                                                 src_target_idx);
+            ModelIndex index =
+                m_watch_model->makeGroupIndex(std::string(group_name), row_count, src_target_idx);
+            m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_GROUP_ADDED);
+            return index;
         }
         }
 
@@ -2179,23 +2364,138 @@ namespace Toolbox::UI {
 
         switch (policy) {
         case AddWatchDialog::InsertPolicy::INSERT_BEFORE: {
-            return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, pointer_chain,
-                                                 watch_size, is_pointer,
-                                                 std::min(sibling_count, src_row), src_group_idx);
+            ModelIndex index = m_watch_model->makeWatchIndex(
+                std::string(watch_name), watch_type, pointer_chain, watch_size, is_pointer,
+                std::min(sibling_count, src_row), src_group_idx);
+            m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_WATCH_ADDED);
+            return index;
         }
         case AddWatchDialog::InsertPolicy::INSERT_AFTER: {
-            return m_watch_model->makeWatchIndex(
+            ModelIndex index = m_watch_model->makeWatchIndex(
                 std::string(watch_name), watch_type, pointer_chain, watch_size, is_pointer,
                 std::min(sibling_count, src_row + 1), src_group_idx);
+            m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_WATCH_ADDED);
+            return index;
         }
         case AddWatchDialog::InsertPolicy::INSERT_CHILD: {
             int64_t row_count = m_watch_model->getRowCount(src_target_idx);
-            return m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, pointer_chain,
-                                                 watch_size, is_pointer, row_count, src_target_idx);
+            ModelIndex index =
+                m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, pointer_chain,
+                                              watch_size, is_pointer, row_count, src_target_idx);
+            m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_WATCH_ADDED);
+            return index;
         }
         }
 
         return ModelIndex();
+    }
+
+    ModelIndex DebuggerWindow::createWatchGroupFromScanSelection() {
+        size_t selection_size = m_scan_selection.getSelection().size();
+
+        std::string group_name;
+        {
+            auto now       = std::chrono::system_clock::now();
+            auto day_start = std::chrono::floor<std::chrono::days>(now);
+
+            auto ymd          = std::chrono::year_month_day(day_start);
+            auto milliseconds = std::chrono::floor<std::chrono::milliseconds>(now - day_start);
+
+            group_name = std::format("Scan ({}:{})", ymd, milliseconds);
+        }
+
+        ModelIndex group_idx = m_watch_model->makeGroupIndex(
+            group_name.c_str(), m_watch_model->getRowCount(ModelIndex()), ModelIndex());
+        if (m_watch_model->validateIndex(group_idx)) {
+            size_t i              = 0;
+            const auto &selection = m_scan_selection.getSelection();
+            std::for_each(std::execution::par, selection.begin(), selection.end(),
+                          [&](const ModelIndex &scan) {
+                              u32 address   = m_scan_model->getScanAddress(scan);
+                              MetaType type = m_scan_model->getScanType(scan);
+                              u16 size      = m_scan_model->getScanSize(scan);
+
+                              std::string watch_name =
+                                  std::format("{}_{:08X}", meta_type_name(type), address);
+                              ModelIndex watch_idx = m_watch_model->makeWatchIndex(
+                                  watch_name, type, {address}, static_cast<u32>(size), false, i,
+                                  group_idx, false);
+                              if (m_watch_model->validateIndex(watch_idx)) {
+                                  i += 1;
+                              } else {
+                                  TOOLBOX_ERROR_V("[MEMSCAN] Failed to convert selected scan at "
+                                                  "address {:08X} to a memory watch.",
+                                                  address);
+                              }
+                          });
+
+            m_watch_model->signalEventListeners(group_idx, WatchModelEventFlags::EVENT_GROUP_ADDED);
+            if (i > 0) {
+                m_watch_model->signalEventListeners(m_watch_model->getIndex(0, 0, group_idx),
+                                                    WatchModelEventFlags::EVENT_WATCH_ADDED);
+            }
+        } else {
+            TOOLBOX_ERROR_V("[MEMSCAN] Failed to create a group for {} selected scan(s).",
+                            selection_size);
+        }
+        return group_idx;
+    }
+
+    ModelIndex DebuggerWindow::createWatchGroupFromScanAll() {
+        size_t selection_size = m_scan_selection.getSelection().size();
+
+        std::string group_name;
+        {
+            auto now       = std::chrono::system_clock::now();
+            auto day_start = std::chrono::floor<std::chrono::days>(now);
+
+            auto ymd          = std::chrono::year_month_day(day_start);
+            auto milliseconds = std::chrono::floor<std::chrono::milliseconds>(now - day_start);
+
+            group_name = std::format("Scan ({}:{})", ymd, milliseconds);
+        }
+
+        ModelIndex group_idx = m_watch_model->makeGroupIndex(
+            group_name.c_str(), m_watch_model->getRowCount(ModelIndex()), ModelIndex());
+        if (m_watch_model->validateIndex(group_idx)) {
+            size_t scan_size = m_scan_model->getRowCount(ModelIndex());
+
+            size_t i = 0;
+
+            std::ranges::iota_view indexes((size_t)0, scan_size);
+            std::for_each(std::execution::par, indexes.begin(), indexes.end(), [&](size_t j) {
+                ModelIndex scan = m_scan_model->getIndex(j, 0);
+                u32 address     = m_scan_model->getScanAddress(scan);
+                MetaType type   = m_scan_model->getScanType(scan);
+                u16 size        = m_scan_model->getScanSize(scan);
+
+                std::string watch_name = std::format("{}_{:08X}", meta_type_name(type), address);
+                ModelIndex watch_idx   = m_watch_model->makeWatchIndex(watch_name, type, {address},
+                                                                       static_cast<u32>(size), false,
+                                                                       i, group_idx, false);
+                if (m_watch_model->validateIndex(watch_idx)) {
+                    i += 1;
+                } else {
+                    TOOLBOX_ERROR_V("[MEMSCAN] Failed to convert selected scan at "
+                                    "address {:08X} to a memory watch.",
+                                    address);
+                }
+            });
+
+            m_watch_model->signalEventListeners(group_idx, WatchModelEventFlags::EVENT_GROUP_ADDED);
+            if (i > 0) {
+                m_watch_model->signalEventListeners(m_watch_model->getIndex(0, 0, group_idx),
+                                                    WatchModelEventFlags::EVENT_WATCH_ADDED);
+            }
+        } else {
+            TOOLBOX_ERROR_V("[MEMSCAN] Failed to create a group for {} selected scan(s).",
+                            selection_size);
+        }
+        return group_idx;
+    }
+
+    void DebuggerWindow::removeScanSelection() {
+        m_scan_selection_mgr.actionDeleteSelection(m_scan_selection);
     }
 
     std::string DebuggerWindow::buildQualifiedId(ModelIndex src_index) const {

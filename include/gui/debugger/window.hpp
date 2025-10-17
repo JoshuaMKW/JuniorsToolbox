@@ -56,9 +56,11 @@ namespace Toolbox::UI {
         void renderMemoryScanner();
         void renderMemoryWatchList();
         void renderMemoryWatch(const ModelIndex &index, int depth, float table_start_x,
-                               float table_width);
+                               float table_width, ImGuiListClipper &clipper, int *row);
         void renderWatchGroup(const ModelIndex &index, int depth, float table_start_x,
-                              float table_width);
+                              float table_width, ImGuiListClipper &clipper, int *row);
+        void countMemoryWatch(const ModelIndex &index, int *row);
+        void countWatchGroup(const ModelIndex &index, int *row);
 
     public:
         ImGuiWindowFlags flags() const override { return ImWindow::flags(); }
@@ -125,6 +127,10 @@ namespace Toolbox::UI {
                                AddWatchDialog::InsertPolicy policy, std::string_view watch_name,
                                MetaType watch_type, const std::vector<u32> &pointer_chain,
                                u32 watch_size, bool is_pointer);
+
+        ModelIndex createWatchGroupFromScanSelection();
+        ModelIndex createWatchGroupFromScanAll();
+        void removeScanSelection();
 
         std::string buildQualifiedId(ModelIndex index) const;
 
@@ -220,6 +226,8 @@ namespace Toolbox::UI {
         float m_cursor_step_timer = -0.3f;
         float m_cursor_anim_timer = 0.0f;
         float m_delta_time        = 0.0f;
+
+        bool m_keybind_wait_for_keyup = false;
     };
 
 }  // namespace Toolbox::UI

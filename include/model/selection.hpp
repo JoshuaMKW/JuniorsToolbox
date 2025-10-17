@@ -20,7 +20,7 @@ namespace Toolbox {
 
         size_t count() const { return m_selection.size(); }
 
-        bool is_selected(const ModelIndex &index) const {
+        bool isSelected(const ModelIndex &index) const {
             return std::find_if(m_selection.begin(), m_selection.end(), [&](const ModelIndex &b) {
                        return b.inlineData() == index.inlineData() || b.data() == index.data();
                    }) != m_selection.end();

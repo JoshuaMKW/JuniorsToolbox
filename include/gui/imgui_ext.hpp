@@ -38,6 +38,8 @@ namespace ImGui {
     void EndChildPanel();
     void RenderFrame(ImVec2 p_min, ImVec2 p_max, ImU32 fill_col, bool border, float rounding,
                      ImDrawFlags draw_flags);
+    void RenderBackgroundFrame(ImVec2 p_min, ImVec2 p_max, ImU32 fill_col, bool border,
+                               float rounding, ImDrawFlags draw_flags);
     bool ButtonEx(const char *label, const ImVec2 &size_arg, ImGuiButtonFlags flags,
                   ImDrawFlags draw_flags);
     bool Button(const char *label, float rounding, ImDrawFlags draw_flags);
@@ -54,8 +56,8 @@ namespace ImGui {
                       ImDrawFlags draw_flags);
     bool SwitchButton(const char *label, bool active, ImVec2 size, ImGuiButtonFlags flags,
                       float rounding, ImDrawFlags draw_flags);
-    bool ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image, ImVec2 size = ImVec2{0, 0},
-                     ImGuiButtonFlags flags = ImGuiButtonFlags_None);
+    bool ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image,
+                     ImVec2 size = ImVec2{0, 0}, ImGuiButtonFlags flags = ImGuiButtonFlags_None);
     bool ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image, ImVec2 size,
                      ImGuiButtonFlags flags, ImDrawFlags draw_flags);
     bool ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image, ImVec2 size,
