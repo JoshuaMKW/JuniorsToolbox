@@ -1047,10 +1047,8 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        ModelIndex proxy_index = ModelIndex(getUUID());
+        ModelIndex proxy_index = ModelIndex(getUUID(), index.getUUID());
         proxy_index.setData(index.data<_WatchIndexData>());
-
-        IDataModel::setIndexUUID(proxy_index, index.getUUID());
 
         return proxy_index;
     }

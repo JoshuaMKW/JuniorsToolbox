@@ -1561,36 +1561,73 @@ namespace Toolbox::UI {
 
                 ImGui::TableHeadersRow();
 
-                int64_t row_count = m_watch_proxy_model->getRowCount(ModelIndex());
+                // Clone the open state for rendering consistencies
+                std::unordered_map<UUID64, bool> open_state = m_watch_node_open_state;
+                std::vector<ModelIndex> render_flat_tree = computeModelWatchFlatTree(open_state);
 
-                int rows_rendered = 0;
-                for (int row = 0; row < row_count; ++row) {
-                    ModelIndex index = m_watch_proxy_model->getIndex(row, 0);
-                    if (m_watch_proxy_model->isIndexGroup(index)) {
-                        countWatchGroup(index, &rows_rendered);
-                    } else {
-                        countMemoryWatch(index, &rows_rendered);
-                    }
-                }
-
-                //TODO:FIX WHATEVER THE FUCK IS GOING WRONG HERE!!!!11!11!
+                // TODO:FIX WHATEVER THE FUCK IS GOING WRONG HERE!!!!11!11!
                 ImGuiListClipper clipper;
-                clipper.Begin(rows_rendered);
+                clipper.Begin(render_flat_tree.size());
+
+                TOOLBOX_DEBUG_LOG_V("ROWS: {}", render_flat_tree.size());
 
                 while (clipper.Step()) {  // Header row
-                    int clip_row = 0;
-                    for (int row = 0; row < row_count; ++row) {
-                        ModelIndex index = m_watch_proxy_model->getIndex(row, 0);
+                    std::stack<size_t> layer_stack;
+
+                    for (size_t i = 0; i < clipper.DisplayStart; ++i) {
+                        const ModelIndex &index = render_flat_tree[i];
                         if (m_watch_proxy_model->isIndexGroup(index)) {
-                            renderWatchGroup(index, 0, table_start_x, table_width, clipper,
-                                             &clip_row);
+                            if (open_state[index.getUUID()]) {
+                                size_t group_size = m_watch_proxy_model->getRowCount(index);
+                                if (group_size > 0) {
+                                    ImGui::PushID(layer_stack.size());
+                                    layer_stack.push(group_size);
+                                    continue;
+                                }
+                            }
+                        }
+                        while (!layer_stack.empty()) {
+                            size_t &current_left = layer_stack.top();
+                            if (--current_left == 0) {
+                                ImGui::PopID();
+                                layer_stack.pop();
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    for (size_t i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                        size_t render_depth     = layer_stack.size();
+
+                        const ModelIndex &index = render_flat_tree[i];
+                        if (m_watch_proxy_model->isIndexGroup(index)) {
+                            renderWatchGroup(index, render_depth, table_start_x, table_width);
+                            if (open_state[index.getUUID()]) {
+                                size_t group_size = m_watch_proxy_model->getRowCount(index);
+                                if (group_size > 0) {
+                                    ImGui::PushID(layer_stack.size());
+                                    layer_stack.push(group_size);
+                                    continue;
+                                }
+                            }
                         } else {
-                            renderMemoryWatch(index, 0, table_start_x, table_width, clipper,
-                                              &clip_row);
+                            renderMemoryWatch(index, render_depth, table_start_x,
+                                              table_width);
                         }
-                        if (clip_row == -1) {
-                            break;
+                        while (!layer_stack.empty()) {
+                            size_t &current_left = layer_stack.top();
+                            if (--current_left == 0) {
+                                ImGui::PopID();
+                                layer_stack.pop();
+                            } else {
+                                break;
+                            }
                         }
+                    }
+
+                    while (!layer_stack.empty()) {
+                        layer_stack.pop();
+                        ImGui::PopID();
                     }
                 }
 
@@ -1628,29 +1665,12 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::renderMemoryWatch(const ModelIndex &watch_idx, int depth,
-                                           float table_start_x, float table_width,
-                                           ImGuiListClipper &clipper, int *row) {
+                                           float table_start_x, float table_width) {
         if (!m_watch_proxy_model->validateIndex(watch_idx)) {
             return;
         }
 
         std::string name = m_watch_proxy_model->getDisplayText(watch_idx);
-        if (name.empty()) {
-            return;  // Skip empty groups
-        }
-
-        while (*row >= clipper.DisplayEnd - 1) {
-            if (!clipper.Step()) {
-                *row = -1;
-                return;
-            }
-        }
-
-        // Only process the row layout
-        if (*row < clipper.DisplayStart - 1) {
-            *row += 1;
-            return;
-        }
 
         DolphinHookManager &manager = DolphinHookManager::instance();
         void *mem_view              = manager.getMemoryView();
@@ -1827,50 +1847,12 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::renderWatchGroup(const ModelIndex &group_idx, int depth,
-                                          float table_start_x, float table_width,
-                                          ImGuiListClipper &clipper, int *row) {
+                                          float table_start_x, float table_width) {
         if (!m_watch_proxy_model->validateIndex(group_idx)) {
             return;
         }
 
         std::string name = m_watch_proxy_model->getDisplayText(group_idx);
-        if (name.empty()) {
-            return;  // Skip empty groups
-        }
-
-        while (*row >= clipper.DisplayEnd - 1) {
-            if (!clipper.Step()) {
-                *row = -1;
-                return;
-            }
-        }
-
-        // Only process the row layout
-        if (*row < clipper.DisplayStart - 1) {
-            *row += 1;
-
-            bool open = m_node_open_state[group_idx.getUUID()];
-            if (open) {
-                for (size_t i = 0; i < m_watch_proxy_model->getRowCount(group_idx); ++i) {
-                    ModelIndex index = m_watch_proxy_model->getIndex(i, 0, group_idx);
-                    if (m_watch_proxy_model->isIndexGroup(index)) {
-                        renderWatchGroup(index, depth + 1, table_start_x, table_width, clipper,
-                                         row);
-                    } else {
-                        renderMemoryWatch(index, depth + 1, table_start_x, table_width, clipper,
-                                          row);
-                    }
-                    if (*row == -1) {
-                        return;
-                    }
-                }
-
-#if 0
-            ImGui::TreePop();
-#endif
-            }
-            return;
-        }
 
         bool open = false;
 
@@ -2007,7 +1989,7 @@ namespace Toolbox::UI {
                     ImGui::ButtonBehavior(row_button_bb, button_id, &is_collapse_hovered,
                                           &is_collapse_held, ImGuiButtonFlags_MouseButtonLeft);
 
-                open = (m_node_open_state[group_idx.getUUID()] ^= is_collapse_pressed);
+                open = (m_watch_node_open_state[group_idx.getUUID()] ^= is_collapse_pressed);
 
                 ImGuiDir direction = open == true ? ImGuiDir_Down : ImGuiDir_Right;
                 ImGui::RenderArrow(window->DrawList, row_button_pos,
@@ -2052,27 +2034,6 @@ namespace Toolbox::UI {
             }
         }
 
-        *row += 1;
-
-        if (open) {
-            for (size_t i = 0; i < m_watch_proxy_model->getRowCount(group_idx); ++i) {
-                ModelIndex index = m_watch_proxy_model->getIndex(i, 0, group_idx);
-                if (m_watch_proxy_model->isIndexGroup(index)) {
-                    renderWatchGroup(index, depth + 1, table_start_x, table_width, clipper, row);
-                } else {
-                    renderMemoryWatch(index, depth + 1, table_start_x, table_width, clipper, row);
-                }
-                if (*row == -1) {
-                    ImGui::PopID();
-                    return;
-                }
-            }
-
-#if 0
-            ImGui::TreePop();
-#endif
-        }
-
         ImGui::PopID();
     }
 
@@ -2090,7 +2051,7 @@ namespace Toolbox::UI {
 
         *row += 1;
 
-        bool open = m_node_open_state[index.getUUID()];
+        bool open = m_watch_node_open_state[index.getUUID()];
         if (open) {
             size_t row_count = m_watch_proxy_model->getRowCount(index);
             for (size_t i = row_count; i < row_count; ++i) {
@@ -2102,6 +2063,31 @@ namespace Toolbox::UI {
                 }
             }
         }
+    }
+
+    static void processWatchModelToFlatTree(RefPtr<IDataModel> model, const ModelIndex &index,
+                                            std::vector<ModelIndex> &flat_tree,
+                                            const std::unordered_map<UUID64, bool> &open_map) {
+        if (model->validateIndex(index)) {
+            flat_tree.emplace_back(index);
+            if (!open_map.contains(index.getUUID()) || open_map.at(index.getUUID()) == false) {
+                return;
+            }
+        }
+
+        size_t row_count = model->getRowCount(index);
+        for (size_t i = 0; i < row_count; ++i) {
+            ModelIndex child_idx = model->getIndex(i, 0, index);
+            processWatchModelToFlatTree(model, child_idx, flat_tree, open_map);
+        }
+    }
+
+    std::vector<ModelIndex> DebuggerWindow::computeModelWatchFlatTree(const std::unordered_map<UUID64, bool> &open_state) const {
+        std::vector<ModelIndex> flat_tree;
+        flat_tree.reserve(8192);
+
+        processWatchModelToFlatTree(m_watch_proxy_model, ModelIndex(), flat_tree, open_state);
+        return flat_tree;
     }
 
     void DebuggerWindow::onAttach() {

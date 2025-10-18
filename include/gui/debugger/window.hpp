@@ -56,11 +56,13 @@ namespace Toolbox::UI {
         void renderMemoryScanner();
         void renderMemoryWatchList();
         void renderMemoryWatch(const ModelIndex &index, int depth, float table_start_x,
-                               float table_width, ImGuiListClipper &clipper, int *row);
+                               float table_width);
         void renderWatchGroup(const ModelIndex &index, int depth, float table_start_x,
-                              float table_width, ImGuiListClipper &clipper, int *row);
+                              float table_width);
         void countMemoryWatch(const ModelIndex &index, int *row);
         void countWatchGroup(const ModelIndex &index, int *row);
+        std::vector<ModelIndex>
+        computeModelWatchFlatTree(const std::unordered_map<UUID64, bool> &open_state) const;
 
     public:
         ImGuiWindowFlags flags() const override { return ImWindow::flags(); }
@@ -211,7 +213,7 @@ namespace Toolbox::UI {
 
         ImVec2 m_last_reg_mouse_pos;
 
-        std::unordered_map<ImGuiID, bool> m_node_open_state;
+        std::unordered_map<UUID64, bool> m_watch_node_open_state;
 
         bool m_selection_was_ascii             = false;
         bool m_address_selection_new           = false;
