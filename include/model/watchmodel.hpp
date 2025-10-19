@@ -13,6 +13,7 @@
 #include "core/types.hpp"
 #include "fsystem.hpp"
 #include "image/imagehandle.hpp"
+#include "jsonlib.hpp"
 #include "model/model.hpp"
 #include "serial.hpp"
 #include "unique.hpp"
@@ -20,6 +21,13 @@
 #include "watchdog/fswatchdog.hpp"
 
 namespace Toolbox {
+
+    enum class WatchValueBase : u8 {
+        BASE_BINARY,
+        BASE_OCTAL,
+        BASE_DECIMAL,
+        BASE_HEXADECIMAL,
+    };
 
     class WatchGroup : public IUnique {
     public:
@@ -87,15 +95,16 @@ namespace Toolbox {
 
     enum class WatchModelEventFlags {
         NONE                 = 0,
-        EVENT_WATCH_ADDED    = BIT(0),
-        EVENT_WATCH_MODIFIED = BIT(1),
-        EVENT_WATCH_REMOVED  = BIT(2),
-        EVENT_GROUP_ADDED    = BIT(3),
-        EVENT_GROUP_MODIFIED = BIT(4),
-        EVENT_GROUP_REMOVED  = BIT(5),
+        EVENT_RESET          = BIT(0),
+        EVENT_WATCH_ADDED    = BIT(1),
+        EVENT_WATCH_MODIFIED = BIT(2),
+        EVENT_WATCH_REMOVED  = BIT(3),
+        EVENT_GROUP_ADDED    = BIT(4),
+        EVENT_GROUP_MODIFIED = BIT(5),
+        EVENT_GROUP_REMOVED  = BIT(6),
         EVENT_WATCH_ANY      = EVENT_WATCH_ADDED | EVENT_WATCH_MODIFIED | EVENT_WATCH_REMOVED,
         EVENT_GROUP_ANY      = EVENT_GROUP_ADDED | EVENT_GROUP_MODIFIED | EVENT_GROUP_REMOVED,
-        EVENT_ANY            = EVENT_WATCH_ANY | EVENT_GROUP_ANY,
+        EVENT_ANY            = EVENT_RESET | EVENT_WATCH_ANY | EVENT_GROUP_ANY,
     };
     TOOLBOX_BITWISE_ENUM(WatchModelEventFlags)
 
@@ -109,6 +118,8 @@ namespace Toolbox {
 
     class WatchDataModel : public IDataModel, public ISerializable {
     public:
+        using json_t = nlohmann::ordered_json;
+
     public:
         WatchDataModel() = default;
         ~WatchDataModel();
@@ -162,6 +173,8 @@ namespace Toolbox {
         [[nodiscard]] std::string findUniqueName(const ModelIndex &index,
                                                  const std::string &name) const;
 
+        Result<void, JSONError> loadFromDMEFile(const fs_path &path);
+
     public:
         [[nodiscard]] ModelIndex getIndex(const UUID64 &path) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
@@ -192,7 +205,8 @@ namespace Toolbox {
 
         ModelIndex makeWatchIndex(const std::string &name, MetaType type,
                                   const std::vector<u32> &pointer_chain, u32 size, bool is_pointer,
-                                  int64_t row, const ModelIndex &parent, bool find_unique_name = true);
+                                  WatchValueBase value_base, int64_t row, const ModelIndex &parent,
+                                  bool find_unique_name = true);
         ModelIndex makeGroupIndex(const std::string &name, int64_t row, const ModelIndex &parent,
                                   bool find_unique_name = true);
 

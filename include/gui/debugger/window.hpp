@@ -65,7 +65,9 @@ namespace Toolbox::UI {
         computeModelWatchFlatTree(const std::unordered_map<UUID64, bool> &open_state) const;
 
     public:
-        ImGuiWindowFlags flags() const override { return ImWindow::flags(); }
+        ImGuiWindowFlags flags() const override {
+            return ImWindow::flags() | ImGuiWindowFlags_MenuBar;
+        }
 
         const ImGuiWindowClass *windowClass() const override {
             if (parent() && parent()->windowClass()) {
@@ -93,11 +95,8 @@ namespace Toolbox::UI {
         // Returns the supported file types, empty string is designed for a folder.
         [[nodiscard]] std::vector<std::string> extensions() const override { return {}; }
 
-        [[nodiscard]] bool onLoadData(const std::filesystem::path &path) override { return true; }
-
-        [[nodiscard]] bool onSaveData(std::optional<std::filesystem::path> path) override {
-            return true;
-        }
+        [[nodiscard]] bool onLoadData(const std::filesystem::path &path) override;
+        [[nodiscard]] bool onSaveData(std::optional<std::filesystem::path> path) override;
 
         void onAttach() override;
         void onDetach() override;
@@ -230,6 +229,14 @@ namespace Toolbox::UI {
         float m_delta_time        = 0.0f;
 
         bool m_keybind_wait_for_keyup = false;
+
+        std::optional<fs_path> m_resource_path;
+        bool m_is_open_dialog     = false;
+        bool m_is_save_dialog     = false;
+        bool m_is_load_dme_dialog = false;
+
+        bool m_error_modal_open       = false;
+        std::string m_error_modal_msg = "";
     };
 
 }  // namespace Toolbox::UI

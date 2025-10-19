@@ -140,6 +140,8 @@ namespace Toolbox {
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
         void setData(const ModelIndex &index, std::any data, int role) override;
 
+        void loadFromDMEFile(const fs_path &path);
+
     public:
         [[nodiscard]] ModelIndex getIndex(const u32 &address) const;
         [[nodiscard]] ModelIndex getIndex(const UUID64 &uuid) const override;
@@ -169,6 +171,8 @@ namespace Toolbox {
 
         void reset() override;
 
+        // -------------------
+
         bool isScanBusy() const;
         double getScanProgress() const;
 
@@ -183,6 +187,8 @@ namespace Toolbox {
 
         bool canUndoScan() const { return m_history_size > 0; }
         bool undoScan();
+
+        // -------------------
 
         using event_listener_t = std::function<void(const ModelIndex &, MemScanModelEventFlags)>;
         void addEventListener(UUID64 uuid, event_listener_t listener, MemScanModelEventFlags flags);

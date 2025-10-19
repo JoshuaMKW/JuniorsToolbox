@@ -23,6 +23,8 @@ namespace Toolbox {
             MetaWatch *m_watch;
         };
 
+        WatchValueBase m_value_base;
+
         bool hasChild(UUID64 uuid) const {
             if (m_type != Type::GROUP || !m_group) {
                 return false;
@@ -166,6 +168,141 @@ namespace Toolbox {
         return findUniqueName_(index, name);
     }
 
+    static ModelIndex LoadWatchFromJSON(WatchDataModel &model,
+                                        const WatchDataModel::json_t &mem_watch, int row,
+                                        const ModelIndex &parent) {
+        std::vector<u32> pointer_chain;
+        pointer_chain.reserve(8);
+
+        MetaType watch_type;
+        u32 watch_size;
+
+        int base_index              = mem_watch["baseIndex"];
+        const std::string &name_str = mem_watch["label"];
+
+        const std::string &address_str = mem_watch["address"];
+        u32 address                    = std::strtoul(address_str.c_str(), nullptr, 16);
+        pointer_chain.emplace_back(address);
+
+        if (mem_watch.contains("pointerOffsets")) {
+            const WatchDataModel::json_t &pointer_offsets = mem_watch["pointerOffsets"];
+            for (const std::string &offset_str : pointer_offsets) {
+                u32 offset = std::strtoul(offset_str.c_str(), nullptr, 16);
+                pointer_chain.emplace_back(offset);
+            }
+        }
+
+        int type_index = mem_watch["typeIndex"];
+        bool unsgned   = mem_watch["unsigned"];
+        switch (type_index) {
+        case 0:
+            watch_type = unsgned ? MetaType::U8 : MetaType::S8;
+            break;
+        case 1:
+            watch_type = unsgned ? MetaType::U16 : MetaType::S16;
+            break;
+        case 2:
+            watch_type = unsgned ? MetaType::U32 : MetaType::S32;
+            break;
+        case 3:
+            watch_type = MetaType::F32;
+            break;
+        case 4:
+            watch_type = MetaType::F64;
+            break;
+        case 5:
+            watch_type = MetaType::STRING;
+            break;
+        case 6:
+            watch_type = MetaType::UNKNOWN;
+            break;
+        default:
+            return ModelIndex();
+        }
+
+        WatchValueBase value_base;
+        switch (base_index) {
+        case 0:
+            value_base = WatchValueBase::BASE_DECIMAL;
+            break;
+        case 1:
+            value_base = WatchValueBase::BASE_HEXADECIMAL;
+            break;
+        case 2:
+            value_base = WatchValueBase::BASE_OCTAL;
+            break;
+        case 3:
+            value_base = WatchValueBase::BASE_BINARY;
+            break;
+        }
+
+        if (mem_watch.contains("length")) {
+            watch_size = mem_watch["length"];
+        } else {
+            watch_size = meta_type_size(watch_type);
+        }
+
+        return model.makeWatchIndex(name_str, watch_type, pointer_chain, watch_size,
+                                    pointer_chain.size() > 1, value_base, row, parent, true);
+    }
+
+    Result<void, JSONError> WatchDataModel::loadFromDMEFile(const fs_path &path) {
+        std::ifstream in_stream = std::ifstream(path, std::ios::in);
+
+        json_t profile_json;
+        return tryJSONWithResult(profile_json, [&](json_t &j) {
+            in_stream >> j;
+            if (!j.contains("watchList")) {
+                return make_json_error<void>("MEMSCANMODEL", "DME file has no `watchList' field",
+                                             0);
+            }
+
+            const json_t &watch_list = j["watchList"];
+            if (!watch_list.is_array()) {
+                return make_json_error<void>("MEMSCANMODEL",
+                                             "DME file `watchList' field should be an array", 0);
+            }
+
+            // Reset the model before loading all the data
+            reset();
+
+            size_t root_row = 0;
+
+            for (const json_t &watch_entry : watch_list) {
+                if (watch_entry.contains("groupEntries")) {
+                    const json_t &group_list = watch_entry["groupEntries"];
+                    if (!group_list.is_array()) {
+                        return make_json_error<void>(
+                            "MEMSCANMODEL", "DME file `groupEntries' field should be an array", 0);
+                    }
+
+                    const std::string &group_name = watch_entry["groupName"];
+                    ModelIndex group_idx = makeGroupIndex(group_name, root_row, ModelIndex(), true);
+                    if (!validateIndex(group_idx)) {
+                        continue;
+                    }
+
+                    root_row += 1;
+
+                    size_t child_row = 0;
+                    for (const json_t &child_watch : group_list) {
+                        ModelIndex new_idx =
+                            LoadWatchFromJSON(*this, child_watch, child_row, group_idx);
+                        if (validateIndex(new_idx)) {
+                            child_row += 1;
+                        }
+                    }
+                } else {
+                    ModelIndex new_idx =
+                        LoadWatchFromJSON(*this, watch_entry, root_row, ModelIndex());
+                    if (validateIndex(new_idx)) {
+                        root_row += 1;
+                    }
+                }
+            }
+        });
+    }
+
     ModelIndex WatchDataModel::getIndex(const UUID64 &uuid) const {
         std::scoped_lock lock(m_mutex);
         return getIndex_(uuid);
@@ -254,6 +391,8 @@ namespace Toolbox {
         }
 
         m_index_map.clear();
+
+        signalEventListeners(ModelIndex(), WatchModelEventFlags::EVENT_RESET);
     }
 
     void WatchDataModel::addEventListener(UUID64 uuid, event_listener_t listener,
@@ -703,8 +842,9 @@ namespace Toolbox {
 
     ModelIndex WatchDataModel::makeWatchIndex(const std::string &name, MetaType type,
                                               const std::vector<u32> &pointer_chain, u32 size,
-                                              bool is_pointer, int64_t row,
-                                              const ModelIndex &parent, bool find_unique_name) {
+                                              bool is_pointer, WatchValueBase value_base,
+                                              int64_t row, const ModelIndex &parent,
+                                              bool find_unique_name) {
         _WatchIndexData *parent_data = nullptr;
         if (row < 0 || pointer_chain.empty()) {
             return ModelIndex();
@@ -726,6 +866,7 @@ namespace Toolbox {
         _WatchIndexData *data = new _WatchIndexData;
         data->m_type          = _WatchIndexData::Type::WATCH;
         data->m_watch         = new MetaWatch(type);
+        data->m_value_base    = value_base;
 
         if (is_pointer) {
             if (!data->m_watch->startWatch(pointer_chain, size)) {
@@ -1025,7 +1166,6 @@ namespace Toolbox {
 
     void WatchDataModelSortFilterProxy::reset() {
         std::scoped_lock lock(m_cache_mutex);
-        m_source_model->reset();
         m_filter_map.clear();
         m_row_map.clear();
     }
@@ -1163,6 +1303,10 @@ namespace Toolbox {
                                                              WatchModelEventFlags flags) {
         if ((flags & WatchModelEventFlags::EVENT_ANY) == WatchModelEventFlags::NONE) {
             return;
+        }
+
+        if ((flags & WatchModelEventFlags::EVENT_RESET) == WatchModelEventFlags::EVENT_RESET) {
+            reset();
         }
 
         ModelIndex proxy_index = toProxyIndex(index);

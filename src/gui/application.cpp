@@ -629,21 +629,6 @@ namespace Toolbox {
             }
             m_is_dir_dialog_open = false;
         }
-        if (FileDialog::instance()->isDone()) {
-            FileDialog::instance()->close();
-            if (FileDialog::instance()->isOk()) {
-                std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();
-                if (m_project_manager.loadProjectFolder(selected_path)) {
-                    TOOLBOX_INFO_V("Loaded project folder: {}", selected_path.string());
-                    RefPtr<ProjectViewWindow> project_window =
-                        createWindow<ProjectViewWindow>("Project View");
-                    if (!project_window->onLoadData(selected_path)) {
-                        TOOLBOX_ERROR("Failed to open project folder view!");
-                        project_window->close();
-                    }
-                }
-            }
-        }
 
         if (m_is_file_dialog_open) {
             if (!FileDialog::instance()->isAlreadyOpen()) {
@@ -653,10 +638,24 @@ namespace Toolbox {
             }
             m_is_file_dialog_open = false;
         }
-        if (FileDialog::instance()->isDone()) {
+
+        if (FileDialog::instance()->isDone(m_render_window)) {
             FileDialog::instance()->close();
             if (FileDialog::instance()->isOk()) {
                 std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();
+                bool is_dir = Filesystem::is_directory(selected_path).value_or(false);
+                if (is_dir) {
+                    if (m_project_manager.loadProjectFolder(selected_path)) {
+                        TOOLBOX_INFO_V("Loaded project folder: {}", selected_path.string());
+                        RefPtr<ProjectViewWindow> project_window =
+                            createWindow<ProjectViewWindow>("Project View");
+                        if (!project_window->onLoadData(selected_path)) {
+                            TOOLBOX_ERROR("Failed to open project folder view!");
+                            project_window->close();
+                        }
+                    }
+                }
+
                 if (selected_path.extension() == ".szs" || selected_path.extension() == ".arc") {
                     RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
                     if (!window->onLoadData(selected_path)) {
@@ -747,8 +746,15 @@ namespace Toolbox {
         }
     }
 
+    void FileDialog::openDialog(std::filesystem::path starting_path, ImGuiWindow *parent_window,
+                                bool is_directory, std::optional<FileDialogFilter> maybe_filters) {
+        GLFWwindow *op_window = static_cast<GLFWwindow *>(parent_window->Viewport->PlatformHandle);
+        openDialog(starting_path, op_window, is_directory, maybe_filters);
+    }
+
     void FileDialog::openDialog(std::filesystem::path starting_path, GLFWwindow *parent_window,
                                 bool is_directory, std::optional<FileDialogFilter> maybe_filters) {
+        m_owner = parent_window;
         if (m_thread_initialized) {
             m_thread.join();
         } else {
@@ -756,6 +762,7 @@ namespace Toolbox {
         }
         m_thread_running = true;
         m_closed         = false;
+        m_result         = NFD_ERROR;
         auto fn          = [this, starting_path, parent_window, is_directory, maybe_filters]() {
             m_starting_path = starting_path.string();
             if (is_directory) {

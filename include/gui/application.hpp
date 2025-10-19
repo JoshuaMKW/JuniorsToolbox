@@ -25,8 +25,8 @@
 
 #include "gui/font.hpp"
 #include "gui/settings.hpp"
-#include "resource/resource.hpp"
 #include "project/project.hpp"
+#include "resource/resource.hpp"
 
 #include "scene/layout.hpp"
 #include "themes.hpp"
@@ -140,7 +140,7 @@ namespace Toolbox {
         const ProjectManager &getProjectManager() const { return m_project_manager; }
 
         RefPtr<ImWindow> getImWindowFromPlatformWindow(Platform::LowWindow window);
-        
+
         bool registerDragDropSource(Platform::LowWindow window);
         void deregisterDragDropSource(Platform::LowWindow window);
 
@@ -187,8 +187,8 @@ namespace Toolbox {
 
         ProjectManager m_project_manager;
 
-        std::filesystem::path m_load_path    = std::filesystem::current_path();
-        std::filesystem::path m_save_path    = std::filesystem::current_path();
+        std::filesystem::path m_load_path = std::filesystem::current_path();
+        std::filesystem::path m_save_path = std::filesystem::current_path();
 
         ScopePtr<Scene::SceneLayoutManager> m_scene_layout_manager;
         ResourceManager m_resource_manager;
@@ -226,7 +226,7 @@ namespace Toolbox {
 
     class FileDialogFilter {
     public:
-        FileDialogFilter() = default;
+        FileDialogFilter()  = default;
         ~FileDialogFilter() = default;
 
         void addFilter(const std::string &label, const std::string &csv_filters);
@@ -251,13 +251,23 @@ namespace Toolbox {
             static FileDialog _instance;
             return &_instance;
         }
+        void openDialog(std::filesystem::path starting_path, ImGuiWindow *parent_window,
+                        bool is_directory                             = false,
+                        std::optional<FileDialogFilter> maybe_filters = std::nullopt);
         void openDialog(std::filesystem::path starting_path, GLFWwindow *parent_window,
-                        bool is_directory = false,
-                        std::optional<FileDialogFilter>
-                            maybe_filters = std::nullopt);
+                        bool is_directory                             = false,
+                        std::optional<FileDialogFilter> maybe_filters = std::nullopt);
         bool isAlreadyOpen() const { return m_thread_running; }
-        bool isDone() const { return !m_thread_running && !m_closed && m_thread_initialized; }
-        bool isOk() const { return m_result == NFD_OKAY; }
+
+        bool isDone(ImGuiWindow *window) const {
+            return isDone(static_cast<GLFWwindow *>(window->Viewport->PlatformHandle));
+        }
+        bool isDone(GLFWwindow *window) const {
+            return m_owner == window && !m_thread_running && m_result.has_value() &&
+                   m_thread_initialized && !m_closed;
+        }
+
+        bool isOk() const { return m_result.has_value() ? m_result.value() == NFD_OKAY : false; }
         std::filesystem::path getFilenameResult() const { return m_selected_path; }
         void close() { m_closed = true; }
 
@@ -266,8 +276,8 @@ namespace Toolbox {
         std::vector<std::pair<std::string, std::string>> m_filters;
 
         // The result of the last dialog box.
-        nfdu8char_t *m_selected_path = nullptr;
-        nfdresult_t m_result = NFD_OKAY;
+        nfdu8char_t *m_selected_path        = nullptr;
+        std::optional<nfdresult_t> m_result = std::nullopt;
         // The thread that we run the dialog in. If
         // m_thread_initialized is true, this should be an initialized
         // thread object.
@@ -281,6 +291,8 @@ namespace Toolbox {
         // For checking whether the user has called Close. If so, stop
         // returning true for isDone().
         bool m_closed = false;
+
+        GLFWwindow *m_owner;
     };
 
 }  // namespace Toolbox

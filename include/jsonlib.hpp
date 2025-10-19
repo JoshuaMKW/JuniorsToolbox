@@ -113,3 +113,39 @@ inline auto tryJSON(const _JsonT &j, _Func json_op)
         return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
     }
 }
+
+// Pass a callback function that operates on a json object and potentially returns a value.
+template <class _JsonT, class _Func>
+inline auto tryJSONWithResult(_JsonT &j, _Func json_op) -> Toolbox::Result<void, JSONError> {
+    try {
+        return json_op(j);
+    } catch (json::type_error &err) {
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
+    } catch (json::parse_error &err) {
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), err.byte);
+    } catch (json::out_of_range &err) {
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
+    } catch (json::invalid_iterator &err) {
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
+    } catch (json::other_error &err) {
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
+    }
+}
+
+// Pass a callback function that operates on a json object and potentially returns a value.
+template <class _JsonT, class _Func>
+inline auto tryJSONWithResult(const _JsonT &j, _Func json_op) -> Toolbox::Result<void, JSONError> {
+    try {
+        return json_op(j);
+    } catch (json::type_error &err) {
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
+    } catch (json::parse_error &err) {
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), err.byte);
+    } catch (json::out_of_range &err) {
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
+    } catch (json::invalid_iterator &err) {
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
+    } catch (json::other_error &err) {
+        return make_json_error<void>("Error while parsing template JSON.", err.what(), 0);
+    }
+}

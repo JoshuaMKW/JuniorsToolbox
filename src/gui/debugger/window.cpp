@@ -73,7 +73,107 @@ namespace Toolbox::UI {
         return std::format("MRAM ({})", scene_window->context());
     }
 
-    void DebuggerWindow::onRenderMenuBar() {}
+    void DebuggerWindow::onRenderMenuBar() {
+        ImGuiWindow *window = ImGui::GetCurrentWindow();
+
+        if (ImGui::BeginMenuBar()) {
+            if (ImGui::BeginMenu("File")) {
+                if (ImGui::MenuItem("Open...")) {
+                    m_is_open_dialog = true;
+                }
+
+                bool can_save = m_watch_model->getRowCount(ModelIndex());
+                if (!can_save) {
+                    ImGui::BeginDisabled();
+                }
+
+                if (ImGui::MenuItem("Save")) {
+                    if (!m_resource_path) {
+                        m_is_save_dialog = true;
+                    } else {
+                        onSaveData(m_resource_path);
+                    }
+                }
+
+                if (ImGui::MenuItem("Save As")) {
+                    m_is_save_dialog = true;
+                }
+
+                if (!can_save) {
+                    ImGui::EndDisabled();
+                }
+
+                ImGui::Separator();
+
+                if (ImGui::MenuItem("Load DME Watch List...")) {
+                    m_is_load_dme_dialog = true;
+                }
+
+                ImGui::Separator();
+
+                if (ImGui::MenuItem("Clear Watch List")) {
+                    m_watch_model->reset();
+                }
+
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::MenuItem("Help")) {
+                // TODO: Show help dialog
+            }
+
+            ImGui::EndMenuBar();
+
+            fs_path cwd = Filesystem::current_path().value_or("");
+
+            if (m_is_open_dialog) {
+                if (!FileDialog::instance()->isAlreadyOpen()) {
+                    FileDialogFilter filter;
+                    filter.addFilter("Toolbox Memory Watch List", "mwl");
+                    FileDialog::instance()->openDialog(
+                        m_resource_path ? m_resource_path.value() : cwd, window, false, filter);
+                }
+                m_is_open_dialog = false;
+            }
+
+            if (m_is_load_dme_dialog) {
+                if (!FileDialog::instance()->isAlreadyOpen()) {
+                    FileDialogFilter filter;
+                    filter.addFilter("Dolphin Memory Watches File", "dmw");
+                    FileDialog::instance()->openDialog(
+                        m_resource_path ? m_resource_path.value() : cwd, window, false, filter);
+                }
+                m_is_load_dme_dialog = false;
+            }
+
+            if (FileDialog::instance()->isDone(window)) {
+                FileDialog::instance()->close();
+                if (FileDialog::instance()->isOk()) {
+                    std::filesystem::path selected_path =
+                        FileDialog::instance()->getFilenameResult();
+
+                    bool exists = Filesystem::is_regular_file(selected_path).value_or(false);
+                    if (!exists) {
+                        m_error_modal_open = true;
+                        m_error_modal_msg  = "Selected file does not exist!";
+                        return;
+                    }
+
+                    if (selected_path.extension() == ".mwl") {
+                        onLoadData(selected_path);
+                    } else if (selected_path.extension() == ".dmw") {
+                        auto result = m_watch_model->loadFromDMEFile(selected_path);
+                        if (!result) {
+                            LogError(result.error());
+                        }
+                    }
+
+                    m_error_modal_open = true;
+                    m_error_modal_msg  = "Selected file is not a valid watch list!";
+                }
+            }
+        }
+    }
 
     void DebuggerWindow::onRenderBody(TimeStep delta_time) {
         const float splitter_width = 6.0f;
@@ -1559,7 +1659,7 @@ namespace Toolbox::UI {
 
                 // Clone the open state for rendering consistencies
                 std::unordered_map<UUID64, bool> open_state = m_watch_node_open_state;
-                std::vector<ModelIndex> render_flat_tree = computeModelWatchFlatTree(open_state);
+                std::vector<ModelIndex> render_flat_tree    = computeModelWatchFlatTree(open_state);
 
                 // TODO:FIX WHATEVER THE FUCK IS GOING WRONG HERE!!!!11!11!
                 ImGuiListClipper clipper;
@@ -1591,7 +1691,7 @@ namespace Toolbox::UI {
                         }
                     }
                     for (size_t i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
-                        size_t render_depth     = layer_stack.size();
+                        size_t render_depth = layer_stack.size();
 
                         const ModelIndex &index = render_flat_tree[i];
                         if (m_watch_proxy_model->isIndexGroup(index)) {
@@ -1605,8 +1705,7 @@ namespace Toolbox::UI {
                                 }
                             }
                         } else {
-                            renderMemoryWatch(index, render_depth, table_start_x,
-                                              table_width);
+                            renderMemoryWatch(index, render_depth, table_start_x, table_width);
                         }
                         while (!layer_stack.empty()) {
                             size_t &current_left = layer_stack.top();
@@ -2076,12 +2175,44 @@ namespace Toolbox::UI {
         }
     }
 
-    std::vector<ModelIndex> DebuggerWindow::computeModelWatchFlatTree(const std::unordered_map<UUID64, bool> &open_state) const {
+    std::vector<ModelIndex> DebuggerWindow::computeModelWatchFlatTree(
+        const std::unordered_map<UUID64, bool> &open_state) const {
         std::vector<ModelIndex> flat_tree;
         flat_tree.reserve(8192);
 
         processWatchModelToFlatTree(m_watch_proxy_model, ModelIndex(), flat_tree, open_state);
         return flat_tree;
+    }
+
+    bool DebuggerWindow::onLoadData(const std::filesystem::path &path) {
+        std::ifstream istr = std::ifstream(path, std::ios::binary | std::ios::in);
+        
+        Deserializer in(istr.rdbuf());
+        auto result = m_watch_model->deserialize(in);
+        if (!result.has_value()) {
+            LogError(result.error());
+            return false;
+        }
+
+        return true;
+    }
+
+    bool DebuggerWindow::onSaveData(std::optional<std::filesystem::path> path) {
+        if (!path) {
+            return false;
+        }
+
+        std::ofstream ostr =
+            std::ofstream(path.value(), std::ios::binary | std::ios::ate | std::ios::out);
+
+        Serializer out(ostr.rdbuf());
+        auto result = m_watch_model->serialize(out);
+        if (!result.has_value()) {
+            LogError(result.error());
+            return false;
+        }
+
+        return true;
     }
 
     void DebuggerWindow::onAttach() {
@@ -2100,7 +2231,7 @@ namespace Toolbox::UI {
         m_watch_proxy_model = make_referable<WatchDataModelSortFilterProxy>();
         m_watch_proxy_model->setSourceModel(m_watch_model);
         m_watch_proxy_model->setSortOrder(ModelSortOrder::SORT_ASCENDING);
-        m_watch_proxy_model->setSortRole(WatchModelSortRole::SORT_ROLE_NAME);
+        m_watch_proxy_model->setSortRole(WatchModelSortRole::SORT_ROLE_NONE);
 
         m_watch_selection.setModel(m_watch_proxy_model);
 
@@ -2346,22 +2477,22 @@ namespace Toolbox::UI {
         case AddWatchDialog::InsertPolicy::INSERT_BEFORE: {
             ModelIndex index = m_watch_model->makeWatchIndex(
                 std::string(watch_name), watch_type, pointer_chain, watch_size, is_pointer,
-                std::min(sibling_count, src_row), src_group_idx);
+                WatchValueBase::BASE_DECIMAL, std::min(sibling_count, src_row), src_group_idx);
             m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_WATCH_ADDED);
             return index;
         }
         case AddWatchDialog::InsertPolicy::INSERT_AFTER: {
             ModelIndex index = m_watch_model->makeWatchIndex(
                 std::string(watch_name), watch_type, pointer_chain, watch_size, is_pointer,
-                std::min(sibling_count, src_row + 1), src_group_idx);
+                WatchValueBase::BASE_DECIMAL, std::min(sibling_count, src_row + 1), src_group_idx);
             m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_WATCH_ADDED);
             return index;
         }
         case AddWatchDialog::InsertPolicy::INSERT_CHILD: {
             int64_t row_count = m_watch_model->getRowCount(src_target_idx);
-            ModelIndex index =
-                m_watch_model->makeWatchIndex(std::string(watch_name), watch_type, pointer_chain,
-                                              watch_size, is_pointer, row_count, src_target_idx);
+            ModelIndex index  = m_watch_model->makeWatchIndex(
+                std::string(watch_name), watch_type, pointer_chain, watch_size, is_pointer,
+                WatchValueBase::BASE_DECIMAL, row_count, src_target_idx);
             m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_WATCH_ADDED);
             return index;
         }
@@ -2387,6 +2518,22 @@ namespace Toolbox::UI {
         ModelIndex group_idx = m_watch_model->makeGroupIndex(
             group_name.c_str(), m_watch_model->getRowCount(ModelIndex()), ModelIndex());
         if (m_watch_model->validateIndex(group_idx)) {
+            WatchValueBase value_base;
+            switch (m_scan_radix) {
+            case ScanRadix::RADIX_BINARY:
+                value_base = WatchValueBase::BASE_BINARY;
+                break;
+            case ScanRadix::RADIX_OCTAL:
+                value_base = WatchValueBase::BASE_OCTAL;
+                break;
+            case ScanRadix::RADIX_DECIMAL:
+                value_base = WatchValueBase::BASE_DECIMAL;
+                break;
+            case ScanRadix::RADIX_HEXADECIMAL:
+                value_base = WatchValueBase::BASE_HEXADECIMAL;
+                break;
+            }
+
             size_t i              = 0;
             const auto &selection = m_scan_selection.getSelection();
             std::for_each(std::execution::par, selection.begin(), selection.end(),
@@ -2398,8 +2545,8 @@ namespace Toolbox::UI {
                               std::string watch_name =
                                   std::format("{}_{:08X}", meta_type_name(type), address);
                               ModelIndex watch_idx = m_watch_model->makeWatchIndex(
-                                  watch_name, type, {address}, static_cast<u32>(size), false, i,
-                                  group_idx, false);
+                                  watch_name, type, {address}, static_cast<u32>(size), false,
+                                  value_base, i, group_idx, false);
                               if (m_watch_model->validateIndex(watch_idx)) {
                                   i += 1;
                               } else {
@@ -2440,6 +2587,22 @@ namespace Toolbox::UI {
         if (m_watch_model->validateIndex(group_idx)) {
             size_t scan_size = m_scan_model->getRowCount(ModelIndex());
 
+            WatchValueBase value_base;
+            switch (m_scan_radix) {
+            case ScanRadix::RADIX_BINARY:
+                value_base = WatchValueBase::BASE_BINARY;
+                break;
+            case ScanRadix::RADIX_OCTAL:
+                value_base = WatchValueBase::BASE_OCTAL;
+                break;
+            case ScanRadix::RADIX_DECIMAL:
+                value_base = WatchValueBase::BASE_DECIMAL;
+                break;
+            case ScanRadix::RADIX_HEXADECIMAL:
+                value_base = WatchValueBase::BASE_HEXADECIMAL;
+                break;
+            }
+
             size_t i = 0;
 
             std::ranges::iota_view indexes((size_t)0, scan_size);
@@ -2450,9 +2613,9 @@ namespace Toolbox::UI {
                 u16 size        = m_scan_model->getScanSize(scan);
 
                 std::string watch_name = std::format("{}_{:08X}", meta_type_name(type), address);
-                ModelIndex watch_idx   = m_watch_model->makeWatchIndex(watch_name, type, {address},
-                                                                       static_cast<u32>(size), false,
-                                                                       i, group_idx, false);
+                ModelIndex watch_idx   = m_watch_model->makeWatchIndex(
+                    watch_name, type, {address}, static_cast<u32>(size), false, value_base, i,
+                    group_idx, false);
                 if (m_watch_model->validateIndex(watch_idx)) {
                     i += 1;
                 } else {

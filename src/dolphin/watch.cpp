@@ -326,27 +326,27 @@ namespace Toolbox {
                 break;
             }
             case MetaType::S16: {
-                new_meta_value.set(bs16(*static_cast<s16 *>(new_value)));
+                new_meta_value.set(std::byteswap(*static_cast<s16 *>(new_value)));
                 break;
             }
             case MetaType::U16: {
-                new_meta_value.set(bu16(*static_cast<u16 *>(new_value)));
+                new_meta_value.set(std::byteswap(*static_cast<u16 *>(new_value)));
                 break;
             }
             case MetaType::S32: {
-                new_meta_value.set(bs32(*static_cast<s32 *>(new_value)));
+                new_meta_value.set(std::byteswap(*static_cast<s32 *>(new_value)));
                 break;
             }
             case MetaType::U32: {
-                new_meta_value.set(bu32(*static_cast<u32 *>(new_value)));
+                new_meta_value.set(std::byteswap(*static_cast<u32 *>(new_value)));
                 break;
             }
             case MetaType::F32: {
-                new_meta_value.set(bf32(*static_cast<f32 *>(new_value)));
+                new_meta_value.set(f32(bf32(*static_cast<f32 *>(new_value))));
                 break;
             }
             case MetaType::F64: {
-                new_meta_value.set(bf64(*static_cast<f64 *>(new_value)));
+                new_meta_value.set(f64(bf64(*static_cast<f64 *>(new_value))));
                 break;
             }
             case MetaType::STRING: {
