@@ -11,59 +11,14 @@ using namespace Toolbox::Object;
 
 namespace Toolbox {
 
-    struct _WatchIndexData {
-        enum class Type { GROUP, WATCH };
-
-        UUID64 m_parent    = 0;
-        UUID64 m_self_uuid = 0;
-
-        Type m_type = Type::GROUP;
-        union {
-            WatchGroup *m_group;
-            MetaWatch *m_watch;
-        };
-
-        WatchValueBase m_value_base;
-
-        bool hasChild(UUID64 uuid) const {
-            if (m_type != Type::GROUP || !m_group) {
-                return false;
-            }
-
-            return m_group->hasChild(uuid);
-        }
-
-        std::strong_ordering operator<=>(const _WatchIndexData &rhs) const {
-#if 0
-            UUID64 lhs_uuid, rhs_uuid;
-
-            if (m_type == Type::GROUP) {
-                lhs_uuid = m_group->getUUID();
-            } else {
-                lhs_uuid = m_watch->getUUID();
-            }
-
-            if (rhs.m_type == Type::GROUP) {
-                rhs_uuid = rhs.m_group->getUUID();
-            } else {
-                rhs_uuid = rhs.m_watch->getUUID();
-            }
-
-            return lhs_uuid <=> rhs_uuid;
-#else
-            return m_self_uuid <=> rhs.m_self_uuid;
-#endif
-        }
-    };
-
-    static bool _WatchIndexDataIsGroup(const _WatchIndexData &data) {
+    bool WatchDataModel::_WatchIndexDataIsGroup(const _WatchIndexData &data) {
         return data.m_type == _WatchIndexData::Type::GROUP;
     }
 
-    static bool _WatchIndexDataCompareByName(const _WatchIndexData &lhs, const _WatchIndexData &rhs,
-                                             ModelSortOrder order) {
-        const bool is_lhs_group = _WatchIndexDataIsGroup(lhs);
-        const bool is_rhs_group = _WatchIndexDataIsGroup(rhs);
+    bool _WatchIndexDataCompareByName(const std::string &lhs, const std::string &rhs,
+                                      ModelSortOrder order) {
+        const bool is_lhs_group = lhs == "Group";
+        const bool is_rhs_group = rhs == "Group";
 
         // Folders come first
         if (is_lhs_group && !is_rhs_group) {
@@ -76,22 +31,16 @@ namespace Toolbox {
 
         // Sort by name
         if (order == ModelSortOrder::SORT_ASCENDING) {
-            if (is_lhs_group) {
-                return lhs.m_group->getName() < rhs.m_group->getName();
-            }
-            return lhs.m_watch->getWatchName() < rhs.m_watch->getWatchName();
+            return lhs < rhs;
         } else {
-            if (is_lhs_group) {
-                return lhs.m_group->getName() > rhs.m_group->getName();
-            }
-            return lhs.m_watch->getWatchName() > rhs.m_watch->getWatchName();
+            return lhs > rhs;
         }
     }
 
-    static bool _WatchIndexDataCompareByType(const _WatchIndexData &lhs, const _WatchIndexData &rhs,
-                                             ModelSortOrder order) {
-        const bool is_lhs_group = _WatchIndexDataIsGroup(lhs);
-        const bool is_rhs_group = _WatchIndexDataIsGroup(rhs);
+    bool _WatchIndexDataCompareByType(const std::string &lhs, const std::string &rhs,
+                                      ModelSortOrder order) {
+        const bool is_lhs_group = lhs == "Group";
+        const bool is_rhs_group = rhs == "Group";
 
         // Folders come first
         if (is_lhs_group && !is_rhs_group) {
@@ -102,21 +51,43 @@ namespace Toolbox {
             return false;
         }
 
-        if (is_lhs_group) {
-            // Sort by name
-            if (order == ModelSortOrder::SORT_ASCENDING) {
-                return lhs.m_group->getName() < rhs.m_group->getName();
-            } else {
-                return lhs.m_group->getName() > rhs.m_group->getName();
-            }
+        // Sort by name
+        if (order == ModelSortOrder::SORT_ASCENDING) {
+            return lhs < rhs;
+        } else {
+            return lhs > rhs;
+        }
+    }
+
+    WatchDataModel::_WatchIndexData &WatchDataModel::getIndexData_(const ModelIndex &index) {
+        static _WatchIndexData invalid_data;
+
+        auto it =
+            std::find_if(m_index_map.begin(), m_index_map.end(), [&](const _WatchIndexData &data) {
+                return data.m_self_uuid == index.inlineData();
+            });
+
+        if (it == m_index_map.end()) {
+            return invalid_data;
         }
 
-        // Sort by type
-        if (order == ModelSortOrder::SORT_ASCENDING) {
-            return lhs.m_watch->getWatchType() < rhs.m_watch->getWatchType();
-        } else {
-            return lhs.m_watch->getWatchType() > rhs.m_watch->getWatchType();
+        return *it;
+    }
+
+    const WatchDataModel::_WatchIndexData &
+    WatchDataModel::getIndexData_(const ModelIndex &index) const {
+        static _WatchIndexData invalid_data;
+
+        auto it =
+            std::find_if(m_index_map.begin(), m_index_map.end(), [&](const _WatchIndexData &data) {
+                return data.m_self_uuid == index.inlineData();
+            });
+
+        if (it == m_index_map.end()) {
+            return invalid_data;
         }
+
+        return *it;
     }
 
     WatchDataModel::~WatchDataModel() {
@@ -145,11 +116,11 @@ namespace Toolbox {
             return false;  // Invalid index
         }
 
-        _WatchIndexData *data = index.data<_WatchIndexData>();
-        if (!data) {
+        const _WatchIndexData &data = getIndexData_(index);
+        if (data.m_self_uuid == 0) {
             return false;
         }
-        return _WatchIndexDataIsGroup(*data);
+        return _WatchIndexDataIsGroup(data);
     }
 
     std::any WatchDataModel::getData(const ModelIndex &index, int role) const {
@@ -383,10 +354,11 @@ namespace Toolbox {
     void WatchDataModel::reset() {
         std::scoped_lock lock(m_mutex);
 
-        for (auto &[key, val] : m_index_map) {
-            _WatchIndexData *p = val.data<_WatchIndexData>();
-            if (p) {
-                delete p;
+        for (const _WatchIndexData &data : m_index_map) {
+            if (_WatchIndexDataIsGroup(data)) {
+                delete data.m_group;
+            } else {
+                delete data.m_watch;
             }
         }
 
@@ -405,36 +377,30 @@ namespace Toolbox {
     Result<void, SerialError> WatchDataModel::serialize(Serializer &out) const {
         std::scoped_lock lock(m_mutex);
 
-        for (const auto &[uuid, index] : m_index_map) {
-            _WatchIndexData *data = index.data<_WatchIndexData>();
-            if (!data) {
-                TOOLBOX_DEBUG_LOG("[WatchDataModel] Serialize: Index with no data.");
-                continue;
-            }
-
+        for (const _WatchIndexData &data : m_index_map) {
             // Header stub
             // ---
-            out.write<UUID64>(uuid);
-            out.write<UUID64>(data->m_parent);
+            out.write<UUID64>(data.m_self_uuid);
+            out.write<UUID64>(data.m_parent);
             // ---
 
-            if (_WatchIndexDataIsGroup(*data)) {
-                const std::string &name             = data->m_group->getName();
-                const std::vector<UUID64> &children = data->m_group->getChildren();
+            if (_WatchIndexDataIsGroup(data)) {
+                const std::string &name             = data.m_group->getName();
+                const std::vector<UUID64> &children = data.m_group->getChildren();
 
                 out.write<u8>((u8)_WatchIndexData::Type::GROUP);
                 out.writeString(name);
-                out.write<bool>(data->m_group->isLocked());
+                out.write<bool>(data.m_group->isLocked());
                 out.write<u32>(children.size());
                 for (const UUID64 &child_uuid : children) {
                     out.write<UUID64>(child_uuid);
                 }
             } else {
-                const std::string &name = data->m_watch->getWatchName();
-                const u32 address       = data->m_watch->getWatchAddress();
-                const u32 size          = data->m_watch->getWatchSize();
-                const MetaType type     = data->m_watch->getWatchType();
-                const bool locked       = data->m_watch->isLocked();
+                const std::string &name = data.m_watch->getWatchName();
+                const u32 address       = data.m_watch->getWatchAddress();
+                const u32 size          = data.m_watch->getWatchSize();
+                const MetaType type     = data.m_watch->getWatchType();
+                const bool locked       = data.m_watch->isLocked();
 
                 out.write<u8>((u8)_WatchIndexData::Type::WATCH);
                 out.writeString(name);
@@ -482,16 +448,13 @@ namespace Toolbox {
                     group->addChild(child_uuid);
                 }
 
-                _WatchIndexData *data = new _WatchIndexData;
-                data->m_parent        = parent;
-                data->m_self_uuid     = uuid;
-                data->m_type          = type;
-                data->m_group         = group;
+                _WatchIndexData data;
+                data.m_parent    = parent;
+                data.m_self_uuid = uuid;
+                data.m_type      = type;
+                data.m_group     = group;
 
-                ModelIndex index = ModelIndex(getUUID(), uuid);
-                index.setData(data);
-
-                m_index_map[index.getUUID()] = index;
+                m_index_map.emplace_back(std::move(data));
             } else if (type == _WatchIndexData::Type::WATCH) {
                 const size_t watch_size = sizeof(u16) + sizeof(u32) * 2 + sizeof(u8) + sizeof(bool);
                 if (remaining < watch_size) {
@@ -509,24 +472,20 @@ namespace Toolbox {
                 watch->setLocked(locked);
                 watch->startWatch(address, size);
 
-                _WatchIndexData *data = new _WatchIndexData;
-                data->m_parent        = parent;
-                data->m_self_uuid     = uuid;
-                data->m_type          = type;
-                data->m_watch         = watch;
+                _WatchIndexData data;
+                data.m_parent    = parent;
+                data.m_self_uuid = uuid;
+                data.m_type      = type;
+                data.m_watch     = watch;
 
-                ModelIndex index = ModelIndex(getUUID(), uuid);
-                index.setData(data);
-
-                m_index_map[index.getUUID()] = index;
-
-                signalEventListeners(index, WatchModelEventFlags::EVENT_WATCH_ADDED);
+                m_index_map.emplace_back(std::move(data));
             } else {
                 return make_serial_error<void>(in,
                                                "Invalid type encountered during deserialization");
             }
         }
 
+        signalEventListeners(ModelIndex(), WatchModelEventFlags::EVENT_GROUP_ADDED);
         return Result<void, SerialError>();
     }
 
@@ -535,15 +494,15 @@ namespace Toolbox {
             return {};
         }
 
-        _WatchIndexData *data = index.data<_WatchIndexData>();
+        const _WatchIndexData &data = getIndexData_(index);
 
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY:
-            switch (data->m_type) {
+            switch (data.m_type) {
             case _WatchIndexData::Type::GROUP:
-                return data->m_group->getName();
+                return data.m_group->getName();
             case _WatchIndexData::Type::WATCH:
-                return data->m_watch->getWatchName();
+                return data.m_watch->getWatchName();
             }
             return {};
         case ModelDataRole::DATA_ROLE_TOOLTIP:
@@ -552,47 +511,47 @@ namespace Toolbox {
             return {};
         }
         case WatchDataRole::WATCH_DATA_ROLE_TYPE: {
-            switch (data->m_type) {
+            switch (data.m_type) {
             case _WatchIndexData::Type::GROUP:
                 return "Group";
             case _WatchIndexData::Type::WATCH:
-                return std::string(meta_type_name(data->m_watch->getWatchType()));
+                return std::string(meta_type_name(data.m_watch->getWatchType()));
             }
             return {};
         }
         case WatchDataRole::WATCH_DATA_ROLE_VALUE_META: {
-            switch (data->m_type) {
+            switch (data.m_type) {
             case _WatchIndexData::Type::GROUP:
                 return {};
             case _WatchIndexData::Type::WATCH:
-                return data->m_watch->getMetaValue();
+                return data.m_watch->getMetaValue();
             }
             return {};
         }
         case WatchDataRole::WATCH_DATA_ROLE_ADDRESS: {
-            switch (data->m_type) {
+            switch (data.m_type) {
             case _WatchIndexData::Type::GROUP:
                 return (u32)0;
             case _WatchIndexData::Type::WATCH:
-                return data->m_watch->getWatchAddress();
+                return data.m_watch->getWatchAddress();
             }
             return {};
         }
         case WatchDataRole::WATCH_DATA_ROLE_LOCK: {
-            switch (data->m_type) {
+            switch (data.m_type) {
             case _WatchIndexData::Type::GROUP:
-                return data->m_group->isLocked();
+                return data.m_group->isLocked();
             case _WatchIndexData::Type::WATCH:
-                return data->m_watch->isLocked();
+                return data.m_watch->isLocked();
             }
             return {};
         }
         case WatchDataRole::WATCH_DATA_ROLE_SIZE: {
-            switch (data->m_type) {
+            switch (data.m_type) {
             case _WatchIndexData::Type::GROUP:
-                return (u32)data->m_group->getChildCount();
+                return (u32)data.m_group->getChildCount();
             case _WatchIndexData::Type::WATCH:
-                return (u32)data->m_watch->getWatchSize();
+                return (u32)data.m_watch->getWatchSize();
             }
             return {};
         }
@@ -606,17 +565,17 @@ namespace Toolbox {
             return;
         }
 
-        _WatchIndexData *idata = index.data<_WatchIndexData>();
+        const _WatchIndexData &idata = getIndexData_(index);
 
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY: {
             std::string name = std::any_cast<std::string>(data);
-            switch (idata->m_type) {
+            switch (idata.m_type) {
             case _WatchIndexData::Type::GROUP:
-                idata->m_group->setName(name);
+                idata.m_group->setName(name);
                 return;
             case _WatchIndexData::Type::WATCH:
-                idata->m_watch->setWatchName(name);
+                idata.m_watch->setWatchName(name);
                 return;
             }
             return;
@@ -633,25 +592,25 @@ namespace Toolbox {
             return;
         }
         case WatchDataRole::WATCH_DATA_ROLE_ADDRESS: {
-            switch (idata->m_type) {
+            switch (idata.m_type) {
             case _WatchIndexData::Type::GROUP:
                 return;
             case _WatchIndexData::Type::WATCH:
-                u32 watch_size = idata->m_watch->getWatchSize();
-                idata->m_watch->stopWatch();
-                idata->m_watch->startWatch(std::any_cast<u32>(data), watch_size);
+                u32 watch_size = idata.m_watch->getWatchSize();
+                idata.m_watch->stopWatch();
+                idata.m_watch->startWatch(std::any_cast<u32>(data), watch_size);
                 return;
             }
             return;
         }
         case WatchDataRole::WATCH_DATA_ROLE_LOCK: {
             bool locked = std::any_cast<bool>(data);
-            switch (idata->m_type) {
+            switch (idata.m_type) {
             case _WatchIndexData::Type::GROUP:
-                idata->m_group->setLocked(locked);
+                idata.m_group->setLocked(locked);
                 return;
             case _WatchIndexData::Type::WATCH:
-                idata->m_watch->setLocked(locked);
+                idata.m_watch->setLocked(locked);
                 return;
             }
             return;
@@ -697,7 +656,18 @@ namespace Toolbox {
         return result_name;
     }
 
-    ModelIndex WatchDataModel::getIndex_(const UUID64 &uuid) const { return m_index_map.at(uuid); }
+    ModelIndex WatchDataModel::getIndex_(const UUID64 &uuid) const {
+        auto it =
+            std::find_if(m_index_map.begin(), m_index_map.end(),
+                         [&](const _WatchIndexData &data) { return data.m_self_uuid == uuid; });
+        if (it == m_index_map.end()) {
+            return ModelIndex();
+        }
+
+        ModelIndex index(getUUID(), it->m_self_uuid);
+        index.setInlineData(it->m_self_uuid);
+        return index;
+    }
 
     ModelIndex WatchDataModel::getIndex_(int64_t row, int64_t column,
                                          const ModelIndex &parent) const {
@@ -707,26 +677,29 @@ namespace Toolbox {
 
         if (!validateIndex(parent)) {
             size_t cur_row = 0;
-            for (const auto &[uuid, index] : m_index_map) {
-                _WatchIndexData *data = index.data<_WatchIndexData>();
-                if (data->m_parent == 0 && cur_row++ == row) {
+            for (const _WatchIndexData &data : m_index_map) {
+                if (data.m_parent == 0 && cur_row++ == row) {
+                    ModelIndex index(getUUID(), data.m_self_uuid);
+                    index.setInlineData(data.m_self_uuid);
                     return index;
                 }
             }
             return ModelIndex();
         }
 
-        _WatchIndexData *parent_data = parent.data<_WatchIndexData>();
-        if (!_WatchIndexDataIsGroup(*parent_data)) {
+        const _WatchIndexData &parent_data = getIndexData_(parent);
+        if (!_WatchIndexDataIsGroup(parent_data)) {
             return ModelIndex();
         }
 
-        UUID64 child_uuid = parent_data->m_group->getChildUUID(row);
+        UUID64 child_uuid = parent_data.m_group->getChildUUID(row);
         if (child_uuid == 0) {
             return ModelIndex();
         }
 
-        return m_index_map.at(child_uuid);
+        ModelIndex index(getUUID(), child_uuid);
+        index.setInlineData(child_uuid);
+        return index;
     }
 
     bool WatchDataModel::removeIndex_(const ModelIndex &index) {
@@ -734,7 +707,9 @@ namespace Toolbox {
             return false;
         }
 
-        return m_index_map.erase(index.getUUID()) > 0;
+        return std::erase_if(m_index_map, [&](const _WatchIndexData &data) {
+                   return data.m_self_uuid == index.getUUID();
+               }) > 0;
     }
 
     ModelIndex WatchDataModel::getParent_(const ModelIndex &index) const {
@@ -742,12 +717,12 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        const UUID64 &id = index.data<_WatchIndexData>()->m_parent;
-        if (id == 0) {
+        const _WatchIndexData &data = getIndexData_(index);
+        if (data.m_parent == 0) {
             return ModelIndex();
         }
 
-        return m_index_map.at(id);
+        return getIndex_(data.m_parent);
     }
 
     ModelIndex WatchDataModel::getSibling_(int64_t row, int64_t column,
@@ -765,18 +740,17 @@ namespace Toolbox {
     size_t WatchDataModel::getRowCount_(const ModelIndex &index) const {
         if (!validateIndex(index)) {
             size_t root_rows = 0;
-            for (const auto &[uuid, xindex] : m_index_map) {
-                _WatchIndexData *data = xindex.data<_WatchIndexData>();
-                if (data->m_parent == 0) {
+            for (const _WatchIndexData &data : m_index_map) {
+                if (data.m_parent == 0) {
                     root_rows += 1;
                 }
             }
             return root_rows;
         }
 
-        _WatchIndexData *data = index.data<_WatchIndexData>();
-        if (_WatchIndexDataIsGroup(*data)) {
-            return data->m_group->getChildCount();
+        const _WatchIndexData &data = getIndexData_(index);
+        if (_WatchIndexDataIsGroup(data)) {
+            return data.m_group->getChildCount();
         }
 
         return 0;
@@ -794,23 +768,23 @@ namespace Toolbox {
         ModelIndex parent = getParent_(index);
         if (!validateIndex(parent)) {
             size_t i = 0;
-            for (const auto &[k, v] : m_index_map) {
-                if (v == index) {
+            for (const _WatchIndexData &data : m_index_map) {
+                if (data.m_self_uuid == index.inlineData()) {
                     return i;
                 }
-                i += (int)(getParent_(v) == ModelIndex());
+                i += (int)(data.m_parent == 0);
             }
             return -1;
         }
 
-        _WatchIndexData *parent_data = parent.data<_WatchIndexData>();
-        if (!_WatchIndexDataIsGroup(*parent_data)) {
+        const _WatchIndexData &parent_data = getIndexData_(parent);
+        if (!_WatchIndexDataIsGroup(parent_data)) {
             return -1;
         }
 
         int64_t row = 0;
-        for (const UUID64 &uuid : parent_data->m_group->getChildren()) {
-            if (uuid == index.getUUID()) {
+        for (const UUID64 &uuid : parent_data.m_group->getChildren()) {
+            if (uuid == index.inlineData()) {
                 return row;
             }
             ++row;
@@ -845,63 +819,62 @@ namespace Toolbox {
                                               bool is_pointer, WatchValueBase value_base,
                                               int64_t row, const ModelIndex &parent,
                                               bool find_unique_name) {
-        _WatchIndexData *parent_data = nullptr;
         if (row < 0 || pointer_chain.empty()) {
             return ModelIndex();
         }
 
-        if (validateIndex(parent)) {
-            parent_data = parent.data<_WatchIndexData>();
-            if (!_WatchIndexDataIsGroup(*parent_data)) {
-                TOOLBOX_ERROR("[WatchDataModel] Invalid row index!");
-                return ModelIndex();
-            }
-            if (row > parent_data->m_group->getChildCount()) {
-                TOOLBOX_ERROR_V("[WatchDataModel] Invalid row index: {} > {}", row,
-                                parent_data->m_group->getChildCount());
-                return ModelIndex();
-            }
-        }
-
-        _WatchIndexData *data = new _WatchIndexData;
-        data->m_type          = _WatchIndexData::Type::WATCH;
-        data->m_watch         = new MetaWatch(type);
-        data->m_value_base    = value_base;
+        _WatchIndexData data;
+        data.m_type       = _WatchIndexData::Type::WATCH;
+        data.m_watch      = new MetaWatch(type);
+        data.m_value_base = value_base;
+        data.m_self_uuid  = UUID64();
 
         if (is_pointer) {
-            if (!data->m_watch->startWatch(pointer_chain, size)) {
+            if (!data.m_watch->startWatch(pointer_chain, size)) {
+                delete data.m_watch;
                 return ModelIndex();
             }
         } else {
-            if (!data->m_watch->startWatch(pointer_chain[0], size)) {
+            if (!data.m_watch->startWatch(pointer_chain[0], size)) {
+                delete data.m_watch;
                 return ModelIndex();
             }
         }
 
         std::string unique_name = find_unique_name ? findUniqueName_(parent, name) : name;
-        data->m_group->setName(unique_name);
-        data->m_group->setLocked(false);
-
-        ModelIndex index  = ModelIndex(getUUID());
-        data->m_self_uuid = index.getUUID();
+        data.m_group->setName(unique_name);
+        data.m_group->setLocked(false);
 
         std::scoped_lock lock(m_mutex);
 
-        if (!parent_data) {
-            index.setData(data);
-            m_index_map[index.getUUID()] = std::move(index);
+        if (!validateIndex(parent)) {
+            m_index_map.emplace_back(data);
         } else {
-            data->m_parent = parent.getUUID();
-            index.setData(data);
-
-            if (_WatchIndexDataIsGroup(*parent_data)) {
-                WatchGroup *parent_group = parent_data->m_group;
-                parent_group->insertChild(row, index.getUUID());
+            _WatchIndexData &parent_data = getIndexData_(parent);
+            if (!_WatchIndexDataIsGroup(parent_data)) {
+                TOOLBOX_ERROR("[WatchDataModel] Invalid row index!");
+                delete data.m_watch;
+                return ModelIndex();
+            }
+            if (row > parent_data.m_group->getChildCount()) {
+                TOOLBOX_ERROR_V("[WatchDataModel] Invalid row index: {} > {}", row,
+                                parent_data.m_group->getChildCount());
+                delete data.m_watch;
+                return ModelIndex();
             }
 
-            m_index_map[index.getUUID()] = std::move(index);
+            data.m_parent = parent.getUUID();
+
+            if (_WatchIndexDataIsGroup(parent_data)) {
+                WatchGroup *parent_group = parent_data.m_group;
+                parent_group->insertChild(row, data.m_self_uuid);
+            }
+
+            m_index_map.emplace_back(data);
         }
 
+        ModelIndex index(getUUID(), data.m_self_uuid);
+        index.setInlineData(data.m_self_uuid);
         return index;
     }
 
@@ -925,48 +898,54 @@ namespace Toolbox {
             }
         }
 
-        _WatchIndexData *data = new _WatchIndexData;
-        data->m_type          = _WatchIndexData::Type::GROUP;
-        data->m_group         = new WatchGroup;
+        _WatchIndexData data;
+        data.m_type      = _WatchIndexData::Type::GROUP;
+        data.m_group     = new WatchGroup;
+        data.m_self_uuid = UUID64();
 
         std::string unique_name = find_unique_name ? findUniqueName_(parent, name) : name;
-        data->m_group->setName(unique_name);
-        data->m_group->setLocked(false);
-
-        ModelIndex index  = ModelIndex(getUUID());
-        data->m_self_uuid = index.getUUID();
+        data.m_group->setName(unique_name);
+        data.m_group->setLocked(false);
 
         std::scoped_lock lock(m_mutex);
 
         if (!validateIndex(parent)) {
-            index.setData(data);
-            m_index_map[index.getUUID()] = std::move(index);
+            m_index_map.emplace_back(data);
         } else {
-            data->m_parent = parent.getUUID();
-            index.setData(data);
-
-            if (_WatchIndexDataIsGroup(*parent_data)) {
-                WatchGroup *parent_group = parent_data->m_group;
-                parent_group->insertChild(row, index.getUUID());
+            _WatchIndexData &parent_data = getIndexData_(parent);
+            if (!_WatchIndexDataIsGroup(parent_data)) {
+                TOOLBOX_ERROR("[WatchDataModel] Invalid row index!");
+                delete data.m_group;
+                return ModelIndex();
+            }
+            if (row > parent_data.m_group->getChildCount()) {
+                TOOLBOX_ERROR_V("[WatchDataModel] Invalid row index: {} > {}", row,
+                                parent_data.m_group->getChildCount());
+                delete data.m_group;
+                return ModelIndex();
             }
 
-            m_index_map[index.getUUID()] = std::move(index);
+            data.m_parent = parent.getUUID();
+
+            if (_WatchIndexDataIsGroup(parent_data)) {
+                WatchGroup *parent_group = parent_data.m_group;
+                parent_group->insertChild(row, data.m_self_uuid);
+            }
+
+            m_index_map.emplace_back(data);
         }
 
+        ModelIndex index(getUUID(), data.m_self_uuid);
+        index.setInlineData(data.m_self_uuid);
         return index;
     }
 
     void WatchDataModel::processWatches() {
         std::scoped_lock lock(m_mutex);
 
-        for (auto &pair : m_index_map) {
-            ModelIndex &index = pair.second;
-            if (!validateIndex(index)) {
-                continue;
-            }
-            _WatchIndexData *data = index.data<_WatchIndexData>();
-            if (!_WatchIndexDataIsGroup(*data)) {
-                data->m_watch->processWatch();
+        for (_WatchIndexData &data : m_index_map) {
+            if (!_WatchIndexDataIsGroup(data)) {
+                data.m_watch->processWatch();
             }
         }
     }
@@ -1179,7 +1158,7 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        return m_source_model->getIndex(index.data<_WatchIndexData>()->m_self_uuid);
+        return m_source_model->getIndex(index.inlineData());
     }
 
     ModelIndex WatchDataModelSortFilterProxy::toProxyIndex(const ModelIndex &index) const {
@@ -1188,7 +1167,7 @@ namespace Toolbox {
         }
 
         ModelIndex proxy_index = ModelIndex(getUUID(), index.getUUID());
-        proxy_index.setData(index.data<_WatchIndexData>());
+        proxy_index.setInlineData(index.inlineData());
 
         return proxy_index;
     }
@@ -1219,15 +1198,7 @@ namespace Toolbox {
     bool WatchDataModelSortFilterProxy::isFiltered(const UUID64 &uuid) const {
         ModelIndex child_index = m_source_model->getIndex(uuid);
 
-        _WatchIndexData *data = child_index.data<_WatchIndexData>();
-        std::string name;
-
-        if (_WatchIndexDataIsGroup(*data)) {
-            name = data->m_group->getName();
-        } else {
-            name = data->m_watch->getWatchName();
-        }
-
+        std::string name = m_source_model->getDisplayText(child_index);
         return !name.starts_with(m_filter);
     }
 
@@ -1268,18 +1239,38 @@ namespace Toolbox {
         case WatchModelSortRole::SORT_ROLE_NAME: {
             std::sort(proxy_children.begin(), proxy_children.end(),
                       [&](const UUID64 &lhs, const UUID64 &rhs) {
+                          ModelIndex lhs_idx = m_source_model->getIndex(lhs);
+                          ModelIndex rhs_idx = m_source_model->getIndex(lhs);
+                          bool is_lhs_grp    = m_source_model->isIndexGroup(lhs_idx);
+                          bool is_rhs_grp    = m_source_model->isIndexGroup(rhs_idx);
+                          if (is_lhs_grp && !is_rhs_grp) {
+                              return true;
+                          }
+                          if (is_rhs_grp && !is_lhs_grp) {
+                              return false;
+                          }
                           return _WatchIndexDataCompareByName(
-                              *m_source_model->getIndex(lhs).data<_WatchIndexData>(),
-                              *m_source_model->getIndex(rhs).data<_WatchIndexData>(), m_sort_order);
+                              m_source_model->getDisplayText(lhs_idx),
+                              m_source_model->getDisplayText(rhs_idx), m_sort_order);
                       });
             break;
         }
         case WatchModelSortRole::SORT_ROLE_TYPE: {
             std::sort(proxy_children.begin(), proxy_children.end(),
                       [&](const UUID64 &lhs, const UUID64 &rhs) {
-                          return _WatchIndexDataCompareByType(
-                              *m_source_model->getIndex(lhs).data<_WatchIndexData>(),
-                              *m_source_model->getIndex(rhs).data<_WatchIndexData>(), m_sort_order);
+                          ModelIndex lhs_idx = m_source_model->getIndex(lhs);
+                          ModelIndex rhs_idx = m_source_model->getIndex(lhs);
+                          bool is_lhs_grp    = m_source_model->isIndexGroup(lhs_idx);
+                          bool is_rhs_grp    = m_source_model->isIndexGroup(rhs_idx);
+                          if (is_lhs_grp && !is_rhs_grp) {
+                              return true;
+                          }
+                          if (is_rhs_grp && !is_lhs_grp) {
+                              return false;
+                          }
+                          return _WatchIndexDataCompareByType(m_source_model->getWatchType(lhs_idx),
+                                                              m_source_model->getWatchType(rhs_idx),
+                                                              m_sort_order);
                       });
             break;
         }

@@ -256,6 +256,39 @@ namespace Toolbox {
 
         void processWatches();
 
+    protected:
+        struct _WatchIndexData {
+            enum class Type { GROUP, WATCH };
+
+            UUID64 m_parent    = 0;
+            UUID64 m_self_uuid = 0;
+
+            Type m_type = Type::GROUP;
+            union {
+                WatchGroup *m_group;
+                MetaWatch *m_watch;
+            };
+
+            WatchValueBase m_value_base;
+
+            bool hasChild(UUID64 uuid) const {
+                if (m_type != Type::GROUP || !m_group) {
+                    return false;
+                }
+
+                return m_group->hasChild(uuid);
+            }
+
+            std::strong_ordering operator<=>(const _WatchIndexData &rhs) const {
+                return m_self_uuid <=> rhs.m_self_uuid;
+            }
+        };
+
+        static bool _WatchIndexDataIsGroup(const _WatchIndexData &data);
+
+        _WatchIndexData &getIndexData_(const ModelIndex &index);
+        const _WatchIndexData &getIndexData_(const ModelIndex &index) const;
+
     private:
         UUID64 m_uuid;
 
@@ -263,7 +296,7 @@ namespace Toolbox {
 
         std::unordered_map<UUID64, std::pair<event_listener_t, WatchModelEventFlags>> m_listeners;
 
-        mutable std::map<UUID64, ModelIndex> m_index_map;
+        mutable std::vector<_WatchIndexData> m_index_map;
 
         std::thread m_watch_thread;
         std::atomic<bool> m_running;
