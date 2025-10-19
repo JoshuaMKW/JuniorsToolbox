@@ -1606,7 +1606,7 @@ namespace Toolbox::UI {
             // ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
             // ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
             // ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, {4.0f, 6.0f});
+            ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, {4.0f, 2.0f});
 
             ImGuiStyle &style           = ImGui::GetStyle();
             ImVec2 avail_content_region = ImGui::GetContentRegionAvail();
