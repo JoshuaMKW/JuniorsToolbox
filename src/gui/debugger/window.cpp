@@ -116,15 +116,15 @@ namespace Toolbox::UI {
         if (ImGui::BeginChild("MemoryWatchScanner", {m_list_width, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
             m_scan_height = (m_scan_height / last_total_height) * (avail_region.y - splitter_width);
-            m_scan_height = std::max(m_scan_height, min_size.y * 0.7f);
+            m_scan_height = std::max(m_scan_height, min_size.y * 0.5f);
 
             m_list_height = (m_list_height / last_total_height) * (avail_region.y - splitter_width);
-            m_list_height = std::max(m_list_height, min_size.y * 0.3f);
+            m_list_height = std::max(m_list_height, min_size.y * 0.5f);
 
             {
                 ImGuiID splitter_id = ImGui::GetID("##ScannerWatchSplitter");
                 ImGui::SplitterBehavior(splitter_id, ImGuiAxis_Y, splitter_width, &m_scan_height,
-                                        &m_list_height, min_size.y * 0.7f, min_size.y * 0.3f);
+                                        &m_list_height, min_size.y * 0.5f, min_size.y * 0.5f);
             }
 
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
@@ -314,10 +314,6 @@ namespace Toolbox::UI {
                     window->DrawList->AddQuadFilled(text_rect.GetTL(), text_rect.GetTR(),
                                                     text_rect.GetBR(), text_rect.GetBL(),
                                                     ImGui::ColorConvertFloat4ToU32(color));
-                } else {
-                    // TOOLBOX_DEBUG_LOG_V("snib {}, enib {}, saddr {}, eaddr {}",
-                    //                     selection_start_nibble, selection_end_nibble,
-                    //                     selection_start, selection_end);
                 }
             }
 
@@ -1568,8 +1564,6 @@ namespace Toolbox::UI {
                 // TODO:FIX WHATEVER THE FUCK IS GOING WRONG HERE!!!!11!11!
                 ImGuiListClipper clipper;
                 clipper.Begin(render_flat_tree.size());
-
-                TOOLBOX_DEBUG_LOG_V("ROWS: {}", render_flat_tree.size());
 
                 while (clipper.Step()) {  // Header row
                     std::stack<size_t> layer_stack;

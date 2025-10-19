@@ -598,8 +598,8 @@ namespace Toolbox {
                 createWindow<LoggingWindow>("Application Log");
             }
 
-            if (ImGui::MenuItem("Debugger")) {
-                createWindow<DebuggerWindow>("Dolphin Memory Debugger");
+            if (ImGui::MenuItem("Memory Debugger")) {
+                createWindow<DebuggerWindow>("Memory Debugger");
             }
 
             ImGui::SeparatorText("Asset Editors");

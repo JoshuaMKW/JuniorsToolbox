@@ -176,9 +176,9 @@ namespace Toolbox::UI {
         std::array<char, SCAN_INPUT_MAX_LEN> m_scan_value_input_b;
         bool m_scan_enforce_alignment = true;
 
-        MetaType m_scan_type = MetaType::BOOL;
-        MemScanModel::ScanOperator m_scan_operator;
-        ScanRadix m_scan_radix = ScanRadix::RADIX_DECIMAL;
+        MetaType m_scan_type                       = MetaType::BOOL;
+        MemScanModel::ScanOperator m_scan_operator = MemScanModel::ScanOperator::OP_EXACT;
+        ScanRadix m_scan_radix                     = ScanRadix::RADIX_DECIMAL;
 
         std::array<char, 32> m_address_input;
         std::vector<HistoryPair> m_address_search_history = {};
@@ -208,10 +208,10 @@ namespace Toolbox::UI {
 
         bool m_scan_active = false;
 
-        bool m_did_drag_drop;
-        bool m_any_row_clicked;
+        bool m_did_drag_drop   = false;
+        bool m_any_row_clicked = false;
 
-        ImVec2 m_last_reg_mouse_pos;
+        ImVec2 m_last_reg_mouse_pos = {};
 
         std::unordered_map<UUID64, bool> m_watch_node_open_state;
 
