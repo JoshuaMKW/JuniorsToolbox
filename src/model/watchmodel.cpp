@@ -396,15 +396,20 @@ namespace Toolbox {
                     out.write<UUID64>(child_uuid);
                 }
             } else {
-                const std::string &name = data.m_watch->getWatchName();
-                const u32 address       = data.m_watch->getWatchAddress();
-                const u32 size          = data.m_watch->getWatchSize();
-                const MetaType type     = data.m_watch->getWatchType();
-                const bool locked       = data.m_watch->isLocked();
+                const std::string &name         = data.m_watch->getWatchName();
+                const std::vector<u32> &p_chain = data.m_watch->getPointerChain();
+                const u32 size                  = data.m_watch->getWatchSize();
+                const MetaType type             = data.m_watch->getWatchType();
+                const bool locked               = data.m_watch->isLocked();
+
+                u8 p_chain_len = (u8)p_chain.size();
 
                 out.write<u8>((u8)_WatchIndexData::Type::WATCH);
                 out.writeString(name);
-                out.write<u32>(address);
+                out.write<u8>(p_chain_len);
+                for (u8 i = 0; i < p_chain_len; ++i) {
+                    out.write<u32>(p_chain[i]);
+                }
                 out.write<u32>(size);
                 out.write<u8>(static_cast<u8>(type));
                 out.write<bool>(locked);
@@ -456,13 +461,20 @@ namespace Toolbox {
 
                 m_index_map.emplace_back(std::move(data));
             } else if (type == _WatchIndexData::Type::WATCH) {
-                const size_t watch_size = sizeof(u16) + sizeof(u32) * 2 + sizeof(u8) + sizeof(bool);
+                const size_t watch_size = sizeof(u16) + sizeof(u8) + sizeof(u8) + sizeof(bool);
                 if (remaining < watch_size) {
                     return make_serial_error<void>(in, "Not enough data to read group header");
                 }
 
                 std::string name    = in.readString();
-                u32 address         = in.read<u32>();
+                u8 p_chain_len      = in.read<u8>();
+
+                std::vector<u32> p_chain;
+                p_chain.reserve(p_chain_len);
+                for (u8 i = 0; i < p_chain_len; ++i) {
+                    p_chain.emplace_back(in.read<u32>());
+                }
+
                 u32 size            = in.read<u32>();
                 MetaType watch_type = static_cast<MetaType>(in.read<u8>());
                 bool locked         = in.read<bool>();
@@ -470,7 +482,12 @@ namespace Toolbox {
                 MetaWatch *watch = new MetaWatch(watch_type);
                 watch->setWatchName(name);
                 watch->setLocked(locked);
-                watch->startWatch(address, size);
+
+                if (p_chain_len == 1) {
+                    watch->startWatch(p_chain[0], size);
+                } else {
+                    watch->startWatch(p_chain, size);
+                }
 
                 _WatchIndexData data;
                 data.m_parent    = parent;

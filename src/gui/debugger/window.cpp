@@ -91,7 +91,7 @@ namespace Toolbox::UI {
                     if (!m_resource_path) {
                         m_is_save_dialog = true;
                     } else {
-                        onSaveData(m_resource_path);
+                        (void)onSaveData(m_resource_path);
                     }
                 }
 
@@ -124,24 +124,33 @@ namespace Toolbox::UI {
 
             ImGui::EndMenuBar();
 
-            fs_path cwd = Filesystem::current_path().value_or("");
+            fs_path cwd       = m_resource_path ? m_resource_path.value().parent_path()
+                                                : Filesystem::current_path().value_or("");
+            std::string fname = m_resource_path ? m_resource_path.value().filename().string() : "";
 
             if (m_is_open_dialog) {
                 if (!FileDialog::instance()->isAlreadyOpen()) {
                     FileDialogFilter filter;
                     filter.addFilter("Toolbox Memory Watch List", "mwl");
-                    FileDialog::instance()->openDialog(
-                        m_resource_path ? m_resource_path.value() : cwd, window, false, filter);
+                    FileDialog::instance()->openDialog(window, cwd, false, filter);
                 }
                 m_is_open_dialog = false;
+            }
+
+            if (m_is_save_dialog) {
+                if (!FileDialog::instance()->isAlreadyOpen()) {
+                    FileDialogFilter filter;
+                    filter.addFilter("Toolbox Memory Watch List", "mwl");
+                    FileDialog::instance()->saveDialog(window, cwd, fname, false, filter);
+                }
+                m_is_save_dialog = false;
             }
 
             if (m_is_load_dme_dialog) {
                 if (!FileDialog::instance()->isAlreadyOpen()) {
                     FileDialogFilter filter;
                     filter.addFilter("Dolphin Memory Watches File", "dmw");
-                    FileDialog::instance()->openDialog(
-                        m_resource_path ? m_resource_path.value() : cwd, window, false, filter);
+                    FileDialog::instance()->openDialog(window, cwd, false, filter);
                 }
                 m_is_load_dme_dialog = false;
             }
@@ -149,27 +158,49 @@ namespace Toolbox::UI {
             if (FileDialog::instance()->isDone(window)) {
                 FileDialog::instance()->close();
                 if (FileDialog::instance()->isOk()) {
-                    std::filesystem::path selected_path =
-                        FileDialog::instance()->getFilenameResult();
+                    switch (FileDialog::instance()->getFilenameMode()) {
+                    case FileDialog::FileNameMode::MODE_OPEN: {
+                        std::filesystem::path selected_path =
+                            FileDialog::instance()->getFilenameResult();
 
-                    bool exists = Filesystem::is_regular_file(selected_path).value_or(false);
-                    if (!exists) {
-                        m_error_modal_open = true;
-                        m_error_modal_msg  = "Selected file does not exist!";
-                        return;
-                    }
-
-                    if (selected_path.extension() == ".mwl") {
-                        onLoadData(selected_path);
-                    } else if (selected_path.extension() == ".dmw") {
-                        auto result = m_watch_model->loadFromDMEFile(selected_path);
-                        if (!result) {
-                            LogError(result.error());
+                        bool exists = Filesystem::is_regular_file(selected_path).value_or(false);
+                        if (!exists) {
+                            m_error_modal_open = true;
+                            m_error_modal_msg  = "Selected file does not exist!";
+                            return;
                         }
-                    }
 
-                    m_error_modal_open = true;
-                    m_error_modal_msg  = "Selected file is not a valid watch list!";
+                        if (selected_path.extension() == ".mwl") {
+                            (void)onLoadData(selected_path);
+                        } else if (selected_path.extension() == ".dmw") {
+                            auto result = m_watch_model->loadFromDMEFile(selected_path);
+                            if (!result) {
+                                LogError(result.error());
+                            }
+                        } else {
+                            m_error_modal_open = true;
+                            m_error_modal_msg  = "Selected file is not a valid watch list!";
+                        }
+                        break;
+                    }
+                    case FileDialog::FileNameMode::MODE_SAVE: {
+                        std::filesystem::path selected_path =
+                            FileDialog::instance()->getFilenameResult();
+
+                        if (selected_path.extension() == ".mwl") {
+                            (void)onSaveData(selected_path);
+                            m_resource_path = selected_path;
+                        } else {
+                            m_error_modal_open = true;
+                            m_error_modal_msg  = "Selected file is not a valid watch list!";
+                        }
+                        break;
+                    }
+                    default:
+                        m_error_modal_open = true;
+                        m_error_modal_msg  = "File Dialog error!";
+                        break;
+                    }
                 }
             }
         }
@@ -2186,7 +2217,7 @@ namespace Toolbox::UI {
 
     bool DebuggerWindow::onLoadData(const std::filesystem::path &path) {
         std::ifstream istr = std::ifstream(path, std::ios::binary | std::ios::in);
-        
+
         Deserializer in(istr.rdbuf());
         auto result = m_watch_model->deserialize(in);
         if (!result.has_value()) {

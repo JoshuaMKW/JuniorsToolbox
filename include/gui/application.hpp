@@ -240,6 +240,13 @@ namespace Toolbox {
 
     class FileDialog {
     public:
+        enum class FileNameMode {
+            MODE_NONE,
+            MODE_OPEN,
+            MODE_SAVE,
+        };
+
+    public:
         FileDialog() = default;
         ~FileDialog() {
             if (m_thread_initialized) {
@@ -251,32 +258,57 @@ namespace Toolbox {
             static FileDialog _instance;
             return &_instance;
         }
-        void openDialog(std::filesystem::path starting_path, ImGuiWindow *parent_window,
+
+        std::filesystem::path getFilenameResult() const { return m_selected_path; }
+        FileNameMode getFilenameMode() const { return m_control_info.m_file_mode; }
+
+        void openDialog(ImGuiWindow *parent_window, const std::filesystem::path &starting_path,
                         bool is_directory                             = false,
                         std::optional<FileDialogFilter> maybe_filters = std::nullopt);
-        void openDialog(std::filesystem::path starting_path, GLFWwindow *parent_window,
+        void openDialog(GLFWwindow *parent_window, const std::filesystem::path &starting_path,
                         bool is_directory                             = false,
                         std::optional<FileDialogFilter> maybe_filters = std::nullopt);
+
+        void saveDialog(ImGuiWindow *parent_window, const std::filesystem::path &starting_path,
+                        const std::string &default_name, bool is_directory = false,
+                        std::optional<FileDialogFilter> maybe_filters = std::nullopt);
+        void saveDialog(GLFWwindow *parent_window, const std::filesystem::path &starting_path,
+                        const std::string &default_name, bool is_directory = false,
+                        std::optional<FileDialogFilter> maybe_filters = std::nullopt);
+
         bool isAlreadyOpen() const { return m_thread_running; }
 
         bool isDone(ImGuiWindow *window) const {
             return isDone(static_cast<GLFWwindow *>(window->Viewport->PlatformHandle));
         }
         bool isDone(GLFWwindow *window) const {
-            return m_owner == window && !m_thread_running && m_result.has_value() &&
+            return m_control_info.m_owner == window && !m_thread_running && m_result.has_value() &&
                    m_thread_initialized && !m_closed;
         }
 
         bool isOk() const { return m_result.has_value() ? m_result.value() == NFD_OKAY : false; }
-        std::filesystem::path getFilenameResult() const { return m_selected_path; }
+
         void close() { m_closed = true; }
 
+    protected:
+        static nfdresult_t NFD_OpenDialogRoutine(FileDialog &self);
+        static nfdresult_t NFD_SaveDialogRoutine(FileDialog &self);
+
     private:
-        std::string m_starting_path;
+        struct {
+            GLFWwindow *m_owner = nullptr;
+            std::string m_starting_path;
+            std::string m_default_name;
+            std::optional<FileDialogFilter> m_opt_filters;
+            FileNameMode m_file_mode = FileNameMode::MODE_NONE;
+            bool m_is_directory      = false;
+        } m_control_info;
+
         std::vector<std::pair<std::string, std::string>> m_filters;
 
         // The result of the last dialog box.
-        nfdu8char_t *m_selected_path        = nullptr;
+        nfdu8char_t *m_selected_path = nullptr;
+
         std::optional<nfdresult_t> m_result = std::nullopt;
         // The thread that we run the dialog in. If
         // m_thread_initialized is true, this should be an initialized
@@ -291,8 +323,6 @@ namespace Toolbox {
         // For checking whether the user has called Close. If so, stop
         // returning true for isDone().
         bool m_closed = false;
-
-        GLFWwindow *m_owner;
     };
 
 }  // namespace Toolbox
