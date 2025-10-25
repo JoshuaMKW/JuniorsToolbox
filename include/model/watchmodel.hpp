@@ -114,6 +114,7 @@ namespace Toolbox {
         WATCH_DATA_ROLE_ADDRESS,
         WATCH_DATA_ROLE_LOCK,
         WATCH_DATA_ROLE_SIZE,
+        WATCH_DATA_ROLE_VIEW_BASE,
     };
 
     class WatchDataModel : public IDataModel, public ISerializable {
@@ -163,6 +164,14 @@ namespace Toolbox {
 
         void setWatchSize(const ModelIndex &index, u32 size) {
             setData(index, size, WatchDataRole::WATCH_DATA_ROLE_SIZE);
+        }
+
+        [[nodiscard]] WatchValueBase getWatchViewBase(const ModelIndex &index) const {
+            return std::any_cast<WatchValueBase>(getData(index, WatchDataRole::WATCH_DATA_ROLE_VIEW_BASE));
+        }
+
+        void setWatchViewBase(const ModelIndex &index, WatchValueBase size) {
+            setData(index, size, WatchDataRole::WATCH_DATA_ROLE_VIEW_BASE);
         }
 
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
@@ -358,6 +367,15 @@ namespace Toolbox {
 
         void setWatchSize(const ModelIndex &index, u32 size) {
             setData(index, size, WatchDataRole::WATCH_DATA_ROLE_SIZE);
+        }
+
+        [[nodiscard]] WatchValueBase getWatchViewBase(const ModelIndex &index) const {
+            return std::any_cast<WatchValueBase>(
+                getData(index, WatchDataRole::WATCH_DATA_ROLE_VIEW_BASE));
+        }
+
+        void setWatchViewBase(const ModelIndex &index, WatchValueBase size) {
+            setData(index, size, WatchDataRole::WATCH_DATA_ROLE_VIEW_BASE);
         }
 
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;

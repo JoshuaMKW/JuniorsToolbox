@@ -483,10 +483,17 @@ namespace Toolbox {
                 watch->setWatchName(name);
                 watch->setLocked(locked);
 
+                bool watch_started;
                 if (p_chain_len == 1) {
-                    watch->startWatch(p_chain[0], size);
+                    watch_started = watch->startWatch(p_chain[0], size);
                 } else {
-                    watch->startWatch(p_chain, size);
+                    watch_started = watch->startWatch(p_chain, size);
+                }
+
+                if (!watch_started) {
+                    TOOLBOX_WARN_V("[WATCHMODEL] Failed to start watch `{}' while deserializing!",
+                                   name);
+                    continue;
                 }
 
                 _WatchIndexData data;
@@ -572,6 +579,15 @@ namespace Toolbox {
             }
             return {};
         }
+        case WatchDataRole::WATCH_DATA_ROLE_VIEW_BASE: {
+            switch (data.m_type) {
+            case _WatchIndexData::Type::GROUP:
+                return {};
+            case _WatchIndexData::Type::WATCH:
+                return data.m_value_base;
+            }
+            return {};
+        }
         default:
             return {};
         }
@@ -582,7 +598,7 @@ namespace Toolbox {
             return;
         }
 
-        const _WatchIndexData &idata = getIndexData_(index);
+        _WatchIndexData &idata = getIndexData_(index);
 
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY: {
@@ -615,7 +631,7 @@ namespace Toolbox {
             case _WatchIndexData::Type::WATCH:
                 u32 watch_size = idata.m_watch->getWatchSize();
                 idata.m_watch->stopWatch();
-                idata.m_watch->startWatch(std::any_cast<u32>(data), watch_size);
+                (void)idata.m_watch->startWatch(std::any_cast<u32>(data), watch_size);
                 return;
             }
             return;
@@ -633,6 +649,16 @@ namespace Toolbox {
             return;
         }
         case WatchDataRole::WATCH_DATA_ROLE_SIZE: {
+            return;
+        }
+        case WatchDataRole::WATCH_DATA_ROLE_VIEW_BASE: {
+            switch (idata.m_type) {
+            case _WatchIndexData::Type::GROUP:
+                return;
+            case _WatchIndexData::Type::WATCH:
+                idata.m_value_base = std::any_cast<WatchValueBase>(data);
+                return;
+            }
             return;
         }
         default:

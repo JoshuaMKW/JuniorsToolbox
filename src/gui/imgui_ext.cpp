@@ -264,7 +264,7 @@ void ImGui::RenderBackgroundFrame(ImVec2 p_min, ImVec2 p_max, ImU32 fill_col, bo
         list->AddRect(p_min + ImVec2(1, 1), p_max + ImVec2(1, 1),
                       GetColorU32(ImGuiCol_BorderShadow), rounding, draw_flags, border_size);
         list->AddRect(p_min, p_max, GetColorU32(ImGuiCol_Border), rounding, draw_flags,
-                                  border_size);
+                      border_size);
     }
 }
 
@@ -1628,6 +1628,160 @@ void ImGui::TextColoredAndWidth(float width, ImVec4 col, const char *fmt, ...) {
 
     ImGui::Dummy(ImVec2(width, 0));
     va_end(args);
+}
+
+static bool IsRootOfOpenMenuSet() {
+    ImGuiContext &g     = *GImGui;
+    ImGuiWindow *window = g.CurrentWindow;
+    if ((g.OpenPopupStack.Size <= g.BeginPopupStack.Size) ||
+        (window->Flags & ImGuiWindowFlags_ChildMenu))
+        return false;
+
+    // Initially we used 'upper_popup->OpenParentId == window->IDStack.back()' to differentiate
+    // multiple menu sets from each others (e.g. inside menu bar vs loose menu items) based on
+    // parent ID. This would however prevent the use of e.g. PushID() user code submitting menus.
+    // Previously this worked between popup and a first child menu because the first child menu
+    // always had the _ChildWindow flag, making hovering on parent popup possible while first child
+    // menu was focused - but this was generally a bug with other side effects. Instead we don't
+    // treat Popup specifically (in order to consistently support menu features in them), maybe the
+    // first child menu of a Popup doesn't have the _ChildWindow flag, and we rely on this
+    // IsRootOfOpenMenuSet() check to allow hovering between root window/popup and first child menu.
+    // In the end, lack of ID check made it so we could no longer differentiate between separate
+    // menu sets. To compensate for that, we at least check parent window nav layer. This fixes the
+    // most common case of menu opening on hover when moving between window content and menu bar.
+    // Multiple different menu sets in same nav layer would still open on hover, but that should be
+    // a lesser problem, because if such menus are close in proximity in window content then it
+    // won't feel weird and if they are far apart it likely won't be a problem anyone runs into.
+    const ImGuiPopupData *upper_popup = &g.OpenPopupStack[g.BeginPopupStack.Size];
+    if (window->DC.NavLayerCurrent != upper_popup->ParentNavLayer)
+        return false;
+    return upper_popup->Window && (upper_popup->Window->Flags & ImGuiWindowFlags_ChildMenu) &&
+           ImGui::IsWindowChildOf(upper_popup->Window, window, true, false);
+}
+
+static std::vector<ImGuiID> s_menu_group_stack;
+
+bool ImGui::BeginMenuGroup(const char *str_id, float *hovered_delta, bool enabled) {
+    ImGuiWindow *window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    if (!hovered_delta) {
+        return false;
+    }
+
+    ImGuiContext &g   = *GImGui;
+    ImGuiStyle &style = g.Style;
+    ImVec2 pos        = window->DC.CursorPos;
+    ImVec2 label_size = CalcTextSize(str_id, NULL, true);
+
+    bool selected = *hovered_delta > 0.8f;
+
+    // See BeginMenuEx() for comments about this.
+    const bool menuset_is_open = IsRootOfOpenMenuSet();
+    if (menuset_is_open)
+        PushItemFlag(ImGuiItemFlags_NoWindowHoverableCheck, true);
+
+    // We've been using the equivalent of ImGuiSelectableFlags_SetNavIdOnHover on all Selectable()
+    // since early Nav system days (commit 43ee5d73), but I am unsure whether this should be kept at
+    // all. For now moved it to be an opt-in feature used by menus only.
+    bool pressed;
+    PushID(str_id);
+    if (!enabled)
+        BeginDisabled();
+
+    // We use ImGuiSelectableFlags_NoSetKeyOwner to allow down on one menu item, move, up on
+    // another.
+    const ImGuiSelectableFlags selectable_flags = ImGuiSelectableFlags_SelectOnClick |
+                                                  ImGuiSelectableFlags_NoSetKeyOwner |
+                                                  ImGuiSelectableFlags_SetNavIdOnHover;
+    const ImGuiMenuColumns *offsets = &window->DC.MenuColumns;
+    if (window->DC.LayoutType == ImGuiLayoutType_Horizontal) {
+        // Mimic the exact layout spacing of BeginMenu() to allow MenuItem() inside a menu bar,
+        // which is a little misleading but may be useful Note that in this situation: we don't
+        // render the shortcut, we render a highlight instead of the selected tick mark.
+        float w = label_size.x;
+        window->DC.CursorPos.x += IM_TRUNC(style.ItemSpacing.x * 0.5f);
+        ImVec2 text_pos(window->DC.CursorPos.x + offsets->OffsetLabel,
+                        window->DC.CursorPos.y + window->DC.CurrLineTextBaseOffset);
+        PushStyleVarX(ImGuiStyleVar_ItemSpacing, style.ItemSpacing.x * 2.0f);
+
+        pressed = Selectable("", selected, selectable_flags, ImVec2(w, 0.0f));
+        if (pressed) {
+            *hovered_delta = std::max<float>(1.0f, *hovered_delta);
+        }
+
+        if (IsItemHovered()) {
+            *hovered_delta += ImGui::GetIO().DeltaTime;
+        }
+
+        PopStyleVar();
+        if (g.LastItemData.StatusFlags & ImGuiItemStatusFlags_Visible)
+            RenderText(text_pos, str_id);
+        window->DC.CursorPos.x +=
+            IM_TRUNC(style.ItemSpacing.x *
+                     (-1.0f + 0.5f));  // -1 spacing to compensate the spacing added when
+                                       // Selectable() did a SameLine(). It would also work to call
+                                       // SameLine() ourselves after the PopStyleVar().
+    } else {
+        // Menu item inside a vertical menu
+        // (In a typical menu window where all items are BeginMenu() or MenuItem() calls, extra_w
+        // will always be 0.0f.
+        //  Only when they are other items sticking out we're going to add spacing, yet only
+        //  register minimum width into the layout system.
+        float checkmark_w = IM_TRUNC(g.FontSize * 1.20f);
+        float min_w       = window->DC.MenuColumns.DeclColumns(0.0f, label_size.x, 0.0f,
+                                                               checkmark_w);  // Feedback for next frame
+        float stretch_w   = ImMax(0.0f, GetContentRegionAvail().x - min_w);
+        pressed = Selectable("", false, selectable_flags | ImGuiSelectableFlags_SpanAvailWidth,
+                             ImVec2(min_w, label_size.y));
+
+        if (pressed) {
+            *hovered_delta = std::max<float>(1.0f, *hovered_delta);
+        }
+
+        if (IsItemHovered()) {
+            *hovered_delta += ImGui::GetIO().DeltaTime;
+        }
+
+        if (g.LastItemData.StatusFlags & ImGuiItemStatusFlags_Visible) {
+            RenderText(pos + ImVec2(offsets->OffsetLabel, 0.0f), str_id);
+            RenderArrow(window->DrawList,
+                        pos + ImVec2(offsets->OffsetMark + stretch_w + g.FontSize * 0.40f,
+                                     g.FontSize * 0.134f * 0.5f),
+                        GetColorU32(ImGuiCol_Text), ImGuiDir_Right, g.FontSize * 0.866f);
+        }
+    }
+    IMGUI_TEST_ENGINE_ITEM_INFO(g.LastItemData.ID, label,
+                                g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Checkable |
+                                    (selected ? ImGuiItemStatusFlags_Checked : 0));
+
+    bool is_open = false;
+
+    if (enabled && *hovered_delta >= 0.8f) {
+        if (!ImGui::IsPopupOpen("grp_popup")) {
+            ImGui::OpenPopup("grp_popup");
+        }
+
+        is_open = ImGui::BeginPopup("grp_popup", ImGuiWindowFlags_ChildMenu);
+        if (is_open) {
+            s_menu_group_stack.emplace_back(window->GetID(str_id));
+        }
+    }
+
+    if (!enabled)
+        EndDisabled();
+    PopID();
+    if (menuset_is_open)
+        PopItemFlag();
+
+    return is_open;
+}
+
+void ImGui::EndMenuGroup() {
+    IM_ASSERT(!s_menu_group_stack.empty() && "Mismatching Begin/End Menu Group calls detected!");
+    s_menu_group_stack.pop_back();
+    ImGui::EndPopup();
 }
 
 bool ImGui::TreeNodeEx(const char *label, ImGuiTreeNodeFlags flags, bool focused, bool *visible) {

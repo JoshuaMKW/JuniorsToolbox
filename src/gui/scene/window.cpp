@@ -1457,404 +1457,132 @@ void SceneWindow::renderRailNodeContextMenu(std::string str_id,
 void SceneWindow::buildContextMenuVirtualObj() {
     m_hierarchy_virtual_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
-    m_hierarchy_virtual_node_menu.addOption(
-        "Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
-            m_create_obj_dialog.open();
-            return;
-        });
+    ContextMenuBuilder(&m_hierarchy_virtual_node_menu)
+        .addOption("Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       m_create_obj_dialog.setInsertPolicy(
+                           CreateObjDialog::InsertPolicy::INSERT_BEFORE);
+                       m_create_obj_dialog.open();
+                       return;
+                   })
+        .addOption("Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       m_create_obj_dialog.setInsertPolicy(
+                           CreateObjDialog::InsertPolicy::INSERT_AFTER);
+                       m_create_obj_dialog.open();
+                       return;
+                   })
+        .addDivider()
+        .addOption("Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       m_rename_obj_dialog.open();
+                       m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
+                       return;
+                   })
+        .addDivider()
+        .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
+                       GUIApplication::instance().getSceneObjectClipboard().setData(info);
+                       return;
+                   })
+        .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       auto nodes = GUIApplication::instance().getSceneObjectClipboard().getData();
+                       auto this_parent = info.m_selected->getParent();
+                       if (!this_parent) {
+                           LogError(make_error<void>("Scene Hierarchy",
+                                                     "Failed to get parent node for pasting")
+                                        .error());
+                           return;
+                       }
+                       std::vector<std::string> sibling_names;
+                       auto children = this_parent->getChildren();
+                       for (auto &child : children) {
+                           sibling_names.push_back(std::string(child->getNameRef().name()));
+                       }
+                       for (auto &node : nodes) {
+                           RefPtr<ISceneObject> new_object =
+                               make_deep_clone<ISceneObject>(node.m_selected);
+                           NameRef node_ref = new_object->getNameRef();
+                           node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
+                           new_object->setNameRef(node_ref);
+                           this_parent->addChild(new_object);
+                           sibling_names.push_back(std::string(node_ref.name()));
+                       }
+                       m_update_render_objs = true;
+                       return;
+                   })
+        .addDivider()
+        .addOption("Delete", {KeyCode::KEY_DELETE},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       auto this_parent =
+                           reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+                       if (!this_parent) {
+                           LogError(make_error<void>("Scene Hierarchy",
+                                                     "Failed to get parent node for pasting")
+                                        .error());
+                           return;
+                       }
+                       this_parent->removeChild(info.m_selected->getNameRef().name());
 
-    m_hierarchy_virtual_node_menu.addOption(
-        "Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
-            m_create_obj_dialog.open();
-            return;
-        });
+                       Game::TaskCommunicator &task_communicator =
+                           GUIApplication::instance().getTaskCommunicator();
+                       task_communicator.taskRemoveSceneObject(info.m_selected,
+                                                               get_shared_ptr(*this_parent));
 
-    m_hierarchy_virtual_node_menu.addDivider();
-
-    m_hierarchy_virtual_node_menu.addOption("Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
-                                            [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                                                m_rename_obj_dialog.open();
-                                                m_rename_obj_dialog.setOriginalName(
-                                                    info.m_selected->getNameRef().name());
-                                                return;
-                                            });
-
-    m_hierarchy_virtual_node_menu.addDivider();
-
-    m_hierarchy_virtual_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-            GUIApplication::instance().getSceneObjectClipboard().setData(info);
-            return;
-        });
-
-    m_hierarchy_virtual_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            auto nodes       = GUIApplication::instance().getSceneObjectClipboard().getData();
-            auto this_parent = info.m_selected->getParent();
-            if (!this_parent) {
-                LogError(
-                    make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
-                        .error());
-                return;
-            }
-            std::vector<std::string> sibling_names;
-            auto children = this_parent->getChildren();
-            for (auto &child : children) {
-                sibling_names.push_back(std::string(child->getNameRef().name()));
-            }
-            for (auto &node : nodes) {
-                RefPtr<ISceneObject> new_object = make_deep_clone<ISceneObject>(node.m_selected);
-                NameRef node_ref                = new_object->getNameRef();
-                node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
-                new_object->setNameRef(node_ref);
-                this_parent->addChild(new_object);
-                sibling_names.push_back(std::string(node_ref.name()));
-            }
-            m_update_render_objs = true;
-            return;
-        });
-
-    m_hierarchy_virtual_node_menu.addDivider();
-
-    m_hierarchy_virtual_node_menu.addOption(
-        "Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            auto this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
-            if (!this_parent) {
-                LogError(
-                    make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
-                        .error());
-                return;
-            }
-            this_parent->removeChild(info.m_selected->getNameRef().name());
-
-            Game::TaskCommunicator &task_communicator =
-                GUIApplication::instance().getTaskCommunicator();
-            task_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
-
-            auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
-                                     m_hierarchy_selected_nodes.end(), info);
-            m_hierarchy_selected_nodes.erase(node_it);
-            m_update_render_objs = true;
-            return;
-        });
+                       auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
+                                                m_hierarchy_selected_nodes.end(), info);
+                       m_hierarchy_selected_nodes.erase(node_it);
+                       m_update_render_objs = true;
+                       return;
+                   });
 }
 
 void SceneWindow::buildContextMenuGroupObj() {
     m_hierarchy_group_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
 
-    m_hierarchy_group_node_menu.addOption(
-        "Add Child Object...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_CHILD);
-            m_create_obj_dialog.open();
-            return;
-        });
-
-    m_hierarchy_group_node_menu.addOption(
-        "Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
-            m_create_obj_dialog.open();
-            return;
-        });
-
-    m_hierarchy_group_node_menu.addOption(
-        "Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
-            m_create_obj_dialog.open();
-            return;
-        });
-
-    m_hierarchy_group_node_menu.addDivider();
-
-    m_hierarchy_group_node_menu.addOption("Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
-                                          [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                                              m_rename_obj_dialog.open();
-                                              m_rename_obj_dialog.setOriginalName(
-                                                  info.m_selected->getNameRef().name());
-                                              return;
-                                          });
-
-    m_hierarchy_group_node_menu.addDivider();
-
-    m_hierarchy_group_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-            GUIApplication::instance().getSceneObjectClipboard().setData(info);
-            return;
-        });
-
-    m_hierarchy_group_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            auto nodes       = GUIApplication::instance().getSceneObjectClipboard().getData();
-            auto this_parent = std::reinterpret_pointer_cast<GroupSceneObject>(info.m_selected);
-            if (!this_parent) {
-                LogError(
-                    make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
-                        .error());
-                return;
-            }
-            std::vector<std::string> sibling_names;
-            auto children = this_parent->getChildren();
-            for (auto &child : children) {
-                sibling_names.push_back(std::string(child->getNameRef().name()));
-            }
-            for (auto &node : nodes) {
-                RefPtr<ISceneObject> new_object  = ref_cast<ISceneObject>(make_deep_clone<ISceneObject>(node.m_selected));
-                NameRef node_ref = new_object->getNameRef();
-                node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
-                new_object->setNameRef(node_ref);
-                this_parent->addChild(new_object);
-                sibling_names.push_back(std::string(node_ref.name()));
-            }
-            m_update_render_objs = true;
-            return;
-        });
-
-    m_hierarchy_group_node_menu.addDivider();
-
-    m_hierarchy_group_node_menu.addOption(
-        "Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            auto this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
-            if (!this_parent) {
-                LogError(
-                    make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
-                        .error());
-                return;
-            }
-            this_parent->removeChild(info.m_selected->getNameRef().name());
-
-            Game::TaskCommunicator &task_communicator =
-                GUIApplication::instance().getTaskCommunicator();
-            task_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
-
-            auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
-                                     m_hierarchy_selected_nodes.end(), info);
-            m_hierarchy_selected_nodes.erase(node_it);
-            m_update_render_objs = true;
-            return;
-        });
-}
-
-void SceneWindow::buildContextMenuPhysicalObj() {
-    m_hierarchy_physical_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
-
-    m_hierarchy_physical_node_menu.addOption(
-        "Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_BEFORE);
-            m_create_obj_dialog.open();
-            return;
-        });
-
-    m_hierarchy_physical_node_menu.addOption(
-        "Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            m_create_obj_dialog.setInsertPolicy(CreateObjDialog::InsertPolicy::INSERT_AFTER);
-            m_create_obj_dialog.open();
-            return;
-        });
-
-    m_hierarchy_physical_node_menu.addDivider();
-
-    m_hierarchy_physical_node_menu.addOption(
-        "Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            m_rename_obj_dialog.open();
-            m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
-            return;
-        });
-
-    m_hierarchy_physical_node_menu.addDivider();
-
-    m_hierarchy_physical_node_menu.addOption(
-        "View in Scene", {KeyCode::KEY_LEFTALT, KeyCode::KEY_V},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            auto member_result = info.m_selected->getMember("Transform");
-            if (!member_result) {
-                LogError(make_error<void>("Scene Hierarchy",
-                                          "Failed to find transform member of physical object")
-                             .error());
-                return;
-            }
-            auto member_ptr = member_result.value();
-            if (!member_ptr) {
-                LogError(make_error<void>("Scene Hierarchy",
-                                          "Found the transform member but it was null")
-                             .error());
-                return;
-            }
-            Transform transform = getMetaValue<Transform>(member_ptr).value();
-            f32 max_scale       = std::max(transform.m_scale.x, transform.m_scale.y);
-            max_scale           = std::max(max_scale, transform.m_scale.z);
-
-            m_renderer.setCameraOrientation({0, 1, 0}, transform.m_translation,
-                                            {transform.m_translation.x, transform.m_translation.y,
-                                             transform.m_translation.z + 1000 * max_scale});
-            m_update_render_objs = true;
-            return;
-        });
-
-    m_hierarchy_physical_node_menu.addOption(
-        "Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            auto member_result = info.m_selected->getMember("Transform");
-            if (!member_result) {
-                LogError(make_error<void>("Scene Hierarchy",
-                                          "Failed to find transform member of physical object")
-                             .error());
-                return;
-            }
-            auto member_ptr = member_result.value();
-            if (!member_ptr) {
-                LogError(make_error<void>("Scene Hierarchy",
-                                          "Found the transform member but it was null")
-                             .error());
-                return;
-            }
-
-            Transform transform = getMetaValue<Transform>(member_ptr).value();
-            m_renderer.getCameraTranslation(transform.m_translation);
-            auto result = setMetaValue<Transform>(member_ptr, 0, transform);
-            if (!result) {
-                LogError(make_error<void>("Scene Hierarchy",
-                                          "Failed to set the transform member of physical object")
-                             .error());
-                return;
-            }
-
-            m_update_render_objs = true;
-            return;
-        });
-
-    m_hierarchy_physical_node_menu.addDivider();
-
-    m_hierarchy_physical_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-            GUIApplication::instance().getSceneObjectClipboard().setData(info);
-            return;
-        });
-
-    m_hierarchy_physical_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            auto nodes       = GUIApplication::instance().getSceneObjectClipboard().getData();
-            auto this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
-            if (!this_parent) {
-                LogError(
-                    make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
-                        .error());
-                return;
-            }
-            std::vector<std::string> sibling_names;
-            auto children = this_parent->getChildren();
-            for (auto &child : children) {
-                sibling_names.push_back(std::string(child->getNameRef().name()));
-            }
-            for (auto &node : nodes) {
-                RefPtr<ISceneObject> new_object  = ref_cast<ISceneObject>(make_deep_clone<ISceneObject>(node.m_selected));
-                NameRef node_ref = new_object->getNameRef();
-                node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
-                new_object->setNameRef(node_ref);
-                this_parent->addChild(new_object);
-                sibling_names.push_back(std::string(node_ref.name()));
-            }
-            m_update_render_objs = true;
-            return;
-        });
-
-    m_hierarchy_physical_node_menu.addDivider();
-
-    m_hierarchy_physical_node_menu.addOption(
-        "Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            auto this_parent = reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
-            if (!this_parent) {
-                LogError(
-                    make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
-                        .error());
-                return;
-            }
-            this_parent->removeChild(info.m_selected->getNameRef().name());
-
-            Game::TaskCommunicator &task_communicator =
-                GUIApplication::instance().getTaskCommunicator();
-            task_communicator.taskRemoveSceneObject(info.m_selected, get_shared_ptr(*this_parent));
-
-            auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
-                                     m_hierarchy_selected_nodes.end(), info);
-            m_hierarchy_selected_nodes.erase(node_it);
-            m_update_render_objs = true;
-            return;
-        });
-
-    m_hierarchy_physical_node_menu.addDivider();
-
-    m_hierarchy_physical_node_menu.addOption(
-        "Copy Player Transform", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
-        [this]() {
-            Game::TaskCommunicator &task_communicator =
-                GUIApplication::instance().getTaskCommunicator();
-            return task_communicator.isSceneLoaded();
-        },
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            Game::TaskCommunicator &task_communicator =
-                GUIApplication::instance().getTaskCommunicator();
-            task_communicator.setObjectTransformToMario(
-                ref_cast<PhysicalSceneObject>(info.m_selected));
-            m_update_render_objs = true;
-            return;
-        });
-
-    m_hierarchy_physical_node_menu.addOption(
-        "Copy Player Position", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
-        [this]() {
-            Game::TaskCommunicator &task_communicator =
-                GUIApplication::instance().getTaskCommunicator();
-            return task_communicator.isSceneLoaded();
-        },
-        [this](SelectionNodeInfo<Object::ISceneObject> info) {
-            Game::TaskCommunicator &task_communicator =
-                GUIApplication::instance().getTaskCommunicator();
-            task_communicator.setObjectTranslationToMario(
-                ref_cast<PhysicalSceneObject>(info.m_selected));
-            m_update_render_objs = true;
-            return;
-        });
-}
-
-void SceneWindow::buildContextMenuMultiObj() {
-    m_hierarchy_multi_node_menu =
-        ContextMenu<std::vector<SelectionNodeInfo<Object::ISceneObject>>>();
-
-    m_hierarchy_multi_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-        [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
-            for (auto &info : infos) {
-                info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-            }
-            GUIApplication::instance().getSceneObjectClipboard().setData(infos);
-            return;
-        });
-
-    m_hierarchy_multi_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
-        [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
-            auto nodes = GUIApplication::instance().getSceneObjectClipboard().getData();
-            for (auto &info : infos) {
-                auto this_parent =
-                    reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+    ContextMenuBuilder(&m_hierarchy_group_node_menu)
+        .addOption("Add Child Object...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       m_create_obj_dialog.setInsertPolicy(
+                           CreateObjDialog::InsertPolicy::INSERT_CHILD);
+                       m_create_obj_dialog.open();
+                       return;
+                   })
+        .addOption("Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       m_create_obj_dialog.setInsertPolicy(
+                           CreateObjDialog::InsertPolicy::INSERT_BEFORE);
+                       m_create_obj_dialog.open();
+                       return;
+                   })
+        .addOption("Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       m_create_obj_dialog.setInsertPolicy(
+                           CreateObjDialog::InsertPolicy::INSERT_AFTER);
+                       m_create_obj_dialog.open();
+                       return;
+                   })
+        .addDivider()
+        .addOption("Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       m_rename_obj_dialog.open();
+                       m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
+                       return;
+                   })
+        .addDivider()
+        .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
+                       GUIApplication::instance().getSceneObjectClipboard().setData(info);
+                       return;
+                   })
+        .addOption(
+            "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                auto nodes       = GUIApplication::instance().getSceneObjectClipboard().getData();
+                auto this_parent = std::reinterpret_pointer_cast<GroupSceneObject>(info.m_selected);
                 if (!this_parent) {
                     LogError(
                         make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
@@ -1867,110 +1595,348 @@ void SceneWindow::buildContextMenuMultiObj() {
                     sibling_names.push_back(std::string(child->getNameRef().name()));
                 }
                 for (auto &node : nodes) {
-                    RefPtr<ISceneObject> new_object  = ref_cast<ISceneObject>(make_deep_clone<ISceneObject>(node.m_selected));
+                    RefPtr<ISceneObject> new_object =
+                        ref_cast<ISceneObject>(make_deep_clone<ISceneObject>(node.m_selected));
                     NameRef node_ref = new_object->getNameRef();
                     node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
                     new_object->setNameRef(node_ref);
                     this_parent->addChild(new_object);
                     sibling_names.push_back(std::string(node_ref.name()));
                 }
-            }
-            m_update_render_objs = true;
-            return;
-        });
+                m_update_render_objs = true;
+                return;
+            })
+        .addDivider()
+        .addOption("Delete", {KeyCode::KEY_DELETE},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       auto this_parent =
+                           reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+                       if (!this_parent) {
+                           LogError(make_error<void>("Scene Hierarchy",
+                                                     "Failed to get parent node for pasting")
+                                        .error());
+                           return;
+                       }
+                       this_parent->removeChild(info.m_selected->getNameRef().name());
 
-    m_hierarchy_multi_node_menu.addDivider();
+                       Game::TaskCommunicator &task_communicator =
+                           GUIApplication::instance().getTaskCommunicator();
+                       task_communicator.taskRemoveSceneObject(info.m_selected,
+                                                               get_shared_ptr(*this_parent));
 
-    m_hierarchy_multi_node_menu.addOption(
-        "Delete", {KeyCode::KEY_DELETE},
-        [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
-            for (auto &info : infos) {
-                auto this_parent =
-                    reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
-                if (!this_parent) {
+                       auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
+                                                m_hierarchy_selected_nodes.end(), info);
+                       m_hierarchy_selected_nodes.erase(node_it);
+                       m_update_render_objs = true;
+                       return;
+                   });
+}
+
+void SceneWindow::buildContextMenuPhysicalObj() {
+    m_hierarchy_physical_node_menu = ContextMenu<SelectionNodeInfo<Object::ISceneObject>>();
+
+    ContextMenuBuilder(&m_hierarchy_physical_node_menu)
+        .addOption("Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       m_create_obj_dialog.setInsertPolicy(
+                           CreateObjDialog::InsertPolicy::INSERT_BEFORE);
+                       m_create_obj_dialog.open();
+                       return;
+                   })
+        .addOption("Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       m_create_obj_dialog.setInsertPolicy(
+                           CreateObjDialog::InsertPolicy::INSERT_AFTER);
+                       m_create_obj_dialog.open();
+                       return;
+                   })
+        .addDivider()
+        .addOption("Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       m_rename_obj_dialog.open();
+                       m_rename_obj_dialog.setOriginalName(info.m_selected->getNameRef().name());
+                       return;
+                   })
+        .addDivider()
+        .addOption(
+            "View in Scene", {KeyCode::KEY_LEFTALT, KeyCode::KEY_V},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                auto member_result = info.m_selected->getMember("Transform");
+                if (!member_result) {
+                    LogError(make_error<void>("Scene Hierarchy",
+                                              "Failed to find transform member of physical object")
+                                 .error());
+                    return;
+                }
+                auto member_ptr = member_result.value();
+                if (!member_ptr) {
+                    LogError(make_error<void>("Scene Hierarchy",
+                                              "Found the transform member but it was null")
+                                 .error());
+                    return;
+                }
+                Transform transform = getMetaValue<Transform>(member_ptr).value();
+                f32 max_scale       = std::max(transform.m_scale.x, transform.m_scale.y);
+                max_scale           = std::max(max_scale, transform.m_scale.z);
+
+                m_renderer.setCameraOrientation({0, 1, 0}, transform.m_translation,
+                                                {transform.m_translation.x,
+                                                 transform.m_translation.y,
+                                                 transform.m_translation.z + 1000 * max_scale});
+                m_update_render_objs = true;
+                return;
+            })
+        .addOption(
+            "Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                auto member_result = info.m_selected->getMember("Transform");
+                if (!member_result) {
+                    LogError(make_error<void>("Scene Hierarchy",
+                                              "Failed to find transform member of physical object")
+                                 .error());
+                    return;
+                }
+                auto member_ptr = member_result.value();
+                if (!member_ptr) {
+                    LogError(make_error<void>("Scene Hierarchy",
+                                              "Found the transform member but it was null")
+                                 .error());
+                    return;
+                }
+
+                Transform transform = getMetaValue<Transform>(member_ptr).value();
+                m_renderer.getCameraTranslation(transform.m_translation);
+                auto result = setMetaValue<Transform>(member_ptr, 0, transform);
+                if (!result) {
                     LogError(
-                        make_error<void>("Scene Hierarchy", "Failed to get parent node for pasting")
+                        make_error<void>("Scene Hierarchy",
+                                         "Failed to set the transform member of physical object")
                             .error());
                     return;
                 }
-                this_parent->removeChild(info.m_selected->getNameRef().name());
 
+                m_update_render_objs = true;
+                return;
+            })
+        .addDivider()
+        .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
+                       GUIApplication::instance().getSceneObjectClipboard().setData(info);
+                       return;
+                   })
+        .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       auto nodes = GUIApplication::instance().getSceneObjectClipboard().getData();
+                       auto this_parent =
+                           reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+                       if (!this_parent) {
+                           LogError(make_error<void>("Scene Hierarchy",
+                                                     "Failed to get parent node for pasting")
+                                        .error());
+                           return;
+                       }
+                       std::vector<std::string> sibling_names;
+                       auto children = this_parent->getChildren();
+                       for (auto &child : children) {
+                           sibling_names.push_back(std::string(child->getNameRef().name()));
+                       }
+                       for (auto &node : nodes) {
+                           RefPtr<ISceneObject> new_object = ref_cast<ISceneObject>(
+                               make_deep_clone<ISceneObject>(node.m_selected));
+                           NameRef node_ref = new_object->getNameRef();
+                           node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
+                           new_object->setNameRef(node_ref);
+                           this_parent->addChild(new_object);
+                           sibling_names.push_back(std::string(node_ref.name()));
+                       }
+                       m_update_render_objs = true;
+                       return;
+                   })
+        .addDivider()
+        .addOption("Delete", {KeyCode::KEY_DELETE},
+                   [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                       auto this_parent =
+                           reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+                       if (!this_parent) {
+                           LogError(make_error<void>("Scene Hierarchy",
+                                                     "Failed to get parent node for pasting")
+                                        .error());
+                           return;
+                       }
+                       this_parent->removeChild(info.m_selected->getNameRef().name());
+
+                       Game::TaskCommunicator &task_communicator =
+                           GUIApplication::instance().getTaskCommunicator();
+                       task_communicator.taskRemoveSceneObject(info.m_selected,
+                                                               get_shared_ptr(*this_parent));
+
+                       auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
+                                                m_hierarchy_selected_nodes.end(), info);
+                       m_hierarchy_selected_nodes.erase(node_it);
+                       m_update_render_objs = true;
+                       return;
+                   })
+        .addDivider()
+        .addOption(
+            "Copy Player Transform",
+            {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
+            [this](SelectionNodeInfo<Object::ISceneObject>) {
                 Game::TaskCommunicator &task_communicator =
                     GUIApplication::instance().getTaskCommunicator();
-                task_communicator.taskRemoveSceneObject(info.m_selected,
-                                                        get_shared_ptr(*this_parent));
+                return task_communicator.isSceneLoaded();
+            },
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                Game::TaskCommunicator &task_communicator =
+                    GUIApplication::instance().getTaskCommunicator();
+                task_communicator.setObjectTransformToMario(
+                    ref_cast<PhysicalSceneObject>(info.m_selected));
+                m_update_render_objs = true;
+                return;
+            })
+        .addOption(
+            "Copy Player Position",
+            {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
+            [this](SelectionNodeInfo<Object::ISceneObject>) {
+                Game::TaskCommunicator &task_communicator =
+                    GUIApplication::instance().getTaskCommunicator();
+                return task_communicator.isSceneLoaded();
+            },
+            [this](SelectionNodeInfo<Object::ISceneObject> info) {
+                Game::TaskCommunicator &task_communicator =
+                    GUIApplication::instance().getTaskCommunicator();
+                task_communicator.setObjectTranslationToMario(
+                    ref_cast<PhysicalSceneObject>(info.m_selected));
+                m_update_render_objs = true;
+                return;
+            });
+}
 
-                auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
-                                         m_hierarchy_selected_nodes.end(), info);
-                m_hierarchy_selected_nodes.erase(node_it);
-            }
-            m_update_render_objs = true;
-            return;
-        });
+void SceneWindow::buildContextMenuMultiObj() {
+    m_hierarchy_multi_node_menu =
+        ContextMenu<std::vector<SelectionNodeInfo<Object::ISceneObject>>>();
+
+    ContextMenuBuilder(&m_hierarchy_multi_node_menu)
+        .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+                   [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
+                       for (auto &info : infos) {
+                           info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
+                       }
+                       GUIApplication::instance().getSceneObjectClipboard().setData(infos);
+                       return;
+                   })
+        .addOption(
+            "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+            [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
+                auto nodes = GUIApplication::instance().getSceneObjectClipboard().getData();
+                for (auto &info : infos) {
+                    auto this_parent =
+                        reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+                    if (!this_parent) {
+                        LogError(make_error<void>("Scene Hierarchy",
+                                                  "Failed to get parent node for pasting")
+                                     .error());
+                        return;
+                    }
+                    std::vector<std::string> sibling_names;
+                    auto children = this_parent->getChildren();
+                    for (auto &child : children) {
+                        sibling_names.push_back(std::string(child->getNameRef().name()));
+                    }
+                    for (auto &node : nodes) {
+                        RefPtr<ISceneObject> new_object =
+                            ref_cast<ISceneObject>(make_deep_clone<ISceneObject>(node.m_selected));
+                        NameRef node_ref = new_object->getNameRef();
+                        node_ref.setName(Util::MakeNameUnique(node_ref.name(), sibling_names));
+                        new_object->setNameRef(node_ref);
+                        this_parent->addChild(new_object);
+                        sibling_names.push_back(std::string(node_ref.name()));
+                    }
+                }
+                m_update_render_objs = true;
+                return;
+            })
+        .addDivider()
+        .addOption("Delete", {KeyCode::KEY_DELETE},
+                   [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
+                       for (auto &info : infos) {
+                           auto this_parent =
+                               reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
+                           if (!this_parent) {
+                               LogError(make_error<void>("Scene Hierarchy",
+                                                         "Failed to get parent node for pasting")
+                                            .error());
+                               return;
+                           }
+                           this_parent->removeChild(info.m_selected->getNameRef().name());
+
+                           Game::TaskCommunicator &task_communicator =
+                               GUIApplication::instance().getTaskCommunicator();
+                           task_communicator.taskRemoveSceneObject(info.m_selected,
+                                                                   get_shared_ptr(*this_parent));
+
+                           auto node_it = std::find(m_hierarchy_selected_nodes.begin(),
+                                                    m_hierarchy_selected_nodes.end(), info);
+                           m_hierarchy_selected_nodes.erase(node_it);
+                       }
+                       m_update_render_objs = true;
+                       return;
+                   });
 }
 
 void SceneWindow::buildContextMenuRail() {
     m_rail_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::Rail>>();
 
-    m_rail_list_single_node_menu.addOption("Insert Rail Here...",
-                                           {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
-                                           [this](SelectionNodeInfo<Rail::Rail> info) {
-                                               m_create_rail_dialog.open();
-                                               return;
-                                           });
-
-    m_rail_list_single_node_menu.addDivider();
-
-    m_rail_list_single_node_menu.addOption("Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
-                                           [this](SelectionNodeInfo<Rail::Rail> info) {
-                                               m_rename_rail_dialog.open();
-                                               m_rename_rail_dialog.setOriginalName(
-                                                   info.m_selected->name());
-                                               return;
-                                           });
-
     // m_rail_list_single_node_menu.addDivider();
     //
     // TODO: Add rail manipulators here.
 
-    m_rail_list_single_node_menu.addDivider();
-
-    m_rail_list_single_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-        [this](SelectionNodeInfo<Rail::Rail> info) {
-            info.m_selected = make_deep_clone<Rail::Rail>(info.m_selected);
-            GUIApplication::instance().getSceneRailClipboard().setData(info);
-            return;
-        });
-
-    m_rail_list_single_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
-        [this](SelectionNodeInfo<Rail::Rail> info) {
-            auto nodes = GUIApplication::instance().getSceneRailClipboard().getData();
-            if (nodes.size() > 0) {
-                RailData &data        = m_current_scene->getRailData();
-                size_t selected_index = data.getRailCount();
-                auto result           = data.getRailIndex(info.m_selected->name());
-                if (result) {
-                    selected_index = result.value();
-                }
-                std::vector<std::string> sibling_names;
-                for (auto &rail : data.rails()) {
-                    sibling_names.push_back(rail->name());
-                }
-                for (auto &node : nodes) {
-                    Rail::Rail new_rail = *node.m_selected;
-                    new_rail.setName(Util::MakeNameUnique(new_rail.name(), sibling_names));
-                    data.insertRail(selected_index + 1, new_rail);
-                    selected_index += 1;
-                }
-            }
-            m_update_render_objs = true;
-            return;
-        });
-
-    m_rail_list_single_node_menu.addOption(
-        "Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Rail::Rail> info) {
+    ContextMenuBuilder(&m_rail_list_single_node_menu)
+        .addOption("Insert Rail Here...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                   [this](SelectionNodeInfo<Rail::Rail> info) {
+                       m_create_rail_dialog.open();
+                       return;
+                   })
+        .addDivider()
+        .addOption("Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
+                   [this](SelectionNodeInfo<Rail::Rail> info) {
+                       m_rename_rail_dialog.open();
+                       m_rename_rail_dialog.setOriginalName(info.m_selected->name());
+                       return;
+                   })
+        .addDivider()
+        .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+                   [this](SelectionNodeInfo<Rail::Rail> info) {
+                       info.m_selected = make_deep_clone<Rail::Rail>(info.m_selected);
+                       GUIApplication::instance().getSceneRailClipboard().setData(info);
+                       return;
+                   })
+        .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+                   [this](SelectionNodeInfo<Rail::Rail> info) {
+                       auto nodes = GUIApplication::instance().getSceneRailClipboard().getData();
+                       if (nodes.size() > 0) {
+                           RailData &data        = m_current_scene->getRailData();
+                           size_t selected_index = data.getRailCount();
+                           auto result           = data.getRailIndex(info.m_selected->name());
+                           if (result) {
+                               selected_index = result.value();
+                           }
+                           std::vector<std::string> sibling_names;
+                           for (auto &rail : data.rails()) {
+                               sibling_names.push_back(rail->name());
+                           }
+                           for (auto &node : nodes) {
+                               Rail::Rail new_rail = *node.m_selected;
+                               new_rail.setName(
+                                   Util::MakeNameUnique(new_rail.name(), sibling_names));
+                               data.insertRail(selected_index + 1, new_rail);
+                               selected_index += 1;
+                           }
+                       }
+                       m_update_render_objs = true;
+                       return;
+                   })
+        .addOption("Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Rail::Rail> info) {
             m_rail_visible_map.erase(info.m_node_id);
             m_current_scene->getRailData().removeRail(info.m_selected->getUUID());
             m_update_render_objs = true;
@@ -1981,127 +1947,115 @@ void SceneWindow::buildContextMenuRail() {
 void SceneWindow::buildContextMenuMultiRail() {
     m_rail_list_multi_node_menu = ContextMenu<std::vector<SelectionNodeInfo<Rail::Rail>>>();
 
-    m_rail_list_multi_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-        [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
-            for (auto &select : info) {
-                select.m_selected = make_deep_clone<Rail::Rail>(select.m_selected);
-            }
-            GUIApplication::instance().getSceneRailClipboard().setData(info);
-            return;
-        });
-
-    m_rail_list_multi_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
-        [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
-            auto nodes = GUIApplication::instance().getSceneRailClipboard().getData();
-            if (nodes.size() > 0) {
-                RailData &data        = m_current_scene->getRailData();
-                size_t selected_index = data.getRailCount();
-                auto result           = data.getRailIndex(info[0].m_selected->name());
-                if (result) {
-                    selected_index = result.value();
-                }
-                std::vector<std::string> sibling_names;
-                for (auto &rail : data.rails()) {
-                    sibling_names.push_back(rail->name());
-                }
-                for (auto &node : nodes) {
-                    Rail::Rail new_rail = *node.m_selected;
-                    new_rail.setName(Util::MakeNameUnique(new_rail.name(), sibling_names));
-                    data.insertRail(selected_index + 1, new_rail);
-                    selected_index += 1;
-                }
-            }
-            m_update_render_objs = true;
-            return;
-        });
-
-    m_rail_list_multi_node_menu.addOption("Delete", {KeyCode::KEY_DELETE},
-                                          [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
-                                              RailData &data = m_current_scene->getRailData();
-                                              for (auto &select : info) {
-                                                  m_rail_visible_map.erase(select.m_node_id);
-                                                  data.removeRail(select.m_selected->getUUID());
-                                              }
-                                              m_update_render_objs = true;
-                                              return;
-                                          });
+    ContextMenuBuilder(&m_rail_list_multi_node_menu)
+        .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+                   [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
+                       for (auto &select : info) {
+                           select.m_selected = make_deep_clone<Rail::Rail>(select.m_selected);
+                       }
+                       GUIApplication::instance().getSceneRailClipboard().setData(info);
+                       return;
+                   })
+        .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+                   [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
+                       auto nodes = GUIApplication::instance().getSceneRailClipboard().getData();
+                       if (nodes.size() > 0) {
+                           RailData &data        = m_current_scene->getRailData();
+                           size_t selected_index = data.getRailCount();
+                           auto result           = data.getRailIndex(info[0].m_selected->name());
+                           if (result) {
+                               selected_index = result.value();
+                           }
+                           std::vector<std::string> sibling_names;
+                           for (auto &rail : data.rails()) {
+                               sibling_names.push_back(rail->name());
+                           }
+                           for (auto &node : nodes) {
+                               Rail::Rail new_rail = *node.m_selected;
+                               new_rail.setName(
+                                   Util::MakeNameUnique(new_rail.name(), sibling_names));
+                               data.insertRail(selected_index + 1, new_rail);
+                               selected_index += 1;
+                           }
+                       }
+                       m_update_render_objs = true;
+                       return;
+                   })
+        .addOption("Delete", {KeyCode::KEY_DELETE},
+                   [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
+                       RailData &data = m_current_scene->getRailData();
+                       for (auto &select : info) {
+                           m_rail_visible_map.erase(select.m_node_id);
+                           data.removeRail(select.m_selected->getUUID());
+                       }
+                       m_update_render_objs = true;
+                       return;
+                   });
 }
 
 void SceneWindow::buildContextMenuRailNode() {
     m_rail_node_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::RailNode>>();
 
-    m_rail_node_list_single_node_menu.addOption("Insert Node Here...",
-                                                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
-                                                [this](SelectionNodeInfo<Rail::RailNode> info) {
-                                                    m_create_rail_dialog.open();
-                                                    return Result<void>();
-                                                });
+    ContextMenuBuilder(&m_rail_node_list_single_node_menu)
+        .addOption("Insert Node Here...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                   [this](SelectionNodeInfo<Rail::RailNode> info) {
+                       m_create_rail_dialog.open();
+                       return Result<void>();
+                   })
+        .addDivider()
+        .addOption("View in Scene", {KeyCode::KEY_LEFTALT, KeyCode::KEY_V},
+                   [this](SelectionNodeInfo<Rail::RailNode> info) {
+                       glm::vec3 translation = info.m_selected->getPosition();
 
-    m_rail_node_list_single_node_menu.addDivider();
+                       m_renderer.setCameraOrientation(
+                           {0, 1, 0}, translation,
+                           {translation.x, translation.y, translation.z + 1000});
+                       m_update_render_objs = true;
+                       return Result<void>();
+                   })
+        .addOption("Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
+                   [this](SelectionNodeInfo<Rail::RailNode> info) {
+                       RefPtr<Rail::Rail> rail =
+                           m_current_scene->getRailData().getRail(info.m_selected->getRailUUID());
 
-    m_rail_node_list_single_node_menu.addOption(
-        "View in Scene", {KeyCode::KEY_LEFTALT, KeyCode::KEY_V},
-        [this](SelectionNodeInfo<Rail::RailNode> info) {
-            glm::vec3 translation = info.m_selected->getPosition();
+                       glm::vec3 translation;
+                       m_renderer.getCameraTranslation(translation);
+                       auto result = rail->setNodePosition(info.m_selected, translation);
+                       if (!result) {
+                           LogError(result.error());
+                           return;
+                       }
 
-            m_renderer.setCameraOrientation({0, 1, 0}, translation,
-                                            {translation.x, translation.y, translation.z + 1000});
-            m_update_render_objs = true;
-            return Result<void>();
-        });
-
-    m_rail_node_list_single_node_menu.addOption(
-        "Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
-        [this](SelectionNodeInfo<Rail::RailNode> info) {
-            RefPtr<Rail::Rail> rail =
-                m_current_scene->getRailData().getRail(info.m_selected->getRailUUID());
-
-            glm::vec3 translation;
-            m_renderer.getCameraTranslation(translation);
-            auto result = rail->setNodePosition(info.m_selected, translation);
-            if (!result) {
-                LogError(result.error());
-                return;
-            }
-
-            m_renderer.updatePaths(m_current_scene->getRailData(), m_rail_visible_map);
-            m_update_render_objs = true;
-            return;
-        });
-
-    m_rail_node_list_single_node_menu.addDivider();
-
-    m_rail_node_list_single_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-        [this](SelectionNodeInfo<Rail::RailNode> info) {
-            info.m_selected = make_deep_clone<Rail::RailNode>(info.m_selected);
-            GUIApplication::instance().getSceneRailNodeClipboard().setData(info);
-            return Result<void>();
-        });
-
-    m_rail_node_list_single_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
-        [this](SelectionNodeInfo<Rail::RailNode> info) {
-            RefPtr<Rail::Rail> rail =
-                m_current_scene->getRailData().getRail(info.m_selected->getRailUUID());
-            size_t selected_index = rail->getNodeCount();
-            auto result           = rail->getNodeIndex(info.m_selected);
-            if (result) {
-                selected_index = result.value();
-            }
-            auto nodes = GUIApplication::instance().getSceneRailNodeClipboard().getData();
-            for (auto &node : nodes) {
-                rail->insertNode(selected_index + 1, node.m_selected);
-                selected_index += 1;
-            }
-            m_update_render_objs = true;
-            return Result<void>();
-        });
-
-    m_rail_node_list_single_node_menu.addOption(
-        "Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Rail::RailNode> info) {
+                       m_renderer.updatePaths(m_current_scene->getRailData(), m_rail_visible_map);
+                       m_update_render_objs = true;
+                       return;
+                   })
+        .addDivider()
+        .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+                   [this](SelectionNodeInfo<Rail::RailNode> info) {
+                       info.m_selected = make_deep_clone<Rail::RailNode>(info.m_selected);
+                       GUIApplication::instance().getSceneRailNodeClipboard().setData(info);
+                       return Result<void>();
+                   })
+        .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+                   [this](SelectionNodeInfo<Rail::RailNode> info) {
+                       RefPtr<Rail::Rail> rail =
+                           m_current_scene->getRailData().getRail(info.m_selected->getRailUUID());
+                       size_t selected_index = rail->getNodeCount();
+                       auto result           = rail->getNodeIndex(info.m_selected);
+                       if (result) {
+                           selected_index = result.value();
+                       }
+                       auto nodes =
+                           GUIApplication::instance().getSceneRailNodeClipboard().getData();
+                       for (auto &node : nodes) {
+                           rail->insertNode(selected_index + 1, node.m_selected);
+                           selected_index += 1;
+                       }
+                       m_update_render_objs = true;
+                       return Result<void>();
+                   })
+        .addOption("Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Rail::RailNode> info) {
             RefPtr<Rail::Rail> rail =
                 m_current_scene->getRailData().getRail(info.m_selected->getRailUUID());
             rail->removeNode(info.m_selected);
@@ -2114,46 +2068,43 @@ void SceneWindow::buildContextMenuMultiRailNode() {
     m_rail_node_list_multi_node_menu =
         ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>>();
 
-    m_rail_node_list_multi_node_menu.addOption(
-        "Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-        [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
-            for (auto &select : info) {
-                select.m_selected = make_deep_clone<Rail::RailNode>(select.m_selected);
-            }
-            GUIApplication::instance().getSceneRailNodeClipboard().setData(info);
-            return Result<void>();
-        });
-
-    m_rail_node_list_multi_node_menu.addOption(
-        "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
-        [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
-            RefPtr<Rail::Rail> rail =
-                m_current_scene->getRailData().getRail(info[0].m_selected->getRailUUID());
-            size_t selected_index = rail->getNodeCount();
-            auto result           = rail->getNodeIndex(info[0].m_selected);
-            if (result) {
-                selected_index = result.value();
-            }
-            auto nodes = GUIApplication::instance().getSceneRailNodeClipboard().getData();
-            for (auto &node : nodes) {
-                rail->insertNode(selected_index + 1, node.m_selected);
-                selected_index += 1;
-            }
-            m_update_render_objs = true;
-            return Result<void>();
-        });
-
-    m_rail_node_list_multi_node_menu.addOption(
-        "Delete", {KeyCode::KEY_DELETE},
-        [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
-            for (auto &select : info) {
-                RefPtr<Rail::Rail> rail =
-                    m_current_scene->getRailData().getRail(select.m_selected->getRailUUID());
-                rail->removeNode(select.m_selected);
-            }
-            m_update_render_objs = true;
-            return Result<void>();
-        });
+    ContextMenuBuilder(&m_rail_node_list_multi_node_menu)
+        .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+                   [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
+                       for (auto &select : info) {
+                           select.m_selected = make_deep_clone<Rail::RailNode>(select.m_selected);
+                       }
+                       GUIApplication::instance().getSceneRailNodeClipboard().setData(info);
+                       return Result<void>();
+                   })
+        .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+                   [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
+                       RefPtr<Rail::Rail> rail = m_current_scene->getRailData().getRail(
+                           info[0].m_selected->getRailUUID());
+                       size_t selected_index = rail->getNodeCount();
+                       auto result           = rail->getNodeIndex(info[0].m_selected);
+                       if (result) {
+                           selected_index = result.value();
+                       }
+                       auto nodes =
+                           GUIApplication::instance().getSceneRailNodeClipboard().getData();
+                       for (auto &node : nodes) {
+                           rail->insertNode(selected_index + 1, node.m_selected);
+                           selected_index += 1;
+                       }
+                       m_update_render_objs = true;
+                       return Result<void>();
+                   })
+        .addOption("Delete", {KeyCode::KEY_DELETE},
+                   [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
+                       for (auto &select : info) {
+                           RefPtr<Rail::Rail> rail = m_current_scene->getRailData().getRail(
+                               select.m_selected->getRailUUID());
+                           rail->removeNode(select.m_selected);
+                       }
+                       m_update_render_objs = true;
+                       return Result<void>();
+                   });
 }
 
 void SceneWindow::buildCreateObjDialog() {

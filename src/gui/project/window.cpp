@@ -401,142 +401,133 @@ namespace Toolbox::UI {
         m_folder_view_context_menu.onOpen(
             [this](const ModelIndex &index) { m_selected_indices_ctx = m_selected_indices; });
 
-        m_folder_view_context_menu.addOption(
-            "Open", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_O}),
-            [this]() {
-                return m_selected_indices_ctx.size() > 0 &&
-                       std::all_of(m_selected_indices_ctx.begin(), m_selected_indices_ctx.end(),
-                                   [this](const ModelIndex &index) {
-                                       return m_file_system_model->isFile(index) ||
-                                              isPathForScene(index);
-                                   });
-            },
-            [this](auto) { actionOpenIndexes(m_selected_indices_ctx); });
-
-        m_folder_view_context_menu.addOption(
-            "Open in Explorer",
-            KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O}),
-            [this]() {
-                return std::all_of(
-                    m_selected_indices_ctx.begin(), m_selected_indices_ctx.end(),
-                    [this](const ModelIndex &index) { return m_file_system_model->isFile(index); });
-            },
-            [this](auto) {
-                if (m_selected_indices_ctx.size() == 0) {
-                    Toolbox::Platform::OpenFileExplorer(m_file_system_model->getPath(m_view_index));
-                } else {
-                    std::set<fs_path> paths;
-                    for (const ModelIndex &item_index : m_selected_indices_ctx) {
-                        fs_path path = m_file_system_model->getPath(item_index);
-                        if (m_file_system_model->isDirectory(item_index)) {
-                            paths.insert(path);
-                        } else {
-                            paths.insert(path.parent_path());
+        ContextMenuBuilder(&m_folder_view_context_menu)
+            .addOption(
+                "Open", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_O}),
+                [this](const ModelIndex &index) {
+                    return m_selected_indices_ctx.size() > 0 &&
+                           std::all_of(m_selected_indices_ctx.begin(), m_selected_indices_ctx.end(),
+                                       [this](const ModelIndex &index) {
+                                           return m_file_system_model->isFile(index) ||
+                                                  isPathForScene(index);
+                                       });
+                },
+                [this](const ModelIndex &index) { actionOpenIndexes(m_selected_indices_ctx); })
+            .addOption(
+                "Open in Explorer",
+                KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O}),
+                [this](const ModelIndex &index) {
+                    return std::all_of(m_selected_indices_ctx.begin(), m_selected_indices_ctx.end(),
+                                       [this](const ModelIndex &index) {
+                                           return m_file_system_model->isFile(index);
+                                       });
+                },
+                [this](const ModelIndex &index) {
+                    if (m_selected_indices_ctx.size() == 0) {
+                        Toolbox::Platform::OpenFileExplorer(
+                            m_file_system_model->getPath(m_view_index));
+                    } else {
+                        std::set<fs_path> paths;
+                        for (const ModelIndex &item_index : m_selected_indices_ctx) {
+                            fs_path path = m_file_system_model->getPath(item_index);
+                            if (m_file_system_model->isDirectory(item_index)) {
+                                paths.insert(path);
+                            } else {
+                                paths.insert(path.parent_path());
+                            }
+                        }
+                        for (const fs_path &path : paths) {
+                            Toolbox::Platform::OpenFileExplorer(path);
                         }
                     }
-                    for (const fs_path &path : paths) {
-                        Toolbox::Platform::OpenFileExplorer(path);
+                })
+            .addDivider()
+            .addOption(
+                "Copy Path",
+                KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C}),
+                [this](const ModelIndex &index) { return true; },
+                [this](const ModelIndex &index) {
+                    std::string paths;
+                    if (m_selected_indices_ctx.size() == 0) {
+                        paths = m_file_system_model->getPath(m_view_index).string();
+                    } else {
+                        for (const ModelIndex &item_index : m_selected_indices_ctx) {
+                            fs_path path = m_file_system_model->getPath(item_index);
+                            paths += path.string() + "\n";
+                        }
                     }
-                }
-            });
-
-        m_folder_view_context_menu.addDivider();
-
-        m_folder_view_context_menu.addOption(
-            "Copy Path",
-            KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C}),
-            [this]() { return true; },
-            [this](auto) {
-                std::string paths;
-                if (m_selected_indices_ctx.size() == 0) {
-                    paths = m_file_system_model->getPath(m_view_index).string();
-                } else {
-                    for (const ModelIndex &item_index : m_selected_indices_ctx) {
-                        fs_path path = m_file_system_model->getPath(item_index);
-                        paths += path.string() + "\n";
+                    ImGui::SetClipboardText(paths.c_str());
+                })
+            .addDivider()
+            .addOption(
+                "Cut", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_X}),
+                [this](const ModelIndex &index) { return m_selected_indices_ctx.size() > 0; },
+                [this](const ModelIndex &index) {})
+            .addOption(
+                "Copy", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C}),
+                [this](const ModelIndex &index) { return m_selected_indices_ctx.size() > 0; },
+                [this](const ModelIndex &index) { actionCopyIndexes(m_selected_indices_ctx); })
+            .addDivider()
+            .addOption(
+                "Delete", KeyBind({KeyCode::KEY_DELETE}),
+                [this](const ModelIndex &index) { return m_selected_indices_ctx.size() > 0; },
+                [this](const ModelIndex &index) {
+                    if (m_delete_without_request) {
+                        actionDeleteIndexes(m_selected_indices_ctx);
+                    } else {
+                        m_delete_requested = true;
                     }
-                }
-                ImGui::SetClipboardText(paths.c_str());
-            });
+                })
+            .addOption(
+                "Rename", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R}),
+                [this](const ModelIndex &index) { return m_selected_indices_ctx.size() == 1; },
+                [this](const ModelIndex &index) { actionRenameIndex(m_selected_indices_ctx[0]); })
+            .addOption(
+                "Paste", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V}),
+                [this](const ModelIndex &index) { return m_selected_indices_ctx.size() == 0; },
+                [this](const ModelIndex &index) {
+                    auto content_types = SystemClipboard::instance().getAvailableContentFormats();
+                    if (!content_types) {
+                        TOOLBOX_ERROR("Couldn't get content types");
+                        return;
+                    }
 
-        m_folder_view_context_menu.addDivider();
+                    if (std::find(content_types.value().begin(), content_types.value().end(),
+                                  std::string("text/uri-list")) == content_types.value().end()) {
+                        return;
+                    }
+                    auto maybe_data = SystemClipboard::instance().getFiles();
 
-        m_folder_view_context_menu.addOption(
-            "Cut", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_X}),
-            [this]() { return m_selected_indices_ctx.size() > 0; }, [this](auto) {});
+                    std::vector<fs_path> data = maybe_data.value();
 
-        m_folder_view_context_menu.addOption(
-            "Copy", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C}),
-            [this]() { return m_selected_indices_ctx.size() > 0; },
-            [this](auto) { actionCopyIndexes(m_selected_indices_ctx); });
-
-        m_folder_view_context_menu.addDivider();
-
-        m_folder_view_context_menu.addOption(
-            "Delete", KeyBind({KeyCode::KEY_DELETE}),
-            [this]() { return m_selected_indices_ctx.size() > 0; },
-            [this](auto) {
-                if (m_delete_without_request) {
-                    actionDeleteIndexes(m_selected_indices_ctx);
-                } else {
-                    m_delete_requested = true;
-                }
-            });
-
-        m_folder_view_context_menu.addOption(
-            "Rename", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R}),
-            [this]() { return m_selected_indices_ctx.size() == 1; },
-            [this](auto) { actionRenameIndex(m_selected_indices_ctx[0]); });
-
-        m_folder_view_context_menu.addOption(
-            "Paste", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V}),
-            [this]() { return m_selected_indices_ctx.size() == 0; },
-            [this](auto) {
-                auto content_types = SystemClipboard::instance().getAvailableContentFormats();
-                if (!content_types) {
-                    TOOLBOX_ERROR("Couldn't get content types");
-                    return;
-                }
-
-                if (std::find(content_types.value().begin(), content_types.value().end(),
-                              std::string("text/uri-list")) == content_types.value().end()) {
-                    return;
-                }
-                auto maybe_data = SystemClipboard::instance().getFiles();
-
-                std::vector<fs_path> data = maybe_data.value();
-
-                actionPasteIntoIndex(m_view_index, data);
-            });
-
-        m_folder_view_context_menu.addDivider();
-
-        m_folder_view_context_menu.addOption(
-            "New Folder",
-            KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_N}),
-            [this]() { return m_selected_indices_ctx.size() == 0; },
-            [this](const ModelIndex &view_index) {
-                std::string folder_name =
-                    m_file_system_model->findUniqueName(view_index, "New Folder");
-                ModelIndex new_index = m_file_system_model->mkdir(view_index, folder_name);
-                if (m_file_system_model->validateIndex(new_index)) {
-                    m_selected_indices.clear();
-                    m_selected_indices.push_back(new_index);
-                    m_selected_indices_ctx = m_selected_indices;
-                    actionRenameIndex(new_index);
-                }
-            });
-
-        m_folder_view_context_menu.addOption(
-            "New Item...", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N}),
-            [this]() { return m_selected_indices_ctx.size() == 0; },
-            [this](const ModelIndex &view_index) {
-                RefPtr<NewItemWindow> window =
-                    GUIApplication::instance().createWindow<NewItemWindow>("New Item");
-                if (window) {
-                    window->setContextPath(m_file_system_model->getPath(view_index));
-                }
-            });
+                    actionPasteIntoIndex(m_view_index, data);
+                })
+            .addDivider()
+            .addOption(
+                "New Folder",
+                KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_N}),
+                [this](const ModelIndex &index) { return m_selected_indices_ctx.size() == 0; },
+                [this](const ModelIndex &view_index) {
+                    std::string folder_name =
+                        m_file_system_model->findUniqueName(view_index, "New Folder");
+                    ModelIndex new_index = m_file_system_model->mkdir(view_index, folder_name);
+                    if (m_file_system_model->validateIndex(new_index)) {
+                        m_selected_indices.clear();
+                        m_selected_indices.push_back(new_index);
+                        m_selected_indices_ctx = m_selected_indices;
+                        actionRenameIndex(new_index);
+                    }
+                })
+            .addOption(
+                "New Item...", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N}),
+                [this](const ModelIndex &index) { return m_selected_indices_ctx.size() == 0; },
+                [this](const ModelIndex &view_index) {
+                    RefPtr<NewItemWindow> window =
+                        GUIApplication::instance().createWindow<NewItemWindow>("New Item");
+                    if (window) {
+                        window->setContextPath(m_file_system_model->getPath(view_index));
+                    }
+                });
     }
 
     MimeData ProjectViewWindow::buildFolderViewMimeData() const {
@@ -912,15 +903,11 @@ namespace Toolbox::UI {
             name.starts_with("NUL.")) {
             return false;
         }
-        if ((name.starts_with("COM") ||
-             name.starts_with("LPT")) &&
-            name.length() == 4 &&
+        if ((name.starts_with("COM") || name.starts_with("LPT")) && name.length() == 4 &&
             (isdigit(name.back()) ||
              // The escapes for superscript 1, 2, and 3, which are
              // also disallowed after these patterns.
-             name.back() == '\XB6' ||
-             name.back() == '\XB2' ||
-             name.back() == '\XB3')){
+             name.back() == '\XB6' || name.back() == '\XB2' || name.back() == '\XB3')) {
             return false;
         }
 #endif

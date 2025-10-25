@@ -175,6 +175,20 @@ namespace Toolbox {
         return model->insertMimeData(selection.getLastSelected(), data);
     }
 
+    ScopePtr<MimeData> ModelSelectionManager::actionCutSelection(ModelSelectionState &selection) {
+        ScopePtr<MimeData> data = actionCopySelection(selection);
+        if (!data) {
+            return nullptr;
+        }
+        
+        if (!actionDeleteSelection(selection)) {
+            TOOLBOX_ERROR("Failed to cut the selection!");
+            return nullptr;
+        }
+
+        return data;
+    }
+
     ScopePtr<MimeData>
     ModelSelectionManager::actionCopySelection(const ModelSelectionState &selection) {
         RefPtr<IDataModel> model = selection.getModel();

@@ -191,6 +191,7 @@ namespace Toolbox::UI {
         ContextMenu<AddressSpan> m_ascii_view_context_menu;
         ContextMenu<AddressSpan> m_byte_view_context_menu;
         ContextMenu<ModelIndex> m_watch_view_context_menu;
+        ContextMenu<ModelIndex> m_scan_view_context_menu;
 
         AddGroupDialog m_add_group_dialog;
         AddWatchDialog m_add_watch_dialog;

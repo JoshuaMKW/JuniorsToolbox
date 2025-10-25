@@ -65,6 +65,7 @@ namespace Toolbox {
         bool actionRenameSelection(const ModelSelectionState &state,
                                    const std::string &template_name);
         bool actionPasteIntoSelection(const ModelSelectionState &state, const MimeData &data);
+        ScopePtr<MimeData> actionCutSelection(ModelSelectionState &state);
         ScopePtr<MimeData> actionCopySelection(const ModelSelectionState &state);
 
         bool actionSelectIndex(ModelSelectionState &state, const ModelIndex &index, bool force_single = false);

@@ -268,6 +268,14 @@ namespace Toolbox::UI {
                                        ImVec2(avail_region.x, splitter_width));
 
                 renderMemoryWatchList();
+
+                ModelIndex last_selected_watch = m_watch_selection.getLastSelected();
+
+                ModelIndex parent_index = m_watch_proxy_model->getParent(last_selected_watch);
+                int64_t the_row         = m_watch_proxy_model->getRow(last_selected_watch);
+
+                m_add_group_dialog.render(last_selected_watch, the_row);
+                m_add_watch_dialog.render(last_selected_watch, the_row);
             }
             ImGui::PopStyleVar(2);
         }
@@ -305,17 +313,6 @@ namespace Toolbox::UI {
         ImGui::EndChild();
 
         // ImGui::PopStyleVar();
-
-        ModelIndex last_selected_watch = m_watch_selection.getLastSelected();
-
-        ModelIndex parent_index = m_watch_proxy_model->getParent(last_selected_watch);
-        int64_t the_row         = m_watch_proxy_model->getRow(last_selected_watch);
-
-        m_add_group_dialog.render(last_selected_watch, the_row);
-        m_add_watch_dialog.render(last_selected_watch, the_row);
-
-        m_watch_view_context_menu.render("Memory Watch", last_selected_watch);
-
         m_did_drag_drop = DragDropManager::instance().getCurrentDragAction() != nullptr;
     }
 
@@ -555,11 +552,12 @@ namespace Toolbox::UI {
                                 }
                             }
                         }
-
-                        m_byte_view_context_menu.setCanOpen(true);
-                        m_ascii_view_context_menu.setCanOpen(false);
-                        m_watch_view_context_menu.setCanOpen(false);
                     }
+
+                    m_byte_view_context_menu.setCanOpen(true);
+                    m_ascii_view_context_menu.setCanOpen(false);
+                    m_watch_view_context_menu.setCanOpen(false);
+                    m_scan_view_context_menu.setCanOpen(false);
                 } else if (column_hovered) {
                     window->DrawList->AddRectFilled(text_rect.Min, text_rect.Max,
                                                     ImGui::GetColorU32(ImGuiCol_TabHovered));
@@ -711,11 +709,12 @@ namespace Toolbox::UI {
                     m_address_selection_end =
                         base_address + ((int64_t)(column_hovered / byte_width) * byte_width) + 1;
                     m_address_selection_end_nibble = remainder * 2;
-
-                    m_byte_view_context_menu.setCanOpen(false);
-                    m_ascii_view_context_menu.setCanOpen(true);
-                    m_watch_view_context_menu.setCanOpen(false);
                 }
+
+                m_byte_view_context_menu.setCanOpen(false);
+                m_ascii_view_context_menu.setCanOpen(true);
+                m_watch_view_context_menu.setCanOpen(false);
+                m_scan_view_context_menu.setCanOpen(false);
             } else if (column_hovered >= 0) {
                 window->DrawList->AddRectFilled(char_rect.Min, char_rect.Max,
                                                 ImGui::GetColorU32(ImGuiCol_TabHovered));
@@ -1675,6 +1674,13 @@ namespace Toolbox::UI {
             ImVec2 table_pos  = ImGui::GetWindowPos() + ImGui::GetCursorPos(),
                    table_size = desired_size;
             if (ImGui::BeginTable("##MemoryWatchTable", 5, flags, desired_size)) {
+                if (ImGui::IsWindowFocused()) {
+                    m_byte_view_context_menu.setCanOpen(false);
+                    m_ascii_view_context_menu.setCanOpen(false);
+                    m_watch_view_context_menu.setCanOpen(true);
+                    m_scan_view_context_menu.setCanOpen(false);
+                }
+
                 ImGui::TableSetupScrollFreeze(5, 1);
 
                 ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 200.0f);
@@ -2159,6 +2165,8 @@ namespace Toolbox::UI {
         }
 
         ImGui::PopID();
+
+        m_watch_view_context_menu.render("Memory Watch", m_watch_selection.getLastSelected());
     }
 
     void DebuggerWindow::countMemoryWatch(const ModelIndex &index, int *row) {
@@ -2368,77 +2376,143 @@ namespace Toolbox::UI {
     void DebuggerWindow::onDropEvent(RefPtr<DropEvent> ev) { ev->accept(); }
 
     void DebuggerWindow::buildContextMenus() {
-        m_byte_view_context_menu.addOption(
-            "Copy Selection as Bytes", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-            [](AddressSpan span) { CopyBytesFromAddressSpan(span); });
-
-        m_byte_view_context_menu.addOption(
-            "Copy Selection as ASCII",
-            {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C},
-            [](AddressSpan span) { CopyASCIIFromAddressSpan(span); });
-
-        m_byte_view_context_menu.addDivider();
-
-        m_byte_view_context_menu.addOption(
-            "Fill Selection...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_F},
-            [&](AddressSpan span) { m_fill_bytes_dialog.open(); });
-
-        m_byte_view_context_menu.addDivider();
-
-        m_byte_view_context_menu.addOption(
-            "Add Selection as Bytes...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_B},
-            [&](AddressSpan span) {
-                u32 begin = std::min<u32>(span.m_begin, span.m_end);
-                u32 end   = std::max<u32>(span.m_begin, span.m_end);
-                begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
-                end       = std::clamp<u32>(end, 0x80000000, 0x817FFFFF);
-                m_add_watch_dialog.openToAddressAsBytes(begin, (size_t)end - begin);
-            });
-
-        m_byte_view_context_menu.addOption(
-            "Add Watch at Cursor Address...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_W},
-            [&](AddressSpan span) {
-                u32 begin = std::min<u32>(span.m_begin, span.m_end);
-                begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
-                m_add_watch_dialog.openToAddress(begin);
-            });
+        ContextMenuBuilder<AddressSpan>(&m_byte_view_context_menu)
+            .addOption("Copy Selection as Bytes", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+                       [](AddressSpan span) { CopyBytesFromAddressSpan(span); })
+            .addOption("Copy Selection as ASCII",
+                       {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C},
+                       [](AddressSpan span) { CopyASCIIFromAddressSpan(span); })
+            .addDivider()
+            .addOption("Fill Selection...",
+                       {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_F},
+                       [&](AddressSpan span) { m_fill_bytes_dialog.open(); })
+            .addDivider()
+            .addOption("Add Selection as Bytes...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_B},
+                       [&](AddressSpan span) {
+                           u32 begin = std::min<u32>(span.m_begin, span.m_end);
+                           u32 end   = std::max<u32>(span.m_begin, span.m_end);
+                           begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
+                           end       = std::clamp<u32>(end, 0x80000000, 0x817FFFFF);
+                           m_add_watch_dialog.openToAddressAsBytes(begin, (size_t)end - begin);
+                       })
+            .addOption("Add Watch at Cursor Address...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_W},
+                       [&](AddressSpan span) {
+                           u32 begin = std::min<u32>(span.m_begin, span.m_end);
+                           begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
+                           m_add_watch_dialog.openToAddress(begin);
+                       });
 
         // -----------------------------------------
 
-        m_ascii_view_context_menu.addOption(
-            "Copy Selection as Bytes",
-            {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C},
-            [](AddressSpan span) { CopyBytesFromAddressSpan(span); });
+        ContextMenuBuilder<AddressSpan>(&m_ascii_view_context_menu)
+            .addOption("Copy Selection as Bytes",
+                       {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C},
+                       [](AddressSpan span) { CopyBytesFromAddressSpan(span); })
+            .addOption("Copy Selection as ASCII", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+                       [](AddressSpan span) { CopyASCIIFromAddressSpan(span); })
+            .addDivider()
+            .addOption("Fill Selection...",
+                       {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_F},
+                       [&](AddressSpan span) { m_fill_bytes_dialog.open(); })
+            .addDivider()
+            .addOption("Add Selection as Bytes...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_B},
+                       [&](AddressSpan span) {
+                           u32 begin = std::min<u32>(span.m_begin, span.m_end);
+                           u32 end   = std::max<u32>(span.m_begin, span.m_end);
+                           begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
+                           end       = std::clamp<u32>(end, 0x80000000, 0x817FFFFF);
+                           m_add_watch_dialog.openToAddressAsBytes(begin, (size_t)end - begin);
+                       })
+            .addOption("Add Watch at Cursor Address...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_W},
+                       [&](AddressSpan span) {
+                           u32 begin = std::min<u32>(span.m_begin, span.m_end);
+                           begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
+                           m_add_watch_dialog.openToAddress(begin);
+                       });
 
-        m_ascii_view_context_menu.addOption(
-            "Copy Selection as ASCII", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-            [](AddressSpan span) { CopyASCIIFromAddressSpan(span); });
+        // -----------------------------------------
 
-        m_ascii_view_context_menu.addDivider();
-
-        m_ascii_view_context_menu.addOption(
-            "Fill Selection...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_F},
-            [&](AddressSpan span) { m_fill_bytes_dialog.open(); });
-
-        m_ascii_view_context_menu.addDivider();
-
-        m_ascii_view_context_menu.addOption(
-            "Add Selection as Bytes...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_B},
-            [&](AddressSpan span) {
-                u32 begin = std::min<u32>(span.m_begin, span.m_end);
-                u32 end   = std::max<u32>(span.m_begin, span.m_end);
-                begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
-                end       = std::clamp<u32>(end, 0x80000000, 0x817FFFFF);
-                m_add_watch_dialog.openToAddressAsBytes(begin, (size_t)end - begin);
-            });
-
-        m_ascii_view_context_menu.addOption(
-            "Add Watch at Cursor Address...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_W},
-            [&](AddressSpan span) {
-                u32 begin = std::min<u32>(span.m_begin, span.m_end);
-                begin     = std::clamp<u32>(begin, 0x80000000, 0x817FFFFF);
-                m_add_watch_dialog.openToAddress(begin);
-            });
+        ContextMenuBuilder<ModelIndex>(&m_watch_view_context_menu)
+            .addOption(
+                "Browse Memory at Address", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_B},
+                [&](const ModelIndex &index) {
+                    return !m_watch_proxy_model->isIndexGroup(m_watch_selection.getLastSelected());
+                },
+                [&](const ModelIndex &index) {
+                    u32 address    = m_watch_proxy_model->getWatchAddress(index);
+                    m_base_address = address;
+                })
+            .addDivider()  // --------------
+            .addOption(
+                "View as Decimal",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_D},
+                [&](const ModelIndex &index) {
+                    return !m_watch_proxy_model->isIndexGroup(m_watch_selection.getLastSelected());
+                },
+                [&](const ModelIndex &index) {
+                    m_watch_proxy_model->setWatchViewBase(index, WatchValueBase::BASE_DECIMAL);
+                })
+            .addOption(
+                "View as Hexadecimal",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_H},
+                [&](const ModelIndex &index) {
+                    return !m_watch_proxy_model->isIndexGroup(m_watch_selection.getLastSelected());
+                },
+                [&](const ModelIndex &index) {
+                    m_watch_proxy_model->setWatchViewBase(index, WatchValueBase::BASE_DECIMAL);
+                })
+            .addOption(
+                "View as Octal", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O},
+                [&](const ModelIndex &index) {
+                    return !m_watch_proxy_model->isIndexGroup(m_watch_selection.getLastSelected());
+                },
+                [&](const ModelIndex &index) {
+                    m_watch_proxy_model->setWatchViewBase(index, WatchValueBase::BASE_DECIMAL);
+                })
+            .addOption(
+                "View as Binary",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_B},
+                [&](const ModelIndex &index) {
+                    return !m_watch_proxy_model->isIndexGroup(m_watch_selection.getLastSelected());
+                },
+                [&](const ModelIndex &index) {
+                    m_watch_proxy_model->setWatchViewBase(index, WatchValueBase::BASE_DECIMAL);
+                })
+            .addDivider()  // --------------
+            .addOption(
+                "Lock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_L},
+                [&](const ModelIndex &index) { m_watch_proxy_model->setWatchLock(index, true); })
+            .addOption(
+                "Unlock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                [&](const ModelIndex &index) { m_watch_proxy_model->setWatchLock(index, false); })
+            .addDivider()
+            .addOption("Cut", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                       [&](const ModelIndex &index) {
+                           ScopePtr<MimeData> data =
+                               m_watch_selection_mgr.actionCutSelection(m_watch_selection);
+                           SystemClipboard::instance().setContent(*data);
+                       })
+            .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                       [&](const ModelIndex &index) {
+                           ScopePtr<MimeData> data =
+                               m_watch_selection_mgr.actionCopySelection(m_watch_selection);
+                           SystemClipboard::instance().setContent(*data);
+                       })
+            .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                       [&](const ModelIndex &index) {
+                           auto result = SystemClipboard::instance().getContent();
+                           if (!result) {
+                               LogError(result.error());
+                               return;
+                           }
+                           m_watch_selection_mgr.actionPasteIntoSelection(m_watch_selection,
+                                                                          result.value());
+                       })
+            .addDivider()
+            .addOption("Delete", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                       [&](const ModelIndex &index) {
+                           m_watch_selection_mgr.actionDeleteSelection(m_watch_selection);
+                       });
     }
 
     void DebuggerWindow::recursiveLock(ModelIndex src_idx, bool lock) {
