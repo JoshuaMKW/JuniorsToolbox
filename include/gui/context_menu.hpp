@@ -83,11 +83,17 @@ namespace Toolbox::UI {
 
         const ImRect &rect() const { return m_rect; }
         bool is_open() const { return m_was_open; }
+        void setOpenRef(ImGuiID id) { m_hovered_id = id; }
 
         void setCanOpen(bool can_open) { m_can_open = can_open; }
 
-        void render(std::optional<std::string> label, const _DataT &ctx,
-                    ImGuiHoveredFlags hover_flags = ImGuiHoveredFlags_AllowWhenBlockedByPopup);
+        void
+        renderForItem(std::optional<std::string> label, const _DataT &ctx,
+                      ImGuiHoveredFlags hover_flags = ImGuiHoveredFlags_AllowWhenBlockedByPopup);
+
+        void
+        renderForRect(std::optional<std::string> label, const ImRect &rect, const _DataT &ctx,
+                      ImGuiHoveredFlags hover_flags = ImGuiHoveredFlags_AllowWhenBlockedByPopup);
 
         void onOpen(option_t::open_event_t open) { m_open_event = open; }
 
@@ -172,16 +178,63 @@ namespace Toolbox::UI {
     }
 
     template <typename _DataT>
-    inline void ContextMenu<_DataT>::render(std::optional<std::string> label, const _DataT &ctx,
-                                            ImGuiHoveredFlags hover_flags) {
+    inline void ContextMenu<_DataT>::renderForItem(std::optional<std::string> label,
+                                                   const _DataT &ctx,
+                                                   ImGuiHoveredFlags hover_flags) {
         if (!m_can_open && !m_was_open) {
             return;
         }
 
         processKeybinds(ctx);
 
-        if (!ImGui::BeginPopupContextItem(label ? label->c_str() : nullptr, 1, hover_flags)) {
+        if (m_hovered_id != 0) {
+            if (!ImGui::BeginPopupContextItem(m_hovered_id, 1, hover_flags)) {
+                m_was_open = false;
+                m_rect     = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
+                return;
+            }
+        } else {
+            if (!ImGui::BeginPopupContextItem(label ? label->c_str() : nullptr, 1, hover_flags)) {
+                m_was_open = false;
+                m_rect     = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
+                return;
+            }
+        }
+
+        if (!m_can_open) {
             m_was_open = false;
+            ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
+            m_rect = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
+            return;
+        }
+
+        m_rect.Min = ImGui::GetWindowPos();
+        m_rect.Max = m_rect.Min + ImGui::GetWindowSize();
+
+        if (!m_was_open && m_open_event) {
+            m_open_event(ctx);
+        }
+        m_was_open = true;
+
+        renderGroup(m_root_group, ctx, true);
+
+        ImGui::EndPopup();
+        return;
+    }
+
+    template <typename _DataT>
+    inline void ContextMenu<_DataT>::renderForRect(std::optional<std::string> label,
+                                                   const ImRect &rect, const _DataT &ctx,
+                                                   ImGuiHoveredFlags hover_flags) {
+        if (!m_can_open && !m_was_open) {
+            return;
+        }
+
+        processKeybinds(ctx);
+
+        if (!ImGui::BeginPopupContextForRect(label ? label->c_str() : nullptr, rect, 1, hover_flags)) {
+            m_was_open = !not_hovered;
             m_rect     = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
             return;
         }
@@ -297,8 +350,7 @@ namespace Toolbox::UI {
     }
 
     template <typename _DataT>
-    inline bool ContextMenu<_DataT>::processKeybindsOption(option_t &option,
-                                                           const _DataT &ctx) {
+    inline bool ContextMenu<_DataT>::processKeybindsOption(option_t &option, const _DataT &ctx) {
 
         bool keybind_pressed = option.m_keybind.isInputMatching();
 

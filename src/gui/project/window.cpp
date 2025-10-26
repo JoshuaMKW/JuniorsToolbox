@@ -330,7 +330,7 @@ namespace Toolbox::UI {
         }
         ImGui::EndChild();
 
-        m_folder_view_context_menu.render("Project View", m_view_index,
+        m_folder_view_context_menu.renderForItem("Project View", m_view_index,
                                           ImGuiHoveredFlags_AllowWhenBlockedByPopup |
                                               ImGuiHoveredFlags_AllowWhenOverlapped);
     }

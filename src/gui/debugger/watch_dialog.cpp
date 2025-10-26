@@ -22,6 +22,13 @@ namespace Toolbox::UI {
         snprintf(m_watch_p_chain[0].data(), m_watch_p_chain[0].size(), "%08X", address);
     }
 
+    void AddWatchDialog::openToAddressAsType(u32 address, MetaType type, size_t address_size) {
+        open();
+        snprintf(m_watch_p_chain[0].data(), m_watch_p_chain[0].size(), "%08X", address);
+        m_watch_type = type;
+        m_watch_size = address_size;
+    }
+
     void AddWatchDialog::openToAddressAsBytes(u32 address, size_t address_size) {
         open();
         snprintf(m_watch_p_chain[0].data(), m_watch_p_chain[0].size(), "%08X", address);

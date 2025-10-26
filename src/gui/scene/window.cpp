@@ -1420,13 +1420,13 @@ void SceneWindow::renderHierarchyContextMenu(std::string str_id,
     if (m_hierarchy_selected_nodes.size() > 0) {
         SelectionNodeInfo<Object::ISceneObject> &info = m_hierarchy_selected_nodes.back();
         if (m_hierarchy_selected_nodes.size() > 1) {
-            m_hierarchy_multi_node_menu.render({}, m_hierarchy_selected_nodes);
+            m_hierarchy_multi_node_menu.renderForItem({}, m_hierarchy_selected_nodes);
         } else if (info.m_selected->isGroupObject()) {
-            m_hierarchy_group_node_menu.render(str_id, info);
+            m_hierarchy_group_node_menu.renderForItem(str_id, info);
         } else if (info.m_selected->hasMember("Transform")) {
-            m_hierarchy_physical_node_menu.render(str_id, info);
+            m_hierarchy_physical_node_menu.renderForItem(str_id, info);
         } else {
-            m_hierarchy_virtual_node_menu.render(str_id, info);
+            m_hierarchy_virtual_node_menu.renderForItem(str_id, info);
         }
     }
 }
@@ -1435,9 +1435,9 @@ void SceneWindow::renderRailContextMenu(std::string str_id, SelectionNodeInfo<Ra
     if (m_rail_list_selected_nodes.size() > 0) {
         SelectionNodeInfo<Rail::Rail> &info = m_rail_list_selected_nodes.back();
         if (m_rail_list_selected_nodes.size() > 1) {
-            m_rail_list_multi_node_menu.render({}, m_rail_list_selected_nodes);
+            m_rail_list_multi_node_menu.renderForItem({}, m_rail_list_selected_nodes);
         } else {
-            m_rail_list_single_node_menu.render(str_id, info);
+            m_rail_list_single_node_menu.renderForItem(str_id, info);
         }
     }
 }
@@ -1447,9 +1447,9 @@ void SceneWindow::renderRailNodeContextMenu(std::string str_id,
     if (m_rail_node_list_selected_nodes.size() > 0) {
         SelectionNodeInfo<Rail::RailNode> &info = m_rail_node_list_selected_nodes.back();
         if (m_rail_node_list_selected_nodes.size() > 1) {
-            m_rail_node_list_multi_node_menu.render({}, m_rail_node_list_selected_nodes);
+            m_rail_node_list_multi_node_menu.renderForItem({}, m_rail_node_list_selected_nodes);
         } else {
-            m_rail_node_list_single_node_menu.render(str_id, info);
+            m_rail_node_list_single_node_menu.renderForItem(str_id, info);
         }
     }
 }

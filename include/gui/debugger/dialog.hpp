@@ -92,6 +92,7 @@ namespace Toolbox::UI {
         void render(ModelIndex group_idx, size_t row);
 
         void openToAddress(u32 address);
+        void openToAddressAsType(u32 address, MetaType type, size_t address_size);
         void openToAddressAsBytes(u32 address, size_t address_size);
 
     protected:

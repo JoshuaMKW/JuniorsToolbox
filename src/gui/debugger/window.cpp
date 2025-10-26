@@ -306,8 +306,8 @@ namespace Toolbox::UI {
             AddressSpan span = {m_address_selection_begin + m_address_selection_begin_nibble / 2,
                                 m_address_selection_end + m_address_selection_end_nibble / 2};
 
-            m_ascii_view_context_menu.render("ASCII View", span);
-            m_byte_view_context_menu.render("Byte View", span);
+            m_ascii_view_context_menu.renderForItem("ASCII View", span);
+            m_byte_view_context_menu.renderForItem("Byte View", span);
             m_fill_bytes_dialog.render(span);
         }
         ImGui::EndChild();
@@ -557,6 +557,7 @@ namespace Toolbox::UI {
                     m_byte_view_context_menu.setCanOpen(true);
                     m_ascii_view_context_menu.setCanOpen(false);
                     m_watch_view_context_menu.setCanOpen(false);
+                    m_group_view_context_menu.setCanOpen(false);
                     m_scan_view_context_menu.setCanOpen(false);
                 } else if (column_hovered) {
                     window->DrawList->AddRectFilled(text_rect.Min, text_rect.Max,
@@ -714,6 +715,7 @@ namespace Toolbox::UI {
                 m_byte_view_context_menu.setCanOpen(false);
                 m_ascii_view_context_menu.setCanOpen(true);
                 m_watch_view_context_menu.setCanOpen(false);
+                m_group_view_context_menu.setCanOpen(false);
                 m_scan_view_context_menu.setCanOpen(false);
             } else if (column_hovered >= 0) {
                 window->DrawList->AddRectFilled(char_rect.Min, char_rect.Max,
@@ -757,6 +759,14 @@ namespace Toolbox::UI {
 
             if (ImGui::BeginChild("##ScanResultView", {avail_size.x / 2, 0}, true,
                                   ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
+                if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows)) {
+                    m_byte_view_context_menu.setCanOpen(false);
+                    m_ascii_view_context_menu.setCanOpen(false);
+                    m_watch_view_context_menu.setCanOpen(false);
+                    m_group_view_context_menu.setCanOpen(false);
+                    m_scan_view_context_menu.setCanOpen(true);
+                }
+
                 ImVec2 scan_view_avail = ImGui::GetContentRegionAvail();
 
                 const double progress = m_scan_model->getScanProgress();
@@ -859,6 +869,7 @@ namespace Toolbox::UI {
                                                                          ImGui::GetScrollY()};
                                 row_rect.Max    = row_rect.Min + ImVec2{row_width, row_height};
 
+
                                 bool is_rect_hovered = false;
                                 if (outer_window_focused) {
                                     ImGuiContext &g = *GImGui;
@@ -935,6 +946,10 @@ namespace Toolbox::UI {
                                         }
                                     }
                                 }
+
+                                TOOLBOX_INFO_V("{} - [({}, {}) ({}, {})]", n, row_rect.Min.x, row_rect.Min.y, row_rect.Max.x, row_rect.Max.y);
+                                m_scan_view_context_menu.renderForRect("Scan Menu", row_rect,
+                                                                m_scan_selection.getLastSelected());
                             }
                         }
                     }
@@ -1678,6 +1693,7 @@ namespace Toolbox::UI {
                     m_byte_view_context_menu.setCanOpen(false);
                     m_ascii_view_context_menu.setCanOpen(false);
                     m_watch_view_context_menu.setCanOpen(true);
+                    m_group_view_context_menu.setCanOpen(true);
                     m_scan_view_context_menu.setCanOpen(false);
                 }
 
@@ -1974,6 +1990,9 @@ namespace Toolbox::UI {
         }
 
         ImGui::PopID();
+
+        m_watch_view_context_menu.renderForRect("Watch Group", row_rect,
+                                                m_watch_selection.getLastSelected());
     }
 
     void DebuggerWindow::renderWatchGroup(const ModelIndex &group_idx, int depth,
@@ -2166,7 +2185,7 @@ namespace Toolbox::UI {
 
         ImGui::PopID();
 
-        m_watch_view_context_menu.render("Memory Watch", m_watch_selection.getLastSelected());
+        m_group_view_context_menu.renderForRect("Watch Group", row_rect, m_watch_selection.getLastSelected());
     }
 
     void DebuggerWindow::countMemoryWatch(const ModelIndex &index, int *row) {
@@ -2432,12 +2451,29 @@ namespace Toolbox::UI {
 
         // -----------------------------------------
 
-        ContextMenuBuilder<ModelIndex>(&m_watch_view_context_menu)
+        ContextMenuBuilder<ModelIndex>(&m_scan_view_context_menu)
             .addOption(
                 "Browse Memory at Address", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_B},
                 [&](const ModelIndex &index) {
-                    return !m_watch_proxy_model->isIndexGroup(m_watch_selection.getLastSelected());
-                },
+                    u32 address    = m_watch_proxy_model->getWatchAddress(index);
+                    m_base_address = address;
+                })
+            .addDivider()
+            .addOption("Create Watch...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_W},
+                       [&](const ModelIndex &index) {
+                           u32 address = m_scan_model->getScanAddress(index);
+                           MetaType type = m_scan_model->getScanType(index);
+                           u32 size      = m_scan_model->getScanSize(index);
+                m_add_watch_dialog.openToAddressAsType(address, type, size);
+              })
+            .addOption("Delete", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                       [&](const ModelIndex &index) {
+                           m_scan_selection_mgr.actionDeleteSelection(m_scan_selection);
+                       });
+
+        ContextMenuBuilder<ModelIndex>(&m_watch_view_context_menu)
+            .addOption(
+                "Browse Memory at Address", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_B},
                 [&](const ModelIndex &index) {
                     u32 address    = m_watch_proxy_model->getWatchAddress(index);
                     m_base_address = address;
@@ -2447,25 +2483,16 @@ namespace Toolbox::UI {
                 "View as Decimal",
                 {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_D},
                 [&](const ModelIndex &index) {
-                    return !m_watch_proxy_model->isIndexGroup(m_watch_selection.getLastSelected());
-                },
-                [&](const ModelIndex &index) {
                     m_watch_proxy_model->setWatchViewBase(index, WatchValueBase::BASE_DECIMAL);
                 })
             .addOption(
                 "View as Hexadecimal",
                 {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_H},
                 [&](const ModelIndex &index) {
-                    return !m_watch_proxy_model->isIndexGroup(m_watch_selection.getLastSelected());
-                },
-                [&](const ModelIndex &index) {
                     m_watch_proxy_model->setWatchViewBase(index, WatchValueBase::BASE_DECIMAL);
                 })
             .addOption(
                 "View as Octal", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O},
-                [&](const ModelIndex &index) {
-                    return !m_watch_proxy_model->isIndexGroup(m_watch_selection.getLastSelected());
-                },
                 [&](const ModelIndex &index) {
                     m_watch_proxy_model->setWatchViewBase(index, WatchValueBase::BASE_DECIMAL);
                 })
@@ -2473,12 +2500,45 @@ namespace Toolbox::UI {
                 "View as Binary",
                 {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_B},
                 [&](const ModelIndex &index) {
-                    return !m_watch_proxy_model->isIndexGroup(m_watch_selection.getLastSelected());
-                },
-                [&](const ModelIndex &index) {
                     m_watch_proxy_model->setWatchViewBase(index, WatchValueBase::BASE_DECIMAL);
                 })
             .addDivider()  // --------------
+            .addOption(
+                "Lock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_L},
+                [&](const ModelIndex &index) { m_watch_proxy_model->setWatchLock(index, true); })
+            .addOption(
+                "Unlock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                [&](const ModelIndex &index) { m_watch_proxy_model->setWatchLock(index, false); })
+            .addDivider()
+            .addOption("Cut", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                       [&](const ModelIndex &index) {
+                           ScopePtr<MimeData> data =
+                               m_watch_selection_mgr.actionCutSelection(m_watch_selection);
+                           SystemClipboard::instance().setContent(*data);
+                       })
+            .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                       [&](const ModelIndex &index) {
+                           ScopePtr<MimeData> data =
+                               m_watch_selection_mgr.actionCopySelection(m_watch_selection);
+                           SystemClipboard::instance().setContent(*data);
+                       })
+            .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                       [&](const ModelIndex &index) {
+                           auto result = SystemClipboard::instance().getContent();
+                           if (!result) {
+                               LogError(result.error());
+                               return;
+                           }
+                           m_watch_selection_mgr.actionPasteIntoSelection(m_watch_selection,
+                                                                          result.value());
+                       })
+            .addDivider()
+            .addOption("Delete", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                       [&](const ModelIndex &index) {
+                           m_watch_selection_mgr.actionDeleteSelection(m_watch_selection);
+                       });
+
+        ContextMenuBuilder<ModelIndex>(&m_group_view_context_menu)
             .addOption(
                 "Lock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_L},
                 [&](const ModelIndex &index) { m_watch_proxy_model->setWatchLock(index, true); })

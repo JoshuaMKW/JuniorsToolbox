@@ -78,6 +78,10 @@ namespace ImGui {
                           const char *label_end, bool focused, bool *visible);
     bool BeginPopupContextItem(const char *str_id, ImGuiPopupFlags popup_flags,
                                ImGuiHoveredFlags hover_flags);
+    bool BeginPopupContextItem(ImGuiID id, ImGuiPopupFlags popup_flags,
+                               ImGuiHoveredFlags hover_flags);
+    bool BeginPopupContextForRect(const char *str_id, const ImRect &rect,
+                                  ImGuiPopupFlags popup_flags, ImGuiHoveredFlags hover_flags);
     bool DrawCircle(const ImVec2 &center, float radius, ImU32 color,
                     ImU32 fill_color = IM_COL32_BLACK_TRANS, float thickness = 1.0f);
     bool DrawSquare(const ImVec2 &center, float size, ImU32 color,
@@ -103,7 +107,7 @@ namespace ImGui {
                                   ImGuiDropFlags flags);
     void TextAndWidth(float width, const char *fmt, ...);
     void TextColoredAndWidth(float width, ImVec4 col, const char *fmt, ...);
-    
+
     bool BeginMenuGroup(const char *str_id, float *hovered_delta, bool enabled = true);
     void EndMenuGroup();
 
