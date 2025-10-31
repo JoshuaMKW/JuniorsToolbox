@@ -24,12 +24,16 @@ namespace Toolbox {
 
     class MemoryScanner;
 
+#define SCAN_IDX_GET_ADDRESS(inline_data) ((u32)(inline_data >> 32))
+#define SCAN_IDX_GET_HISTORY_IDX(inline_data)    ((u32)inline_data)
+#define SCAN_IDX_MAKE_PAIR(address, history_idx) ((u64)((((u64)address) << 32) | (u64)history_idx))
+
     class MemScanResult {
         u32 m_bit_data;
 
-        static constexpr u32 addr_mask = 0x1FFFFFFF;
+        static constexpr u32 addr_mask = 0x03FFFFFF;
         static constexpr u32 idx_mask  = ~addr_mask;
-        static constexpr u32 idx_shift = 29;
+        static constexpr u32 idx_shift = 26;
 
     public:
         MemScanResult(u32 address, int history_index) {
@@ -162,7 +166,7 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData(const std::unordered_set<ModelIndex> &indexes) const override;
+        createMimeData(const IDataModel::index_container &indexes) const override;
         [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
@@ -253,7 +257,7 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren_(const ModelIndex &parent = ModelIndex()) const;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData_(const std::unordered_set<ModelIndex> &indexes) const;
+        createMimeData_(const IDataModel::index_container &indexes) const;
         [[nodiscard]] bool insertMimeData_(const ModelIndex &index, const MimeData &data);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index);

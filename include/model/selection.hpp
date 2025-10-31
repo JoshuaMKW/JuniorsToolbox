@@ -29,7 +29,7 @@ namespace Toolbox {
         ModelIndex getLastSelected() const { return m_last_selected; }
         void setLastSelected(const ModelIndex &index);
 
-        const std::unordered_set<ModelIndex> &getSelection() const { return m_selection; }
+        const IDataModel::index_container &getSelection() const { return m_selection; }
 
         void clearSelection() {
             m_selection.clear();
@@ -53,7 +53,7 @@ namespace Toolbox {
 
     private:
         RefPtr<IDataModel> m_ref_model;
-        std::unordered_set<ModelIndex> m_selection;
+        IDataModel::index_container m_selection;
         ModelIndex m_last_selected;
     };
 
@@ -68,7 +68,10 @@ namespace Toolbox {
         ScopePtr<MimeData> actionCutSelection(ModelSelectionState &state);
         ScopePtr<MimeData> actionCopySelection(const ModelSelectionState &state);
 
-        bool actionSelectIndex(ModelSelectionState &state, const ModelIndex &index, bool force_single = false);
+        bool actionSelectIndex(ModelSelectionState &state, const ModelIndex &index,
+                               bool force_single = false);
+
+        bool actionSelectIndexIfNew(ModelSelectionState &state, const ModelIndex &index);
         bool actionClearRequestExcIndex(ModelSelectionState &state, const ModelIndex &index,
                                         bool is_left_button);
     };

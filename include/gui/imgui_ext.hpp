@@ -80,6 +80,8 @@ namespace ImGui {
                                ImGuiHoveredFlags hover_flags);
     bool BeginPopupContextItem(ImGuiID id, ImGuiPopupFlags popup_flags,
                                ImGuiHoveredFlags hover_flags);
+    bool BeginPopupContextConditional(const char *str_id, ImGuiPopupFlags popup_flags,
+                               ImGuiHoveredFlags hover_flags, bool condition);
     bool BeginPopupContextForRect(const char *str_id, const ImRect &rect,
                                   ImGuiPopupFlags popup_flags, ImGuiHoveredFlags hover_flags);
     bool DrawCircle(const ImVec2 &center, float radius, ImU32 color,

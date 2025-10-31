@@ -32,7 +32,7 @@ namespace Toolbox {
             clearSelection();
         }
 
-        m_selection.insert(index);
+        m_selection.emplace_back(index);
         return true;
     }
 
@@ -51,7 +51,7 @@ namespace Toolbox {
         }
 
         if (a == b) {
-            m_selection.insert(a);
+            m_selection.emplace_back(a);
             return true;
         }
 
@@ -82,7 +82,7 @@ namespace Toolbox {
         }
 
         while (row_a < row_b) {
-            m_selection.insert(this_a);
+            m_selection.emplace_back(this_a);
             if (deep) {
                 int64_t child_count = m_ref_model->getRowCount(this_a);
                 if (child_count > 0) {
@@ -96,7 +96,7 @@ namespace Toolbox {
             this_a = m_ref_model->getIndex(++row_a, 0, parent_a);
         }
 
-        m_selection.insert(this_b);
+        m_selection.emplace_back(this_b);
         return true;
     }
 
@@ -132,7 +132,8 @@ namespace Toolbox {
         }
 
         bool result = true;
-        for (const ModelIndex &s : selection.getSelection()) {
+        const IDataModel::index_container &indexes = selection.getSelection();
+        for (const ModelIndex &s : indexes) {
             result &= model->removeIndex(s);
         }
 
@@ -219,6 +220,41 @@ namespace Toolbox {
             } else {
                 selection.selectSingle(index, true);
             }
+            selection.setLastSelected(index);
+            return true;
+        }
+
+        if (Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT) ||
+            Input::GetKey(Input::KeyCode::KEY_RIGHTSHIFT)) {
+            if (model->validateIndex(selection.getLastSelected())) {
+                selection.selectSpan(selection.getLastSelected(), index, false, true);
+            } else {
+                selection.selectSingle(index);
+                selection.setLastSelected(index);
+            }
+            return true;
+        }
+
+        selection.selectSingle(index);
+        selection.setLastSelected(index);
+        return true;
+    }
+
+    bool ModelSelectionManager::actionSelectIndexIfNew(ModelSelectionState &selection,
+                                                       const ModelIndex &index) {
+        RefPtr<IDataModel> model = selection.getModel();
+        if (!model) {
+            return false;
+        }
+
+        if (selection.isSelected(index)) {
+            selection.setLastSelected(index);
+            return false;
+        }
+
+        if (Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) ||
+            Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
+            selection.selectSingle(index, true);
             selection.setLastSelected(index);
             return true;
         }

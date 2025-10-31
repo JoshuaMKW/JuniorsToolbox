@@ -84,6 +84,8 @@ namespace Toolbox {
 
     class IDataModel : public IUnique {
     public:
+        using index_container = std::vector<ModelIndex>;
+
         [[nodiscard]] virtual bool validateIndex(const ModelIndex &index) const {
             return index.getModelUUID() == getUUID();
         }
@@ -138,7 +140,7 @@ namespace Toolbox {
         [[nodiscard]] virtual bool hasChildren(const ModelIndex &parent = ModelIndex()) const = 0;
 
         [[nodiscard]] virtual ScopePtr<MimeData>
-        createMimeData(const std::unordered_set<ModelIndex> &indexes) const          = 0;
+        createMimeData(const index_container &indexes) const                         = 0;
         [[nodiscard]] virtual bool insertMimeData(const ModelIndex &index,
                                                   const MimeData &data)              = 0;
         [[nodiscard]] virtual std::vector<std::string> getSupportedMimeTypes() const = 0;

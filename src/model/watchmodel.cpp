@@ -327,7 +327,7 @@ namespace Toolbox {
     }
 
     ScopePtr<MimeData>
-    WatchDataModel::createMimeData(const std::unordered_set<ModelIndex> &indexes) const {
+    WatchDataModel::createMimeData(const IDataModel::index_container &indexes) const {
         std::scoped_lock lock(m_mutex);
         return createMimeData_(indexes);
     }
@@ -844,7 +844,7 @@ namespace Toolbox {
     }
 
     ScopePtr<MimeData>
-    WatchDataModel::createMimeData_(const std::unordered_set<ModelIndex> &indexes) const {
+    WatchDataModel::createMimeData_(const IDataModel::index_container &indexes) const {
         TOOLBOX_ERROR("[WatchDataModel] Mimedata unimplemented!");
         return ScopePtr<MimeData>();
     }
@@ -1156,7 +1156,7 @@ namespace Toolbox {
     }
 
     ScopePtr<MimeData> WatchDataModelSortFilterProxy::createMimeData(
-        const std::unordered_set<ModelIndex> &indexes) const {
+        const IDataModel::index_container &indexes) const {
         std::unordered_set<ModelIndex> indexes_copy;
 
         for (const ModelIndex &idx : indexes) {

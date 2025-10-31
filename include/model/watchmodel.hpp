@@ -203,7 +203,7 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData(const std::unordered_set<ModelIndex> &indexes) const override;
+        createMimeData(const IDataModel::index_container &indexes) const override;
         [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
@@ -254,7 +254,7 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren_(const ModelIndex &parent = ModelIndex()) const;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData_(const std::unordered_set<ModelIndex> &indexes) const;
+        createMimeData_(const IDataModel::index_container &indexes) const;
         [[nodiscard]] bool insertMimeData_(const ModelIndex &index, const MimeData &data);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index);
@@ -399,7 +399,7 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData(const std::unordered_set<ModelIndex> &indexes) const override;
+        createMimeData(const IDataModel::index_container &indexes) const override;
         [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 

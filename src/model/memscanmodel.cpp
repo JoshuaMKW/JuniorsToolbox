@@ -448,7 +448,7 @@ namespace Toolbox {
     }
 
     ScopePtr<MimeData>
-    MemScanModel::createMimeData(const std::unordered_set<ModelIndex> &indexes) const {
+    MemScanModel::createMimeData(const IDataModel::index_container &indexes) const {
         std::scoped_lock lock(m_mutex);
         return createMimeData_(indexes);
     }
@@ -671,14 +671,13 @@ namespace Toolbox {
             return {};
         }
 
-        MemScanResult *result = index.data<MemScanResult>();
-        if (!result) {
-            return {};
-        }
+        u64 pair        = index.inlineData();
+        u32 address     = SCAN_IDX_GET_ADDRESS(pair);
+        u32 history_idx = SCAN_IDX_GET_HISTORY_IDX(pair);
 
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY: {
-            std::string disp_name = std::format("{:08X}", result->getAddress());
+            std::string disp_name = std::format("{:08X}", address);
             return disp_name;
         }
         case ModelDataRole::DATA_ROLE_TOOLTIP:
@@ -687,19 +686,19 @@ namespace Toolbox {
             return {};
         }
         case MemScanRole::MEMSCAN_ROLE_ADDRESS: {
-            return static_cast<u32>(result->getAddress());
+            return static_cast<u32>(address);
         }
         case MemScanRole::MEMSCAN_ROLE_SIZE: {
-            const ScanHistoryEntry &entry = getScanHistory(result->getHistoryIndex());
+            const ScanHistoryEntry &entry = getScanHistory(history_idx);
             return entry.m_scan_size;
         }
         case MemScanRole::MEMSCAN_ROLE_TYPE: {
-            const ScanHistoryEntry &entry = getScanHistory(result->getHistoryIndex());
+            const ScanHistoryEntry &entry = getScanHistory(history_idx);
             return entry.m_scan_type;
         }
         case MemScanRole::MEMSCAN_ROLE_VALUE: {
-            const ScanHistoryEntry &entry = getScanHistory(result->getHistoryIndex());
-            return GetMetaValueFromMemCache(entry, *result);
+            const ScanHistoryEntry &entry = getScanHistory(history_idx);
+            return GetMetaValueFromMemCache(entry, MemScanResult(address, (int)history_idx));
         }
         case MemScanRole::MEMSCAN_ROLE_VALUE_MEM: {
             return getMetaValueFromMemory(index);
@@ -714,10 +713,9 @@ namespace Toolbox {
             return;
         }
 
-        MemScanResult *result = index.data<MemScanResult>();
-        if (!result) {
-            return;
-        }
+        u64 pair        = index.inlineData();
+        u32 address     = SCAN_IDX_GET_ADDRESS(pair);
+        u32 history_idx = SCAN_IDX_GET_HISTORY_IDX(pair);
 
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY: {
@@ -765,7 +763,7 @@ namespace Toolbox {
         }
 
         ModelIndex index(getUUID());
-        index.setData(std::addressof(lhs));
+        index.setInlineData(SCAN_IDX_MAKE_PAIR(lhs.getAddress(), lhs.getHistoryIndex()));
         return index;
     }
 
@@ -789,8 +787,10 @@ namespace Toolbox {
             return ModelIndex();
         }
 
+        const MemScanResult &result = recent_scan.m_scan_results[row];
+
         ModelIndex index(getUUID());
-        index.setData(&recent_scan.m_scan_results[row]);
+        index.setInlineData(SCAN_IDX_MAKE_PAIR(result.getAddress(), result.getHistoryIndex()));
         return index;
     }
 
@@ -799,13 +799,14 @@ namespace Toolbox {
             return false;
         }
 
-        MemScanResult *result = index.data<MemScanResult>();
-        if (!result) {
-            return false;
-        }
+        u64 pair        = index.inlineData();
+        u32 address     = SCAN_IDX_GET_ADDRESS(pair);
+        u32 history_idx = SCAN_IDX_GET_HISTORY_IDX(pair);
 
         ScanHistoryEntry &recent_scan = m_index_map_history[m_history_size - 1];
-        return std::erase(recent_scan.m_scan_results, *result) > 0;
+        return std::erase_if(recent_scan.m_scan_results, [&](const MemScanResult &result) {
+            return result.getAddress() == address && result.getHistoryIndex() == history_idx;
+        }) > 0;
     }
 
     ModelIndex MemScanModel::getParent_(const ModelIndex &index) const { return ModelIndex(); }
@@ -853,15 +854,15 @@ namespace Toolbox {
         }
 
         const ScanHistoryEntry &recent_scan = m_index_map_history[m_history_size - 1];
-        const MemScanResult *index_scan     = index.data<MemScanResult>();
-        if (!index_scan) {
-            return -1;
-        }
+
+        u64 pair        = index.inlineData();
+        u32 address     = SCAN_IDX_GET_ADDRESS(pair);
+        u32 history_idx = SCAN_IDX_GET_HISTORY_IDX(pair);
 
         auto it =
             std::lower_bound(recent_scan.m_scan_results.begin(), recent_scan.m_scan_results.end(),
-                             *index_scan, [](const MemScanResult &it, const MemScanResult &val) {
-                                 return it.getAddress() < val.getAddress();
+                             address, [](const MemScanResult &it, u32 val) {
+                                 return it.getAddress() < val;
                              });
         if (it == recent_scan.m_scan_results.end()) {
             return -1;
@@ -869,8 +870,7 @@ namespace Toolbox {
 
         // Make sure we have a real match, since lower_bound may return the closest element.
         const MemScanResult &lhs = *it;
-        const MemScanResult &rhs = *index.data<MemScanResult>();
-        if (lhs.getAddress() != rhs.getAddress()) {
+        if (lhs.getAddress() != address) {
             return -1;
         }
 
@@ -881,7 +881,7 @@ namespace Toolbox {
     bool MemScanModel::hasChildren_(const ModelIndex &parent) const { return false; }
 
     ScopePtr<MimeData>
-    MemScanModel::createMimeData_(const std::unordered_set<ModelIndex> &indexes) const {
+    MemScanModel::createMimeData_(const IDataModel::index_container &indexes) const {
         TOOLBOX_ERROR("[MemScanModel] Mimedata unimplemented!");
         return ScopePtr<MimeData>();
     }
@@ -899,18 +899,16 @@ namespace Toolbox {
             return MetaValue(MetaType::UNKNOWN);
         }
 
-        MemScanResult *result = index.data<MemScanResult>();
-        if (!result) {
-            return MetaValue(MetaType::UNKNOWN);
-        }
+        u64 pair        = index.inlineData();
+        u32 address     = SCAN_IDX_GET_ADDRESS(pair);
+        u32 history_idx = SCAN_IDX_GET_HISTORY_IDX(pair);
 
-        const ScanHistoryEntry &this_scan = getScanHistory(result->getHistoryIndex());
+        const ScanHistoryEntry &this_scan = getScanHistory(history_idx);
 
         DolphinHookManager &manager = DolphinHookManager::instance();
         Buffer mem_buf;
         mem_buf.setBuf(manager.getMemoryView(), manager.getMemorySize());
 
-        u32 address = result->getAddress();
         switch (this_scan.m_scan_type) {
         case MetaType::BOOL:
             return MetaValue(readSingle<bool>(mem_buf, address));

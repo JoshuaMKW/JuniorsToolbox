@@ -309,7 +309,7 @@ namespace Toolbox {
     }
 
     ScopePtr<MimeData>
-    FileSystemModel::createMimeData(const std::unordered_set<ModelIndex> &indexes) const {
+    FileSystemModel::createMimeData(const IDataModel::index_container &indexes) const {
         std::scoped_lock lock(m_mutex);
         return createMimeData_(indexes);
     }
@@ -1052,7 +1052,7 @@ namespace Toolbox {
     }
 
     ScopePtr<MimeData>
-    FileSystemModel::createMimeData_(const std::unordered_set<ModelIndex> &indexes) const {
+    FileSystemModel::createMimeData_(const IDataModel::index_container &indexes) const {
         TOOLBOX_ERROR("[FileSystemModel] Mimedata unimplemented!");
         return ScopePtr<MimeData>();
     }
@@ -1628,11 +1628,11 @@ namespace Toolbox {
     }
 
     ScopePtr<MimeData> FileSystemModelSortFilterProxy::createMimeData(
-        const std::unordered_set<ModelIndex> &indexes) const {
-        std::unordered_set<ModelIndex> indexes_copy = indexes;
+        const IDataModel::index_container &indexes) const {
+        IDataModel::index_container indexes_copy = indexes;
 
         for (const ModelIndex &idx : indexes) {
-            indexes_copy.insert(toSourceIndex(idx));
+            indexes_copy.emplace_back(toSourceIndex(idx));
         }
 
         return m_source_model->createMimeData(indexes);
