@@ -514,12 +514,6 @@ namespace Toolbox::UI {
                                              nibble_width - 1) &
                                  ~1);
                             m_address_selection_end = cur_address;
-                            /*if (m_address_selection_end_nibble == 0) {
-                                m_address_selection_end_nibble = nibble_width - 2;
-                                m_address_selection_end -= byte_width;
-                            } else {
-                                m_address_selection_end_nibble -= 2;
-                            }*/
                         } else if (cur_address > m_address_selection_begin) {
                             m_address_selection_end_nibble =
                                 (ImClamp<u8>((mouse_pos.x - text_rect.Min.x) / ch_width, 0,
@@ -537,14 +531,7 @@ namespace Toolbox::UI {
                                              nibble_width - 1) &
                                  ~1);
                             m_address_selection_end = cur_address;
-                            if (m_address_selection_end_nibble < m_address_selection_begin_nibble) {
-                                // if (m_address_selection_end_nibble == 0) {
-                                //     m_address_selection_end_nibble = nibble_width - 2;
-                                //     m_address_selection_end -= byte_width;
-                                // } else {
-                                //     m_address_selection_end_nibble -= 2;
-                                // }
-                            } else {
+                            if (m_address_selection_end_nibble >= m_address_selection_begin_nibble) {
                                 m_address_selection_end_nibble += 2;
                                 if (m_address_selection_end_nibble == nibble_width) {
                                     m_address_selection_end_nibble = 0;
@@ -951,10 +938,6 @@ namespace Toolbox::UI {
                                 ImGui::TableNextColumn();
 
                                 ImGui::Text("%s", current_str.c_str());
-
-                                TOOLBOX_INFO_V("{} - [({}, {}) ({}, {})]", n, row_rect.Min.x,
-                                               row_rect.Min.y, row_rect.Max.x, row_rect.Max.y);
-                                // m_scan_view_context_menu.tryRender();
                             }
                         }
 
@@ -1038,8 +1021,37 @@ namespace Toolbox::UI {
                                   ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
                 ImVec2 avail = ImGui::GetContentRegionAvail();
 
+                bool can_do_scan = false;
+                switch (m_scan_operator) {
+                case MemScanModel::ScanOperator::OP_INCREASED:
+                case MemScanModel::ScanOperator::OP_DECREASED:
+                case MemScanModel::ScanOperator::OP_CHANGED:
+                case MemScanModel::ScanOperator::OP_UNCHANGED:
+                case MemScanModel::ScanOperator::OP_UNKNOWN_INITIAL:
+                    can_do_scan = true;
+                    break;
+                case MemScanModel::ScanOperator::OP_EXACT:
+                case MemScanModel::ScanOperator::OP_INCREASED_BY:
+                case MemScanModel::ScanOperator::OP_DECREASED_BY:
+                case MemScanModel::ScanOperator::OP_BIGGER_THAN:
+                case MemScanModel::ScanOperator::OP_SMALLER_THAN: {
+                    can_do_scan = strnlen(m_scan_value_input_a.data(), m_scan_value_input_a.size()) > 0;
+                    break;
+                }
+                case MemScanModel::ScanOperator::OP_BETWEEN: {
+                    can_do_scan =
+                        strnlen(m_scan_value_input_a.data(), m_scan_value_input_a.size()) > 0 &&
+                        strnlen(m_scan_value_input_b.data(), m_scan_value_input_b.size()) > 0;
+                    break;
+                }
+                }
+
                 if (m_scan_active) {
                     float button_width = (avail.x - style.ItemSpacing.x * 2) / 3.0f;
+
+                    if (!can_do_scan) {
+                        ImGui::BeginDisabled();
+                    }
 
                     if (ImGui::Button("Next Scan", {button_width, 0.0f}, 5.0f,
                                       ImDrawFlags_RoundCornersAll)) {
@@ -1080,6 +1092,10 @@ namespace Toolbox::UI {
                         }
                     }
 
+                    if (!can_do_scan) {
+                        ImGui::EndDisabled();
+                    }
+
                     ImGui::SameLine();
 
                     if (ImGui::Button("Undo Scan", {button_width, 0.0f}, 5.0f,
@@ -1115,6 +1131,10 @@ namespace Toolbox::UI {
                                              m_scan_end_input.data(), m_scan_end_input.size(),
                                              ImGuiInputTextFlags_AutoSelectAll |
                                                  ImGuiInputTextFlags_CharsHexadecimal);
+
+                    if (!can_do_scan) {
+                        ImGui::BeginDisabled();
+                    }
 
                     if (ImGui::Button("First Scan", {button_width, 0.0f}, 5.0f,
                                       ImDrawFlags_RoundCornersAll)) {
@@ -1152,6 +1172,10 @@ namespace Toolbox::UI {
                             TOOLBOX_ERROR_V(
                                 "[MEM_SCANNER] Failed to initialize the requested memory scan!");
                         }
+                    }
+
+                    if (!can_do_scan) {
+                        ImGui::EndDisabled();
                     }
                 }
 
