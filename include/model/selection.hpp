@@ -74,6 +74,8 @@ namespace Toolbox {
         bool actionSelectIndexIfNew(ModelSelectionState &state, const ModelIndex &index);
         bool actionClearRequestExcIndex(ModelSelectionState &state, const ModelIndex &index,
                                         bool is_left_button);
+
+        bool handleActionsByMouseInput(ModelSelectionState &state, const ModelIndex &index);
     };
 
 }  // namespace Toolbox

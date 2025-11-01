@@ -5,7 +5,10 @@
 
 namespace Toolbox {
 
-    void ModelSelectionState::setLastSelected(const ModelIndex &index) { m_last_selected = index; }
+    void ModelSelectionState::setLastSelected(const ModelIndex &index) {
+        u64 mu          = index.getModelUUID();
+      m_last_selected = index;
+    }
 
     bool ModelSelectionState::deselect(const ModelIndex &index) {
         if (!m_ref_model) {
@@ -131,7 +134,7 @@ namespace Toolbox {
             return false;
         }
 
-        bool result = true;
+        bool result                                = true;
         const IDataModel::index_container &indexes = selection.getSelection();
         for (const ModelIndex &s : indexes) {
             result &= model->removeIndex(s);
@@ -181,7 +184,7 @@ namespace Toolbox {
         if (!data) {
             return nullptr;
         }
-        
+
         if (!actionDeleteSelection(selection)) {
             TOOLBOX_ERROR("Failed to cut the selection!");
             return nullptr;
@@ -307,6 +310,27 @@ namespace Toolbox {
             selection.setLastSelected(ModelIndex());
         }
         return true;
+    }
+
+    bool ModelSelectionManager::handleActionsByMouseInput(ModelSelectionState &selection, const ModelIndex &index) {
+        const bool is_left_click          = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
+        const bool is_left_click_release  = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT);
+        const bool is_right_click         = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
+        const bool is_right_click_release = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT);
+
+        if (is_left_click && !is_left_click_release) {
+            return actionSelectIndex(selection, index);
+        }
+
+        if (is_right_click && !is_right_click_release) {
+            return actionSelectIndexIfNew(selection, index);
+        }
+        
+        if (is_left_click_release || is_right_click_release) {
+            return actionClearRequestExcIndex(selection, index, is_left_click_release);
+        }
+
+        return false;
     }
 
 }  // namespace Toolbox

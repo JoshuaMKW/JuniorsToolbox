@@ -1357,6 +1357,32 @@ bool ImGui::BeginPopupContextForRect(const char *str_id, const ImRect &rect,
                                 ImGuiWindowFlags_NoSavedSettings);
 }
 
+bool ImGui::BeginFlatPopupEx(ImGuiID id, ImGuiWindowFlags extra_window_flags) {
+    ImGuiContext &g = *GImGui;
+    if (!IsPopupOpen(id, ImGuiPopupFlags_AnyPopupLevel)) {
+        g.NextWindowData.ClearFlags();  // We behave like Begin() and need to consume those values
+        return false;
+    }
+
+    char name[20];
+    if (extra_window_flags & ImGuiWindowFlags_ChildMenu)
+        ImFormatString(name, IM_ARRAYSIZE(name), "##Menu_%02d",
+                       g.BeginMenuDepth);  // Recycle windows based on depth
+    else
+        ImFormatString(name, IM_ARRAYSIZE(name), "##Popup_%08x",
+                       id);  // Not recycling, so we can close/open during the same frame
+
+    bool is_open =
+        Begin(name, NULL, extra_window_flags | ImGuiWindowFlags_Popup | ImGuiWindowFlags_NoDocking);
+    if (!is_open)  // NB: Begin can return false when the popup is completely clipped (e.g. zero
+                   // size display)
+        EndPopup();
+
+    // g.CurrentWindow->FocusRouteParentWindow = g.CurrentWindow->ParentWindowInBeginStack;
+
+    return is_open;
+}
+
 bool ImGui::DrawCircle(const ImVec2 &center, float radius, ImU32 color, ImU32 fill_color,
                        float thickness) {
     ImVec2 window_pos     = ImGui::GetWindowPos();

@@ -90,7 +90,8 @@ namespace Toolbox::UI {
 
         void setCanOpen(bool can_open) { m_can_open = can_open; }
 
-        void tryOpen(ImGuiID item_id, ImGuiPopupFlags popup_flags = ImGuiPopupFlags_MouseButtonRight);
+        void tryOpen(ImGuiID item_id,
+                     ImGuiPopupFlags popup_flags = ImGuiPopupFlags_MouseButtonRight);
         void tryRender(const _DataT &ctx,
                        ImGuiHoveredFlags hover_flags = ImGuiHoveredFlags_AllowWhenBlockedByPopup);
 
@@ -117,6 +118,7 @@ namespace Toolbox::UI {
 
     private:
         std::string m_label;
+        ImGuiID m_id = 0;
 
         group_t m_root_group;
         option_t::open_event_t m_open_event;
@@ -193,8 +195,8 @@ namespace Toolbox::UI {
     template <typename _DataT>
     inline void ContextMenu<_DataT>::tryOpen(ImGuiID item_id, ImGuiPopupFlags popup_flags) {
         ImGuiWindow *window = ImGui::GetCurrentWindow();
-        //if (window->SkipItems)
-        //    return;
+        // if (window->SkipItems)
+        //     return;
         ImGuiID id = window->GetID(m_label.c_str());
         IM_ASSERT(id != 0);  // You cannot pass a NULL str_id if the last item has no identifier
                              // (e.g. a Text() item)
@@ -203,6 +205,9 @@ namespace Toolbox::UI {
             ImGui::OpenPopupEx(id, popup_flags);
 
         m_was_open = ImGui::IsPopupOpen(id, popup_flags);
+        if (m_was_open) {
+            m_id = id;
+        }
     }
 
     template <typename _DataT>
@@ -213,12 +218,13 @@ namespace Toolbox::UI {
 
         processKeybinds(ctx);
 
-        ImGuiWindow *window = ImGui::GetCurrentWindow();
-        ImGuiID id = window->GetID(m_label.c_str());
-        if (!ImGui::BeginPopupEx(id, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
-                                  ImGuiWindowFlags_NoSavedSettings)) {
+        ImGuiWindow *window = ImGui::GetCurrentWindow();\
+        if (!ImGui::BeginFlatPopupEx(m_id, ImGuiWindowFlags_AlwaysAutoResize |
+                                             ImGuiWindowFlags_NoTitleBar |
+                                             ImGuiWindowFlags_NoSavedSettings)) {
             m_was_open = false;
             m_rect     = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
+            m_id       = 0;
             return;
         }
 

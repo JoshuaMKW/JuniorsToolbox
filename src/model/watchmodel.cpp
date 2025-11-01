@@ -111,16 +111,7 @@ namespace Toolbox {
 
     bool WatchDataModel::isIndexGroup(const ModelIndex &index) const {
         std::scoped_lock lock(m_mutex);
-
-        if (!validateIndex(index)) {
-            return false;  // Invalid index
-        }
-
-        const _WatchIndexData &data = getIndexData_(index);
-        if (data.m_self_uuid == 0) {
-            return false;
-        }
-        return _WatchIndexDataIsGroup(data);
+        return isIndexGroup_(index);
     }
 
     std::any WatchDataModel::getData(const ModelIndex &index, int role) const {
@@ -193,6 +184,7 @@ namespace Toolbox {
 
         WatchValueBase value_base;
         switch (base_index) {
+        default:
         case 0:
             value_base = WatchValueBase::BASE_DECIMAL;
             break;
@@ -401,6 +393,7 @@ namespace Toolbox {
                 const u32 size                  = data.m_watch->getWatchSize();
                 const MetaType type             = data.m_watch->getWatchType();
                 const bool locked               = data.m_watch->isLocked();
+                const WatchValueBase value_base = data.m_value_base;
 
                 u8 p_chain_len = (u8)p_chain.size();
 
@@ -413,6 +406,7 @@ namespace Toolbox {
                 out.write<u32>(size);
                 out.write<u8>(static_cast<u8>(type));
                 out.write<bool>(locked);
+                out.write<u8>(static_cast<u8>(value_base));
             }
         }
 
@@ -454,10 +448,11 @@ namespace Toolbox {
                 }
 
                 _WatchIndexData data;
-                data.m_parent    = parent;
-                data.m_self_uuid = uuid;
-                data.m_type      = type;
-                data.m_group     = group;
+                data.m_parent     = parent;
+                data.m_self_uuid  = uuid;
+                data.m_type       = type;
+                data.m_group      = group;
+                data.m_value_base = WatchValueBase::BASE_DECIMAL;
 
                 m_index_map.emplace_back(std::move(data));
             } else if (type == _WatchIndexData::Type::WATCH) {
@@ -466,8 +461,8 @@ namespace Toolbox {
                     return make_serial_error<void>(in, "Not enough data to read group header");
                 }
 
-                std::string name    = in.readString();
-                u8 p_chain_len      = in.read<u8>();
+                std::string name = in.readString();
+                u8 p_chain_len   = in.read<u8>();
 
                 std::vector<u32> p_chain;
                 p_chain.reserve(p_chain_len);
@@ -475,9 +470,10 @@ namespace Toolbox {
                     p_chain.emplace_back(in.read<u32>());
                 }
 
-                u32 size            = in.read<u32>();
-                MetaType watch_type = static_cast<MetaType>(in.read<u8>());
-                bool locked         = in.read<bool>();
+                u32 size                  = in.read<u32>();
+                MetaType watch_type       = static_cast<MetaType>(in.read<u8>());
+                bool locked               = in.read<bool>();
+                WatchValueBase value_base = static_cast<WatchValueBase>(in.read<u8>());
 
                 MetaWatch *watch = new MetaWatch(watch_type);
                 watch->setWatchName(name);
@@ -497,10 +493,11 @@ namespace Toolbox {
                 }
 
                 _WatchIndexData data;
-                data.m_parent    = parent;
-                data.m_self_uuid = uuid;
-                data.m_type      = type;
-                data.m_watch     = watch;
+                data.m_parent     = parent;
+                data.m_self_uuid  = uuid;
+                data.m_type       = type;
+                data.m_watch      = watch;
+                data.m_value_base = value_base;
 
                 m_index_map.emplace_back(std::move(data));
             } else {
@@ -511,6 +508,18 @@ namespace Toolbox {
 
         signalEventListeners(ModelIndex(), WatchModelEventFlags::EVENT_GROUP_ADDED);
         return Result<void, SerialError>();
+    }
+
+    bool WatchDataModel::isIndexGroup_(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return false;  // Invalid index
+        }
+
+        const _WatchIndexData &data = getIndexData_(index);
+        if (data.m_self_uuid == 0) {
+            return false;
+        }
+        return _WatchIndexDataIsGroup(data);
     }
 
     std::any WatchDataModel::getData_(const ModelIndex &index, int role) const {
@@ -585,6 +594,15 @@ namespace Toolbox {
                 return {};
             case _WatchIndexData::Type::WATCH:
                 return data.m_value_base;
+            }
+            return {};
+        }
+        case WatchDataRole::WATCH_DATA_ROLE_POINTER_CHAIN: {
+            switch (data.m_type) {
+            case _WatchIndexData::Type::GROUP:
+                return {};
+            case _WatchIndexData::Type::WATCH:
+                return data.m_watch->getPointerChain();
             }
             return {};
         }
@@ -845,8 +863,126 @@ namespace Toolbox {
 
     ScopePtr<MimeData>
     WatchDataModel::createMimeData_(const IDataModel::index_container &indexes) const {
-        TOOLBOX_ERROR("[WatchDataModel] Mimedata unimplemented!");
-        return ScopePtr<MimeData>();
+        ScopePtr<MimeData> new_data = make_scoped<MimeData>();
+
+        std::function<json_t(const ModelIndex &index)> jsonify_index =
+            [&](const ModelIndex &index) -> json_t {
+            json_t this_index;
+            if (isIndexGroup_(index)) {
+                json_t children;
+                size_t row_count = getRowCount_(index);
+                for (size_t i = 0; i < row_count; ++i) {
+                    ModelIndex child_idx = getIndex_(i, 0, index);
+                    children.emplace_back(jsonify_index(child_idx));
+                }
+
+                this_index["groupEntries"] = std::move(children);
+                this_index["groupName"] =
+                    std::any_cast<std::string>(getData_(index, ModelDataRole::DATA_ROLE_DISPLAY));
+            } else {
+                this_index["address"] =
+                    std::any_cast<u32>(getData_(index, WatchDataRole::WATCH_DATA_ROLE_ADDRESS));
+                WatchValueBase value_base = std::any_cast<WatchValueBase>(
+                    getData_(index, WatchDataRole::WATCH_DATA_ROLE_VIEW_BASE));
+
+                int base_index = 0;
+                switch (value_base) {
+                case WatchValueBase::BASE_DECIMAL:
+                    base_index = 0;
+                    break;
+                case WatchValueBase::BASE_HEXADECIMAL:
+                    base_index = 1;
+                    break;
+                case WatchValueBase::BASE_OCTAL:
+                    base_index = 2;
+                    break;
+                case WatchValueBase::BASE_BINARY:
+                    base_index = 3;
+                    break;
+                }
+
+                this_index["baseIndex"] = base_index;
+                this_index["label"] =
+                    std::any_cast<std::string>(getData_(index, ModelDataRole::DATA_ROLE_DISPLAY));
+                this_index["pointerOffsets"] = std::any_cast<std::vector<u32>>(
+                    getData_(index, WatchDataRole::WATCH_DATA_ROLE_POINTER_CHAIN));
+
+                MetaType watch_type = std::any_cast<MetaValue>(
+                    getData_(index, WatchDataRole::WATCH_DATA_ROLE_VALUE_META)).type();
+
+                int type_index = 0;
+                bool unsgned   = false;
+                switch (watch_type) {
+                case MetaType::S8:
+                    type_index = 0;
+                    unsgned    = false;
+                    break;
+                case MetaType::U8:
+                    type_index = 0;
+                    unsgned    = true;
+                    break;
+                case MetaType::S16:
+                    type_index = 1;
+                    unsgned    = false;
+                    break;
+                case MetaType::U16:
+                    type_index = 1;
+                    unsgned    = true;
+                    break;
+                case MetaType::S32:
+                    type_index = 2;
+                    unsgned    = false;
+                    break;
+                case MetaType::U32:
+                    type_index = 2;
+                    unsgned    = true;
+                    break;
+                case MetaType::F32:
+                    type_index = 3;
+                    unsgned    = false;
+                    break;
+                case MetaType::F64:
+                    type_index = 4;
+                    unsgned    = false;
+                    break;
+                case MetaType::STRING:
+                    type_index = 5;
+                    break;
+                case MetaType::UNKNOWN:
+                    type_index = 6;
+                    break;
+                default:
+                    type_index = 6;
+                    break;
+                }
+
+                this_index["typeIndex"] = type_index;
+                this_index["unsigned"]  = unsgned;
+            }
+            return this_index;
+        };
+
+        json_t data_json;
+        tryJSON(data_json, [&](json_t &j) {
+            json_t root_json;
+
+            size_t root_count = indexes.size();
+            for (size_t i = 0; i < root_count; ++i) {
+                ModelIndex child_idx = indexes[i];
+                if (!validateIndex(child_idx)) {
+                    TOOLBOX_WARN_V("Tried to create mime data for invalid index {}!", i);
+                    continue;
+                }
+                root_json.emplace_back(jsonify_index(child_idx));
+            }
+
+            j["watchList"] = std::move(root_json);
+        });
+
+        std::string result = data_json.dump(4);
+        new_data->set_text(result);
+
+        return new_data;
     }
 
     bool WatchDataModel::insertMimeData_(const ModelIndex &index, const MimeData &data) {
@@ -1157,13 +1293,13 @@ namespace Toolbox {
 
     ScopePtr<MimeData> WatchDataModelSortFilterProxy::createMimeData(
         const IDataModel::index_container &indexes) const {
-        std::unordered_set<ModelIndex> indexes_copy;
+        IDataModel::index_container indexes_copy;
 
         for (const ModelIndex &idx : indexes) {
-            indexes_copy.insert(toSourceIndex(idx));
+            indexes_copy.emplace_back(toSourceIndex(idx));
         }
 
-        return m_source_model->createMimeData(indexes);
+        return m_source_model->createMimeData(indexes_copy);
     }
 
     bool WatchDataModelSortFilterProxy::insertMimeData(const ModelIndex &index,
@@ -1201,7 +1337,7 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        return m_source_model->getIndex(index.inlineData());
+        return m_source_model->getIndex(index.getUUID());
     }
 
     ModelIndex WatchDataModelSortFilterProxy::toProxyIndex(const ModelIndex &index) const {

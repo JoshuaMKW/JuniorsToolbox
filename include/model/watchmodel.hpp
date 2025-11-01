@@ -112,6 +112,7 @@ namespace Toolbox {
         WATCH_DATA_ROLE_TYPE = ModelDataRole::DATA_ROLE_USER,
         WATCH_DATA_ROLE_VALUE_META,
         WATCH_DATA_ROLE_ADDRESS,
+        WATCH_DATA_ROLE_POINTER_CHAIN,
         WATCH_DATA_ROLE_LOCK,
         WATCH_DATA_ROLE_SIZE,
         WATCH_DATA_ROLE_VIEW_BASE,
@@ -167,11 +168,17 @@ namespace Toolbox {
         }
 
         [[nodiscard]] WatchValueBase getWatchViewBase(const ModelIndex &index) const {
-            return std::any_cast<WatchValueBase>(getData(index, WatchDataRole::WATCH_DATA_ROLE_VIEW_BASE));
+            return std::any_cast<WatchValueBase>(
+                getData(index, WatchDataRole::WATCH_DATA_ROLE_VIEW_BASE));
         }
 
         void setWatchViewBase(const ModelIndex &index, WatchValueBase size) {
             setData(index, size, WatchDataRole::WATCH_DATA_ROLE_VIEW_BASE);
+        }
+
+        [[nodiscard]] std::vector<u32> getWatchPointerChain(const ModelIndex &index) const {
+            return std::any_cast<std::vector<u32>>(
+                getData(index, WatchDataRole::WATCH_DATA_ROLE_POINTER_CHAIN));
         }
 
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
@@ -230,6 +237,8 @@ namespace Toolbox {
 
     protected:
         // Implementation of public API for mutex locking reasons
+        [[nodiscard]] bool isIndexGroup_(const ModelIndex &index) const;
+
         [[nodiscard]] std::any getData_(const ModelIndex &index, int role) const;
         void setData_(const ModelIndex &index, std::any data, int role);
 

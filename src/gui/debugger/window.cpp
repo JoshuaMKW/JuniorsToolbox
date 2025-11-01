@@ -531,7 +531,8 @@ namespace Toolbox::UI {
                                              nibble_width - 1) &
                                  ~1);
                             m_address_selection_end = cur_address;
-                            if (m_address_selection_end_nibble >= m_address_selection_begin_nibble) {
+                            if (m_address_selection_end_nibble >=
+                                m_address_selection_begin_nibble) {
                                 m_address_selection_end_nibble += 2;
                                 if (m_address_selection_end_nibble == nibble_width) {
                                     m_address_selection_end_nibble = 0;
@@ -1035,7 +1036,8 @@ namespace Toolbox::UI {
                 case MemScanModel::ScanOperator::OP_DECREASED_BY:
                 case MemScanModel::ScanOperator::OP_BIGGER_THAN:
                 case MemScanModel::ScanOperator::OP_SMALLER_THAN: {
-                    can_do_scan = strnlen(m_scan_value_input_a.data(), m_scan_value_input_a.size()) > 0;
+                    can_do_scan =
+                        strnlen(m_scan_value_input_a.data(), m_scan_value_input_a.size()) > 0;
                     break;
                 }
                 case MemScanModel::ScanOperator::OP_BETWEEN: {
@@ -1822,6 +1824,13 @@ namespace Toolbox::UI {
                     }
                 }
 
+                const ModelIndex &last_sel = m_watch_selection.getLastSelected();
+                if (m_watch_proxy_model->isIndexGroup(last_sel)) {
+                    m_group_view_context_menu.tryRender(last_sel);
+                } else {
+                    m_watch_view_context_menu.tryRender(last_sel);
+                }
+
                 ImGui::EndTable();
             }
 
@@ -1833,12 +1842,12 @@ namespace Toolbox::UI {
             ImRect window_rect  = ImRect{table_pos, table_pos + table_size};
             bool mouse_captured = ImGui::IsMouseHoveringRect(window_rect.Min, window_rect.Max);
 
-            if (!m_add_group_dialog.is_open() && !m_add_watch_dialog.is_open()) {
-                if (!m_any_row_clicked && mouse_captured && (left_click || right_click) &&
-                    Input::GetPressedKeyModifiers() == KeyModifier::KEY_NONE) {
-                    m_watch_selection.clearSelection();
-                }
-            }
+            //if (!m_add_group_dialog.is_open() && !m_add_watch_dialog.is_open()) {
+            //    if (!m_any_row_clicked && mouse_captured && (left_click || right_click) &&
+            //        Input::GetPressedKeyModifiers() == KeyModifier::KEY_NONE) {
+            //        m_watch_selection.clearSelection();
+            //    }
+            //}
         }
         ImGui::EndChild();
     }
@@ -2012,20 +2021,15 @@ namespace Toolbox::UI {
         {
             if (is_rect_clicked && !is_collapse_hovered && !is_lock_hovered) {
                 m_any_row_clicked = true;
-                if ((is_left_click && !is_left_click_release) ||
-                    (is_right_click && !is_right_click_release)) {
-                    m_watch_selection_mgr.actionSelectIndex(m_watch_selection, watch_idx);
-                } else if (is_left_click_release || is_right_click_release) {
-                    m_watch_selection_mgr.actionClearRequestExcIndex(m_watch_selection, watch_idx,
-                                                                     is_left_click_release);
-                }
+                m_watch_selection_mgr.handleActionsByMouseInput(m_watch_selection, watch_idx);
+            }
+
+            if (is_rect_hovered) {
+                m_watch_view_context_menu.tryOpen(0);
             }
         }
 
         ImGui::PopID();
-
-        m_watch_view_context_menu.renderForRect("Watch Group", row_rect,
-                                                m_watch_selection.getLastSelected());
     }
 
     void DebuggerWindow::renderWatchGroup(const ModelIndex &group_idx, int depth,
@@ -2206,20 +2210,15 @@ namespace Toolbox::UI {
         {
             if (is_rect_clicked && !is_collapse_hovered && !is_lock_hovered) {
                 m_any_row_clicked = true;
-                if ((is_left_click && !is_left_click_release) ||
-                    (is_right_click && !is_right_click_release)) {
-                    m_watch_selection_mgr.actionSelectIndex(m_watch_selection, group_idx);
-                } else if (is_left_click_release || is_right_click_release) {
-                    m_watch_selection_mgr.actionClearRequestExcIndex(m_watch_selection, group_idx,
-                                                                     is_left_click_release);
-                }
+                m_watch_selection_mgr.handleActionsByMouseInput(m_watch_selection, group_idx);
+            }
+
+            if (is_rect_hovered) {
+                m_group_view_context_menu.tryOpen(0);
             }
         }
 
         ImGui::PopID();
-
-        m_group_view_context_menu.renderForRect("Watch Group", row_rect,
-                                                m_watch_selection.getLastSelected());
     }
 
     void DebuggerWindow::countMemoryWatch(const ModelIndex &index, int *row) {
@@ -2542,19 +2541,25 @@ namespace Toolbox::UI {
                 "Unlock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
                 [&](const ModelIndex &index) { m_watch_proxy_model->setWatchLock(index, false); })
             .addDivider()
-            .addOption("Cut", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+            .addOption("Cut", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_X},
                        [&](const ModelIndex &index) {
                            ScopePtr<MimeData> data =
                                m_watch_selection_mgr.actionCutSelection(m_watch_selection);
+                           if (!data) {
+                               return;
+                           }
                            SystemClipboard::instance().setContent(*data);
                        })
-            .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+            .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
                        [&](const ModelIndex &index) {
                            ScopePtr<MimeData> data =
                                m_watch_selection_mgr.actionCopySelection(m_watch_selection);
+                           if (!data) {
+                               return;
+                           }
                            SystemClipboard::instance().setContent(*data);
                        })
-            .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+            .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
                        [&](const ModelIndex &index) {
                            auto result = SystemClipboard::instance().getContent();
                            if (!result) {
@@ -2565,7 +2570,7 @@ namespace Toolbox::UI {
                                                                           result.value());
                        })
             .addDivider()
-            .addOption("Delete", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+            .addOption("Delete", {KeyCode::KEY_DELETE},
                        [&](const ModelIndex &index) {
                            m_watch_selection_mgr.actionDeleteSelection(m_watch_selection);
                        });
@@ -2578,19 +2583,25 @@ namespace Toolbox::UI {
                 "Unlock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
                 [&](const ModelIndex &index) { m_watch_proxy_model->setWatchLock(index, false); })
             .addDivider()
-            .addOption("Cut", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+            .addOption("Cut", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_X},
                        [&](const ModelIndex &index) {
                            ScopePtr<MimeData> data =
                                m_watch_selection_mgr.actionCutSelection(m_watch_selection);
+                           if (!data) {
+                               return;
+                           }
                            SystemClipboard::instance().setContent(*data);
                        })
-            .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+            .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
                        [&](const ModelIndex &index) {
                            ScopePtr<MimeData> data =
                                m_watch_selection_mgr.actionCopySelection(m_watch_selection);
+                           if (!data) {
+                               return;
+                           }
                            SystemClipboard::instance().setContent(*data);
                        })
-            .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+            .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
                        [&](const ModelIndex &index) {
                            auto result = SystemClipboard::instance().getContent();
                            if (!result) {
@@ -2601,10 +2612,9 @@ namespace Toolbox::UI {
                                                                           result.value());
                        })
             .addDivider()
-            .addOption("Delete", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
-                       [&](const ModelIndex &index) {
-                           m_watch_selection_mgr.actionDeleteSelection(m_watch_selection);
-                       });
+            .addOption("Delete", {KeyCode::KEY_DELETE}, [&](const ModelIndex &index) {
+                m_watch_selection_mgr.actionDeleteSelection(m_watch_selection);
+            });
     }
 
     void DebuggerWindow::recursiveLock(ModelIndex src_idx, bool lock) {
