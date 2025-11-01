@@ -154,6 +154,17 @@ namespace Toolbox {
         static void setIndexUUID(ModelIndex &index, UUID64 uuid) { index.m_uuid = uuid; }
     };
 
+    class ModelIndexListTransformer {
+    public:
+        ModelIndexListTransformer() = delete;
+        ModelIndexListTransformer(RefPtr<IDataModel> model) : m_model(model) {}
+
+        void pruneRedundantsForRecursiveTree(IDataModel::index_container &indexes) const;
+
+    private:
+        RefPtr<IDataModel> m_model;
+    };
+
 }  // namespace Toolbox
 
 namespace std {

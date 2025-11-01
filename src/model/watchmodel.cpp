@@ -868,6 +868,8 @@ namespace Toolbox {
         std::function<json_t(const ModelIndex &index)> jsonify_index =
             [&](const ModelIndex &index) -> json_t {
             json_t this_index;
+            this_index["uuid"] = static_cast<u64>(index.getUUID());
+
             if (isIndexGroup_(index)) {
                 json_t children;
                 size_t row_count = getRowCount_(index);
