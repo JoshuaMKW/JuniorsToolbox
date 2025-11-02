@@ -157,12 +157,12 @@ namespace Toolbox {
     class ModelIndexListTransformer {
     public:
         ModelIndexListTransformer() = delete;
-        ModelIndexListTransformer(RefPtr<IDataModel> model) : m_model(model) {}
+        ModelIndexListTransformer(const IDataModel* model) : m_model(model) {}
 
         void pruneRedundantsForRecursiveTree(IDataModel::index_container &indexes) const;
 
     private:
-        RefPtr<IDataModel> m_model;
+        const IDataModel* m_model;
     };
 
 }  // namespace Toolbox
