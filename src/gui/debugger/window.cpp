@@ -1547,9 +1547,9 @@ namespace Toolbox::UI {
             }
 
             ImFont *mono_font = GUIApplication::instance().getFontManager().getFont(
-                "NanumGothicCoding-Bold", 12.0f);
+                "NanumGothicCoding-Bold");
             if (mono_font) {
-                ImGui::PushFont(mono_font);
+                ImGui::PushFont(mono_font, 12.0f);
             }
 
             // Calculate the rows and columns based on
