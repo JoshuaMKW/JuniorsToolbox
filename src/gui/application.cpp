@@ -409,6 +409,8 @@ namespace Toolbox {
 
         ImGuizmo::BeginFrame();
 
+        ImGui::PushFont(m_font_manager.getCurrentFont(), m_font_manager.getCurrentFontSize());
+
         ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
@@ -534,6 +536,8 @@ namespace Toolbox {
                 }
             }
         }
+
+        ImGui::PopFont();
 
         // Render imgui frame
         {

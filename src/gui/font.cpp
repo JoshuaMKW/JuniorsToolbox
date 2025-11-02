@@ -49,6 +49,7 @@ namespace Toolbox::UI {
 
     void FontManager::finalize() { ImGui::GetIO().Fonts->Build(); }
 
+#if USE_LEGACY_FONT_API
     ImFont *FontManager::getFont(std::string_view name, float size) const {
         for (auto font = m_loaded_fonts.find(std::string(name)); font != m_loaded_fonts.end();
              font++) {
@@ -58,6 +59,15 @@ namespace Toolbox::UI {
         }
         return nullptr;
     }
+#else
+    ImFont *FontManager::getFont(std::string_view name) const {
+        for (auto font = m_loaded_fonts.find(std::string(name)); font != m_loaded_fonts.end();
+             font++) {
+            return font->second;
+        }
+        return nullptr;
+    }
+#endif
 
     bool FontManager::addFont(const std::filesystem::path &font_path,
                               const ImFontConfig *font_cfg_template, const ImWchar *glyph_ranges) {
@@ -75,6 +85,7 @@ namespace Toolbox::UI {
 
         static const ImWchar icons_ranges[] = {ICON_MIN_FK, ICON_MAX_16_FK, 0};
 
+#if USE_LEGACY_FONT_API
         for (auto &size : fontSizes()) {
             ImFont *font = ImGui::GetIO().Fonts->AddFontFromFileTTF(font_path.string().c_str(),
                                                                     size, &font_cfg, glyph_ranges);
@@ -89,22 +100,50 @@ namespace Toolbox::UI {
 
             m_loaded_fonts.insert({font_path.stem().string(), font});
         }
+#else
+        font_cfg.GlyphExcludeRanges = icons_ranges;
+        ImFont *font = ImGui::GetIO().Fonts->AddFontFromFileTTF(font_path.string().c_str(), 0.0f,
+                                                                &font_cfg, glyph_ranges);
+        if (!font) {
+            return false;
+        }
+
+        ImGui::GetIO().Fonts->AddFontFromFileTTF(fork_awesome_path.string().c_str(), 0.0f,
+                                                 &fork_awesome_cfg, icons_ranges);
+
+        m_loaded_fonts.insert({font_path.stem().string(), font});
+#endif
         return true;
     }
 
+#if USE_LEGACY_FONT_API
     void FontManager::setCurrentFont(std::string_view name, float size) {
-        m_current_font_family     = name;
-        m_current_font_size       = size;
+        m_current_font_family      = name;
+        m_current_font_size        = size;
         ImGui::GetIO().FontDefault = getCurrentFont();
     }
 
     void FontManager::setCurrentFontFamily(std::string_view name) {
-        m_current_font_family     = name;
+        m_current_font_family      = name;
         ImGui::GetIO().FontDefault = getCurrentFont();
     }
 
     void FontManager::setCurrentFontSize(float size) {
-        m_current_font_size       = size;
+        m_current_font_size        = size;
         ImGui::GetIO().FontDefault = getCurrentFont();
     }
+#else
+    void FontManager::setCurrentFont(std::string_view name, float size) {
+        m_current_font_family = name;
+        m_current_font_size   = size;
+    }
+
+    void FontManager::setCurrentFontFamily(std::string_view name) {
+        m_current_font_family = name;
+    }
+
+    void FontManager::setCurrentFontSize(float size) {
+        m_current_font_size = size;
+    }
+#endif
 }  // namespace Toolbox::UI

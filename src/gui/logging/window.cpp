@@ -98,9 +98,9 @@ namespace Toolbox::UI {
 
     void LoggingWindow::onRenderBody(TimeStep delta_time) {
         ImFont *mono_font =
-            GUIApplication::instance().getFontManager().getFont("NanumGothicCoding-Bold", 12.0f);
+            GUIApplication::instance().getFontManager().getFont("NanumGothicCoding-Bold");
         if (mono_font) {
-            ImGui::PushFont(mono_font);
+            ImGui::PushFont(mono_font, 12.0f);
         }
 
         if (ImGui::BeginChild(ImWindowComponentTitle(*this, "Log View").c_str(), {}, false,

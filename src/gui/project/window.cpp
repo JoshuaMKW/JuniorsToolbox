@@ -204,7 +204,7 @@ namespace Toolbox::UI {
                                 ImVec2 text_clip_max =
                                     ImVec2(ellipsis_max - 8.0f, text_pos.y + 20.0f);
                                 ImGui::RenderTextEllipsis(ImGui::GetWindowDrawList(), text_pos,
-                                                          text_clip_max, ellipsis_max, ellipsis_max,
+                                                          text_clip_max, ellipsis_max,
                                                           text.c_str(), nullptr, nullptr);
                             }
                         }
