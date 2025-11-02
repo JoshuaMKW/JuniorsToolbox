@@ -864,6 +864,10 @@ namespace Toolbox {
     ScopePtr<MimeData>
     WatchDataModel::createMimeData_(const IDataModel::index_container &indexes) const {
         ScopePtr<MimeData> new_data = make_scoped<MimeData>();
+        
+        IDataModel::index_container pruned_indexes = indexes;
+        ModelIndexListTransformer transformer(this);
+        transformer.pruneRedundantsForRecursiveTree(pruned_indexes);
 
         std::function<json_t(const ModelIndex &index)> jsonify_index =
             [&](const ModelIndex &index) -> json_t {
@@ -968,9 +972,9 @@ namespace Toolbox {
         tryJSON(data_json, [&](json_t &j) {
             json_t root_json;
 
-            size_t root_count = indexes.size();
+            size_t root_count = pruned_indexes.size();
             for (size_t i = 0; i < root_count; ++i) {
-                ModelIndex child_idx = indexes[i];
+                ModelIndex child_idx = pruned_indexes[i];
                 if (!validateIndex(child_idx)) {
                     TOOLBOX_WARN_V("Tried to create mime data for invalid index {}!", i);
                     continue;
