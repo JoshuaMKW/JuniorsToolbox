@@ -1077,7 +1077,7 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         ImVec2 textSize =
-            font->CalcTextSizeA(font->FontSize, FLT_MAX, 0.0f, m_member->name().c_str());
+            font->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, 0.0f, m_member->name().c_str());
         return textSize;
     }
 

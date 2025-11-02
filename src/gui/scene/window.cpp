@@ -2689,8 +2689,10 @@ void SceneWindow::onRenderMenuBar() {
     }
 
     if (m_is_save_as_dialog_open) {
+        IGFD::FileDialogConfig config;
+        config.path = m_io_context_path.string();
         ImGuiFileDialog::Instance()->OpenDialog("SaveSceneDialog", "Choose Directory", nullptr,
-                                                m_io_context_path.string(), "");
+                                                config);
     }
 
     if (ImGuiFileDialog::Instance()->Display("SaveSceneDialog")) {

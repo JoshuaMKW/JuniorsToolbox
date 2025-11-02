@@ -31,6 +31,7 @@ static const ImGuiDataTypeInfo GDataTypeInfo[] = {
      "%f"                                              }, // ImGuiDataType_Float (float are promoted to double in va_arg)
     {sizeof(double),         "double", "%f",    "%lf"  }, // ImGuiDataType_Double
     {sizeof(bool),           "bool",   "%d",    "%d"   }, // ImGuiDataType_Bool
+    {0,                      "char*",  "%s",    "%s"   }, // ImGuiDataType_String
 };
 IM_STATIC_ASSERT(IM_ARRAYSIZE(GDataTypeInfo) == ImGuiDataType_COUNT);
 
@@ -440,17 +441,22 @@ bool ImGui::InputScalarCompact(const char *label, ImGuiDataType data_type, void 
     if (format == NULL)
         format = DataTypeGetInfo(data_type)->PrintFmt;
 
-    char buf[64];
-    DataTypeFormatString(buf, IM_ARRAYSIZE(buf), data_type, p_data, format);
+    void *p_data_default = (g.NextItemData.HasFlags & ImGuiNextItemDataFlags_HasRefVal)
+                               ? &g.NextItemData.RefVal
+                               : &g.DataTypeZeroValue;
 
-    // Testing ActiveId as a minor optimization as filtering is not needed until active
-    if (g.ActiveId == 0 &&
-        (flags & (ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsHexadecimal |
-                  ImGuiInputTextFlags_CharsScientific)) == 0)
-        flags |= InputScalar_DefaultCharsFilter(data_type, format);
+    char buf[64];
+    if ((flags & ImGuiInputTextFlags_DisplayEmptyRefVal) &&
+        DataTypeCompare(data_type, p_data, p_data_default) == 0)
+        buf[0] = 0;
+    else
+        DataTypeFormatString(buf, IM_ARRAYSIZE(buf), data_type, p_data, format);
+
+    // Disable the MarkItemEdited() call in InputText but keep ImGuiItemStatusFlags_Edited.
+    // We call MarkItemEdited() ourselves by comparing the actual data rather than the string.
+    g.NextItemData.ItemFlags |= ImGuiItemFlags_NoMarkEdited;
     flags |= ImGuiInputTextFlags_AutoSelectAll |
-             ImGuiInputTextFlags_NoMarkEdited;  // We call MarkItemEdited() ourselves by comparing
-                                                // the actual data rather than the string.
+             (ImGuiInputTextFlags)ImGuiInputTextFlags_LocalizeDecimalPoint;
 
     bool value_changed = false;
     if (p_step == NULL) {
@@ -470,7 +476,7 @@ bool ImGui::InputScalarCompact(const char *label, ImGuiDataType data_type, void 
 
         const ImVec2 backup_frame_padding = style.FramePadding;
         style.FramePadding.x              = style.FramePadding.y;
-        ImGuiButtonFlags button_flags = ImGuiButtonFlags_Repeat | ImGuiButtonFlags_DontClosePopups;
+        ImGuiButtonFlags button_flags     = ImGuiButtonFlags_None;
         if (flags & ImGuiInputTextFlags_ReadOnly)
             BeginDisabled();
 
@@ -566,17 +572,29 @@ bool ImGui::TreeNodeEx(const char *label, ImGuiTreeNodeFlags flags, bool focused
 // Store ImGuiTreeNodeStackData for just submitted node.
 // Currently only supports 32 level deep and we are fine with (1 << Depth) overflowing into a zero,
 // easy to increase.
-static void TreeNodeStoreStackData(ImGuiTreeNodeFlags flags) {
+static void TreeNodeStoreStackData(ImGuiTreeNodeFlags flags, float x1) {
     ImGuiContext &g     = *GImGui;
     ImGuiWindow *window = g.CurrentWindow;
 
     g.TreeNodeStack.resize(g.TreeNodeStack.Size + 1);
-    ImGuiTreeNodeStackData *tree_node_data = &g.TreeNodeStack.back();
+    ImGuiTreeNodeStackData *tree_node_data = &g.TreeNodeStack.Data[g.TreeNodeStack.Size - 1];
     tree_node_data->ID                     = g.LastItemData.ID;
     tree_node_data->TreeFlags              = flags;
-    tree_node_data->InFlags                = g.LastItemData.InFlags;
+    tree_node_data->ItemFlags              = g.LastItemData.ItemFlags;
     tree_node_data->NavRect                = g.LastItemData.NavRect;
+
+    // Initially I tried to latch value for GetColorU32(ImGuiCol_TreeLines) but it's not a good
+    // trade-off for very large trees.
+    const bool draw_lines =
+        (flags & (ImGuiTreeNodeFlags_DrawLinesFull | ImGuiTreeNodeFlags_DrawLinesToNodes)) != 0;
+    tree_node_data->DrawLinesX1 = draw_lines ? (x1 + g.FontSize * 0.5f + g.Style.FramePadding.x)
+                                             : +FLT_MAX;
+    tree_node_data->DrawLinesTableColumn =
+        (draw_lines && g.CurrentTable) ? (ImGuiTableColumnIdx)g.CurrentTable->CurrentColumn : -1;
+    tree_node_data->DrawLinesToNodesY2 = -FLT_MAX;
     window->DC.TreeHasStackDataDepthMask |= (1 << window->DC.TreeDepth);
+    if (flags & ImGuiTreeNodeFlags_DrawLinesToNodes)
+        window->DC.TreeRecordsClippedNodesY2Mask |= (1 << window->DC.TreeDepth);
 }
 
 bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *label,
@@ -641,7 +659,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
             frame_bb.Min.x + text_width + (label_size.x > 0.0f ? style.ItemSpacing.x * 2.0f : 0.0f);
 
     // Compute open and multi-select states before ItemAdd() as it clear NextItem data.
-    ImGuiID storage_id = (g.NextItemData.Flags & ImGuiNextItemDataFlags_HasStorageID)
+    ImGuiID storage_id = (g.NextItemData.HasFlags & ImGuiNextItemDataFlags_HasStorageID)
                              ? g.NextItemData.StorageId
                              : id;
     bool is_open       = TreeNodeUpdateNextOpen(storage_id, flags);
@@ -679,7 +697,8 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     const bool is_leaf = (flags & ImGuiTreeNodeFlags_Leaf) != 0;
     if (!is_visible) {
         if (store_tree_node_stack_data && is_open)
-            TreeNodeStoreStackData(flags);  // Call before TreePushOverrideID()
+            TreeNodeStoreStackData(flags,
+                                   text_pos.x - text_offset_x);  // Call before TreePushOverrideID()
         if (is_open && !(flags & ImGuiTreeNodeFlags_NoTreePushOnOpen))
             TreePushOverrideID(id);
         IMGUI_TEST_ENGINE_ITEM_INFO(g.LastItemData.ID, label,
@@ -697,7 +716,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
 
     ImGuiButtonFlags button_flags = ImGuiTreeNodeFlags_None;
     if ((flags & ImGuiTreeNodeFlags_AllowOverlap) ||
-        (g.LastItemData.InFlags & ImGuiItemFlags_AllowOverlap))
+        (g.LastItemData.ItemFlags & ImGuiItemFlags_AllowOverlap))
         button_flags |= ImGuiButtonFlags_AllowOverlap;
     if (!is_leaf)
         button_flags |= ImGuiButtonFlags_PressedOnDragDropHold;
@@ -711,7 +730,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     const bool is_mouse_x_over_arrow =
         (g.IO.MousePos.x >= arrow_hit_x1 && g.IO.MousePos.x < arrow_hit_x2);
 
-    const bool is_multi_select = (g.LastItemData.InFlags & ImGuiItemFlags_IsMultiSelect) != 0;
+    const bool is_multi_select = (g.LastItemData.ItemFlags & ImGuiItemFlags_IsMultiSelect) != 0;
     if (is_multi_select)  // We absolutely need to distinguish open vs select so _OpenOnArrow comes
                           // by default
         flags |= (flags & ImGuiTreeNodeFlags_OpenOnMask_) == 0
@@ -749,7 +768,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
                            ~ImGuiButtonFlags_PressedOnClickRelease;
     } else {
         if (window != g.HoveredWindow || !is_mouse_x_over_arrow)
-            button_flags |= ImGuiButtonFlags_NoKeyModifiers;
+            button_flags |= ImGuiButtonFlags_NoKeyModsAllowed;
     }
 
     bool hovered, held;
@@ -763,8 +782,8 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
             if (flags & ImGuiTreeNodeFlags_OpenOnArrow)
                 toggled |=
                     is_mouse_x_over_arrow &&
-                    !g.NavDisableMouseHover;  // Lightweight equivalent of IsMouseHoveringRect()
-                                              // since ButtonBehavior() already did the job
+                    !g.NavHighlightItemUnderNav;  // Lightweight equivalent of IsMouseHoveringRect()
+                                                  // since ButtonBehavior() already did the job
             if ((flags & ImGuiTreeNodeFlags_OpenOnDoubleClick) && g.IO.MouseClickedCount[0] == 2)
                 toggled = true;  // Double click
         } else if (pressed && g.DragDropHoldJustPressedId == id) {
@@ -810,8 +829,8 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
 
     // Render
     {
-        const ImU32 text_col                       = GetColorU32(ImGuiCol_Text);
-        ImGuiNavHighlightFlags nav_highlight_flags = ImGuiNavHighlightFlags_Compact;
+        const ImU32 text_col                          = GetColorU32(ImGuiCol_Text);
+        ImGuiNavRenderCursorFlags nav_highlight_flags = ImGuiNavHighlightFlags_Compact;
         if (is_multi_select)
             nav_highlight_flags |=
                 ImGuiNavHighlightFlags_AlwaysDraw;  // Always show the nav rectangle
@@ -878,7 +897,8 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     }
 
     if (store_tree_node_stack_data && is_open)
-        TreeNodeStoreStackData(flags);  // Call before TreePushOverrideID()
+        TreeNodeStoreStackData(flags,
+                               text_pos.x - text_offset_x);  // Call before TreePushOverrideID()
     if (is_open && !(flags & ImGuiTreeNodeFlags_NoTreePushOnOpen))
         TreePushOverrideID(id);  // Could use TreePush(label) but this avoid computing twice
 
@@ -910,8 +930,9 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     const ImVec2 eye_size   = CalcTextSize(ICON_FK_EYE, nullptr, false);
 
     const float text_offset_x =
-        g.FontSize +
-        (display_frame ? padding.x * 3 : padding.x * 2);  // Eye width + Collapsing arrow width + Spacing
+        g.FontSize + (display_frame
+                          ? padding.x * 3
+                          : padding.x * 2);  // Eye width + Collapsing arrow width + Spacing
     const float text_offset_y =
         ImMax(padding.y, window->DC.CurrLineTextBaseOffset);  // Latch before ItemSize changes it
     const float text_width = g.FontSize + label_size.x + padding.x * 2;  // Include collapsing arrow
@@ -961,7 +982,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
             frame_bb.Min.x + text_width + (label_size.x > 0.0f ? style.ItemSpacing.x * 2.0f : 0.0f);
 
     // Compute open and multi-select states before ItemAdd() as it clear NextItem data.
-    ImGuiID storage_id = (g.NextItemData.Flags & ImGuiNextItemDataFlags_HasStorageID)
+    ImGuiID storage_id = (g.NextItemData.HasFlags & ImGuiNextItemDataFlags_HasStorageID)
                              ? g.NextItemData.StorageId
                              : id;
     bool is_open       = TreeNodeUpdateNextOpen(storage_id, flags);
@@ -1000,7 +1021,8 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     const bool is_leaf = (flags & ImGuiTreeNodeFlags_Leaf) != 0;
     if (!is_visible) {
         if (store_tree_node_stack_data && is_open)
-            TreeNodeStoreStackData(flags);  // Call before TreePushOverrideID()
+            TreeNodeStoreStackData(flags,
+                                   text_pos.x - text_offset_x);  // Call before TreePushOverrideID()
         if (is_open && !(flags & ImGuiTreeNodeFlags_NoTreePushOnOpen))
             TreePushOverrideID(id);
         IMGUI_TEST_ENGINE_ITEM_INFO(g.LastItemData.ID, label,
@@ -1023,7 +1045,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
 
     ImGuiButtonFlags eye_button_flags = ImGuiTreeNodeFlags_None;
     if ((flags & ImGuiTreeNodeFlags_AllowOverlap) ||
-        (g.LastItemData.InFlags & ImGuiItemFlags_AllowOverlap))
+        (g.LastItemData.ItemFlags & ImGuiItemFlags_AllowOverlap))
         eye_button_flags |= ImGuiButtonFlags_AllowOverlap;
     eye_button_flags |= ImGuiButtonFlags_PressedOnClick;
 
@@ -1036,7 +1058,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
 
     ImGuiButtonFlags button_flags = ImGuiTreeNodeFlags_None;
     if ((flags & ImGuiTreeNodeFlags_AllowOverlap) ||
-        (g.LastItemData.InFlags & ImGuiItemFlags_AllowOverlap))
+        (g.LastItemData.ItemFlags & ImGuiItemFlags_AllowOverlap))
         button_flags |= ImGuiButtonFlags_AllowOverlap;
     if (!is_leaf)
         button_flags |= ImGuiButtonFlags_PressedOnDragDropHold;
@@ -1050,7 +1072,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     const bool is_mouse_x_over_arrow =
         (g.IO.MousePos.x >= arrow_hit_x1 && g.IO.MousePos.x < arrow_hit_x2);
 
-    const bool is_multi_select = (g.LastItemData.InFlags & ImGuiItemFlags_IsMultiSelect) != 0;
+    const bool is_multi_select = (g.LastItemData.ItemFlags & ImGuiItemFlags_IsMultiSelect) != 0;
     if (is_multi_select)  // We absolutely need to distinguish open vs select so _OpenOnArrow comes
                           // by default
         flags |= (flags & ImGuiTreeNodeFlags_OpenOnMask_) == 0
@@ -1088,7 +1110,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
                            ~ImGuiButtonFlags_PressedOnClickRelease;
     } else {
         if (window != g.HoveredWindow || !is_mouse_x_over_arrow)
-            button_flags |= ImGuiButtonFlags_NoKeyModifiers;
+            button_flags |= ImGuiButtonFlags_NoKeyModsAllowed;
     }
 
     bool hovered, held;
@@ -1102,8 +1124,8 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
             if (flags & ImGuiTreeNodeFlags_OpenOnArrow)
                 toggled |=
                     is_mouse_x_over_arrow &&
-                    !g.NavDisableMouseHover;  // Lightweight equivalent of IsMouseHoveringRect()
-                                              // since ButtonBehavior() already did the job
+                    !g.NavHighlightItemUnderNav;  // Lightweight equivalent of IsMouseHoveringRect()
+                                                  // since ButtonBehavior() already did the job
             if ((flags & ImGuiTreeNodeFlags_OpenOnDoubleClick) && g.IO.MouseClickedCount[0] == 2)
                 toggled = true;  // Double click
         } else if (pressed && g.DragDropHoldJustPressedId == id) {
@@ -1150,7 +1172,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     // Render
     {
         const ImU32 text_col                       = GetColorU32(ImGuiCol_Text);
-        ImGuiNavHighlightFlags nav_highlight_flags = ImGuiNavHighlightFlags_Compact;
+        ImGuiNavRenderCursorFlags nav_highlight_flags = ImGuiNavHighlightFlags_Compact;
         if (is_multi_select)
             nav_highlight_flags |=
                 ImGuiNavHighlightFlags_AlwaysDraw;  // Always show the nav rectangle
@@ -1225,7 +1247,8 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     }
 
     if (store_tree_node_stack_data && is_open)
-        TreeNodeStoreStackData(flags);  // Call before TreePushOverrideID()
+        TreeNodeStoreStackData(flags,
+                               text_pos.x - text_offset_x);  // Call before TreePushOverrideID()
     if (is_open && !(flags & ImGuiTreeNodeFlags_NoTreePushOnOpen))
         TreePushOverrideID(id);  // Could use TreePush(label) but this avoid computing twice
 
@@ -1236,7 +1259,8 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     return is_open;
 }
 
-bool ImGui::BeginPopupContextItem(const char *str_id, ImGuiPopupFlags popup_flags, ImGuiHoveredFlags hover_flags) {
+bool ImGui::BeginPopupContextItem(const char *str_id, ImGuiPopupFlags popup_flags,
+                                  ImGuiHoveredFlags hover_flags) {
     ImGuiContext &g     = *GImGui;
     ImGuiWindow *window = g.CurrentWindow;
     if (window->SkipItems)
@@ -1406,7 +1430,8 @@ bool ImGui::IsDragDropSource(ImGuiDragDropFlags flags) {
             // !ActiveIdIsAlive. Rely on keeping other window->LastItemXXX fields intact.
             source_id = g.LastItemData.ID = window->GetIDFromRectangle(g.LastItemData.Rect);
             KeepAliveID(source_id);
-            bool is_hovered = ItemHoverable(g.LastItemData.Rect, source_id, g.LastItemData.InFlags);
+            bool is_hovered =
+                ItemHoverable(g.LastItemData.Rect, source_id, g.LastItemData.ItemFlags);
             if (is_hovered && g.IO.MouseClicked[mouse_button]) {
                 SetActiveID(source_id, window);
                 FocusWindow(window);
@@ -1477,6 +1502,12 @@ void ImGui_ImplGlfw_CreateWindow_Ex(ImGuiViewport *viewport) {
     ImGui_ImplGlfw_ViewportData *vd = IM_NEW(ImGui_ImplGlfw_ViewportData)();
     viewport->PlatformUserData      = vd;
 
+    // Workaround for Linux: ignore mouse up events corresponding to losing focus of the previously
+    // focused window (#7733, #3158, #7922)
+#ifdef __linux__
+    bd->MouseIgnoreButtonUpWaitForFocusLoss = true;
+#endif
+
     // GLFW 3.2 unfortunately always set focus on glfwCreateWindow() if GLFW_VISIBLE is set,
     // regardless of GLFW_FOCUSED With GLFW 3.3, the hint GLFW_FOCUS_ON_SHOW fixes this problem
     glfwWindowHint(GLFW_VISIBLE, false);
@@ -1489,15 +1520,18 @@ void ImGui_ImplGlfw_CreateWindow_Ex(ImGuiViewport *viewport) {
 #if GLFW_HAS_WINDOW_TOPMOST
     glfwWindowHint(GLFW_FLOATING, (viewport->Flags & ImGuiViewportFlags_TopMost) ? true : false);
 #endif
-    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER,
-                   (viewport->Flags & ImGuiViewportFlags_TransparentFrameBuffer) ? true : false);
     GLFWwindow *share_window = (bd->ClientApi == GlfwClientApi_OpenGL) ? bd->Window : nullptr;
     vd->Window      = glfwCreateWindow((int)viewport->Size.x, (int)viewport->Size.y, "No Title Yet",
                                        nullptr, share_window);
     vd->WindowOwned = true;
+    ImGui_ImplGlfw_ContextMap_Add(vd->Window, bd->Context);
     viewport->PlatformHandle = (void *)vd->Window;
+#ifdef IMGUI_GLFW_HAS_SETWINDOWFLOATING
+    ImGui_ImplGlfw_SetWindowFloating(vd->Window);
+#endif
 #ifdef _WIN32
     viewport->PlatformHandleRaw = glfwGetWin32Window(vd->Window);
+    ::SetPropA((HWND)viewport->PlatformHandleRaw, "IMGUI_BACKEND_DATA", bd);
 #elif defined(__APPLE__)
     viewport->PlatformHandleRaw = (void *)glfwGetCocoaWindow(vd->Window);
 #endif

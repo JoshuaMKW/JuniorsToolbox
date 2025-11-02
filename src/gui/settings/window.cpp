@@ -1,11 +1,11 @@
 #include "gui/settings/window.hpp"
 #include "core/keybind/keybind.hpp"
+#include "gui/application.hpp"
 #include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
 #include "gui/logging/errors.hpp"
 #include "gui/settings.hpp"
 #include "gui/themes.hpp"
-#include "gui/application.hpp"
 
 #include <ImGuiFileDialog.h>
 
@@ -258,15 +258,15 @@ namespace Toolbox::UI {
 
     void SettingsWindow::renderSettingsUI(TimeStep delta_time) {
         FontManager &font_manager         = GUIApplication::instance().getFontManager();
-        ThemeManager &themes_manager = GUIApplication::instance().getThemeManager();
+        ThemeManager &themes_manager      = GUIApplication::instance().getThemeManager();
         SettingsManager &settings_manager = GUIApplication::instance().getSettingsManager();
         AppSettings &settings             = settings_manager.getCurrentProfile();
 
         auto themes = themes_manager.themes();
 
-        size_t selected_index         = themes_manager.getActiveThemeIndex();
+        size_t selected_index                = themes_manager.getActiveThemeIndex();
         std::string_view selected_theme_name = themes.size() > 0 ? themes[selected_index]->name()
-                                                                 : ""; 
+                                                                 : "";
 
         if (ImGui::BeginCombo("Theme", selected_theme_name.data())) {
             for (size_t i = 0; i < themes.size(); ++i) {
@@ -296,8 +296,9 @@ namespace Toolbox::UI {
             ImGui::EndCombo();
         }
 
+#if 0
         if (ImGui::BeginCombo("Font Size", std::format("{}", current_font_size).c_str())) {
-            for (auto &size : font_manager.fontSizes()) {
+            for (auto& size : font_manager.fontSizes()) {
                 bool selected = size == current_font_size;
                 if (ImGui::Selectable(std::format("{}", size).c_str(), selected)) {
                     font_manager.setCurrentFontSize(size);
@@ -306,6 +307,13 @@ namespace Toolbox::UI {
             }
             ImGui::EndCombo();
         }
+#else
+        if (ImGui::SliderFloat("Font Size", &settings.m_font_size, font_manager.getFontSizeMin(),
+                               font_manager.getFontSizeMax(), "%.0f",
+                               ImGuiSliderFlags_AlwaysClamp)) {
+            font_manager.setCurrentFontSize(settings.m_font_size);
+        }
+#endif
     }
 
     void SettingsWindow::renderSettingsPreview(TimeStep delta_time) {
@@ -387,9 +395,11 @@ namespace Toolbox::UI {
         }
 
         if (m_is_path_dialog_open) {
+            IGFD::FileDialogConfig config;
+            config.filePathName = settings.m_dolphin_path.string();
             ImGuiFileDialog::Instance()->OpenDialog(
                 "OpenDolphinDialog", "Choose Dolphin EXE", {"Dolphin{.exe}"},
-                settings.m_dolphin_path.string(), "Dolphin.exe");
+                config);
         }
 
         if (ImGuiFileDialog::Instance()->Display("OpenDolphinDialog")) {

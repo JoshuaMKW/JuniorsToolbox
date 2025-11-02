@@ -12,6 +12,8 @@
 #include "fsystem.hpp"
 #include "gui/settings.hpp"
 
+#define USE_LEGACY_FONT_API 0
+
 namespace Toolbox::UI {
 
     class FontManager {
@@ -20,10 +22,15 @@ namespace Toolbox::UI {
         std::multimap<std::string, ImFont *> m_loaded_fonts;
 
     public:
+#if USE_LEGACY_FONT_API
         std::set<float> fontSizes() {
             static std::set<float> s_font_sizes = {12.0f, 16.0f, 24.0f};
             return s_font_sizes;
         }
+#else
+        constexpr float getFontSizeMin() const noexcept { return 8.0f; }
+        constexpr float getFontSizeMax() const noexcept { return 32.0f; }
+#endif
 
         std::set<std::string> fontFamilies() {
             std::set<std::string> unique_families;
@@ -40,18 +47,22 @@ namespace Toolbox::UI {
                         const ImWchar *glyph_ranges);
         void finalize();
 
+#if USE_LEGACY_FONT_API
         ImFont *getFont(std::string_view name, float size) const;
 
         ImFont *getCurrentFont() const {
             return getFont(m_current_font_family, m_current_font_size);
         }
+#else
+        ImFont *getFont(std::string_view name) const;
 
-        std::string getCurrentFontFamily() const {
-            return m_current_font_family;
-        }
+        ImFont *getCurrentFont() const { return getFont(m_current_font_family); }
+#endif
+
+        std::string getCurrentFontFamily() const { return m_current_font_family; }
 
         float getCurrentFontSize() const {
-            return m_current_font_size;
+            return std::clamp(m_current_font_size, getFontSizeMin(), getFontSizeMax());
         }
 
         void setCurrentFont(std::string_view name, float size);

@@ -151,7 +151,7 @@ if (WIN32)
     target_link_libraries(JuniorsToolbox PRIVATE Advapi32 Comctl32)
 endif()
 
-target_compile_definitions(JuniorsToolbox PRIVATE NOMINMAX IMGUI_DEFINE_MATH_OPERATORS)
+target_compile_definitions(JuniorsToolbox PRIVATE NOMINMAX IMGUI_DEFINE_MATH_OPERATORS GLM_ENABLE_EXPERIMENTAL)
 
 target_include_directories(JuniorsToolbox PRIVATE
     "include"

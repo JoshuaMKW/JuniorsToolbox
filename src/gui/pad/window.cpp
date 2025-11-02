@@ -32,9 +32,9 @@
 
 #include "gui/logging/errors.hpp"
 
-#include <stb/stb_image.h>
 #include <ImGuiFileDialog.h>
 #include <imgui.h>
+#include <stb/stb_image.h>
 
 static const std::vector<ImVec2> s_controller_base_points = {
     ImVec2(0.126939728447689f, -0.9979365868418832f),
@@ -473,6 +473,7 @@ namespace Toolbox::UI {
         }
 
         ImGui::PopStyleColor(3);
+        ImGui::Dummy({0,0});
     }
 
     void PadInputWindow::renderControllerOverlay(const ImVec2 &center, f32 scale, u8 alpha) {
@@ -934,9 +935,10 @@ namespace Toolbox::UI {
 
     void PadInputWindow::renderFileDialogs() {
         if (m_is_open_dialog_open) {
-            ImGuiFileDialog::Instance()->OpenDialog(
-                "OpenPadDialog", "Choose Folder", nullptr,
-                m_load_path ? m_load_path->string().c_str() : ".", "");
+            IGFD::FileDialogConfig config;
+            config.path = m_load_path ? m_load_path->string().c_str() : ".";
+            ImGuiFileDialog::Instance()->OpenDialog("OpenPadDialog", "Choose Folder", nullptr,
+                                                    config);
         }
 
         if (ImGuiFileDialog::Instance()->Display("OpenPadDialog")) {
@@ -974,9 +976,10 @@ namespace Toolbox::UI {
 
         if (m_is_save_dialog_open) {
             if (!m_is_save_default_ready) {
-                ImGuiFileDialog::Instance()->OpenDialog(
-                    "SavePadDialog", "Choose Folder", nullptr,
-                    m_load_path ? m_load_path->string().c_str() : ".", "");
+                IGFD::FileDialogConfig config;
+                config.path = m_load_path ? m_load_path->string().c_str() : ".";
+                ImGuiFileDialog::Instance()->OpenDialog("SavePadDialog", "Choose Folder", nullptr,
+                                                        config);
             } else {
                 m_pad_recorder.saveToFolder(*m_load_path);
                 return;
@@ -996,12 +999,12 @@ namespace Toolbox::UI {
         }
 
         if (m_is_import_dialog_open) {
+            IGFD::FileDialogConfig config;
+            config.path = m_import_path ? m_import_path->string().c_str()
+                          : m_load_path ? m_load_path->string().c_str()
+                                        : ".";
             ImGuiFileDialog::Instance()->OpenDialog("ImportPadRecordDialog", "Choose File",
-                                                    ".pad,.txt",
-                                                    m_import_path ? m_import_path->string().c_str()
-                                                    : m_load_path ? m_load_path->string().c_str()
-                                                                  : ".",
-                                                    "");
+                                                    ".pad,.txt", config);
         }
 
         if (ImGuiFileDialog::Instance()->Display("ImportPadRecordDialog")) {
@@ -1017,12 +1020,12 @@ namespace Toolbox::UI {
         }
 
         if (m_is_export_dialog_open) {
+            IGFD::FileDialogConfig config;
+            config.path = m_import_path ? m_import_path->string().c_str()
+                          : m_load_path ? m_load_path->string().c_str()
+                                        : ".";
             ImGuiFileDialog::Instance()->OpenDialog("ExportPadRecordDialog", "Choose File",
-                                                    ".pad,.txt",
-                                                    m_export_path ? m_export_path->string().c_str()
-                                                    : m_load_path ? m_load_path->string().c_str()
-                                                                  : ".",
-                                                    "");
+                                                    ".pad,.txt", config);
         }
 
         if (ImGuiFileDialog::Instance()->Display("ExportPadRecordDialog")) {
