@@ -102,9 +102,10 @@ namespace Toolbox {
         EVENT_GROUP_ADDED    = BIT(4),
         EVENT_GROUP_MODIFIED = BIT(5),
         EVENT_GROUP_REMOVED  = BIT(6),
+        EVENT_INSERT         = BIT(7),
         EVENT_WATCH_ANY      = EVENT_WATCH_ADDED | EVENT_WATCH_MODIFIED | EVENT_WATCH_REMOVED,
         EVENT_GROUP_ANY      = EVENT_GROUP_ADDED | EVENT_GROUP_MODIFIED | EVENT_GROUP_REMOVED,
-        EVENT_ANY            = EVENT_RESET | EVENT_WATCH_ANY | EVENT_GROUP_ANY,
+        EVENT_ANY            = EVENT_RESET | EVENT_WATCH_ANY | EVENT_GROUP_ANY | EVENT_INSERT,
     };
     TOOLBOX_BITWISE_ENUM(WatchModelEventFlags)
 
@@ -211,7 +212,9 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData(const IDataModel::index_container &indexes) const override;
-        [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
+        [[nodiscard]] bool
+        insertMimeData(const ModelIndex &index, const MimeData &data,
+                       ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
@@ -226,14 +229,13 @@ namespace Toolbox {
         ModelIndex makeGroupIndex(const std::string &name, int64_t row, const ModelIndex &parent,
                                   bool find_unique_name = true);
 
-        using event_listener_t = std::function<void(const ModelIndex &, WatchModelEventFlags)>;
-        void addEventListener(UUID64 uuid, event_listener_t listener, WatchModelEventFlags flags);
-        void removeEventListener(UUID64 uuid);
+        void addEventListener(UUID64 uuid, event_listener_t listener, int allowed_flags) override;
+        void removeEventListener(UUID64 uuid) override;
 
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
 
-        void signalEventListeners(const ModelIndex &index, WatchModelEventFlags flags);
+        void signalEventListeners(const ModelIndex &index, ModelEventFlags flags);
 
     protected:
         // Implementation of public API for mutex locking reasons
@@ -264,11 +266,20 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData_(const IDataModel::index_container &indexes) const;
-        [[nodiscard]] bool insertMimeData_(const ModelIndex &index, const MimeData &data);
+        [[nodiscard]] bool
+        insertMimeData_(const ModelIndex &index, const MimeData &data,
+                        ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index);
         void fetchMore_(const ModelIndex &index);
         // -- END -- //
+
+        ModelIndex makeWatchIndex_(const std::string &name, MetaType type,
+                                  const std::vector<u32> &pointer_chain, u32 size, bool is_pointer,
+                                  WatchValueBase value_base, int64_t row, const ModelIndex &parent,
+                                  bool find_unique_name = true);
+        ModelIndex makeGroupIndex_(const std::string &name, int64_t row, const ModelIndex &parent,
+                                  bool find_unique_name = true);
 
         size_t pollChildren(const ModelIndex &index) const;
 
@@ -307,12 +318,14 @@ namespace Toolbox {
         _WatchIndexData &getIndexData_(const ModelIndex &index);
         const _WatchIndexData &getIndexData_(const ModelIndex &index) const;
 
+        void pruneRedundantIndexes(IDataModel::index_container &indexes) const;
+
     private:
         UUID64 m_uuid;
 
         mutable std::mutex m_mutex;
 
-        std::unordered_map<UUID64, std::pair<event_listener_t, WatchModelEventFlags>> m_listeners;
+        std::unordered_map<UUID64, std::pair<event_listener_t, int>> m_listeners;
 
         mutable std::vector<_WatchIndexData> m_index_map;
 
@@ -409,13 +422,26 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData(const IDataModel::index_container &indexes) const override;
-        [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
+        [[nodiscard]] bool
+        insertMimeData(const ModelIndex &index, const MimeData &data,
+                       ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
         void fetchMore(const ModelIndex &index) override;
 
         void reset() override;
+
+        void addEventListener(UUID64 uuid, event_listener_t listener, int allowed_flags) override {
+            auto transformer = [this, listener](const ModelIndex &index, int flags) {
+                ModelIndex &&proxy_index = toProxyIndex(index);
+                listener(proxy_index, flags);
+            };
+            m_source_model->addEventListener(uuid, transformer, allowed_flags);
+        }
+        void removeEventListener(UUID64 uuid) override {
+            m_source_model->removeEventListener(uuid);
+        }
 
         [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;
@@ -429,7 +455,7 @@ namespace Toolbox {
         void cacheIndex(const ModelIndex &index) const;
         void cacheIndex_(const ModelIndex &index) const;
 
-        void watchDataUpdateEvent(const ModelIndex &index, WatchModelEventFlags flags);
+        void watchDataUpdateEvent(const ModelIndex &index, int flags);
 
     private:
         UUID64 m_uuid;

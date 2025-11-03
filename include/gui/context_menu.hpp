@@ -94,6 +94,7 @@ namespace Toolbox::UI {
                      ImGuiPopupFlags popup_flags = ImGuiPopupFlags_MouseButtonRight);
         void tryRender(const _DataT &ctx,
                        ImGuiHoveredFlags hover_flags = ImGuiHoveredFlags_AllowWhenBlockedByPopup);
+        void applyDeferredCmds();
 
         void
         renderForCond(std::optional<std::string> label, const _DataT &ctx, bool condition,
@@ -128,6 +129,9 @@ namespace Toolbox::UI {
 
         float m_delta_hovered = 0.0f;
         ImGuiID m_hovered_id  = 0;
+
+        _DataT m_deferred_ctx;
+        std::vector<typename option_t::operator_t> m_deferred_cmds;
     };
 
     template <typename _DataT>
@@ -216,6 +220,7 @@ namespace Toolbox::UI {
             return;
         }
 
+        m_deferred_ctx = ctx;
         processKeybinds(ctx);
 
         ImGuiWindow *window = ImGui::GetCurrentWindow();\
@@ -248,6 +253,13 @@ namespace Toolbox::UI {
 
         ImGui::EndPopup();
         return;
+    }
+
+    template <typename _DataT> inline void ContextMenu<_DataT>::applyDeferredCmds() {
+        for (typename option_t::operator_t &cmd : m_deferred_cmds) {
+            cmd(m_deferred_ctx);
+        }
+        m_deferred_cmds.clear();
     }
 
     template <typename _DataT>
@@ -434,7 +446,7 @@ namespace Toolbox::UI {
                                        : std::format("{} ({})", option.m_name, keybind_name);
 
         if (ImGui::MenuItem(display_name.c_str())) {
-            option.m_op(ctx);
+            m_deferred_cmds.emplace_back(option.m_op);
             return true;
         }
 
@@ -473,7 +485,7 @@ namespace Toolbox::UI {
                     m_open_event(ctx);
                 }
                 option.m_keybind_used = true;
-                option.m_op(ctx);
+                m_deferred_cmds.emplace_back(option.m_op);
                 return true;
             }
         }

@@ -85,7 +85,7 @@ namespace Toolbox {
 
                 size_t objsize = static_cast<size_t>(endpos - startpos);
 
-                buf_out.resize(objsize);
+                buf_out.resize((uint32_t)objsize);
                 strstream.read(buf_out.buf<char>(), objsize);
 
                 return result;

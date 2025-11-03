@@ -453,9 +453,10 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    bool MemScanModel::insertMimeData(const ModelIndex &index, const MimeData &data) {
+    bool MemScanModel::insertMimeData(const ModelIndex &index, const MimeData &data,
+                                      ModelInsertPolicy policy) {
         std::scoped_lock lock(m_mutex);
-        return insertMimeData_(index, data);
+        return insertMimeData_(index, data, policy);
     }
 
     std::vector<std::string> MemScanModel::getSupportedMimeTypes() const {
@@ -605,8 +606,8 @@ namespace Toolbox {
     }
 
     void MemScanModel::addEventListener(UUID64 uuid, event_listener_t listener,
-                                        MemScanModelEventFlags flags) {
-        m_listeners[uuid] = {listener, flags};
+                                        int allowed_flags) {
+        m_listeners[uuid] = {listener, allowed_flags};
     }
 
     void MemScanModel::removeEventListener(UUID64 uuid) { m_listeners.erase(uuid); }
@@ -886,7 +887,8 @@ namespace Toolbox {
         return ScopePtr<MimeData>();
     }
 
-    bool MemScanModel::insertMimeData_(const ModelIndex &index, const MimeData &data) {
+    bool MemScanModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
+                                       ModelInsertPolicy policy) {
         return false;
     }
 
@@ -983,9 +985,9 @@ namespace Toolbox {
 
     size_t MemScanModel::pollChildren(const ModelIndex &index) const { return 0; }
 
-    void MemScanModel::signalEventListeners(const ModelIndex &index, MemScanModelEventFlags flags) {
+    void MemScanModel::signalEventListeners(const ModelIndex &index, int flags) {
         for (const auto &[key, listener] : m_listeners) {
-            if ((listener.second & flags) != MemScanModelEventFlags::NONE) {
+            if ((listener.second & flags) != ModelEventFlags::EVENT_NONE) {
                 listener.first(index, flags);
             }
         }

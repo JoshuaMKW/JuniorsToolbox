@@ -200,11 +200,9 @@ namespace Toolbox::UI {
 
         RefPtr<WatchDataModel> m_watch_model;
         RefPtr<WatchDataModelSortFilterProxy> m_watch_proxy_model;
-        ModelSelectionState m_watch_selection;
         ModelSelectionManager m_watch_selection_mgr;
 
         RefPtr<MemScanModel> m_scan_model;
-        ModelSelectionState m_scan_selection;
         ModelSelectionManager m_scan_selection_mgr;
 
         bool m_scan_active = false;

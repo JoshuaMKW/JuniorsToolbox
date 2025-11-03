@@ -15,6 +15,21 @@ namespace Toolbox {
 
         ~ModelSelectionState() = default;
 
+        ModelSelectionState &operator=(const ModelSelectionState &other) {
+            m_ref_model     = other.m_ref_model;
+            m_selection     = other.m_selection;
+            m_last_selected = other.m_last_selected;
+            return *this;
+        }
+
+        ModelSelectionState &operator=(ModelSelectionState &&other) noexcept {
+            m_ref_model     = std::move(other.m_ref_model);
+            m_selection     = std::move(other.m_selection);
+            m_last_selected = std::move(other.m_last_selected);
+            return *this;
+        }
+
+    public:
         RefPtr<IDataModel> getModel() const { return m_ref_model; }
         void setModel(RefPtr<IDataModel> model) { m_ref_model = model; }
 
@@ -44,38 +59,61 @@ namespace Toolbox {
         using dispatch_fn = std::function<void(RefPtr<IDataModel>, const ModelIndex &)>;
         void dispatchToSelection(dispatch_fn fn);
 
-    public:
-        ModelSelectionState &operator=(const ModelSelectionState &other) {
-            m_ref_model = other.m_ref_model;
-            m_selection = other.m_selection;
-            return *this;
-        }
-
     private:
         RefPtr<IDataModel> m_ref_model;
         IDataModel::index_container m_selection;
         ModelIndex m_last_selected;
     };
 
-    class ModelSelectionManager {
+    class ModelSelectionManager : IUnique {
     public:
-        ModelSelectionManager() = default;
+        ModelSelectionManager(RefPtr<IDataModel> model);
 
-        bool actionDeleteSelection(ModelSelectionState &state);
-        bool actionRenameSelection(const ModelSelectionState &state,
-                                   const std::string &template_name);
-        bool actionPasteIntoSelection(const ModelSelectionState &state, const MimeData &data);
-        ScopePtr<MimeData> actionCutSelection(ModelSelectionState &state);
-        ScopePtr<MimeData> actionCopySelection(const ModelSelectionState &state);
+    public:
+        ModelSelectionManager()                                  = default;
+        ModelSelectionManager(const ModelSelectionManager &)     = delete;
+        ModelSelectionManager(ModelSelectionManager &&) noexcept = default;
+        ~ModelSelectionManager();
 
-        bool actionSelectIndex(ModelSelectionState &state, const ModelIndex &index,
-                               bool force_single = false);
+        ModelSelectionManager &operator=(ModelSelectionManager &&other) noexcept {
+            RefPtr<IDataModel> model = other.m_selection.getModel();
+            if (model) {
+                // Update the event so memory references update to the new instance
+                model->removeEventListener(other.m_uuid);
+                model->addEventListener(other.m_uuid,
+                                        TOOLBOX_BIND_EVENT_FN(updateSelectionOnInsert),
+                                        ModelEventFlags::EVENT_ANY);
+            }
+            m_uuid      = std::move(other.m_uuid);
+            m_selection = std::move(other.m_selection);
+            return *this;
+        }
 
-        bool actionSelectIndexIfNew(ModelSelectionState &state, const ModelIndex &index);
-        bool actionClearRequestExcIndex(ModelSelectionState &state, const ModelIndex &index,
-                                        bool is_left_button);
+    public:
+        UUID64 getUUID() const override { return m_uuid; }
 
-        bool handleActionsByMouseInput(ModelSelectionState &state, const ModelIndex &index);
+        ModelSelectionState &getState() { return m_selection; }
+        const ModelSelectionState &getState() const { return m_selection; }
+
+        bool actionDeleteSelection();
+        bool actionRenameSelection(const std::string &template_name);
+        bool actionPasteIntoSelection(const MimeData &data);
+        ScopePtr<MimeData> actionCutSelection();
+        ScopePtr<MimeData> actionCopySelection();
+
+        bool actionSelectIndex(const ModelIndex &index, bool force_single = false);
+
+        bool actionSelectIndexIfNew(const ModelIndex &index);
+        bool actionClearRequestExcIndex(const ModelIndex &index, bool is_left_button);
+
+        bool handleActionsByMouseInput(const ModelIndex &index);
+
+    protected:
+        void updateSelectionOnInsert(const ModelIndex &index, int flags);
+
+    private:
+        UUID64 m_uuid;
+        ModelSelectionState m_selection;
     };
 
 }  // namespace Toolbox

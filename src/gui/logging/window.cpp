@@ -100,7 +100,7 @@ namespace Toolbox::UI {
         const FontManager &font_manager = GUIApplication::instance().getFontManager();
         ImFont *mono_font               = font_manager.getFont("NanumGothicCoding-Bold");
         if (mono_font) {
-            ImGui::PushFont(mono_font, font_manager.getCurrentFontSize());
+            ImGui::PushFont(mono_font, font_manager.getCurrentFontSize() * 0.75f);
         }
 
         if (ImGui::BeginChild(ImWindowComponentTitle(*this, "Log View").c_str(), {}, false,

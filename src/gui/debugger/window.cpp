@@ -269,7 +269,7 @@ namespace Toolbox::UI {
 
                 renderMemoryWatchList();
 
-                ModelIndex last_selected_watch = m_watch_selection.getLastSelected();
+                ModelIndex last_selected_watch = m_watch_selection_mgr.getState().getLastSelected();
 
                 ModelIndex parent_index = m_watch_proxy_model->getParent(last_selected_watch);
                 int64_t the_row         = m_watch_proxy_model->getRow(last_selected_watch);
@@ -311,6 +311,12 @@ namespace Toolbox::UI {
             m_fill_bytes_dialog.render(span);
         }
         ImGui::EndChild();
+
+        m_ascii_view_context_menu.applyDeferredCmds();
+        m_byte_view_context_menu.applyDeferredCmds();
+        m_watch_view_context_menu.applyDeferredCmds();
+        m_group_view_context_menu.applyDeferredCmds();
+        m_scan_view_context_menu.applyDeferredCmds();
 
         // ImGui::PopStyleVar();
         m_did_drag_drop = DragDropManager::instance().getCurrentDragAction() != nullptr;
@@ -890,15 +896,13 @@ namespace Toolbox::UI {
                                     if (is_rect_clicked) {
                                         m_any_row_clicked = true;
                                         if (is_left_click && !is_left_click_release) {
-                                            m_scan_selection_mgr.actionSelectIndex(m_scan_selection,
-                                                                                   idx);
+                                            m_scan_selection_mgr.actionSelectIndex(idx);
                                         } else if (is_right_click && !is_right_click_release) {
-                                            m_scan_selection_mgr.actionSelectIndexIfNew(
-                                                m_scan_selection, idx);
+                                            m_scan_selection_mgr.actionSelectIndexIfNew(idx);
                                         } else if (is_left_click_release ||
                                                    is_right_click_release) {
                                             m_scan_selection_mgr.actionClearRequestExcIndex(
-                                                m_scan_selection, idx, is_left_click_release);
+                                                idx, is_left_click_release);
                                         }
                                     }
                                 }
@@ -911,7 +915,8 @@ namespace Toolbox::UI {
                                 selected_col.w = 0.5;
                                 hovered_col.w  = 0.5;
 
-                                bool last_selected = m_scan_selection.getLastSelected() == idx;
+                                bool last_selected =
+                                    m_scan_selection_mgr.getState().getLastSelected() == idx;
 
                                 ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
 
@@ -920,7 +925,7 @@ namespace Toolbox::UI {
                                                        ImGui::ColorConvertFloat4ToU32(hovered_col),
                                                        last_selected, 0.0f, backdrop_flags);
                                     m_scan_view_context_menu.tryOpen(0);
-                                } else if (m_scan_selection.isSelected(idx)) {
+                                } else if (m_scan_selection_mgr.getState().isSelected(idx)) {
                                     ImGui::RenderFrame(row_rect.Min, row_rect.Max,
                                                        ImGui::ColorConvertFloat4ToU32(selected_col),
                                                        last_selected, 0.0f, backdrop_flags);
@@ -943,7 +948,8 @@ namespace Toolbox::UI {
                         }
 
                         if (m_scan_view_context_menu.isOpen()) {
-                            m_scan_view_context_menu.tryRender(m_scan_selection.getLastSelected());
+                            m_scan_view_context_menu.tryRender(
+                                m_scan_selection_mgr.getState().getLastSelected());
                         }
                     }
 
@@ -951,7 +957,7 @@ namespace Toolbox::UI {
                     if (ImGui::IsWindowFocused()) {
                         KeyBind select_all_bind = {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_A};
                         if (!m_keybind_wait_for_keyup && select_all_bind.isInputMatching()) {
-                            if (m_scan_selection.selectAll()) {
+                            if (m_scan_selection_mgr.getState().selectAll()) {
                                 m_keybind_wait_for_keyup = true;
                             }
                         } else {
@@ -965,7 +971,7 @@ namespace Toolbox::UI {
                 ImVec2 avail       = ImGui::GetContentRegionAvail();
                 float button_width = (avail.x - style.ItemSpacing.x * 2) / 3.0f;
 
-                const size_t selection_size = m_scan_selection.getSelection().size();
+                const size_t selection_size = m_scan_selection_mgr.getState().getSelection().size();
 
                 const bool can_add_selection = selection_size > 0;
                 const bool can_add_all = 0 < results && results <= SCANNER_TABLE_MAX_RENDER_COUNT;
@@ -1547,10 +1553,9 @@ namespace Toolbox::UI {
             }
 
             const FontManager &font_manager = GUIApplication::instance().getFontManager();
-            ImFont *mono_font = font_manager.getFont(
-                "NanumGothicCoding-Bold");
+            ImFont *mono_font               = font_manager.getFont("NanumGothicCoding-Bold");
             if (mono_font) {
-                ImGui::PushFont(mono_font, font_manager.getCurrentFontSize());
+                ImGui::PushFont(mono_font, font_manager.getCurrentFontSize() * 0.75f);
             }
 
             // Calculate the rows and columns based on
@@ -1817,7 +1822,7 @@ namespace Toolbox::UI {
                 if (ImGui::IsWindowFocused()) {
                     KeyBind select_all_bind = {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_A};
                     if (!m_keybind_wait_for_keyup && select_all_bind.isInputMatching()) {
-                        if (m_watch_selection.selectAll()) {
+                        if (m_watch_selection_mgr.getState().selectAll()) {
                             m_keybind_wait_for_keyup = true;
                         }
                     } else {
@@ -1825,7 +1830,7 @@ namespace Toolbox::UI {
                     }
                 }
 
-                const ModelIndex &last_sel = m_watch_selection.getLastSelected();
+                const ModelIndex &last_sel = m_watch_selection_mgr.getState().getLastSelected();
                 if (m_watch_proxy_model->isIndexGroup(last_sel)) {
                     m_group_view_context_menu.tryRender(last_sel);
                 } else {
@@ -1843,12 +1848,12 @@ namespace Toolbox::UI {
             ImRect window_rect  = ImRect{table_pos, table_pos + table_size};
             bool mouse_captured = ImGui::IsMouseHoveringRect(window_rect.Min, window_rect.Max);
 
-            //if (!m_add_group_dialog.is_open() && !m_add_watch_dialog.is_open()) {
-            //    if (!m_any_row_clicked && mouse_captured && (left_click || right_click) &&
-            //        Input::GetPressedKeyModifiers() == KeyModifier::KEY_NONE) {
-            //        m_watch_selection.clearSelection();
-            //    }
-            //}
+            // if (!m_add_group_dialog.is_open() && !m_add_watch_dialog.is_open()) {
+            //     if (!m_any_row_clicked && mouse_captured && (left_click || right_click) &&
+            //         Input::GetPressedKeyModifiers() == KeyModifier::KEY_NONE) {
+            //         m_watch_selection.clearSelection();
+            //     }
+            // }
         }
         ImGui::EndChild();
     }
@@ -1895,7 +1900,7 @@ namespace Toolbox::UI {
         bool is_right_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
         bool is_right_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_RIGHT);
 
-        bool is_selected = m_watch_selection.isSelected(watch_idx);
+        bool is_selected = m_watch_selection_mgr.getState().isSelected(watch_idx);
 
         ImGui::TableNextRow();
 
@@ -1949,7 +1954,7 @@ namespace Toolbox::UI {
         selected_col.w = 0.5;
         hovered_col.w  = 0.5;
 
-        bool last_selected = m_watch_selection.getLastSelected() == watch_idx;
+        bool last_selected = m_watch_selection_mgr.getState().getLastSelected() == watch_idx;
 
         if (is_rect_hovered) {
             ImGui::RenderFrame(row_rect.Min, row_rect.Max,
@@ -2022,7 +2027,7 @@ namespace Toolbox::UI {
         {
             if (is_rect_clicked && !is_collapse_hovered && !is_lock_hovered) {
                 m_any_row_clicked = true;
-                m_watch_selection_mgr.handleActionsByMouseInput(m_watch_selection, watch_idx);
+                m_watch_selection_mgr.handleActionsByMouseInput(watch_idx);
             }
 
             if (is_rect_hovered) {
@@ -2070,7 +2075,7 @@ namespace Toolbox::UI {
         bool is_right_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT);
         bool is_right_click_release = Input::GetMouseButtonUp(MouseButton::BUTTON_RIGHT);
 
-        bool is_selected = m_watch_selection.isSelected(group_idx);
+        bool is_selected = m_watch_selection_mgr.getState().isSelected(group_idx);
 
         ImGui::TableNextRow();
 
@@ -2124,7 +2129,7 @@ namespace Toolbox::UI {
         selected_col.w = 0.5;
         hovered_col.w  = 0.5;
 
-        bool last_selected = m_watch_selection.getLastSelected() == group_idx;
+        bool last_selected = m_watch_selection_mgr.getState().getLastSelected() == group_idx;
 
         if (is_rect_hovered) {
             ImGui::RenderFrame(row_rect.Min, row_rect.Max,
@@ -2211,7 +2216,7 @@ namespace Toolbox::UI {
         {
             if (is_rect_clicked && !is_collapse_hovered && !is_lock_hovered) {
                 m_any_row_clicked = true;
-                m_watch_selection_mgr.handleActionsByMouseInput(m_watch_selection, group_idx);
+                m_watch_selection_mgr.handleActionsByMouseInput(group_idx);
             }
 
             if (is_rect_hovered) {
@@ -2263,6 +2268,9 @@ namespace Toolbox::UI {
         size_t row_count = model->getRowCount(index);
         for (size_t i = 0; i < row_count; ++i) {
             ModelIndex child_idx = model->getIndex(i, 0, index);
+            if (!model->validateIndex(child_idx)) {
+                continue;
+            }
             processWatchModelToFlatTree(model, child_idx, flat_tree, open_map);
         }
     }
@@ -2325,12 +2333,12 @@ namespace Toolbox::UI {
         m_watch_proxy_model->setSortOrder(ModelSortOrder::SORT_ASCENDING);
         m_watch_proxy_model->setSortRole(WatchModelSortRole::SORT_ROLE_NONE);
 
-        m_watch_selection.setModel(m_watch_proxy_model);
+        m_watch_selection_mgr = ModelSelectionManager(m_watch_proxy_model);
 
         m_scan_model = make_referable<MemScanModel>();
         m_scan_model->initialize();
 
-        m_scan_selection.setModel(m_scan_model);
+        m_scan_selection_mgr = ModelSelectionManager(m_scan_model);
 
         m_scan_active = false;
         m_scan_begin_input.fill('\0');
@@ -2499,10 +2507,9 @@ namespace Toolbox::UI {
                            u32 size      = m_scan_model->getScanSize(index);
                            m_add_watch_dialog.openToAddressAsType(address, type, size);
                        })
-            .addOption("Delete", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
-                       [&](const ModelIndex &index) {
-                           m_scan_selection_mgr.actionDeleteSelection(m_scan_selection);
-                       });
+            .addOption(
+                "Delete", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                [&](const ModelIndex &index) { m_scan_selection_mgr.actionDeleteSelection(); });
 
         ContextMenuBuilder<ModelIndex>(&m_watch_view_context_menu)
             .addOption("Browse Memory at Address", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_B},
@@ -2544,8 +2551,7 @@ namespace Toolbox::UI {
             .addDivider()
             .addOption("Cut", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_X},
                        [&](const ModelIndex &index) {
-                           ScopePtr<MimeData> data =
-                               m_watch_selection_mgr.actionCutSelection(m_watch_selection);
+                           ScopePtr<MimeData> data = m_watch_selection_mgr.actionCutSelection();
                            if (!data) {
                                return;
                            }
@@ -2553,8 +2559,7 @@ namespace Toolbox::UI {
                        })
             .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
                        [&](const ModelIndex &index) {
-                           ScopePtr<MimeData> data =
-                               m_watch_selection_mgr.actionCopySelection(m_watch_selection);
+                           ScopePtr<MimeData> data = m_watch_selection_mgr.actionCopySelection();
                            if (!data) {
                                return;
                            }
@@ -2567,14 +2572,12 @@ namespace Toolbox::UI {
                                LogError(result.error());
                                return;
                            }
-                           m_watch_selection_mgr.actionPasteIntoSelection(m_watch_selection,
-                                                                          result.value());
+                           m_watch_selection_mgr.actionPasteIntoSelection(result.value());
                        })
             .addDivider()
-            .addOption("Delete", {KeyCode::KEY_DELETE},
-                       [&](const ModelIndex &index) {
-                           m_watch_selection_mgr.actionDeleteSelection(m_watch_selection);
-                       });
+            .addOption("Delete", {KeyCode::KEY_DELETE}, [&](const ModelIndex &index) {
+                m_watch_selection_mgr.actionDeleteSelection();
+            });
 
         ContextMenuBuilder<ModelIndex>(&m_group_view_context_menu)
             .addOption(
@@ -2586,8 +2589,7 @@ namespace Toolbox::UI {
             .addDivider()
             .addOption("Cut", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_X},
                        [&](const ModelIndex &index) {
-                           ScopePtr<MimeData> data =
-                               m_watch_selection_mgr.actionCutSelection(m_watch_selection);
+                           ScopePtr<MimeData> data = m_watch_selection_mgr.actionCutSelection();
                            if (!data) {
                                return;
                            }
@@ -2595,8 +2597,7 @@ namespace Toolbox::UI {
                        })
             .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
                        [&](const ModelIndex &index) {
-                           ScopePtr<MimeData> data =
-                               m_watch_selection_mgr.actionCopySelection(m_watch_selection);
+                           ScopePtr<MimeData> data = m_watch_selection_mgr.actionCopySelection();
                            if (!data) {
                                return;
                            }
@@ -2609,12 +2610,11 @@ namespace Toolbox::UI {
                                LogError(result.error());
                                return;
                            }
-                           m_watch_selection_mgr.actionPasteIntoSelection(m_watch_selection,
-                                                                          result.value());
+                           m_watch_selection_mgr.actionPasteIntoSelection(result.value());
                        })
             .addDivider()
             .addOption("Delete", {KeyCode::KEY_DELETE}, [&](const ModelIndex &index) {
-                m_watch_selection_mgr.actionDeleteSelection(m_watch_selection);
+                m_watch_selection_mgr.actionDeleteSelection();
             });
     }
 
@@ -2644,20 +2644,20 @@ namespace Toolbox::UI {
         case AddGroupDialog::InsertPolicy::INSERT_BEFORE: {
             ModelIndex index = m_watch_model->makeGroupIndex(
                 std::string(group_name), std::min(sibling_count, src_row), src_group_idx);
-            m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_GROUP_ADDED);
+            m_watch_model->signalEventListeners(index, ModelEventFlags::EVENT_INDEX_ADDED);
             return index;
         }
         case AddGroupDialog::InsertPolicy::INSERT_AFTER: {
             ModelIndex index = m_watch_model->makeGroupIndex(
                 std::string(group_name), std::min(sibling_count, src_row + 1), src_group_idx);
-            m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_GROUP_ADDED);
+            m_watch_model->signalEventListeners(index, ModelEventFlags::EVENT_INDEX_ADDED);
             return index;
         }
         case AddGroupDialog::InsertPolicy::INSERT_CHILD: {
             int64_t row_count = m_watch_model->getRowCount(src_target_idx);
             ModelIndex index =
                 m_watch_model->makeGroupIndex(std::string(group_name), row_count, src_target_idx);
-            m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_GROUP_ADDED);
+            m_watch_model->signalEventListeners(index, ModelEventFlags::EVENT_INDEX_ADDED);
             return index;
         }
         }
@@ -2686,14 +2686,14 @@ namespace Toolbox::UI {
             ModelIndex index = m_watch_model->makeWatchIndex(
                 std::string(watch_name), watch_type, pointer_chain, watch_size, is_pointer,
                 WatchValueBase::BASE_DECIMAL, std::min(sibling_count, src_row), src_group_idx);
-            m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_WATCH_ADDED);
+            m_watch_model->signalEventListeners(index, ModelEventFlags::EVENT_INDEX_ADDED);
             return index;
         }
         case AddWatchDialog::InsertPolicy::INSERT_AFTER: {
             ModelIndex index = m_watch_model->makeWatchIndex(
                 std::string(watch_name), watch_type, pointer_chain, watch_size, is_pointer,
                 WatchValueBase::BASE_DECIMAL, std::min(sibling_count, src_row + 1), src_group_idx);
-            m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_WATCH_ADDED);
+            m_watch_model->signalEventListeners(index, ModelEventFlags::EVENT_INDEX_ADDED);
             return index;
         }
         case AddWatchDialog::InsertPolicy::INSERT_CHILD: {
@@ -2701,7 +2701,7 @@ namespace Toolbox::UI {
             ModelIndex index  = m_watch_model->makeWatchIndex(
                 std::string(watch_name), watch_type, pointer_chain, watch_size, is_pointer,
                 WatchValueBase::BASE_DECIMAL, row_count, src_target_idx);
-            m_watch_model->signalEventListeners(index, WatchModelEventFlags::EVENT_WATCH_ADDED);
+            m_watch_model->signalEventListeners(index, ModelEventFlags::EVENT_INDEX_ADDED);
             return index;
         }
         }
@@ -2710,7 +2710,7 @@ namespace Toolbox::UI {
     }
 
     ModelIndex DebuggerWindow::createWatchGroupFromScanSelection() {
-        size_t selection_size = m_scan_selection.getSelection().size();
+        size_t selection_size = m_scan_selection_mgr.getState().getSelection().size();
 
         std::string group_name;
         {
@@ -2743,7 +2743,7 @@ namespace Toolbox::UI {
             }
 
             size_t i              = 0;
-            const auto &selection = m_scan_selection.getSelection();
+            const auto &selection = m_scan_selection_mgr.getState().getSelection();
             std::for_each(std::execution::par, selection.begin(), selection.end(),
                           [&](const ModelIndex &scan) {
                               u32 address   = m_scan_model->getScanAddress(scan);
@@ -2764,10 +2764,10 @@ namespace Toolbox::UI {
                               }
                           });
 
-            m_watch_model->signalEventListeners(group_idx, WatchModelEventFlags::EVENT_GROUP_ADDED);
+            m_watch_model->signalEventListeners(group_idx, ModelEventFlags::EVENT_INDEX_ADDED);
             if (i > 0) {
                 m_watch_model->signalEventListeners(m_watch_model->getIndex(0, 0, group_idx),
-                                                    WatchModelEventFlags::EVENT_WATCH_ADDED);
+                                                    ModelEventFlags::EVENT_INDEX_ADDED);
             }
         } else {
             TOOLBOX_ERROR_V("[MEMSCAN] Failed to create a group for {} selected scan(s).",
@@ -2777,7 +2777,7 @@ namespace Toolbox::UI {
     }
 
     ModelIndex DebuggerWindow::createWatchGroupFromScanAll() {
-        size_t selection_size = m_scan_selection.getSelection().size();
+        size_t selection_size = m_scan_selection_mgr.getState().getSelection().size();
 
         std::string group_name;
         {
@@ -2833,10 +2833,10 @@ namespace Toolbox::UI {
                 }
             });
 
-            m_watch_model->signalEventListeners(group_idx, WatchModelEventFlags::EVENT_GROUP_ADDED);
+            m_watch_model->signalEventListeners(group_idx, ModelEventFlags::EVENT_INDEX_ADDED);
             if (i > 0) {
                 m_watch_model->signalEventListeners(m_watch_model->getIndex(0, 0, group_idx),
-                                                    WatchModelEventFlags::EVENT_WATCH_ADDED);
+                                                    ModelEventFlags::EVENT_INDEX_ADDED);
             }
         } else {
             TOOLBOX_ERROR_V("[MEMSCAN] Failed to create a group for {} selected scan(s).",
@@ -2845,9 +2845,7 @@ namespace Toolbox::UI {
         return group_idx;
     }
 
-    void DebuggerWindow::removeScanSelection() {
-        m_scan_selection_mgr.actionDeleteSelection(m_scan_selection);
-    }
+    void DebuggerWindow::removeScanSelection() { m_scan_selection_mgr.actionDeleteSelection(); }
 
     std::string DebuggerWindow::buildQualifiedId(ModelIndex src_index) const {
         if (!m_watch_model->validateIndex(src_index)) {

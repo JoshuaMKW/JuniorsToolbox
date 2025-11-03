@@ -90,6 +90,49 @@ namespace Toolbox {
         return *it;
     }
 
+    void WatchDataModel::pruneRedundantIndexes(IDataModel::index_container &indexes) const {  // ---
+        // Step 1: Build a fast-lookup set of all UUIDs in the list.
+        // This is O(N) and has good cache locality (sequential read).
+        // ---
+        std::unordered_set<UUID64> list_uuids;
+        list_uuids.reserve(indexes.size());
+        for (const ModelIndex &index : indexes) {
+            list_uuids.insert(index.getUUID());
+        }
+
+        // ---
+        // Step 2: Use the "erase-remove" idiom.
+        // std::remove_if partitions the vector by "shuffling" all elements
+        // to be KEPT to the front. It returns an iterator to the new logical end.
+        // This is one sequential pass, O(N).
+        // ---
+        auto new_end_it = std::remove_if(indexes.begin(), indexes.end(),
+                                         // This lambda is called once for each index (N times).
+                                         [this, &list_uuids](const ModelIndex &child_idx) {
+                                             ModelIndex parent_idx = getParent_(child_idx);
+
+                                             while (validateIndex(parent_idx)) {
+                                                 // Check if this parent is *also* in our original
+                                                 // list.
+                                                 if (list_uuids.count(parent_idx.getUUID())) {
+                                                     return true;
+                                                 }
+
+                                                 parent_idx = getParent_(parent_idx);
+                                             }
+
+                                             // We reached the root and found no parent in the
+                                             // list. Keep this index.
+                                             return false;
+                                         });
+
+        // ---
+        // Step 3: Erase all the "removed" elements in one single operation.
+        // This is O(K) where K is the number of elements removed.
+        // ---
+        indexes.erase(new_end_it, indexes.end());
+    }
+
     WatchDataModel::~WatchDataModel() {
         m_index_map.clear();
         m_listeners.clear();
@@ -213,7 +256,7 @@ namespace Toolbox {
         std::ifstream in_stream = std::ifstream(path, std::ios::in);
 
         json_t profile_json;
-        return tryJSONWithResult(profile_json, [&](json_t &j) {
+        return tryJSONWithResult(profile_json, [&](json_t &j) -> Result<void, JSONError> {
             in_stream >> j;
             if (!j.contains("watchList")) {
                 return make_json_error<void>("MEMSCANMODEL", "DME file has no `watchList' field",
@@ -263,6 +306,8 @@ namespace Toolbox {
                     }
                 }
             }
+
+            return {};
         });
     }
 
@@ -324,9 +369,10 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    bool WatchDataModel::insertMimeData(const ModelIndex &index, const MimeData &data) {
+    bool WatchDataModel::insertMimeData(const ModelIndex &index, const MimeData &data,
+                                        ModelInsertPolicy policy) {
         std::scoped_lock lock(m_mutex);
-        return insertMimeData_(index, data);
+        return insertMimeData_(index, data, policy);
     }
 
     std::vector<std::string> WatchDataModel::getSupportedMimeTypes() const {
@@ -356,18 +402,36 @@ namespace Toolbox {
 
         m_index_map.clear();
 
-        signalEventListeners(ModelIndex(), WatchModelEventFlags::EVENT_RESET);
+        signalEventListeners(ModelIndex(), ModelEventFlags::EVENT_RESET);
+    }
+
+    ModelIndex WatchDataModel::makeWatchIndex(const std::string &name, MetaType type,
+                                              const std::vector<u32> &pointer_chain, u32 size,
+                                              bool is_pointer, WatchValueBase value_base,
+                                              int64_t row, const ModelIndex &parent,
+                                              bool find_unique_name) {
+        std::scoped_lock lock(m_mutex);
+        return makeWatchIndex_(name, type, pointer_chain, size, is_pointer, value_base, row, parent,
+                               find_unique_name);
+    }
+
+    ModelIndex WatchDataModel::makeGroupIndex(const std::string &name, int64_t row,
+                                              const ModelIndex &parent, bool find_unique_name) {
+        std::scoped_lock lock(m_mutex);
+        return makeGroupIndex_(name, row, parent, find_unique_name);
     }
 
     void WatchDataModel::addEventListener(UUID64 uuid, event_listener_t listener,
-                                          WatchModelEventFlags flags) {
-        m_listeners[uuid] = {listener, flags};
+                                          int allowed_flags) {
+        m_listeners[uuid] = {listener, allowed_flags};
     }
 
     void WatchDataModel::removeEventListener(UUID64 uuid) { m_listeners.erase(uuid); }
 
     Result<void, SerialError> WatchDataModel::serialize(Serializer &out) const {
         std::scoped_lock lock(m_mutex);
+
+        out.write<u32>(static_cast<u32>(m_index_map.size()));
 
         for (const _WatchIndexData &data : m_index_map) {
             // Header stub
@@ -416,24 +480,18 @@ namespace Toolbox {
     Result<void, SerialError> WatchDataModel::deserialize(Deserializer &in) {
         std::scoped_lock lock(m_mutex);
 
-        while (true) {
-            size_t remaining = in.remaining();
-            if (remaining < sizeof(UUID64) * 2 + sizeof(u8)) {
-                break;  // Not enough data to read a header
-            }
+        u32 index_count = in.read<u32>();
 
-            remaining -= sizeof(UUID64) * 2 + sizeof(u8);
+        for (u32 i = 0; i < index_count; ++i) {
+            if (!in.good()) {
+                break;
+            }
 
             UUID64 uuid                = in.read<UUID64>();
             UUID64 parent              = in.read<UUID64>();
             _WatchIndexData::Type type = (_WatchIndexData::Type)in.read<u8>();
 
             if (type == _WatchIndexData::Type::GROUP) {
-                const size_t group_size = sizeof(u16) + sizeof(bool) + sizeof(u32);
-                if (remaining < group_size) {
-                    return make_serial_error<void>(in, "Not enough data to read group header");
-                }
-
                 std::string name = in.readString();
                 bool locked      = in.read<bool>();
                 u32 child_count  = in.read<u32>();
@@ -456,11 +514,6 @@ namespace Toolbox {
 
                 m_index_map.emplace_back(std::move(data));
             } else if (type == _WatchIndexData::Type::WATCH) {
-                const size_t watch_size = sizeof(u16) + sizeof(u8) + sizeof(u8) + sizeof(bool);
-                if (remaining < watch_size) {
-                    return make_serial_error<void>(in, "Not enough data to read group header");
-                }
-
                 std::string name = in.readString();
                 u8 p_chain_len   = in.read<u8>();
 
@@ -506,7 +559,7 @@ namespace Toolbox {
             }
         }
 
-        signalEventListeners(ModelIndex(), WatchModelEventFlags::EVENT_GROUP_ADDED);
+        signalEventListeners(ModelIndex(), ModelEventFlags::EVENT_INDEX_ADDED);
         return Result<void, SerialError>();
     }
 
@@ -768,6 +821,12 @@ namespace Toolbox {
             return false;
         }
 
+        ModelIndex parent_idx = getParent_(index);
+        if (validateIndex(parent_idx)) {
+            _WatchIndexData &parent_data = getIndexData_(parent_idx);
+            parent_data.m_group->removeChild(index.getUUID());
+        }
+
         return std::erase_if(m_index_map, [&](const _WatchIndexData &data) {
                    return data.m_self_uuid == index.getUUID();
                }) > 0;
@@ -864,10 +923,9 @@ namespace Toolbox {
     ScopePtr<MimeData>
     WatchDataModel::createMimeData_(const IDataModel::index_container &indexes) const {
         ScopePtr<MimeData> new_data = make_scoped<MimeData>();
-        
+
         IDataModel::index_container pruned_indexes = indexes;
-        ModelIndexListTransformer transformer(this);
-        transformer.pruneRedundantsForRecursiveTree(pruned_indexes);
+        pruneRedundantIndexes(pruned_indexes);
 
         std::function<json_t(const ModelIndex &index)> jsonify_index =
             [&](const ModelIndex &index) -> json_t {
@@ -913,8 +971,10 @@ namespace Toolbox {
                 this_index["pointerOffsets"] = std::any_cast<std::vector<u32>>(
                     getData_(index, WatchDataRole::WATCH_DATA_ROLE_POINTER_CHAIN));
 
-                MetaType watch_type = std::any_cast<MetaValue>(
-                    getData_(index, WatchDataRole::WATCH_DATA_ROLE_VALUE_META)).type();
+                MetaType watch_type =
+                    std::any_cast<MetaValue>(
+                        getData_(index, WatchDataRole::WATCH_DATA_ROLE_VALUE_META))
+                        .type();
 
                 int type_index = 0;
                 bool unsgned   = false;
@@ -964,6 +1024,8 @@ namespace Toolbox {
 
                 this_index["typeIndex"] = type_index;
                 this_index["unsigned"]  = unsgned;
+                this_index["size"] =
+                    std::any_cast<u32>(getData_(index, WatchDataRole::WATCH_DATA_ROLE_SIZE));
             }
             return this_index;
         };
@@ -991,19 +1053,179 @@ namespace Toolbox {
         return new_data;
     }
 
-    bool WatchDataModel::insertMimeData_(const ModelIndex &index, const MimeData &data) {
-        return false;
+    bool WatchDataModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
+                                         ModelInsertPolicy policy) {
+        auto maybe_text = data.get_text();
+        if (!maybe_text.has_value()) {
+            return false;
+        }
+
+        const std::string &text_data = maybe_text.value();
+
+        json_t j;
+        try {
+            j = json_t::parse(text_data);
+        } catch (json_t::parse_error &e) {
+            TOOLBOX_WARN_V("Failed to parse MimeData JSON: {}", e.what());
+            return false;
+        }
+
+        if (!j.contains("watchList") || !j.at("watchList").is_array()) {
+            TOOLBOX_WARN("MimeData is invalid or missing 'watchList' array.");
+            return false;
+        }
+
+        const json_t &root_json = j.at("watchList");
+        if (!root_json.is_array()) {
+            TOOLBOX_WARN("MimeData is invalid or missing 'watchList' array.");
+            return false;
+        }
+
+        std::function<ModelIndex(const json_t &, int64_t, const ModelIndex &)> insertJSONAtIndex =
+            [&](const json_t &entry_json, int64_t row, const ModelIndex &parent_index) {
+                UUID64 entry_uuid = UUID64(entry_json.at("uuid"));
+                if (entry_json.contains("groupName")) {
+                    const std::string &group_name = entry_json.at("groupName");
+                    const json_t &group_entries   = entry_json.at("groupEntries");
+
+                    ModelIndex self_index = makeGroupIndex_(group_name, row, parent_index);
+
+                    if (!group_entries.is_array()) {
+                        TOOLBOX_WARN("MimeData is invalid or missing 'groupEntries' array.");
+                        return self_index;
+                    }
+
+                    int64_t subrow = 0;
+                    for (const json_t &subentry_json : group_entries) {
+                        ModelIndex child_index =
+                            insertJSONAtIndex(subentry_json, subrow, self_index);
+                        if (validateIndex(child_index)) {
+                            subrow += 1;
+                        }
+                    }
+
+                    return self_index;
+                } else {
+                    u32 address              = entry_json.at("address");
+                    int base_index           = entry_json.at("baseIndex");
+                    const std::string &label = entry_json.at("label");
+
+                    std::vector<u32> p_chain;
+                    p_chain.reserve(8);
+
+                    const json_t &p_chain_json = entry_json.at("pointerOffsets");
+                    if (p_chain_json.is_array()) {
+                        for (u32 ofs : p_chain_json) {
+                            p_chain.emplace_back(ofs);
+                        }
+                    }
+
+                    int type_index = entry_json.at("typeIndex");
+                    bool unsgned   = entry_json.at("unsigned");
+                    u32 size       = entry_json.at("size");
+
+                    // Invert base_index switch to get WatchValueBase
+                    WatchValueBase value_base = WatchValueBase::BASE_DECIMAL;
+                    switch (base_index) {
+                    case 0:
+                        value_base = WatchValueBase::BASE_DECIMAL;
+                        break;
+                    case 1:
+                        value_base = WatchValueBase::BASE_HEXADECIMAL;
+                        break;
+                    case 2:
+                        value_base = WatchValueBase::BASE_OCTAL;
+                        break;
+                    case 3:
+                        value_base = WatchValueBase::BASE_BINARY;
+                        break;
+                    default:
+                        TOOLBOX_WARN("Unknown baseIndex found in MimeData.");
+                        break;
+                    }
+
+                    // Invert type_index/unsigned switch to get MetaType
+                    MetaType watch_type = MetaType::UNKNOWN;
+                    switch (type_index) {
+                    case 0:
+                        watch_type = unsgned ? MetaType::U8 : MetaType::S8;
+                        break;
+                    case 1:
+                        watch_type = unsgned ? MetaType::U16 : MetaType::S16;
+                        break;
+                    case 2:
+                        watch_type = unsgned ? MetaType::U32 : MetaType::S32;
+                        break;
+                    case 3:
+                        watch_type = MetaType::F32;
+                        break;  // unsigned is ignored
+                    case 4:
+                        watch_type = MetaType::F64;
+                        break;  // unsigned is ignored
+                    case 5:
+                        watch_type = MetaType::STRING;
+                        break;
+                    case 6:  // Fallthrough
+                    default:
+                        watch_type = MetaType::UNKNOWN;
+                        break;
+                    }
+
+                    ModelIndex this_idx;
+                    if (p_chain.empty()) {
+                        this_idx = makeWatchIndex_(label, watch_type, {address}, size, false,
+                                                   value_base, row, parent_index, true);
+                    } else {
+                        this_idx =
+                            makeWatchIndex_(label, watch_type, p_chain, size, p_chain.size() > 1,
+                                            value_base, row, parent_index, true);
+                    }
+
+                    return this_idx;
+                }
+            };
+
+        int64_t insert_row;
+        ModelIndex insert_index;
+        switch (policy) {
+        case ModelInsertPolicy::INSERT_BEFORE: {
+            insert_row   = getRow_(index);
+            insert_index = getParent_(index);
+            break;
+        }
+        case ModelInsertPolicy::INSERT_AFTER: {
+            insert_row   = getRow_(index) + 1;
+            insert_index = getParent_(index);
+            break;
+        }
+        case ModelInsertPolicy::INSERT_CHILD: {
+            insert_row   = getRowCount_(index);
+            insert_index = index;
+            break;
+        }
+        }
+
+        for (const json_t &entry_json : root_json) {
+            ModelIndex child_index = insertJSONAtIndex(entry_json, insert_row, insert_index);
+            if (validateIndex(child_index)) {
+                insert_row += 1;
+                signalEventListeners(child_index, ModelEventFlags::EVENT_INSERT);
+            }
+        }
+
+        signalEventListeners(insert_index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+        return true;
     }
 
     bool WatchDataModel::canFetchMore_(const ModelIndex &index) { return true; }
 
     void WatchDataModel::fetchMore_(const ModelIndex &index) { return; }
 
-    ModelIndex WatchDataModel::makeWatchIndex(const std::string &name, MetaType type,
-                                              const std::vector<u32> &pointer_chain, u32 size,
-                                              bool is_pointer, WatchValueBase value_base,
-                                              int64_t row, const ModelIndex &parent,
-                                              bool find_unique_name) {
+    ModelIndex WatchDataModel::makeWatchIndex_(const std::string &name, MetaType type,
+                                               const std::vector<u32> &pointer_chain, u32 size,
+                                               bool is_pointer, WatchValueBase value_base,
+                                               int64_t row, const ModelIndex &parent,
+                                               bool find_unique_name) {
         if (row < 0 || pointer_chain.empty()) {
             return ModelIndex();
         }
@@ -1030,10 +1252,22 @@ namespace Toolbox {
         data.m_group->setName(unique_name);
         data.m_group->setLocked(false);
 
-        std::scoped_lock lock(m_mutex);
-
         if (!validateIndex(parent)) {
-            m_index_map.emplace_back(data);
+            int64_t flat_row = 0;
+            bool inserted    = false;
+            for (auto it = m_index_map.begin(); it != m_index_map.end(); ++it) {
+                if (it->m_parent == 0 && ++flat_row >= row) {
+                    m_index_map.emplace(++it, data);
+                    inserted = true;
+                    break;
+                }
+            }
+
+            if (!inserted) {
+                TOOLBOX_ERROR("[WatchDataModel] Invalid row index!");
+                delete data.m_watch;
+                return ModelIndex();
+            }
         } else {
             _WatchIndexData &parent_data = getIndexData_(parent);
             if (!_WatchIndexDataIsGroup(parent_data)) {
@@ -1063,22 +1297,21 @@ namespace Toolbox {
         return index;
     }
 
-    ModelIndex WatchDataModel::makeGroupIndex(const std::string &name, int64_t row,
-                                              const ModelIndex &parent, bool find_unique_name) {
-        _WatchIndexData *parent_data = nullptr;
+    ModelIndex WatchDataModel::makeGroupIndex_(const std::string &name, int64_t row,
+                                               const ModelIndex &parent, bool find_unique_name) {
         if (row < 0) {
             return ModelIndex();
         }
 
+        _WatchIndexData &parent_data = getIndexData_(parent);
         if (validateIndex(parent)) {
-            parent_data = parent.data<_WatchIndexData>();
-            if (!_WatchIndexDataIsGroup(*parent_data)) {
+            if (!_WatchIndexDataIsGroup(parent_data)) {
                 TOOLBOX_ERROR("[WatchDataModel] Invalid row index!");
                 return ModelIndex();
             }
-            if (row > parent_data->m_group->getChildCount()) {
+            if (row > parent_data.m_group->getChildCount()) {
                 TOOLBOX_ERROR_V("[WatchDataModel] Invalid row index: {} > {}", row,
-                                parent_data->m_group->getChildCount());
+                                parent_data.m_group->getChildCount());
                 return ModelIndex();
             }
         }
@@ -1092,12 +1325,9 @@ namespace Toolbox {
         data.m_group->setName(unique_name);
         data.m_group->setLocked(false);
 
-        std::scoped_lock lock(m_mutex);
-
         if (!validateIndex(parent)) {
             m_index_map.emplace_back(data);
         } else {
-            _WatchIndexData &parent_data = getIndexData_(parent);
             if (!_WatchIndexDataIsGroup(parent_data)) {
                 TOOLBOX_ERROR("[WatchDataModel] Invalid row index!");
                 delete data.m_group;
@@ -1148,10 +1378,10 @@ namespace Toolbox {
         return data->m_group->getChildCount();
     }
 
-    void WatchDataModel::signalEventListeners(const ModelIndex &index, WatchModelEventFlags flags) {
+    void WatchDataModel::signalEventListeners(const ModelIndex &index, ModelEventFlags flags) {
         for (const auto &[key, listener] : m_listeners) {
-            if ((listener.second & flags) != WatchModelEventFlags::NONE) {
-                listener.first(index, flags);
+            if ((listener.second & flags) != ModelEventFlags::EVENT_NONE) {
+                listener.first(index, (listener.second & flags));
             }
         }
     }
@@ -1173,7 +1403,7 @@ namespace Toolbox {
 
         if (m_source_model) {
             m_source_model->addEventListener(getUUID(), TOOLBOX_BIND_EVENT_FN(watchDataUpdateEvent),
-                                             WatchModelEventFlags::EVENT_ANY);
+                                             ModelEventFlags::EVENT_ANY);
         }
     }
 
@@ -1309,9 +1539,10 @@ namespace Toolbox {
     }
 
     bool WatchDataModelSortFilterProxy::insertMimeData(const ModelIndex &index,
-                                                       const MimeData &data) {
+                                                       const MimeData &data,
+                                                       ModelInsertPolicy policy) {
         ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->insertMimeData(index, data);
+        return m_source_model->insertMimeData(std::move(source_index), data, policy);
     }
 
     std::vector<std::string> WatchDataModelSortFilterProxy::getSupportedMimeTypes() const {
@@ -1475,13 +1706,12 @@ namespace Toolbox {
         }
     }
 
-    void WatchDataModelSortFilterProxy::watchDataUpdateEvent(const ModelIndex &index,
-                                                             WatchModelEventFlags flags) {
-        if ((flags & WatchModelEventFlags::EVENT_ANY) == WatchModelEventFlags::NONE) {
+    void WatchDataModelSortFilterProxy::watchDataUpdateEvent(const ModelIndex &index, int flags) {
+        if ((flags & ModelEventFlags::EVENT_ANY) == ModelEventFlags::EVENT_NONE) {
             return;
         }
 
-        if ((flags & WatchModelEventFlags::EVENT_RESET) == WatchModelEventFlags::EVENT_RESET) {
+        if ((flags & ModelEventFlags::EVENT_RESET) == ModelEventFlags::EVENT_RESET) {
             reset();
         }
 
@@ -1490,12 +1720,7 @@ namespace Toolbox {
             return;
         }
 
-        if ((flags & WatchModelEventFlags::EVENT_GROUP_ADDED) != WatchModelEventFlags::NONE) {
-            cacheIndex(getParent(proxy_index));
-            return;
-        }
-
-        if ((flags & WatchModelEventFlags::EVENT_WATCH_ADDED) != WatchModelEventFlags::NONE) {
+        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) != ModelEventFlags::EVENT_NONE) {
             cacheIndex(getParent(proxy_index));
             return;
         }

@@ -34,22 +34,13 @@ namespace Toolbox {
     };
     TOOLBOX_BITWISE_ENUM(FileSystemModelOptions)
 
-    enum class FileSystemModelEventFlags {
-        NONE                  = 0,
-        EVENT_FILE_ADDED      = BIT(0),
-        EVENT_FILE_MODIFIED   = BIT(1),
-        EVENT_FOLDER_ADDED    = BIT(2),
-        EVENT_FOLDER_MODIFIED = BIT(3),
-        EVENT_PATH_RENAMED    = BIT(4),
-        EVENT_PATH_REMOVED    = BIT(5),
-        EVENT_IS_VIRTUAL      = BIT(6),
-        EVENT_FILE_ANY =
-            EVENT_FILE_ADDED | EVENT_FILE_MODIFIED | EVENT_PATH_RENAMED | EVENT_PATH_REMOVED,
-        EVENT_FOLDER_ANY =
-            EVENT_FOLDER_ADDED | EVENT_FOLDER_MODIFIED | EVENT_PATH_RENAMED | EVENT_PATH_REMOVED,
-        EVENT_ANY = EVENT_FILE_ANY | EVENT_FOLDER_ANY,
+    enum FileSystemModelEventFlags {
+        EVENT_IS_VIRTUAL   = BIT(10),
+        EVENT_IS_FILE      = BIT(11),
+        EVENT_IS_DIRECTORY = BIT(12),
+        EVENT_FS_ANY =
+            ModelEventFlags::EVENT_ANY | EVENT_IS_VIRTUAL | EVENT_IS_FILE | EVENT_IS_DIRECTORY,
     };
-    TOOLBOX_BITWISE_ENUM(FileSystemModelEventFlags)
 
     enum FileSystemDataRole {
         FS_DATA_ROLE_DATE = ModelDataRole::DATA_ROLE_USER,
@@ -140,7 +131,9 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData(const IDataModel::index_container &indexes) const override;
-        [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
+        [[nodiscard]] bool
+        insertMimeData(const ModelIndex &index, const MimeData &data,
+                       ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
@@ -148,10 +141,8 @@ namespace Toolbox {
 
         void reset() override;
 
-        using event_listener_t = std::function<void(const fs_path &, FileSystemModelEventFlags)>;
-        void addEventListener(UUID64 uuid, event_listener_t listener,
-                              FileSystemModelEventFlags flags);
-        void removeEventListener(UUID64 uuid);
+        void addEventListener(UUID64 uuid, event_listener_t listener, int allowed_flags) override;
+        void removeEventListener(UUID64 uuid) override;
 
         static const ImageHandle &InvalidIcon();
         static const std::unordered_map<std::string, FSTypeInfo> &TypeMap();
@@ -201,7 +192,9 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData_(const IDataModel::index_container &indexes) const;
-        [[nodiscard]] bool insertMimeData_(const ModelIndex &index, const MimeData &data);
+        [[nodiscard]] bool
+        insertMimeData_(const ModelIndex &index, const MimeData &data,
+                        ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index);
         void fetchMore_(const ModelIndex &index);
@@ -224,15 +217,14 @@ namespace Toolbox {
 
         void pathRemoved(const fs_path &path);
 
-        void signalEventListeners(const fs_path &path, FileSystemModelEventFlags flags);
+        void signalEventListeners(const ModelIndex &index, int flags);
 
     private:
         UUID64 m_uuid;
 
         mutable std::mutex m_mutex;
         FileSystemWatchdog m_watchdog;
-        std::unordered_map<UUID64, std::pair<event_listener_t, FileSystemModelEventFlags>>
-            m_listeners;
+        std::unordered_map<UUID64, std::pair<event_listener_t, int>> m_listeners;
 
         fs_path m_root_path;
 
@@ -314,13 +306,22 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData(const IDataModel::index_container &indexes) const override;
-        [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
+        [[nodiscard]] bool
+        insertMimeData(const ModelIndex &index, const MimeData &data,
+                       ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
         void fetchMore(const ModelIndex &index) override;
 
         void reset() override;
+
+        void addEventListener(UUID64 uuid, event_listener_t listener, int allowed_flags) override {
+            m_source_model->addEventListener(uuid, listener, allowed_flags);
+        }
+        void removeEventListener(UUID64 uuid) override {
+            m_source_model->removeEventListener(uuid);
+        }
 
         [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;
@@ -338,7 +339,7 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        void fsUpdateEvent(const fs_path &path, FileSystemModelEventFlags flags);
+        void fsUpdateEvent(const ModelIndex &index, int flags);
 
     private:
         UUID64 m_uuid;

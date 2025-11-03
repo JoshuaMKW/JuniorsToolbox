@@ -33,6 +33,23 @@ namespace Toolbox {
         DATA_ROLE_USER,
     };
 
+    enum ModelInsertPolicy {
+        INSERT_BEFORE,
+        INSERT_AFTER,
+        INSERT_CHILD,
+    };
+
+    enum ModelEventFlags {
+        EVENT_NONE           = 0,
+        EVENT_RESET          = BIT(0),
+        EVENT_INSERT         = BIT(1),
+        EVENT_INDEX_ADDED    = BIT(2),
+        EVENT_INDEX_MODIFIED = BIT(3),
+        EVENT_INDEX_REMOVED  = BIT(4),
+        EVENT_INDEX_ANY      = EVENT_INDEX_ADDED | EVENT_INDEX_MODIFIED | EVENT_INDEX_REMOVED,
+        EVENT_ANY            = EVENT_RESET | EVENT_INSERT | EVENT_INDEX_ANY,
+    };
+
     class ModelIndex final : public IUnique {
     public:
         friend class IDataModel;
@@ -84,8 +101,10 @@ namespace Toolbox {
 
     class IDataModel : public IUnique {
     public:
-        using index_container = std::vector<ModelIndex>;
+        using index_container  = std::vector<ModelIndex>;
+        using event_listener_t = std::function<void(const ModelIndex &index, int flags)>;
 
+    public:
         [[nodiscard]] virtual bool validateIndex(const ModelIndex &index) const {
             return index.getModelUUID() == getUUID();
         }
@@ -140,15 +159,20 @@ namespace Toolbox {
         [[nodiscard]] virtual bool hasChildren(const ModelIndex &parent = ModelIndex()) const = 0;
 
         [[nodiscard]] virtual ScopePtr<MimeData>
-        createMimeData(const index_container &indexes) const                         = 0;
-        [[nodiscard]] virtual bool insertMimeData(const ModelIndex &index,
-                                                  const MimeData &data)              = 0;
+        createMimeData(const index_container &indexes) const = 0;
+        [[nodiscard]] virtual bool
+        insertMimeData(const ModelIndex &index, const MimeData &data,
+                       ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER)   = 0;
         [[nodiscard]] virtual std::vector<std::string> getSupportedMimeTypes() const = 0;
 
         [[nodiscard]] virtual bool canFetchMore(const ModelIndex &index) = 0;
         virtual void fetchMore(const ModelIndex &index)                  = 0;
 
         virtual void reset() = 0;
+
+        virtual void addEventListener(UUID64 uuid, event_listener_t listener,
+                                      int allowed_flags) = 0;
+        virtual void removeEventListener(UUID64 uuid)    = 0;
 
     protected:
         static void setIndexUUID(ModelIndex &index, UUID64 uuid) { index.m_uuid = uuid; }
@@ -157,12 +181,12 @@ namespace Toolbox {
     class ModelIndexListTransformer {
     public:
         ModelIndexListTransformer() = delete;
-        ModelIndexListTransformer(const IDataModel* model) : m_model(model) {}
+        ModelIndexListTransformer(const IDataModel *model) : m_model(model) {}
 
         void pruneRedundantsForRecursiveTree(IDataModel::index_container &indexes) const;
 
     private:
-        const IDataModel* m_model;
+        const IDataModel *m_model;
     };
 
 }  // namespace Toolbox

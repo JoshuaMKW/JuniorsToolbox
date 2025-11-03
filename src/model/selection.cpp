@@ -124,8 +124,21 @@ namespace Toolbox {
         }
     }
 
-    bool ModelSelectionManager::actionDeleteSelection(ModelSelectionState &selection) {
-        RefPtr<IDataModel> model = selection.getModel();
+    ModelSelectionManager::ModelSelectionManager(RefPtr<IDataModel> model) {
+        m_selection.setModel(model);
+        model->addEventListener(getUUID(), TOOLBOX_BIND_EVENT_FN(updateSelectionOnInsert),
+                                ModelEventFlags::EVENT_INSERT);
+    }
+
+    ModelSelectionManager::~ModelSelectionManager() {
+        RefPtr<IDataModel> model = m_selection.getModel();
+        if (model) {
+            model->removeEventListener(getUUID());
+        }
+    }
+
+    bool ModelSelectionManager::actionDeleteSelection() {
+        RefPtr<IDataModel> model = m_selection.getModel();
         if (!model) {
             return false;
         }
@@ -135,19 +148,18 @@ namespace Toolbox {
         }
 
         bool result                                = true;
-        const IDataModel::index_container &indexes = selection.getSelection();
+        const IDataModel::index_container &indexes = m_selection.getSelection();
         for (const ModelIndex &s : indexes) {
             result &= model->removeIndex(s);
         }
 
-        selection.clearSelection();
+        m_selection.clearSelection();
 
         return result;
     }
 
-    bool ModelSelectionManager::actionRenameSelection(const ModelSelectionState &selection,
-                                                      const std::string &template_name) {
-        RefPtr<IDataModel> model = selection.getModel();
+    bool ModelSelectionManager::actionRenameSelection(const std::string &template_name) {
+        RefPtr<IDataModel> model = m_selection.getModel();
         if (!model) {
             return false;
         }
@@ -157,7 +169,7 @@ namespace Toolbox {
         }
 
         bool result = true;
-        for (const ModelIndex &s : selection.getSelection()) {
+        for (const ModelIndex &s : m_selection.getSelection()) {
             result &= model->validateIndex(s);
             model->setDisplayText(s, template_name);
         }
@@ -165,9 +177,8 @@ namespace Toolbox {
         return result;
     }
 
-    bool ModelSelectionManager::actionPasteIntoSelection(const ModelSelectionState &selection,
-                                                         const MimeData &data) {
-        RefPtr<IDataModel> model = selection.getModel();
+    bool ModelSelectionManager::actionPasteIntoSelection(const MimeData &data) {
+        RefPtr<IDataModel> model = m_selection.getModel();
         if (!model) {
             return false;
         }
@@ -176,16 +187,21 @@ namespace Toolbox {
             return false;
         }
 
-        return model->insertMimeData(selection.getLastSelected(), data);
+        ModelIndex last_selected = m_selection.getLastSelected();
+
+        // We do this since we update the selection to the pasted items by event
+        m_selection.clearSelection();
+
+        return model->insertMimeData(last_selected, data);
     }
 
-    ScopePtr<MimeData> ModelSelectionManager::actionCutSelection(ModelSelectionState &selection) {
-        ScopePtr<MimeData> data = actionCopySelection(selection);
+    ScopePtr<MimeData> ModelSelectionManager::actionCutSelection() {
+        ScopePtr<MimeData> data = actionCopySelection();
         if (!data) {
             return nullptr;
         }
 
-        if (!actionDeleteSelection(selection)) {
+        if (!actionDeleteSelection()) {
             TOOLBOX_ERROR("Failed to cut the selection!");
             return nullptr;
         }
@@ -194,94 +210,91 @@ namespace Toolbox {
     }
 
     ScopePtr<MimeData>
-    ModelSelectionManager::actionCopySelection(const ModelSelectionState &selection) {
-        RefPtr<IDataModel> model = selection.getModel();
+    ModelSelectionManager::actionCopySelection() {
+        RefPtr<IDataModel> model = m_selection.getModel();
         if (!model) {
             return nullptr;
         }
 
-        return model->createMimeData(selection.getSelection());
+        return model->createMimeData(m_selection.getSelection());
     }
 
-    bool ModelSelectionManager::actionSelectIndex(ModelSelectionState &selection,
-                                                  const ModelIndex &index, bool force_single) {
-        RefPtr<IDataModel> model = selection.getModel();
+    bool ModelSelectionManager::actionSelectIndex(const ModelIndex &index, bool force_single) {
+        RefPtr<IDataModel> model = m_selection.getModel();
         if (!model) {
             return false;
         }
 
         if (force_single) {
-            selection.selectSingle(index);
-            selection.setLastSelected(index);
+            m_selection.selectSingle(index);
+            m_selection.setLastSelected(index);
             return true;
         }
 
         if (Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) ||
             Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
-            if (selection.isSelected(index)) {
-                selection.deselect(index);
+            if (m_selection.isSelected(index)) {
+                m_selection.deselect(index);
             } else {
-                selection.selectSingle(index, true);
+                m_selection.selectSingle(index, true);
             }
-            selection.setLastSelected(index);
+            m_selection.setLastSelected(index);
             return true;
         }
 
         if (Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT) ||
             Input::GetKey(Input::KeyCode::KEY_RIGHTSHIFT)) {
-            if (model->validateIndex(selection.getLastSelected())) {
-                selection.selectSpan(selection.getLastSelected(), index, false, true);
+            if (model->validateIndex(m_selection.getLastSelected())) {
+                m_selection.selectSpan(m_selection.getLastSelected(), index, false, true);
             } else {
-                selection.selectSingle(index);
-                selection.setLastSelected(index);
+                m_selection.selectSingle(index);
+                m_selection.setLastSelected(index);
             }
             return true;
         }
 
-        selection.selectSingle(index);
-        selection.setLastSelected(index);
+        m_selection.selectSingle(index);
+        m_selection.setLastSelected(index);
         return true;
     }
 
-    bool ModelSelectionManager::actionSelectIndexIfNew(ModelSelectionState &selection,
-                                                       const ModelIndex &index) {
-        RefPtr<IDataModel> model = selection.getModel();
+    bool ModelSelectionManager::actionSelectIndexIfNew(const ModelIndex &index) {
+        RefPtr<IDataModel> model = m_selection.getModel();
         if (!model) {
             return false;
         }
 
-        if (selection.isSelected(index)) {
-            selection.setLastSelected(index);
+        if (m_selection.isSelected(index)) {
+            m_selection.setLastSelected(index);
             return false;
         }
 
         if (Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) ||
             Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
-            selection.selectSingle(index, true);
-            selection.setLastSelected(index);
+            m_selection.selectSingle(index, true);
+            m_selection.setLastSelected(index);
             return true;
         }
 
         if (Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT) ||
             Input::GetKey(Input::KeyCode::KEY_RIGHTSHIFT)) {
-            if (model->validateIndex(selection.getLastSelected())) {
-                selection.selectSpan(selection.getLastSelected(), index, false, true);
+            if (model->validateIndex(m_selection.getLastSelected())) {
+                m_selection.selectSpan(m_selection.getLastSelected(), index, false, true);
             } else {
-                selection.selectSingle(index);
-                selection.setLastSelected(index);
+                m_selection.selectSingle(index);
+                m_selection.setLastSelected(index);
             }
             return true;
         }
 
-        selection.selectSingle(index);
-        selection.setLastSelected(index);
+        m_selection.selectSingle(index);
+        m_selection.setLastSelected(index);
         return true;
     }
 
-    bool ModelSelectionManager::actionClearRequestExcIndex(ModelSelectionState &selection,
-                                                           const ModelIndex &index,
+    bool ModelSelectionManager::actionClearRequestExcIndex(const ModelIndex &index,
                                                            bool is_left_button) {
-        RefPtr<IDataModel> model = selection.getModel();
+        RefPtr<IDataModel> model = m_selection.getModel();
         if (!model) {
             return false;
         }
@@ -297,40 +310,49 @@ namespace Toolbox {
         }
 
         if (is_left_button) {
-            if (selection.count() > 0) {
-                selection.setLastSelected(ModelIndex());
-                if (selection.selectSingle(index)) {
-                    selection.setLastSelected(index);
+            if (m_selection.count() > 0) {
+                m_selection.setLastSelected(ModelIndex());
+                if (m_selection.selectSingle(index)) {
+                    m_selection.setLastSelected(index);
                 }
             }
         } else {
             if (!model->validateIndex(index)) {
-                selection.clearSelection();
+                m_selection.clearSelection();
             }
-            selection.setLastSelected(ModelIndex());
+            m_selection.setLastSelected(ModelIndex());
         }
         return true;
     }
 
-    bool ModelSelectionManager::handleActionsByMouseInput(ModelSelectionState &selection, const ModelIndex &index) {
+    bool ModelSelectionManager::handleActionsByMouseInput(const ModelIndex &index) {
         const bool is_left_click          = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
         const bool is_left_click_release  = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT);
         const bool is_right_click         = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
         const bool is_right_click_release = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT);
 
         if (is_left_click && !is_left_click_release) {
-            return actionSelectIndex(selection, index);
+            return actionSelectIndex(index);
         }
 
         if (is_right_click && !is_right_click_release) {
-            return actionSelectIndexIfNew(selection, index);
+            return actionSelectIndexIfNew(index);
         }
         
         if (is_left_click_release || is_right_click_release) {
-            return actionClearRequestExcIndex(selection, index, is_left_click_release);
+            return actionClearRequestExcIndex(index, is_left_click_release);
         }
 
         return false;
+    }
+
+    void ModelSelectionManager::updateSelectionOnInsert(const ModelIndex &index,
+                                                        int flags) {
+        if ((flags & ModelEventFlags::EVENT_INSERT) == ModelEventFlags::EVENT_NONE) {
+            return;
+        }
+
+        m_selection.selectSingle(index, true);
     }
 
 }  // namespace Toolbox

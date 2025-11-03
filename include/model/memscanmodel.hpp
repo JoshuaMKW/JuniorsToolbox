@@ -144,7 +144,7 @@ namespace Toolbox {
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
         void setData(const ModelIndex &index, std::any data, int role) override;
 
-        void loadFromDMEFile(const fs_path &path);
+        Result<void, JSONError> loadFromDMEFile(const fs_path &path);
 
     public:
         [[nodiscard]] ModelIndex getIndex(const u32 &address) const;
@@ -167,7 +167,9 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData(const IDataModel::index_container &indexes) const override;
-        [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data) override;
+        [[nodiscard]] bool
+        insertMimeData(const ModelIndex &index, const MimeData &data,
+                       ModelInsertPolicy policy) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
@@ -194,9 +196,8 @@ namespace Toolbox {
 
         // -------------------
 
-        using event_listener_t = std::function<void(const ModelIndex &, MemScanModelEventFlags)>;
-        void addEventListener(UUID64 uuid, event_listener_t listener, MemScanModelEventFlags flags);
-        void removeEventListener(UUID64 uuid);
+        void addEventListener(UUID64 uuid, event_listener_t listener, int allowed_flags) override;
+        void removeEventListener(UUID64 uuid) override;
 
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
@@ -258,7 +259,9 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData_(const IDataModel::index_container &indexes) const;
-        [[nodiscard]] bool insertMimeData_(const ModelIndex &index, const MimeData &data);
+        [[nodiscard]] bool
+        insertMimeData_(const ModelIndex &index, const MimeData &data,
+                        ModelInsertPolicy policy);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index);
         void fetchMore_(const ModelIndex &index);
@@ -266,7 +269,7 @@ namespace Toolbox {
 
         size_t pollChildren(const ModelIndex &index) const;
 
-        void signalEventListeners(const ModelIndex &index, MemScanModelEventFlags flags);
+        void signalEventListeners(const ModelIndex &index, int flags);
 
         MetaValue getMetaValueFromMemory(const ModelIndex &index) const;
 
@@ -275,7 +278,7 @@ namespace Toolbox {
 
         mutable std::mutex m_mutex;
 
-        std::unordered_map<UUID64, std::pair<event_listener_t, MemScanModelEventFlags>> m_listeners;
+        std::unordered_map<UUID64, std::pair<event_listener_t, int>> m_listeners;
 
         // This will necessarily always be sorted
         // by means of linear construction
