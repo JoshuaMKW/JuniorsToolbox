@@ -97,10 +97,10 @@ namespace Toolbox::UI {
     }
 
     void LoggingWindow::onRenderBody(TimeStep delta_time) {
-        ImFont *mono_font =
-            GUIApplication::instance().getFontManager().getFont("NanumGothicCoding-Bold");
+        const FontManager &font_manager = GUIApplication::instance().getFontManager();
+        ImFont *mono_font               = font_manager.getFont("NanumGothicCoding-Bold");
         if (mono_font) {
-            ImGui::PushFont(mono_font, 12.0f);
+            ImGui::PushFont(mono_font, font_manager.getCurrentFontSize());
         }
 
         if (ImGui::BeginChild(ImWindowComponentTitle(*this, "Log View").c_str(), {}, false,

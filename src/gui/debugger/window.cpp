@@ -1546,10 +1546,11 @@ namespace Toolbox::UI {
                 m_address_cursor_nibble = 0;
             }
 
-            ImFont *mono_font = GUIApplication::instance().getFontManager().getFont(
+            const FontManager &font_manager = GUIApplication::instance().getFontManager();
+            ImFont *mono_font = font_manager.getFont(
                 "NanumGothicCoding-Bold");
             if (mono_font) {
-                ImGui::PushFont(mono_font, 12.0f);
+                ImGui::PushFont(mono_font, font_manager.getCurrentFontSize());
             }
 
             // Calculate the rows and columns based on
