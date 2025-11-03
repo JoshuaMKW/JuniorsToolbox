@@ -164,63 +164,63 @@ namespace Toolbox::Object {
             return std::format("{}", get<bool>().value());
         case MetaType::S8:
             if (radix == 2) {
-                return std::format("{:b}", get<s8>().value());
+                return std::format("0b{:b}", get<s8>().value());
             } else if (radix == 8) {
-                return std::format("{:o}", get<s8>().value());
+                return std::format("0o{:o}", get<s8>().value());
             } else if (radix == 10) {
                 return std::format("{}", get<s8>().value());
             } else {
-                return std::format("{:X}", get<s8>().value());
+                return std::format("0x{:X}", get<s8>().value());
             }
         case MetaType::U8:
             if (radix == 2) {
-                return std::format("{:b}", get<u8>().value());
+                return std::format("0b{:b}", get<u8>().value());
             } else if (radix == 8) {
-                return std::format("{:o}", get<u8>().value());
+                return std::format("0o{:o}", get<u8>().value());
             } else if (radix == 10) {
                 return std::format("{}", get<u8>().value());
             } else {
-                return std::format("{:X}", get<u8>().value());
+                return std::format("0x{:X}", get<u8>().value());
             }
         case MetaType::S16:
             if (radix == 2) {
-                return std::format("{:b}", get<s16>().value());
+                return std::format("0b{:b}", get<s16>().value());
             } else if (radix == 8) {
-                return std::format("{:o}", get<s16>().value());
+                return std::format("0o{:o}", get<s16>().value());
             } else if (radix == 10) {
                 return std::format("{}", get<s16>().value());
             } else {
-                return std::format("{:X}", get<s16>().value());
+                return std::format("0x{:X}", get<s16>().value());
             }
         case MetaType::U16:
             if (radix == 2) {
-                return std::format("{:b}", get<u16>().value());
+                return std::format("0b{:b}", get<u16>().value());
             } else if (radix == 8) {
-                return std::format("{:o}", get<u16>().value());
+                return std::format("0o{:o}", get<u16>().value());
             } else if (radix == 10) {
                 return std::format("{}", get<u16>().value());
             } else {
-                return std::format("{:X}", get<u16>().value());
+                return std::format("0x{:X}", get<u16>().value());
             }
         case MetaType::S32:
             if (radix == 2) {
-                return std::format("{:b}", get<s32>().value());
+                return std::format("0b{:b}", get<s32>().value());
             } else if (radix == 8) {
-                return std::format("{:o}", get<s32>().value());
+                return std::format("0o{:o}", get<s32>().value());
             } else if (radix == 10) {
                 return std::format("{}", get<s32>().value());
             } else {
-                return std::format("{:X}", get<s32>().value());
+                return std::format("0x{:X}", get<s32>().value());
             }
         case MetaType::U32:
             if (radix == 2) {
-                return std::format("{:b}", get<u32>().value());
+                return std::format("0b{:b}", get<u32>().value());
             } else if (radix == 8) {
-                return std::format("{:o}", get<u32>().value());
+                return std::format("0o{:o}", get<u32>().value());
             } else if (radix == 10) {
                 return std::format("{}", get<u32>().value());
             } else {
-                return std::format("{:X}", get<u32>().value());
+                return std::format("0x{:X}", get<u32>().value());
             }
         case MetaType::F32:
             return std::format("{}", get<f32>().value());

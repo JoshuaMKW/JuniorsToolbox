@@ -136,14 +136,16 @@ namespace Toolbox::UI {
         std::string buildQualifiedId(ModelIndex index) const;
 
         // ----
-        void renderPreview(f32 column_width, const MetaValue &value);
-        void renderPreviewSingle(f32 column_width, const MetaValue &value);
+        void renderPreview(f32 column_width, const MetaValue &value, WatchValueBase value_base);
+        void renderPreviewSingle(f32 column_width, const MetaValue &value,
+                                 WatchValueBase value_base);
         void renderPreviewRGBA(f32 column_width, const MetaValue &value);
         void renderPreviewRGB(f32 column_width, const MetaValue &value);
         void renderPreviewVec3(f32 column_width, const MetaValue &value);
         void renderPreviewTransform(f32 column_width, const MetaValue &value);
         void renderPreviewMatrix34(f32 column_width, const MetaValue &value);
-        void calcPreview(char *preview_out, size_t preview_size, const MetaValue &value) const;
+        std::string calcPreview(const MetaValue &value,
+                                WatchValueBase value_base = WatchValueBase::BASE_DECIMAL) const;
         Color::RGBShader calcColorRGB(const MetaValue &value);
         Color::RGBAShader calcColorRGBA(const MetaValue &value);
         // ----

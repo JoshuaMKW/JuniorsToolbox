@@ -223,7 +223,7 @@ namespace Toolbox::UI {
         m_deferred_ctx = ctx;
         processKeybinds(ctx);
 
-        ImGuiWindow *window = ImGui::GetCurrentWindow();\
+        ImGuiWindow *window = ImGui::GetCurrentWindow();
         if (!ImGui::BeginFlatPopupEx(m_id, ImGuiWindowFlags_AlwaysAutoResize |
                                              ImGuiWindowFlags_NoTitleBar |
                                              ImGuiWindowFlags_NoSavedSettings)) {

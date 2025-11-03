@@ -16,6 +16,9 @@
 
 #include "gui/imgui_ext.hpp"
 
+#include "misc/cpp/imgui_stdlib.cpp"
+#include "misc/cpp/imgui_stdlib.h"
+
 #define SCANNER_TABLE_MAX_RENDER_COUNT 1000
 
 template <typename _T> constexpr static _T OverwriteNibble(_T value, u8 nibble_idx, u8 nibble_val) {
@@ -306,8 +309,8 @@ namespace Toolbox::UI {
             AddressSpan span = {m_address_selection_begin + m_address_selection_begin_nibble / 2,
                                 m_address_selection_end + m_address_selection_end_nibble / 2};
 
-            m_ascii_view_context_menu.renderForItem("ASCII View", span);
-            m_byte_view_context_menu.renderForItem("Byte View", span);
+            m_ascii_view_context_menu.tryRender(span);
+            m_byte_view_context_menu.tryRender(span);
             m_fill_bytes_dialog.render(span);
         }
         ImGui::EndChild();
@@ -509,6 +512,10 @@ namespace Toolbox::UI {
                     m_address_selection_new = false;
                 }
 
+                if (column_hovered) {
+                    m_byte_view_context_menu.tryOpen(0);
+                }
+
                 // In this case we check for selection dragging
                 if (!m_selection_was_ascii && m_address_selection_new &&
                     Input::GetMouseButton(MouseButton::BUTTON_LEFT) && column_hovered) {
@@ -693,6 +700,10 @@ namespace Toolbox::UI {
                 m_cursor_anim_timer = -0.3f;
             } else if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT)) {
                 m_address_selection_new = false;
+            }
+
+            if (column_hovered) {
+                m_byte_view_context_menu.tryOpen(0);
             }
 
             // In this case we check for selection dragging
@@ -1870,10 +1881,11 @@ namespace Toolbox::UI {
         void *mem_view              = manager.getMemoryView();
         size_t mem_size             = manager.getMemorySize();
 
-        MetaValue meta_value = m_watch_proxy_model->getWatchValueMeta(watch_idx);
-        u32 address          = m_watch_proxy_model->getWatchAddress(watch_idx);
-        u32 size             = m_watch_proxy_model->getWatchSize(watch_idx);
-        bool locked          = m_watch_proxy_model->getWatchLock(watch_idx);
+        MetaValue meta_value      = m_watch_proxy_model->getWatchValueMeta(watch_idx);
+        u32 address               = m_watch_proxy_model->getWatchAddress(watch_idx);
+        u32 size                  = m_watch_proxy_model->getWatchSize(watch_idx);
+        bool locked               = m_watch_proxy_model->getWatchLock(watch_idx);
+        WatchValueBase value_base = m_watch_proxy_model->getWatchViewBase(watch_idx);
 
         const ImGuiStyle &style = ImGui::GetStyle();
         ImGuiWindow *window     = ImGui::GetCurrentWindow();
@@ -2019,7 +2031,7 @@ namespace Toolbox::UI {
                 ImGui::Text("Invalid Watch");
             } else {
                 f32 column_width = ImGui::GetContentRegionAvail().x;
-                renderPreview(column_width, meta_value);
+                renderPreview(column_width, meta_value, value_base);
             }
         }
 
@@ -2518,29 +2530,85 @@ namespace Toolbox::UI {
                            m_base_address = address;
                        })
             .addDivider()  // --------------
-            .addOption("View as Decimal",
-                       {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_D},
-                       [&](const ModelIndex &index) {
-                           m_watch_proxy_model->setWatchViewBase(index,
-                                                                 WatchValueBase::BASE_DECIMAL);
-                       })
-            .addOption("View as Hexadecimal",
-                       {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_H},
-                       [&](const ModelIndex &index) {
-                           m_watch_proxy_model->setWatchViewBase(index,
-                                                                 WatchValueBase::BASE_DECIMAL);
-                       })
             .addOption(
-                "View as Octal", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O},
+                "View as Decimal",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_D},
+                [&](const ModelIndex &index) {
+                    MetaType type = m_watch_proxy_model->getWatchValueMeta(index).type();
+                    switch (type) {
+                    case MetaType::S8:
+                    case MetaType::U8:
+                    case MetaType::S16:
+                    case MetaType::U16:
+                    case MetaType::S32:
+                    case MetaType::U32:
+                        return true;
+                    default:
+                        return false;
+                    }
+                },
                 [&](const ModelIndex &index) {
                     m_watch_proxy_model->setWatchViewBase(index, WatchValueBase::BASE_DECIMAL);
                 })
-            .addOption("View as Binary",
-                       {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_B},
-                       [&](const ModelIndex &index) {
-                           m_watch_proxy_model->setWatchViewBase(index,
-                                                                 WatchValueBase::BASE_DECIMAL);
-                       })
+            .addOption(
+                "View as Hexadecimal",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_H},
+                [&](const ModelIndex &index) {
+                    MetaType type = m_watch_proxy_model->getWatchValueMeta(index).type();
+                    switch (type) {
+                    case MetaType::S8:
+                    case MetaType::U8:
+                    case MetaType::S16:
+                    case MetaType::U16:
+                    case MetaType::S32:
+                    case MetaType::U32:
+                        return true;
+                    default:
+                        return false;
+                    }
+                },
+                [&](const ModelIndex &index) {
+                    m_watch_proxy_model->setWatchViewBase(index, WatchValueBase::BASE_HEXADECIMAL);
+                })
+            .addOption(
+                "View as Octal", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O},
+                [&](const ModelIndex &index) {
+                    MetaType type = m_watch_proxy_model->getWatchValueMeta(index).type();
+                    switch (type) {
+                    case MetaType::S8:
+                    case MetaType::U8:
+                    case MetaType::S16:
+                    case MetaType::U16:
+                    case MetaType::S32:
+                    case MetaType::U32:
+                        return true;
+                    default:
+                        return false;
+                    }
+                },
+                [&](const ModelIndex &index) {
+                    m_watch_proxy_model->setWatchViewBase(index, WatchValueBase::BASE_OCTAL);
+                })
+            .addOption(
+                "View as Binary",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_B},
+                [&](const ModelIndex &index) {
+                    MetaType type = m_watch_proxy_model->getWatchValueMeta(index).type();
+                    switch (type) {
+                    case MetaType::S8:
+                    case MetaType::U8:
+                    case MetaType::S16:
+                    case MetaType::U16:
+                    case MetaType::S32:
+                    case MetaType::U32:
+                        return true;
+                    default:
+                        return false;
+                    }
+                },
+                [&](const ModelIndex &index) {
+                    m_watch_proxy_model->setWatchViewBase(index, WatchValueBase::BASE_BINARY);
+                })
             .addDivider()  // --------------
             .addOption(
                 "Lock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_L},
@@ -2867,12 +2935,13 @@ namespace Toolbox::UI {
         return result;
     }
 
-    void DebuggerWindow::renderPreview(f32 label_width, const MetaValue &value) {
+    void DebuggerWindow::renderPreview(f32 label_width, const MetaValue &value,
+                                       WatchValueBase value_base) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         switch (value.type()) {
         default:
-            renderPreviewSingle(label_width, value);
+            renderPreviewSingle(label_width, value, value_base);
             break;
         case MetaType::RGB:
             renderPreviewRGB(label_width, value);
@@ -2890,21 +2959,19 @@ namespace Toolbox::UI {
             renderPreviewMatrix34(label_width, value);
             break;
         case MetaType::STRING:
-            renderPreviewSingle(label_width, value);
+            renderPreviewSingle(label_width, value, value_base);
             break;
         case MetaType::UNKNOWN:
-            renderPreviewSingle(label_width, value);
+            renderPreviewSingle(label_width, value, value_base);
             break;
         }
     }
 
-    void DebuggerWindow::renderPreviewSingle(f32 column_width, const MetaValue &value) {
+    void DebuggerWindow::renderPreviewSingle(f32 column_width, const MetaValue &value,
+                                             WatchValueBase value_base) {
         ImVec2 cursor_pos = ImGui::GetCursorPos();
 
-        size_t preview_size = 4096;
-
-        char *value_buf = new char[preview_size];
-        calcPreview(value_buf, preview_size, value);
+        std::string preview = calcPreview(value, value_base);
 
         if (value.computeSize() < 8) {
             ImGui::SetNextItemWidth(200.0f);
@@ -2912,21 +2979,18 @@ namespace Toolbox::UI {
             ImGui::SetNextItemWidth(350.0f);
         }
 
-        ImGui::InputText("##single_preview", value_buf, preview_size,
+        ImGui::InputText("##single_preview", &preview,
                          ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
-
-        delete[] value_buf;
     }
 
     void DebuggerWindow::renderPreviewRGBA(f32 column_width, const MetaValue &value) {
         ImGuiStyle &style = ImGui::GetStyle();
         ImVec2 cursor_pos = ImGui::GetCursorPos();
 
-        char value_buf[32] = {};
-        calcPreview(value_buf, sizeof(value_buf), value);
+        std::string preview = calcPreview(value, WatchValueBase::BASE_HEXADECIMAL);
 
         ImGui::SetNextItemWidth(400.0f - ImGui::GetFrameHeight() - style.ItemSpacing.x);
-        ImGui::InputText("##single_preview", value_buf, sizeof(value_buf),
+        ImGui::InputText("##single_preview", &preview,
                          ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
 
         ImGui::SameLine();
@@ -2944,11 +3008,10 @@ namespace Toolbox::UI {
     void DebuggerWindow::renderPreviewRGB(f32 column_width, const MetaValue &value) {
         ImGuiStyle &style = ImGui::GetStyle();
 
-        char value_buf[32] = {};
-        calcPreview(value_buf, sizeof(value_buf), value);
+        std::string preview = calcPreview(value, WatchValueBase::BASE_HEXADECIMAL);
 
         ImGui::SetNextItemWidth(400.0f - ImGui::GetFrameHeight() - style.ItemSpacing.x);
-        ImGui::InputText("##single_preview", value_buf, sizeof(value_buf),
+        ImGui::InputText("##single_preview", &preview,
                          ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
 
         ImGui::SameLine();
@@ -2986,13 +3049,12 @@ namespace Toolbox::UI {
             for (int i = 0; i < 3; ++i) {
                 MetaValue flt_val = MetaValue(vec[i]);
 
-                char value_buf[32] = {};
-                calcPreview(value_buf, sizeof(value_buf), flt_val);
+                std::string preview = calcPreview(flt_val);
 
                 ImGui::PushID(i);
 
                 ImGui::SetNextItemWidth(100.0f);
-                ImGui::InputText("##vec3_f32_preview", value_buf, sizeof(value_buf),
+                ImGui::InputText("##vec3_f32_preview", &preview,
                                  ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
 
                 if (i < 2) {
@@ -3044,13 +3106,12 @@ namespace Toolbox::UI {
             for (int i = 0; i < 3; ++i) {
                 MetaValue flt_val = MetaValue(t.m_translation[i]);
 
-                char value_buf[32] = {};
-                calcPreview(value_buf, sizeof(value_buf), flt_val);
+                std::string preview = calcPreview(flt_val);
 
                 ImGui::PushID(i);
 
                 ImGui::SetNextItemWidth(100.0f);
-                ImGui::InputText("##vec3_f32_preview_trans", value_buf, sizeof(value_buf),
+                ImGui::InputText("##vec3_f32_preview_trans", &preview,
                                  ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
 
                 if (i < 2) {
@@ -3066,13 +3127,12 @@ namespace Toolbox::UI {
             for (int i = 0; i < 3; ++i) {
                 MetaValue flt_val = MetaValue(t.m_rotation[i]);
 
-                char value_buf[32] = {};
-                calcPreview(value_buf, sizeof(value_buf), flt_val);
+                std::string preview = calcPreview(flt_val);
 
                 ImGui::PushID(i);
 
                 ImGui::SetNextItemWidth(100.0f);
-                ImGui::InputText("##vec3_f32_preview_rot", value_buf, sizeof(value_buf),
+                ImGui::InputText("##vec3_f32_preview_rot", &preview,
                                  ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
 
                 if (i < 2) {
@@ -3088,13 +3148,12 @@ namespace Toolbox::UI {
             for (int i = 0; i < 3; ++i) {
                 MetaValue flt_val = MetaValue(t.m_scale[i]);
 
-                char value_buf[32] = {};
-                calcPreview(value_buf, sizeof(value_buf), flt_val);
+                std::string preview = calcPreview(flt_val);
 
                 ImGui::PushID(i);
 
                 ImGui::SetNextItemWidth(100.0f);
-                ImGui::InputText("##transform_f32_preview_scale", value_buf, sizeof(value_buf),
+                ImGui::InputText("##transform_f32_preview_scale", &preview,
                                  ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
 
                 if (i < 2) {
@@ -3149,13 +3208,12 @@ namespace Toolbox::UI {
                 for (int i = 0; i < 4; ++i) {
                     MetaValue flt_val = MetaValue(value_mtx[j][i]);
 
-                    char value_buf[32] = {};
-                    calcPreview(value_buf, sizeof(value_buf), flt_val);
+                    std::string preview = calcPreview(flt_val);
 
                     ImGui::PushID(i);
 
                     ImGui::SetNextItemWidth(100.0f);
-                    ImGui::InputText("##mtx34_f32_preview", value_buf, sizeof(value_buf),
+                    ImGui::InputText("##mtx34_f32_preview", &preview,
                                      ImGuiInputTextFlags_ReadOnly |
                                          ImGuiInputTextFlags_AutoSelectAll);
 
@@ -3170,208 +3228,27 @@ namespace Toolbox::UI {
         ImGui::EndGroup();
     }
 
-    void DebuggerWindow::calcPreview(char *preview_out, size_t preview_size,
-                                     const MetaValue &value) const {
-        if (preview_out == nullptr || preview_size == 0) {
-            return;
-        }
-
+    std::string DebuggerWindow::calcPreview(const MetaValue &value,
+                                            WatchValueBase value_base) const {
         size_t address_size = value.computeSize();
-        // if (value.type() == MetaType::UNKNOWN) {
-        //
-        // }
 
-        if (address_size == 0) {
-            snprintf(preview_out, preview_size, "???");
-            return;
+        int radix;
+        switch (value_base) {
+        case WatchValueBase::BASE_BINARY:
+            radix = 2;
+            break;
+        case WatchValueBase::BASE_OCTAL:
+            radix = 8;
+            break;
+        case WatchValueBase::BASE_DECIMAL:
+            radix = 10;
+            break;
+        case WatchValueBase::BASE_HEXADECIMAL:
+            radix = 16;
+            break;
         }
 
-        if (preview_size < address_size) {
-            snprintf(preview_out, preview_size, "???");
-            return;
-        }
-
-        switch (value.type()) {
-        case MetaType::BOOL: {
-            value.get<bool>()
-                .and_then([&](bool result) {
-                    snprintf(preview_out, preview_size, "%s", result ? "true" : "false");
-                    return Result<bool, std::string>();
-                })
-                .or_else([&](std::string &&error) {
-                    snprintf(preview_out, preview_size, "%s", error.c_str());
-                    return Result<bool, std::string>();
-                });
-            break;
-        }
-        case MetaType::S8: {
-            value.get<s8>()
-                .and_then([&](s8 result) {
-                    snprintf(preview_out, preview_size, "%d", result);
-                    return Result<s8, std::string>();
-                })
-                .or_else([&](std::string &&error) {
-                    snprintf(preview_out, preview_size, "%s", error.c_str());
-                    return Result<s8, std::string>();
-                });
-            break;
-        }
-        case MetaType::U8: {
-            value.get<u8>()
-                .and_then([&](u8 result) {
-                    snprintf(preview_out, preview_size, "%u", result);
-                    return Result<u8, std::string>();
-                })
-                .or_else([&](std::string &&error) {
-                    snprintf(preview_out, preview_size, "%s", error.c_str());
-                    return Result<u8, std::string>();
-                });
-            break;
-        }
-        case MetaType::S16: {
-            value.get<s16>()
-                .and_then([&](s16 result) {
-                    snprintf(preview_out, preview_size, "%d", result);
-                    return Result<s16, std::string>();
-                })
-                .or_else([&](std::string &&error) {
-                    snprintf(preview_out, preview_size, "%s", error.c_str());
-                    return Result<s16, std::string>();
-                });
-            break;
-        }
-        case MetaType::U16: {
-            value.get<u16>()
-                .and_then([&](u16 result) {
-                    snprintf(preview_out, preview_size, "%u", result);
-                    return Result<u16, std::string>();
-                })
-                .or_else([&](std::string &&error) {
-                    snprintf(preview_out, preview_size, "%s", error.c_str());
-                    return Result<u16, std::string>();
-                });
-            break;
-        }
-        case MetaType::S32: {
-            value.get<s32>()
-                .and_then([&](s32 result) {
-                    snprintf(preview_out, preview_size, "%ld", result);
-                    return Result<s32, std::string>();
-                })
-                .or_else([&](std::string &&error) {
-                    snprintf(preview_out, preview_size, "%s", error.c_str());
-                    return Result<s32, std::string>();
-                });
-            break;
-        }
-        case MetaType::U32: {
-            value.get<u32>()
-                .and_then([&](u32 result) {
-                    snprintf(preview_out, preview_size, "%lu", result);
-                    return Result<u32, std::string>();
-                })
-                .or_else([&](std::string &&error) {
-                    snprintf(preview_out, preview_size, "%s", error.c_str());
-                    return Result<u32, std::string>();
-                });
-            break;
-        }
-        case MetaType::F32: {
-            value.get<f32>()
-                .and_then([&](f32 result) {
-                    snprintf(preview_out, preview_size, "%.6f", result);
-                    return Result<f32, std::string>();
-                })
-                .or_else([&](std::string &&error) {
-                    snprintf(preview_out, preview_size, "%s", error.c_str());
-                    return Result<f32, std::string>();
-                });
-            break;
-        }
-        case MetaType::F64: {
-            value.get<f64>()
-                .and_then([&](f64 result) {
-                    snprintf(preview_out, preview_size, "%.6f", result);
-                    return Result<f64, std::string>();
-                })
-                .or_else([&](std::string &&error) {
-                    snprintf(preview_out, preview_size, "%s", error.c_str());
-                    return Result<f64, std::string>();
-                });
-            break;
-        }
-        case MetaType::STRING: {
-            value.get<std::string>()
-                .and_then([&](const std::string &result) {
-                    snprintf(preview_out, preview_size, "%s", result.c_str());
-                    return Result<std::string, std::string>();
-                })
-                .or_else([&](std::string &&error) {
-                    snprintf(preview_out, preview_size, "%s", error.c_str());
-                    return Result<std::string, std::string>();
-                });
-            break;
-        }
-        case MetaType::RGB: {
-            value.get<Color::RGB24>()
-                .and_then([&](Color::RGB24 result) {
-                    u32 value = (result.m_r << 16) | (result.m_g << 8) | result.m_b;
-                    snprintf(preview_out, preview_size, "#%06X", value);
-                    return Result<Color::RGB24, std::string>();
-                })
-                .or_else([&](std::string &&error) {
-                    snprintf(preview_out, preview_size, "%s", error.c_str());
-                    return Result<Color::RGB24, std::string>();
-                });
-            break;
-        }
-        case MetaType::RGBA: {
-            value.get<Color::RGBA32>()
-                .and_then([&](Color::RGBA32 result) {
-                    u32 value =
-                        (result.m_r << 24) | (result.m_g << 16) | (result.m_b << 8) | result.m_a;
-                    snprintf(preview_out, preview_size, "#%08X", value);
-                    return Result<Color::RGBA32, std::string>();
-                })
-                .or_else([&](std::string &&error) {
-                    snprintf(preview_out, preview_size, "%s", error.c_str());
-                    return Result<Color::RGBA32, std::string>();
-                });
-            break;
-        }
-        case MetaType::UNKNOWN: {
-            size_t tmp_size   = std::min<size_t>(preview_size / 3, address_size);
-            size_t final_size = std::min<size_t>(preview_size, address_size);
-
-#if 0
-            communicator.readBytes(tmp_buf, true_address, tmp_size)
-                .or_else([&](const BaseError &err) {
-                    snprintf(preview_out, preview_size, "Error: %s", err.m_message[0].c_str());
-                    return Result<void>{};
-                });
-#else
-            const char *byte_buf = value.buf().buf<char>();
-#endif
-
-            size_t i, j = 0;
-            for (i = 0; i < tmp_size; ++i) {
-                uint8_t ch = ((uint8_t *)byte_buf)[i];
-                snprintf(preview_out + j, preview_size - j, "%02X ", ch);
-                j += 3;
-            }
-
-            if (j > 0) {
-                preview_out[j - 1] = '\0';
-            } else {
-                preview_out[j] = '\0';
-            }
-
-            break;
-        }
-        default:
-            snprintf(preview_out, preview_size, "Unsupported type");
-            break;
-        }
+        return value.toString(radix);
     }
 
     Color::RGBShader DebuggerWindow::calcColorRGB(const MetaValue &value) {
