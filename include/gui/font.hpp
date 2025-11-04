@@ -12,7 +12,9 @@
 #include "fsystem.hpp"
 #include "gui/settings.hpp"
 
-#define USE_LEGACY_FONT_API 0
+#if IMGUI_VERSION_NUM < 19201
+#define TOOLBOX_USE_LEGACY_IMFONT_API
+#endif
 
 namespace Toolbox::UI {
 
@@ -22,7 +24,12 @@ namespace Toolbox::UI {
         std::multimap<std::string, ImFont *> m_loaded_fonts;
 
     public:
-#if USE_LEGACY_FONT_API
+        static FontManager &instance() {
+            static FontManager s_instance;
+            return s_instance;
+        }
+
+#ifdef TOOLBOX_USE_LEGACY_IMFONT_API
         std::set<float> fontSizes() {
             static std::set<float> s_font_sizes = {12.0f, 16.0f, 24.0f};
             return s_font_sizes;
@@ -47,7 +54,7 @@ namespace Toolbox::UI {
                         const ImWchar *glyph_ranges);
         void finalize();
 
-#if USE_LEGACY_FONT_API
+#ifdef TOOLBOX_USE_LEGACY_IMFONT_API
         ImFont *getFont(std::string_view name, float size) const;
 
         ImFont *getCurrentFont() const {

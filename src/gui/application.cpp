@@ -185,10 +185,10 @@ namespace Toolbox {
 
         const AppSettings &settings = m_settings_manager.getCurrentProfile();
 
-        if (!m_font_manager.initialize()) {
+        if (!FontManager::instance().initialize()) {
             TOOLBOX_ERROR("[INIT] Failed to initialize font manager!");
         } else {
-            m_font_manager.setCurrentFont(settings.m_font_family, settings.m_font_size);
+            FontManager::instance().setCurrentFont(settings.m_font_family, settings.m_font_size);
         }
 
         TRY(TemplateFactory::initialize()).error([](const FSError &error) { LogError(error); });
@@ -243,7 +243,7 @@ namespace Toolbox {
 
             DolphinHookManager::instance().setDolphinPath(settings.m_dolphin_path);
             m_dolphin_communicator.setRefreshRate(settings.m_dolphin_refresh_rate);
-            m_font_manager.setCurrentFont(settings.m_font_family, settings.m_font_size);
+            FontManager::instance().setCurrentFont(settings.m_font_family, settings.m_font_size);
 
             TemplateFactory::setCacheMode(settings.m_is_template_cache_allowed);
         }
@@ -409,7 +409,7 @@ namespace Toolbox {
 
         ImGuizmo::BeginFrame();
 
-        ImGui::PushFont(m_font_manager.getCurrentFont(), m_font_manager.getCurrentFontSize());
+        ImGui::PushFont(FontManager::instance().getCurrentFont(), FontManager::instance().getCurrentFontSize());
 
         ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);

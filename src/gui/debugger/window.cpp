@@ -309,8 +309,8 @@ namespace Toolbox::UI {
             AddressSpan span = {m_address_selection_begin + m_address_selection_begin_nibble / 2,
                                 m_address_selection_end + m_address_selection_end_nibble / 2};
 
-            m_ascii_view_context_menu.tryRender(span);
-            m_byte_view_context_menu.tryRender(span);
+            // m_ascii_view_context_menu.tryRender(span);
+            // m_byte_view_context_menu.tryRender(span);
             m_fill_bytes_dialog.render(span);
         }
         ImGui::EndChild();
@@ -339,8 +339,9 @@ namespace Toolbox::UI {
         ImGuiStyle &style   = ImGui::GetStyle();
         ImGuiWindow *window = ImGui::GetCurrentWindow();
 
-        const bool window_focused = ImGui::IsWindowFocused();
-        const bool window_hovered = ImGui::IsWindowHovered();
+        const bool window_focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
+        const bool window_hovered =
+            ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup);
 
         const float font_width = ImGui::GetFontSize();
         const float ch_width   = ImGui::CalcTextSize("0").x;
@@ -508,12 +509,35 @@ namespace Toolbox::UI {
                     m_address_selection_end_nibble   = m_address_selection_begin_nibble;
 
                     m_cursor_anim_timer = -0.3f;
-                } else if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT)) {
-                    m_address_selection_new = false;
                 }
 
-                if (column_hovered) {
-                    m_byte_view_context_menu.tryOpen(0);
+                if (column_hovered && Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT)) {
+                    m_selection_was_ascii = false;
+
+                    m_address_cursor        = cur_address;
+                    m_address_cursor_nibble = ImClamp<u8>(
+                        (mouse_pos.x - text_rect.Min.x) / ch_width, 0, nibble_width - 1);
+
+                    // Check if selection is outside the existing span
+                    u32 cursor_addr = m_address_cursor + m_address_cursor_nibble / 2;
+                    if (selection_start > cursor_addr || cursor_addr >= selection_end) {
+                        m_address_selection_new         = true;
+                        m_address_selection_mouse_start = mouse_pos;
+
+                        m_address_selection_begin = cur_address;
+                        m_address_selection_end   = cur_address;
+
+                        // Set the nibble to an even index so it traverses whole bytes
+                        m_address_selection_begin_nibble = m_address_cursor_nibble & ~1;
+                        m_address_selection_end_nibble   = m_address_selection_begin_nibble;
+                    }
+
+                    m_cursor_anim_timer = -0.3f;
+                }
+
+                if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT) &&
+                    !Input::GetMouseButton(MouseButton::BUTTON_RIGHT)) {
+                    m_address_selection_new = false;
                 }
 
                 // In this case we check for selection dragging
@@ -563,6 +587,19 @@ namespace Toolbox::UI {
                 } else if (column_hovered) {
                     window->DrawList->AddRectFilled(text_rect.Min, text_rect.Max,
                                                     ImGui::GetColorU32(ImGuiCol_TabHovered));
+                }
+
+                AddressSpan span = {m_address_selection_begin +
+                                        m_address_selection_begin_nibble / 2,
+                                    m_address_selection_end + m_address_selection_end_nibble / 2};
+                if (column_hovered) {
+
+                    m_byte_view_context_menu.tryOpen(0);
+                }
+
+                const bool is_context_column = cur_address == m_address_cursor;
+                if (is_context_column) {
+                    m_byte_view_context_menu.tryRender(span);
                 }
 
                 ImGui::Text(text_buf);
@@ -698,12 +735,47 @@ namespace Toolbox::UI {
                 m_address_selection_end_nibble   = m_address_selection_begin_nibble;
 
                 m_cursor_anim_timer = -0.3f;
-            } else if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT)) {
+            }
+
+            if (column_hovered && Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT)) {
+                m_selection_was_ascii = false;
+
+                m_address_cursor        = (base_address + column_hovered) & ~(byte_width - 1);
+                m_address_cursor_nibble = (column_hovered * 2) % nibble_width;
+
+                // Check if selection is outside the existing span
+                u32 cursor_addr = m_address_cursor + m_address_cursor_nibble / 2;
+                if (selection_start > cursor_addr || cursor_addr >= selection_end) {
+                    m_address_selection_new         = true;
+                    m_address_selection_mouse_start = mouse_pos;
+
+                    m_address_selection_begin = base_address;
+                    m_address_selection_end   = base_address;
+
+                    // Set the nibble to an even index so it traverses whole bytes
+                    m_address_selection_begin_nibble = m_address_cursor_nibble & ~1;
+                    m_address_selection_end_nibble   = m_address_selection_begin_nibble;
+                }
+
+                m_cursor_anim_timer = -0.3f;
+            }
+
+            if (!Input::GetMouseButton(MouseButton::BUTTON_LEFT) &&
+                !Input::GetMouseButton(MouseButton::BUTTON_RIGHT)) {
                 m_address_selection_new = false;
             }
 
-            if (column_hovered) {
-                m_byte_view_context_menu.tryOpen(0);
+            AddressSpan span = {m_address_selection_begin + m_address_selection_begin_nibble / 2,
+                                m_address_selection_end + m_address_selection_end_nibble / 2};
+            if (column_hovered >= 0) {
+
+                m_ascii_view_context_menu.tryOpen(0);
+            }
+
+            const bool is_context_column =
+                base_address <= m_address_cursor && m_address_cursor < base_address + char_width;
+            if (is_context_column) {
+                m_ascii_view_context_menu.tryRender(span);
             }
 
             // In this case we check for selection dragging
@@ -1555,7 +1627,7 @@ namespace Toolbox::UI {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
             ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
 
-            const bool window_focused = ImGui::IsWindowFocused();
+            const bool window_focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
             const bool window_hovered = ImGui::IsWindowHovered();
 
             if (!window_focused) {
@@ -1563,7 +1635,7 @@ namespace Toolbox::UI {
                 m_address_cursor_nibble = 0;
             }
 
-            const FontManager &font_manager = GUIApplication::instance().getFontManager();
+            const FontManager &font_manager = FontManager::instance();
             ImFont *mono_font               = font_manager.getFont("NanumGothicCoding-Bold");
             if (mono_font) {
                 ImGui::PushFont(mono_font, font_manager.getCurrentFontSize() * 0.75f);

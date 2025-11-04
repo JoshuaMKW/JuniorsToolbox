@@ -97,7 +97,7 @@ namespace Toolbox::UI {
     }
 
     void LoggingWindow::onRenderBody(TimeStep delta_time) {
-        const FontManager &font_manager = GUIApplication::instance().getFontManager();
+        const FontManager &font_manager = FontManager::instance();
         ImFont *mono_font               = font_manager.getFont("NanumGothicCoding-Bold");
         if (mono_font) {
             ImGui::PushFont(mono_font, font_manager.getCurrentFontSize() * 0.75f);

@@ -134,7 +134,6 @@ namespace Toolbox {
         ResourceManager &getResourceManager() { return m_resource_manager; }
         ThemeManager &getThemeManager() { return m_theme_manager; }
         SettingsManager &getSettingsManager() { return m_settings_manager; }
-        FontManager &getFontManager() { return m_font_manager; }
 
         ProjectManager &getProjectManager() { return m_project_manager; }
         const ProjectManager &getProjectManager() const { return m_project_manager; }
@@ -192,7 +191,6 @@ namespace Toolbox {
 
         ScopePtr<Scene::SceneLayoutManager> m_scene_layout_manager;
         ResourceManager m_resource_manager;
-        FontManager m_font_manager;
         ThemeManager m_theme_manager;
         SettingsManager m_settings_manager;
         TemplateFactory m_template_factory;

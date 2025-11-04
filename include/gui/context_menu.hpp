@@ -16,6 +16,7 @@
 
 #include "core/input/input.hpp"
 #include "core/keybind/keybind.hpp"
+#include "gui/font.hpp"
 
 using namespace Toolbox;
 
@@ -198,6 +199,10 @@ namespace Toolbox::UI {
 
     template <typename _DataT>
     inline void ContextMenu<_DataT>::tryOpen(ImGuiID item_id, ImGuiPopupFlags popup_flags) {
+        if (!m_can_open || m_was_open) {
+            return;
+        }
+
         ImGuiWindow *window = ImGui::GetCurrentWindow();
         // if (window->SkipItems)
         //     return;
@@ -205,11 +210,8 @@ namespace Toolbox::UI {
         IM_ASSERT(id != 0);  // You cannot pass a NULL str_id if the last item has no identifier
                              // (e.g. a Text() item)
         int mouse_button = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
-        if (ImGui::IsMouseReleased(mouse_button))
+        if (ImGui::IsMouseReleased(mouse_button)) {
             ImGui::OpenPopupEx(id, popup_flags);
-
-        m_was_open = ImGui::IsPopupOpen(id, popup_flags);
-        if (m_was_open) {
             m_id = id;
         }
     }
@@ -223,6 +225,17 @@ namespace Toolbox::UI {
         m_deferred_ctx = ctx;
         processKeybinds(ctx);
 
+        // Since windows can push their own font, we temporarily restore the
+        // desired font.
+        FontManager &font_manager = FontManager::instance();
+        ImFont *font              = font_manager.getCurrentFont();
+        ImGui::PushFont(font, font_manager.getCurrentFontSize());
+
+        // Set up the context menu style
+        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 5.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8.0f, 8.0f});
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8.0f, 8.0f});
+
         ImGuiWindow *window = ImGui::GetCurrentWindow();
         if (!ImGui::BeginFlatPopupEx(m_id, ImGuiWindowFlags_AlwaysAutoResize |
                                              ImGuiWindowFlags_NoTitleBar |
@@ -230,14 +243,19 @@ namespace Toolbox::UI {
             m_was_open = false;
             m_rect     = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
             m_id       = 0;
+            ImGui::PopStyleVar(3);
+            ImGui::PopFont();
             return;
         }
 
         if (!m_can_open) {
             m_was_open = false;
+            m_rect = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
+
             ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
-            m_rect = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
+            ImGui::PopStyleVar(3);
+            ImGui::PopFont();
             return;
         }
 
@@ -252,6 +270,8 @@ namespace Toolbox::UI {
         renderGroup(m_root_group, ctx, true);
 
         ImGui::EndPopup();
+        ImGui::PopStyleVar(3);
+        ImGui::PopFont();
         return;
     }
 
