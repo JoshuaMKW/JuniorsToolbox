@@ -53,12 +53,15 @@ namespace Toolbox::UI {
         void renderMemoryView();
         u32 renderMemoryRow(void *handle, u32 base_address, u32 byte_limit, u8 column_count,
                             u8 byte_width);
+
         void renderMemoryScanner();
+
         void renderMemoryWatchList();
         void renderMemoryWatch(const ModelIndex &index, int depth, float table_start_x,
                                float table_width, bool table_focused, bool table_hovered);
         void renderWatchGroup(const ModelIndex &index, int depth, float table_start_x,
                               float table_width, bool table_focused, bool table_hovered);
+
         void countMemoryWatch(const ModelIndex &index, int *row);
         void countWatchGroup(const ModelIndex &index, int *row);
         std::vector<ModelIndex>

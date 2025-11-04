@@ -6,6 +6,7 @@
 #include "gui/logging/errors.hpp"
 #include "gui/new_item/window.hpp"
 #include "model/fsmodel.hpp"
+#include "platform/webbrowser.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -122,7 +123,8 @@ namespace Toolbox::UI {
             }
 
             if (ImGui::MenuItem("Help")) {
-                // TODO: Show help dialog
+                Platform::TryOpenBrowserURL(
+                    "https://github.com/JoshuaMKW/JuniorsToolbox/wiki/Memory-Debugger");
             }
 
             ImGui::EndMenuBar();
@@ -1481,11 +1483,11 @@ namespace Toolbox::UI {
                 ImGui::EndChild();
                 ImGui::PopStyleVar(3);
 
+                ImGui::Checkbox("Enforce Alignment##xyz", &m_scan_enforce_alignment);
+
                 if (m_scan_active) {
                     ImGui::EndDisabled();
                 }
-
-                ImGui::Checkbox("Enforce Alignment##xyz", &m_scan_enforce_alignment);
             }
             ImGui::EndChild();
         }
