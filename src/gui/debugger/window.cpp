@@ -724,11 +724,11 @@ namespace Toolbox::UI {
                 m_address_selection_new         = true;
                 m_address_selection_mouse_start = mouse_pos;
 
-                m_address_selection_begin = base_address;
-                m_address_selection_end   = base_address;
-
                 m_address_cursor        = (base_address + column_hovered) & ~(byte_width - 1);
                 m_address_cursor_nibble = (column_hovered * 2) % nibble_width;
+
+                m_address_selection_begin = m_address_cursor;
+                m_address_selection_end   = m_address_cursor;
 
                 // Set the nibble to an even index so it traverses whole bytes
                 m_address_selection_begin_nibble = m_address_cursor_nibble & ~1;
@@ -737,8 +737,8 @@ namespace Toolbox::UI {
                 m_cursor_anim_timer = -0.3f;
             }
 
-            if (column_hovered && Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT)) {
-                m_selection_was_ascii = false;
+            if (column_hovered >= 0 && Input::GetMouseButtonDown(MouseButton::BUTTON_RIGHT)) {
+                m_selection_was_ascii = true;
 
                 m_address_cursor        = (base_address + column_hovered) & ~(byte_width - 1);
                 m_address_cursor_nibble = (column_hovered * 2) % nibble_width;
@@ -749,8 +749,8 @@ namespace Toolbox::UI {
                     m_address_selection_new         = true;
                     m_address_selection_mouse_start = mouse_pos;
 
-                    m_address_selection_begin = base_address;
-                    m_address_selection_end   = base_address;
+                    m_address_selection_begin = m_address_cursor;
+                    m_address_selection_end   = m_address_cursor;
 
                     // Set the nibble to an even index so it traverses whole bytes
                     m_address_selection_begin_nibble = m_address_cursor_nibble & ~1;
