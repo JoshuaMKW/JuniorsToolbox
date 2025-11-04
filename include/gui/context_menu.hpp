@@ -133,6 +133,8 @@ namespace Toolbox::UI {
 
         _DataT m_deferred_ctx;
         std::vector<typename option_t::operator_t> m_deferred_cmds;
+
+        std::vector<option_t> m_matched_keybinds;
     };
 
     template <typename _DataT>
@@ -238,8 +240,8 @@ namespace Toolbox::UI {
 
         ImGuiWindow *window = ImGui::GetCurrentWindow();
         if (!ImGui::BeginFlatPopupEx(m_id, ImGuiWindowFlags_AlwaysAutoResize |
-                                             ImGuiWindowFlags_NoTitleBar |
-                                             ImGuiWindowFlags_NoSavedSettings)) {
+                                               ImGuiWindowFlags_NoTitleBar |
+                                               ImGuiWindowFlags_NoSavedSettings)) {
             m_was_open = false;
             m_rect     = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
             m_id       = 0;
@@ -250,7 +252,7 @@ namespace Toolbox::UI {
 
         if (!m_can_open) {
             m_was_open = false;
-            m_rect = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
+            m_rect     = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
 
             ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
@@ -409,43 +411,50 @@ namespace Toolbox::UI {
     template <typename _DataT>
     inline bool ContextMenu<_DataT>::renderGroup(const group_t &group, const _DataT &ctx,
                                                  bool is_root) {
+        bool last_was_sep = false;
+        int64_t last_item = -1;
+
         if (is_root) {
-            int64_t last_item = -1;
             for (size_t i = 0; i < group.m_ops.size(); ++i) {
                 const context_t &entry = group.m_ops.at(i);
                 if (entry.m_type == context_t::TYPE_GROUP) {
                     if (renderGroup(*entry.m_group, ctx, false)) {
                         return true;
                     }
-                    last_item = i;
+                    last_item    = i;
+                    last_was_sep = false;
                 } else if (entry.m_type == context_t::TYPE_OP) {
                     if (renderOption(*entry.m_op, ctx)) {
                         return true;
                     }
-                    last_item = i;
-                } else if (0 <= last_item && i < group.m_ops.size() - 1) {
+                    last_item    = i;
+                    last_was_sep = false;
+                } else if (!last_was_sep && 0 <= last_item && i < group.m_ops.size() - 1) {
                     ImGui::Separator();
+                    last_was_sep = true;
                 }
             }
             return false;
         }
 
         if (ImGui::BeginMenu(group.m_name.c_str(), true)) {
-            int64_t last_item = -1;
             for (size_t i = 0; i < group.m_ops.size(); ++i) {
                 const context_t &entry = group.m_ops.at(i);
                 if (entry.m_type == context_t::TYPE_GROUP) {
                     if (renderGroup(*entry.m_group, ctx, false)) {
                         return true;
                     }
-                    last_item = i;
+                    last_item    = i;
+                    last_was_sep = false;
                 } else if (entry.m_type == context_t::TYPE_OP) {
                     if (renderOption(*entry.m_op, ctx)) {
                         return true;
                     }
-                    last_item = i;
-                } else if (0 <= last_item && i < group.m_ops.size() - 1) {
+                    last_item    = i;
+                    last_was_sep = false;
+                } else if (!last_was_sep && 0 <= last_item && i < group.m_ops.size() - 1) {
                     ImGui::Separator();
+                    last_was_sep = true;
                 }
             }
             ImGui::EndMenu();
@@ -455,8 +464,10 @@ namespace Toolbox::UI {
 
     template <typename _DataT>
     inline bool ContextMenu<_DataT>::renderOption(const option_t &option, const _DataT &ctx) {
-        if (!option.m_condition(ctx)) {
-            return false;
+        const bool is_valid_state = option.m_condition(ctx);
+
+        if (!is_valid_state) {
+            ImGui::BeginDisabled();
         }
 
         std::string keybind_name = option.m_keybind.toString();
@@ -465,16 +476,51 @@ namespace Toolbox::UI {
                                        ? option.m_name
                                        : std::format("{} ({})", option.m_name, keybind_name);
 
+        bool clicked = false;
         if (ImGui::MenuItem(display_name.c_str())) {
             m_deferred_cmds.emplace_back(option.m_op);
-            return true;
+            clicked = true;
         }
 
-        return false;
+        if (!is_valid_state) {
+            ImGui::EndDisabled();
+        }
+
+        return clicked;
     }
 
     template <typename _DataT> inline void ContextMenu<_DataT>::processKeybinds(const _DataT &ctx) {
         processKeybindsGroup(m_root_group, ctx);
+
+        // Discard similar command bindings when one is already digested
+        // ---
+        // Example: CTRL+A -> CTRL+SHIFT+A
+        // In this case the second command should be discarded
+        // because shift is a soft differentiation.
+        const bool already_digested =
+            std::any_of(m_matched_keybinds.begin(), m_matched_keybinds.end(),
+                        [](const option_t &matched) { return matched.m_keybind_used; });
+        if (!already_digested && !m_matched_keybinds.empty()) {
+            // Do a reverse sort
+            std::stable_sort(m_matched_keybinds.begin(), m_matched_keybinds.end(),
+                             [](const option_t &l, const option_t &r) {
+                                 return l.m_keybind.size() >= r.m_keybind.size();
+                             });
+
+            // The first element will be the longest keybind that is matching.
+            option_t &option = m_matched_keybinds[0];
+            if (option.m_condition(ctx)) {
+                if (m_open_event) {
+                    m_open_event(ctx);
+                }
+                option.m_keybind_used = true;
+                m_deferred_cmds.emplace_back(option.m_op);
+            } else {
+                option.m_keybind_used = false;
+            }
+        }
+
+        m_matched_keybinds.clear();
     }
 
     template <typename _DataT>
@@ -497,20 +543,15 @@ namespace Toolbox::UI {
     template <typename _DataT>
     inline bool ContextMenu<_DataT>::processKeybindsOption(option_t &option, const _DataT &ctx) {
 
-        bool keybind_pressed = option.m_keybind.isInputMatching();
-
-        if (keybind_pressed && !option.m_keybind_used) {
-            if (option.m_condition(ctx)) {
-                if (m_open_event) {
-                    m_open_event(ctx);
-                }
-                option.m_keybind_used = true;
-                m_deferred_cmds.emplace_back(option.m_op);
-                return true;
-            }
-        }
-
-        if (!keybind_pressed || !option.m_condition(ctx)) {
+        if (option.m_keybind.isInputMatching()) {
+            // Even though we could filter by digested commands,
+            // we need to later discard similar command bindings
+            // ---
+            // Example: CTRL+A -> CTRL+SHIFT+A
+            // In this case the second command should be discarded
+            // because shift is a soft differentiation.
+            m_matched_keybinds.emplace_back(option);
+        } else {
             option.m_keybind_used = false;
         }
 
