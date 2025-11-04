@@ -2729,10 +2729,9 @@ namespace Toolbox::UI {
         ContextMenuBuilder<ModelIndex>(&m_group_view_context_menu)
             .addOption(
                 "Lock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_L},
-                [&](const ModelIndex &index) { m_watch_proxy_model->setWatchLock(index, true); })
-            .addOption(
-                "Unlock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
-                [&](const ModelIndex &index) { m_watch_proxy_model->setWatchLock(index, false); })
+                       [&](const ModelIndex &index) { recursiveLock(index, true); })
+            .addOption("Unlock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
+                       [&](const ModelIndex &index) { recursiveLock(index, false); })
             .addDivider()
             .addOption("Cut", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_X},
                        [&](const ModelIndex &index) {
