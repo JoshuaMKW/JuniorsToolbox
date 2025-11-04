@@ -235,7 +235,7 @@ namespace Toolbox {
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
 
-        void signalEventListeners(const ModelIndex &index, ModelEventFlags flags);
+        void signalEventListeners(const ModelIndex &index, int flags);
 
     protected:
         // Implementation of public API for mutex locking reasons
@@ -266,7 +266,7 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData_(const IDataModel::index_container &indexes) const;
-        [[nodiscard]] bool
+        [[nodiscard]] IDataModel::index_container
         insertMimeData_(const ModelIndex &index, const MimeData &data,
                         ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER);
 

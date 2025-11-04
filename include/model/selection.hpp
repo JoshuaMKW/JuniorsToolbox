@@ -82,7 +82,7 @@ namespace Toolbox {
                 model->removeEventListener(other.m_uuid);
                 model->addEventListener(other.m_uuid,
                                         TOOLBOX_BIND_EVENT_FN(updateSelectionOnInsert),
-                                        ModelEventFlags::EVENT_ANY);
+                                        ModelEventFlags::EVENT_INSERT);
             }
             m_uuid      = std::move(other.m_uuid);
             m_selection = std::move(other.m_selection);

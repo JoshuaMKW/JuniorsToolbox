@@ -371,8 +371,18 @@ namespace Toolbox {
 
     bool WatchDataModel::insertMimeData(const ModelIndex &index, const MimeData &data,
                                         ModelInsertPolicy policy) {
-        std::scoped_lock lock(m_mutex);
-        return insertMimeData_(index, data, policy);
+        IDataModel::index_container indexes;
+
+        {
+            std::scoped_lock lock(m_mutex);
+            indexes = insertMimeData_(index, data, policy);
+        }
+
+        for (const ModelIndex &index : indexes) {
+            signalEventListeners(index, ModelEventFlags::EVENT_INSERT |
+                                            ModelEventFlags::EVENT_INDEX_ADDED);
+        }
+        return !indexes.empty();
     }
 
     std::vector<std::string> WatchDataModel::getSupportedMimeTypes() const {
@@ -739,10 +749,6 @@ namespace Toolbox {
 
     std::string WatchDataModel::findUniqueName_(const ModelIndex &parent,
                                                 const std::string &name) const {
-        if (!validateIndex(parent)) {
-            return name;
-        }
-
         std::string result_name = name;
         size_t collisions       = 0;
         std::vector<std::string> child_paths;
@@ -1053,11 +1059,12 @@ namespace Toolbox {
         return new_data;
     }
 
-    bool WatchDataModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
-                                         ModelInsertPolicy policy) {
+    IDataModel::index_container WatchDataModel::insertMimeData_(const ModelIndex &index,
+                                                                const MimeData &data,
+                                                                ModelInsertPolicy policy) {
         auto maybe_text = data.get_text();
         if (!maybe_text.has_value()) {
-            return false;
+            return {};
         }
 
         const std::string &text_data = maybe_text.value();
@@ -1067,18 +1074,18 @@ namespace Toolbox {
             j = json_t::parse(text_data);
         } catch (json_t::parse_error &e) {
             TOOLBOX_WARN_V("Failed to parse MimeData JSON: {}", e.what());
-            return false;
+            return {};
         }
 
         if (!j.contains("watchList") || !j.at("watchList").is_array()) {
             TOOLBOX_WARN("MimeData is invalid or missing 'watchList' array.");
-            return false;
+            return {};
         }
 
         const json_t &root_json = j.at("watchList");
         if (!root_json.is_array()) {
             TOOLBOX_WARN("MimeData is invalid or missing 'watchList' array.");
-            return false;
+            return {};
         }
 
         std::function<ModelIndex(const json_t &, int64_t, const ModelIndex &)> insertJSONAtIndex =
@@ -1205,16 +1212,18 @@ namespace Toolbox {
         }
         }
 
+        IDataModel::index_container out_indexes;
+        out_indexes.reserve(root_json.size());
+
         for (const json_t &entry_json : root_json) {
             ModelIndex child_index = insertJSONAtIndex(entry_json, insert_row, insert_index);
             if (validateIndex(child_index)) {
                 insert_row += 1;
-                signalEventListeners(child_index, ModelEventFlags::EVENT_INSERT);
+                out_indexes.emplace_back(std::move(child_index));
             }
         }
 
-        signalEventListeners(insert_index, ModelEventFlags::EVENT_INDEX_MODIFIED);
-        return true;
+        return out_indexes;
     }
 
     bool WatchDataModel::canFetchMore_(const ModelIndex &index) { return true; }
@@ -1378,7 +1387,7 @@ namespace Toolbox {
         return data->m_group->getChildCount();
     }
 
-    void WatchDataModel::signalEventListeners(const ModelIndex &index, ModelEventFlags flags) {
+    void WatchDataModel::signalEventListeners(const ModelIndex &index, int flags) {
         for (const auto &[key, listener] : m_listeners) {
             if ((listener.second & flags) != ModelEventFlags::EVENT_NONE) {
                 listener.first(index, (listener.second & flags));
@@ -1722,6 +1731,11 @@ namespace Toolbox {
 
         if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) != ModelEventFlags::EVENT_NONE) {
             cacheIndex(getParent(proxy_index));
+            return;
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_MODIFIED) != ModelEventFlags::EVENT_NONE) {
+            cacheIndex(proxy_index);
             return;
         }
 

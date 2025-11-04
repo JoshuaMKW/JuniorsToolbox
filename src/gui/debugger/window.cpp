@@ -1812,7 +1812,11 @@ namespace Toolbox::UI {
             ImVec2 table_pos  = ImGui::GetWindowPos() + ImGui::GetCursorPos(),
                    table_size = desired_size;
             if (ImGui::BeginTable("##MemoryWatchTable", 5, flags, desired_size)) {
-                if (ImGui::IsWindowFocused()) {
+                const bool is_table_focused = ImGui::IsWindowFocused();
+                const bool is_table_hovered =
+                    ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup);
+
+                if (is_table_focused) {
                     m_byte_view_context_menu.setCanOpen(false);
                     m_ascii_view_context_menu.setCanOpen(false);
                     m_watch_view_context_menu.setCanOpen(true);
@@ -1871,7 +1875,8 @@ namespace Toolbox::UI {
 
                         const ModelIndex &index = render_flat_tree[i];
                         if (m_watch_proxy_model->isIndexGroup(index)) {
-                            renderWatchGroup(index, render_depth, table_start_x, table_width);
+                            renderWatchGroup(index, render_depth, table_start_x, table_width,
+                                             is_table_focused, is_table_hovered);
                             if (open_state[index.getUUID()]) {
                                 size_t group_size = m_watch_proxy_model->getRowCount(index);
                                 if (group_size > 0) {
@@ -1881,7 +1886,8 @@ namespace Toolbox::UI {
                                 }
                             }
                         } else {
-                            renderMemoryWatch(index, render_depth, table_start_x, table_width);
+                            renderMemoryWatch(index, render_depth, table_start_x, table_width,
+                                              is_table_focused, is_table_hovered);
                         }
                         while (!layer_stack.empty()) {
                             size_t &current_left = layer_stack.top();
@@ -1941,7 +1947,8 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::renderMemoryWatch(const ModelIndex &watch_idx, int depth,
-                                           float table_start_x, float table_width) {
+                                           float table_start_x, float table_width,
+                                           bool table_focused, bool table_hovered) {
         if (!m_watch_proxy_model->validateIndex(watch_idx)) {
             return;
         }
@@ -2001,7 +2008,7 @@ namespace Toolbox::UI {
         row_rect.Max    = row_rect.Min + ImVec2{row_width, row_height};
 
         bool is_rect_hovered = false;
-        if (ImGui::IsWindowFocused()) {
+        if (table_hovered) {
             ImGuiContext &g = *GImGui;
 
             double m_x, m_y;
@@ -2122,7 +2129,8 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::renderWatchGroup(const ModelIndex &group_idx, int depth,
-                                          float table_start_x, float table_width) {
+                                          float table_start_x, float table_width,
+                                          bool table_focused, bool table_hovered) {
         if (!m_watch_proxy_model->validateIndex(group_idx)) {
             return;
         }
@@ -2176,7 +2184,7 @@ namespace Toolbox::UI {
         row_rect.Max    = row_rect.Min + ImVec2{row_width, row_height};
 
         bool is_rect_hovered = false;
-        if (ImGui::IsWindowFocused()) {
+        if (table_hovered) {
             ImGuiContext &g = *GImGui;
 
             double m_x, m_y;

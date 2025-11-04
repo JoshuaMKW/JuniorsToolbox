@@ -187,12 +187,17 @@ namespace Toolbox {
             return false;
         }
 
+        ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER;
+
         ModelIndex last_selected = m_selection.getLastSelected();
+        if (model->getRowCount(last_selected) > 0) {
+            policy = ModelInsertPolicy::INSERT_CHILD;
+        }
 
         // We do this since we update the selection to the pasted items by event
         m_selection.clearSelection();
 
-        return model->insertMimeData(last_selected, data);
+        return model->insertMimeData(last_selected, data, policy);
     }
 
     ScopePtr<MimeData> ModelSelectionManager::actionCutSelection() {
