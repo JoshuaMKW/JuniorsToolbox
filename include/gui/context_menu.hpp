@@ -234,7 +234,7 @@ namespace Toolbox::UI {
         ImGui::PushFont(font, font_manager.getCurrentFontSize());
 
         // Set up the context menu style
-        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 5.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8.0f, 8.0f});
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8.0f, 8.0f});
 
