@@ -2048,6 +2048,8 @@ namespace Toolbox::UI {
 
         bool last_selected = m_watch_selection_mgr.getState().getLastSelected() == watch_idx;
 
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+
         if (is_rect_hovered) {
             ImGui::RenderFrame(row_rect.Min, row_rect.Max,
                                ImGui::ColorConvertFloat4ToU32(hovered_col), last_selected, 0.0f,
@@ -2057,6 +2059,8 @@ namespace Toolbox::UI {
                                ImGui::ColorConvertFloat4ToU32(selected_col), last_selected, 0.0f,
                                backdrop_flags);
         }
+
+        ImGui::PopStyleVar();
 
         bool any_items_hovered = false;
 
@@ -2224,6 +2228,8 @@ namespace Toolbox::UI {
 
         bool last_selected = m_watch_selection_mgr.getState().getLastSelected() == group_idx;
 
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+
         if (is_rect_hovered) {
             ImGui::RenderFrame(row_rect.Min, row_rect.Max,
                                ImGui::ColorConvertFloat4ToU32(hovered_col), last_selected, 0.0f,
@@ -2233,6 +2239,8 @@ namespace Toolbox::UI {
                                ImGui::ColorConvertFloat4ToU32(selected_col), last_selected, 0.0f,
                                backdrop_flags);
         }
+
+        ImGui::PopStyleVar();
 
         bool any_items_hovered = false;
 
