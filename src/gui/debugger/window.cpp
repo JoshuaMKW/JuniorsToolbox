@@ -309,8 +309,6 @@ namespace Toolbox::UI {
             AddressSpan span = {m_address_selection_begin + m_address_selection_begin_nibble / 2,
                                 m_address_selection_end + m_address_selection_end_nibble / 2};
 
-            // m_ascii_view_context_menu.tryRender(span);
-            // m_byte_view_context_menu.tryRender(span);
             m_fill_bytes_dialog.render(span);
         }
         ImGui::EndChild();
@@ -826,7 +824,8 @@ namespace Toolbox::UI {
         bool is_right_click         = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
         bool is_left_click_release  = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT);
         bool is_right_click_release = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT);
-        bool outer_window_hovered   = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+        bool outer_window_hovered   = ImGui::IsWindowHovered(
+            ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByPopup);
 
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {5.0f, 5.0f});
         if (ImGui::BeginChild("##MemoryScannerView", {0, m_scan_height}, true,
@@ -1014,6 +1013,11 @@ namespace Toolbox::UI {
                                                        last_selected, 0.0f, backdrop_flags);
                                 }
 
+                                if (idx == m_scan_selection_mgr.getState().getLastSelected()) {
+                                    m_scan_view_context_menu.tryRender(
+                                        m_scan_selection_mgr.getState().getLastSelected());
+                                }
+
                                 ImGui::PopStyleVar();
 
                                 ImGui::TableNextColumn();
@@ -1028,11 +1032,6 @@ namespace Toolbox::UI {
 
                                 ImGui::Text("%s", current_str.c_str());
                             }
-                        }
-
-                        if (m_scan_view_context_menu.isOpen()) {
-                            m_scan_view_context_menu.tryRender(
-                                m_scan_selection_mgr.getState().getLastSelected());
                         }
                     }
 
