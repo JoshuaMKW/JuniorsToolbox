@@ -134,7 +134,7 @@ namespace Toolbox::UI {
         _DataT m_deferred_ctx;
         std::vector<typename option_t::operator_t> m_deferred_cmds;
 
-        std::vector<option_t> m_matched_keybinds;
+        std::vector<option_t*> m_matched_keybinds;
     };
 
     template <typename _DataT>
@@ -499,24 +499,25 @@ namespace Toolbox::UI {
         // because shift is a soft differentiation.
         const bool already_digested =
             std::any_of(m_matched_keybinds.begin(), m_matched_keybinds.end(),
-                        [](const option_t &matched) { return matched.m_keybind_used; });
+                        [](const option_t *matched) { return matched->m_keybind_used; });
+        TOOLBOX_DEBUG_LOG_V("Digested: {}", already_digested);
         if (!already_digested && !m_matched_keybinds.empty()) {
             // Do a reverse sort
             std::stable_sort(m_matched_keybinds.begin(), m_matched_keybinds.end(),
-                             [](const option_t &l, const option_t &r) {
-                                 return l.m_keybind.size() >= r.m_keybind.size();
+                             [](const option_t *l, const option_t *r) {
+                                 return l->m_keybind.size() >= r->m_keybind.size();
                              });
 
             // The first element will be the longest keybind that is matching.
-            option_t &option = m_matched_keybinds[0];
-            if (option.m_condition(ctx)) {
+            option_t *option = m_matched_keybinds[0];
+            if (option->m_condition(ctx)) {
                 if (m_open_event) {
                     m_open_event(ctx);
                 }
-                option.m_keybind_used = true;
-                m_deferred_cmds.emplace_back(option.m_op);
+                option->m_keybind_used = true;
+                m_deferred_cmds.emplace_back(option->m_op);
             } else {
-                option.m_keybind_used = false;
+                option->m_keybind_used = false;
             }
         }
 
@@ -550,7 +551,7 @@ namespace Toolbox::UI {
             // Example: CTRL+A -> CTRL+SHIFT+A
             // In this case the second command should be discarded
             // because shift is a soft differentiation.
-            m_matched_keybinds.emplace_back(option);
+            m_matched_keybinds.emplace_back(std::addressof(option));
         } else {
             option.m_keybind_used = false;
         }
