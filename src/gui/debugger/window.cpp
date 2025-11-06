@@ -61,7 +61,9 @@ template <typename _T> constexpr static _T OverwriteByte(_T value, u8 byte_idx, 
 
 namespace Toolbox::UI {
 
-    DebuggerWindow::DebuggerWindow(const std::string &name) : ImWindow(name), m_address_input() {}
+    DebuggerWindow::DebuggerWindow(const std::string &name)
+        : ImWindow(name), m_address_input(), m_scan_begin_input(), m_scan_end_input(),
+          m_scan_value_input_a(), m_scan_value_input_b() {}
 
     std::string DebuggerWindow::context() const {
         if (m_attached_scene_uuid == 0) {
@@ -224,10 +226,10 @@ namespace Toolbox::UI {
         if (!m_initialized_splitters) {
             m_initialized_splitters = true;
 
-            m_scan_height = std::max(min_size.y * 0.7f, avail_region.x * 0.7f);
+            m_scan_height = std::max(min_size.y * 0.5f, avail_region.x * 0.5f);
             m_list_height = std::max(min_size.y * 0.5f, avail_region.x * 0.5f);
-            m_list_width  = std::max(min_size.x * 0.5f, avail_region.x * 0.5f);
-            m_view_width  = std::max(min_size.x * 0.7f, avail_region.x * 0.7f);
+            m_list_width  = std::max(min_size.x * 0.55f, avail_region.x * 0.55f);
+            m_view_width  = std::max(min_size.x * 0.45f, avail_region.x * 0.45f);
         }
 
         float last_total_height = m_scan_height + m_list_height;
@@ -236,14 +238,14 @@ namespace Toolbox::UI {
         {
             ImGuiID splitter_id = ImGui::GetID("##WatchMemorySplitter");
             ImGui::SplitterBehavior(splitter_id, ImGuiAxis_X, splitter_width, &m_list_width,
-                                    &m_view_width, min_size.x * 0.5f, min_size.x * 0.5f);
+                                    &m_view_width, min_size.x * 0.55f, min_size.x * 0.45f);
         }
 
         m_view_width = (m_view_width / last_total_width) * (avail_region.x - splitter_width);
-        m_view_width = std::max(m_view_width, min_size.x * 0.5f);
+        m_view_width = std::max(m_view_width, min_size.x * 0.45f);
 
         m_list_width = (m_list_width / last_total_width) * (avail_region.x - splitter_width);
-        m_list_width = std::max(m_list_width, min_size.x * 0.5f);
+        m_list_width = std::max(m_list_width, min_size.x * 0.55f);
 
         // ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2, 2});
         // ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
@@ -2737,8 +2739,7 @@ namespace Toolbox::UI {
             });
 
         ContextMenuBuilder<ModelIndex>(&m_group_view_context_menu)
-            .addOption(
-                "Lock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_L},
+            .addOption("Lock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_L},
                        [&](const ModelIndex &index) { recursiveLock(index, true); })
             .addOption("Unlock", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_U},
                        [&](const ModelIndex &index) { recursiveLock(index, false); })

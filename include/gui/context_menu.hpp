@@ -500,7 +500,6 @@ namespace Toolbox::UI {
         const bool already_digested =
             std::any_of(m_matched_keybinds.begin(), m_matched_keybinds.end(),
                         [](const option_t *matched) { return matched->m_keybind_used; });
-        TOOLBOX_DEBUG_LOG_V("Digested: {}", already_digested);
         if (!already_digested && !m_matched_keybinds.empty()) {
             // Do a reverse sort
             std::stable_sort(m_matched_keybinds.begin(), m_matched_keybinds.end(),

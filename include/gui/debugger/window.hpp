@@ -87,7 +87,7 @@ namespace Toolbox::UI {
 
         std::optional<ImVec2> minSize() const override {
             return {
-                {1400, 600}
+                {1250, 500}
             };
         }
 
