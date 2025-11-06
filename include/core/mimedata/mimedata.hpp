@@ -71,7 +71,7 @@ namespace Toolbox {
             return *this;
         }
 
-        MimeData &operator=(MimeData &&other) {
+        MimeData &operator=(MimeData &&other) noexcept {
             m_data_map = std::move(other.m_data_map);
             return *this;
         }

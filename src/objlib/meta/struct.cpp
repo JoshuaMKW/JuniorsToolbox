@@ -1,9 +1,9 @@
 #include "objlib/meta/struct.hpp"
-#include "smart_resource.hpp"
 #include "objlib/meta/enum.hpp"
 #include "objlib/meta/errors.hpp"
 #include "objlib/template.hpp"
 #include "objlib/transform.hpp"
+#include "smart_resource.hpp"
 #include <expected>
 #include <optional>
 
@@ -74,6 +74,12 @@ namespace Toolbox::Object {
         return QualifiedName(scopes);
     }
 
+    size_t MetaStruct::computeSize() const {
+        return std::accumulate(
+            m_members.begin(), m_members.end(), (size_t)0,
+            [](size_t value, RefPtr<MetaMember> m) { return value + m->computeSize(); });
+    }
+
     void MetaStruct::dump(std::ostream &out, size_t indention, size_t indention_width,
                           bool naked) const {
         indention_width          = std::min(indention_width, size_t(8));
@@ -91,7 +97,7 @@ namespace Toolbox::Object {
             out << "\n";
     }
 
-    bool MetaStruct::operator==(const MetaStruct& other) const {
+    bool MetaStruct::operator==(const MetaStruct &other) const {
         return m_name == other.m_name && m_members == other.m_members && m_parent == other.m_parent;
     }
 
@@ -117,18 +123,17 @@ namespace Toolbox::Object {
 
     ScopePtr<ISmartResource> MetaStruct::clone(bool deep) const {
         MetaStruct struct_;
-        struct_.m_name                     = m_name;
-        struct_.m_parent                   = m_parent;
+        struct_.m_name   = m_name;
+        struct_.m_parent = m_parent;
 
         if (deep) {
             for (auto &member : m_members) {
-                auto copy =
-                    make_deep_clone<MetaMember>(member);
+                RefPtr<MetaMember> copy = ref_cast<MetaMember>(make_deep_clone<MetaMember>(member));
                 struct_.m_members.push_back(copy);
             }
         } else {
             for (auto &member : m_members) {
-                auto copy = make_clone<MetaMember>(member);
+                RefPtr<MetaMember> copy = ref_cast<MetaMember>(make_clone<MetaMember>(member));
                 struct_.m_members.push_back(copy);
             }
         }

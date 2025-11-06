@@ -24,31 +24,31 @@ namespace Toolbox {
     }
 
     template <typename _T = ISmartResource, typename _DT = std::decay_t<_T>>
-    static inline RefPtr<_T> make_clone(const _T &_V) {
+    static inline ScopePtr<_T> make_clone(const _T &_V) {
         static_assert(std::is_base_of_v<ISmartResource, _DT> | std::is_same_v<ISmartResource, _DT>,
                       "_T must be IClonable or a derivative of IClonable");
-        return std::static_pointer_cast<_DT, ISmartResource>(_V.clone(false));
+        return ScopePtr<_DT>(static_cast<_DT *>(_V.clone(false).release()));
     }
 
     template <typename _T = ISmartResource, typename _DT = std::decay_t<_T>>
-    static inline RefPtr<_T> make_clone(const RefPtr<_T> &ptr) {
+    static inline ScopePtr<_T> make_clone(const RefPtr<_T> &ptr) {
         static_assert(std::is_base_of_v<ISmartResource, _DT> | std::is_same_v<ISmartResource, _DT>,
                       "_T must be IClonable or a derivative of IClonable");
-        return std::static_pointer_cast<_DT, ISmartResource>(ptr->clone(false));
+        return ScopePtr<_DT>(static_cast<_DT *>(ptr->clone(false).release()));
     }
 
     template <typename _T = ISmartResource, typename _DT = std::decay_t<_T>>
-    static inline RefPtr<_T> make_deep_clone(const _T &_V) {
+    static inline ScopePtr<_T> make_deep_clone(const _T &_V) {
         static_assert(std::is_base_of_v<ISmartResource, _DT> | std::is_same_v<ISmartResource, _DT>,
                       "_T must be IClonable or a derivative of IClonable");
-        return std::static_pointer_cast<_DT, ISmartResource>(_V.clone(true));
+        return ScopePtr<_DT>(static_cast<_DT *>(_V.clone(true).release()));
     }
 
     template <typename _T = ISmartResource, typename _DT = std::decay_t<_T>>
-    static inline RefPtr<_T> make_deep_clone(const RefPtr<_T> &ptr) {
+    static inline ScopePtr<_T> make_deep_clone(const RefPtr<_T> &ptr) {
         static_assert(std::is_base_of_v<ISmartResource, _DT> | std::is_same_v<ISmartResource, _DT>,
                       "_T must be IClonable or a derivative of IClonable");
-        return std::static_pointer_cast<_DT, ISmartResource>(ptr->clone(true));
+        return ScopePtr<_DT>(static_cast<_DT *>(ptr->clone(true).release()));
     }
 
 }  // namespace Toolbox

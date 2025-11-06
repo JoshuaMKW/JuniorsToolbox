@@ -26,7 +26,7 @@ template <> struct std::formatter<glm::vec3> : std::formatter<string_view> {
 
 namespace Toolbox::Object {
 
-    enum class MetaType {
+    enum class MetaType : u8 {
         BOOL,
         S8,
         U8,
@@ -39,6 +39,7 @@ namespace Toolbox::Object {
         STRING,
         VEC3,
         TRANSFORM,
+        MTX34,
         RGB,
         RGBA,
         UNKNOWN,
@@ -96,6 +97,10 @@ namespace Toolbox::Object {
         static constexpr MetaType value = MetaType::TRANSFORM;
     };
 
+    template <> struct map_to_type_enum<glm::mat3x4> {
+        static constexpr MetaType value = MetaType::MTX34;
+    };
+
     template <> struct map_to_type_enum<Color::RGB24> {
         static constexpr MetaType value = MetaType::RGB;
     };
@@ -108,9 +113,9 @@ namespace Toolbox::Object {
     static constexpr MetaType template_type_v = map_to_type_enum<T>::value;
 
     template <MetaType T> struct meta_type_info {
-        static constexpr std::string_view name = "unknown";
+        static constexpr std::string_view name = "bytes";
         static constexpr size_t size           = 0;
-        static constexpr size_t alignment      = 0;
+        static constexpr size_t alignment      = alignof(char);
     };
 
     template <> struct meta_type_info<MetaType::BOOL> {
@@ -182,7 +187,13 @@ namespace Toolbox::Object {
     template <> struct meta_type_info<MetaType::TRANSFORM> {
         static constexpr std::string_view name = "transform";
         static constexpr size_t size           = 36;
-        static constexpr size_t alignment      = 16;
+        static constexpr size_t alignment      = 4;
+    };
+
+    template <> struct meta_type_info<MetaType::MTX34> {
+        static constexpr std::string_view name = "mtx34";
+        static constexpr size_t size           = 48;
+        static constexpr size_t alignment      = 4;
     };
 
     template <> struct meta_type_info<MetaType::RGB> {
@@ -223,6 +234,8 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::VEC3>::name;
         case MetaType::TRANSFORM:
             return meta_type_info<MetaType::TRANSFORM>::name;
+        case MetaType::MTX34:
+            return meta_type_info<MetaType::MTX34>::name;
         case MetaType::RGB:
             return meta_type_info<MetaType::RGB>::name;
         case MetaType::RGBA:
@@ -255,8 +268,12 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::F64>::size;
         case MetaType::STRING:
             return meta_type_info<MetaType::STRING>::size;
+        case MetaType::VEC3:
+            return meta_type_info<MetaType::VEC3>::size;
         case MetaType::TRANSFORM:
             return meta_type_info<MetaType::TRANSFORM>::size;
+        case MetaType::MTX34:
+            return meta_type_info<MetaType::MTX34>::size;
         case MetaType::RGB:
             return meta_type_info<MetaType::RGB>::size;
         case MetaType::RGBA:
@@ -291,6 +308,8 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::STRING>::alignment;
         case MetaType::TRANSFORM:
             return meta_type_info<MetaType::TRANSFORM>::alignment;
+        case MetaType::MTX34:
+            return meta_type_info<MetaType::MTX34>::alignment;
         case MetaType::RGB:
             return meta_type_info<MetaType::RGB>::alignment;
         case MetaType::RGBA:
@@ -303,14 +322,15 @@ namespace Toolbox::Object {
 
     class MetaValue : public ISerializable {
     public:
-        MetaValue() = delete;
-        template <typename T> explicit MetaValue(T value) : m_value_buf() {
-            m_value_buf.alloc(128);
+        MetaValue() {
             m_value_buf.initTo(0);
-            set<T>(value);
+            m_type      = MetaType::UNKNOWN;
         }
+
+        template <typename T> explicit MetaValue(T value) : m_value_buf() { set<T>(value); }
+
         explicit MetaValue(MetaType type) : m_type(type), m_value_buf() {
-            m_value_buf.alloc(128);
+            m_value_buf.alloc(meta_type_size(type));
             m_value_buf.initTo(0);
             switch (type) {
             case MetaType::TRANSFORM:
@@ -320,8 +340,19 @@ namespace Toolbox::Object {
                 break;
             }
         }
+
+        MetaValue(MetaType type, Buffer &&value_buf)
+            : m_type(type), m_value_buf(std::move(value_buf)) {}
+        MetaValue(MetaType type, const Buffer &value_buf)
+            : m_type(type), m_value_buf(value_buf) {}
+
         MetaValue(const MetaValue &other) = default;
-        MetaValue(MetaValue &&other)      = default;
+        MetaValue(MetaValue &&other) {
+            m_type      = other.m_type;
+            m_value_buf = std::move(other.m_value_buf);
+        }
+
+        ~MetaValue() override { m_value_buf.free(); }
 
         MetaValue &operator=(const MetaValue &other) = default;
         MetaValue &operator=(MetaValue &&other)      = default;
@@ -336,17 +367,25 @@ namespace Toolbox::Object {
 
         [[nodiscard]] MetaType type() const { return m_type; }
 
+        [[nodiscard]] size_t computeSize() const;
+
+        [[nodiscard]] const Buffer &buf() const { return m_value_buf; }
+
         template <typename T> [[nodiscard]] Result<T, std::string> get() const {
             return getBuf<T>(m_type, m_value_buf);
         }
 
         template <typename T> bool set(const T &value) {
-            return setBuf(m_type, m_value_buf, value);
+            return setBuf<T>(m_type, m_value_buf, value);
         }
+
+        // NOTE: This does not change the underlying type, it only attempts
+        // to assign the variant value as the existing type, or it returns false.
+        bool setVariant(const std::any &variant);
 
         Result<void, JSONError> loadJSON(const nlohmann::json &json_value);
 
-        [[nodiscard]] std::string toString() const;
+        [[nodiscard]] std::string toString(int radix = 10) const;
 
         bool operator==(const MetaValue &other) const;
 
@@ -355,18 +394,24 @@ namespace Toolbox::Object {
 
     private:
         Buffer m_value_buf;
-        MetaType m_type = MetaType::UNKNOWN;
+        MetaType m_type    = MetaType::UNKNOWN;
     };
 
-    template <typename T> [[nodiscard]]
+    template <typename T>
+    [[nodiscard]]
     inline Result<T, std::string> getBuf(const MetaType &m_type, const Buffer &m_value_buf) {
-        if (m_type != map_to_type_enum<T>::value)
-            return std::unexpected("Type record mismatch");
-        return m_value_buf.get<T>(0);
+        T value{};
+        if (Deserializer::BytesToObject(m_value_buf, value, 0).has_value()) {
+            return value;
+        } else {
+            return std::unexpected("Failed to deserialize data into higher type");
+        }
     }
-    template <> [[nodiscard]]
+
+    template <>
+    [[nodiscard]]
     inline Result<std::string, std::string> getBuf(const MetaType &m_type,
-                                                  const Buffer &m_value_buf) {
+                                                   const Buffer &m_value_buf) {
         std::string out;
         for (size_t i = 0; i < m_value_buf.size(); ++i) {
             char ch = m_value_buf.get<char>(i);
@@ -377,24 +422,34 @@ namespace Toolbox::Object {
         }
         return out;
     }
-    template <typename T> [[nodiscard]]
+
+    template <typename T>
+    [[nodiscard]]
     inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, const T &value) {
-        m_type = map_to_type_enum<T>::value;
-        m_value_buf.set<T>(0, value);
-        return true;
+        bool ret    = Serializer::ObjectToBytes(value, m_value_buf, 0).has_value();
+        m_type      = map_to_type_enum<T>::value;
+        return ret;
     }
-    template <> [[nodiscard]]
-    inline bool setBuf(MetaType &m_type,
-                       Buffer &m_value_buf,
+
+    template <>
+    [[nodiscard]]
+    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf,
                        const std::string &value) {
         m_type = MetaType::STRING;
-        if (value.size() > m_value_buf.size() + 1) {
-            m_value_buf.resize(static_cast<size_t>(value.size() * 1.5f));
-        }
-        m_value_buf.initTo('\0');
+        m_value_buf.resize(value.size() + 1);
         for (size_t i = 0; i < value.size(); ++i) {
             m_value_buf.set<char>(i, value[i]);
         }
+        m_value_buf.set<char>(value.size(), '\0');
+        return true;
+    }
+
+    template <>
+    [[nodiscard]]
+    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf,
+                       const Buffer &value) {
+        m_type = MetaType::UNKNOWN;
+        value.copyTo(m_value_buf);
         return true;
     }
 
@@ -498,6 +553,20 @@ namespace Toolbox::Object {
             switch (type) {
             case MetaType::TRANSFORM:
                 return meta_value->set<Transform>(value);
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value,
+                                                const glm::mat3x4 &value, MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::MTX34:
+                return meta_value->set<glm::mat3x4>(value);
             default:
                 return false;
             }

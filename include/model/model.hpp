@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -32,65 +33,118 @@ namespace Toolbox {
         DATA_ROLE_USER,
     };
 
+    enum ModelInsertPolicy {
+        INSERT_BEFORE,
+        INSERT_AFTER,
+        INSERT_CHILD,
+    };
+
+    enum ModelEventFlags {
+        EVENT_NONE           = 0,
+        EVENT_RESET          = BIT(0),
+        EVENT_INSERT         = BIT(1),
+        EVENT_INDEX_ADDED    = BIT(2),
+        EVENT_INDEX_MODIFIED = BIT(3),
+        EVENT_INDEX_REMOVED  = BIT(4),
+        EVENT_INDEX_ANY      = EVENT_INDEX_ADDED | EVENT_INDEX_MODIFIED | EVENT_INDEX_REMOVED,
+        EVENT_ANY            = EVENT_RESET | EVENT_INSERT | EVENT_INDEX_ANY,
+    };
+
     class ModelIndex final : public IUnique {
     public:
         friend class IDataModel;
 
         ModelIndex() = default;
         ModelIndex(UUID64 model_uuid) : m_model_uuid(model_uuid) {}
+        ModelIndex(UUID64 model_uuid, UUID64 self_uuid)
+            : m_model_uuid(model_uuid), m_uuid(self_uuid) {}
         ModelIndex(const ModelIndex &other)
-            : m_uuid(other.m_uuid), m_model_uuid(other.m_model_uuid),
-              m_user_data(other.m_user_data) {}
+            : m_uuid(other.m_uuid), m_model_uuid(other.m_model_uuid) {
+            m_data.m_inline = other.m_data.m_inline;
+        }
 
         template <typename T = void> [[nodiscard]] T *data() const {
-            return reinterpret_cast<T *>(m_user_data);
+            return reinterpret_cast<T *>(m_data.m_ptr);
         }
-        void setData(void *data) { m_user_data = data; }
+        void setData(void *data) { m_data.m_ptr = data; }
+
+        // If using inline data, it is 8 bytes and overwrites the data ptr.
+        [[nodiscard]] u64 inlineData() const { return m_data.m_inline; }
+        // If using inline data, it is 8 bytes and overwrites the data ptr.
+        void setInlineData(u64 data) const { m_data.m_inline = data; }
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
         [[nodiscard]] UUID64 getModelUUID() const { return m_model_uuid; }
 
         ModelIndex &operator=(const ModelIndex &other) {
-            m_uuid       = other.m_uuid;
-            m_model_uuid = other.m_model_uuid;
-            m_user_data  = other.m_user_data;
+            m_uuid          = other.m_uuid;
+            m_model_uuid    = other.m_model_uuid;
+            m_data.m_inline = other.m_data.m_inline;
             return *this;
         }
 
         [[nodiscard]] bool operator==(const ModelIndex &other) const {
-            return m_uuid == other.m_uuid && m_model_uuid == other.m_model_uuid;
+            return (m_uuid == other.m_uuid) ||
+                   (m_model_uuid == other.m_model_uuid &&
+                    (data() == other.data() || inlineData() == other.inlineData()));
         }
 
     private:
         UUID64 m_uuid;
         UUID64 m_model_uuid = 0;
 
-        void *m_user_data = nullptr;
+        mutable union {
+            void *m_ptr;
+            u64 m_inline;
+        } m_data = {};
     };
 
     class IDataModel : public IUnique {
+    public:
+        using index_container  = std::vector<ModelIndex>;
+        using event_listener_t = std::function<void(const ModelIndex &index, int flags)>;
+
     public:
         [[nodiscard]] virtual bool validateIndex(const ModelIndex &index) const {
             return index.getModelUUID() == getUUID();
         }
 
+        [[nodiscard]] virtual bool isReadOnly() const = 0;
+
         [[nodiscard]] virtual std::string getDisplayText(const ModelIndex &index) const {
             return std::any_cast<std::string>(getData(index, ModelDataRole::DATA_ROLE_DISPLAY));
+        }
+
+        virtual void setDisplayText(const ModelIndex &index, const std::string &text) {
+            setData(index, text, ModelDataRole::DATA_ROLE_DISPLAY);
         }
 
         [[nodiscard]] virtual std::string getToolTip(const ModelIndex &index) const {
             return std::any_cast<std::string>(getData(index, ModelDataRole::DATA_ROLE_TOOLTIP));
         }
 
-        [[nodiscard]] virtual RefPtr<const ImageHandle> getDecoration(const ModelIndex &index) const {
-            return std::any_cast<RefPtr<const ImageHandle>>(getData(index, ModelDataRole::DATA_ROLE_DECORATION));
+        virtual void setToolTip(const ModelIndex &index, const std::string &text) {
+            setData(index, text, ModelDataRole::DATA_ROLE_TOOLTIP);
         }
 
-        [[nodiscard]] virtual std::any getData(const ModelIndex &index, int role) const = 0;
+        [[nodiscard]] virtual RefPtr<const ImageHandle>
+        getDecoration(const ModelIndex &index) const {
+            return std::any_cast<RefPtr<const ImageHandle>>(
+                getData(index, ModelDataRole::DATA_ROLE_DECORATION));
+        }
 
-        [[nodiscard]] virtual ModelIndex getIndex(const UUID64 &path) const = 0;
+        virtual void setDecoration(const ModelIndex &index, RefPtr<const ImageHandle> decoration) {
+            setData(index, decoration, ModelDataRole::DATA_ROLE_DECORATION);
+        }
+
+        [[nodiscard]] virtual std::any getData(const ModelIndex &index, int role) const      = 0;
+        [[nodiscard]] virtual void setData(const ModelIndex &index, std::any data, int role) = 0;
+
+        [[nodiscard]] virtual ModelIndex getIndex(const UUID64 &uuid) const = 0;
         [[nodiscard]] virtual ModelIndex
         getIndex(int64_t row, int64_t column, const ModelIndex &parent = ModelIndex()) const = 0;
+
+        [[nodiscard]] virtual bool removeIndex(const ModelIndex &index) = 0;
 
         [[nodiscard]] virtual ModelIndex getParent(const ModelIndex &index) const  = 0;
         [[nodiscard]] virtual ModelIndex getSibling(int64_t row, int64_t column,
@@ -100,22 +154,49 @@ namespace Toolbox {
         [[nodiscard]] virtual size_t getRowCount(const ModelIndex &index) const    = 0;
 
         [[nodiscard]] virtual int64_t getColumn(const ModelIndex &index) const = 0;
-        [[nodiscard]] virtual int64_t getRow(const ModelIndex &index) const = 0;
+        [[nodiscard]] virtual int64_t getRow(const ModelIndex &index) const    = 0;
 
         [[nodiscard]] virtual bool hasChildren(const ModelIndex &parent = ModelIndex()) const = 0;
 
         [[nodiscard]] virtual ScopePtr<MimeData>
-        createMimeData(const std::vector<ModelIndex> &indexes) const                 = 0;
+        createMimeData(const index_container &indexes) const = 0;
+        [[nodiscard]] virtual bool
+        insertMimeData(const ModelIndex &index, const MimeData &data,
+                       ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER)   = 0;
         [[nodiscard]] virtual std::vector<std::string> getSupportedMimeTypes() const = 0;
 
         [[nodiscard]] virtual bool canFetchMore(const ModelIndex &index) = 0;
         virtual void fetchMore(const ModelIndex &index)                  = 0;
 
-    protected:
-        virtual ModelIndex makeIndex(const fs_path &path, int64_t row,
-                                     const ModelIndex &parent) = 0;
+        virtual void reset() = 0;
 
+        virtual void addEventListener(UUID64 uuid, event_listener_t listener,
+                                      int allowed_flags) = 0;
+        virtual void removeEventListener(UUID64 uuid)    = 0;
+
+    protected:
         static void setIndexUUID(ModelIndex &index, UUID64 uuid) { index.m_uuid = uuid; }
     };
 
+    class ModelIndexListTransformer {
+    public:
+        ModelIndexListTransformer() = delete;
+        ModelIndexListTransformer(const IDataModel *model) : m_model(model) {}
+
+        void pruneRedundantsForRecursiveTree(IDataModel::index_container &indexes) const;
+
+    private:
+        const IDataModel *m_model;
+    };
+
 }  // namespace Toolbox
+
+namespace std {
+
+    template <> struct hash<Toolbox::ModelIndex> {
+        Toolbox::u64 operator()(const Toolbox::ModelIndex &index) const {
+            return hash<Toolbox::UUID64>()(index.getUUID());
+        }
+    };
+
+}  // namespace std

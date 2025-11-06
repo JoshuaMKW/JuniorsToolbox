@@ -16,10 +16,26 @@
 
 namespace Toolbox {
 
+    class ISerializable;
+
     struct SerialError : public BaseError {
         std::size_t m_error_pos;
         std::string m_file_path;
     };
+
+    template <typename _Ret>
+    inline Result<_Ret, SerialError> make_serial_error(std::string_view context,
+                                                       std::string_view reason, size_t error_pos,
+                                                       std::string_view filepath) {
+        SerialError err = {
+            std::vector<std::string>(
+                {std::format("SerialError: {}", context), std::format("Reason: {}", reason)}),
+            std::stacktrace::current(),
+            error_pos,
+            std::string(filepath),
+        };
+        return std::unexpected(err);
+    }
 
     class Serializer {
     public:
@@ -40,37 +56,50 @@ namespace Toolbox {
         std::string_view filepath() const { return m_file_path; }
 
         template <typename _S, std::endian E = std::endian::native>
-        static Result<void, SerialError> ObjectToBytes(const _S &_s, Buffer &buf_out, size_t offset = 0) {
-            std::streampos startpos = 0;
-            std::streampos endpos;
+        static Result<void, SerialError> ObjectToBytes(const _S &_s, Buffer &buf_out,
+                                                       size_t offset = 0) {
+            if constexpr (std::is_base_of_v<ISerializable, _S>) {
+                std::streampos startpos = 0;
+                std::streampos endpos;
 
-            Result<void, SerialError> result;
+                Result<void, SerialError> result;
 
-            std::stringstream strstream;
-            Serializer sout(strstream.rdbuf());
-            
-            // Write padding bytes
-            for (size_t i = 0; i < offset; ++i) {
-                sout.write<u8>(0);
+                std::stringstream strstream;
+                Serializer sout(strstream.rdbuf());
+
+                // Write padding bytes
+                for (size_t i = 0; i < offset; ++i) {
+                    sout.write<u8, E>(0);
+                }
+
+                sout.pushBreakpoint();
+                {
+                    result = _s.serialize(sout);
+                    endpos = sout.tell();
+                }
+                sout.popBreakpoint();
+
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+
+                size_t objsize = static_cast<size_t>(endpos - startpos);
+
+                buf_out.resize((uint32_t)objsize);
+                strstream.read(buf_out.buf<char>(), objsize);
+
+                return result;
+            } else if constexpr (std::is_standard_layout_v<_S>) {
+                buf_out.resize(offset + sizeof(_S));
+                _S *out_obj = reinterpret_cast<_S *>(buf_out.buf<char>() + offset);
+                *out_obj    = _s;
+                return {};
+            } else {
+                return make_serial_error<void>(
+                    "[BytesToObject]",
+                    "Type provided does not implement the serial interface and is not a POD type.",
+                    0, "");
             }
-
-            sout.pushBreakpoint();
-            {
-                result = _s.serialize(sout);
-                endpos = sout.tell();
-            }
-            sout.popBreakpoint();
-
-            if (!result) {
-                return std::unexpected(result.error());
-            }
-
-            size_t objsize = static_cast<size_t>(endpos - startpos);
-
-            buf_out.alloc(objsize);
-            strstream.read(buf_out.buf<char>(), objsize);
-
-            return result;
         }
 
         template <typename T, std::endian E = std::endian::native> Serializer &write(const T &t) {
@@ -171,6 +200,11 @@ namespace Toolbox {
             return size;
         }
 
+        bool eof() const { return m_out.eof(); }
+        bool good() const { return m_out.good(); }
+        bool fail() const { return m_out.fail(); }
+        bool bad() const { return m_out.bad(); }
+
         void pushBreakpoint();
         Result<void, SerialError> popBreakpoint();
 
@@ -185,7 +219,8 @@ namespace Toolbox {
         Deserializer(Buffer &buf, std::streambuf *rdbuf) : m_in(rdbuf) {
             rdbuf->pubsetbuf(buf.buf<char>(), buf.size());
         }
-        Deserializer(Buffer &buf, std::streambuf *rdbuf, std::string_view file_path) : m_in(rdbuf), m_file_path(file_path) {
+        Deserializer(Buffer &buf, std::streambuf *rdbuf, std::string_view file_path)
+            : m_in(rdbuf), m_file_path(file_path) {
             rdbuf->pubsetbuf(buf.buf<char>(), buf.size());
         }
         Deserializer(std::streambuf *in) : m_in(in) {}
@@ -198,11 +233,23 @@ namespace Toolbox {
         std::string_view filepath() const { return m_file_path; }
 
         template <typename _S, std::endian E = std::endian::native>
-        static Result<void, SerialError> BytesToObject(Buffer &serial_data, _S &obj, size_t offset = 0) {
-            std::stringstream str_in(std::string(serial_data.buf<char>() + offset, serial_data.size() - offset));
+        static Result<void, SerialError> BytesToObject(const Buffer &serial_data, _S &obj,
+                                                       size_t offset = 0) {
+            if constexpr (std::is_base_of_v<ISerializable, _S>) {
+                std::stringstream str_in(
+                    std::string(serial_data.buf<char>() + offset, serial_data.size() - offset));
 
-            Deserializer in(str_in.rdbuf());
-            return obj.deserialize(in);
+                Deserializer in(str_in.rdbuf());
+                return obj.deserialize(in);
+            } else if constexpr (std::is_standard_layout_v<_S>) {
+                obj = *reinterpret_cast<const _S *>(serial_data.buf<char>() + offset);
+                return {};
+            } else {
+                return make_serial_error<void>(
+                    "[BytesToObject]",
+                    "Type provided does not implement the serial interface and is not a POD type.",
+                    0, "");
+            }
         }
 
         template <typename T, std::endian E = std::endian::native> T read() {
@@ -319,6 +366,19 @@ namespace Toolbox {
             return size;
         }
 
+        size_t remaining() {
+            auto pos = tell();
+            seek(0, std::ios::end);
+            auto size = static_cast<size_t>(tell());
+            seek(pos, std::ios::beg);
+            return size - pos;
+        }
+
+        bool eof() const { return m_in.eof(); }
+        bool good() const { return m_in.good(); }
+        bool fail() const { return m_in.fail(); }
+        bool bad() const { return m_in.bad(); }
+
         void pushBreakpoint();
         Result<void, SerialError> popBreakpoint();
 
@@ -332,6 +392,8 @@ namespace Toolbox {
     public:
         ISerializable() = default;
         ISerializable(Deserializer &in) { deserialize(in); }
+        ISerializable(Serializer &out) { serialize(out); }
+        virtual ~ISerializable() = default;
 
         virtual Result<void, SerialError> serialize(Serializer &out) const = 0;
         virtual Result<void, SerialError> deserialize(Deserializer &in)    = 0;
@@ -339,20 +401,6 @@ namespace Toolbox {
         void operator<<(Serializer &out) { serialize(out); }
         void operator>>(Deserializer &in) { deserialize(in); }
     };
-
-    template <typename _Ret>
-    inline Result<_Ret, SerialError> make_serial_error(std::string_view context,
-                                                       std::string_view reason, size_t error_pos,
-                                                       std::string_view filepath) {
-        SerialError err = {
-            std::vector<std::string>(
-                {std::format("SerialError: {}", context), std::format("Reason: {}", reason)}),
-            std::stacktrace::current(),
-            error_pos,
-            std::string(filepath),
-        };
-        return std::unexpected(err);
-    }
 
     template <typename _Ret>
     inline Result<_Ret, SerialError> make_serial_error(Serializer &s, std::string_view reason,

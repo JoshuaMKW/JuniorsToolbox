@@ -34,22 +34,13 @@ namespace Toolbox {
     };
     TOOLBOX_BITWISE_ENUM(FileSystemModelOptions)
 
-    enum class FileSystemModelEventFlags {
-        NONE                  = 0,
-        EVENT_FILE_ADDED      = BIT(0),
-        EVENT_FILE_MODIFIED   = BIT(1),
-        EVENT_FOLDER_ADDED    = BIT(2),
-        EVENT_FOLDER_MODIFIED = BIT(3),
-        EVENT_PATH_RENAMED    = BIT(4),
-        EVENT_PATH_REMOVED    = BIT(5),
-        EVENT_IS_VIRTUAL      = BIT(6),
-        EVENT_FILE_ANY =
-            EVENT_FILE_ADDED | EVENT_FILE_MODIFIED | EVENT_PATH_RENAMED | EVENT_PATH_REMOVED,
-        EVENT_FOLDER_ANY =
-            EVENT_FOLDER_ADDED | EVENT_FOLDER_MODIFIED | EVENT_PATH_RENAMED | EVENT_PATH_REMOVED,
-        EVENT_ANY = EVENT_FILE_ANY | EVENT_FOLDER_ANY,
+    enum FileSystemModelEventFlags {
+        EVENT_IS_VIRTUAL   = BIT(10),
+        EVENT_IS_FILE      = BIT(11),
+        EVENT_IS_DIRECTORY = BIT(12),
+        EVENT_FS_ANY =
+            ModelEventFlags::EVENT_ANY | EVENT_IS_VIRTUAL | EVENT_IS_FILE | EVENT_IS_DIRECTORY,
     };
-    TOOLBOX_BITWISE_ENUM(FileSystemModelEventFlags)
 
     enum FileSystemDataRole {
         FS_DATA_ROLE_DATE = ModelDataRole::DATA_ROLE_USER,
@@ -78,7 +69,7 @@ namespace Toolbox {
         [[nodiscard]] FileSystemModelOptions getOptions() const;
         void setOptions(FileSystemModelOptions options);
 
-        [[nodiscard]] bool isReadOnly() const;
+        [[nodiscard]] bool isReadOnly() const override;
         void setReadOnly(bool read_only);
 
         [[nodiscard]] bool isDirectory(const ModelIndex &index) const;
@@ -103,6 +94,7 @@ namespace Toolbox {
         }
 
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
+        void setData(const ModelIndex &index, std::any data, int role) override {}
 
         [[nodiscard]] std::string findUniqueName(const ModelIndex &index,
                                                  const std::string &name) const;
@@ -121,6 +113,8 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex(const UUID64 &path) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
+        [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
+
         [[nodiscard]] fs_path getPath(const ModelIndex &index) const;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
@@ -136,16 +130,19 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData(const std::vector<ModelIndex> &indexes) const override;
+        createMimeData(const IDataModel::index_container &indexes) const override;
+        [[nodiscard]] bool
+        insertMimeData(const ModelIndex &index, const MimeData &data,
+                       ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
         void fetchMore(const ModelIndex &index) override;
 
-        using event_listener_t = std::function<void(const fs_path &, FileSystemModelEventFlags)>;
-        void addEventListener(UUID64 uuid, event_listener_t listener,
-                              FileSystemModelEventFlags flags);
-        void removeEventListener(UUID64 uuid);
+        void reset() override;
+
+        void addEventListener(UUID64 uuid, event_listener_t listener, int allowed_flags) override;
+        void removeEventListener(UUID64 uuid) override;
 
         static const ImageHandle &InvalidIcon();
         static const std::unordered_map<std::string, FSTypeInfo> &TypeMap();
@@ -177,6 +174,8 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex_(const UUID64 &path) const;
         [[nodiscard]] ModelIndex getIndex_(int64_t row, int64_t column,
                                            const ModelIndex &parent = ModelIndex()) const;
+        [[nodiscard]] bool removeIndex_(const ModelIndex &index);
+
         [[nodiscard]] fs_path getPath_(const ModelIndex &index) const;
 
         [[nodiscard]] ModelIndex getParent_(const ModelIndex &index) const;
@@ -192,13 +191,16 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren_(const ModelIndex &parent = ModelIndex()) const;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData_(const std::vector<ModelIndex> &indexes) const;
+        createMimeData_(const IDataModel::index_container &indexes) const;
+        [[nodiscard]] bool
+        insertMimeData_(const ModelIndex &index, const MimeData &data,
+                        ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index);
         void fetchMore_(const ModelIndex &index);
         // -- END -- //
 
-        ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) override;
+        virtual ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent);
 
         ModelIndex getParentArchive(const ModelIndex &index) const;
 
@@ -215,15 +217,14 @@ namespace Toolbox {
 
         void pathRemoved(const fs_path &path);
 
-        void signalEventListeners(const fs_path &path, FileSystemModelEventFlags flags);
+        void signalEventListeners(const ModelIndex &index, int flags);
 
     private:
         UUID64 m_uuid;
 
         mutable std::mutex m_mutex;
         FileSystemWatchdog m_watchdog;
-        std::unordered_map<UUID64, std::pair<event_listener_t, FileSystemModelEventFlags>>
-            m_listeners;
+        std::unordered_map<UUID64, std::pair<event_listener_t, int>> m_listeners;
 
         fs_path m_root_path;
 
@@ -245,6 +246,8 @@ namespace Toolbox {
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
+        [[nodiscard]] bool isReadOnly() const override { return m_source_model->isReadOnly(); }
+
         [[nodiscard]] bool isDirsOnly() const { return m_dirs_only; }
         void setDirsOnly(bool dirs_only) { m_dirs_only = dirs_only; }
 
@@ -260,7 +263,6 @@ namespace Toolbox {
         [[nodiscard]] const std::string &getFilter() const &;
         void setFilter(const std::string &filter);
 
-        [[nodiscard]] bool isReadOnly() const;
         void setReadOnly(bool read_only);
 
         [[nodiscard]] bool isDirectory(const ModelIndex &index) const;
@@ -275,6 +277,7 @@ namespace Toolbox {
 
         [[nodiscard]] std::string getType(const ModelIndex &index) const;
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
+        void setData(const ModelIndex &index, std::any data, int role) override;
 
         ModelIndex mkdir(const ModelIndex &parent, const std::string &name);
         ModelIndex touch(const ModelIndex &parent, const std::string &name);
@@ -286,6 +289,7 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex(const UUID64 &path) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
+        [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
         [[nodiscard]] fs_path getPath(const ModelIndex &index) const;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
@@ -301,11 +305,23 @@ namespace Toolbox {
         [[nodiscard]] bool hasChildren(const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] ScopePtr<MimeData>
-        createMimeData(const std::vector<ModelIndex> &indexes) const override;
+        createMimeData(const IDataModel::index_container &indexes) const override;
+        [[nodiscard]] bool
+        insertMimeData(const ModelIndex &index, const MimeData &data,
+                       ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
         void fetchMore(const ModelIndex &index) override;
+
+        void reset() override;
+
+        void addEventListener(UUID64 uuid, event_listener_t listener, int allowed_flags) override {
+            m_source_model->addEventListener(uuid, listener, allowed_flags);
+        }
+        void removeEventListener(UUID64 uuid) override {
+            m_source_model->removeEventListener(uuid);
+        }
 
         [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;
@@ -319,11 +335,11 @@ namespace Toolbox {
         void cacheIndex(const ModelIndex &index) const;
         void cacheIndex_(const ModelIndex &index) const;
 
-        ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) override {
+        ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) {
             return ModelIndex();
         }
 
-        void fsUpdateEvent(const fs_path &path, FileSystemModelEventFlags flags);
+        void fsUpdateEvent(const ModelIndex &index, int flags);
 
     private:
         UUID64 m_uuid;

@@ -2,6 +2,9 @@
 
 #include "core/assert.hpp"
 #include "core/core.hpp"
+#include "core/memory.hpp"
+#include "image/imagebuilder.hpp"
+#include "image/imagehandle.hpp"
 
 #ifdef IM_ASSERT
 #undef IM_ASSERT
@@ -35,6 +38,8 @@ namespace ImGui {
     void EndChildPanel();
     void RenderFrame(ImVec2 p_min, ImVec2 p_max, ImU32 fill_col, bool border, float rounding,
                      ImDrawFlags draw_flags);
+    void RenderBackgroundFrame(ImVec2 p_min, ImVec2 p_max, ImU32 fill_col, bool border,
+                               float rounding, ImDrawFlags draw_flags);
     bool ButtonEx(const char *label, const ImVec2 &size_arg, ImGuiButtonFlags flags,
                   ImDrawFlags draw_flags);
     bool Button(const char *label, float rounding, ImDrawFlags draw_flags);
@@ -51,6 +56,12 @@ namespace ImGui {
                       ImDrawFlags draw_flags);
     bool SwitchButton(const char *label, bool active, ImVec2 size, ImGuiButtonFlags flags,
                       float rounding, ImDrawFlags draw_flags);
+    bool ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image,
+                     ImVec2 size = ImVec2{0, 0}, ImGuiButtonFlags flags = ImGuiButtonFlags_None);
+    bool ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image, ImVec2 size,
+                     ImGuiButtonFlags flags, ImDrawFlags draw_flags);
+    bool ImageButton(const char *str_id, Toolbox::RefPtr<Toolbox::ImageHandle> image, ImVec2 size,
+                     ImGuiButtonFlags flags, float rounding, ImDrawFlags draw_flags);
     bool ArrowButtonEx(const char *str_id, ImGuiDir dir, ImVec2 size, ImGuiButtonFlags flags,
                        float arrow_scale);
     bool InputScalarCompact(const char *label, ImGuiDataType data_type, void *p_data,
@@ -66,7 +77,14 @@ namespace ImGui {
     bool TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *label,
                           const char *label_end, bool focused, bool *visible);
     bool BeginPopupContextItem(const char *str_id, ImGuiPopupFlags popup_flags,
-                                      ImGuiHoveredFlags hover_flags);
+                               ImGuiHoveredFlags hover_flags);
+    bool BeginPopupContextItem(ImGuiID id, ImGuiPopupFlags popup_flags,
+                               ImGuiHoveredFlags hover_flags);
+    bool BeginPopupContextConditional(const char *str_id, ImGuiPopupFlags popup_flags,
+                               ImGuiHoveredFlags hover_flags, bool condition);
+    bool BeginPopupContextForRect(const char *str_id, const ImRect &rect,
+                                  ImGuiPopupFlags popup_flags, ImGuiHoveredFlags hover_flags);
+    bool BeginFlatPopupEx(ImGuiID id, ImGuiWindowFlags extra_window_flags);
     bool DrawCircle(const ImVec2 &center, float radius, ImU32 color,
                     ImU32 fill_color = IM_COL32_BLACK_TRANS, float thickness = 1.0f);
     bool DrawSquare(const ImVec2 &center, float size, ImU32 color,
@@ -79,9 +97,22 @@ namespace ImGui {
     bool DrawConcavePolygon(const ImVec2 *points, int num_points, ImU32 color,
                             ImU32 fill_color = IM_COL32_BLACK_TRANS, float thickness = 1.0f);
 
+    bool InputComboTextBox(const char *label, char *buffer, size_t buffer_len, const char **items,
+                           int items_count, int *selected_out, ImGuiComboFlags flags = 0,
+                           ImGuiInputTextFlags input_text_flags = 0);
+
+    bool SplitterBehavior(ImGuiID id, ImGuiAxis axis, float line_width, float *a_size,
+                          float *b_size, float a_min_size = 50.0f, float b_min_size = 50.0f,
+                          ImGuiWindowFlags window_flags = ImGuiWindowFlags_None);
+
     bool IsDragDropSource(ImGuiDragDropFlags flags = ImGuiDragDropFlags_None);
     void RenderDragDropTargetRect(const ImRect &bb, const ImRect &item_clip_rect,
                                   ImGuiDropFlags flags);
+    void TextAndWidth(float width, const char *fmt, ...);
+    void TextColoredAndWidth(float width, ImVec4 col, const char *fmt, ...);
+
+    bool BeginMenuGroup(const char *str_id, float *hovered_delta, bool enabled = true);
+    void EndMenuGroup();
 
 }  // namespace ImGui
 

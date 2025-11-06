@@ -77,11 +77,16 @@ namespace Toolbox::Dolphin {
         Result<bool> unhook();
         Result<bool> refresh();
 
+        u32 getAddressAsOffset(u32 address) const { return address & 0x7FFFFFFF; }
+
         void *getMemoryView() const { return isHooked() ? m_mem_view : nullptr; }
         size_t getMemorySize() const { return isHooked() ? 0x1800000 : 0; }
 
         Result<void> readBytes(char *buf, u32 address, size_t size);
         Result<void> writeBytes(const char *buf, u32 address, size_t size);
+
+        Result<void> readCString(char *buf, size_t buf_len, u32 address);
+        Result<void> writeCString(const char *buf, u32 address, size_t buf_len = 0);
 
         ImageHandle captureXFBAsTexture(int width, int height, u32 xfb_start, int xfb_width,
                                         int xfb_height);

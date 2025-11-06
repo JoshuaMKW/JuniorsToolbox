@@ -257,7 +257,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsUI(TimeStep delta_time) {
-        FontManager &font_manager         = GUIApplication::instance().getFontManager();
+        FontManager &font_manager         = FontManager::instance();
         ThemeManager &themes_manager      = GUIApplication::instance().getThemeManager();
         SettingsManager &settings_manager = GUIApplication::instance().getSettingsManager();
         AppSettings &settings             = settings_manager.getCurrentProfile();

@@ -47,6 +47,8 @@ file(GLOB TOOLBOX_SRC
     "include/dolphin/interpreter/instructions/*.hpp"
     "src/game/*.cpp"
     "include/game/*.hpp"
+    "src/gui/debugger/*.cpp"
+    "include/gui/debugger/*.hpp"
     "src/gui/dolphin/*.cpp"
     "include/gui/dolphin/*.hpp"
     "src/gui/event/*.cpp"
@@ -91,7 +93,7 @@ file(GLOB TOOLBOX_SRC
     "src/objlib/meta/*.cpp"
     "include/objlib/meta/*.hpp"
     "src/watchdog/*.cpp"
-    "include/watchdog/*.hpp"
+    "include/watchdog/*.hpp" 
     "src/io/*.cpp"
     "src/gui/*.cpp"
     "include/gui/*.hpp"
@@ -151,7 +153,7 @@ if (WIN32)
     target_link_libraries(JuniorsToolbox PRIVATE Advapi32 Comctl32)
 endif()
 
-target_compile_definitions(JuniorsToolbox PRIVATE NOMINMAX IMGUI_DEFINE_MATH_OPERATORS GLM_ENABLE_EXPERIMENTAL)
+target_compile_definitions(JuniorsToolbox PRIVATE NOMINMAX IMGUI_DEFINE_MATH_OPERATORS GLM_ENABLE_EXPERIMENTAL _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
 
 target_include_directories(JuniorsToolbox PRIVATE
     "include"
