@@ -1421,12 +1421,16 @@ void SceneWindow::renderHierarchyContextMenu(std::string str_id,
         SelectionNodeInfo<Object::ISceneObject> &info = m_hierarchy_selected_nodes.back();
         if (m_hierarchy_selected_nodes.size() > 1) {
             m_hierarchy_multi_node_menu.renderForItem({}, m_hierarchy_selected_nodes);
+            m_hierarchy_multi_node_menu.applyDeferredCmds();
         } else if (info.m_selected->isGroupObject()) {
             m_hierarchy_group_node_menu.renderForItem(str_id, info);
+            m_hierarchy_group_node_menu.applyDeferredCmds();
         } else if (info.m_selected->hasMember("Transform")) {
             m_hierarchy_physical_node_menu.renderForItem(str_id, info);
+            m_hierarchy_physical_node_menu.applyDeferredCmds();
         } else {
             m_hierarchy_virtual_node_menu.renderForItem(str_id, info);
+            m_hierarchy_virtual_node_menu.applyDeferredCmds();
         }
     }
 }
@@ -1436,8 +1440,10 @@ void SceneWindow::renderRailContextMenu(std::string str_id, SelectionNodeInfo<Ra
         SelectionNodeInfo<Rail::Rail> &info = m_rail_list_selected_nodes.back();
         if (m_rail_list_selected_nodes.size() > 1) {
             m_rail_list_multi_node_menu.renderForItem({}, m_rail_list_selected_nodes);
+            m_rail_list_multi_node_menu.applyDeferredCmds();
         } else {
             m_rail_list_single_node_menu.renderForItem(str_id, info);
+            m_rail_list_single_node_menu.applyDeferredCmds();
         }
     }
 }
@@ -1448,8 +1454,10 @@ void SceneWindow::renderRailNodeContextMenu(std::string str_id,
         SelectionNodeInfo<Rail::RailNode> &info = m_rail_node_list_selected_nodes.back();
         if (m_rail_node_list_selected_nodes.size() > 1) {
             m_rail_node_list_multi_node_menu.renderForItem({}, m_rail_node_list_selected_nodes);
+            m_rail_node_list_multi_node_menu.applyDeferredCmds();
         } else {
             m_rail_node_list_single_node_menu.renderForItem(str_id, info);
+            m_rail_node_list_single_node_menu.applyDeferredCmds();
         }
     }
 }

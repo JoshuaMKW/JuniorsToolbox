@@ -333,16 +333,31 @@ namespace Toolbox::UI {
 
         processKeybinds(ctx);
 
+        // Since windows can push their own font, we temporarily restore the
+        // desired font.
+        FontManager &font_manager = FontManager::instance();
+        ImFont *font              = font_manager.getCurrentFont();
+        ImGui::PushFont(font, font_manager.getCurrentFontSize());
+
+        // Set up the context menu style
+        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8.0f, 8.0f});
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8.0f, 8.0f});
+
         if (m_hovered_id != 0) {
             if (!ImGui::BeginPopupContextItem(m_hovered_id, 1, hover_flags)) {
                 m_was_open = false;
                 m_rect     = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
+                ImGui::PopStyleVar(3);
+                ImGui::PopFont();
                 return;
             }
         } else {
             if (!ImGui::BeginPopupContextItem(label ? label->c_str() : nullptr, 1, hover_flags)) {
                 m_was_open = false;
                 m_rect     = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
+                ImGui::PopStyleVar(3);
+                ImGui::PopFont();
                 return;
             }
         }
@@ -352,6 +367,8 @@ namespace Toolbox::UI {
             ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
             m_rect = ImRect({-1.0f, -1.0f}, {-1.0f, -1.0f});
+            ImGui::PopStyleVar(3);
+            ImGui::PopFont();
             return;
         }
 
@@ -366,6 +383,8 @@ namespace Toolbox::UI {
         renderGroup(m_root_group, ctx, true);
 
         ImGui::EndPopup();
+        ImGui::PopStyleVar(3);
+        ImGui::PopFont();
         return;
     }
 

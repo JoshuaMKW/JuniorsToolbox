@@ -5,7 +5,7 @@
 #include "enum.hpp"
 #include "errors.hpp"
 #include "objlib/qualname.hpp"
-#include "serial.hpp"
+#include "gameio.hpp"
 #include "struct.hpp"
 #include "value.hpp"
 #include <expected>
@@ -50,7 +50,7 @@ namespace Toolbox::Object {
         return getArrayIndex(name, 0);
     }
 
-    class MetaMember : public ISerializable, public ISmartResource {
+    class MetaMember : public IGameSerializable, public ISmartResource {
     public:
         struct ReferenceInfo {
             RefPtr<MetaValue> m_ref;
@@ -304,6 +304,9 @@ namespace Toolbox::Object {
 
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
+
+        Result<void, SerialError> gameSerialize(Serializer &out) const override;
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 

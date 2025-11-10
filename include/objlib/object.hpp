@@ -60,7 +60,7 @@ namespace Toolbox::Object {
 
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
-    class ISceneObject : public ISerializable, public ISmartResource, public IUnique {
+    class ISceneObject : public IGameSerializable, public ISmartResource, public IUnique {
     public:
         friend class ObjectFactory;
 
@@ -307,9 +307,12 @@ namespace Toolbox::Object {
         void applyWizard(const TemplateWizard &wizard);
 
     public:
-        // Inherited via ISerializable
+        // Inherited via IGameSerializable
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
+
+        Result<void, SerialError> gameSerialize(Serializer &out) const override;
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
         ScopePtr<ISmartResource> clone(bool deep) const override {
             auto obj       = make_scoped<VirtualSceneObject>();
@@ -407,9 +410,12 @@ namespace Toolbox::Object {
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
-        // Inherited via ISerializable
+        // Inherited via IGameSerializable
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
+
+        Result<void, SerialError> gameSerialize(Serializer &out) const override;
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
         ScopePtr<ISmartResource> clone(bool deep) const override {
             auto obj       = make_scoped<GroupSceneObject>();
@@ -663,9 +669,12 @@ namespace Toolbox::Object {
                                              ResourceCache &resource_cache);
 
     public:
-        // Inherited via ISerializable
+        // Inherited via IGameSerializable
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
+
+        Result<void, SerialError> gameSerialize(Serializer &out) const override;
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
         ScopePtr<ISmartResource> clone(bool deep) const override {
             auto obj         = make_scoped<PhysicalSceneObject>();

@@ -141,7 +141,6 @@ namespace Toolbox {
                 if (!isInlineBuf()) {
                     byte_t *new_buf = new byte_t[size];
                     memcpy(new_buf, m_buf.m_ext, to_cpy);
-                    std::free(m_buf.m_ext);
                     setOwnBuf(new_buf, size);
                 } else {
                     if (isSizeInline(size)) {

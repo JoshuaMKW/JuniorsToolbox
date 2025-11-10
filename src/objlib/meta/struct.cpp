@@ -102,6 +102,14 @@ namespace Toolbox::Object {
     }
 
     Result<void, SerialError> MetaStruct::serialize(Serializer &out) const {
+        return gameSerialize(out);
+    }
+
+    Result<void, SerialError> MetaStruct::deserialize(Deserializer &in) {
+        return gameDeserialize(in);
+    }
+
+    Result<void, SerialError> MetaStruct::gameSerialize(Serializer &out) const {
         for (auto m : m_members) {
             auto result = m->serialize(out);
             if (!result) {
@@ -111,7 +119,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    Result<void, SerialError> MetaStruct::deserialize(Deserializer &in) {
+    Result<void, SerialError> MetaStruct::gameDeserialize(Deserializer &in) {
         for (auto m : m_members) {
             auto result = m->deserialize(in);
             if (!result) {

@@ -1,11 +1,5 @@
 #pragma once
 
-#include "color.hpp"
-#include "core/types.hpp"
-#include "errors.hpp"
-#include "jsonlib.hpp"
-#include "objlib/transform.hpp"
-#include "serial.hpp"
 #include <expected>
 #include <functional>
 #include <glm/glm.hpp>
@@ -14,7 +8,12 @@
 #include <string_view>
 #include <variant>
 
-#include "core/memory.hpp"
+#include "color.hpp"
+#include "core/types.hpp"
+#include "errors.hpp"
+#include "jsonlib.hpp"
+#include "objlib/transform.hpp"
+#include "gameio.hpp"
 
 template <> struct std::formatter<glm::vec3> : std::formatter<string_view> {
     template <typename FormatContext> auto format(const glm::vec3 &obj, FormatContext &ctx) const {
@@ -320,7 +319,7 @@ namespace Toolbox::Object {
         }
     }
 
-    class MetaValue : public ISerializable {
+    class MetaValue : public IGameSerializable {
     public:
         MetaValue() {
             m_value_buf.initTo(0);
@@ -391,6 +390,9 @@ namespace Toolbox::Object {
 
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
+
+        Result<void, SerialError> gameSerialize(Serializer &out) const override;
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
     private:
         Buffer m_value_buf;

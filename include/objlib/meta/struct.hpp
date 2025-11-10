@@ -1,10 +1,5 @@
 #pragma once
 
-#include "core/memory.hpp"
-#include "errors.hpp"
-#include "objlib/qualname.hpp"
-#include "serial.hpp"
-#include "smart_resource.hpp"
 #include <expected>
 #include <string>
 #include <string_view>
@@ -12,11 +7,17 @@
 #include <variant>
 #include <vector>
 
+#include "core/memory.hpp"
+#include "errors.hpp"
+#include "objlib/qualname.hpp"
+#include "gameio.hpp"
+#include "smart_resource.hpp"
+
 namespace Toolbox::Object {
 
     class MetaMember;
 
-    class MetaStruct : public ISerializable, public ISmartResource {
+    class MetaStruct : public IGameSerializable, public ISmartResource {
     public:
         using MemberT      = RefPtr<MetaMember>;
         using GetMemberT   = Result<MemberT, MetaScopeError>;
@@ -56,6 +57,9 @@ namespace Toolbox::Object {
 
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
+
+        Result<void, SerialError> gameSerialize(Serializer &out) const override;
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 

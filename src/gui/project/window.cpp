@@ -333,6 +333,7 @@ namespace Toolbox::UI {
         m_folder_view_context_menu.renderForItem("Project View", m_view_index,
                                           ImGuiHoveredFlags_AllowWhenBlockedByPopup |
                                               ImGuiHoveredFlags_AllowWhenOverlapped);
+        m_folder_view_context_menu.applyDeferredCmds();
     }
 
     void ProjectViewWindow::renderProjectFolderButton() {}

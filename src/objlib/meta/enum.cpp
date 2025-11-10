@@ -49,6 +49,14 @@ namespace Toolbox::Object {
     }
 
     Result<void, SerialError> MetaEnum::serialize(Serializer &out) const {
+        return gameSerialize(out);
+    }
+
+    Result<void, SerialError> MetaEnum::deserialize(Deserializer &in) {
+        return gameDeserialize(in);
+    }
+
+    Result<void, SerialError> MetaEnum::gameSerialize(Serializer &out) const {
         try {
             switch (m_type) {
             case MetaType::S8:
@@ -76,7 +84,7 @@ namespace Toolbox::Object {
         }
     }
 
-    Result<void, SerialError> MetaEnum::deserialize(Deserializer &in) {
+    Result<void, SerialError> MetaEnum::gameDeserialize(Deserializer &in) {
         try {
             switch (m_type) {
             case MetaType::S8:

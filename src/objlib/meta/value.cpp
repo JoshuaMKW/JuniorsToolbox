@@ -263,8 +263,25 @@ namespace Toolbox::Object {
         return m_type == other.m_type && m_value_buf == other.m_value_buf;
     }
 
+    /*
+       NOTE: Deserialize / Serialize is no longer suited for game I/O since this is
+       designed for application I/O. Use gameSerialize and gameDeserialize instead!
+    */
     Result<void, SerialError> MetaValue::serialize(Serializer &out) const {
         out.write<u8>(static_cast<u8>(m_type));
+        return gameSerialize(out);
+    }
+
+    /*
+       NOTE: Deserialize / Serialize is no longer suited for game I/O since this is
+       designed for application I/O. Use gameSerialize and gameDeserialize instead!
+    */
+    Result<void, SerialError> MetaValue::deserialize(Deserializer &in) {
+        m_type = static_cast<MetaType>(in.read<u8>());
+        return gameDeserialize(in);
+    }
+
+    Result<void, SerialError> MetaValue::gameSerialize(Serializer &out) const {
         try {
             switch (m_type) {
             case MetaType::BOOL:
@@ -341,8 +358,7 @@ namespace Toolbox::Object {
         }
     }
 
-    Result<void, SerialError> MetaValue::deserialize(Deserializer &in) {
-        m_type = static_cast<MetaType>(in.read<u8>());
+    Result<void, SerialError> MetaValue::gameDeserialize(Deserializer &in) {
         try {
             switch (m_type) {
             case MetaType::BOOL:

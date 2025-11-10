@@ -1,19 +1,21 @@
 #pragma once
 
-#include "core/memory.hpp"
-#include "core/types.hpp"
-#include "serial.hpp"
-#include "smart_resource.hpp"
-#include "value.hpp"
 #include <expected>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "core/memory.hpp"
+#include "core/types.hpp"
+#include "serial.hpp"
+#include "smart_resource.hpp"
+#include "value.hpp"
+#include "gameio.hpp"
+
 namespace Toolbox::Object {
 
-    class MetaEnum : public ISerializable, public ISmartResource {
+    class MetaEnum : public IGameSerializable, public ISmartResource {
     public:
         using enum_type = std::pair<std::string, MetaValue>;
 
@@ -245,6 +247,9 @@ namespace Toolbox::Object {
 
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
+
+        Result<void, SerialError> gameSerialize(Serializer &out) const override;
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 

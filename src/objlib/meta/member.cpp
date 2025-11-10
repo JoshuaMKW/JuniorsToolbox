@@ -97,22 +97,30 @@ namespace Toolbox::Object {
     }
 
     Result<void, SerialError> MetaMember::serialize(Serializer &out) const {
+        return gameSerialize(out);
+    }
+
+    Result<void, SerialError> MetaMember::deserialize(Deserializer &in) {
+        return gameDeserialize(in);
+    }
+
+    Result<void, SerialError> MetaMember::gameSerialize(Serializer &out) const {
         for (u32 i = 0; i < arraysize(); ++i) {
             if (isTypeStruct()) {
                 auto _struct = std::get<RefPtr<MetaStruct>>(m_values[i]);
-                auto result  = _struct->serialize(out);
+                auto result  = _struct->gameSerialize(out);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
             } else if (isTypeEnum()) {
                 auto _enum  = std::get<RefPtr<MetaEnum>>(m_values[i]);
-                auto result = _enum->serialize(out);
+                auto result = _enum->gameSerialize(out);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
             } else if (isTypeValue()) {
                 auto _value = std::get<RefPtr<MetaValue>>(m_values[i]);
-                auto result = _value->serialize(out);
+                auto result = _value->gameSerialize(out);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
@@ -121,24 +129,24 @@ namespace Toolbox::Object {
         return {};
     }
 
-    Result<void, SerialError> MetaMember::deserialize(Deserializer &in) {
+    Result<void, SerialError> MetaMember::gameDeserialize(Deserializer &in) {
         syncArray();
         for (u32 i = 0; i < arraysize(); ++i) {
             if (isTypeStruct()) {
                 auto _struct = std::get<RefPtr<MetaStruct>>(m_values[i]);
-                auto result = _struct->deserialize(in);
+                auto result  = _struct->gameDeserialize(in);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
             } else if (isTypeEnum()) {
-                auto _enum = std::get<RefPtr<MetaEnum>>(m_values[i]);
-                auto result = _enum->deserialize(in);
+                auto _enum  = std::get<RefPtr<MetaEnum>>(m_values[i]);
+                auto result = _enum->gameDeserialize(in);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
             } else if (isTypeValue()) {
                 auto _value = std::get<RefPtr<MetaValue>>(m_values[i]);
-                auto result = _value->deserialize(in);
+                auto result = _value->gameDeserialize(in);
                 if (!result) {
                     return std::unexpected(result.error());
                 }

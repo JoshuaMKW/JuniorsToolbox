@@ -159,6 +159,14 @@ namespace Toolbox::Object {
     }
 
     Result<void, SerialError> VirtualSceneObject::serialize(Serializer &out) const {
+        return gameSerialize(out);
+    }
+
+    Result<void, SerialError> VirtualSceneObject::deserialize(Deserializer &in) {
+        return gameDeserialize(in);
+    }
+
+    Result<void, SerialError> VirtualSceneObject::gameSerialize(Serializer &out) const {
         std::streampos start = out.tell();
 
         out.pushBreakpoint();
@@ -172,7 +180,7 @@ namespace Toolbox::Object {
             m_nameref.serialize(out);
 
             for (auto &member : m_members) {
-                auto result = member->serialize(out);
+                auto result = member->gameSerialize(out);
                 if (!result) {
                     return result;
                 }
@@ -189,7 +197,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    Result<void, SerialError> VirtualSceneObject::deserialize(Deserializer &in) {
+    Result<void, SerialError> VirtualSceneObject::gameDeserialize(Deserializer &in) {
         // Metadata
         auto length           = in.read<u32, std::endian::big>();
         std::streampos endpos = static_cast<std::size_t>(in.tell()) + length - 4;
@@ -251,7 +259,7 @@ namespace Toolbox::Object {
             auto &m                        = wizard->m_init_members[i];
             RefPtr<MetaMember> this_member = ref_cast<MetaMember>(make_deep_clone<MetaMember>(m));
             this_member->updateReferenceToList(m_members);
-            auto result = this_member->deserialize(in);
+            auto result = this_member->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -451,6 +459,14 @@ namespace Toolbox::Object {
     }
 
     Result<void, SerialError> GroupSceneObject::serialize(Serializer &out) const {
+        return gameSerialize(out);
+    }
+
+    Result<void, SerialError> GroupSceneObject::deserialize(Deserializer &in) {
+        return gameDeserialize(in);
+    }
+
+    Result<void, SerialError> GroupSceneObject::gameSerialize(Serializer &out) const {
         std::streampos start = out.tell();
 
         out.pushBreakpoint();
@@ -466,28 +482,28 @@ namespace Toolbox::Object {
             // Members
             bool late_group_size = (type_ref.code() == 15406 || type_ref.code() == 9858);
             if (!late_group_size) {
-                auto result = m_group_size->serialize(out);
+                auto result = m_group_size->gameSerialize(out);
                 if (!result) {
                     return result;
                 }
             }
 
             for (auto &member : m_members) {
-                auto result = member->serialize(out);
+                auto result = member->gameSerialize(out);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
             }
 
             if (late_group_size) {
-                auto result = m_group_size->serialize(out);
+                auto result = m_group_size->gameSerialize(out);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
             }
 
             for (auto &child : m_children) {
-                auto result = child->serialize(out);
+                auto result = child->gameSerialize(out);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
@@ -504,7 +520,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    Result<void, SerialError> GroupSceneObject::deserialize(Deserializer &in) {
+    Result<void, SerialError> GroupSceneObject::gameDeserialize(Deserializer &in) {
         // Metadata
         auto length           = in.read<u32, std::endian::big>();
         std::streampos endpos = static_cast<std::size_t>(in.tell()) + length - 4;
@@ -554,7 +570,7 @@ namespace Toolbox::Object {
         // Members
         bool late_group_size = (obj_type.code() == 15406 || obj_type.code() == 9858);
         if (!late_group_size) {
-            m_group_size->deserialize(in);
+            m_group_size->gameDeserialize(in);
         }
 
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
@@ -569,7 +585,7 @@ namespace Toolbox::Object {
             auto &m                        = wizard->m_init_members[i];
             RefPtr<MetaMember> this_member = ref_cast<MetaMember>(make_deep_clone<MetaMember>(m));
             this_member->updateReferenceToList(m_members);
-            auto result = this_member->deserialize(in);
+            auto result = this_member->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -577,7 +593,7 @@ namespace Toolbox::Object {
         }
 
         if (late_group_size) {
-            m_group_size->deserialize(in);
+            m_group_size->gameDeserialize(in);
         }
 
         size_t num_children = getGroupSize();
@@ -923,6 +939,14 @@ namespace Toolbox::Object {
     }
 
     Result<void, SerialError> PhysicalSceneObject::serialize(Serializer &out) const {
+        return serialize(out);
+    }
+
+    Result<void, SerialError> PhysicalSceneObject::deserialize(Deserializer &in) {
+        return deserialize(in);
+    }
+
+    Result<void, SerialError> PhysicalSceneObject::gameSerialize(Serializer &out) const {
         std::streampos start = out.tell();
 
         out.pushBreakpoint();
@@ -943,7 +967,7 @@ namespace Toolbox::Object {
                         continue;
                     }
                 }
-                auto result = member->serialize(out);
+                auto result = member->gameSerialize(out);
                 if (!result) {
                     return result;
                 }
@@ -960,7 +984,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    Result<void, SerialError> PhysicalSceneObject::deserialize(Deserializer &in) {
+    Result<void, SerialError> PhysicalSceneObject::gameDeserialize(Deserializer &in) {
         auto scene_path = std::filesystem::path(in.filepath()).parent_path();
 
         // Metadata
@@ -1021,7 +1045,7 @@ namespace Toolbox::Object {
             RefPtr<MetaMember> this_member = ref_cast<MetaMember>(make_deep_clone<MetaMember>(m));
             this_member->updateReferenceToList(m_members);
             if (in.tell() < endpos) {
-                auto result = this_member->deserialize(in);
+                auto result = this_member->gameDeserialize(in);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
@@ -1046,14 +1070,14 @@ namespace Toolbox::Object {
     ObjectFactory::create_t ObjectFactory::create(Deserializer &in) {
         if (isGroupObject(in)) {
             auto obj    = make_scoped<GroupSceneObject>();
-            auto result = obj->deserialize(in);
+            auto result = obj->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
             return obj;
         } else {
             auto obj    = make_scoped<PhysicalSceneObject>();
-            auto result = obj->deserialize(in);
+            auto result = obj->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
