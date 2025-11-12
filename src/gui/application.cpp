@@ -83,8 +83,6 @@ namespace Toolbox {
             return;
         }
 
-        NFD_Init();
-
         // TODO: Load application settings
 
         // Initialize the resource manager
@@ -265,8 +263,6 @@ namespace Toolbox {
         m_task_communicator.tKill(true);
 
         DragDropManager::instance().shutdown();
-
-        NFD_Quit();
     }
 
     void GUIApplication::onEvent(RefPtr<BaseEvent> ev) {
@@ -811,6 +807,8 @@ namespace Toolbox {
     }
 
     nfdresult_t FileDialog::NFD_OpenDialogRoutine(FileDialog &self) {
+        NFD_Init();
+
         if (self.m_control_info.m_is_directory) {
             nfdpickfolderu8args_t args;
             args.defaultPath = self.m_control_info.m_starting_path.c_str();
@@ -839,6 +837,8 @@ namespace Toolbox {
                 delete[] nfd_filters;
             }
         }
+
+        NFD_Quit();
         self.m_thread_running = false;
         return self.m_result.value_or(NFD_ERROR);
     }
