@@ -319,16 +319,6 @@ namespace Toolbox::UI {
                 glm::value_ptr(gizmo_transform), glm::value_ptr(obj_transform.m_translation),
                 glm::value_ptr(obj_transform.m_rotation), glm::value_ptr(obj_transform.m_scale));
 
-            TOOLBOX_DEBUG_LOG_V("Gizmo rotation: {}", obj_transform.m_rotation);
-
-            // RefPtr<ISceneObject> obj = m_hierarchy_selected_nodes[0].m_selected;
-            // BoundingBox obj_old_bb            = obj->getBoundingBox().value();
-            // Transform obj_old_transform       = obj->getTransform().value();
-
-            //// Since the translation is for the gizmo, offset it back to the actual transform
-            // obj_transform.m_translation = obj_old_transform.m_translation + (translation -
-            // obj_old_bb.m_center);
-
             RefPtr<PhysicalSceneObject> object =
                 ref_cast<PhysicalSceneObject>(m_hierarchy_selected_nodes[0].m_selected);
             m_hierarchy_selected_nodes[0].m_selected->setTransform(obj_transform);
@@ -2466,13 +2456,6 @@ void Toolbox::UI::SceneWindow::processObjectSelection(RefPtr<Object::ISceneObjec
 
     glm::mat4x4 gizmo_transform =
         glm::translate(glm::identity<glm::mat4x4>(), obj_transform.m_translation);
-
-    /*glm::mat4x4 obb_rot_mtx =
-        glm::eulerAngleXYZ(glm::radians(obj_transform.m_rotation.x),
-       glm::radians(obj_transform.m_rotation.y),
-                           glm::radians(obj_transform.m_rotation.z));*/
-
-    // TODO: Figure out why this rotation composes wrong.
 
     glm::vec3 euler_rot;
     euler_rot.x = glm::radians(obj_transform.m_rotation.x);
