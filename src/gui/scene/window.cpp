@@ -312,12 +312,14 @@ namespace Toolbox::UI {
             GUIApplication::instance().getTaskCommunicator();
 
         if (m_renderer.isGizmoManipulated() && m_hierarchy_selected_nodes.size() > 0) {
-            glm::mat4x4 gizmo_transform = m_renderer.getGizmoTransform();
+            const glm::mat4x4 &gizmo_transform = m_renderer.getGizmoTransform();
             Transform obj_transform;
 
             ImGuizmo::DecomposeMatrixToComponents(
                 glm::value_ptr(gizmo_transform), glm::value_ptr(obj_transform.m_translation),
                 glm::value_ptr(obj_transform.m_rotation), glm::value_ptr(obj_transform.m_scale));
+
+            TOOLBOX_DEBUG_LOG_V("Gizmo rotation: {}", obj_transform.m_rotation);
 
             // RefPtr<ISceneObject> obj = m_hierarchy_selected_nodes[0].m_selected;
             // BoundingBox obj_old_bb            = obj->getBoundingBox().value();
@@ -1411,6 +1413,9 @@ void SceneWindow::renderDolphin(TimeStep delta_time) {
         // ImGui::PopClipRect();
 
         renderPlaybackButtons(delta_time);
+
+        ImGui::Dummy({0, 0});  // Needed to grow parent boundaries after cursor manipulations
+                               // (recent ImGui spec)
     }
     ImGui::End();
 }  // namespace Toolbox::UI
@@ -2468,7 +2473,17 @@ void Toolbox::UI::SceneWindow::processObjectSelection(RefPtr<Object::ISceneObjec
                            glm::radians(obj_transform.m_rotation.z));*/
 
     // TODO: Figure out why this rotation composes wrong.
-    glm::mat4x4 obb_rot_mtx = glm::toMat4(glm::quat(obj_transform.m_rotation));
+
+    glm::vec3 euler_rot;
+    euler_rot.x = glm::radians(obj_transform.m_rotation.x);
+    euler_rot.y = glm::radians(obj_transform.m_rotation.y);
+    euler_rot.z = glm::radians(obj_transform.m_rotation.z);
+
+    glm::quat quat_rot = glm::angleAxis(euler_rot.z, glm::vec3(0.0f, 0.0f, 1.0f)) *
+                         glm::angleAxis(euler_rot.y, glm::vec3(0.0f, 1.0f, 0.0f)) *
+                         glm::angleAxis(euler_rot.x, glm::vec3(1.0f, 0.0f, 0.0f));
+
+    glm::mat4x4 obb_rot_mtx = glm::toMat4(quat_rot);
     gizmo_transform         = gizmo_transform * obb_rot_mtx;
 
     gizmo_transform = glm::scale(gizmo_transform, obj_transform.m_scale);

@@ -64,7 +64,7 @@ namespace Toolbox::UI {
 
         void setGizmoVisible(bool visible) { m_render_gizmo = visible; }
         bool isGizmoManipulated() const { return m_gizmo_updated; }
-        glm::mat4x4 getGizmoTransform() const { return m_gizmo_matrix; }
+        const glm::mat4x4 &getGizmoTransform() const { return m_gizmo_matrix; }
         void setGizmoTransform(const glm::mat4x4 &mtx) { m_gizmo_matrix = mtx; }
         void setGizmoOperation(ImGuizmo::OPERATION op) { m_gizmo_op = op; }
 
