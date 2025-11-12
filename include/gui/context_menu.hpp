@@ -331,6 +331,7 @@ namespace Toolbox::UI {
             return;
         }
 
+        m_deferred_ctx = ctx;
         processKeybinds(ctx);
 
         // Since windows can push their own font, we temporarily restore the
