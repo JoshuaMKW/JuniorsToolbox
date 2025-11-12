@@ -55,10 +55,10 @@ namespace Toolbox {
             // TOOLBOX_INFO_V("(OpenGL) {}", message);
             break;
         case GL_DEBUG_SEVERITY_MEDIUM:
-            TOOLBOX_WARN_V("(OpenGL) {}", message);
+            TOOLBOX_WARN_V("(OpenGL - src: {}, type: {}, id: {}) {}", source, type, id, message);
             break;
         case GL_DEBUG_SEVERITY_HIGH:
-            TOOLBOX_ERROR_V("(OpenGL) {}", message);
+            TOOLBOX_ERROR_V("(OpenGL - src: {}, type: {}, id: {}) {}", source, type, id, message);
             break;
         }
     }
@@ -691,8 +691,8 @@ namespace Toolbox {
         }
 
         // Clear the buffer
-        glClearColor(0.100f, 0.261f, 0.402f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        //glClearColor(0.100f, 0.261f, 0.402f, 1.0f);
+        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

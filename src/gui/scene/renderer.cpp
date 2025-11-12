@@ -307,6 +307,8 @@ namespace Toolbox::UI {
 
         m_gizmo_op   = ImGuizmo::OPERATION::TRANSLATE;
         m_gizmo_mode = ImGuizmo::WORLD;
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     Renderer::~Renderer() {
@@ -445,6 +447,7 @@ namespace Toolbox::UI {
 
         if (!m_is_view_dirty) {
             glBindTexture(GL_TEXTURE_2D, m_tex_id);
+            assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
             return;
         }
 
