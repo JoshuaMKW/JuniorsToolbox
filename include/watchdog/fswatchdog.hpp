@@ -74,6 +74,13 @@ namespace Toolbox {
         void ignorePathOnce(const fs_path &path);
         void ignorePathOnce(fs_path &&path);
 
+        // GUI view based optimization path. GUIs should add each path as they become
+        // visible as a method to filter out invisible watch updates.
+        void flagPathVisible(const fs_path &path, bool visible);
+        // GUI view based optimization path. GUIs should add each path as they become
+        // visible as a method to filter out invisible watch updates.
+        void flagPathVisible(fs_path &&path, bool visible);
+
         void addPath(const fs_path &path);
         void addPath(fs_path &&path);
 
@@ -113,6 +120,7 @@ namespace Toolbox {
         Filesystem::file_time_type m_sleep_end;
 
         std::unordered_set<fs_path> m_ignore_paths;
+        std::unordered_set<fs_path> m_visible_paths;
 
         std::unordered_map<fs_path, FileInfo> m_path_infos;
 

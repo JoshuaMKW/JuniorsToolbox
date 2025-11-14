@@ -524,6 +524,8 @@ namespace Toolbox {
                                 m_drag_drop_viewport = nullptr;
                             }
                         }
+
+                        ImGui::Dummy({0, 0});  // Submit an empty item so ImGui resizes the parent window bounds.
                     }
                     ImGui::End();
 

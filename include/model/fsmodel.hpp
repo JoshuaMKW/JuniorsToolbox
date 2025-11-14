@@ -48,8 +48,40 @@ namespace Toolbox {
         FS_DATA_ROLE_TYPE,
     };
 
+    class FileSystemModel;
+
+    namespace {
+
+        class FileSystemCopyProcessor : public TaskThread<void> {
+        public:
+            FileSystemCopyProcessor(const fs_path &src, const fs_path &dst)
+                : TaskThread(), m_src(src), m_dst(dst) {}
+
+        protected:
+            void tRun(void *param) override;
+
+        private:
+            fs_path m_src;
+            fs_path m_dst;
+        };
+
+        class FileSystemProcessorGC : public Threaded<void> {
+        public:
+            FileSystemProcessorGC() : Threaded(), m_model(nullptr) {}
+
+        protected:
+            void tRun(void *param) override;
+
+        private:
+            FileSystemModel *m_model;
+        };
+
+    }
+
     class FileSystemModel : public IDataModel {
     public:
+        friend class FileSystemProcessorGC;
+
         struct FSTypeInfo {
             std::string m_name;
             std::string m_image_name;
@@ -107,6 +139,10 @@ namespace Toolbox {
 
         bool rmdir(const ModelIndex &index);
         bool remove(const ModelIndex &index);
+
+        void watchPathForUpdates(const ModelIndex &index, bool watch);
+
+        std::vector<double> getCopyJobProgress() const;
 
     public:
         [[nodiscard]] ModelIndex getIndex(const fs_path &path) const;
@@ -170,6 +206,8 @@ namespace Toolbox {
         bool rmdir_(const ModelIndex &index);
         bool remove_(const ModelIndex &index);
 
+        void watchPathForUpdates_(const ModelIndex &index, bool watch);
+
         [[nodiscard]] ModelIndex getIndex_(const fs_path &path) const;
         [[nodiscard]] ModelIndex getIndex_(const UUID64 &path) const;
         [[nodiscard]] ModelIndex getIndex_(int64_t row, int64_t column,
@@ -177,6 +215,7 @@ namespace Toolbox {
         [[nodiscard]] bool removeIndex_(const ModelIndex &index);
 
         [[nodiscard]] fs_path getPath_(const ModelIndex &index) const;
+        [[nodiscard]] size_t getPathHash_(const ModelIndex &index) const;
 
         [[nodiscard]] ModelIndex getParent_(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex getSibling_(int64_t row, int64_t column,
@@ -237,6 +276,10 @@ namespace Toolbox {
         mutable std::unordered_map<std::string, RefPtr<const ImageHandle>> m_icon_map;
 
         fs_path m_rename_src;
+
+        ScopePtr<FileSystemProcessorGC> m_proc_gc;
+        std::vector<ScopePtr<FileSystemCopyProcessor>> m_copy_processors;
+        mutable std::mutex m_copy_proc_mtx;
     };
 
     class FileSystemModelSortFilterProxy : public IDataModel {

@@ -20,6 +20,8 @@
 #include "gui/event/event.hpp"
 #include "gui/image/imagepainter.hpp"
 #include "gui/project/asset.hpp"
+#include "gui/project/rarc_processor.hpp"
+#include "gui/selection.hpp"
 #include "gui/window.hpp"
 
 #include "model/fsmodel.hpp"
@@ -91,19 +93,11 @@ namespace Toolbox::UI {
         void onDropEvent(RefPtr<DropEvent> ev) override;
 
         void buildContextMenu();
-        MimeData buildFolderViewMimeData() const;
 
         // Selection actions
-        void actionDeleteIndexes(std::vector<ModelIndex> &indices);
         void actionOpenIndexes(const std::vector<ModelIndex> &indices);
+        void actionCutIndexes(const std::vector<ModelIndex> &indices);
         void actionRenameIndex(const ModelIndex &index);
-        void actionPasteIntoIndex(const ModelIndex &index, const std::vector<fs_path> &data);
-        void actionCopyIndexes(const std::vector<ModelIndex> &indices);
-
-        void actionSelectIndex(const ModelIndex &view_index, const ModelIndex &child_index,
-                                  bool is_selected);
-        void actionClearRequestExcIndex(const ModelIndex &view_index,
-                                        const ModelIndex &child_index, bool is_left_button);
 
         bool actionOpenScene(const ModelIndex &index);
         bool actionOpenPad(const ModelIndex &index);
@@ -111,26 +105,29 @@ namespace Toolbox::UI {
         bool isPathForScene(const ModelIndex &index) const;
 
     private:
+        bool isValidName(const std::string &name,
+                         const std::vector<ModelIndex> &selected_indices) const;
 
-        bool isValidName(const std::string &name, const std::vector<ModelIndex> &selected_indices) const;
         fs_path m_project_root;
 
         // TODO: Have filesystem model.
-        FileSystemModelSortFilterProxy m_tree_proxy;
-        FileSystemModelSortFilterProxy m_view_proxy;
+        RefPtr<FileSystemModelSortFilterProxy> m_tree_proxy;
+        RefPtr<FileSystemModelSortFilterProxy> m_view_proxy;
         RefPtr<FileSystemModel> m_file_system_model;
 
         ModelIndex m_last_selected_index;
-        std::vector<ModelIndex> m_selected_indices;
+        ModelSelectionManager m_selection_mgr;
         std::vector<ProjectAsset> m_view_assets;
         ModelIndex m_view_index;
 
+        RarcProcessor m_rarc_processor;
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;
 
         ContextMenu<ModelIndex> m_folder_view_context_menu;
         ContextMenu<ModelIndex> m_tree_view_context_menu;
-        std::vector<ModelIndex> m_selected_indices_ctx;
+
+        std::vector<ModelIndex> m_cut_indices;
 
         bool m_is_renaming = false;
         char m_rename_buffer[128];

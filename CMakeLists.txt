@@ -111,7 +111,7 @@ file(GLOB TOOLBOX_SRC
 )
 
 
-add_executable(JuniorsToolbox ${TOOLBOX_SRC} "src/gui/project/rarc_extractor.cpp")
+add_executable(JuniorsToolbox ${TOOLBOX_SRC})
 
 include(lib/imgui.cmake)
 add_subdirectory(lib/J3DUltra)
