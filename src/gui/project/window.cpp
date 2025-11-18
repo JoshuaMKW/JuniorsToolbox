@@ -147,12 +147,11 @@ namespace Toolbox::UI {
                     if (child_index == m_selection_mgr.getState().getLastSelected()) {
                         ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_Text);
                         col.w *= render_alpha;
-                        ImGui::GetWindowDrawList()->AddRect(
-                            win_min - (style.FramePadding / 2.0f),
-                            win_max + (style.FramePadding / 2.0f),
+                        ImGui::GetWindowDrawList()->AddRect(win_min - (style.FramePadding / 2.0f),
+                                                            win_max + (style.FramePadding / 2.0f),
                                                             ImGui::ColorConvertFloat4ToU32(col),
-                                                            3.0f,
-                            ImDrawFlags_RoundCornersAll, 2.0f);
+                                                            3.0f, ImDrawFlags_RoundCornersAll,
+                                                            2.0f);
                     }
 
                     if (ImGui::BeginChild(child_index.getUUID(), {box_width, 100.0f}, true,
@@ -230,7 +229,8 @@ namespace Toolbox::UI {
                                 if (is_double_left_click) {
                                     m_is_renaming = false;
                                     if (m_view_proxy->isDirectory(child_index)) {
-                                        ModelIndex new_view_index = m_view_proxy->toSourceIndex(child_index);
+                                        ModelIndex new_view_index =
+                                            m_view_proxy->toSourceIndex(child_index);
                                         if (m_view_index != new_view_index) {
                                             m_selection_mgr.getState().clearSelection();
                                             m_view_index = new_view_index;
@@ -260,7 +260,8 @@ namespace Toolbox::UI {
                     }
                 }
 
-                if (!any_items_hovered && (is_left_click_release || is_right_click_release)) {
+                if (is_window_hovered && !any_items_hovered &&
+                    (is_left_click_release || is_right_click_release)) {
                     const bool is_ctrl_state = Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) ||
                                                Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL);
                     const bool is_shft_state = Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT) ||
@@ -300,8 +301,8 @@ namespace Toolbox::UI {
                                                       style.Colors[ImGuiCol_HeaderActive]),
                                                   1.0f);
 
-                                draw_list->AddText(center - (text_size / 2.0f),
-                                                   IM_COL32_WHITE, file_count.c_str(),
+                                draw_list->AddText(center - (text_size / 2.0f), IM_COL32_WHITE,
+                                                   file_count.c_str(),
                                                    file_count.c_str() + file_count.size());
                             });
                         }
@@ -352,10 +353,11 @@ namespace Toolbox::UI {
         }
         ImGui::EndChild();
 
-        m_folder_view_context_menu.renderForItem(
-            "Project View", m_view_proxy->toProxyIndex(m_view_index),
-            ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenOverlapped);
-        m_folder_view_context_menu.applyDeferredCmds();
+            m_folder_view_context_menu.renderForItem(
+                "Project View", m_view_proxy->toProxyIndex(m_view_index),
+                ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenOverlapped);
+            m_folder_view_context_menu.applyDeferredCmds();
+
     }
 
     void ProjectViewWindow::renderProjectFolderButton() {}
@@ -415,14 +417,13 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::onDropEvent(RefPtr<DropEvent> ev) {
-        MimeData data = ev->getMimeData();
-
         if (m_view_proxy->isReadOnly()) {
             return;
         }
 
-        ModelInsertPolicy policy = ModelInsertPolicy::INSERT_CHILD;
-        (void)m_view_proxy->insertMimeData(m_view_proxy->toProxyIndex(m_view_index), data, policy);
+        std::thread t = std::thread(TOOLBOX_BIND_EVENT_FN(evInsertProc_), ev->getMimeData());
+        t.detach();
+
         ev->accept();
     }
 
@@ -520,7 +521,8 @@ namespace Toolbox::UI {
                 },
                 [this](const ModelIndex &index) {
                     if (m_delete_without_request) {
-                        m_selection_mgr.actionDeleteSelection();
+                        std::thread t = std::thread(TOOLBOX_BIND_EVENT_FN(optionDeleteProc_));
+                        t.detach();
                     } else {
                         m_delete_requested = true;
                     }
@@ -539,45 +541,10 @@ namespace Toolbox::UI {
                 })
             .addOption(
                 "Paste", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V}),
-                [this](const ModelIndex &index) { return true;
-                },
+                [this](const ModelIndex &index) { return true; },
                 [this](const ModelIndex &index) {
-                    const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
-
-                    auto content_types = SystemClipboard::instance().getAvailableContentFormats();
-                    if (!content_types) {
-                        TOOLBOX_ERROR("Couldn't get content types");
-                        return;
-                    }
-
-                    if (std::find(content_types.value().begin(), content_types.value().end(),
-                                  std::string("text/uri-list")) == content_types.value().end()) {
-                        return;
-                    }
-                    auto maybe_data = SystemClipboard::instance().getContent();
-                    if (!maybe_data) {
-                        return;
-                    }
-
-                    bool success = false;
-
-                    if (selection.size() > 0) {
-                        success |= m_selection_mgr.actionPasteIntoSelection(maybe_data.value());
-                    } else {
-                        if (m_view_proxy->isReadOnly()) {
-                            return;
-                        }
-
-                        ModelInsertPolicy policy = ModelInsertPolicy::INSERT_CHILD;
-                        success |= m_view_proxy->insertMimeData(m_view_proxy->toProxyIndex(m_view_index),
-                                                           maybe_data.value(), policy);
-                    }
-
-                    for (const ModelIndex &index : m_cut_indices) {
-                        (void)m_view_proxy->removeIndex(index);
-                    }
-                    m_cut_indices.clear();
+                    std::thread t = std::thread(TOOLBOX_BIND_EVENT_FN(optionPasteProc_));
+                    t.detach();
                 })
             .addDivider()
             .addOption(
@@ -671,7 +638,7 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::actionCutIndexes(const std::vector<ModelIndex> &indices) {
-        m_cut_indices = indices;
+        m_cut_indices           = indices;
         ScopePtr<MimeData> data = m_selection_mgr.actionCopySelection();
         SystemClipboard::instance().setContent(*data);
     }
@@ -785,6 +752,8 @@ namespace Toolbox::UI {
                     return true;
                 }
             }
+        } else if (m_view_proxy->isArchive(index)) {
+            // fs_path
         }
 
         return false;
@@ -852,6 +821,52 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::initFolderAssets(const ModelIndex &index) {}
+
+    void ProjectViewWindow::evInsertProc_(MimeData data) {
+        ModelInsertPolicy policy = ModelInsertPolicy::INSERT_CHILD;
+        (void)m_view_proxy->insertMimeData(m_view_proxy->toProxyIndex(m_view_index), data, policy);
+    }
+
+    void ProjectViewWindow::optionDeleteProc_() {}
+
+    void ProjectViewWindow::optionPasteProc_() {
+        const IDataModel::index_container &selection = m_selection_mgr.getState().getSelection();
+
+        auto content_types = SystemClipboard::instance().getAvailableContentFormats();
+        if (!content_types) {
+            TOOLBOX_ERROR("Couldn't get content types");
+            return;
+        }
+
+        if (std::find(content_types.value().begin(), content_types.value().end(),
+                      std::string("text/uri-list")) == content_types.value().end()) {
+            return;
+        }
+        auto maybe_data = SystemClipboard::instance().getContent();
+        if (!maybe_data) {
+            return;
+        }
+
+        bool success = false;
+
+        if (selection.size() > 0) {
+            success |= m_selection_mgr.actionPasteIntoSelection(maybe_data.value());
+        } else {
+            if (m_view_proxy->isReadOnly()) {
+                return;
+            }
+
+            ModelInsertPolicy policy = ModelInsertPolicy::INSERT_CHILD;
+            success |= m_view_proxy->insertMimeData(m_view_proxy->toProxyIndex(m_view_index),
+                                                    maybe_data.value(), policy);
+        }
+
+        for (const ModelIndex &index : m_cut_indices) {
+            (void)m_view_proxy->removeIndex(index);
+        }
+        m_cut_indices.clear();
+    }
+
     bool char_equals(char a, char b) {
 #ifdef TOOLBOX_PLATFORM_WINDOWS
         return std::tolower(static_cast<unsigned char>(a)) ==

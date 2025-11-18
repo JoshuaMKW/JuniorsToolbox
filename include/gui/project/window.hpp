@@ -48,6 +48,11 @@ namespace Toolbox::UI {
         void renderFolderTree(const ModelIndex &index);
         void initFolderAssets(const ModelIndex &index);
 
+        //void startCopyProc(const ModelIndex &from, const ModelIndex &to);
+        void evInsertProc_(MimeData data);
+        void optionDeleteProc_();
+        void optionPasteProc_();
+
     public:
         ImGuiWindowFlags flags() const override {
             return ImWindow::flags() | ImGuiWindowFlags_MenuBar;
@@ -110,7 +115,6 @@ namespace Toolbox::UI {
 
         fs_path m_project_root;
 
-        // TODO: Have filesystem model.
         RefPtr<FileSystemModelSortFilterProxy> m_tree_proxy;
         RefPtr<FileSystemModelSortFilterProxy> m_view_proxy;
         RefPtr<FileSystemModel> m_file_system_model;

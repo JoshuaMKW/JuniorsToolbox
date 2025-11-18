@@ -184,6 +184,8 @@ namespace Toolbox {
         static const std::unordered_map<std::string, FSTypeInfo> &TypeMap();
 
     protected:
+        using SignalQueue = std::vector<std::pair<ModelIndex, int>>;
+
         [[nodiscard]] bool isDirectory_(const ModelIndex &index) const;
         [[nodiscard]] bool isFile_(const ModelIndex &index) const;
         [[nodiscard]] bool isArchive_(const ModelIndex &index) const;
@@ -197,14 +199,16 @@ namespace Toolbox {
         [[nodiscard]] std::string findUniqueName_(const ModelIndex &index,
                                                   const std::string &name) const;
 
-        ModelIndex mkdir_(const ModelIndex &parent, const std::string &name);
-        ModelIndex touch_(const ModelIndex &parent, const std::string &name);
-        ModelIndex rename_(const ModelIndex &file, const std::string &new_name);
+        ModelIndex mkdir_(const ModelIndex &parent, const std::string &name, SignalQueue &sig_queue);
+        ModelIndex touch_(const ModelIndex &parent, const std::string &name,
+                          SignalQueue &sig_queue);
+        ModelIndex rename_(const ModelIndex &file, const std::string &new_name,
+                           SignalQueue &sig_queue);
         ModelIndex copy_(const fs_path &file_path, const ModelIndex &new_parent,
-                         const std::string &new_name);
+                         const std::string &new_name, SignalQueue &sig_queue);
 
-        bool rmdir_(const ModelIndex &index);
-        bool remove_(const ModelIndex &index);
+        bool rmdir_(const ModelIndex &index, SignalQueue &sig_queue);
+        bool remove_(const ModelIndex &index, SignalQueue &sig_queue);
 
         void watchPathForUpdates_(const ModelIndex &index, bool watch);
 
@@ -212,7 +216,7 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex_(const UUID64 &path) const;
         [[nodiscard]] ModelIndex getIndex_(int64_t row, int64_t column,
                                            const ModelIndex &parent = ModelIndex()) const;
-        [[nodiscard]] bool removeIndex_(const ModelIndex &index);
+        [[nodiscard]] bool removeIndex_(const ModelIndex &index, SignalQueue &sig_queue);
 
         [[nodiscard]] fs_path getPath_(const ModelIndex &index) const;
         [[nodiscard]] size_t getPathHash_(const ModelIndex &index) const;
@@ -232,7 +236,7 @@ namespace Toolbox {
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData_(const IDataModel::index_container &indexes) const;
         [[nodiscard]] bool
-        insertMimeData_(const ModelIndex &index, const MimeData &data,
+        insertMimeData_(const ModelIndex &index, const MimeData &data, SignalQueue &sig_queue,
                         ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index);

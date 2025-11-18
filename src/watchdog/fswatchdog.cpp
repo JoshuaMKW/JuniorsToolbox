@@ -221,13 +221,13 @@ namespace Toolbox {
             return;
         }
 
+        bool is_dir = Filesystem::is_directory(abs_path).value_or(false);
+
         // GUI view based optimization path. GUIs should add each path as they become
         // visible as a method to filter out invisible watch updates.
         if (!m_watchdog->m_visible_paths.contains(abs_path.parent_path())) {
             return;
         }
-
-        bool is_dir = Filesystem::is_directory(abs_path).value_or(false);
 
         switch (event) {
         case filewatch::Event::added:

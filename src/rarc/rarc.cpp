@@ -151,14 +151,31 @@ namespace Toolbox::RARC {
             return false;
         }
 
-        std::ifstream in_test(path, std::ios::binary);
-        if (!in_test.is_open()) {
-            return false;
+        // Hot path optimization to avoid unnecessary file I/O
+        if (path.extension() == ".arc") {
+            std::ifstream in_test(path, std::ios::binary);
+            if (!in_test.is_open()) {
+                return false;
+            }
+
+            u32 magic = 0;
+            in_test.read(reinterpret_cast<char *>(&magic), sizeof(u32));
+            return IsMagicValid(std::byteswap(magic));
         }
 
-        u32 magic = 0;
-        in_test.read(reinterpret_cast<char *>(&magic), sizeof(u32));
-        return IsMagicValid(std::byteswap(magic));
+        // TODO: Implement Yaz0 compression algorithm
+        if (path.extension() == ".szs") {
+            std::ifstream in_test(path, std::ios::binary);
+            if (!in_test.is_open()) {
+                return false;
+            }
+
+            u32 magic = 0;
+            in_test.read(reinterpret_cast<char *>(&magic), sizeof(u32));
+            return IsMagicValid(std::byteswap(magic));
+        }
+
+        return false;
     }
 
     static size_t GetFolderSizeInBytes(const fs_path &folder) {
