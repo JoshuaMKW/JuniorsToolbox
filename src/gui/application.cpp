@@ -499,20 +499,31 @@ namespace Toolbox {
                     ImGui::SetNextWindowPos(pos);
                     ImGui::SetNextWindowSize(size);
                     if (ImGui::Begin("###Drag Icon", nullptr,
-                                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs)) {
+                                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs |
+                                         ImGuiWindowFlags_NoFocusOnAppearing |
+                                         ImGuiWindowFlags_NoMouseInputs)) {
                         action->render(size);
 
-                        ImVec2 status_size = {16, 16};
-                        ImGui::SetCursorScreenPos(pos + size - status_size);
+                        //ImVec2 status_size = {16, 16};
+                        //ImGui::SetCursorScreenPos(pos + size - status_size);
 
-                        ImGui::DrawSquare(
-                            pos + size - (status_size / 2), status_size.x, IM_COL32_WHITE,
-                            ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_HeaderActive]));
+                        //ImGui::DrawSquare(
+                        //    pos + size - (status_size / 2), status_size.x, IM_COL32_WHITE,
+                        //    ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_HeaderActive]));
 
                         const DragAction::DropState &state = action->getDropState();
                         if (state.m_valid_target) {
 
                         } else {
+                            ResourceManager &res_manager = m_resource_manager;
+                            UUID64 directory_id = res_manager.getResourcePathUUID("Images/Icons");
+                            RefPtr<const ImageHandle> img = res_manager.getImageHandle("invalid_circle.png", directory_id).value_or(nullptr);
+                            if (img) {
+                                const ImVec2 stat_size = {16.0f, 16.0f};
+
+                                ImagePainter painter;
+                                painter.render(*img, pos + size - stat_size - style.WindowPadding, stat_size);
+                            }
                         }
 
                         if (ImGuiWindow *win = ImGui::GetCurrentWindow()) {

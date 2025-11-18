@@ -135,7 +135,7 @@ static bool intersectRaySphere(const glm::vec3 &rayOrigin, const glm::vec3 &rayD
 
 namespace Toolbox::UI {
     namespace Render {
-        void PacketSort(J3D::Rendering::RenderPacketVector packets) {
+        void PacketSort(J3D::Rendering::RenderPacketVector& packets) {
             std::sort(packets.begin(), packets.end(),
                       [](const J3DRenderPacket &a, const J3DRenderPacket &b) -> bool {
                           // Sort bias
@@ -391,6 +391,8 @@ namespace Toolbox::UI {
 
             glm::vec3 position;
             m_camera.getPos(position);
+
+            glDepthMask(GL_TRUE);
 
             glClearColor(0, 0, 0, 0);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

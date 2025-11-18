@@ -497,6 +497,8 @@ void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneOb
         .m_parent_synced = true,
         .m_scene_synced  = needs_scene_sync};  // Only spacial objects get scene selection
 
+    ImGui::PushID(tree_node_id);
+
     if (node->isGroupObject()) {
         if (is_filtered_out) {
             for (size_t i = 0; i < node->getChildren().size(); ++i) {
@@ -710,6 +712,8 @@ void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneOb
             }
         }
     }
+
+    ImGui::PopID();
 }
 
 void SceneWindow::renderProperties() {
