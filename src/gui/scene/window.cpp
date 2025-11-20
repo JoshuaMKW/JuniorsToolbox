@@ -138,8 +138,14 @@ namespace Toolbox::UI {
                         m_rail_visible_map[rail->getUUID()] = true;
                     }
 
-                    if (task_communicator.isSceneLoaded(1, 2)) {
+                    if (task_communicator.isSceneLoaded(m_stage, m_scenario)) {
                         reassignAllActorPtrs(0);
+                    } else if (task_communicator.isSceneLoaded()) {
+                        u8 area, episode;
+                        task_communicator.getLoadedScene(area, episode);
+                        TOOLBOX_WARN_V("[SCENE] Editor scene is <area: {}, episode {}> but game "
+                                       "scene is <area: {}, episode {}>",
+                                       m_stage, m_scenario, area, episode);
                     }
 
                     return Result<void, SerialError>();
@@ -1296,7 +1302,7 @@ void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
     ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
     if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
         DolphinHookManager::instance().startProcess();
-        task_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        task_communicator.taskLoadScene(m_stage, m_scenario, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
     }
 
     ImGui::PopStyleColor(3);
@@ -1334,7 +1340,7 @@ void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
     ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
     if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
                              ImDrawFlags_RoundCornersBottomLeft)) {
-        task_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        task_communicator.taskLoadScene(m_stage, m_scenario, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
     }
 
     ImGui::PopStyleColor(3);
@@ -2594,6 +2600,10 @@ void Toolbox::UI::SceneWindow::_moveNode(const Rail::RailNode &node, size_t inde
             LogError(err);
             return Result<void, MetaError>();
         });
+}
+
+void SceneWindow::setStageScenario(u8 stage, u8 scenario) {
+    m_stage = stage, m_scenario = scenario;
 }
 
 ImGuiID SceneWindow::onBuildDockspace() {

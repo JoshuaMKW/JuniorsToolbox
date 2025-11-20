@@ -890,6 +890,25 @@ namespace Toolbox::Object {
                     nozzle_mat->TevBlock->mTevColors[1] = {90, 90, 120, 255};
                 }
             }
+
+            if (mat_name == "sky") {
+                //RefPtr<J3DTexture> sky_tex_01 = mat_table->GetTexture("B_sky_kumo_s");
+                //RefPtr<J3DTexture> sky_tex_02 = mat_table->GetTexture("B_cloud_s");
+                //////RefPtr<J3DTexture> sky_tex_03 = mat_table->GetTexture("B_hikoukigumo_s");
+
+                //if (sky_tex_01) {
+                //    sky_tex_01->WrapS = EGXWrapMode::Repeat;
+                //}
+
+                //if (sky_tex_02) {
+                //    sky_tex_02->WrapS = EGXWrapMode::Repeat;
+                //}
+
+                //RefPtr<J3DMaterial> mat = mat_table->GetMaterial("_01_nyudougumo");
+                //EGXBlendMode blah       = mat->PEBlock.mBlendMode.Type;
+                //mat->PEBlock.mZMode.Enable   = false;
+                //mat->PEBlock.mBlendMode.Type = EGXBlendMode::None;
+            }
         }
 
         // TODO: Load texture data
@@ -903,6 +922,7 @@ namespace Toolbox::Object {
         if (type() == "Sky") {
             // Force render behind everything
             m_model_instance->SetSortBias(255);
+            m_model_instance->SetInstanceMaterialTable(mat_table);
         }
 
         for (auto &anim_file : info.m_file_animations) {

@@ -209,6 +209,9 @@ namespace Toolbox::Scene {
 
     bool SceneLayoutManager::getScenarioForFileName(const std::string &filename, size_t &scene_out,
                                                     size_t &scenario_out) const {
+        scene_out = 0xFF;
+        scenario_out = 0xFF;
+
         RefPtr<GroupSceneObject> root = m_scene_layout.getRoot();
         if (!root) {
             LogError(make_error<std::string>("SCENE_LAYOUT", "stageArc.bin root doesn't exist!")
@@ -216,7 +219,15 @@ namespace Toolbox::Scene {
             return false;
         }
 
-        std::vector<RefPtr<ISceneObject>> scene_list = root->getChildren();
+        std::vector<RefPtr<ISceneObject>> groups = root->getChildren();
+        if (groups.empty()) {
+            LogError(make_error<std::string>("SCENE_LAYOUT", "stageArc.bin stagelist doesn't exist!")
+                         .error());
+            return false;
+        }
+
+        std::vector<RefPtr<ISceneObject>> scene_list = groups[0]->getChildren();
+
         for (size_t i = 0; i < scene_list.size(); ++i) {
             std::vector<RefPtr<ISceneObject>> scenario_list = scene_list[i]->getChildren();
             for (size_t j = 0; j < scenario_list.size(); ++j) {
@@ -227,7 +238,8 @@ namespace Toolbox::Scene {
                     .and_then([&](RefPtr<MetaMember> member) {
                         getMetaValue<std::string>(member)
                             .and_then([&](std::string &&str) {
-                                name = std::move(str);
+                                // Remove the extension
+                                name = std::move(str.substr(0, str.rfind('.')));
                                 return Result<std::string, MetaError>();
                             })
                             .or_else([](const MetaError &error) {

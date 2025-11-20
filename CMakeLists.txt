@@ -108,6 +108,8 @@ file(GLOB TOOLBOX_SRC
     "include/io/*.hpp"
     "lib/ImGuiFileDialog/*.h"
     "lib/ImGuiFileDialog/*.cpp"
+    "lib/librii/*.hpp"
+    "lib/librii/*.cpp"
 )
 
 

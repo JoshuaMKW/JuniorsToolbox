@@ -83,6 +83,8 @@ namespace Toolbox::UI {
         void initToBasic() { m_current_scene = SceneInstance::BasicScene(); }
         void setIOContextPath(const fs_path &path) { m_io_context_path = path; }
 
+        void setStageScenario(u8 stage, u8 scenario);
+
     protected:
         ImGuiID onBuildDockspace() override;
         void onRenderMenuBar() override;
@@ -192,6 +194,7 @@ namespace Toolbox::UI {
         void onEvent(RefPtr<BaseEvent> ev) override;
 
     private:
+        u8 m_stage = 0xFF, m_scenario = 0xFF;
         ScopePtr<Toolbox::SceneInstance> m_current_scene;
 
         fs_path m_io_context_path;

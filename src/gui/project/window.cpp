@@ -353,11 +353,10 @@ namespace Toolbox::UI {
         }
         ImGui::EndChild();
 
-            m_folder_view_context_menu.renderForItem(
-                "Project View", m_view_proxy->toProxyIndex(m_view_index),
-                ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenOverlapped);
-            m_folder_view_context_menu.applyDeferredCmds();
-
+        m_folder_view_context_menu.renderForItem(
+            "Project View", m_view_proxy->toProxyIndex(m_view_index),
+            ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenOverlapped);
+        m_folder_view_context_menu.applyDeferredCmds();
     }
 
     void ProjectViewWindow::renderProjectFolderButton() {}
@@ -666,7 +665,15 @@ namespace Toolbox::UI {
                 return true;
             }
 
+            size_t scene, scenario;
+            GUIApplication::instance()
+                .getProjectManager()
+                .getSceneLayoutManager()
+                .getScenarioForFileName(scene_path.parent_path().filename().string(), scene, scenario);
+
             RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Scene Editor");
+            window->setStageScenario((u8)scene, (u8)scenario);
+
             if (!window->onLoadData(scene_path)) {
                 app.removeWindow(window);
                 return false;
