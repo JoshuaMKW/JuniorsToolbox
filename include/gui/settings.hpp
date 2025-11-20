@@ -41,8 +41,8 @@ namespace Toolbox {
         float m_camera_fov          = 70.0f;
         float m_camera_speed        = 1.0f;
         float m_camera_sensitivity  = 1.0f;
-        float m_near_plane          = 50.0f;
-        float m_far_plane           = 500000.0f;
+        float m_near_plane          = 80.0f;
+        float m_far_plane           = 800000.0f;
 
         // Control
         KeyBind m_gizmo_translate_mode_keybind = KeyBind({KeyCode::KEY_D1});
