@@ -1306,9 +1306,10 @@ void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
 
     ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
     if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
-        DolphinHookManager::instance().startProcess();
-        task_communicator.taskLoadScene(m_stage, m_scenario,
-                                        TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        if (DolphinHookManager::instance().startProcess()) {
+            task_communicator.taskLoadScene(m_stage, m_scenario,
+                                            TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        }
     }
 
     ImGui::PopStyleColor(3);
@@ -2660,7 +2661,13 @@ void SceneWindow::onRenderMenuBar() {
     if (m_is_save_default_ready) {
         m_is_save_default_ready = false;
         if (!m_io_context_path.empty()) {
-            (void)onSaveData(m_io_context_path);
+            if (onSaveData(m_io_context_path)) {
+                GUIApplication::instance().showSuccessModal(this, name(),
+                                                            "Scene saved successfully!");
+            } else {
+                GUIApplication::instance().showErrorModal(this, name(),
+                                                          "Scene failed to save!");
+            }
         } else {
             m_is_save_as_dialog_open = true;
         }
@@ -2680,18 +2687,21 @@ void SceneWindow::onRenderMenuBar() {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
 
-            auto dir_result = Toolbox::Filesystem::is_directory(path);
+            if (path.empty()) {
+                path = m_io_context_path;
+            }
+
+            auto dir_result = Toolbox::Filesystem::is_directory(path).value_or(false);
             if (!dir_result) {
                 return;
             }
 
-            if (!dir_result.value()) {
-                return;
-            }
-
-            auto result = m_current_scene->saveToPath(path);
-            if (!result) {
-                LogError(result.error());
+            m_io_context_path = path;
+            if (onSaveData(m_io_context_path)) {
+                GUIApplication::instance().showSuccessModal(this, name(),
+                                                            "Scene saved successfully!");
+            } else {
+                GUIApplication::instance().showErrorModal(this, name(), "Scene failed to save!");
             }
         }
     }

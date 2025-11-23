@@ -136,6 +136,8 @@ namespace Toolbox {
     WatchDataModel::~WatchDataModel() {
         m_index_map.clear();
         m_listeners.clear();
+        m_running = false;
+        m_watch_thread.join();
     }
 
     void WatchDataModel::initialize() {
@@ -149,7 +151,6 @@ namespace Toolbox {
                 processWatches();
             }
         });
-        m_watch_thread.detach();
     }
 
     bool WatchDataModel::isIndexGroup(const ModelIndex &index) const {

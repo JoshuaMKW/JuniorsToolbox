@@ -25,6 +25,8 @@
 
 #include "gui/font.hpp"
 #include "gui/settings.hpp"
+#include "gui/status/modal_failure.hpp"
+#include "gui/status/modal_success.hpp"
 #include "project/project.hpp"
 #include "resource/resource.hpp"
 
@@ -51,9 +53,9 @@ namespace Toolbox {
 
         virtual ~GUIApplication() {}
 
-        virtual void onInit(int argc, const char **argv) override;
-        virtual void onUpdate(TimeStep delta_time) override;
-        virtual void onExit() override;
+        void onInit(int argc, const char **argv) override;
+        void onUpdate(TimeStep delta_time) override;
+        void onExit() override;
 
         void onEvent(RefPtr<BaseEvent> ev) override;
 
@@ -83,21 +85,19 @@ namespace Toolbox {
 
         std::vector<RefPtr<ImWindow>> findWindows(const std::string &title);
 
-        template <typename T, bool strict = false, typename... Args>
+        template <typename T, bool recycle = true, typename... Args>
         RefPtr<T> createWindow(const std::string &name, Args &&...args) {
-            std::vector<RefPtr<ImWindow>> reuse_candidates = findWindows(name);
+            if constexpr (recycle) {
+                std::vector<RefPtr<ImWindow>> reuse_candidates = findWindows(name);
 
-            RefPtr<T> window = make_referable<T>(name, std::forward<Args>(args)...);
+                for (RefPtr<ImWindow> candidate : reuse_candidates) {
+                    // Reuse window if it is closed and not set to destroy on close
+                    if (candidate->isClosed() && !candidate->destroyOnClose()) {
+                        candidate->onAttach();
+                        candidate->open();
+                        return ref_cast<T>(candidate);
+                    }
 
-            // Reuse window if it is closed and not set to destroy on close
-            for (RefPtr<ImWindow> candidate : reuse_candidates) {
-                if (candidate->isClosed() && !candidate->destroyOnClose()) {
-                    candidate->onAttach();
-                    candidate->open();
-                    return ref_cast<T>(candidate);
-                }
-
-                if constexpr (!strict) {
                     if (candidate->isHidden()) {
                         candidate->show();
                         candidate->focus();
@@ -111,6 +111,7 @@ namespace Toolbox {
                 }
             }
 
+            RefPtr<T> window = make_referable<T>(name, std::forward<Args>(args)...);
             window->open();
             addWindow(window);
             return window;
@@ -139,6 +140,10 @@ namespace Toolbox {
         const ProjectManager &getProjectManager() const { return m_project_manager; }
 
         RefPtr<ImWindow> getImWindowFromPlatformWindow(Platform::LowWindow window);
+
+        void showSuccessModal(ImWindow *parent, const std::string &title,
+                              const std::string &message);
+        void showErrorModal(ImWindow *parent, const std::string &title, const std::string &message);
 
         bool registerDragDropSource(Platform::LowWindow window);
         void deregisterDragDropSource(Platform::LowWindow window);
@@ -220,6 +225,9 @@ namespace Toolbox {
         std::thread m_thread_templates_init;
         DolphinCommunicator m_dolphin_communicator;
         Game::TaskCommunicator m_task_communicator;
+
+        std::vector<SuccessModal> m_success_modal_queue;
+        std::vector<FailureModal> m_error_modal_queue;
     };
 
     class FileDialogFilter {

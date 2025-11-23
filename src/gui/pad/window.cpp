@@ -232,6 +232,10 @@ namespace Toolbox::UI {
                     if (!is_record_complete) {
                         TOOLBOX_ERROR("[PAD RECORD] Record is not complete. Please check remaining "
                                       "links for missing pad data.");
+                        GUIApplication::instance().showErrorModal(
+                            this, name(),
+                            "Pad data failed to save!\n\n - (Check application log for "
+                            "details)");
                     } else {
                         m_is_save_default_ready = true;
                         m_is_save_dialog_open   = true;
@@ -474,7 +478,7 @@ namespace Toolbox::UI {
         }
 
         ImGui::PopStyleColor(3);
-        ImGui::Dummy({0,0});
+        ImGui::Dummy({0, 0});
     }
 
     void PadInputWindow::renderControllerOverlay(const ImVec2 &center, f32 scale, u8 alpha) {
@@ -962,11 +966,21 @@ namespace Toolbox::UI {
                                 m_attached_scene_uuid, SCENE_ENABLE_CONTROL_EVENT);
                         }
 
-                        m_pad_recorder.loadFromFolder(*m_load_path);
+                        if (!onLoadData(*m_load_path)) {
+                            GUIApplication::instance().showErrorModal(
+                                this, name(),
+                                "Pad data failed to load!\n\n - (Check application log for "
+                                "details)");
+                        }
+
                         return Result<bool, FSError>(true);
                     })
-                    .or_else([](const FSError &error) {
+                    .or_else([&](const FSError &error) {
                         UI::LogError(error);
+                        GUIApplication::instance().showErrorModal(
+                            this, name(),
+                            "Pad data failed to load!\n\n - (Check application log for "
+                            "details)");
                         return Result<bool, FSError>(false);
                     });
 
@@ -982,7 +996,14 @@ namespace Toolbox::UI {
                 ImGuiFileDialog::Instance()->OpenDialog("SavePadDialog", "Choose Folder", nullptr,
                                                         config);
             } else {
-                m_pad_recorder.saveToFolder(*m_load_path);
+                if (onSaveData(m_load_path)) {
+                    GUIApplication::instance().showSuccessModal(this, name(),
+                                                                "Pad data saved successfully!");
+                } else {
+                    GUIApplication::instance().showErrorModal(
+                        this, name(),
+                        "Pad data failed to save!\n\n - (Check application log for details)");
+                }
                 return;
             }
         }
@@ -991,8 +1012,14 @@ namespace Toolbox::UI {
             m_is_save_dialog_open = false;
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 m_load_path = ImGuiFileDialog::Instance()->GetFilePathName();
-
-                m_pad_recorder.saveToFolder(*m_load_path);
+                if (onSaveData(m_load_path)) {
+                    GUIApplication::instance().showSuccessModal(this, name(),
+                                                                "Pad data saved successfully!");
+                } else {
+                    GUIApplication::instance().showErrorModal(
+                        this, name(),
+                        "Pad data failed to save!\n\n - (Check application log for details)");
+                }
 
                 ImGuiFileDialog::Instance()->Close();
                 return;

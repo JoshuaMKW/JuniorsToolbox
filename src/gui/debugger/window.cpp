@@ -97,7 +97,13 @@ namespace Toolbox::UI {
                     if (!m_resource_path) {
                         m_is_save_dialog = true;
                     } else {
-                        (void)onSaveData(m_resource_path);
+                        if (onSaveData(m_resource_path)) {
+                            GUIApplication::instance().showSuccessModal(
+                                this, "Debugger", "Watchlist saved successfully!");
+                        } else {
+                            GUIApplication::instance().showErrorModal(this, "Debugger",
+                                                                      "Watchlist failed to save!");
+                        }
                     }
                 }
 
@@ -178,15 +184,26 @@ namespace Toolbox::UI {
                         }
 
                         if (selected_path.extension() == ".mwl") {
-                            (void)onLoadData(selected_path);
+                            if (!onLoadData(selected_path)) {
+                                GUIApplication::instance().showErrorModal(
+                                    this, name(),
+                                    "Watchlist failed to load!\n\n - (Check application log for "
+                                    "details)");
+                            }
                         } else if (selected_path.extension() == ".dmw") {
                             auto result = m_watch_model->loadFromDMEFile(selected_path);
                             if (!result) {
                                 LogError(result.error());
+                                GUIApplication::instance().showErrorModal(
+                                    this, name(),
+                                    "Watchlist failed to load!\n\n - (Check application log for "
+                                    "details)");
                             }
                         } else {
-                            m_error_modal_open = true;
-                            m_error_modal_msg  = "Selected file is not a valid watch list!";
+                            GUIApplication::instance().showErrorModal(
+                                this, name(),
+                                "The selected path does not have a valid extension! (look for a "
+                                ".mwl or .dmw file)");
                         }
                         break;
                     }
@@ -195,17 +212,27 @@ namespace Toolbox::UI {
                             FileDialog::instance()->getFilenameResult();
 
                         if (selected_path.extension() == ".mwl") {
-                            (void)onSaveData(selected_path);
+                            if (onSaveData(selected_path)) {
+                                GUIApplication::instance().showSuccessModal(
+                                    this, "Debugger", "Watchlist saved successfully!");
+                            } else {
+                                GUIApplication::instance().showErrorModal(
+                                    this, "Debugger", "Watchlist failed to save!");
+                            }
                             m_resource_path = selected_path;
                         } else {
-                            m_error_modal_open = true;
-                            m_error_modal_msg  = "Selected file is not a valid watch list!";
+                            GUIApplication::instance().showErrorModal(
+                                this, name(),
+                                "The selected path does not have a valid extension! (save as a "
+                                ".mwl file)");
                         }
                         break;
                     }
                     default:
-                        m_error_modal_open = true;
-                        m_error_modal_msg  = "File Dialog error!";
+                        GUIApplication::instance().showErrorModal(
+                            this, name(),
+                            "Invalid file dialog state detected! (Create an issue on github with "
+                            "context please)");
                         break;
                     }
                 }

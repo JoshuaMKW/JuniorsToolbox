@@ -138,7 +138,7 @@ namespace Toolbox {
 
     void FileSystemWatchdog::tRun(void *param) {
         while (!tIsSignalKill()) {
-            while (m_asleep) {
+            while (!tIsSignalKill() && m_asleep) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
 

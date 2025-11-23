@@ -95,7 +95,7 @@ namespace Toolbox::Game {
             checkForAcquiredStackFrameAndBuffer();
 
             // Dismiss tasks if disconnected to avoid errors
-            while (!m_task_queue.empty()) {
+            while (!m_task_queue.empty() && !communicator.tIsKilled()) {
                 std::unique_lock<std::mutex> lk(m_mutex);
                 std::function<bool(DolphinCommunicator &)> task = m_task_queue.front();
                 if (task(communicator)) {

@@ -37,6 +37,8 @@
 #include "gui/scene/ImGuizmo.h"
 #include "gui/scene/window.hpp"
 #include "gui/settings/window.hpp"
+#include "gui/status/modal_failure.hpp"
+#include "gui/status/modal_success.hpp"
 #include "gui/themes.hpp"
 #include "gui/util.hpp"
 #include "platform/service.hpp"
@@ -340,6 +342,16 @@ namespace Toolbox {
         return nullptr;
     }
 
+    void GUIApplication::showSuccessModal(ImWindow *parent, const std::string &title,
+                                          const std::string &message) {
+        m_success_modal_queue.emplace_back(parent, title, message);
+    }
+
+    void GUIApplication::showErrorModal(ImWindow *parent, const std::string &title,
+                                        const std::string &message) {
+        m_error_modal_queue.emplace_back(parent, title, message);
+    }
+
     bool GUIApplication::registerDragDropSource(Platform::LowWindow window) {
         return m_drag_drop_source_delegate->initializeForWindow(window);
     }
@@ -410,7 +422,8 @@ namespace Toolbox {
 
         ImGuizmo::BeginFrame();
 
-        ImGui::PushFont(FontManager::instance().getCurrentFont(), FontManager::instance().getCurrentFontSize());
+        ImGui::PushFont(FontManager::instance().getCurrentFont(),
+                        FontManager::instance().getCurrentFontSize());
 
         ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);
@@ -463,6 +476,38 @@ namespace Toolbox {
                 std::erase(m_windows, window);
             }
 
+            // Loop over queued status modals
+            if (!m_success_modal_queue.empty()) {
+                SuccessModal &modal = m_success_modal_queue.front();
+                if (!modal.is_open()) {
+                    modal.open();
+                }
+
+                if (!modal.render()) {
+                    modal.close();  // It is somehow invisible
+                }
+
+                if (modal.is_closed()) {
+                    m_success_modal_queue.erase(m_success_modal_queue.begin());
+                }
+            } else {
+                // Loop over queued status modals
+                if (!m_error_modal_queue.empty()) {
+                    FailureModal &modal = m_error_modal_queue.front();
+                    if (!modal.is_open()) {
+                        modal.open();
+                    }
+
+                    if (!modal.render()) {
+                        modal.close();  // It is somehow invisible
+                    }
+
+                    if (modal.is_closed()) {
+                        m_error_modal_queue.erase(m_error_modal_queue.begin());
+                    }
+                }
+            }
+
             gcClosedWindows();
         }
 
@@ -509,12 +554,12 @@ namespace Toolbox {
                                          ImGuiWindowFlags_NoMouseInputs)) {
                         action->render(size);
 
-                        //ImVec2 status_size = {16, 16};
-                        //ImGui::SetCursorScreenPos(pos + size - status_size);
+                        // ImVec2 status_size = {16, 16};
+                        // ImGui::SetCursorScreenPos(pos + size - status_size);
 
-                        //ImGui::DrawSquare(
-                        //    pos + size - (status_size / 2), status_size.x, IM_COL32_WHITE,
-                        //    ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_HeaderActive]));
+                        // ImGui::DrawSquare(
+                        //     pos + size - (status_size / 2), status_size.x, IM_COL32_WHITE,
+                        //     ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_HeaderActive]));
 
                         const DragAction::DropState &state = action->getDropState();
                         if (state.m_valid_target) {
@@ -522,12 +567,15 @@ namespace Toolbox {
                         } else {
                             ResourceManager &res_manager = m_resource_manager;
                             UUID64 directory_id = res_manager.getResourcePathUUID("Images/Icons");
-                            RefPtr<const ImageHandle> img = res_manager.getImageHandle("invalid_circle.png", directory_id).value_or(nullptr);
+                            RefPtr<const ImageHandle> img =
+                                res_manager.getImageHandle("invalid_circle.png", directory_id)
+                                    .value_or(nullptr);
                             if (img) {
                                 const ImVec2 stat_size = {16.0f, 16.0f};
 
                                 ImagePainter painter;
-                                painter.render(*img, pos + size - stat_size - style.WindowPadding, stat_size);
+                                painter.render(*img, pos + size - stat_size - style.WindowPadding,
+                                               stat_size);
                             }
                         }
 
@@ -541,7 +589,8 @@ namespace Toolbox {
                             }
                         }
 
-                        ImGui::Dummy({0, 0});  // Submit an empty item so ImGui resizes the parent window bounds.
+                        ImGui::Dummy({0, 0});  // Submit an empty item so ImGui resizes the parent
+                                               // window bounds.
                     }
                     ImGui::End();
 
@@ -596,6 +645,9 @@ namespace Toolbox {
             ImGui::Separator();
 
             if (ImGui::MenuItem(ICON_FK_WINDOW_CLOSE " Close All")) {
+                for (auto &window : m_windows) {
+                    removeLayer(window);
+                }
                 m_windows.clear();
             }
 
@@ -668,18 +720,25 @@ namespace Toolbox {
                         RefPtr<ProjectViewWindow> project_window =
                             createWindow<ProjectViewWindow>("Project View");
                         if (!project_window->onLoadData(selected_path)) {
-                            TOOLBOX_ERROR("Failed to open project folder view!");
+                            GUIApplication::instance().showErrorModal(
+                                nullptr, "Application",
+                                "Failed to open the folder as a project!\n\n - (Check application "
+                                "log for details)");
                             project_window->close();
                         }
                     }
                 }
 
-                if (selected_path.extension() == ".szs" || selected_path.extension() == ".arc") {
-                    RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
-                    if (!window->onLoadData(selected_path)) {
-                        window->close();
-                    }
-                }
+                //if (selected_path.extension() == ".szs" || selected_path.extension() == ".arc") {
+                //    RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
+                //    if (!window->onLoadData(selected_path)) {
+                //        GUIApplication::instance().showErrorModal(
+                //            nullptr, "Application",
+                //            "Failed to open the file as a scene!\n\n - (Check application "
+                //            "log for details)");
+                //        window->close();
+                //    }
+                //}
             }
         }
 
@@ -705,8 +764,8 @@ namespace Toolbox {
         }
 
         // Clear the buffer
-        //glClearColor(0.100f, 0.261f, 0.402f, 1.0f);
-        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // glClearColor(0.100f, 0.261f, 0.402f, 1.0f);
+        // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

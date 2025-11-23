@@ -154,9 +154,6 @@ namespace Toolbox {
         m_watchdog.onPathRenamedDst(TOOLBOX_BIND_EVENT_FN(pathRenamedDst));
 
         m_watchdog.tStart(false, nullptr);
-
-        m_proc_gc = make_scoped<FileSystemProcessorGC>();
-        m_proc_gc->tStart(false, this);
     }
 
     const fs_path &FileSystemModel::getRoot() const & { return m_root_path; }
@@ -1580,6 +1577,25 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
             } else {
                 TOOLBOX_ERROR_V("[FileSystemModel] Invalid path: {}",
                                 data->m_path.string());
+            }
+
+            // Establish icon
+            {
+                std::string ext = data->m_path.extension().string();
+
+                if (!validateIndex(index)) {
+                    data->m_icon = m_icon_map["_Invalid"];
+                } else if (data->m_type == _FileSystemIndexData::Type::DIRECTORY) {
+                    data->m_icon = m_icon_map["_Folder"];
+                } else if (data->m_type == _FileSystemIndexData::Type::ARCHIVE) {
+                    data->m_icon = m_icon_map["_Archive"];
+                } else if (ext.empty()) {
+                    data->m_icon = m_icon_map["_Folder"];
+                } else if (m_icon_map.find(ext) == m_icon_map.end()) {
+                    data->m_icon = m_icon_map["_File"];
+                } else {
+                    data->m_icon = m_icon_map[ext];
+                }
             }
         }
 

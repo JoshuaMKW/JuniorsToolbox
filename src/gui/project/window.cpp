@@ -331,7 +331,8 @@ namespace Toolbox::UI {
                     ImGui::Checkbox("Don't ask me next time", &m_delete_without_request);
                     ImGui::PopStyleVar();
                     if (ImGui::Button("OK", ImVec2(120, 0))) {
-                        m_selection_mgr.actionDeleteSelection();
+                        std::thread t = std::thread(TOOLBOX_BIND_EVENT_FN(optionDeleteProc_));
+                        t.detach();
                         ImGui::CloseCurrentPopup();
                     }
                     ImGui::SetItemDefaultFocus();
@@ -372,6 +373,7 @@ namespace Toolbox::UI {
 
         m_tree_proxy = make_referable<FileSystemModelSortFilterProxy>();
         m_tree_proxy->setSourceModel(m_file_system_model);
+        m_tree_proxy->setSortRole(FileSystemModelSortRole::SORT_ROLE_NAME);
         m_tree_proxy->setDirsOnly(true);
 
         m_view_proxy = make_referable<FileSystemModelSortFilterProxy>();
@@ -682,15 +684,16 @@ namespace Toolbox::UI {
             }
 
             size_t scene, scenario;
-            GUIApplication::instance()
-                .getProjectManager()
-                .getSceneLayoutManager()
-                .getScenarioForFileName(scene_path.parent_path().filename().string(), scene, scenario);
+            app.getProjectManager().getSceneLayoutManager().getScenarioForFileName(
+                scene_path.parent_path().filename().string(), scene, scenario);
 
             RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Scene Editor");
             window->setStageScenario((u8)scene, (u8)scenario);
 
             if (!window->onLoadData(scene_path)) {
+                app.showErrorModal(this, name(),
+                                   "Failed to open the folder as a scene!\n\n - (Check application "
+                                   "log for details)");
                 app.removeWindow(window);
                 return false;
             }
@@ -719,6 +722,10 @@ namespace Toolbox::UI {
 
             RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Scene Editor");
             if (!window->onLoadData(scene_folder)) {
+                app.showErrorModal(
+                    this, name(),
+                    "Failed to open the scene.bin as a scene!\n\n - (Check application "
+                    "log for details)");
                 app.removeWindow(window);
                 return false;
             }
@@ -750,6 +757,9 @@ namespace Toolbox::UI {
 
         RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Pad Recorder");
         if (!window->onLoadData(pad_path)) {
+            app.showErrorModal(this, name(),
+                               "Failed to open the folder as a pad recording!\n\n - (Check application "
+                               "log for details)");
             app.removeWindow(window);
             return false;
         }
@@ -850,7 +860,7 @@ namespace Toolbox::UI {
         (void)m_view_proxy->insertMimeData(m_view_proxy->toProxyIndex(m_view_index), data, policy);
     }
 
-    void ProjectViewWindow::optionDeleteProc_() {}
+    void ProjectViewWindow::optionDeleteProc_() { m_selection_mgr.actionDeleteSelection(); }
 
     void ProjectViewWindow::optionPasteProc_() {
         const IDataModel::index_container &selection = m_selection_mgr.getState().getSelection();

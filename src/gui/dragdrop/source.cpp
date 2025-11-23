@@ -202,7 +202,7 @@ namespace Toolbox::UI {
                 bool button_held = (msg.wParam & (MK_LBUTTON | MK_MBUTTON | MK_RBUTTON |
                                                   MK_XBUTTON1 | MK_XBUTTON2)) != 0;
                 if (!started && button_held) {
-                    //return E_FAIL;
+                    // return E_FAIL;
                 }
 
                 return ::DoDragDrop(data_object, drop_source, dw_ok_effects, effect_out);
@@ -318,8 +318,8 @@ namespace Toolbox::UI {
         WindowsDragDropSourceDelegate();
         ~WindowsDragDropSourceDelegate() override;
 
-        bool startDragDrop(Platform::LowWindow source, const MimeData &data, DropTypes allowed_types,
-                           DropType *result_type_out);
+        bool startDragDrop(Platform::LowWindow source, const MimeData &data,
+                           DropTypes allowed_types, DropType *result_type_out);
 
         DragDropSourceState queryActiveDrag() override;
         ImGuiMouseCursor provideCursor() override;
@@ -453,8 +453,6 @@ namespace Toolbox::UI {
             while (m_is_thread_running) {
                 std::unique_lock<std::mutex> lock(m_thread_mutex);
 
-                m_thread_cv.wait(lock, [this]() { return !m_message_queue.empty(); });
-
                 while (!m_message_queue.empty()) {
                     DragDropMessage msg = m_message_queue.front();
                     m_message_queue.pop();
@@ -462,6 +460,9 @@ namespace Toolbox::UI {
                     // Handle the message
                     windowsOLEDragDropMessageHandler(this, msg);
                 }
+
+                m_thread_cv.wait(
+                    lock, [this]() { return !m_is_thread_running || !m_message_queue.empty(); });
             }
 
 #if 0
@@ -644,7 +645,7 @@ namespace Toolbox::UI {
             Platform::LowWindow wnd = msg.drop_source->GetWindowHandle();
 
             HRESULT hr = StartDragDrop(wnd, msg.data_object, msg.drop_source,
-                              convertDropTypes(msg.allowed_types), &dw_effect);
+                                       convertDropTypes(msg.allowed_types), &dw_effect);
 
             if (FAILED(hr)) {
                 TOOLBOX_ERROR_V("Failed to start drag-and-drop operation: {}", hr);
