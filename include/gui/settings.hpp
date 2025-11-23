@@ -23,7 +23,7 @@ namespace Toolbox {
 
     struct AppSettings {
         // General
-        bool m_is_better_obj_allowed  = false;
+        bool m_is_custom_obj_allowed  = false;
         bool m_is_file_backup_allowed = false;
 
         // UI

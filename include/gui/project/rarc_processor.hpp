@@ -12,7 +12,7 @@ namespace Toolbox::UI {
     public:
         using task_cb = std::function<void()>;
 
-        void requestCompileArchive(const fs_path &src_path, const fs_path &dest_path, task_cb on_complete = nullptr);
+        void requestCompileArchive(const fs_path &src_path, const fs_path &dest_path, bool compress, task_cb on_complete = nullptr);
         void requestExtractArchive(const fs_path &arc_path, const fs_path &dest_path, task_cb on_complete = nullptr);
 
     protected:
@@ -30,6 +30,7 @@ namespace Toolbox::UI {
         task_cb m_on_complete_extract;
         fs_path m_src_path;
         fs_path m_dest_path;
+        bool m_compress;
         TaskType m_current_task = TaskType::NONE;
 
         std::mutex m_arc_cv_mutex;

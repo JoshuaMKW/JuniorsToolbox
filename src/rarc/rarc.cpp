@@ -169,10 +169,19 @@ namespace Toolbox::RARC {
                 return false;
             }
 
+            std::vector<u8> magic_buf(8);
+            in_test.read((char *)magic_buf.data(), magic_buf.size());
+
             in_test.seekg(0, std::ios::end);
             size_t file_size = in_test.tellg();
 
             in_test.seekg(0, std::ios::beg);
+
+            if (!librii::szs::isDataYaz0Compressed(magic_buf)) {
+                u32 magic = (magic_buf[0] << 24) | (magic_buf[1] << 16) | (magic_buf[2] << 8) |
+                            (magic_buf[3]);
+                return IsMagicValid(magic);
+            }
 
             std::vector<u8> file_chunk(std::min<size_t>(file_size, 1024));
             in_test.read((char *)file_chunk.data(), file_chunk.size());

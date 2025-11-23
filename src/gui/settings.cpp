@@ -64,7 +64,7 @@ namespace Toolbox {
                 in_stream >> j;
 
                 // General
-                settings.m_is_better_obj_allowed  = j["Include Better Objects"];
+                settings.m_is_custom_obj_allowed  = j["Include Custom Objects"];
                 settings.m_is_file_backup_allowed = j["Backup File On Save"];
 
                 // Control
@@ -189,7 +189,7 @@ namespace Toolbox {
         json_t profile_json;
         auto result = tryJSON(profile_json, [&](json_t &j) {
             // General
-            j["Include Better Objects"] = profile.m_is_better_obj_allowed;
+            j["Include Custom Objects"] = profile.m_is_custom_obj_allowed;
             j["Backup File On Save"]    = profile.m_is_file_backup_allowed;
 
             // Control

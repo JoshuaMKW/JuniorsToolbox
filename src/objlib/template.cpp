@@ -7,16 +7,16 @@
 #include <glm/glm.hpp>
 
 #include "color.hpp"
+#include "core/log.hpp"
+#include "gui/logging/errors.hpp"
+#include "gui/settings.hpp"
 #include "jsonlib.hpp"
 #include "magic_enum.hpp"
-#include "core/log.hpp"
-#include "gui/settings.hpp"
 #include "objlib/meta/enum.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/struct.hpp"
 #include "objlib/template.hpp"
 #include "objlib/transform.hpp"
-#include "gui/logging/errors.hpp"
 
 namespace Toolbox::Object {
 
@@ -34,8 +34,21 @@ namespace Toolbox::Object {
         {"VEC3F",  "VEC3"},
     };
 
-    Template::Template(std::string_view type) : m_type(type) {
-        std::ifstream file("./Templates/" + std::string(type) + ".json", std::ios::in);
+    Template::Template(std::string_view type, bool include_custom) : m_type(type) {
+        if (include_custom) {
+            fs_path f_path = "./Templates/Custom/" + std::string(type) + ".json";
+            std::ifstream file(f_path, std::ios::in);
+            if (file.is_open()) {
+                Deserializer in(file.rdbuf());
+                auto result = deserialize(in);
+                if (result) {
+                    return;
+                }
+            }
+        }
+
+        fs_path f_path = "./Templates/" + std::string(type) + ".json";
+        std::ifstream file(f_path, std::ios::in);
         if (!file.is_open()) {
             throw std::runtime_error("Failed to open template file: " + std::string(type));
         }
@@ -419,23 +432,29 @@ namespace Toolbox::Object {
     }
 
     static std::mutex s_templates_mutex;
-    std::unordered_map<std::string, Template> g_template_cache;
+    std::unordered_map<std::string, Template> g_template_cache_base;
+    std::unordered_map<std::string, Template> g_template_cache_custom;
 
-    void Template::threadLoadTemplate(const std::string &type) {
+    void Template::threadLoadTemplate(const std::string &type, bool is_custom) {
         Template template_;
         try {
-            template_ = Template(type);
+            template_ = Template(type, is_custom);
         } catch (std::runtime_error &e) {
             TOOLBOX_ERROR(e.what());
             return;
         }
         s_templates_mutex.lock();
-        g_template_cache[type] = template_;
+        if (is_custom) {
+            g_template_cache_custom[type] = template_;
+        } else {
+            g_template_cache_base[type] = template_;
+        }
         s_templates_mutex.unlock();
         return;
     }
 
-    void Template::threadLoadTemplateBlob(const std::string &type, const json_t &the_json) {
+    void Template::threadLoadTemplateBlob(const std::string &type, const json_t &the_json,
+                                          bool is_custom) {
         Template template_;
         try {
             template_.m_type = type;
@@ -445,7 +464,11 @@ namespace Toolbox::Object {
             return;
         }
         s_templates_mutex.lock();
-        g_template_cache[type] = template_;
+        if (is_custom) {
+            g_template_cache_custom[type] = template_;
+        } else {
+            g_template_cache_base[type] = template_;
+        }
         s_templates_mutex.unlock();
         return;
     }
@@ -458,16 +481,33 @@ namespace Toolbox::Object {
 
         bool templates_preloaded = false;
         if (isCacheMode()) {
-            templates_preloaded = loadFromCacheBlob().has_value();
+            templates_preloaded |= loadFromCacheBlob(false).has_value();
+            templates_preloaded |= loadFromCacheBlob(true).has_value();
         }
 
         if (!templates_preloaded) {
             std::vector<std::thread> threads;
 
-            auto &cwd = cwd_result.value();
-            for (auto &subpath : std::filesystem::directory_iterator{cwd / "Templates"}) {
+            auto &cwd                = cwd_result.value();
+            fs_path load_base_path   = cwd / "Templates";
+            fs_path load_custom_path = cwd / "Templates/Custom";
+
+            for (auto &subpath : std::filesystem::directory_iterator{load_base_path}) {
+                if (!std::filesystem::is_regular_file(subpath)) {
+                    continue;
+                }
+
                 auto type_str = subpath.path().stem().string();
-                threads.push_back(std::thread(Template::threadLoadTemplate, type_str));
+                threads.emplace_back(std::thread(Template::threadLoadTemplate, type_str, false));
+            }
+
+            for (auto &subpath : std::filesystem::directory_iterator{load_custom_path}) {
+                if (!std::filesystem::is_regular_file(subpath)) {
+                    continue;
+                }
+
+                auto type_str = subpath.path().stem().string();
+                threads.emplace_back(std::thread(Template::threadLoadTemplate, type_str, true));
             }
 
             for (auto &th : threads) {
@@ -475,21 +515,30 @@ namespace Toolbox::Object {
             }
 
             if (isCacheMode()) {
-                return saveToCacheBlob();
+                auto res = saveToCacheBlob(false);
+                if (!res) {
+                    return std::unexpected(res.error());
+                }
+
+                res = saveToCacheBlob(true);
+                if (!res) {
+                    return std::unexpected(res.error());
+                }
             }
         }
 
         return {};
     }
 
-    Result<void, FSError> TemplateFactory::loadFromCacheBlob() {
+    Result<void, FSError> TemplateFactory::loadFromCacheBlob(bool is_custom) {
         auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
             return std::unexpected(cwd_result.error());
         }
 
-        auto &cwd      = cwd_result.value();
-        auto blob_path = cwd / "Templates/.cache/blob.json";
+        auto &cwd = cwd_result.value();
+        auto blob_path =
+            cwd / (is_custom ? "Templates/.cache/blob_custom.json" : "Templates/.cache/blob.json");
 
         auto path_result = Toolbox::Filesystem::is_regular_file(blob_path);
         if (!path_result) {
@@ -512,13 +561,13 @@ namespace Toolbox::Object {
         in.stream() >> blob_json;
 
         for (auto &item : blob_json.items()) {
-            Template::threadLoadTemplateBlob(item.key(), item.value());
+            Template::threadLoadTemplateBlob(item.key(), item.value(), is_custom);
         }
 
         return {};
     }
 
-    Result<void, FSError> TemplateFactory::saveToCacheBlob() {
+    Result<void, FSError> TemplateFactory::saveToCacheBlob(bool is_custom) {
         auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
             return std::unexpected(cwd_result.error());
@@ -529,11 +578,18 @@ namespace Toolbox::Object {
         {
             std::vector<std::thread> threads;
 
-            auto &cwd = cwd_result.value();
-            for (auto &subpath : std::filesystem::directory_iterator{cwd / "Templates"}) {
+            auto &cwd              = cwd_result.value();
+            fs_path load_from_path = cwd / (is_custom ? "Templates/Custom" : "Templates");
+
+            for (auto &subpath : std::filesystem::directory_iterator{load_from_path}) {
                 auto type_str = subpath.path().stem().string();
                 threads.push_back(std::thread(
                     [&](const std::string &type_str, const std::filesystem::path &path) {
+                        if (std::filesystem::exists(path) &&
+                            !std::filesystem::is_regular_file(path)) {
+                            return;
+                        }
+
                         std::ifstream file(path, std::ios::in);
                         if (!file.is_open()) {
                             TOOLBOX_ERROR_V("(TemplateFactory) failed to open template json {}",
@@ -561,8 +617,9 @@ namespace Toolbox::Object {
             }
         }
 
-        auto &cwd      = cwd_result.value();
-        auto blob_path = cwd / "Templates/.cache/blob.json";
+        auto &cwd = cwd_result.value();
+        auto blob_path =
+            cwd / (is_custom ? "Templates/.cache/blob_custom.json" : "Templates/.cache/blob.json");
         if (!std::filesystem::exists(blob_path.parent_path())) {
             auto result = Toolbox::Filesystem::create_directory(blob_path.parent_path());
             if (!result) {
@@ -603,15 +660,22 @@ namespace Toolbox::Object {
 
     void TemplateFactory::setCacheMode(bool mode) { s_cache_mode = mode; }
 
-    TemplateFactory::create_t TemplateFactory::create(std::string_view type) {
+    TemplateFactory::create_t TemplateFactory::create(std::string_view type, bool include_custom) {
         auto type_str = std::string(type);
-        if (g_template_cache.contains(type_str)) {
-            return make_scoped<Template>(g_template_cache[type_str]);
+
+        if (include_custom) {
+            if (g_template_cache_custom.contains(type_str)) {
+                return make_scoped<Template>(g_template_cache_custom[type_str]);
+            }
+        }
+
+        if (g_template_cache_base.contains(type_str)) {
+            return make_scoped<Template>(g_template_cache_base[type_str]);
         }
 
         Template template_;
         try {
-            template_ = Template(type);
+            template_ = Template(type, include_custom);
         } catch (std::runtime_error &e) {
             return make_fs_error<ScopePtr<Template>>(std::error_code(), {e.what()});
         }
@@ -623,14 +687,23 @@ namespace Toolbox::Object {
             return make_fs_error<ScopePtr<Template>>(std::error_code(), {e.what()});
         }
 
-        g_template_cache[type_str] = template_;
+        g_template_cache_base[type_str] = template_;
         return make_scoped<Template>(template_);
     }
 
-    std::vector<TemplateFactory::create_ret_t> TemplateFactory::createAll() {
+    std::vector<TemplateFactory::create_ret_t> TemplateFactory::createAll(bool include_custom) {
         std::vector<TemplateFactory::create_ret_t> ret;
-        for (auto &item : g_template_cache) {
+        ret.reserve(include_custom ? g_template_cache_base.size() + g_template_cache_custom.size()
+                                   : g_template_cache_base.size());
+
+        for (auto &item : g_template_cache_base) {
             ret.push_back(make_scoped<Template>(item.second));
+        }
+
+        if (include_custom) {
+            for (auto &item : g_template_cache_custom) {
+                ret.emplace_back(make_scoped<Template>(item.second));
+            }
         }
         return ret;
     }

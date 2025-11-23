@@ -574,7 +574,23 @@ namespace Toolbox::UI {
                     fs_path src_path = m_view_proxy->getPath(selection[0]);
                     fs_path dst_path = src_path;
                     dst_path.replace_extension(".arc");
-                    m_rarc_processor.requestCompileArchive(src_path, dst_path);
+                    m_rarc_processor.requestCompileArchive(src_path, dst_path, false);
+                })
+            .addOption(
+                "Compile to SZS",
+                KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_S}),
+                [this](const ModelIndex &index) {
+                    const IDataModel::index_container &selection =
+                        m_selection_mgr.getState().getSelection();
+                    return selection.size() == 1 && m_view_proxy->isDirectory(selection[0]);
+                },
+                [this](const ModelIndex &index) {
+                    const IDataModel::index_container &selection =
+                        m_selection_mgr.getState().getSelection();
+                    fs_path src_path = m_view_proxy->getPath(selection[0]);
+                    fs_path dst_path = src_path;
+                    dst_path.replace_extension(".szs");
+                    m_rarc_processor.requestCompileArchive(src_path, dst_path, true);
                 })
             .addOption(
                 "New Folder",

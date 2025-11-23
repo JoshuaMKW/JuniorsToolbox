@@ -118,6 +118,11 @@ namespace Toolbox::UI {
         Game::TaskCommunicator &task_communicator =
             GUIApplication::instance().getTaskCommunicator();
 
+        const bool include_custom_objs = GUIApplication::instance()
+                                             .getSettingsManager()
+                                             .getCurrentProfile()
+                                             .m_is_custom_obj_allowed;
+
         if (Toolbox::Filesystem::is_directory(path)) {
             if (path.filename() != "scene") {
                 return false;
@@ -125,7 +130,7 @@ namespace Toolbox::UI {
 
             bool result = true;
 
-            SceneInstance::FromPath(path)
+            SceneInstance::FromPath(path, include_custom_objs)
                 .and_then([&](ScopePtr<SceneInstance> &&scene) {
                     m_current_scene = std::move(scene);
                     m_renderer.initializeData(*m_current_scene);
@@ -1302,7 +1307,8 @@ void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
     ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
     if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
         DolphinHookManager::instance().startProcess();
-        task_communicator.taskLoadScene(m_stage, m_scenario, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        task_communicator.taskLoadScene(m_stage, m_scenario,
+                                        TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
     }
 
     ImGui::PopStyleColor(3);
@@ -1340,7 +1346,8 @@ void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
     ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
     if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
                              ImDrawFlags_RoundCornersBottomLeft)) {
-        task_communicator.taskLoadScene(m_stage, m_scenario, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        task_communicator.taskLoadScene(m_stage, m_scenario,
+                                        TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
     }
 
     ImGui::PopStyleColor(3);
@@ -2123,7 +2130,7 @@ void SceneWindow::buildContextMenuMultiRailNode() {
 void SceneWindow::buildCreateObjDialog() {
     AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
 
-    m_create_obj_dialog.setExtendedMode(settings.m_is_better_obj_allowed);
+    m_create_obj_dialog.setExtendedMode(settings.m_is_custom_obj_allowed);
     m_create_obj_dialog.setup();
     m_create_obj_dialog.setActionOnAccept(
         [this](size_t sibling_index, std::string_view name, const Object::Template &template_,

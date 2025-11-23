@@ -21,6 +21,18 @@ namespace librii::szs {
         return tmp;
     }
 
+    std::vector<u8> encode(const std::string &buf) {
+        std::vector<u8> tmp(getWorstEncodingSize(buf));
+        int sz = encodeBoyerMooreHorspool((u8*)buf.data(), tmp.data(), buf.size());
+        if (sz < 0 || sz > tmp.size()) {
+            s_last_error = "encodeBoyerMooreHorspool failed";
+            return {};
+        }
+        s_last_error.clear();
+        tmp.resize(sz);
+        return tmp;
+    }
+
     u32 getExpandedSize(const std::vector<u8> &src) {
         if (src.size() < 8) {
             s_last_error = "File too small to be a YAZ0 file";
@@ -277,6 +289,10 @@ namespace librii::szs {
         return getWorstEncodingSize(static_cast<u32>(src.size()));
     }
 
+    u32 getWorstEncodingSize(const std::string &src) {
+        return getWorstEncodingSize(static_cast<u32>(src.size()));
+    }
+
     std::vector<u8> encodeFast(const std::vector<u8> &src) {
         std::vector<u8> result(getWorstEncodingSize(src));
 
@@ -308,11 +324,7 @@ namespace librii::szs {
         return result;
     }
 
-    static u16 sSkipTable[256];
-
     static void findMatch(const u8 *src, int srcPos, int maxSize, int *matchOffset, int *matchSize);
-    static int searchWindow(const u8 *needle, int needleSize, const u8 *haystack, int haystackSize);
-    static void computeSkipTable(const u8 *needle, int needleSize);
 
     int encodeBoyerMooreHorspool(const u8 *src, u8 *dst, int srcSize) {
         int srcPos;
@@ -391,82 +403,72 @@ namespace librii::szs {
         // SZS backreference types:
         // (2 bytes) N >= 2:  NR RR    -> maxMatchSize=16+2,    windowOffset=4096+1
         // (3 bytes) N >= 18: 0R RR NN -> maxMatchSize=0xFF+18, windowOffset=4096+1
-        int window       = srcPos > 4096 ? srcPos - 4096 : 0;
-        int windowSize   = 3;
-        int maxMatchSize = (maxSize - srcPos) <= 273 ? maxSize - srcPos : 273;
-        if (maxMatchSize < 3) {
-            *matchSize   = 0;
+        // Yaz0 Window is 4096 bytes back
+        int windowStart = (srcPos > 4096) ? (srcPos - 4096) : 0;
+        int maxMatchLen = 255 + 18;  // Maximum Yaz0 match length
+
+        // Clamp max length to end of buffer
+        if (srcPos + maxMatchLen > maxSize) {
+            maxMatchLen = maxSize - srcPos;
+        }
+
+        // We need at least 3 bytes for a match
+        if (maxMatchLen < 3) {
             *matchOffset = 0;
+            *matchSize   = 0;
             return;
         }
 
-        int windowOffset;
-        int foundMatchOffset;
-        while (window < srcPos &&
-               (windowOffset = searchWindow(&src[srcPos], windowSize, &src[window],
-                                            srcPos + windowSize - window)) < srcPos - window) {
-            for (; windowSize < maxMatchSize; ++windowSize) {
-                if (src[window + windowOffset + windowSize] != src[srcPos + windowSize])
-                    break;
-            }
-            if (windowSize == maxMatchSize) {
-                *matchOffset = window + windowOffset;
-                *matchSize   = maxMatchSize;
-                return;
-            }
-            foundMatchOffset = window + windowOffset;
-            ++windowSize;
-            window += windowOffset + 1;
-        }
-        *matchOffset = foundMatchOffset;
-        *matchSize   = windowSize > 3 ? windowSize - 1 : 0;
-    }
+        const u8 *haystackStart = src + windowStart;
+        const u8 *haystackEnd   = src + srcPos;
+        const u8 *needle        = src + srcPos;
 
-    static int searchWindow(const u8 *needle, int needleSize, const u8 *haystack,
-                            int haystackSize) {
-        int itHaystack;  // r8
-        int itNeedle;    // r9
+        int bestLen    = 0;
+        int bestOffset = 0;
 
-        if (needleSize > haystackSize)
-            return haystackSize;
-        computeSkipTable(needle, needleSize);
+        // Optimization: Only search using the first byte.
+        // memchr is usually SIMD optimized and extremely fast.
+        const u8 *scan = haystackStart;
+        while (scan < haystackEnd) {
+            // Find the next occurrence of the first character
+            scan = (const u8 *)memchr(scan, needle[0], haystackEnd - scan);
 
-        // Scan forwards for the last character in the needle
-        for (itHaystack = needleSize - 1;;) {
-            while (1) {
-                if (needle[needleSize - 1] == haystack[itHaystack])
-                    break;
-                itHaystack += sSkipTable[haystack[itHaystack]];
+            // If no more occurrences, stop.
+            if (!scan)
+                break;
+
+            // We found the first byte. Now check how long the match goes.
+            // We only care if this potential match is longer than what we already found.
+            // Optimization: Check the byte at 'bestLen' first to fail fast.
+            if (scan[bestLen] == needle[bestLen]) {
+                int currentLen = 1;
+                // Verify the rest of the match
+                while (currentLen < maxMatchLen && scan[currentLen] == needle[currentLen]) {
+                    currentLen++;
+                }
+
+                // Did we beat the record?
+                if (currentLen > bestLen) {
+                    bestLen    = currentLen;
+                    bestOffset = (int)(scan - src);
+
+                    // If we found the maximum possible length, stop searching.
+                    if (bestLen == maxMatchLen)
+                        break;
+                }
             }
-            --itHaystack;
-            itNeedle = needleSize - 2;
-            break;
-        Difference:
-            // The entire needle was not found, continue search
-            int skip = sSkipTable[haystack[itHaystack]];
-            if (needleSize - itNeedle > skip)
-                skip = needleSize - itNeedle;
-            itHaystack += skip;
+
+            // Move forward to find the next occurrence
+            scan++;
         }
 
-        // Scan backwards for the first difference
-        int remainingBytes = itNeedle;
-        for (int j = 0; j <= remainingBytes; ++j) {
-            if (haystack[itHaystack] != needle[itNeedle]) {
-                goto Difference;
-            }
-            --itHaystack;
-            --itNeedle;
-        }
-        return itHaystack + 1;
-    }
-
-    static void computeSkipTable(const u8 *needle, int needleSize) {
-        for (int i = 0; i < 256; ++i) {
-            sSkipTable[i] = needleSize;
-        }
-        for (int i = 0; i < needleSize; ++i) {
-            sSkipTable[needle[i]] = needleSize - i - 1;
+        // If we didn't find a match >= 3, return 0
+        if (bestLen < 3) {
+            *matchOffset = 0;
+            *matchSize   = 0;
+        } else {
+            *matchOffset = bestOffset;
+            *matchSize   = bestLen;
         }
     }
 

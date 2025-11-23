@@ -900,7 +900,23 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
                     return Result<bool, FSError>();
                 });
         } else if (isArchive_(index)) {
-            TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
+            //TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
+
+            Filesystem::remove(getPath_(index))
+                .and_then([&](bool removed) {
+                    if (!removed) {
+                        TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove file: {}",
+                                        getPath_(index).string());
+                        return Result<bool, FSError>();
+                    }
+                    result = true;
+                    return Result<bool, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove file: {}",
+                                    error.m_message[0]);
+                    return Result<bool, FSError>();
+                });
         } else {
             TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
         }
@@ -1334,8 +1350,6 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
         if (Filesystem::is_directory(path).value_or(false)) {
             data->m_type = _FileSystemIndexData::Type::DIRECTORY;
         } else if (Filesystem::is_regular_file(path).value_or(false)) {
-            std::string filename   = path.filename().string();
-            const char *filename_c = filename.c_str();
             if (ResourceArchive::IsFilePathRARC(path)) {
                 data->m_type = _FileSystemIndexData::Type::ARCHIVE;
             } else {
@@ -1554,6 +1568,19 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
                                     error.m_message[0]);
                     return Result<size_t, FSError>();
                 });
+
+            if (Filesystem::is_directory(data->m_path).value_or(false)) {
+                data->m_type = _FileSystemIndexData::Type::DIRECTORY;
+            } else if (Filesystem::is_regular_file(data->m_path).value_or(false)) {
+                if (ResourceArchive::IsFilePathRARC(data->m_path)) {
+                    data->m_type = _FileSystemIndexData::Type::ARCHIVE;
+                } else {
+                    data->m_type = _FileSystemIndexData::Type::FILE;
+                }
+            } else {
+                TOOLBOX_ERROR_V("[FileSystemModel] Invalid path: {}",
+                                data->m_path.string());
+            }
         }
 
         signalEventListeners(index, ModelEventFlags::EVENT_INDEX_MODIFIED |
@@ -2115,6 +2142,11 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
         if ((flags & FileSystemModelEventFlags::EVENT_FS_ANY) == ModelEventFlags::EVENT_NONE) {
             return;
         }
+
+        //if ((flags & FileSystemModelEventFlags::EVENT_IS_FILE) &&
+        //    (flags & ModelEventFlags::EVENT_INDEX_MODIFIED)) {
+        //    
+        //}
 
         {
             std::scoped_lock lock(m_cache_mutex);

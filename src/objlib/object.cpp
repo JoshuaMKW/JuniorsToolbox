@@ -225,7 +225,7 @@ namespace Toolbox::Object {
 
         const char *debug_name = name.name().data();
 
-        auto template_result = TemplateFactory::create(m_type);
+        auto template_result = TemplateFactory::create(m_type, m_include_custom);
         if (!template_result) {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
@@ -546,7 +546,7 @@ namespace Toolbox::Object {
         m_type = obj_type.name();
         setNameRef(obj_name);
 
-        auto template_result = TemplateFactory::create(m_type);
+        auto template_result = TemplateFactory::create(m_type, m_include_custom);
         if (!template_result) {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
@@ -607,7 +607,7 @@ namespace Toolbox::Object {
                         "Unexpected end of file. {} ({}) expected {} children but only found {}",
                         m_type, m_nameref.name(), num_children, i + 1));
             }
-            ObjectFactory::create_t result = ObjectFactory::create(in);
+            ObjectFactory::create_t result = ObjectFactory::create(in, m_include_custom);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -959,11 +959,11 @@ namespace Toolbox::Object {
     }
 
     Result<void, SerialError> PhysicalSceneObject::serialize(Serializer &out) const {
-        return serialize(out);
+        return gameSerialize(out);
     }
 
     Result<void, SerialError> PhysicalSceneObject::deserialize(Deserializer &in) {
-        return deserialize(in);
+        return gameDeserialize(in);
     }
 
     Result<void, SerialError> PhysicalSceneObject::gameSerialize(Serializer &out) const {
@@ -1036,7 +1036,7 @@ namespace Toolbox::Object {
 
         const char *debug_name = name.name().data();
 
-        auto template_result = TemplateFactory::create(m_type);
+        auto template_result = TemplateFactory::create(m_type, m_include_custom);
         if (!template_result) {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
@@ -1087,16 +1087,18 @@ namespace Toolbox::Object {
         return {};
     }
 
-    ObjectFactory::create_t ObjectFactory::create(Deserializer &in) {
+    ObjectFactory::create_t ObjectFactory::create(Deserializer &in, bool include_custom) {
         if (isGroupObject(in)) {
             auto obj    = make_scoped<GroupSceneObject>();
+            obj->m_include_custom = include_custom;
             auto result = obj->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
             return obj;
         } else {
-            auto obj    = make_scoped<PhysicalSceneObject>();
+            auto obj              = make_scoped<PhysicalSceneObject>();
+            obj->m_include_custom = include_custom;
             auto result = obj->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());

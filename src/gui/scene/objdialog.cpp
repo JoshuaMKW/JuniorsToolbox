@@ -8,7 +8,7 @@ namespace Toolbox::UI {
 
     void CreateObjDialog::setup() {
         m_templates.clear();
-        m_templates = Object::TemplateFactory::createAll();
+        m_templates = Object::TemplateFactory::createAll(m_extended_mode);
 
         std::sort(m_templates.begin(), m_templates.end(), [](auto &l, auto &r) {
             std::string_view l_type = l->type();

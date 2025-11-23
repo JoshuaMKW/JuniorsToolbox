@@ -189,7 +189,10 @@ namespace Toolbox {
             FontManager::instance().setCurrentFont(settings.m_font_family, settings.m_font_size);
         }
 
+        TemplateFactory::setCacheMode(
+            m_settings_manager.getCurrentProfile().m_is_template_cache_allowed);
         TRY(TemplateFactory::initialize()).error([](const FSError &error) { LogError(error); });
+
         TRY(m_theme_manager.initialize()).error([](const FSError &error) { LogError(error); });
 
         DolphinHookManager::instance().setDolphinPath(settings.m_dolphin_path);
@@ -244,6 +247,8 @@ namespace Toolbox {
             FontManager::instance().setCurrentFont(settings.m_font_family, settings.m_font_size);
 
             TemplateFactory::setCacheMode(settings.m_is_template_cache_allowed);
+            m_project_manager.getSceneLayoutManager().setIncludeCustomObjects(
+                settings.m_is_custom_obj_allowed);
         }
     }
 
