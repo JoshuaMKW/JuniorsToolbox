@@ -36,4 +36,4 @@
 out/*
 /enc_temp_folder
 /.idea
-vcpkg_installed/*
+vcpkg_installed
