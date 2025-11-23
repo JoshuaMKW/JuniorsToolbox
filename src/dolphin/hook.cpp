@@ -176,7 +176,7 @@ namespace Toolbox::Dolphin {
         }
 
         std::string dolphin_args =
-            std::format("-e {}/sys/main.dol -a HLE",
+            std::format("-e \"{}/sys/main.dol\" -a HLE",
                         application.getProjectManager().getProjectFolder().string());
 
         size_t last_not_null    = m_dolphin_path.string().find_last_not_of('\000');

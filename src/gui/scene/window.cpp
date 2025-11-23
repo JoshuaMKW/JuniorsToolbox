@@ -118,6 +118,11 @@ namespace Toolbox::UI {
         Game::TaskCommunicator &task_communicator =
             GUIApplication::instance().getTaskCommunicator();
 
+        const bool include_custom_objs = GUIApplication::instance()
+                                             .getSettingsManager()
+                                             .getCurrentProfile()
+                                             .m_is_custom_obj_allowed;
+
         if (Toolbox::Filesystem::is_directory(path)) {
             if (path.filename() != "scene") {
                 return false;
@@ -125,7 +130,7 @@ namespace Toolbox::UI {
 
             bool result = true;
 
-            SceneInstance::FromPath(path)
+            SceneInstance::FromPath(path, include_custom_objs)
                 .and_then([&](ScopePtr<SceneInstance> &&scene) {
                     m_current_scene = std::move(scene);
                     m_renderer.initializeData(*m_current_scene);
@@ -138,8 +143,14 @@ namespace Toolbox::UI {
                         m_rail_visible_map[rail->getUUID()] = true;
                     }
 
-                    if (task_communicator.isSceneLoaded(1, 2)) {
+                    if (task_communicator.isSceneLoaded(m_stage, m_scenario)) {
                         reassignAllActorPtrs(0);
+                    } else if (task_communicator.isSceneLoaded()) {
+                        u8 area, episode;
+                        task_communicator.getLoadedScene(area, episode);
+                        TOOLBOX_WARN_V("[SCENE] Editor scene is <area: {}, episode {}> but game "
+                                       "scene is <area: {}, episode {}>",
+                                       m_stage, m_scenario, area, episode);
                     }
 
                     return Result<void, SerialError>();
@@ -497,6 +508,8 @@ void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneOb
         .m_parent_synced = true,
         .m_scene_synced  = needs_scene_sync};  // Only spacial objects get scene selection
 
+    ImGui::PushID(tree_node_id);
+
     if (node->isGroupObject()) {
         if (is_filtered_out) {
             for (size_t i = 0; i < node->getChildren().size(); ++i) {
@@ -710,6 +723,8 @@ void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneOb
             }
         }
     }
+
+    ImGui::PopID();
 }
 
 void SceneWindow::renderProperties() {
@@ -1292,7 +1307,8 @@ void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
     ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
     if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
         DolphinHookManager::instance().startProcess();
-        task_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        task_communicator.taskLoadScene(m_stage, m_scenario,
+                                        TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
     }
 
     ImGui::PopStyleColor(3);
@@ -1330,7 +1346,8 @@ void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
     ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
     if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
                              ImDrawFlags_RoundCornersBottomLeft)) {
-        task_communicator.taskLoadScene(1, 2, TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
+        task_communicator.taskLoadScene(m_stage, m_scenario,
+                                        TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
     }
 
     ImGui::PopStyleColor(3);
@@ -2113,7 +2130,7 @@ void SceneWindow::buildContextMenuMultiRailNode() {
 void SceneWindow::buildCreateObjDialog() {
     AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
 
-    m_create_obj_dialog.setExtendedMode(settings.m_is_better_obj_allowed);
+    m_create_obj_dialog.setExtendedMode(settings.m_is_custom_obj_allowed);
     m_create_obj_dialog.setup();
     m_create_obj_dialog.setActionOnAccept(
         [this](size_t sibling_index, std::string_view name, const Object::Template &template_,
@@ -2590,6 +2607,10 @@ void Toolbox::UI::SceneWindow::_moveNode(const Rail::RailNode &node, size_t inde
             LogError(err);
             return Result<void, MetaError>();
         });
+}
+
+void SceneWindow::setStageScenario(u8 stage, u8 scenario) {
+    m_stage = stage, m_scenario = scenario;
 }
 
 ImGuiID SceneWindow::onBuildDockspace() {

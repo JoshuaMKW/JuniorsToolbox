@@ -193,7 +193,7 @@ namespace Toolbox::UI {
 
     void SettingsWindow::renderSettingsGeneral(TimeStep delta_time) {
         AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
-        ImGui::Checkbox("Include BetterSMS Objects", &settings.m_is_better_obj_allowed);
+        ImGui::Checkbox("Include BetterSMS Objects", &settings.m_is_custom_obj_allowed);
         ImGui::Checkbox("Enable File Backup on Save", &settings.m_is_file_backup_allowed);
     }
 

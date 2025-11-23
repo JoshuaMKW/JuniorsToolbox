@@ -349,6 +349,8 @@ namespace Toolbox::Object {
         mutable MetaStruct::CacheMemberT m_member_cache;
 
         u32 m_game_ptr = 0;
+
+        bool m_include_custom = false;
     };
 
     class GroupSceneObject : public VirtualSceneObject {
@@ -719,6 +721,8 @@ namespace Toolbox::Object {
         bool m_is_performing = true;
 
         u32 m_game_ptr = 0;
+
+        bool m_include_custom = false;
     };
 
     class ObjectFactory {
@@ -727,7 +731,7 @@ namespace Toolbox::Object {
         using create_err_t = SerialError;
         using create_t     = Result<create_ret_t, create_err_t>;
 
-        static create_t create(Deserializer &in);
+        static create_t create(Deserializer &in, bool include_custom);
         static create_ret_t create(const Template &template_, std::string_view wizard_name);
 
     protected:

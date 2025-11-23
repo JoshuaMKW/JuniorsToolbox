@@ -135,7 +135,7 @@ static bool intersectRaySphere(const glm::vec3 &rayOrigin, const glm::vec3 &rayD
 
 namespace Toolbox::UI {
     namespace Render {
-        void PacketSort(J3D::Rendering::RenderPacketVector packets) {
+        void PacketSort(J3D::Rendering::RenderPacketVector& packets) {
             std::sort(packets.begin(), packets.end(),
                       [](const J3DRenderPacket &a, const J3DRenderPacket &b) -> bool {
                           // Sort bias
@@ -387,13 +387,23 @@ namespace Toolbox::UI {
             projection = m_camera.getProjMatrix();
             view       = m_camera.getViewMatrix();
 
+            J3DUniformBufferObject::ClearUBO();
             J3DUniformBufferObject::SetProjAndViewMatrices(projection, view);
 
             glm::vec3 position;
             m_camera.getPos(position);
 
-            glClearColor(0, 0, 0, 0);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            // Sensible defaults to avoid state leaks
+            {
+                glEnable(GL_BLEND);
+                glEnable(GL_DEPTH_TEST);
+                glDepthMask(GL_TRUE);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+                glClearDepth(1.0f);
+                glClearColor(0, 0, 0, 0);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            }
 
             auto sky_it = std::find_if(renderables.begin(), renderables.end(),
                                        [](const ISceneObject::RenderInfo &info) {

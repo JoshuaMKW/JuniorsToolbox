@@ -22,9 +22,9 @@
 #include "gui/event/event.hpp"
 #include "gui/image/imagepainter.hpp"
 #include "gui/project/asset.hpp"
+#include "gui/selection.hpp"
 #include "gui/window.hpp"
 #include "model/memscanmodel.hpp"
-#include "model/selection.hpp"
 #include "model/watchmodel.hpp"
 
 #include <imgui.h>

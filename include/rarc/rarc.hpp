@@ -1,10 +1,10 @@
 #pragma once
 
-#include "core/memory.hpp"
-#include "smart_resource.hpp"
 #include "core/error.hpp"
+#include "core/memory.hpp"
 #include "fsystem.hpp"
 #include "serial.hpp"
+#include "smart_resource.hpp"
 #include <array>
 #include <expected>
 #include <filesystem>
@@ -50,6 +50,10 @@ namespace Toolbox::RARC {
 
     class ResourceArchive : public ISerializable, public ISmartResource {
     public:
+        static constexpr size_t MAX_DIR_SIZE =
+            1024 * 1024 *
+            1024;  // 1 GiB (arbitrary, could technically be more up to the 32bit limit)
+
         struct FolderInfo {
             s32 parent;
             s32 sibling_next;
@@ -83,10 +87,12 @@ namespace Toolbox::RARC {
         ResourceArchive() = default;
 
     public:
-        static bool isMagicValid(u32 magic);
-        static Result<ResourceArchive, FSError>
-        createFromPath(const std::filesystem::path root);
+        static bool IsMagicValid(u32 magic);
+        static bool IsFilePathRARC(const fs_path &path);
 
+        static Result<ResourceArchive, FSError> CreateFromPath(const fs_path &root);
+
+    public:
         [[nodiscard]] bool isMatchingOutput() const { return m_keep_matching; }
         void setMatchingOutput(bool matching) { m_keep_matching = matching; }
 
@@ -103,25 +109,22 @@ namespace Toolbox::RARC {
         [[nodiscard]] const_node_it findNode(std::string_view name) const;
         [[nodiscard]] node_it findNode(s32 id);
         [[nodiscard]] const_node_it findNode(s32 id) const;
-        [[nodiscard]] node_it findNode(const std::filesystem::path &path);
-        [[nodiscard]] const_node_it findNode(const std::filesystem::path &path) const;
+        [[nodiscard]] node_it findNode(const fs_path &path);
+        [[nodiscard]] const_node_it findNode(const fs_path &path) const;
 
-        Result<void, FSError> extractToPath(const std::filesystem::path &path) const;
+        Result<void, FSError> extractToPath(const fs_path &path) const;
 
-        Result<void, FSError> importFiles(const std::vector<std::filesystem::path> &files,
-                                                 node_it parent);
-        Result<void, FSError> importFolder(const std::filesystem::path &folder,
-                                                  node_it parent);
+        Result<void, FSError> importFiles(const std::vector<fs_path> &files, node_it parent);
+        Result<void, FSError> importFolder(const fs_path &folder, node_it parent);
 
         Result<node_it, BaseError> createFolder(node_it parent, std::string_view name);
         Result<node_it, BaseError> createFile(node_it parent, std::string_view name,
-                                                     std::span<const char> data);
+                                              std::span<const char> data);
 
         Result<void> removeNodes(std::vector<Node> &nodes);
-        Result<node_it, FSError> replaceNode(node_it old_node, const std::filesystem::path &path);
+        Result<node_it, FSError> replaceNode(node_it old_node, const fs_path &path);
 
-        Result<void, FSError> extractNodeToFolder(const_node_it node,
-                                                         const std::filesystem::path &folder);
+        Result<void, FSError> extractNodeToFolder(const_node_it node, const fs_path &folder) const;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const;
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
@@ -139,7 +142,7 @@ namespace Toolbox::RARC {
         std::string m_name        = "(null)";
         std::vector<Node> m_nodes = {};
 
-        bool m_ids_synced = true;
+        bool m_ids_synced    = true;
         bool m_keep_matching = true;
     };
 

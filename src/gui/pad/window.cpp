@@ -320,8 +320,9 @@ namespace Toolbox::UI {
             // Record panel
             {
                 ImGui::SetCursorPos(controller_cursor_pos);
-                if (ImGui::BeginChild("Record Panel", {0, 0}, ImGuiChildFlags_None,
-                                      ImGuiWindowFlags_AlwaysUseWindowPadding)) {
+                if (ImGui::BeginChild("Record Panel", {0, 0},
+                                      ImGuiChildFlags_AlwaysUseWindowPadding,
+                                      ImGuiWindowFlags_None)) {
                     renderControlButtons();
                 }
                 ImGui::EndChild();

@@ -24,33 +24,27 @@ namespace Toolbox {
 
     class MemoryScanner;
 
-#define SCAN_IDX_GET_ADDRESS(inline_data) ((u32)(inline_data >> 32))
+#define SCAN_IDX_GET_ADDRESS(inline_data)        ((u32)(inline_data >> 32))
 #define SCAN_IDX_GET_HISTORY_IDX(inline_data)    ((u32)inline_data)
 #define SCAN_IDX_MAKE_PAIR(address, history_idx) ((u64)((((u64)address) << 32) | (u64)history_idx))
 
     class MemScanResult {
-        u32 m_bit_data;
-
-        static constexpr u32 addr_mask = 0x03FFFFFF;
-        static constexpr u32 idx_mask  = ~addr_mask;
-        static constexpr u32 idx_shift = 26;
+        u32 m_address;
+        int m_hist_idx;
 
     public:
         MemScanResult(u32 address, int history_index) {
-            m_bit_data = ((history_index << idx_shift) & idx_mask) | (address & addr_mask);
+            m_address  = address;
+            m_hist_idx = history_index;
         }
 
         ~MemScanResult() = default;
 
-        u32 getAddress() const { return 0x80000000 | (m_bit_data & addr_mask); }
-        int getHistoryIndex() const { return (m_bit_data & ~addr_mask) >> idx_shift; }
+        u32 getAddress() const { return 0x80000000 | m_address; }
+        int getHistoryIndex() const { return m_hist_idx; }
 
-        void setAddress(u32 address) {
-            m_bit_data = (m_bit_data & idx_mask) | (address & addr_mask);
-        }
-        void setHistoryIndex(int index) {
-            m_bit_data = (m_bit_data & addr_mask) | ((index << idx_shift) & addr_mask);
-        }
+        void setAddress(u32 address) { m_address = address; }
+        void setHistoryIndex(int index) { m_hist_idx = index; }
 
         bool operator==(const MemScanResult &other) const {
             return getAddress() == other.getAddress();
@@ -167,9 +161,8 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData(const IDataModel::index_container &indexes) const override;
-        [[nodiscard]] bool
-        insertMimeData(const ModelIndex &index, const MimeData &data,
-                       ModelInsertPolicy policy) override;
+        [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data,
+                                          ModelInsertPolicy policy) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
         [[nodiscard]] bool canFetchMore(const ModelIndex &index) override;
@@ -259,9 +252,8 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData_(const IDataModel::index_container &indexes) const;
-        [[nodiscard]] bool
-        insertMimeData_(const ModelIndex &index, const MimeData &data,
-                        ModelInsertPolicy policy);
+        [[nodiscard]] bool insertMimeData_(const ModelIndex &index, const MimeData &data,
+                                           ModelInsertPolicy policy);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index);
         void fetchMore_(const ModelIndex &index);

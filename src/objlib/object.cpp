@@ -225,7 +225,7 @@ namespace Toolbox::Object {
 
         const char *debug_name = name.name().data();
 
-        auto template_result = TemplateFactory::create(m_type);
+        auto template_result = TemplateFactory::create(m_type, m_include_custom);
         if (!template_result) {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
@@ -546,7 +546,7 @@ namespace Toolbox::Object {
         m_type = obj_type.name();
         setNameRef(obj_name);
 
-        auto template_result = TemplateFactory::create(m_type);
+        auto template_result = TemplateFactory::create(m_type, m_include_custom);
         if (!template_result) {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
@@ -607,7 +607,7 @@ namespace Toolbox::Object {
                         "Unexpected end of file. {} ({}) expected {} children but only found {}",
                         m_type, m_nameref.name(), num_children, i + 1));
             }
-            ObjectFactory::create_t result = ObjectFactory::create(in);
+            ObjectFactory::create_t result = ObjectFactory::create(in, m_include_custom);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -890,6 +890,25 @@ namespace Toolbox::Object {
                     nozzle_mat->TevBlock->mTevColors[1] = {90, 90, 120, 255};
                 }
             }
+
+            if (mat_name == "sky") {
+                //RefPtr<J3DTexture> sky_tex_01 = mat_table->GetTexture("B_sky_kumo_s");
+                //RefPtr<J3DTexture> sky_tex_02 = mat_table->GetTexture("B_cloud_s");
+                //////RefPtr<J3DTexture> sky_tex_03 = mat_table->GetTexture("B_hikoukigumo_s");
+
+                //if (sky_tex_01) {
+                //    sky_tex_01->WrapS = EGXWrapMode::Repeat;
+                //}
+
+                //if (sky_tex_02) {
+                //    sky_tex_02->WrapS = EGXWrapMode::Repeat;
+                //}
+
+                //RefPtr<J3DMaterial> mat = mat_table->GetMaterial("_01_nyudougumo");
+                //EGXBlendMode blah       = mat->PEBlock.mBlendMode.Type;
+                //mat->PEBlock.mZMode.Enable   = false;
+                //mat->PEBlock.mBlendMode.Type = EGXBlendMode::None;
+            }
         }
 
         // TODO: Load texture data
@@ -903,6 +922,7 @@ namespace Toolbox::Object {
         if (type() == "Sky") {
             // Force render behind everything
             m_model_instance->SetSortBias(255);
+            m_model_instance->SetInstanceMaterialTable(mat_table);
         }
 
         for (auto &anim_file : info.m_file_animations) {
@@ -939,11 +959,11 @@ namespace Toolbox::Object {
     }
 
     Result<void, SerialError> PhysicalSceneObject::serialize(Serializer &out) const {
-        return serialize(out);
+        return gameSerialize(out);
     }
 
     Result<void, SerialError> PhysicalSceneObject::deserialize(Deserializer &in) {
-        return deserialize(in);
+        return gameDeserialize(in);
     }
 
     Result<void, SerialError> PhysicalSceneObject::gameSerialize(Serializer &out) const {
@@ -1016,7 +1036,7 @@ namespace Toolbox::Object {
 
         const char *debug_name = name.name().data();
 
-        auto template_result = TemplateFactory::create(m_type);
+        auto template_result = TemplateFactory::create(m_type, m_include_custom);
         if (!template_result) {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
@@ -1067,16 +1087,18 @@ namespace Toolbox::Object {
         return {};
     }
 
-    ObjectFactory::create_t ObjectFactory::create(Deserializer &in) {
+    ObjectFactory::create_t ObjectFactory::create(Deserializer &in, bool include_custom) {
         if (isGroupObject(in)) {
             auto obj    = make_scoped<GroupSceneObject>();
+            obj->m_include_custom = include_custom;
             auto result = obj->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
             return obj;
         } else {
-            auto obj    = make_scoped<PhysicalSceneObject>();
+            auto obj              = make_scoped<PhysicalSceneObject>();
+            obj->m_include_custom = include_custom;
             auto result = obj->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());

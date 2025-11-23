@@ -10,6 +10,11 @@ namespace Toolbox::Scene {
         SceneLayoutManager(const SceneLayoutManager &) = default;
         SceneLayoutManager(SceneLayoutManager &&)      = default;
 
+        bool includeCustomObjects() const { return m_scene_layout.includeCustomObjects(); }
+        void setIncludeCustomObjects(bool include) {
+            m_scene_layout.setIncludeCustomObjects(include);
+        }
+
         [[nodiscard]] size_t sceneCount() const;
         [[nodiscard]] size_t scenarioCount(size_t scene) const;
 

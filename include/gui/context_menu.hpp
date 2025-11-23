@@ -524,7 +524,7 @@ namespace Toolbox::UI {
             // Do a reverse sort
             std::stable_sort(m_matched_keybinds.begin(), m_matched_keybinds.end(),
                              [](const option_t *l, const option_t *r) {
-                                 return l->m_keybind.size() >= r->m_keybind.size();
+                                 return l->m_keybind.size() > r->m_keybind.size();
                              });
 
             // The first element will be the longest keybind that is matching.

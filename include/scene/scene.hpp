@@ -27,6 +27,9 @@ namespace Toolbox {
         ObjectHierarchy(ObjectHierarchy &&)      = default;
         ~ObjectHierarchy()                       = default;
 
+        bool includeCustomObjects() const { return m_include_custom; }
+        void setIncludeCustomObjects(bool include) { m_include_custom = include; }
+
         std::string_view name() const { return m_name; }
         void setName(std::string_view name) { m_name = name; }
 
@@ -65,7 +68,7 @@ namespace Toolbox {
             SerialError err = {};
             bool error      = false;
 
-            ObjectFactory::create(in)
+            ObjectFactory::create(in, m_include_custom)
                 .and_then([&](auto &&obj) {
                     m_root =
                         std::static_pointer_cast<GroupSceneObject, ISceneObject>(std::move(obj));
@@ -103,6 +106,7 @@ namespace Toolbox {
     private:
         std::string m_name = "ObjectHierarchy";
         RefPtr<Object::GroupSceneObject> m_root;
+        bool m_include_custom = false;
     };
 
     class SceneInstance : public ISmartResource {
@@ -116,7 +120,7 @@ namespace Toolbox {
         ~SceneInstance();
 
         static Result<ScopePtr<SceneInstance>, SerialError>
-        FromPath(const std::filesystem::path &root);
+        FromPath(const std::filesystem::path &root, bool include_custom_objs);
 
         [[nodiscard]] static ScopePtr<SceneInstance> EmptyScene() {
             SceneInstance scene;

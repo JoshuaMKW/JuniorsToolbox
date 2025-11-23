@@ -31,6 +31,22 @@ namespace Toolbox {
         m_ignore_paths.emplace(std::move(path));
     }
 
+    void FileSystemWatchdog::flagPathVisible(const fs_path &path, bool visible) {
+        if (visible) {
+            m_visible_paths.emplace(path);
+        } else {
+            m_visible_paths.erase(path);
+        }
+    }
+
+    void FileSystemWatchdog::flagPathVisible(fs_path &&path, bool visible) {
+        if (visible) {
+            m_visible_paths.emplace(std::move(path));
+        } else {
+            m_visible_paths.erase(std::move(path));
+        }
+    }
+
     void FileSystemWatchdog::addPath(const fs_path &path) {
         std::scoped_lock lock(m_mutex);
         if (Toolbox::Filesystem::is_directory(path).value_or(false)) {
@@ -205,7 +221,13 @@ namespace Toolbox {
             return;
         }
 
-        bool is_dir      = Filesystem::is_directory(abs_path).value_or(false);
+        bool is_dir = Filesystem::is_directory(abs_path).value_or(false);
+
+        // GUI view based optimization path. GUIs should add each path as they become
+        // visible as a method to filter out invisible watch updates.
+        if (!m_watchdog->m_visible_paths.contains(abs_path.parent_path())) {
+            return;
+        }
 
         switch (event) {
         case filewatch::Event::added:

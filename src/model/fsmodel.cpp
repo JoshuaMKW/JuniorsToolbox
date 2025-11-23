@@ -4,10 +4,13 @@
 
 #include "gui/application.hpp"
 #include "model/fsmodel.hpp"
+#include "rarc/rarc.hpp"
 
 #ifndef TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
 #define TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE 0
 #endif
+
+using namespace Toolbox::RARC;
 
 namespace Toolbox {
 
@@ -25,6 +28,7 @@ namespace Toolbox {
 
         Type m_type = Type::UNKNOWN;
         fs_path m_path;
+        size_t m_path_hash;
         std::string m_name;
         size_t m_size = 0;
         Filesystem::file_time_type m_date;
@@ -150,6 +154,9 @@ namespace Toolbox {
         m_watchdog.onPathRenamedDst(TOOLBOX_BIND_EVENT_FN(pathRenamedDst));
 
         m_watchdog.tStart(false, nullptr);
+
+        m_proc_gc = make_scoped<FileSystemProcessorGC>();
+        m_proc_gc->tStart(false, this);
     }
 
     const fs_path &FileSystemModel::getRoot() const & { return m_root_path; }
@@ -216,34 +223,125 @@ namespace Toolbox {
         return findUniqueName_(index, name);
     }
 
-    ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &name) {
-        std::scoped_lock lock(m_mutex);
-        return mkdir_(parent, name);
+ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &name) {
+        SignalQueue pending_signals;
+        ModelIndex result;
+
+        {
+            // 1. Acquire Lock
+            std::scoped_lock lock(m_mutex);
+            // 2. Perform logic, populating the signal queue
+            result = mkdir_(parent, name, pending_signals);
+        }
+        // 3. Lock is released here
+
+        // 4. Signal listeners safely outside the lock
+        for (const auto &[index, flags] : pending_signals) {
+            signalEventListeners(index, flags);
+        }
+
+        return result;
     }
 
     ModelIndex FileSystemModel::touch(const ModelIndex &parent, const std::string &name) {
-        std::scoped_lock lock(m_mutex);
-        return touch_(parent, name);
+        SignalQueue pending_signals;
+        ModelIndex result;
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = touch_(parent, name, pending_signals);
+        }
+
+        for (const auto &[index, flags] : pending_signals) {
+            signalEventListeners(index, flags);
+        }
+
+        return result;
     }
 
     bool FileSystemModel::rmdir(const ModelIndex &index) {
-        std::scoped_lock lock(m_mutex);
-        return rmdir_(index);
+        SignalQueue pending_signals;
+        bool result;
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = rmdir_(index, pending_signals);
+        }
+
+        for (const auto &[idx, flags] : pending_signals) {
+            signalEventListeners(idx, flags);
+        }
+
+        return result;
     }
 
     bool FileSystemModel::remove(const ModelIndex &index) {
-        std::scoped_lock lock(m_mutex);
-        return remove_(index);
+        SignalQueue pending_signals;
+        bool result;
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = remove_(index, pending_signals);
+        }
+
+        for (const auto &[idx, flags] : pending_signals) {
+            signalEventListeners(idx, flags);
+        }
+
+        return result;
     }
 
     ModelIndex FileSystemModel::rename(const ModelIndex &file, const std::string &new_name) {
-        std::scoped_lock lock(m_mutex);
-        return rename_(file, new_name);
+        SignalQueue pending_signals;
+        ModelIndex result;
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = rename_(file, new_name, pending_signals);
+        }
+
+        for (const auto &[idx, flags] : pending_signals) {
+            signalEventListeners(idx, flags);
+        }
+
+        return result;
     }
+
     ModelIndex FileSystemModel::copy(const fs_path &file, const ModelIndex &new_parent,
                                      const std::string &new_name) {
+        SignalQueue pending_signals;
+        ModelIndex result;
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = copy_(file, new_parent, new_name, pending_signals);
+        }
+
+        for (const auto &[idx, flags] : pending_signals) {
+            signalEventListeners(idx, flags);
+        }
+
+        return result;
+    }
+
+    void FileSystemModel::watchPathForUpdates(const ModelIndex &index, bool watch) {
         std::scoped_lock lock(m_mutex);
-        return copy_(file, new_parent, new_name);
+        return watchPathForUpdates_(index, watch);
+    }
+
+    std::vector<double> FileSystemModel::getCopyJobProgress() const {
+        std::vector<double> out;
+        out.reserve(m_copy_processors.size());
+
+        m_copy_proc_mtx.lock();
+        {
+            for (const auto &proc : m_copy_processors) {
+                out.push_back(proc->getProgress());
+            }
+        }
+        m_copy_proc_mtx.unlock();
+
+        return out;
     }
 
     ModelIndex FileSystemModel::getIndex(const fs_path &path) const {
@@ -263,8 +361,19 @@ namespace Toolbox {
     }
 
     bool FileSystemModel::removeIndex(const ModelIndex &index) {
-        std::scoped_lock lock(m_mutex);
-        return removeIndex_(index);
+        SignalQueue pending_signals;
+        bool result;
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = removeIndex_(index, pending_signals);
+        }
+
+        for (const auto &[idx, flags] : pending_signals) {
+            signalEventListeners(idx, flags);
+        }
+
+        return result;
     }
 
     fs_path FileSystemModel::getPath(const ModelIndex &index) const {
@@ -316,8 +425,15 @@ namespace Toolbox {
 
     bool FileSystemModel::insertMimeData(const ModelIndex &index, const MimeData &data,
                                          ModelInsertPolicy policy) {
-        std::scoped_lock lock(m_mutex);
-        return insertMimeData_(index, data, policy);
+        SignalQueue pending_signals;
+        bool result;
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = insertMimeData_(index, data, pending_signals, policy);
+        }
+
+        return result;
     }
 
     std::vector<std::string> FileSystemModel::getSupportedMimeTypes() const {
@@ -557,7 +673,8 @@ namespace Toolbox {
         return result_name;
     }
 
-    ModelIndex FileSystemModel::mkdir_(const ModelIndex &parent, const std::string &name) {
+    ModelIndex FileSystemModel::mkdir_(const ModelIndex &parent, const std::string &name,
+                                       SignalQueue &sig_queue) {
         if (!validateIndex(parent)) {
             return ModelIndex();
         }
@@ -611,11 +728,12 @@ namespace Toolbox {
 
         ModelIndex ret_index = makeIndex(parent.data<_FileSystemIndexData>()->m_path / name,
                                          getRowCount_(parent), parent);
-        signalEventListeners(ret_index, event_flags);
+        sig_queue.emplace_back(ret_index, event_flags);
         return ret_index;
     }
 
-    ModelIndex FileSystemModel::touch_(const ModelIndex &parent, const std::string &name) {
+    ModelIndex FileSystemModel::touch_(const ModelIndex &parent, const std::string &name,
+                                       SignalQueue &sig_queue) {
         if (!validateIndex(parent)) {
             return ModelIndex();
         }
@@ -662,11 +780,11 @@ namespace Toolbox {
 
         ModelIndex ret_index = makeIndex(parent.data<_FileSystemIndexData>()->m_path / name,
                                          getRowCount_(parent), parent);
-        signalEventListeners(ret_index, event_flags);
+        sig_queue.emplace_back(ret_index, event_flags);
         return ret_index;
     }
 
-    bool FileSystemModel::rmdir_(const ModelIndex &index) {
+    bool FileSystemModel::rmdir_(const ModelIndex &index, SignalQueue &sig_queue) {
         if (!validateIndex(index)) {
             return false;
         }
@@ -727,7 +845,7 @@ namespace Toolbox {
 #endif
 
         if (result) {
-            signalEventListeners(index, event_flags);
+            sig_queue.emplace_back(index, event_flags);
 
             ModelIndex parent = getParent_(index);
             if (validateIndex(parent)) {
@@ -745,7 +863,7 @@ namespace Toolbox {
         return result;
     }
 
-    bool FileSystemModel::remove_(const ModelIndex &index) {
+    bool FileSystemModel::remove_(const ModelIndex &index, SignalQueue &sig_queue) {
         if (!validateIndex(index)) {
             return false;
         }
@@ -782,7 +900,23 @@ namespace Toolbox {
                     return Result<bool, FSError>();
                 });
         } else if (isArchive_(index)) {
-            TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
+            //TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
+
+            Filesystem::remove(getPath_(index))
+                .and_then([&](bool removed) {
+                    if (!removed) {
+                        TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove file: {}",
+                                        getPath_(index).string());
+                        return Result<bool, FSError>();
+                    }
+                    result = true;
+                    return Result<bool, FSError>();
+                })
+                .or_else([&](const FSError &error) {
+                    TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove file: {}",
+                                    error.m_message[0]);
+                    return Result<bool, FSError>();
+                });
         } else {
             TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
         }
@@ -792,7 +926,7 @@ namespace Toolbox {
 #endif
 
         if (result) {
-            signalEventListeners(index, event_flags);
+            sig_queue.emplace_back(index, event_flags);
 
             ModelIndex parent = getParent_(index);
             if (validateIndex(parent)) {
@@ -810,7 +944,13 @@ namespace Toolbox {
         return result;
     }
 
-    ModelIndex FileSystemModel::rename_(const ModelIndex &file, const std::string &new_name) {
+    void FileSystemModel::watchPathForUpdates_(const ModelIndex &index, bool watch) {
+        fs_path index_path = getPath_(index);
+        m_watchdog.flagPathVisible(index_path, watch);
+    }
+
+    ModelIndex FileSystemModel::rename_(const ModelIndex &file, const std::string &new_name,
+                                        SignalQueue &sig_queue) {
         if (!validateIndex(file)) {
             return ModelIndex();
         }
@@ -868,12 +1008,12 @@ namespace Toolbox {
         parent_data->m_size -= 1;
 
         ModelIndex ret_index = makeIndex(to, dest_index, parent);
-        signalEventListeners(ret_index, event_flags);
+        sig_queue.emplace_back(ret_index, event_flags);
         return ret_index;
     }
 
     ModelIndex FileSystemModel::copy_(const fs_path &file, const ModelIndex &new_parent,
-                                      const std::string &new_name) {
+                                      const std::string &new_name, SignalQueue &sig_queue) {
         if (!validateIndex(new_parent)) {
             TOOLBOX_ERROR("[FileSystemModel] New parent isn't a valid index!");
             return ModelIndex();
@@ -888,31 +1028,53 @@ namespace Toolbox {
             ModelIndex src_index = getIndex_(file);
             if (validateIndex(src_index)) {
                 if (isFile_(src_index)) {
-                    // TODO: Detect when destination path is part of a valid archive.
-                    if (false) {
-                        event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
-                    }
-                    event_flags = FileSystemModelEventFlags::EVENT_IS_FILE;
+                    event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
+                }
+                if (isDirectory_(src_index)) {
+                    event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
+                }
+                if (isArchive_(src_index)) {
+                    event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
                 }
             } else {
                 if (Filesystem::is_regular_file(file).value_or(false)) {
-                    event_flags = FileSystemModelEventFlags::EVENT_IS_FILE;
+                    event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
+                }
+
+                if (Filesystem::is_directory(file).value_or(false)) {
+                    event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
                 }
             }
         }
 
-        bool result = false;
-        fs_path to  = new_parent.data<_FileSystemIndexData>()->m_path / new_name;
+        ModelIndex dst_parent = new_parent;
 
-        int dest_index = getRowCount_(new_parent);
+        if (isFile_(dst_parent)) {
+            dst_parent = getParent_(dst_parent);
+        }
+
+        bool result = false;
+        fs_path to  = dst_parent.data<_FileSystemIndexData>()->m_path / new_name;
+
+        int dest_index = getRowCount_(dst_parent);
 
 #if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
         m_watchdog.sleep();
 #else
-        m_watchdog.ignorePathOnce(to);
+        // m_watchdog.ignorePathOnce(to);
 #endif
 
-        Filesystem::copy(file, to)
+#if 1
+        m_copy_proc_mtx.lock();
+        {
+            m_copy_processors.emplace_back(make_scoped<FileSystemCopyProcessor>(file, to));
+            m_copy_processors.back()->tStart(true, nullptr);
+        }
+        m_copy_proc_mtx.unlock();
+#else
+        Filesystem::copy(file, to,
+                         Filesystem::copy_options::overwrite_existing |
+                             Filesystem::copy_options::recursive)
             .and_then([&result]() {
                 result = true;
                 return Result<bool, FSError>();
@@ -921,14 +1083,15 @@ namespace Toolbox {
                 TOOLBOX_ERROR_V("[FileSystemModel] Failed to copy file: {}", error.m_message[0]);
                 return Result<bool, FSError>();
             });
+#endif
 
 #if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
         m_watchdog.wake();
 #endif
 
-        ModelIndex ret_index = makeIndex(to, getRowCount_(new_parent), new_parent);
-        signalEventListeners(ret_index, event_flags);
-        return ret_index;
+        // ModelIndex ret_index = makeIndex(to, getRowCount_(dst_parent), dst_parent);
+        // signalEventListeners(ret_index, event_flags);
+        return ModelIndex();
     }
 
     ModelIndex FileSystemModel::getIndex_(const fs_path &path) const {
@@ -936,8 +1099,12 @@ namespace Toolbox {
             return ModelIndex();
         }
 
+        std::hash<fs_path> hasher;
+        size_t path_hash = hasher(path);
+
         for (const auto &[uuid, index] : m_index_map) {
-            if (getPath_(index) == path) {
+            size_t other_hash = getPathHash_(index);
+            if (path_hash == other_hash) {
                 return index;
             }
         }
@@ -964,17 +1131,17 @@ namespace Toolbox {
         return m_index_map.at(parent_data->m_children[row]);
     }
 
-    bool FileSystemModel::removeIndex_(const ModelIndex &index) {
+    bool FileSystemModel::removeIndex_(const ModelIndex &index, SignalQueue &sig_queue) {
         if (!validateIndex(index) || isReadOnly()) {
             return false;
         }
 
         if (isDirectory_(index)) {
-            return rmdir_(index);
+            return rmdir_(index, sig_queue);
         } else if (isArchive_(index)) {
-            return remove_(index);
+            return remove_(index, sig_queue);
         } else {
-            return remove_(index);
+            return remove_(index, sig_queue);
         }
     }
 
@@ -984,6 +1151,14 @@ namespace Toolbox {
         }
 
         return index.data<_FileSystemIndexData>()->m_path;
+    }
+
+    size_t FileSystemModel::getPathHash_(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return 0;
+        }
+
+        return index.data<_FileSystemIndexData>()->m_path_hash;
     }
 
     ModelIndex FileSystemModel::getParent_(const ModelIndex &index) const {
@@ -1058,14 +1233,53 @@ namespace Toolbox {
 
     ScopePtr<MimeData>
     FileSystemModel::createMimeData_(const IDataModel::index_container &indexes) const {
-        TOOLBOX_ERROR("[FileSystemModel] Mimedata unimplemented!");
-        return ScopePtr<MimeData>();
+
+        std::vector<std::string> copied_paths;
+        for (const ModelIndex &index : indexes) {
+#ifdef TOOLBOX_PLATFORM_LINUX
+            const char *prefix = "file://";
+#elif defined TOOLBOX_PLATFORM_WINDOWS
+            const char *prefix = "file:///";
+#endif
+            std::string path = getPath_(index).string();
+            copied_paths.push_back(prefix + path);
+        }
+
+        ScopePtr<MimeData> data = make_scoped<MimeData>();
+        data->set_urls(copied_paths);
+        return data;
     }
 
     bool FileSystemModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
+                                          SignalQueue &sig_queue,
                                           ModelInsertPolicy policy) {
-        TOOLBOX_ERROR("[FileSystemModel] Mimedata unimplemented!");
-        return false;
+        if (!data.has_urls()) {
+            return false;
+        }
+
+        auto result = data.get_urls();
+        if (!result) {
+            return false;
+        }
+
+        const std::vector<std::string> &paths = result.value();
+        for (const std::string &src_path : paths) {
+            std::string san_path;
+            if (src_path.starts_with("file:/")) {
+                if (src_path.starts_with("file:///")) {
+                    san_path = src_path.substr(8);
+                } else {
+                    san_path = src_path.substr(7);
+                }
+            } else {
+                san_path = src_path;
+            }
+
+            fs_path fs_src_path = std::move(san_path);
+            copy_(fs_src_path, index, fs_src_path.filename().string(), sig_queue);
+        }
+
+        return true;
     }
 
     bool FileSystemModel::canFetchMore_(const ModelIndex &index) {
@@ -1077,13 +1291,28 @@ namespace Toolbox {
             return false;
         }
 
-        return index.data<_FileSystemIndexData>()->m_children.empty();
+        _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
+        size_t cached_size = data->m_children.size();
+        size_t real_size   = 0;
+        for (const auto &entry : Filesystem::directory_iterator(data->m_path)) {
+            if (entry.is_regular_file() || entry.is_directory()) {
+                real_size += 1;
+            }
+        }
+
+        return cached_size != real_size;
     }
 
     void FileSystemModel::fetchMore_(const ModelIndex &index) {
         if (!validateIndex(index)) {
             return;
         }
+
+        _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
+        for (UUID64 uuid : data->m_children) {
+            m_index_map.erase(uuid);
+        }
+        data->m_children.clear();
 
         if (isDirectory_(index)) {
             fs_path path = getPath_(index);
@@ -1114,13 +1343,14 @@ namespace Toolbox {
 
         _FileSystemIndexData *data = new _FileSystemIndexData;
         data->m_path               = path;
+        data->m_path_hash          = std::hash<fs_path>()(path);
         data->m_name               = path.filename().string();
         data->m_children           = {};
 
         if (Filesystem::is_directory(path).value_or(false)) {
             data->m_type = _FileSystemIndexData::Type::DIRECTORY;
         } else if (Filesystem::is_regular_file(path).value_or(false)) {
-            if (false) {
+            if (ResourceArchive::IsFilePathRARC(path)) {
                 data->m_type = _FileSystemIndexData::Type::ARCHIVE;
             } else {
                 data->m_type = _FileSystemIndexData::Type::FILE;
@@ -1238,7 +1468,6 @@ namespace Toolbox {
 
     void FileSystemModel::folderAdded(const fs_path &path) {
         ModelIndex new_index;
-
         {
             std::scoped_lock lock(m_mutex);
 
@@ -1339,6 +1568,19 @@ namespace Toolbox {
                                     error.m_message[0]);
                     return Result<size_t, FSError>();
                 });
+
+            if (Filesystem::is_directory(data->m_path).value_or(false)) {
+                data->m_type = _FileSystemIndexData::Type::DIRECTORY;
+            } else if (Filesystem::is_regular_file(data->m_path).value_or(false)) {
+                if (ResourceArchive::IsFilePathRARC(data->m_path)) {
+                    data->m_type = _FileSystemIndexData::Type::ARCHIVE;
+                } else {
+                    data->m_type = _FileSystemIndexData::Type::FILE;
+                }
+            } else {
+                TOOLBOX_ERROR_V("[FileSystemModel] Invalid path: {}",
+                                data->m_path.string());
+            }
         }
 
         signalEventListeners(index, ModelEventFlags::EVENT_INDEX_MODIFIED |
@@ -1685,13 +1927,13 @@ namespace Toolbox {
 
     ScopePtr<MimeData> FileSystemModelSortFilterProxy::createMimeData(
         const IDataModel::index_container &indexes) const {
-        IDataModel::index_container indexes_copy = indexes;
+        IDataModel::index_container indexes_copy;
 
         for (const ModelIndex &idx : indexes) {
             indexes_copy.emplace_back(toSourceIndex(idx));
         }
 
-        return m_source_model->createMimeData(indexes);
+        return m_source_model->createMimeData(indexes_copy);
     }
 
     bool FileSystemModelSortFilterProxy::insertMimeData(const ModelIndex &index,
@@ -1799,11 +2041,13 @@ namespace Toolbox {
             map_key = 0;
         }
 
-        if (m_row_map.find(map_key) != m_row_map.end()) {
-            return;
-        }
+        //if (m_row_map.find(map_key) != m_row_map.end()) {
+        //    return;
+        //}
 
         if (!m_source_model->validateIndex(dir_index)) {
+            proxy_children.reserve(orig_children.size() * 0.5f);
+
             size_t i          = 0;
             ModelIndex root_s = m_source_model->getIndex(i++, 0);
             while (m_source_model->validateIndex(root_s)) {
@@ -1821,6 +2065,8 @@ namespace Toolbox {
                 return;
             }
 
+            proxy_children.reserve(orig_children.size());
+
             std::copy_if(orig_children.begin(), orig_children.end(),
                          std::back_inserter(proxy_children),
                          [&](const UUID64 &uuid) { return !isFiltered(uuid); });
@@ -1830,50 +2076,65 @@ namespace Toolbox {
             return;
         }
 
+        struct SortItem {
+            UUID64 m_uuid;
+            const _FileSystemIndexData *m_data;  // Pointer to the data
+        };
+
+        std::vector<SortItem> sort_vec;
+        sort_vec.reserve(proxy_children.size());
+        for (const auto &uuid : proxy_children) {
+            sort_vec.push_back({uuid, m_source_model->getIndex(uuid).data<_FileSystemIndexData>()});
+        }
+
+        using ComparatorFunc =
+            std::function<bool(const _FileSystemIndexData &, const _FileSystemIndexData &)>;
+        ComparatorFunc comparator;
+
         switch (m_sort_role) {
-        case FileSystemModelSortRole::SORT_ROLE_NAME: {
-            std::sort(proxy_children.begin(), proxy_children.end(),
-                      [&](const UUID64 &lhs, const UUID64 &rhs) {
-                          return _FileSystemIndexDataCompareByName(
-                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
-                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
-                              m_sort_order);
-                      });
+        case FileSystemModelSortRole::SORT_ROLE_NAME:
+            comparator = [&](const _FileSystemIndexData &l, const _FileSystemIndexData &r) {
+                return _FileSystemIndexDataCompareByName(l, r, m_sort_order);
+            };
             break;
-        }
-        case FileSystemModelSortRole::SORT_ROLE_SIZE: {
-            std::sort(proxy_children.begin(), proxy_children.end(),
-                      [&](const UUID64 &lhs, const UUID64 &rhs) {
-                          return _FileSystemIndexDataCompareBySize(
-                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
-                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
-                              m_sort_order);
-                      });
+        case FileSystemModelSortRole::SORT_ROLE_SIZE:
+            comparator = [&](const _FileSystemIndexData &l, const _FileSystemIndexData &r) {
+                return _FileSystemIndexDataCompareBySize(l, r, m_sort_order);
+            };
             break;
-        }
         case FileSystemModelSortRole::SORT_ROLE_DATE:
-            std::sort(proxy_children.begin(), proxy_children.end(),
-                      [&](const UUID64 &lhs, const UUID64 &rhs) {
-                          return _FileSystemIndexDataCompareByDate(
-                              *m_source_model->getIndex(lhs).data<_FileSystemIndexData>(),
-                              *m_source_model->getIndex(rhs).data<_FileSystemIndexData>(),
-                              m_sort_order);
-                      });
+            comparator = [&](const _FileSystemIndexData &l, const _FileSystemIndexData &r) {
+                return _FileSystemIndexDataCompareByDate(l, r, m_sort_order);
+            };
             break;
         default:
             break;
         }
 
+        // Only sort if a valid role was chosen
+        if (comparator) {
+            std::sort(sort_vec.begin(), sort_vec.end(),
+                      [&](const SortItem &lhs, const SortItem &rhs) {
+                          return comparator(*lhs.m_data, *rhs.m_data);
+                      });
+        }
+
+        for (size_t i = 0; i < sort_vec.size(); ++i) {
+            proxy_children[i] = sort_vec[i].m_uuid;
+        }
+
         // Build the row map
         m_row_map[map_key] = {};
         m_row_map[map_key].resize(proxy_children.size());
+
+        std::unordered_map<UUID64, size_t> orig_index_map;
+        orig_index_map.reserve(orig_children.size());  // Pre-allocate memory
+        for (size_t j = 0; j < orig_children.size(); j++) {
+            orig_index_map[orig_children[j]] = j;
+        }
+
         for (size_t i = 0; i < proxy_children.size(); i++) {
-            for (size_t j = 0; j < orig_children.size(); j++) {
-                if (proxy_children[i] == orig_children[j]) {
-                    m_row_map[map_key][i] = j;
-                    break;
-                }
-            }
+            m_row_map[map_key][i] = orig_index_map[proxy_children[i]];
         }
     }
 
@@ -1882,11 +2143,52 @@ namespace Toolbox {
             return;
         }
 
+        //if ((flags & FileSystemModelEventFlags::EVENT_IS_FILE) &&
+        //    (flags & ModelEventFlags::EVENT_INDEX_MODIFIED)) {
+        //    
+        //}
+
         {
             std::scoped_lock lock(m_cache_mutex);
 
             m_filter_map.clear();
             m_row_map.clear();
+        }
+    }
+
+    void FileSystemCopyProcessor::tRun(void *param) {
+        Filesystem::copy(m_src, m_dst,
+                         Filesystem::copy_options::overwrite_existing |
+                             Filesystem::copy_options::recursive)
+            .or_else([](const FSError &err) {
+                TOOLBOX_ERROR_V("[FileSystemModel] Failed to copy file: {}", err.m_message[0]);
+                return Result<void, FSError>();
+            });
+    }
+     
+    void FileSystemProcessorGC::tRun(void *param) {
+        m_model = static_cast<FileSystemModel *>(param);
+
+        while (!tIsSignalKill()) {
+            if (!m_model) {
+                TOOLBOX_WARN("[FileSystemProcessorGC] No FileSystemModel assigned, "
+                             "sleeping for 1 second...");
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                continue;
+            }
+
+            m_model->m_copy_proc_mtx.lock();
+            for (auto it = m_model->m_copy_processors.begin();
+                 it != m_model->m_copy_processors.end();) {
+                if ((*it)->tIsKilled()) {
+                    it = m_model->m_copy_processors.erase(it);
+                } else {
+                    it++;
+                }
+            }
+            m_model->m_copy_proc_mtx.unlock();
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
 

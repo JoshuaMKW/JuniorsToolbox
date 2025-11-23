@@ -47,7 +47,7 @@ namespace Toolbox::Object {
         using json_t = nlohmann::ordered_json;
 
         Template() = default;
-        Template(std::string_view type);
+        Template(std::string_view type, bool is_custom);
 
         Template(const Template &) = default;
         Template(Template &&)      = default;
@@ -109,8 +109,9 @@ namespace Toolbox::Object {
         void loadMembers(const json_t &members, std::vector<MetaMember> &out);
         void loadWizards(const json_t &wizards, const json_t &render_infos);
 
-        static void threadLoadTemplate(const std::string &type);
-        static void threadLoadTemplateBlob(const std::string &type, const json_t &the_json);
+        static void threadLoadTemplate(const std::string &type, bool is_custom);
+        static void threadLoadTemplateBlob(const std::string &type, const json_t &the_json,
+                                           bool is_custom);
 
     private:
         std::string m_type;
@@ -129,11 +130,11 @@ namespace Toolbox::Object {
 
         // Cached create method
         static Result<void, FSError> initialize();
-        static create_t create(std::string_view type);
-        static std::vector<create_ret_t> createAll();
+        static create_t create(std::string_view type, bool include_custom);
+        static std::vector<create_ret_t> createAll(bool include_custom);
 
-        static Result<void, FSError> loadFromCacheBlob();
-        static Result<void, FSError> saveToCacheBlob();
+        static Result<void, FSError> loadFromCacheBlob(bool is_custom);
+        static Result<void, FSError> saveToCacheBlob(bool is_custom);
 
         static bool isCacheMode();
         static void setCacheMode(bool mode);

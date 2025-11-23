@@ -11,12 +11,15 @@ namespace Toolbox {
     }
 
     Result<ScopePtr<SceneInstance>, SerialError>
-    SceneInstance::FromPath(const std::filesystem::path &root) {
+    SceneInstance::FromPath(const std::filesystem::path &root, bool include_custom_objs) {
         ScopePtr<SceneInstance> scene = make_scoped<SceneInstance>();
         scene->m_root_path            = root;
 
         scene->m_map_objects   = ObjectHierarchy("Map");
         scene->m_table_objects = ObjectHierarchy("Table");
+
+        scene->m_map_objects.setIncludeCustomObjects(include_custom_objs);
+        scene->m_table_objects.setIncludeCustomObjects(include_custom_objs);
 
         fs_path scene_bin   = root / "map/scene.bin";
         fs_path tables_bin  = root / "map/tables.bin";
@@ -59,11 +62,13 @@ namespace Toolbox {
         // Load the message data
         {
             std::ifstream file(message_bin, std::ios::in | std::ios::binary);
-            Deserializer in(file.rdbuf());
+            if (file.is_open()) {  // scene.bmg is optional
+                Deserializer in(file.rdbuf());
 
-            Result<void, SerialError> result = scene->m_message_data.deserialize(in);
-            if (!result) {
-                return std::unexpected(result.error());
+                Result<void, SerialError> result = scene->m_message_data.deserialize(in);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
             }
         }
 

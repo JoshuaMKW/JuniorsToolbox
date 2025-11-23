@@ -103,8 +103,8 @@ namespace Toolbox::UI {
             ImGui::PushFont(mono_font, font_manager.getCurrentFontSize() * 0.75f);
         }
 
-        if (ImGui::BeginChild(ImWindowComponentTitle(*this, "Log View").c_str(), {}, false,
-                              ImGuiWindowFlags_AlwaysUseWindowPadding)) {
+        if (ImGui::BeginChild(ImWindowComponentTitle(*this, "Log View").c_str(), {},
+                              ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_None)) {
             bool is_auto_scroll_mode = ImGui::GetScrollMaxY() - ImGui::GetScrollY() < 12.0f;
 
             auto &messages = Log::AppLogger::instance().messages();
