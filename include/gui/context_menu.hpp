@@ -225,7 +225,10 @@ namespace Toolbox::UI {
         }
 
         m_deferred_ctx = ctx;
-        processKeybinds(ctx);
+
+        if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows)) {
+            processKeybinds(ctx);
+        }
 
         // Since windows can push their own font, we temporarily restore the
         // desired font.
@@ -332,7 +335,10 @@ namespace Toolbox::UI {
         }
 
         m_deferred_ctx = ctx;
-        processKeybinds(ctx);
+
+        if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows)) {
+            processKeybinds(ctx);
+        }
 
         // Since windows can push their own font, we temporarily restore the
         // desired font.
