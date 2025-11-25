@@ -2,6 +2,8 @@
 
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 #include <J3D/Rendering/J3DRendering.hpp>
+#include <J3D/Picking/J3DPicking.hpp>
+
 #include <iostream>
 #include <unordered_set>
 
@@ -16,8 +18,17 @@
 
 #include <glm/gtx/euler_angles.hpp>
 
+#define RENDERER_RAIL_NODE_DIAMETER 200.0f
+
 static std::set<std::string> s_skybox_materials = {"_00_spline", "_01_nyudougumo", "_02_usugumo",
                                                    "_03_sky"};
+
+static const std::unordered_set<std::string> s_selection_blacklist = {
+    "Map",
+    "MapObjWave",
+    "Shimmer",
+    "Sky",
+};
 
 // Utility function to convert 2D screen space coordinates to a 3D ray in world space
 static std::pair<glm::vec3, glm::vec3>
@@ -94,42 +105,47 @@ static bool intersectRayOBB(const glm::vec3 &rayOrigin, const glm::vec3 &rayDire
     glm::vec4 localRayDirection = invTransform * glm::vec4(rayDirection, 0.0f);
 
     // Perform AABB intersection test in local space
-    return intersectRayAABB(glm::vec3(localRayOrigin), glm::normalize(glm::vec3(localRayDirection)),
+    return intersectRayAABB(glm::vec3(localRayOrigin), glm::vec3(localRayDirection),
                             obbMin, obbMax, intersectionDistance);
 }
 
 static bool intersectRaySphere(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
                                const glm::vec3 &sphereCenter, float sphereRadius,
-                               float &intersectionDistance) {
-    // Calculate the coefficients of the quadratic equation
-    glm::vec3 m = rayOrigin - sphereCenter;
-    float a = glm::dot(rayDirection, rayDirection);  // Should be 1 if rayDirection is normalized
-    float b = 2.0f * glm::dot(m, rayDirection);
-    float c = glm::dot(m, m) - sphereRadius * sphereRadius;
+                               float &intersectionDistance) {// Vector from Ray Origin to Sphere Center
+    glm::vec3 L = sphereCenter - rayOrigin;
 
-    // Calculate the discriminant
-    float discriminant = b * b - 4 * a * c;
+    // Project L onto the ray direction (tca = distance to the closest point on ray to center)
+    float tca = glm::dot(L, rayDirection);
 
-    // Check if the discriminant is negative, which means no intersection
-    if (discriminant < 0.0f) {
+    // If tca is negative, the sphere is behind the ray origin
+    // (unless we are inside, but let's assume outside for selection)
+    if (tca < 0)
         return false;
+
+    // d2 = squared distance from sphere center to the closest point on the ray
+    // This calculation is much more stable than b*b - 4ac
+    float d2 = glm::dot(L, L) - tca * tca;
+
+    // If the squared perpendicular distance is greater than radius squared, we missed
+    float radius2 = sphereRadius * sphereRadius;
+    if (d2 > radius2)
+        return false;
+
+    // Calculate the distance from the closest point to the intersection surfaces
+    float thc = sqrt(radius2 - d2);
+
+    // t0 = first intersection (entry), t1 = second intersection (exit)
+    float t0 = tca - thc;
+    float t1 = tca + thc;
+
+    // Handle being inside the sphere or very close
+    if (t0 < 0) {
+        t0 = t1;  // Use exit point if inside
+        if (t0 < 0)
+            return false;  // Both behind
     }
 
-    // Calculate the two potential intersection distances along the ray
-    float sqrtDiscriminant = sqrt(discriminant);
-    float t1               = (-b - sqrtDiscriminant) / (2 * a);
-    float t2               = (-b + sqrtDiscriminant) / (2 * a);
-
-    // Find the closest valid intersection distance
-    if (t1 > 0.0f && t1 < t2) {
-        intersectionDistance = t1;
-    } else if (t2 > 0.0f) {
-        intersectionDistance = t2;
-    } else {
-        // Both t1 and t2 are negative, which means the sphere is behind the ray origin
-        return false;
-    }
-
+    intersectionDistance = t0;
     return true;
 }
 
@@ -288,6 +304,8 @@ namespace Toolbox::UI {
                                 100000.0f);
         m_camera.setOrientAndPosition({0, 1, 0}, {0, 0, 1}, {0, 0, 0});
         m_camera.updateCamera();
+
+        J3D::Picking::InitFramebuffer(800, 600);
         J3D::Rendering::SetSortFunction(Render::PacketSort);
 
         // Create framebuffer for this window
@@ -299,7 +317,7 @@ namespace Toolbox::UI {
         }
 
         // 128x128 billboards, 10 unique images
-        if (!m_billboard_renderer.initBillboardRenderer(256, 10)) {
+        if (!m_billboard_renderer.initBillboardRenderer(RENDERER_RAIL_NODE_DIAMETER, 10)) {
             // show some error
         }
 
@@ -318,6 +336,8 @@ namespace Toolbox::UI {
         glDeleteFramebuffers(1, &m_fbo_id);
         glDeleteRenderbuffers(1, &m_rbo_id);
         glDeleteTextures(1, &m_tex_id);
+
+        J3D::Picking::DestroyFramebuffer();
     }
 
     void Renderer::render(std::vector<ISceneObject::RenderInfo> renderables, TimeStep delta_time) {
@@ -331,12 +351,12 @@ namespace Toolbox::UI {
         m_window_size_prev = m_window_size;
         m_window_size      = ImGui::GetWindowSize();
         m_render_rect      = {m_window_rect.Min + style.WindowPadding,
-                              m_window_rect.Max};
+                              m_window_rect.Max - style.WindowPadding};
 
         ImVec2 relative_window_pos = ImGui::GetCursorPos();
 
         // For the window bar
-        m_render_rect.Min += relative_window_pos;
+        m_render_rect.Min.y += relative_window_pos.y - style.WindowPadding.y;
         m_render_size = ImVec2(m_render_rect.GetWidth(), m_render_rect.GetHeight());
 
         ImVec2 mouse_pos = ImGui::GetMousePos();
@@ -417,10 +437,15 @@ namespace Toolbox::UI {
             }
 
             std::vector<RefPtr<J3DModelInstance>> models = {};
+            std::vector<RefPtr<J3DModelInstance>> pick_models = {};
             models.reserve(renderables.size());
+            pick_models.reserve(renderables.size());
 
             for (auto &renderable : renderables) {
                 models.emplace_back(renderable.m_model);
+                if (!s_selection_blacklist.contains(renderable.m_object->type())) {
+                    pick_models.emplace_back(renderable.m_model);
+                }
             }
 
             J3D::Rendering::RenderPacketVector packets =
@@ -429,6 +454,10 @@ namespace Toolbox::UI {
 
             m_path_renderer.drawPaths(&m_camera);
             m_billboard_renderer.drawBillboards(&m_camera);
+
+            J3D::Rendering::RenderPacketVector pick_packets =
+                J3D::Rendering::SortPackets(pick_models, position);
+            J3D::Picking::RenderPickingScene(view, projection, pick_packets);
             m_is_view_dirty = false;
         }
         viewportEnd();
@@ -466,8 +495,11 @@ namespace Toolbox::UI {
             return;
         }
 
-        auto size_x = static_cast<GLsizei>(m_window_size.x);
-        auto size_y = static_cast<GLsizei>(m_window_size.y);
+        J3D::Picking::ResizeFramebuffer(static_cast<GLsizei>(m_render_size.x / 4.0f),
+                                        static_cast<GLsizei>(m_render_size.y / 4.0f));
+
+        auto size_x = static_cast<GLsizei>(m_render_size.x);
+        auto size_y = static_cast<GLsizei>(m_render_size.y);
 
         // window was resized, new texture and depth storage needed for framebuffer
         glDeleteRenderbuffers(1, &m_rbo_id);
@@ -704,15 +736,14 @@ namespace Toolbox::UI {
 
     Renderer::selection_variant_t
     Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables,
-                            std::vector<RefPtr<Rail::RailNode>> rail_nodes,
-                            bool &should_reset) {
-        should_reset = false;
-        if (!m_is_window_hovered || !m_is_window_focused) {
-            return std::nullopt;
-        }
-
+                            std::vector<RefPtr<Rail::RailNode>> rail_nodes, bool &should_reset) {
         const bool left_click  = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
         const bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
+
+        should_reset = false;
+        if (!m_is_window_hovered && !m_is_window_focused) {
+            return std::nullopt;
+        }
 
         // Mouse pos is absolute
         ImVec2 mouse_pos = ImGui::GetMousePos();
@@ -720,8 +751,8 @@ namespace Toolbox::UI {
         m_camera.getPos(cam_pos);
 
         // Get point on render window
-        glm::vec3 selection_point = {mouse_pos.x - m_window_rect.Min.x,
-                                     mouse_pos.y - m_window_rect.Min.y, 0};
+        glm::vec3 selection_point = {mouse_pos.x - m_render_rect.Min.x,
+                                     mouse_pos.y - m_render_rect.Min.y, 0};
 
         if (!left_click && !right_click) {
             return std::nullopt;
@@ -732,23 +763,84 @@ namespace Toolbox::UI {
         // Generate ray from mouse position
         auto [rayOrigin, rayDirection] =
             getRayFromMouse(glm::vec2(selection_point.x, selection_point.y), m_camera,
-                            glm::vec4(m_window_rect.Min.x, m_window_rect.Min.y,
-                                      m_window_rect.Max.x - m_window_rect.Min.x,
-                                      m_window_rect.Max.y - m_window_rect.Min.y));
-
-        const std::unordered_set<std::string> selection_blacklist = {
-            "Map",
-            "MapObjWave",
-            "Shimmer",
-            "Sky",
-        };
+                            glm::vec4(m_render_rect.Min.x, m_render_rect.Min.y,
+                                      m_render_rect.Max.x - m_render_rect.Min.x,
+                                      m_render_rect.Max.y - m_render_rect.Min.y));
 
         float nearest_intersection = std::numeric_limits<float>::max();
 
-        selection_variant_t selected_item = std::nullopt;
+        selection_variant_t selected_item;
+        if (J3D::Picking::IsPickingEnabled()) {
+            selected_item = findObjectByJ3DPicking(
+                renderables, static_cast<int>(selection_point.x),
+                                                   static_cast<int>(selection_point.y),
+                                                   nearest_intersection, s_selection_blacklist);
+
+        } else {
+            selected_item = findObjectByOBBIntersection(
+                renderables, static_cast<int>(selection_point.x),
+                static_cast<int>(selection_point.y), nearest_intersection, s_selection_blacklist);
+        }
+
+        for (auto &node : rail_nodes) {
+            float this_intersection;
+
+            if (intersectRaySphere(rayOrigin, rayDirection, node->getPosition(),
+                                   RENDERER_RAIL_NODE_DIAMETER / 2.0f,
+                                   this_intersection)) {
+                // Intersection detected, check if nearest and use
+                if (this_intersection >= nearest_intersection) {
+                    continue;
+                }
+                nearest_intersection = this_intersection;
+                selected_item        = node;
+            }
+        }
+
+        return selected_item;
+    }
+
+    RefPtr<ISceneObject>
+    Renderer::findObjectByJ3DPicking(std::vector<ISceneObject::RenderInfo> renderables,
+                                     int selection_x, int selection_y, float &intersection_z,
+                                     const std::unordered_set<std::string> &exclude_set) {
+        TOOLBOX_DEBUG_LOG_V("Selection pt (x: {}, y: {})", selection_x, selection_y);
+        if (J3D::Picking::IsPickingEnabled()) {
+            J3D::Picking::ModelMaterialIdPair query_pair =
+                J3D::Picking::Query(selection_x / 4.0f, (m_render_size.y - selection_y) / 4.0f);
+            for (const ISceneObject::RenderInfo &info : renderables) {
+                if (exclude_set.contains(info.m_object->type())) {
+                    continue;
+                }
+                if (info.m_model->GetModelId() == std::get<0>(query_pair)) {
+                    glm::vec3 selection_origin;
+                    m_camera.getPos(selection_origin);
+
+                    intersection_z = glm::length(selection_origin - info.m_transform.m_translation);
+                    return info.m_object;
+                }
+            }
+        }
+        return RefPtr<ISceneObject>();
+    }
+
+    RefPtr<ISceneObject>
+    Renderer::findObjectByOBBIntersection(std::vector<ISceneObject::RenderInfo> renderables,
+                                          int selection_x, int selection_y, float &intersection_z,
+                                          const std::unordered_set<std::string> &exclude_set) {
+        float nearest_intersection = std::numeric_limits<float>::max();
+
+        // Generate ray from mouse position
+        auto [rayOrigin, rayDirection] =
+            getRayFromMouse(glm::vec2(selection_x, selection_y), m_camera,
+                            glm::vec4(m_render_rect.Min.x, m_render_rect.Min.y,
+                                      m_render_rect.Max.x - m_render_rect.Min.x,
+                                      m_render_rect.Max.y - m_render_rect.Min.y));
+
+        RefPtr<ISceneObject> selected_obj = nullptr;
 
         for (auto &renderable : renderables) {
-            if (selection_blacklist.contains(renderable.m_object->type())) {
+            if (exclude_set.contains(renderable.m_object->type())) {
                 continue;
             }
 
@@ -780,25 +872,12 @@ namespace Toolbox::UI {
                     continue;
                 }
                 nearest_intersection = this_intersection;
-                selected_item        = renderable.m_object;
+                selected_obj         = renderable.m_object;
             }
         }
 
-        for (auto &node : rail_nodes) {
-            float this_intersection;
-
-            if (intersectRaySphere(rayOrigin, rayDirection, node->getPosition(), 64.0f,
-                                   this_intersection)) {
-                // Intersection detected, check if nearest and use
-                if (this_intersection >= nearest_intersection) {
-                    continue;
-                }
-                nearest_intersection = this_intersection;
-                selected_item        = node;
-            }
-        }
-
-        return selected_item;
+        intersection_z = nearest_intersection;
+        return selected_obj;
     }
 
 }  // namespace Toolbox::UI

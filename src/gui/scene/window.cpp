@@ -257,68 +257,68 @@ namespace Toolbox::UI {
             m_is_game_edit_mode = false;
         }
 
-        if (!m_current_scene) {
-            return;
-        }
-
-        std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
-        for (auto &rail : m_current_scene->getRailData().rails()) {
-            if (!m_rail_visible_map[rail->getUUID()])
-                continue;
-            rendered_nodes.insert(rendered_nodes.end(), rail->nodes().begin(), rail->nodes().end());
-        }
-
-        if (ImGuizmo::IsOver()) {
-            return;
-        }
-
-        bool should_reset = false;
-        Renderer::selection_variant_t selection =
-            m_renderer.findSelection(m_renderables, rendered_nodes, should_reset);
-
-        bool multi_select = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
-
-        if (should_reset && !multi_select) {
-            m_hierarchy_selected_nodes.clear();
-            m_rail_node_list_selected_nodes.clear();
-            m_selected_properties.clear();
-            m_properties_render_handler = renderEmptyProperties;
-        }
-
-        if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
-            RefPtr<ISceneObject> obj = std::get<RefPtr<ISceneObject>>(selection);
-            processObjectSelection(obj, multi_select);
-        } else if (std::holds_alternative<RefPtr<Rail::RailNode>>(selection)) {
-            RefPtr<Rail::RailNode> node = std::get<RefPtr<Rail::RailNode>>(selection);
-
-            // In this circumstance, select the whole rail
-            bool rail_selection_mode = Input::GetKey(KeyCode::KEY_LEFTALT);
-            if (rail_selection_mode) {
-                RailData &rail_data = m_current_scene->getRailData();
-
-                RefPtr<Rail::Rail> rail = rail_data.getRail(node->getRailUUID());
-                if (!rail) {
-                    TOOLBOX_ERROR("Failed to find rail for node.");
-                    return;
-                }
-
-                processRailSelection(rail, multi_select);
-            } else {
-                processRailNodeSelection(node, multi_select);
-            }
-        }
-
-        if (m_hierarchy_selected_nodes.empty() && m_rail_list_selected_nodes.empty() &&
-            m_rail_node_list_selected_nodes.empty()) {
-            m_renderer.setGizmoVisible(false);
-        } else {
-            m_renderer.setGizmoVisible(true);
-        }
-
         return;
     }
 
     void SceneWindow::onImGuiPostUpdate(TimeStep delta_time) {
+        if (m_current_scene) {
+            std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
+            for (auto &rail : m_current_scene->getRailData().rails()) {
+                if (!m_rail_visible_map[rail->getUUID()])
+                    continue;
+                rendered_nodes.insert(rendered_nodes.end(), rail->nodes().begin(),
+                                      rail->nodes().end());
+            }
+
+            if (!m_renderer.getGizmoVisible() || !ImGuizmo::IsOver()) {
+                bool should_reset = false;
+                Renderer::selection_variant_t selection =
+                    m_renderer.findSelection(m_renderables, rendered_nodes, should_reset);
+
+                bool multi_select = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
+
+                if (should_reset && !multi_select) {
+                    m_hierarchy_selected_nodes.clear();
+                    m_rail_list_selected_nodes.clear();
+                    m_rail_node_list_selected_nodes.clear();
+                    m_selected_properties.clear();
+                    m_properties_render_handler = renderEmptyProperties;
+                }
+
+                if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
+                    RefPtr<ISceneObject> obj = std::get<RefPtr<ISceneObject>>(selection);
+                    processObjectSelection(obj, multi_select);
+                } else if (std::holds_alternative<RefPtr<Rail::RailNode>>(selection)) {
+                    RefPtr<Rail::RailNode> node = std::get<RefPtr<Rail::RailNode>>(selection);
+
+                    // In this circumstance, select the whole rail
+                    bool rail_selection_mode = Input::GetKey(KeyCode::KEY_LEFTALT);
+                    if (rail_selection_mode) {
+                        RailData &rail_data = m_current_scene->getRailData();
+
+                        RefPtr<Rail::Rail> rail = rail_data.getRail(node->getRailUUID());
+                        if (!rail) {
+                            TOOLBOX_ERROR("Failed to find rail for node.");
+                            return;
+                        }
+
+                        processRailSelection(rail, multi_select);
+                    } else {
+                        processRailNodeSelection(node, multi_select);
+                    }
+                }
+
+                if (m_hierarchy_selected_nodes.empty() && m_rail_list_selected_nodes.empty() &&
+                    m_rail_node_list_selected_nodes.empty()) {
+                    m_renderer.setGizmoVisible(false);
+                    m_renderer.setGizmoOperation((ImGuizmo::OPERATION)0);
+                } else {
+                    m_renderer.setGizmoVisible(true);
+                    m_renderer.setGizmoOperation(ImGuizmo::TRANSLATE);
+                }
+            }
+        }
+
         Game::TaskCommunicator &task_communicator =
             GUIApplication::instance().getTaskCommunicator();
 

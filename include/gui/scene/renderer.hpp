@@ -2,18 +2,18 @@
 
 #include <unordered_map>
 
+#include <J3D/Data/J3DModelInstance.hpp>
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <J3D/Data/J3DModelInstance.hpp>
 
-#include "core/types.hpp"
 #include "core/time/timestep.hpp"
+#include "core/types.hpp"
+#include "gui/scene/ImGuizmo.h"
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
-#include "gui/scene/ImGuizmo.h"
+#include "path.hpp"
 #include "scene/raildata.hpp"
 #include "scene/scene.hpp"
-#include "path.hpp"
 
 using namespace Toolbox;
 
@@ -30,8 +30,7 @@ namespace Toolbox::UI {
 
         void initializeData(const SceneInstance &scene);
 
-        void updatePaths(const RailData &rail_data,
-                         std::unordered_map<UUID64, bool> visible_map) {
+        void updatePaths(const RailData &rail_data, std::unordered_map<UUID64, bool> visible_map) {
             initializePaths(rail_data, visible_map);
         }
 
@@ -62,7 +61,11 @@ namespace Toolbox::UI {
             m_camera.setFarDist(far_plane);
         }
 
-        void setGizmoVisible(bool visible) { m_render_gizmo = visible; }
+        bool getGizmoVisible() const { return m_render_gizmo; }
+        void setGizmoVisible(bool visible) {
+            m_render_gizmo = visible;
+            ImGuizmo::Enable(visible);
+        }
 
         bool isGizmoActive() const { return m_gizmo_active; }
         bool isGizmoManipulated() const { return m_gizmo_updated; }
@@ -102,11 +105,21 @@ namespace Toolbox::UI {
         void viewportBegin();
         void viewportEnd();
 
+        RefPtr<ISceneObject>
+        findObjectByJ3DPicking(std::vector<ISceneObject::RenderInfo> renderables, int selection_x,
+                               int selection_y, float &intersection_z,
+                               const std::unordered_set<std::string> &exclude_set);
+
+        RefPtr<ISceneObject>
+        findObjectByOBBIntersection(std::vector<ISceneObject::RenderInfo> renderables,
+                                    int selection_x, int selection_y, float &intersection_z,
+                                    const std::unordered_set<std::string> &exclude_set);
+
     private:
         u32 m_fbo_id, m_tex_id, m_rbo_id;
 
-        bool m_is_window_hovered = false;
-        bool m_is_window_focused = false;
+        bool m_is_window_hovered    = false;
+        bool m_is_window_focused    = false;
         bool m_is_view_manipulating = false;
         bool m_is_view_dirty        = true;
 
