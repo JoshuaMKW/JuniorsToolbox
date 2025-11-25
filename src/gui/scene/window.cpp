@@ -311,10 +311,8 @@ namespace Toolbox::UI {
                 if (m_hierarchy_selected_nodes.empty() && m_rail_list_selected_nodes.empty() &&
                     m_rail_node_list_selected_nodes.empty()) {
                     m_renderer.setGizmoVisible(false);
-                    m_renderer.setGizmoOperation((ImGuizmo::OPERATION)0);
                 } else {
                     m_renderer.setGizmoVisible(true);
-                    m_renderer.setGizmoOperation(ImGuizmo::TRANSLATE);
                 }
             }
         }
