@@ -23,6 +23,14 @@ template <> struct std::formatter<glm::vec3> : std::formatter<string_view> {
     }
 };
 
+template <> struct std::formatter<glm::vec4> : std::formatter<string_view> {
+    template <typename FormatContext> auto format(const glm::vec4 &obj, FormatContext &ctx) const {
+        std::string outstr;
+        std::format_to(std::back_inserter(outstr), "(x: {}, y: {}, z: {}, w: {})", obj.x, obj.y, obj.z, obj.w);
+        return std::formatter<string_view>::format(outstr, ctx);
+    }
+};
+
 namespace Toolbox::Object {
 
     enum class MetaType : u8 {

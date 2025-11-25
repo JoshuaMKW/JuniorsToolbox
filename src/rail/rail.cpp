@@ -6,7 +6,32 @@
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/value.hpp"
 
+#include <glm/glm.hpp>
+#include <glm/gtc/epsilon.hpp>
+
 using namespace Toolbox::Object;
+
+static bool isTranslationOnly(const glm::mat4 &m, float epsilon = 0.0001f) {
+    // A Translation-Only matrix looks like this:
+    // 1  0  0  Tx
+    // 0  1  0  Ty
+    // 0  0  1  Tz
+    // 0  0  0  1
+
+    if (!glm::all(glm::epsilonEqual(m[0], glm::vec4(1.f, 0.f, 0.f, 0.f), epsilon)))
+        return false;
+
+    if (!glm::all(glm::epsilonEqual(m[1], glm::vec4(0.f, 1.f, 0.f, 0.f), epsilon)))
+        return false;
+
+    if (!glm::all(glm::epsilonEqual(m[2], glm::vec4(0.f, 0.f, 1.f, 0.f), epsilon)))
+        return false;
+
+    if (glm::abs(m[3].w - 1.0f) > epsilon)
+        return false;
+
+    return true;
+}
 
 namespace Toolbox::Rail {
 
@@ -47,9 +72,39 @@ namespace Toolbox::Rail {
         return accum / static_cast<float>(node_count);
     }
 
+    Rail &Rail::transform(const glm::mat4 &delta_matrix) {
+        if (isTranslationOnly(delta_matrix)) {
+            for (auto &node : m_nodes) {
+                glm::vec3 pos = node->getPosition();
+                pos += glm::vec3(delta_matrix[3]);
+                node->setPosition(pos);
+            }
+            return *this;
+        }
+
+        glm::vec3 center = getCenteroid();
+
+        glm::mat4 T_inv = glm::translate(glm::mat4(1.0f), -center);
+        glm::mat4 T     = glm::translate(glm::mat4(1.0f), center);
+
+        glm::mat4 rs_mtx = delta_matrix;
+        rs_mtx[3]        = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
+        glm::mat4 final_transform = T * rs_mtx * T_inv;
+
+        for (auto &node : m_nodes) {
+            glm::vec4 original_pos = glm::vec4(node->getPosition(), 1.0f);
+            glm::vec4 new_pos      = final_transform * original_pos;
+            node->setPosition(glm::vec3(new_pos));
+        }
+
+        return *this;
+    }
+
     Rail &Rail::translate(const glm::vec3 &t) {
         for (auto &node : m_nodes) {
-            node->setPosition(t);
+            glm::vec3 pos = node->getPosition();
+            node->setPosition(pos + t);
         }
         return *this;
     }
@@ -87,6 +142,12 @@ namespace Toolbox::Rail {
             node->setPosition(normalPos + center);
         }
         return *this;
+    }
+
+    void Rail::decimate(size_t iterations) {
+        for (size_t i = 0; i < iterations; ++i) {
+            decimateImpl();
+        }
     }
 
     void Rail::subdivide(size_t iterations) {
@@ -184,6 +245,26 @@ namespace Toolbox::Rail {
             }
         }
         return {};
+    }
+
+    Rail::node_ptr_t Rail::getNodeConnection(size_t node, size_t slot) const {
+        if (node >= m_nodes.size()) {
+            return {};
+        }
+        return getNodeConnection(m_nodes[node], slot);
+    }
+
+    Rail::node_ptr_t Rail::getNodeConnection(node_ptr_t node, size_t slot) const {
+        if (slot >= node->getConnectionCount()) {
+            return nullptr;
+        }
+
+        size_t node_index = static_cast<size_t>(node->getConnectionValue(slot).value());
+        if (node_index >= m_nodes.size()) {
+            return nullptr;
+        }
+
+        return m_nodes[node_index];
     }
 
     std::vector<Rail::node_ptr_t> Rail::getNodeConnections(size_t node) const {
@@ -560,6 +641,23 @@ namespace Toolbox::Rail {
         return clone;
     }
 
+    int Rail::getSlotForNodeConnection(node_ptr_t src, node_ptr_t conn) {
+        int conn_index = 0;
+        for (node_ptr_t node : m_nodes) {
+            if (node == conn) {
+                break;
+            }
+            conn_index += 1;
+        }
+
+        for (int slot = 0; slot < (int)src->getConnectionCount(); ++slot) {
+            if (src->getConnectionValue(slot).value() == conn_index) {
+                return slot;
+            }
+        }
+        return -1;
+    }
+
     Result<void, MetaError> Rail::calcDistancesWithNode(node_ptr_t node) {
         const s16 node_index = static_cast<s16>(
             std::distance(m_nodes.begin(), std::find(m_nodes.begin(), m_nodes.end(), node)));
@@ -589,6 +687,192 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    void Rail::chaikinSubdivide() {}
+    void Rail::decimateImpl() {
+        if (m_nodes.size() <= 2) {
+            return;
+        }
+
+        // We check if the last node connects to the first node to determine if it's a loop
+        bool is_closed_loop = isNodeConnectedToOther(m_nodes.back(), m_nodes.front());
+
+        // Select the Survivors (Double Buffer Approach)
+        std::vector<node_ptr_t> new_nodes;
+        new_nodes.reserve((m_nodes.size() / 2) + 2);
+
+        // Always keep the first node
+        new_nodes.push_back(m_nodes[0]);
+
+        // Iterate through the middle, skipping every other node
+        for (size_t i = 2; i < m_nodes.size(); i += 2) {
+            // If this is an open ended rail, and we are at the very last node,
+            // we handle it specifically after the loop to ensure we don't duplicate it
+            // or miss it due to the stride.
+            if (!is_closed_loop && i == m_nodes.size() - 1) {
+                break;
+            }
+            new_nodes.push_back(m_nodes[i]);
+        }
+
+        // Handle endpoint preservation
+        if (!is_closed_loop) {
+            node_ptr_t last_original = m_nodes.back();
+            node_ptr_t last_added    = new_nodes.back();
+
+            // This prevents the rail from shrinking.
+            if (last_added != last_original) {
+                new_nodes.push_back(last_original);
+            }
+        }
+
+        if (new_nodes.size() < 2) {
+            return;
+        }
+
+        // Reset connections because the old indices are now invalid.
+        for (size_t i = 0; i < new_nodes.size(); ++i) {
+            node_ptr_t current = new_nodes[i];
+
+            // Wipe old connections
+            current->setConnectionCount(0);
+
+            // Connect to Previous (i-1)
+            if (i > 0) {
+                node_ptr_t prev = new_nodes[i - 1];
+                f32 dist        = glm::distance(current->getPosition(), prev->getPosition());
+
+                // Standard slot 0 for Previous
+                current->setConnectionCount(current->getConnectionCount() + 1);
+                current->setConnectionValue(0, static_cast<s16>(i - 1));
+                current->setConnectionDistance(0, dist);
+            }
+
+            // Connect to next (i+1)
+            if (i < new_nodes.size() - 1) {
+                node_ptr_t next = new_nodes[i + 1];
+                f32 dist        = glm::distance(current->getPosition(), next->getPosition());
+
+                // Standard slot 1 for Next
+                u16 slot = current->getConnectionCount();
+                current->setConnectionCount(slot + 1);
+                current->setConnectionValue(slot, static_cast<s16>(i + 1));
+                current->setConnectionDistance(slot, dist);
+            }
+        }
+
+        // Reclose the loop (if originally closed)
+        if (is_closed_loop) {
+            node_ptr_t first = new_nodes.front();
+            node_ptr_t last  = new_nodes.back();
+            f32 dist         = glm::distance(first->getPosition(), last->getPosition());
+
+            // Link Last -> First
+            u16 l_slot = last->getConnectionCount();
+            last->setConnectionCount(l_slot + 1);
+            last->setConnectionValue(l_slot, 0);
+            last->setConnectionDistance(l_slot, dist);
+
+            // Link First -> Last
+            u16 f_slot = first->getConnectionCount();
+            first->setConnectionCount(f_slot + 1);
+            first->setConnectionValue(f_slot, static_cast<s16>(new_nodes.size() - 1));
+            first->setConnectionDistance(f_slot, dist);
+        }
+
+        m_nodes = std::move(new_nodes);
+    }
+
+    void Rail::chaikinSubdivide() {
+        if (m_nodes.size() < 2)
+            return;
+
+        std::vector<node_ptr_t> new_nodes;
+        new_nodes.reserve(m_nodes.size() * 2);
+
+        // Helpers for Chaikin math
+        auto get_q_point = [](glm::vec3 p0, glm::vec3 p1) { return glm::mix(p0, p1, 0.25f); };
+        auto get_r_point = [](glm::vec3 p0, glm::vec3 p1) { return glm::mix(p0, p1, 0.75f); };
+
+        // Check if the rail loops (last node connected to first node)
+        bool is_closed_loop = isNodeConnectedToOther(m_nodes.back(), m_nodes.front());
+        size_t count        = is_closed_loop ? m_nodes.size() : m_nodes.size() - 1;
+
+        for (size_t i = 0; i < count; ++i) {
+            // Get the current segment endpoints
+            node_ptr_t p0 = m_nodes[i];
+            node_ptr_t p1 = m_nodes[(i + 1) % m_nodes.size()];
+
+            // Create the two new nodes
+            auto node_q = make_referable<RailNode>();
+            auto node_r = make_referable<RailNode>();
+
+            node_q->m_rail_uuid = getUUID();
+            node_r->m_rail_uuid = getUUID();
+
+            node_q->setPosition(get_q_point(p0->getPosition(), p1->getPosition()));
+            node_r->setPosition(get_r_point(p0->getPosition(), p1->getPosition()));
+
+            new_nodes.push_back(node_q);
+            new_nodes.push_back(node_r);
+        }
+
+        // Handle endpoints for open ended rails
+        if (!is_closed_loop) {
+            node_ptr_t first_node = make_deep_clone<RailNode>(m_nodes.front());
+            node_ptr_t last_node  = make_deep_clone<RailNode>(m_nodes.back());
+
+            // Insert Original Start at the beginning
+            new_nodes.insert(new_nodes.begin(), first_node);
+            // Add Original End at the end
+            new_nodes.push_back(last_node);
+        }
+
+        // Rebuild connections
+        for (size_t i = 0; i < new_nodes.size(); ++i) {
+            node_ptr_t current = new_nodes[i];
+            current->setConnectionCount(0);  // Clear old connections
+
+            // Connect to previous (if not first)
+            if (i > 0) {
+                node_ptr_t prev = new_nodes[i - 1];
+                f32 dist        = glm::distance(current->getPosition(), prev->getPosition());
+
+                current->setConnectionCount(current->getConnectionCount() + 1);
+                current->setConnectionValue(0, static_cast<s16>(i - 1));
+                current->setConnectionDistance(0, dist);
+            }
+
+            // Connect to next (if not last)
+            if (i < new_nodes.size() - 1) {
+                node_ptr_t next = new_nodes[i + 1];
+                f32 dist        = glm::distance(current->getPosition(), next->getPosition());
+
+                u16 slot = current->getConnectionCount();
+                current->setConnectionCount(slot + 1);
+                current->setConnectionValue(slot, static_cast<s16>(i + 1));
+                current->setConnectionDistance(slot, dist);
+            }
+        }
+
+        // Handle loop closure connection
+        if (is_closed_loop && new_nodes.size() >= 2) {
+            node_ptr_t first = new_nodes.front();
+            node_ptr_t last  = new_nodes.back();
+            f32 dist         = glm::distance(first->getPosition(), last->getPosition());
+
+            // Connect last -> first
+            u16 l_slot = last->getConnectionCount();
+            last->setConnectionCount(l_slot + 1);
+            last->setConnectionValue(l_slot, 0);  // Index 0
+            last->setConnectionDistance(l_slot, dist);
+
+            // Connect first -> last
+            u16 f_slot = first->getConnectionCount();
+            first->setConnectionCount(f_slot + 1);
+            first->setConnectionValue(f_slot, static_cast<s16>(new_nodes.size() - 1));
+            first->setConnectionDistance(f_slot, dist);
+        }
+
+        m_nodes = std::move(new_nodes);
+    }
 
 }  // namespace Toolbox::Rail

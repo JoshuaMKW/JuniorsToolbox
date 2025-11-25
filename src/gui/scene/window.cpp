@@ -322,17 +322,66 @@ namespace Toolbox::UI {
         Game::TaskCommunicator &task_communicator =
             GUIApplication::instance().getTaskCommunicator();
 
-        if (m_renderer.isGizmoManipulated() && m_hierarchy_selected_nodes.size() > 0) {
-            const glm::mat4x4 &gizmo_transform = m_renderer.getGizmoTransform();
-            Transform obj_transform;
+        if (m_selection_transforms_needs_update) {
+            calcNewGizmoMatrixFromSelection();
+            m_selection_transforms_needs_update = false;
+        }
 
-            ImGuizmo::DecomposeMatrixToComponents(
-                glm::value_ptr(gizmo_transform), glm::value_ptr(obj_transform.m_translation),
-                glm::value_ptr(obj_transform.m_rotation), glm::value_ptr(obj_transform.m_scale));
+        if (m_renderer.isGizmoManipulated()) {
+            glm::mat4x4 gizmo_total_delta = m_renderer.getGizmoTotalDelta();
 
-            RefPtr<PhysicalSceneObject> object =
-                ref_cast<PhysicalSceneObject>(m_hierarchy_selected_nodes[0].m_selected);
-            m_hierarchy_selected_nodes[0].m_selected->setTransform(obj_transform);
+            if (!m_hierarchy_selected_nodes.empty()) {
+                size_t i = 0;
+                for (SelectionNodeInfo<Object::ISceneObject> &node : m_hierarchy_selected_nodes) {
+                    const Transform &obj_transform = m_selection_transforms[i];
+                    Transform new_transform        = gizmo_total_delta * obj_transform;
+                    node.m_selected->setTransform(new_transform);
+                    i++;
+                }
+            }
+
+            if (!m_rail_list_selected_nodes.empty()) {
+                glm::mat4x4 gizmo_delta   = m_renderer.getGizmoFrameDelta();
+                Transform delta_transform = Transform::FromMat4x4(gizmo_delta);
+
+                size_t i = 0;
+                for (SelectionNodeInfo<Rail::Rail> &node : m_rail_list_selected_nodes) {
+                    const Transform &rail_transform = m_selection_transforms[i];
+
+                    node.m_selected->transform(gizmo_delta);
+                    i++;
+                }
+
+                m_renderer.updatePaths(m_current_scene->getRailData(), {});
+            }
+
+            if (!m_rail_node_list_selected_nodes.empty()) {
+                size_t i = 0;
+                for (SelectionNodeInfo<Rail::RailNode> &node : m_rail_node_list_selected_nodes) {
+                    const Transform &node_transform = m_selection_transforms[i];
+                    Transform new_transform         = gizmo_total_delta * node_transform;
+
+                    UUID64 rail_uuid        = node.m_selected->getRailUUID();
+                    RefPtr<Rail::Rail> rail = m_current_scene->getRailData().getRail(rail_uuid);
+                    if (!rail) {
+                        TOOLBOX_ERROR("Failed to find rail for node.");
+                        continue;
+                    }
+
+                    rail->setNodePosition(node.m_selected, new_transform.m_translation);
+                    i++;
+                }
+
+                m_renderer.updatePaths(m_current_scene->getRailData(), {});
+            }
+
+            m_gizmo_maniped = true;
+        }
+
+        // Refresh the selection transforms so new gizmo manips don't reset
+        if (!m_renderer.isGizmoActive() && m_gizmo_maniped) {
+            m_selection_transforms_needs_update = true;
+            m_gizmo_maniped                     = false;
         }
 
         if (m_is_game_edit_mode) {
@@ -600,6 +649,8 @@ void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneOb
                 ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
                 m_selected_properties.clear();
+                m_rail_list_selected_nodes.clear();
+                m_rail_node_list_selected_nodes.clear();
 
                 if (multi_select) {
                     if (node_it == m_hierarchy_selected_nodes.end())
@@ -607,6 +658,9 @@ void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneOb
                 } else {
                     m_hierarchy_selected_nodes.clear();
                     m_hierarchy_selected_nodes.push_back(node_info);
+                }
+
+                if (m_hierarchy_selected_nodes.size() == 1) {
                     for (auto &member : node->getMembers()) {
                         member->syncArray();
                         auto prop = createProperty(member);
@@ -615,6 +669,8 @@ void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneOb
                         }
                     }
                 }
+
+                m_selection_transforms_needs_update = true;
 
                 m_properties_render_handler = renderObjectProperties;
             }
@@ -697,6 +753,8 @@ void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneOb
                 ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
                 m_selected_properties.clear();
+                m_rail_list_selected_nodes.clear();
+                m_rail_node_list_selected_nodes.clear();
 
                 if (multi_select) {
                     if (node_it == m_hierarchy_selected_nodes.end())
@@ -704,6 +762,9 @@ void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneOb
                 } else {
                     m_hierarchy_selected_nodes.clear();
                     m_hierarchy_selected_nodes.push_back(node_info);
+                }
+
+                if (m_hierarchy_selected_nodes.size() == 1) {
                     for (auto &member : node->getMembers()) {
                         member->syncArray();
                         auto prop = createProperty(member);
@@ -712,6 +773,8 @@ void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneOb
                         }
                     }
                 }
+
+                m_selection_transforms_needs_update = true;
 
                 m_properties_render_handler = renderObjectProperties;
             }
@@ -825,8 +888,43 @@ bool SceneWindow::renderRailNodeProperties(SceneWindow &window) {
         u32 flags = node->getFlags();
         if (ImGui::InputScalarCompact(
                 label.c_str(), ImGuiDataType_U32, &flags, &step, &step_fast, nullptr,
-                ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
+                ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsNoBlank)) {
             rail->setNodeFlag(node, flags);
+        }
+    }
+
+    /* Values */
+    {
+        ImGui::Text("Values");
+
+        if (!collapse_lines) {
+            ImGui::SameLine();
+            ImGui::Dummy({label_width - ImGui::CalcTextSize("Values").x, 0});
+            ImGui::SameLine();
+        }
+
+        std::string label = "##Values";
+
+        u32 step = 1, step_fast = 10;
+
+        int int_flags[4] = {node->getValue(0).value(), node->getValue(1).value(), node->getValue(2).value(),
+                            node->getValue(3).value()};
+
+        if (ImGui::InputScalarCompactN(
+                label.c_str(), ImGuiDataType_S32, &int_flags, 4, &step, &step_fast, nullptr,
+                ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
+            int_flags[0] = std::clamp<int>(int_flags[0], std::numeric_limits<s16>::min(),
+                                           std::numeric_limits<s16>::max());
+            int_flags[1] = std::clamp<int>(int_flags[1], std::numeric_limits<s16>::min(),
+                                           std::numeric_limits<s16>::max());
+            int_flags[2] = std::clamp<int>(int_flags[2], std::numeric_limits<s16>::min(),
+                                           std::numeric_limits<s16>::max());
+            int_flags[3] = std::clamp<int>(int_flags[3], std::numeric_limits<s16>::min(),
+                                           std::numeric_limits<s16>::max());
+            rail->setNodeValue(node, 0, (s16)int_flags[0]);
+            rail->setNodeValue(node, 1, (s16)int_flags[1]);
+            rail->setNodeValue(node, 2, (s16)int_flags[2]);
+            rail->setNodeValue(node, 3, (s16)int_flags[3]);
         }
     }
 
@@ -1115,6 +1213,9 @@ void SceneWindow::renderRailEditor() {
                 ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
                 ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
+                m_hierarchy_selected_nodes.clear();
+                m_rail_node_list_selected_nodes.clear();
+
                 if (multi_select) {
                     m_selected_properties.clear();
                     if (!is_rail_selected)
@@ -1126,6 +1227,8 @@ void SceneWindow::renderRailEditor() {
 
                 // Since a rail is selected, we should clear the rail nodes
                 m_rail_node_list_selected_nodes.clear();
+
+                m_selection_transforms_needs_update = true;
 
                 m_properties_render_handler = renderRailProperties;
             }
@@ -1203,6 +1306,9 @@ void SceneWindow::renderRailEditor() {
                         ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
+                        m_hierarchy_selected_nodes.clear();
+                        m_rail_list_selected_nodes.clear();
+
                         if (multi_select) {
                             m_selected_properties.clear();
                             if (!is_rail_node_selected)
@@ -1214,6 +1320,8 @@ void SceneWindow::renderRailEditor() {
 
                         // Since a rail node is selected, we should clear the rails
                         m_rail_list_selected_nodes.clear();
+
+                        m_selection_transforms_needs_update = true;
 
                         m_properties_render_handler = renderRailNodeProperties;
                     }
@@ -1957,12 +2065,24 @@ void SceneWindow::buildContextMenuRail() {
                        m_update_render_objs = true;
                        return;
                    })
-        .addOption("Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Rail::Rail> info) {
-            m_rail_visible_map.erase(info.m_node_id);
-            m_current_scene->getRailData().removeRail(info.m_selected->getUUID());
-            m_update_render_objs = true;
-            return;
-        });
+        .addOption("Delete", {KeyCode::KEY_DELETE},
+                   [this](SelectionNodeInfo<Rail::Rail> info) {
+                       m_rail_visible_map.erase(info.m_node_id);
+                       m_current_scene->getRailData().removeRail(info.m_selected->getUUID());
+                       m_update_render_objs = true;
+                       return;
+                   })
+        .addDivider()
+        .addOption("Decimate", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_D},
+                   [this](SelectionNodeInfo<Rail::Rail> info) {
+                       info.m_selected->decimate(1);
+                       m_renderer.updatePaths(m_current_scene->getRailData(), {});
+                   })
+        .addOption("Subdivide", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_S},
+                   [this](SelectionNodeInfo<Rail::Rail> info) {
+                       info.m_selected->subdivide(1);
+                       m_renderer.updatePaths(m_current_scene->getRailData(), {});
+                   });
 }
 
 void SceneWindow::buildContextMenuMultiRail() {
@@ -2453,6 +2573,9 @@ void Toolbox::UI::SceneWindow::processObjectSelection(RefPtr<Object::ISceneObjec
         .m_parent_synced = true,
         .m_scene_synced  = true};  // Only spacial objects get scene selection
 
+    m_rail_list_selected_nodes.clear();
+    m_rail_node_list_selected_nodes.clear();
+
     if (is_multi) {
         m_selected_properties.clear();
         if (!is_object_selected)
@@ -2460,6 +2583,9 @@ void Toolbox::UI::SceneWindow::processObjectSelection(RefPtr<Object::ISceneObjec
     } else {
         m_hierarchy_selected_nodes.clear();
         m_hierarchy_selected_nodes.push_back(node_info);
+    }
+
+    if (m_hierarchy_selected_nodes.size() == 1) {
         for (auto &member : node->getMembers()) {
             member->syncArray();
             auto prop = createProperty(member);
@@ -2469,26 +2595,7 @@ void Toolbox::UI::SceneWindow::processObjectSelection(RefPtr<Object::ISceneObjec
         }
     }
 
-    Transform obj_transform = node->getTransform().value();
-    // BoundingBox obj_bb      = node->getBoundingBox().value();
-
-    glm::mat4x4 gizmo_transform =
-        glm::translate(glm::identity<glm::mat4x4>(), obj_transform.m_translation);
-
-    glm::vec3 euler_rot;
-    euler_rot.x = glm::radians(obj_transform.m_rotation.x);
-    euler_rot.y = glm::radians(obj_transform.m_rotation.y);
-    euler_rot.z = glm::radians(obj_transform.m_rotation.z);
-
-    glm::quat quat_rot = glm::angleAxis(euler_rot.z, glm::vec3(0.0f, 0.0f, 1.0f)) *
-                         glm::angleAxis(euler_rot.y, glm::vec3(0.0f, 1.0f, 0.0f)) *
-                         glm::angleAxis(euler_rot.x, glm::vec3(1.0f, 0.0f, 0.0f));
-
-    glm::mat4x4 obb_rot_mtx = glm::toMat4(quat_rot);
-    gizmo_transform         = gizmo_transform * obb_rot_mtx;
-
-    gizmo_transform = glm::scale(gizmo_transform, obj_transform.m_scale);
-    m_renderer.setGizmoTransform(gizmo_transform);
+    m_selection_transforms_needs_update = true;
 
     m_properties_render_handler = renderObjectProperties;
 
@@ -2505,6 +2612,9 @@ void Toolbox::UI::SceneWindow::processRailSelection(RefPtr<Rail::Rail> node, boo
     SelectionNodeInfo<Rail::Rail> rail_info = {
         .m_selected = node, .m_node_id = rail_id, .m_parent_synced = true, .m_scene_synced = false};
 
+    m_hierarchy_selected_nodes.clear();
+    m_rail_node_list_selected_nodes.clear();
+
     if (is_multi) {
         m_selected_properties.clear();
         if (!is_rail_selected)
@@ -2517,9 +2627,7 @@ void Toolbox::UI::SceneWindow::processRailSelection(RefPtr<Rail::Rail> node, boo
     // Since a rail is selected, we should clear the rail nodes
     m_rail_node_list_selected_nodes.clear();
 
-    glm::mat4x4 gizmo_transform =
-        glm::translate(glm::identity<glm::mat4x4>(), node->getCenteroid());
-    m_renderer.setGizmoTransform(gizmo_transform);
+    m_selection_transforms_needs_update = true;
 
     m_properties_render_handler = renderRailProperties;
 
@@ -2537,6 +2645,9 @@ void Toolbox::UI::SceneWindow::processRailNodeSelection(RefPtr<Rail::RailNode> n
     SelectionNodeInfo<Rail::RailNode> node_info = {
         .m_selected = node, .m_node_id = node_id, .m_parent_synced = true, .m_scene_synced = false};
 
+    m_hierarchy_selected_nodes.clear();
+    m_rail_list_selected_nodes.clear();
+
     if (is_multi) {
         m_selected_properties.clear();
         if (!is_rail_node_selected)
@@ -2549,8 +2660,7 @@ void Toolbox::UI::SceneWindow::processRailNodeSelection(RefPtr<Rail::RailNode> n
     // Since a rail node is selected, we should clear the rails
     m_rail_list_selected_nodes.clear();
 
-    glm::mat4x4 gizmo_transform = glm::translate(glm::identity<glm::mat4x4>(), node->getPosition());
-    m_renderer.setGizmoTransform(gizmo_transform);
+    m_selection_transforms_needs_update = true;
 
     m_properties_render_handler = renderRailNodeProperties;
 
@@ -2566,6 +2676,55 @@ void Toolbox::UI::SceneWindow::processRailNodeSelection(RefPtr<Rail::RailNode> n
 
         TOOLBOX_DEBUG_LOG_V("Hit node {} of rail \"{}\"", rail->getNodeIndex(node).value(),
                             rail->name());
+    }
+}
+
+void Toolbox::UI::SceneWindow::calcNewGizmoMatrixFromSelection() {
+    Transform combined_transform     = {};
+    combined_transform.m_translation = {0.0f, 0.0f, 0.0f};
+    combined_transform.m_rotation    = {0.0f, 0.0f, 0.0f};
+    combined_transform.m_scale       = {1.0f, 1.0f, 1.0f};
+
+    m_selection_transforms.clear();
+    if (!m_hierarchy_selected_nodes.empty()) {
+        m_selection_transforms.reserve(m_hierarchy_selected_nodes.size());
+
+        for (SelectionNodeInfo<Object::ISceneObject> node : m_hierarchy_selected_nodes) {
+            std::optional<Transform> obj_transform = node.m_selected->getTransform();
+            if (!obj_transform) {
+                continue;
+            }
+
+            m_selection_transforms.emplace_back(obj_transform.value());
+            combined_transform.m_translation += m_selection_transforms.back().m_translation;
+        }
+
+        combined_transform.m_translation /= m_hierarchy_selected_nodes.size();
+        m_renderer.setGizmoTransform(combined_transform);
+    } else if (!m_rail_list_selected_nodes.empty()) {
+        m_selection_transforms.reserve(m_rail_list_selected_nodes.size());
+
+        for (SelectionNodeInfo<Rail::Rail> node : m_rail_list_selected_nodes) {
+            glm::vec3 center = node.m_selected->getCenteroid();
+            m_selection_transforms.emplace_back(
+                Transform(center, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}));
+            combined_transform.m_translation += center;
+        }
+
+        combined_transform.m_translation /= m_rail_list_selected_nodes.size();
+        m_renderer.setGizmoTransform(combined_transform);
+    } else if (!m_rail_node_list_selected_nodes.empty()) {
+        m_selection_transforms.reserve(m_rail_node_list_selected_nodes.size());
+
+        for (SelectionNodeInfo<Rail::RailNode> node : m_rail_node_list_selected_nodes) {
+            glm::vec3 center = node.m_selected->getPosition();
+            m_selection_transforms.emplace_back(
+                Transform(center, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}));
+            combined_transform.m_translation += center;
+        }
+
+        combined_transform.m_translation /= m_rail_node_list_selected_nodes.size();
+        m_renderer.setGizmoTransform(combined_transform);
     }
 }
 
@@ -2665,8 +2824,7 @@ void SceneWindow::onRenderMenuBar() {
                 GUIApplication::instance().showSuccessModal(this, name(),
                                                             "Scene saved successfully!");
             } else {
-                GUIApplication::instance().showErrorModal(this, name(),
-                                                          "Scene failed to save!");
+                GUIApplication::instance().showErrorModal(this, name(), "Scene failed to save!");
             }
         } else {
             m_is_save_as_dialog_open = true;

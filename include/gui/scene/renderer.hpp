@@ -63,9 +63,24 @@ namespace Toolbox::UI {
         }
 
         void setGizmoVisible(bool visible) { m_render_gizmo = visible; }
+
+        bool isGizmoActive() const { return m_gizmo_active; }
         bool isGizmoManipulated() const { return m_gizmo_updated; }
+
         const glm::mat4x4 &getGizmoTransform() const { return m_gizmo_matrix; }
-        void setGizmoTransform(const glm::mat4x4 &mtx) { m_gizmo_matrix = mtx; }
+        glm::mat4x4 getGizmoFrameDelta() const {
+            return m_gizmo_matrix * glm::inverse(m_gizmo_matrix_prev);
+        }
+        glm::mat4x4 getGizmoTotalDelta() const {
+            return m_gizmo_matrix * glm::inverse(m_gizmo_matrix_start);
+        }
+
+        void setGizmoTransform(const glm::mat4x4 &mtx) {
+            m_gizmo_matrix_prev = mtx;
+            m_gizmo_matrix      = mtx;
+        }
+        void setGizmoTransform(const Transform &transform);
+
         void setGizmoOperation(ImGuizmo::OPERATION op) { m_gizmo_op = op; }
 
         bool inputUpdate(TimeStep delta_time);
@@ -108,9 +123,12 @@ namespace Toolbox::UI {
         // Gizmo data
         bool m_render_gizmo;
         bool m_gizmo_updated;
+        bool m_gizmo_active;
         ImGuizmo::MODE m_gizmo_mode = ImGuizmo::MODE::WORLD;
         ImGuizmo::OPERATION m_gizmo_op;
         glm::mat4x4 m_gizmo_matrix;
+        glm::mat4x4 m_gizmo_matrix_prev;
+        glm::mat4x4 m_gizmo_matrix_start;
 
         f32 m_camera_fov;
         f32 m_camera_near_plane;

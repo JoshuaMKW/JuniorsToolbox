@@ -93,6 +93,7 @@ namespace Toolbox::UI {
 
         // TODO: Render shortened lines with arrow tips for connections, fix color relations
         m_path_connections.clear();
+        m_path_connections.reserve(rail_count * 16);  // Estimate upper bound
 
         for (size_t i = 0; i < rail_count; ++i) {
             auto rail = data.getRail(i);

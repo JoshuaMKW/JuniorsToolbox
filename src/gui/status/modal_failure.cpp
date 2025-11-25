@@ -28,10 +28,8 @@ namespace Toolbox::UI {
 
         ImVec2 modal_pos = m_parent ? m_parent->getPos() + m_parent->getSize() / 2.0f
                                     : ImGui::GetIO().DisplaySize / 2.0f;
-        modal_pos -= modal_size / 2.0f;
-        modal_pos.y -= 50.0f;
+        ImGui::SetNextWindowPos(modal_pos, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
-        ImGui::SetNextWindowPos(modal_pos, ImGuiCond_Always);
         if (ImGui::BeginPopupModal(m_name.c_str(), &m_is_open, modal_flags)) {
             ImGui::TextWrapped("%s", m_message.c_str());
             if (ImGui::Button("OK", ImVec2(120, 0))) {

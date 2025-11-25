@@ -138,6 +138,8 @@ namespace Toolbox::UI {
         void processRailSelection(RefPtr<Rail::Rail> node, bool is_multi);
         void processRailNodeSelection(RefPtr<Rail::RailNode> node, bool is_multi);
 
+        void calcNewGizmoMatrixFromSelection();
+
     private:
         void _moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id, size_t orig_index,
                        UUID64 orig_id, bool is_internal);
@@ -222,6 +224,10 @@ namespace Toolbox::UI {
         Renderer m_renderer;
         std::vector<ISceneObject::RenderInfo> m_renderables = {};
         ResourceCache m_resource_cache;
+
+        std::vector<Transform> m_selection_transforms;
+        bool m_selection_transforms_needs_update = false;
+        bool m_gizmo_maniped                     = false;
 
         // Docking facilities
         ImGuiID m_dock_space_id          = 0;

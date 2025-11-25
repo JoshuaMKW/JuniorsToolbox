@@ -23,6 +23,22 @@
 
 using namespace J3DAnimation;
 
+#define SCENE_LIGHT_PLAYER_SUN              0
+#define SCENE_LIGHT_PLAYER_SUN_SECONDARY    1
+#define SCENE_LIGHT_PLAYER_SHADOW           2
+#define SCENE_LIGHT_PLAYER_SHADOW_SECONDARY 3
+#define SCENE_LIGHT_PLAYER_SPECULAR         4
+#define SCENE_LIGHT_OBJECT_SUN              5
+#define SCENE_LIGHT_OBJECT_SUN_SECONDARY    6
+#define SCENE_LIGHT_OBJECT_SHADOW           7
+#define SCENE_LIGHT_OBJECT_SHADOW_SECONDARY 8
+#define SCENE_LIGHT_OBJECT_SPECULAR         9
+#define SCENE_LIGHT_ENEMY_SUN               10
+#define SCENE_LIGHT_ENEMY_SUN_SECONDARY     11
+#define SCENE_LIGHT_ENEMY_SHADOW            12
+#define SCENE_LIGHT_ENEMY_SHADOW_SECONDARY  13
+#define SCENE_LIGHT_ENEMY_SPECULAR          14
+
 namespace Toolbox::Object {
 
     enum class AnimationType { BCK, BLK, BPK, BTP, BTK, BRK };

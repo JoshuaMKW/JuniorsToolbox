@@ -308,6 +308,9 @@ namespace Toolbox::UI {
         m_gizmo_op   = ImGuizmo::OPERATION::TRANSLATE;
         m_gizmo_mode = ImGuizmo::WORLD;
 
+        m_gizmo_matrix = glm::identity<glm::mat4x4>();
+        m_gizmo_matrix_prev = glm::identity<glm::mat4x4>();
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
@@ -414,8 +417,10 @@ namespace Toolbox::UI {
             }
 
             std::vector<RefPtr<J3DModelInstance>> models = {};
+            models.reserve(renderables.size());
+
             for (auto &renderable : renderables) {
-                models.push_back(renderable.m_model);
+                models.emplace_back(renderable.m_model);
             }
 
             J3D::Rendering::RenderPacketVector packets =
@@ -510,10 +515,25 @@ namespace Toolbox::UI {
                 snap[2] = 50.0f;
             }
 
+            const bool was_updating = m_gizmo_active;
+
+            m_gizmo_matrix_prev = m_gizmo_matrix;
             m_gizmo_updated = ImGuizmo::Manipulate(
                 glm::value_ptr(m_camera.getViewMatrix()), glm::value_ptr(m_camera.getProjMatrix()),
                 m_gizmo_op, m_gizmo_mode, glm::value_ptr(m_gizmo_matrix), nullptr,
                 ctrl_held ? snap : nullptr);
+            m_gizmo_active = ImGuizmo::IsUsing();
+
+            if (m_gizmo_active && !was_updating) {
+                m_gizmo_matrix_start = m_gizmo_matrix;
+                TOOLBOX_DEBUG_LOG("Initializing start matrix!");
+            }
+
+            if (was_updating && !m_gizmo_active) {
+                // Finished manipulating
+                //m_gizmo_matrix_start = glm::identity<glm::mat4x4>();
+                //TOOLBOX_DEBUG_LOG("Deinitializing start matrix!");
+            }
         }
 
         glm::vec3 camera_pos;
@@ -581,6 +601,26 @@ namespace Toolbox::UI {
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    void Renderer::setGizmoTransform(const Transform &transform) {
+        glm::mat4x4 gizmo_transform =
+            glm::translate(glm::identity<glm::mat4x4>(), transform.m_translation);
+
+        glm::vec3 euler_rot;
+        euler_rot.x = glm::radians(transform.m_rotation.x);
+        euler_rot.y = glm::radians(transform.m_rotation.y);
+        euler_rot.z = glm::radians(transform.m_rotation.z);
+
+        glm::quat quat_rot = glm::angleAxis(euler_rot.z, glm::vec3(0.0f, 0.0f, 1.0f)) *
+                             glm::angleAxis(euler_rot.y, glm::vec3(0.0f, 1.0f, 0.0f)) *
+                             glm::angleAxis(euler_rot.x, glm::vec3(1.0f, 0.0f, 0.0f));
+
+        glm::mat4x4 obb_rot_mtx = glm::toMat4(quat_rot);
+        gizmo_transform         = gizmo_transform * obb_rot_mtx;
+
+        gizmo_transform = glm::scale(gizmo_transform, transform.m_scale);
+        setGizmoTransform(gizmo_transform);
     }
 
     bool Renderer::inputUpdate(TimeStep delta_time) {

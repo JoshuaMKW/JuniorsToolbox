@@ -733,7 +733,7 @@ namespace Toolbox::Object {
             light.Position  = {position_value, 1};
             light.Color     = {r, g, b, a};
             light.DistAtten = {1 / intensity_value, 0, 0, 1};
-            light.Direction = {-glm::normalize(position_value), 1};
+            light.Direction = {0, -1, 0, 1};
             scene_lights.push_back(light);
         }
 
@@ -761,14 +761,14 @@ namespace Toolbox::Object {
             m_model_instance->SetScale({1, 1, 1});
         }
 
-        if (scene_lights.size() > 0) {
-            m_model_instance->SetLight(scene_lights[0], 0);
+        if (!scene_lights.empty()) {
+            m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN], 0);
             if (scene_lights.size() > 1) {
-                m_model_instance->SetLight(scene_lights[1], 1);
+                m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN_SECONDARY], 1);
             } else {
                 m_model_instance->SetLight(DEFAULT_LIGHT, 1);
             }
-            // m_model_instance->SetLight(scene_lights[4], 2);  // Specular light
+            //m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SPECULAR], 2);  // Specular light
         } else {
             m_model_instance->SetLight(DEFAULT_LIGHT, 0);
             m_model_instance->SetLight(DEFAULT_LIGHT, 1);

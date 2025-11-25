@@ -55,6 +55,8 @@ namespace Toolbox::Rail {
 
         [[nodiscard]] size_t getDataSize() const { return 68 * m_nodes.size(); }
 
+        Rail &transform(const glm::mat4 &delta_matrix);
+
         Rail &translate(s16 x, s16 y, s16 z) { return translate(glm::vec3(x, y, z)); }
         Rail &translate(const glm::vec3 &t);
 
@@ -67,6 +69,7 @@ namespace Toolbox::Rail {
 
         Rail &invert(bool x, bool y, bool z);
 
+        void decimate(size_t iterations);
         void subdivide(size_t iterations);
 
         // Node API
@@ -89,6 +92,8 @@ namespace Toolbox::Rail {
         [[nodiscard]] bool isNodeConnectedToOther(node_ptr_t node_a, node_ptr_t node_b) const;
 
         std::optional<size_t> getNodeIndex(node_ptr_t node) const;
+        node_ptr_t getNodeConnection(size_t node, size_t slot) const;
+        node_ptr_t getNodeConnection(node_ptr_t node, size_t slot) const;
         std::vector<node_ptr_t> getNodeConnections(size_t node) const;
         std::vector<node_ptr_t> getNodeConnections(node_ptr_t node) const;
 
@@ -153,8 +158,11 @@ namespace Toolbox::Rail {
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
     protected:
+        int getSlotForNodeConnection(node_ptr_t src, node_ptr_t conn);
+
         Result<void, MetaError> calcDistancesWithNode(node_ptr_t node);
 
+        void decimateImpl();
         void chaikinSubdivide();
 
     private:
