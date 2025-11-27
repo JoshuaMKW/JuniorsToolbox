@@ -22,6 +22,7 @@ namespace Toolbox::Object {
         std::optional<std::string> m_file_model;
         std::optional<std::string> m_file_materials;
         std::vector<std::string> m_file_animations;
+        std::unordered_map<std::string, std::string> m_texture_swap_map;
     };
 
     struct TemplateWizard {

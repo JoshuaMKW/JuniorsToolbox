@@ -1,13 +1,28 @@
 #include <J3D/Animation/J3DAnimationLoader.hpp>
 #include <J3D/Material/J3DMaterialTableLoader.hpp>
+#include <J3D/Texture/J3DTextureLoader.hpp>
+
 #include <bstream.h>
 #include <expected>
 #include <gui/modelcache.hpp>
 #include <include/decode.h>
 #include <string>
+#include <unordered_set>
 
 #include "objlib/meta/errors.hpp"
 #include "objlib/object.hpp"
+
+using namespace Toolbox::Object;
+
+static constexpr std::array s_monte_types = {
+    NameRef::calcKeyCode("NPCMonteM"),  NameRef::calcKeyCode("NPCMonteMA"),
+    NameRef::calcKeyCode("NPCMonteMB"), NameRef::calcKeyCode("NPCMonteMC"),
+    NameRef::calcKeyCode("NPCMonteMD"), NameRef::calcKeyCode("NPCMonteME"),
+    NameRef::calcKeyCode("NPCMonteMF"), NameRef::calcKeyCode("NPCMonteMG"),
+    NameRef::calcKeyCode("NPCMonteMH"), NameRef::calcKeyCode("NPCMonteW"),
+    NameRef::calcKeyCode("NPCMonteWA"), NameRef::calcKeyCode("NPCMonteWB"),
+    NameRef::calcKeyCode("NPCMonteWC"),
+};
 
 namespace Toolbox::Object {
 
@@ -761,18 +776,28 @@ namespace Toolbox::Object {
             m_model_instance->SetScale({1, 1, 1});
         }
 
-        if (!scene_lights.empty()) {
-            m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN], 0);
-            if (scene_lights.size() > 1) {
-                m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN_SECONDARY], 1);
+        if (m_type == "NPCKinopio") {
+            HelperUpdateKinopioRender();
+        }
+
+        if (std::any_of(s_monte_types.begin(), s_monte_types.end(),
+                        [&](u16 code) { return code == m_type.code(); })) {
+            HelperUpdateMonteRender();
+        }
+
+            if (!scene_lights.empty()) {
+                m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN], 0);
+                if (scene_lights.size() > 1) {
+                    m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN_SECONDARY], 1);
+                } else {
+                    m_model_instance->SetLight(DEFAULT_LIGHT, 1);
+                }
+                // m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SPECULAR], 2);  //
+                // Specular light
             } else {
+                m_model_instance->SetLight(DEFAULT_LIGHT, 0);
                 m_model_instance->SetLight(DEFAULT_LIGHT, 1);
             }
-            //m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SPECULAR], 2);  // Specular light
-        } else {
-            m_model_instance->SetLight(DEFAULT_LIGHT, 0);
-            m_model_instance->SetLight(DEFAULT_LIGHT, 1);
-        }
 
         if (animate)
             m_model_instance->UpdateAnimations(delta_time);
@@ -788,7 +813,7 @@ namespace Toolbox::Object {
         indention_width          = std::min(indention_width, size_t(8));
         std::string self_indent  = std::string(indention * indention_width, ' ');
         std::string value_indent = std::string((indention + 1) * indention_width, ' ');
-        out << self_indent << m_type << " (" << m_nameref.name() << ") {\n";
+        out << self_indent << m_type.name() << " (" << m_nameref.name() << ") {\n";
         out << self_indent << "members:\n";
         for (auto m : m_members) {
             m->dump(out, indention + 1, indention_width);
@@ -812,6 +837,7 @@ namespace Toolbox::Object {
                                         ResourceCache &resource_cache) {
         J3DModelLoader bmdLoader;
         J3DMaterialTableLoader bmtLoader;
+        J3DTextureLoader btiLoader;
 
         RefPtr<J3DModelData> model_data;
         RefPtr<J3DMaterialTable> mat_table;
@@ -862,6 +888,8 @@ namespace Toolbox::Object {
             model_data = make_referable<J3DModelData>(resource_cache.m_model[model_name]);
         }
 
+        m_model_data = model_data;
+
         if (!mat_file) {
             mat_file = model_file->replace(model_file->size() - 3, 3, "bmt");
         }
@@ -892,23 +920,32 @@ namespace Toolbox::Object {
             }
 
             if (mat_name == "sky") {
-                //RefPtr<J3DTexture> sky_tex_01 = mat_table->GetTexture("B_sky_kumo_s");
-                //RefPtr<J3DTexture> sky_tex_02 = mat_table->GetTexture("B_cloud_s");
+                // RefPtr<J3DTexture> sky_tex_01 = mat_table->GetTexture("B_sky_kumo_s");
+                // RefPtr<J3DTexture> sky_tex_02 = mat_table->GetTexture("B_cloud_s");
                 //////RefPtr<J3DTexture> sky_tex_03 = mat_table->GetTexture("B_hikoukigumo_s");
 
-                //if (sky_tex_01) {
-                //    sky_tex_01->WrapS = EGXWrapMode::Repeat;
-                //}
+                // if (sky_tex_01) {
+                //     sky_tex_01->WrapS = EGXWrapMode::Repeat;
+                // }
 
-                //if (sky_tex_02) {
-                //    sky_tex_02->WrapS = EGXWrapMode::Repeat;
-                //}
+                // if (sky_tex_02) {
+                //     sky_tex_02->WrapS = EGXWrapMode::Repeat;
+                // }
 
-                //RefPtr<J3DMaterial> mat = mat_table->GetMaterial("_01_nyudougumo");
-                //EGXBlendMode blah       = mat->PEBlock.mBlendMode.Type;
-                //mat->PEBlock.mZMode.Enable   = false;
-                //mat->PEBlock.mBlendMode.Type = EGXBlendMode::None;
+                // RefPtr<J3DMaterial> mat = mat_table->GetMaterial("_01_nyudougumo");
+                // EGXBlendMode blah       = mat->PEBlock.mBlendMode.Type;
+                // mat->PEBlock.mZMode.Enable   = false;
+                // mat->PEBlock.mBlendMode.Type = EGXBlendMode::None;
             }
+        }
+
+        if (type() == "NPCKinopio") {
+            HelperUpdateKinopioRender();
+        }
+
+        if (std::any_of(s_monte_types.begin(), s_monte_types.end(),
+                        [&](u16 code) { return code == m_type.code(); })) {
+            HelperUpdateMonteRender();
         }
 
         // TODO: Load texture data
@@ -925,11 +962,25 @@ namespace Toolbox::Object {
             m_model_instance->SetInstanceMaterialTable(mat_table);
         }
 
+        for (auto &[tex_name, new_tex_path] : info.m_texture_swap_map) {
+            std::filesystem::path tex_path = asset_path / new_tex_path;
+            std::string tex_name_lower     = tex_name;
+            std::transform(tex_name_lower.begin(), tex_name_lower.end(), tex_name_lower.begin(),
+                           ::tolower);
+            bool tex_path_exists = Filesystem::is_regular_file(tex_path).value_or(false);
+            if (tex_path_exists) {
+                bStream::CFileStream tex_stream(tex_path.string(), bStream::Endianess::Big,
+                                                bStream::OpenMode::In);
+                RefPtr<J3DTexture> new_texture = btiLoader.Load(tex_name, &tex_stream);
+                model_data->SetTexture(tex_name, new_texture);
+            }
+        }
+
         for (auto &anim_file : info.m_file_animations) {
             std::filesystem::path anim_path = asset_path / anim_file;
             std::string anim_name           = anim_path.stem().string();
 
-            auto anim_path_exists_res = Toolbox::Filesystem::is_regular_file(anim_path);
+            auto anim_path_exists_res = Filesystem::is_regular_file(anim_path);
             if (anim_path_exists_res && anim_path_exists_res.value()) {
                 J3DAnimationLoader anmLoader;
                 bStream::CFileStream anim_stream(anim_path.string(), bStream::Endianess::Big,
@@ -1032,11 +1083,7 @@ namespace Toolbox::Object {
         m_type = type.name();
         setNameRef(name);
 
-        const char *type_cstr = m_type.c_str();
-
-        const char *debug_name = name.name().data();
-
-        auto template_result = TemplateFactory::create(m_type, m_include_custom);
+        auto template_result = TemplateFactory::create(m_type.name(), m_include_custom);
         if (!template_result) {
             auto error_v = template_result.error();
             if (std::holds_alternative<FSError>(error_v)) {
@@ -1080,7 +1127,7 @@ namespace Toolbox::Object {
         auto load_result = loadRenderData(asset_path, wizard->m_render_info, getResourceCache());
         if (!load_result) {
             return make_serial_error<void>(
-                in, std::format("Failed to load render data for object {} ({})!", m_type,
+                in, std::format("Failed to load render data for object {} ({})!", m_type.name(),
                                 m_nameref.name()));
         }
 
@@ -1089,9 +1136,9 @@ namespace Toolbox::Object {
 
     ObjectFactory::create_t ObjectFactory::create(Deserializer &in, bool include_custom) {
         if (isGroupObject(in)) {
-            auto obj    = make_scoped<GroupSceneObject>();
+            auto obj              = make_scoped<GroupSceneObject>();
             obj->m_include_custom = include_custom;
-            auto result = obj->gameDeserialize(in);
+            auto result           = obj->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -1099,7 +1146,7 @@ namespace Toolbox::Object {
         } else {
             auto obj              = make_scoped<PhysicalSceneObject>();
             obj->m_include_custom = include_custom;
-            auto result = obj->gameDeserialize(in);
+            auto result           = obj->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }

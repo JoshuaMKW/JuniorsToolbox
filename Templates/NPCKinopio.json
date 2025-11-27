@@ -172,12 +172,13 @@
                 "Chucking": 120,
                 "ThrowLength": -1,
                 "ThrowHeight": -1,
-                "RewardObjID": -1
+                "RewardObjID": -1 
             }
         },
         "Rendering": {
             "Default": {
-                "Model": "kinopio/kinopio_body.bmd",
+              "Model": "kinopio/kinopio_body.bmd",
+                "Textures": {"H_ma_rak_dummy":  "map/pollution/h_ma_rak.bti"},
                 "Animations": []
             }
         }

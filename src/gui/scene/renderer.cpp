@@ -457,7 +457,7 @@ namespace Toolbox::UI {
 
             J3D::Rendering::RenderPacketVector pick_packets =
                 J3D::Rendering::SortPackets(pick_models, position);
-            J3D::Picking::RenderPickingScene(pick_packets);
+            //J3D::Picking::RenderPickingScene(pick_packets);
             m_is_view_dirty = false;
         }
         viewportEnd();
@@ -738,7 +738,6 @@ namespace Toolbox::UI {
     Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables,
                             std::vector<RefPtr<Rail::RailNode>> rail_nodes, bool &should_reset) {
         const bool left_click  = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
-        const bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
 
         should_reset = false;
         if (!m_is_window_hovered && !m_is_window_focused) {
@@ -754,7 +753,7 @@ namespace Toolbox::UI {
         glm::vec3 selection_point = {mouse_pos.x - m_render_rect.Min.x,
                                      mouse_pos.y - m_render_rect.Min.y, 0};
 
-        if (!left_click && !right_click) {
+        if (!left_click) {
             return std::nullopt;
         }
 

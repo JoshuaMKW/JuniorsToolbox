@@ -74,6 +74,8 @@ file(GLOB TOOLBOX_SRC
     "include/model/*.hpp"
     "src/objlib/*.cpp"
     "include/objlib/*.hpp"
+    "src/objlib/helpers/*.cpp"
+    "src/objlib/helpers/*.hpp"
     "src/pad/*.cpp"
     "include/pad/*.hpp"
     "src/platform/*.cpp"

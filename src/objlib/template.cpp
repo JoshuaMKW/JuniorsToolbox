@@ -426,6 +426,9 @@ namespace Toolbox::Object {
                 if (render_info.contains("Animations")) {
                     wizard.m_render_info.m_file_animations = render_info["Animations"];
                 }
+                if (render_info.contains("Textures")) {
+                    wizard.m_render_info.m_texture_swap_map = render_info["Textures"];
+                }
             }
             m_wizards.push_back(wizard);
         }

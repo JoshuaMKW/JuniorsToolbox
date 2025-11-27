@@ -75,8 +75,10 @@ namespace Toolbox::Object {
             return *this;
         }
 
+        bool operator==(const std::string &other) const { return m_name == other; }
+
         bool operator==(const NameRef &other) const {
-            return m_name_hash == other.m_name_hash && m_name == other.m_name;
+            return m_name_hash == other.m_name_hash || m_name == other.m_name;
         }
 
         bool operator!=(const NameRef &other) const { return !(*this == other); }

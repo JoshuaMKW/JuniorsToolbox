@@ -544,7 +544,7 @@ namespace Toolbox::Object {
 
         [[nodiscard]] bool isGroupObject() const override { return false; }
 
-        std::string type() const override { return m_type; }
+        std::string type() const override { return std::string(m_type.name()); }
 
         NameRef getNameRef() const override { return m_nameref; }
         void setNameRef(NameRef nameref) override { m_nameref = nameref; }
@@ -720,10 +720,15 @@ namespace Toolbox::Object {
             return obj;
         }
 
+    protected:
+        void HelperUpdateKinojiRender();
+        void HelperUpdateKinopioRender();
+        void HelperUpdateMonteRender();
+
     private:
         UUID64 m_UUID64;
 
-        std::string m_type;
+        NameRef m_type;
         NameRef m_nameref;
         std::vector<RefPtr<MetaMember>> m_members;
         mutable std::vector<u8> m_data;
@@ -732,7 +737,8 @@ namespace Toolbox::Object {
         mutable MetaStruct::CacheMemberT m_member_cache;
 
         std::optional<Transform> m_transform;
-        RefPtr<J3DModelInstance> m_model_instance = {};
+        RefPtr<J3DModelInstance> m_model_instance;
+        RefPtr<J3DModelData> m_model_data;
 
         bool m_is_performing = true;
 
