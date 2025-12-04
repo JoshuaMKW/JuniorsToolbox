@@ -18,3 +18,7 @@
 [submodule "lib/nativefiledialog-extended"]
 	path = lib/nativefiledialog-extended
 	url = https://github.com/btzy/nativefiledialog-extended.git
+[submodule "lib/netpp"]
+	path = lib/netpp
+	url = https://github.com/JoshuaMKW/netpp.git
+	branch = wip
