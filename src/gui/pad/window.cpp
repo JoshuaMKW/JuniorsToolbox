@@ -32,7 +32,6 @@
 
 #include "gui/logging/errors.hpp"
 
-#include <ImGuiFileDialog.h>
 #include <imgui.h>
 #include <stb/stb_image.h>
 

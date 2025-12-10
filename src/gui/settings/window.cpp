@@ -7,8 +7,6 @@
 #include "gui/settings.hpp"
 #include "gui/themes.hpp"
 
-#include <ImGuiFileDialog.h>
-
 namespace Toolbox::UI {
 
     bool KeyBindInput(std::string_view text, bool *is_reading, const KeyBind &keybind,

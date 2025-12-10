@@ -30,8 +30,6 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include <ImGuiFileDialog.h>
-
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 

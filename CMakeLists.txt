@@ -112,8 +112,6 @@ file(GLOB TOOLBOX_SRC
     "src/gui/updater/*.cpp"
     "include/gui/updater/*.hpp"
     "include/io/*.hpp"
-    "lib/ImGuiFileDialog/*.h"
-    "lib/ImGuiFileDialog/*.cpp"
     "lib/librii/*.hpp"
     "lib/librii/*.cpp"
     "lib/imgui_markdown/*.hpp"
@@ -182,7 +180,6 @@ target_include_directories(JuniorsToolbox PRIVATE
     "lib/glm::glm"
     "lib/J3DUltra"
     "lib/libbti"
-    "lib/ImGuiFileDialog"
     "lib/imgui_markdown"
     "lib/nativefiledialog-extended/src/include"
     "lib/netpp")

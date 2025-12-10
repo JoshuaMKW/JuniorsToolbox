@@ -6,9 +6,6 @@
 	path = lib/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
-[submodule "lib/ImGuiFileDialog"]
-	path = lib/ImGuiFileDialog
-	url = https://github.com/aiekick/ImGuiFileDialog.git
 [submodule "lib/glfw"]
 	path = lib/glfw
 	url = https://github.com/HazardousPeach/glfw.git
