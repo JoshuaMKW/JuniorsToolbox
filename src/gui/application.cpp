@@ -788,6 +788,7 @@ namespace Toolbox {
                 std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();
                 bool is_dir = Filesystem::is_directory(selected_path).value_or(false);
                 if (is_dir) {
+                    m_load_path = selected_path.parent_path();
                     if (m_project_manager.loadProjectFolder(selected_path)) {
                         TOOLBOX_INFO_V("Loaded project folder: {}", selected_path.string());
                         RefPtr<ProjectViewWindow> project_window =
@@ -800,6 +801,8 @@ namespace Toolbox {
                             project_window->close();
                         }
                     }
+                } else {
+                    m_load_path                = selected_path.parent_path();
                 }
 
                 // if (selected_path.extension() == ".szs" || selected_path.extension() == ".arc") {

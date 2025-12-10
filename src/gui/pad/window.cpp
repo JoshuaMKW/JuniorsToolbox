@@ -943,8 +943,7 @@ namespace Toolbox::UI {
 
         if (m_is_open_dialog_open) {
             if (!FileDialog::instance()->isAlreadyOpen()) {
-                FileDialog::instance()->openDialog(
-                    window, m_load_path ? m_load_path->string().c_str() : "", true);
+                FileDialog::instance()->openDialog(window, m_load_path ? *m_load_path : "", true);
             }
             m_is_open_dialog_open = false;
         }
@@ -952,8 +951,8 @@ namespace Toolbox::UI {
         if (m_is_save_dialog_open) {
             if (!m_is_save_default_ready) {
                 if (!FileDialog::instance()->isAlreadyOpen()) {
-                    FileDialog::instance()->saveDialog(
-                        window, m_load_path ? m_load_path->string().c_str() : "", "pad", true);
+                    FileDialog::instance()->saveDialog(window, m_load_path ? *m_load_path : "",
+                                                       "pad", true);
                 }
             } else {
                 if (onSaveData(m_load_path)) {
@@ -974,8 +973,8 @@ namespace Toolbox::UI {
                 filter.addFilter("Pad Recording", "pad");
                 filter.addFilter("Pad Script", "txt");
                 FileDialog::instance()->openDialog(window,
-                                                   m_import_path ? m_import_path->string().c_str()
-                                                   : m_load_path ? m_load_path->string().c_str()
+                                                   m_import_path ? *m_import_path
+                                                   : m_load_path ? *m_load_path
                                                                  : "",
                                                    false, filter);
             }
@@ -983,14 +982,13 @@ namespace Toolbox::UI {
         }
 
         if (m_is_export_dialog_open) {
-            IGFD::FileDialogConfig config;
             if (!FileDialog::instance()->isAlreadyOpen()) {
                 FileDialogFilter filter;
                 filter.addFilter("Pad Recording", "pad");
                 filter.addFilter("Pad Script", "txt");
                 FileDialog::instance()->saveDialog(window,
-                                                   m_import_path ? m_import_path->string().c_str()
-                                                   : m_load_path ? m_load_path->string().c_str()
+                                                   m_import_path ? *m_import_path
+                                                   : m_load_path ? *m_load_path
                                                                  : "",
                                                    "", false, filter);
             }
@@ -1324,7 +1322,7 @@ namespace Toolbox::UI {
                 }
             }
 
-            ImGui::Dummy({0,0});  // Newer ImGui wants this to grow parent boundaries
+            ImGui::Dummy({0, 0});  // Newer ImGui wants this to grow parent boundaries
         }
         ImGui::EndChildPanel();
 

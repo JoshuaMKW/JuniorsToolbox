@@ -123,6 +123,7 @@ file(GLOB TOOLBOX_SRC
 add_executable(JuniorsToolbox ${TOOLBOX_SRC})
 
 # set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(NFD_OVERRIDE_RECENT_WITH_DEFAULT ON CACHE BOOL "Force NFD to use default path" FORCE)
 
 include(lib/imgui.cmake)
 add_subdirectory(lib/J3DUltra)
