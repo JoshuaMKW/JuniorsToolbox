@@ -21,10 +21,18 @@ namespace Toolbox {
 
     using namespace Input;
 
+    enum class UpdateFrequency {
+        NEVER,
+        MAJOR,
+        MINOR,
+        PATCH,
+    };
+
     struct AppSettings {
         // General
         bool m_is_custom_obj_allowed  = false;
         bool m_is_file_backup_allowed = false;
+        UpdateFrequency m_update_frequency = UpdateFrequency::MINOR;
 
         // UI
         // TODO: Make family properly considered
@@ -62,7 +70,7 @@ namespace Toolbox {
 
         SettingsManager() = default;
 
-        bool initialize();
+        bool initialize(const fs_path &profile_path);
         bool save();
 
         bool saveProfile(std::string_view name);
@@ -82,7 +90,7 @@ namespace Toolbox {
         }
 
         std::string_view getCurrentProfileName() const { return m_current_profile; }
-        void setCurrentProfile(std::string_view name) { m_current_profile = std::string(name); }
+        void setCurrentProfile(std::string_view name);
 
         std::vector<std::string> getProfileNames() const {
             std::vector<std::string> names;

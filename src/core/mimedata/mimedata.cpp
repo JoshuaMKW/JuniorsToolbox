@@ -18,6 +18,14 @@
 
 #include "strutil.hpp"
 
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+#include <Windows.h>
+#elif defined(TOOLBOX_PLATFORM_LINUX)
+
+#else
+#error "Unsupported OS"
+#endif
+
 namespace Toolbox {
 
     static std::vector<std::string> s_image_formats = {

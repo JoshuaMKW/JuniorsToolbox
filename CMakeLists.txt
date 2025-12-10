@@ -13,7 +13,7 @@ if (POLICY CMP0141)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
-project(JuniorsToolbox)
+project(JuniorsToolbox VERSION 0.0.1)
 
 file(GLOB TOOLBOX_SRC
     "lib/*.hpp"
@@ -109,21 +109,29 @@ file(GLOB TOOLBOX_SRC
     "include/gui/scene/*.hpp"
     "src/gui/status/*.cpp"
     "include/gui/status/*.hpp"
+    "src/gui/updater/*.cpp"
+    "include/gui/updater/*.hpp"
     "include/io/*.hpp"
     "lib/ImGuiFileDialog/*.h"
     "lib/ImGuiFileDialog/*.cpp"
     "lib/librii/*.hpp"
     "lib/librii/*.cpp"
+    "lib/imgui_markdown/*.hpp"
 )
 
 
 add_executable(JuniorsToolbox ${TOOLBOX_SRC})
+
+# set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 include(lib/imgui.cmake)
 add_subdirectory(lib/J3DUltra)
 add_subdirectory(lib/libbti)
 add_subdirectory(lib/glfw)
 add_subdirectory(lib/nativefiledialog-extended)
+add_subdirectory(lib/netpp)
+
+target_link_libraries(JuniorsToolbox PRIVATE netpp)
 
 if(MSVC)
     # target_compile_options(j3dultra PRIVATE /w)
@@ -150,16 +158,17 @@ else()
 #  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw Iconv::Iconv)
 endif()
 
-
-target_link_libraries(JuniorsToolbox PRIVATE nfd)
-
 if (WIN32)
 #  link this library so we can find Nahimic service
 #  this is because it crashes window corner resizing :P
     target_link_libraries(JuniorsToolbox PRIVATE Advapi32 Comctl32)
 endif()
 
-target_compile_definitions(JuniorsToolbox PRIVATE NOMINMAX IMGUI_DEFINE_MATH_OPERATORS GLM_ENABLE_EXPERIMENTAL _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+target_compile_definitions(JuniorsToolbox PRIVATE TOOLBOX_VERSION_TAG=\"v${PROJECT_VERSION}\")
+target_compile_definitions(JuniorsToolbox PRIVATE TOOLBOX_VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
+target_compile_definitions(JuniorsToolbox PRIVATE TOOLBOX_VERSION_MINOR=${PROJECT_VERSION_MINOR})
+target_compile_definitions(JuniorsToolbox PRIVATE TOOLBOX_VERSION_PATCH=${PROJECT_VERSION_PATCH})
+target_compile_definitions(JuniorsToolbox PRIVATE NOMINMAX IMGUI_ENABLE_FREETYPE IMGUI_USE_WCHAR32 IMGUI_DEFINE_MATH_OPERATORS GLM_ENABLE_EXPERIMENTAL _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
 
 target_include_directories(JuniorsToolbox PRIVATE
     "include"
@@ -173,8 +182,11 @@ target_include_directories(JuniorsToolbox PRIVATE
     "lib/J3DUltra"
     "lib/libbti"
     "lib/ImGuiFileDialog"
-    "lib/nativefiledialog-extended/src/include")
-
+    "lib/imgui_markdown"
+    "lib/nativefiledialog-extended/src/include"
+    "lib/netpp")
+    
+target_include_directories(JuniorsToolbox PRIVATE ${OPENSSL_INCLUDE_DIR})
 
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory

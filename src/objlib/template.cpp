@@ -437,6 +437,7 @@ namespace Toolbox::Object {
     static std::mutex s_templates_mutex;
     std::unordered_map<std::string, Template> g_template_cache_base;
     std::unordered_map<std::string, Template> g_template_cache_custom;
+    static fs_path s_cache_path = "./Templates/.cache/";
 
     void Template::threadLoadTemplate(const std::string &type, bool is_custom) {
         Template template_;
@@ -476,7 +477,9 @@ namespace Toolbox::Object {
         return;
     }
 
-    Result<void, FSError> TemplateFactory::initialize() {
+    Result<void, FSError> TemplateFactory::initialize(const fs_path &cache_path) {
+        s_cache_path = cache_path;
+
         auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
             return std::unexpected(cwd_result.error());
@@ -534,14 +537,7 @@ namespace Toolbox::Object {
     }
 
     Result<void, FSError> TemplateFactory::loadFromCacheBlob(bool is_custom) {
-        auto cwd_result = Toolbox::Filesystem::current_path();
-        if (!cwd_result) {
-            return std::unexpected(cwd_result.error());
-        }
-
-        auto &cwd = cwd_result.value();
-        auto blob_path =
-            cwd / (is_custom ? "Templates/.cache/blob_custom.json" : "Templates/.cache/blob.json");
+        auto blob_path = s_cache_path / (is_custom ? "blob_custom.json" : "blob.json");
 
         auto path_result = Toolbox::Filesystem::is_regular_file(blob_path);
         if (!path_result) {
@@ -620,9 +616,7 @@ namespace Toolbox::Object {
             }
         }
 
-        auto &cwd = cwd_result.value();
-        auto blob_path =
-            cwd / (is_custom ? "Templates/.cache/blob_custom.json" : "Templates/.cache/blob.json");
+        auto blob_path = s_cache_path / (is_custom ? "blob_custom.json" : "blob.json");
         if (!std::filesystem::exists(blob_path.parent_path())) {
             auto result = Toolbox::Filesystem::create_directory(blob_path.parent_path());
             if (!result) {

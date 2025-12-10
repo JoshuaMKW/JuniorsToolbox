@@ -723,6 +723,7 @@ namespace Toolbox::Object {
     protected:
         void HelperUpdateKinojiRender();
         void HelperUpdateKinopioRender();
+        void HelperUpdateMareRender();
         void HelperUpdateMonteRender();
 
     private:

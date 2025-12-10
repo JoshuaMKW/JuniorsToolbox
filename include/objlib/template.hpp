@@ -130,7 +130,7 @@ namespace Toolbox::Object {
         using create_t     = Result<create_ret_t, create_err_t>;
 
         // Cached create method
-        static Result<void, FSError> initialize();
+        static Result<void, FSError> initialize(const fs_path &cache_path);
         static create_t create(std::string_view type, bool include_custom);
         static std::vector<create_ret_t> createAll(bool include_custom);
 

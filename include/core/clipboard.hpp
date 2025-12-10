@@ -47,15 +47,15 @@ namespace Toolbox {
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
         friend Result<MimeData, ClipboardError>
-        getContentType(std::unordered_map<std::string, UINT> &mime_to_format,
+        getContentType(std::unordered_map<std::string, unsigned int> &mime_to_format,
                        const std::string &type);
 
     protected:
-        static UINT FormatForMime(std::string_view mimetype);
-        static std::string MimeForFormat(UINT format);
+        static unsigned int FormatForMime(std::string_view mimetype);
+        static std::string MimeForFormat(unsigned int format);
 
     private:
-        mutable std::unordered_map<std::string, UINT> m_mime_to_format;
+        mutable std::unordered_map<std::string, unsigned int> m_mime_to_format;
 #elif defined(TOOLBOX_PLATFORM_LINUX)
         // The reason this isn't private/protected is actually kind of
         // dumb. It needs to be accessed by handleSelectionRequest,
@@ -74,7 +74,8 @@ namespace Toolbox {
     };
 #ifdef TOOLBOX_PLATFORM_WINDOWS
     Result<MimeData, ClipboardError>
-    getContentType(std::unordered_map<std::string, UINT> &mime_to_format, const std::string &type);
+    getContentType(std::unordered_map<std::string, unsigned int> &mime_to_format,
+                   const std::string &type);
 #endif
     void hookClipboardIntoGLFW(void);
 

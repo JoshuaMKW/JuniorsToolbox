@@ -10,13 +10,8 @@
 
 namespace Toolbox {
 
-    bool SettingsManager::initialize() {
-        auto cwd_result = Toolbox::Filesystem::current_path();
-        if (!cwd_result) {
-            return false;
-        }
-
-        m_profile_path = cwd_result.value() / "Profiles";
+    bool SettingsManager::initialize(const fs_path &profile_path) {
+        m_profile_path = profile_path;
 
         bool result = true;
         TRY(loadProfiles()).error([&result](const SerialError &error) {
@@ -24,6 +19,14 @@ namespace Toolbox {
             result = false;
         });
         return result;
+    }
+
+    void SettingsManager::setCurrentProfile(std::string_view name) {
+        m_current_profile = std::string(name);
+
+        std::filesystem::path child_path = m_profile_path / "profile.txt";
+        std::ofstream out_stream(child_path, std::ios::out);
+        out_stream << m_current_profile;
     }
 
     bool SettingsManager::save() {
@@ -66,6 +69,7 @@ namespace Toolbox {
                 // General
                 settings.m_is_custom_obj_allowed  = j["Include Custom Objects"];
                 settings.m_is_file_backup_allowed = j["Backup File On Save"];
+                settings.m_update_frequency       = j["Update Frequency"];
 
                 // Control
                 settings.m_gizmo_translate_mode_keybind =
@@ -104,14 +108,20 @@ namespace Toolbox {
             addProfile(child_path.path().stem().string(), settings);
         }
 
+        m_settings_profiles["Default"] = AppSettings();
+
         std::ifstream in_stream = std::ifstream(m_profile_path / "profile.txt", std::ios::in);
         if (!in_stream) {
-            TOOLBOX_WARN("[SETTINGS] Profile config not found! (profile.txt is missing, it will be "
-                         "generated on settings save)");
+            TOOLBOX_WARN("[SETTINGS] Profile config not found! Initializing it now.");
+            {
+                std::filesystem::path child_path = m_profile_path / "profile.txt";
+                std::ofstream out_stream(child_path, std::ios::out);
+                out_stream << "Default";
+            }
             return {};
         }
 
-        in_stream >> m_current_profile;
+        std::getline(in_stream, m_current_profile);
 
         return {};
     }
@@ -191,6 +201,7 @@ namespace Toolbox {
             // General
             j["Include Custom Objects"] = profile.m_is_custom_obj_allowed;
             j["Backup File On Save"]    = profile.m_is_file_backup_allowed;
+            j["Update Frequency"]       = profile.m_update_frequency;
 
             // Control
             j["Gizmo Translate Mode"] = profile.m_gizmo_translate_mode_keybind.toString();

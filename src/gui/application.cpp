@@ -1,5 +1,9 @@
 #include <IconsForkAwesome.h>
 
+#include <netpp/http/router.h>
+#include <netpp/netpp.h>
+#include <netpp/tls/security.h>
+
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 
 #include <iostream>
@@ -40,6 +44,7 @@
 #include "gui/status/modal_failure.hpp"
 #include "gui/status/modal_success.hpp"
 #include "gui/themes.hpp"
+#include "gui/updater/modal.hpp"
 #include "gui/util.hpp"
 #include "platform/service.hpp"
 #include "scene/layout.hpp"
@@ -85,6 +90,26 @@ namespace Toolbox {
             return;
         }
 
+        if (!netpp::sockets_initialize()) {
+            setExitCode(EXIT_CODE_FAILED_SETUP);
+            stop();
+            return;
+        }
+
+        // Initialize the AppData directory
+        const fs_path &app_data_path = GUIApplication::getAppDataPath();
+        if (!Filesystem::exists(app_data_path).value_or(false)) {
+            if (!Filesystem::create_directories(app_data_path).value_or(false)) {
+                std::string err =
+                    TOOLBOX_FORMAT_FN("[INIT] Failed to create application data directory at {}",
+                                      app_data_path.string());
+                fprintf(stderr, err.c_str());
+                setExitCode(EXIT_CODE_FAILED_SETUP);
+                stop();
+                return;
+            }
+        }
+
         // TODO: Load application settings
 
         // Initialize the resource manager
@@ -92,6 +117,7 @@ namespace Toolbox {
             fs_path cwd = Filesystem::current_path().value();
 
             m_resource_manager.includeResourcePath(cwd / "Fonts", true);
+            m_resource_manager.includeResourcePath(cwd / "Fonts/Markdown", true);
             m_resource_manager.includeResourcePath(cwd / "Images", true);
             m_resource_manager.includeResourcePath(cwd / "Images", true);
             m_resource_manager.includeResourcePath(cwd / "Images/Icons", true);
@@ -112,7 +138,7 @@ namespace Toolbox {
         glfwWindowHint(GLFW_DEPTH_BITS, 32);
         glfwWindowHint(GLFW_SAMPLES, 4);
 
-        m_render_window = glfwCreateWindow(1280, 720, "Junior's Toolbox", nullptr, nullptr);
+        m_render_window = glfwCreateWindow(1280, 720, "Junior's Toolbox " TOOLBOX_VERSION_TAG, nullptr, nullptr);
         if (m_render_window == nullptr) {
             glfwTerminate();
             setExitCode(EXIT_CODE_FAILED_SETUP);
@@ -179,7 +205,7 @@ namespace Toolbox {
         m_drag_drop_source_delegate = DragDropDelegateFactory::createDragDropSourceDelegate();
         m_drag_drop_target_delegate = DragDropDelegateFactory::createDragDropTargetDelegate();
 
-        if (!m_settings_manager.initialize()) {
+        if (!m_settings_manager.initialize(app_data_path / "Profiles")) {
             TOOLBOX_ERROR("[INIT] Failed to initialize settings manager!");
         }
 
@@ -193,7 +219,8 @@ namespace Toolbox {
 
         TemplateFactory::setCacheMode(
             m_settings_manager.getCurrentProfile().m_is_template_cache_allowed);
-        TRY(TemplateFactory::initialize()).error([](const FSError &error) { LogError(error); });
+        TRY(TemplateFactory::initialize(app_data_path / ".cache/Templates/"))
+            .error([](const FSError &error) { LogError(error); });
 
         TRY(m_theme_manager.initialize()).error([](const FSError &error) { LogError(error); });
 
@@ -208,6 +235,13 @@ namespace Toolbox {
 
         determineEnvironmentConflicts();
         hookClipboardIntoGLFW();
+
+        if (settings.m_update_frequency != UpdateFrequency::NEVER) {
+            RefPtr<UpdaterModal> updater_win = createWindow<UpdaterModal>("Update Checker");
+            if (updater_win) {
+                updater_win->hide();
+            }
+        }
     }
 
     void GUIApplication::onUpdate(TimeStep delta_time) {
@@ -270,6 +304,8 @@ namespace Toolbox {
         m_task_communicator.tKill(true);
 
         DragDropManager::instance().shutdown();
+
+        netpp::sockets_deinitialize();
     }
 
     void GUIApplication::onEvent(RefPtr<BaseEvent> ev) {
@@ -331,6 +367,37 @@ namespace Toolbox {
                      [&title](RefPtr<ImWindow> window) { return window->title() == title; });
         return result;
     }
+
+#ifdef _WIN32
+    const fs_path &GUIApplication::getAppDataPath() const {
+        static fs_path app_data_path = []() -> fs_path {
+            char *appdata = nullptr;
+            size_t len    = 0;
+            _dupenv_s(&appdata, &len, "APPDATA");
+            if (appdata) {
+                fs_path path = fs_path(appdata) / "JuniorsToolbox";
+                free(appdata);
+                return path;
+            } else {
+                return fs_path();
+            }
+        }();
+        return app_data_path;
+    }
+#else
+    const fs_path &GUIApplication::getAppDataPath() const {
+        static fs_path app_data_path = []() -> fs_path {
+            char *home = std::getenv("HOME");
+            if (home) {
+                fs_path path = fs_path(home) / ".juniorstoolbox";
+                return path;
+            } else {
+                return fs_path();
+            }
+        }();
+        return app_data_path;
+    }
+#endif
 
     RefPtr<ImWindow> GUIApplication::getImWindowFromPlatformWindow(Platform::LowWindow low_window) {
         for (RefPtr<ImWindow> window : m_windows) {
@@ -460,17 +527,15 @@ namespace Toolbox {
             CoreApplication::onUpdate(delta_time);
             m_windows_processing = false;
 
-            for (size_t i = 0; i < m_windows_to_add.size(); ++i) {
-                RefPtr<ImWindow> window = m_windows_to_add.front();
-                m_windows_to_add.pop();
+            for (auto it = m_windows_to_gc.begin(); it != m_windows_to_gc.end();) {
+                const std::pair<GCTimeInfo, RefPtr<ImWindow>> &window_gc_data = m_windows_to_gc.front();
+                if (!window_gc_data.first.isReadyToGC()) {
+                    ++it;
+                    continue;
+                }
 
-                addLayer(window);
-                m_windows.push_back(window);
-            }
-
-            for (size_t i = 0; i < m_windows_to_gc.size(); ++i) {
-                RefPtr<ImWindow> window = m_windows_to_gc.front();
-                m_windows_to_gc.pop();
+                RefPtr<ImWindow> window = window_gc_data.second;
+                it = m_windows_to_gc.erase(it);
 
                 removeLayer(window);
                 std::erase(m_windows, window);
@@ -509,6 +574,14 @@ namespace Toolbox {
             }
 
             gcClosedWindows();
+
+            while (!m_windows_to_add.empty()) {
+                RefPtr<ImWindow> window = m_windows_to_add.front();
+                m_windows_to_add.erase(m_windows_to_add.begin());
+
+                addLayer(window);
+                m_windows.push_back(window);
+            }
         }
 
         // Render drag icon
@@ -729,16 +802,16 @@ namespace Toolbox {
                     }
                 }
 
-                //if (selected_path.extension() == ".szs" || selected_path.extension() == ".arc") {
-                //    RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
-                //    if (!window->onLoadData(selected_path)) {
-                //        GUIApplication::instance().showErrorModal(
-                //            nullptr, "Application",
-                //            "Failed to open the file as a scene!\n\n - (Check application "
-                //            "log for details)");
-                //        window->close();
-                //    }
-                //}
+                // if (selected_path.extension() == ".szs" || selected_path.extension() == ".arc") {
+                //     RefPtr<SceneWindow> window = createWindow<SceneWindow>("Scene Editor");
+                //     if (!window->onLoadData(selected_path)) {
+                //         GUIApplication::instance().showErrorModal(
+                //             nullptr, "Application",
+                //             "Failed to open the file as a scene!\n\n - (Check application "
+                //             "log for details)");
+                //         window->close();
+                //     }
+                // }
             }
         }
 
@@ -821,6 +894,12 @@ namespace Toolbox {
             }
             ++it;
         }
+    }
+
+    bool GUIApplication::GCTimeInfo::isReadyToGC() const {
+        TimePoint now = std::chrono::high_resolution_clock::now();
+        TimeStep dur  = TimeStep(m_closed_time, now);
+        return dur.seconds() >= m_seconds_to_close;
     }
 
     void FileDialog::openDialog(ImGuiWindow *parent_window,

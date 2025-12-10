@@ -60,21 +60,12 @@ namespace Toolbox {
         void onEvent(RefPtr<BaseEvent> ev) override;
 
         void addWindow(RefPtr<ImWindow> window) {
-            if (!m_windows_processing) {
-                addLayer(window);
-                m_windows.push_back(window);
-            } else {
-                m_windows_to_add.push(window);
-            }
+            m_windows_to_add.emplace_back(window);
         }
 
         void removeWindow(RefPtr<ImWindow> window) {
-            if (!m_windows_processing) {
-                removeLayer(window);
-                std::erase(m_windows, window);
-            } else {
-                m_windows_to_gc.push(window);
-            }
+            m_windows_to_gc.emplace_back(
+                    GCTimeInfo{std::chrono::high_resolution_clock::now(), 0.5f}, window);
         }
 
         const std::vector<RefPtr<ImWindow>> &getWindows() const & { return m_windows; }
@@ -116,6 +107,8 @@ namespace Toolbox {
             addWindow(window);
             return window;
         }
+
+        const fs_path &getAppDataPath() const;
 
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> &getSceneObjectClipboard() {
             return m_hierarchy_clipboard;
@@ -202,8 +195,17 @@ namespace Toolbox {
 
         GLFWwindow *m_render_window;
         std::vector<RefPtr<ImWindow>> m_windows;
-        std::queue<RefPtr<ImWindow>> m_windows_to_gc;
-        std::queue<RefPtr<ImWindow>> m_windows_to_add;
+
+        struct GCTimeInfo {
+            TimePoint m_closed_time;
+            float m_seconds_to_close;
+
+            bool isReadyToGC() const;
+        };
+
+        std::vector<std::pair<GCTimeInfo, RefPtr<ImWindow>>> m_windows_to_gc;
+        std::vector<RefPtr<ImWindow>> m_windows_to_add;
+
         bool m_windows_processing = false;
 
         ScopePtr<IDragDropTargetDelegate> m_drag_drop_target_delegate;

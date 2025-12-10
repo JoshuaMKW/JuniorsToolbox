@@ -32,6 +32,9 @@ namespace Toolbox::UI {
         virtual void onRenderMenuBar() {}
         virtual void onRenderBody(TimeStep delta_time) {}
 
+        virtual bool onBeginWindow(const std::string &window_name, bool *is_open, ImGuiWindowFlags flags);
+        virtual void onEndWindow(bool did_render);
+
     public:
         explicit ImWindow(const std::string &name) : ImProcessLayer(name) {}
         ImWindow(const std::string &name, std::optional<ImVec2> default_size)
@@ -50,9 +53,9 @@ namespace Toolbox::UI {
               m_max_size(max_size), m_window_class(window_class) {}
         ImWindow(const std::string &name, std::optional<ImVec2> default_size,
                  std::optional<ImVec2> min_size, std::optional<ImVec2> max_size,
-                 ImGuiWindowClass window_class, ImGuiWindowFlags flags)
+                 ImGuiWindowClass window_class, ImGuiWindowFlags flags_)
             : ImProcessLayer(name), m_default_size(default_size), m_min_size(min_size),
-              m_max_size(max_size), m_window_class(window_class), m_flags(flags) {}
+              m_max_size(max_size), m_window_class(window_class), m_flags(flags_) {}
 
         virtual ~ImWindow() = default;
 

@@ -146,7 +146,7 @@
         },
         "Rendering": {
           "Default": {
-            "Model": "maremb/maremb.bmd",
+            "Model": "marem/marem.bmd",
             "Textures": { "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti" },
             "Animations": [
               "maremb/maremb_appear.bck",

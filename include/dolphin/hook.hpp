@@ -13,11 +13,6 @@
 
 #include "unique.hpp"
 
-#ifdef TOOLBOX_PLATFORM_WINDOWS
-#include <Windows.h>
-#elif defined(TOOLBOX_PLATFORM_LINUX)
-#endif
-
 using namespace Toolbox;
 
 namespace Toolbox::Dolphin {

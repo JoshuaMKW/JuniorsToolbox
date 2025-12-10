@@ -2,7 +2,8 @@
   "name": "juniorstoolbox",
   "version-string": "juniorstoolbox-win",
   "dependencies": [
-    "icu"
+    "icu",
+    "freetype"
   ],
   "builtin-baseline": "2c401863dd54a640aeb26ed736c55489c079323b"
 }

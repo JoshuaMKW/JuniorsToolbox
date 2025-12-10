@@ -314,7 +314,7 @@ namespace Toolbox::UI {
 
                 if (ImGui::BeginPopupModal("Delete?", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
                     std::string message = "";
-
+                     
                     if (selection.size() == 1) {
                         message = TOOLBOX_FORMAT_FN("Are you sure you want to delete {}?",
                                                     m_view_proxy->getDisplayText(selection[0]));

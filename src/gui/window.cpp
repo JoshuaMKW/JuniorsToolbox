@@ -28,6 +28,13 @@ namespace Toolbox::UI {
         }
     }
 
+    bool ImWindow::onBeginWindow(const std::string &window_name, bool *is_open,
+                                 ImGuiWindowFlags flags) {
+        return ImGui::Begin(window_name.c_str(), is_open, flags);
+    }
+
+    void ImWindow::onEndWindow(bool did_render) { ImGui::End(); }
+
     void ImWindow::setSize(const ImVec2 &size) noexcept {
         if (size == getSize()) {
             return;
@@ -151,12 +158,16 @@ namespace Toolbox::UI {
         }
 
         bool is_focused = isFocused();
-        bool is_hidden  = window ? (window->Hidden || window->Collapsed) : false;
+        bool is_hidden  = isHidden();
         bool is_open    = isOpen();
 
         bool was_focused = is_focused;
-        bool was_hidden  = isHidden();
+        bool was_hidden  = is_hidden;
         bool was_open    = is_open;
+
+        if (is_hidden) {
+            return;
+        }
 
         if (is_open) {
             m_prev_pos  = getPos();
@@ -183,7 +194,12 @@ namespace Toolbox::UI {
             }
 
             // Render the window
-            if (ImGui::Begin(window_name.c_str(), &is_open, flags_)) {
+            bool did_render = onBeginWindow(window_name, &is_open, flags_);
+            if (window) {
+                is_hidden = window->Hidden;
+            }
+
+            if (did_render) {
                 ImGuiWindow *im_window = ImGui::GetCurrentWindow();
                 if (im_window) {
                     m_im_order = im_window->BeginOrderWithinContext;
@@ -226,7 +242,7 @@ namespace Toolbox::UI {
             } else {
                 m_viewport = nullptr;
             }
-            ImGui::End();
+            onEndWindow(did_render);
         }
 
         // Establish window constraints

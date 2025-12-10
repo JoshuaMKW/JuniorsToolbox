@@ -24,4 +24,4 @@
 	branch = main
 [submodule "lib/imgui_markdown"]
 	path = lib/imgui_markdown
-	url = https://github.com/enkisoftware/imgui_markdown.git
+	url = https://github.com/JoshuaMKW/imgui_markdown.git

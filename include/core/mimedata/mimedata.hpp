@@ -12,14 +12,6 @@
 
 #include "image/imagedata.hpp"
 
-#ifdef TOOLBOX_PLATFORM_WINDOWS
-#include <Windows.h>
-#elif defined(TOOLBOX_PLATFORM_LINUX)
-
-#else
-#error "Unsupported OS"
-#endif
-
 namespace Toolbox {
 
     class MimeData {

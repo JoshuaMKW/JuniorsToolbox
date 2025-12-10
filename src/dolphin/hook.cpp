@@ -21,6 +21,7 @@ namespace Toolbox::Dolphin {
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <tlhelp32.h>
+#include <Windows.h>
 
     static Result<Platform::ProcessID, BaseError> FindProcessPID(std::string_view process_name) {
         std::string process_file = std::string(process_name) + ".exe";

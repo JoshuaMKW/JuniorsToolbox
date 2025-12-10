@@ -195,6 +195,26 @@ namespace Toolbox::UI {
         AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
         ImGui::Checkbox("Include BetterSMS Objects", &settings.m_is_custom_obj_allowed);
         ImGui::Checkbox("Enable File Backup on Save", &settings.m_is_file_backup_allowed);
+
+        static std::unordered_map<UpdateFrequency, std::string> s_values_map = {
+            {UpdateFrequency::NEVER, "Never Update"},
+            {UpdateFrequency::MAJOR, "Major Updates"},
+            {UpdateFrequency::MINOR, "Minor Updates"},
+            {UpdateFrequency::PATCH, "Patch Updates"},
+        };
+
+        ImGui::SetNextItemWidth(200.0f);
+
+        if (ImGui::BeginCombo("Check For Updates", s_values_map[settings.m_update_frequency].c_str())) {
+            for (const auto &[freq, val] : s_values_map) {
+                bool selected = freq == settings.m_update_frequency;
+                if (ImGui::Selectable(val.c_str(), selected,
+                                      ImGuiSelectableFlags_AllowDoubleClick)) {
+                    settings.m_update_frequency = freq;
+                }
+            }
+            ImGui::EndCombo();
+        }
     }
 
     void SettingsWindow::renderSettingsControl(TimeStep delta_time) {

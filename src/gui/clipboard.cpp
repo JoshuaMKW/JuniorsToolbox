@@ -27,7 +27,7 @@ namespace Toolbox {
         }
 
         std::vector<std::string> types;
-        UINT format = 0;
+        unsigned int format = 0;
         while ((format = EnumClipboardFormats(format)) != CF_NULL) {
             std::string the_format = "";
 
@@ -55,12 +55,13 @@ namespace Toolbox {
     }
 
     Result<MimeData, ClipboardError>
-    getContentType(std::unordered_map<std::string, UINT> &mime_to_format, const std::string &type) {
+    getContentType(std::unordered_map<std::string, unsigned int> &mime_to_format,
+                   const std::string &type) {
         if (!OpenClipboard(nullptr)) {
             return make_clipboard_error<MimeData>("Failed to open the clipboard!");
         }
 
-        UINT format = CF_NULL;
+        unsigned int format = CF_NULL;
         if (mime_to_format.find(type) == mime_to_format.end()) {
             format = SystemClipboard::FormatForMime(type);
             if (format == CF_NULL) {
@@ -103,12 +104,12 @@ namespace Toolbox {
         }
 
         if (format == CF_HDROP) {
-            HDROP hdrop    = static_cast<HDROP>(data_handle);
-            UINT num_files = DragQueryFile(hdrop, 0xFFFFFFFF, nullptr, 0);
+            HDROP hdrop            = static_cast<HDROP>(data_handle);
+            unsigned int num_files = DragQueryFile(hdrop, 0xFFFFFFFF, nullptr, 0);
             std::vector<std::string> uri_list;
             uri_list.reserve(num_files);
-            for (UINT i = 0; i < num_files; ++i) {
-                UINT size = DragQueryFile(hdrop, i, nullptr, 0);
+            for (unsigned int i = 0; i < num_files; ++i) {
+                unsigned int size = DragQueryFile(hdrop, i, nullptr, 0);
                 std::string file(size, '\0');
                 DragQueryFile(hdrop, i, file.data(), size + 1);
                 uri_list.push_back(file);
@@ -284,7 +285,7 @@ namespace Toolbox {
 
         Buffer data_buf = std::move(result.value());
 
-        UINT format = CF_NULL;
+        unsigned int format = CF_NULL;
         if (m_mime_to_format.find(type) == m_mime_to_format.end()) {
             format = SystemClipboard::FormatForMime(type);
             if (format == CF_NULL) {
@@ -336,7 +337,7 @@ namespace Toolbox {
             path_list_ptr[data_buf.size() + 1] = L'\0';
         } else if (format == CF_TEXT) {
             char *path_list_ptr = (char *)data_buffer;
-            //std::mbstowcs(path_list_ptr, data_buf.buf<char>(), data_buf.size());
+            // std::mbstowcs(path_list_ptr, data_buf.buf<char>(), data_buf.size());
             std::strncpy(path_list_ptr, data_buf.buf<char>(), data_buf.size());
             path_list_ptr[data_buf.size()] = '\0';
         } else {
@@ -356,7 +357,7 @@ namespace Toolbox {
         return Result<void, ClipboardError>();
     }
 
-    UINT SystemClipboard::FormatForMime(std::string_view mimetype) {
+    unsigned int SystemClipboard::FormatForMime(std::string_view mimetype) {
         if (mimetype == "text/plain") {
             return CF_TEXT;
         }
@@ -392,7 +393,7 @@ namespace Toolbox {
         return CF_NULL;
     }
 
-    std::string SystemClipboard::MimeForFormat(UINT format) {
+    std::string SystemClipboard::MimeForFormat(unsigned int format) {
         switch (format) {
         case CF_TEXT:
             return "text/plain";

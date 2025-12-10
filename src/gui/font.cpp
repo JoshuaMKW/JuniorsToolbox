@@ -17,6 +17,9 @@ namespace Toolbox::UI {
         ImGuiIO &io = ImGui::GetIO();
 
         for (auto &child_path : std::filesystem::directory_iterator{font_path}) {
+            if (!Filesystem::is_regular_file(child_path).value_or(false)) {
+                continue;
+            }
             if (child_path.path().stem().string() == "forkawesome") {
                 continue;
             }
@@ -71,6 +74,10 @@ namespace Toolbox::UI {
 
     bool FontManager::addFont(const std::filesystem::path &font_path,
                               const ImFontConfig *font_cfg_template, const ImWchar *glyph_ranges) {
+        if (!Filesystem::is_regular_file(font_path).value_or(false)) {
+            return false;
+        }
+
         auto cwd_result = Toolbox::Filesystem::current_path();
         if (!cwd_result) {
             return false;

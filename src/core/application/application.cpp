@@ -65,6 +65,9 @@ namespace Toolbox {
     void CoreApplication::onEvent(RefPtr<BaseEvent> ev) {
         for (auto &layer : m_layers) {
             layer->onEvent(ev);
+            if (ev->isHandled()) {
+                break;
+            }
         }
         if (!ev->isHandled()) {
             TOOLBOX_DEBUG_LOG_V("[EVENT] Unhandled event of TypeID {}", ev->getType());
