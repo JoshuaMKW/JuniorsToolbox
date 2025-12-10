@@ -115,7 +115,7 @@ namespace Toolbox::UI {
 
         m_http_github_client = make_referable<netpp::TCP_Client>(m_tls_factory.get());
         if (!m_http_github_client->start()) {
-            TOOLBOX_ERROR("[UPDATER] Failed to start HTTP client for updater!");
+            TOOLBOX_ERROR("[UPDATER] Failed to start HTTPS client for updater!");
             m_is_valid = false;
             close();
             return;
@@ -195,6 +195,7 @@ namespace Toolbox::UI {
 
                 if (m_release_infos.empty()) {
                     close();
+                    return nullptr;
                 }
 
                 open();
@@ -206,7 +207,7 @@ namespace Toolbox::UI {
             netpp::HTTP_Request::create(netpp::EHTTP_RequestMethod::E_REQUEST_GET);
 
         m_http_releases_request->set_version("1.1");
-        m_http_releases_request->set_path("/repos/JoshuaMKW/GeckoLoader/releases");
+        m_http_releases_request->set_path("/repos/JoshuaMKW/JuniorsToolbox/releases");
         m_http_releases_request->set_header("Host", CLIENT_HOST);
         m_http_releases_request->set_header("Connection", "keep-alive");
         m_http_releases_request->set_header("Accept", "application/vnd.github+json");
@@ -225,7 +226,7 @@ namespace Toolbox::UI {
 
     void UpdaterModal::onDetach() {
         if (m_http_github_client->is_running()) {
-            TOOLBOX_INFO("[UPDATER] Stopping HTTP client for updater...");
+            TOOLBOX_INFO("[UPDATER] Stopping HTTPS client for updater...");
             m_http_github_client->stop();
         }
     }

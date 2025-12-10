@@ -846,7 +846,7 @@ namespace Toolbox {
                 }
                 std::filesystem::path pad_path =
                     folder_path /
-                    std::format("tutorial{}{}.bin",
+                    std::format("tutorial{}{}.pad",
                                 static_cast<char>(std::tolower(node.m_node_name.name().back())),
                                 static_cast<char>(std::tolower(node.m_infos[i].m_next_link)));
                 std::ifstream pad_file(pad_path, std::ios::binary);
@@ -864,7 +864,7 @@ namespace Toolbox {
                 PadDataLinkInfo link_info;
                 link_info.m_data      = std::move(pad_data);
                 link_info.m_from_link = node.m_node_name.name().back();
-                link_info.m_to_link   = node.m_infos[1].m_next_link;
+                link_info.m_to_link   = node.m_infos[i].m_next_link;
                 pad_datas.push_back(std::move(link_info));
             }
         }

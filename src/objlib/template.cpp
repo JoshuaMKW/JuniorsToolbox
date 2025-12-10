@@ -241,14 +241,91 @@ namespace Toolbox::Object {
         return MetaMember(name, structs, make_referable<MetaStruct>(*struct_));
     }
 
-    std::optional<MetaMember> Template::loadMemberPrimitive(std::string_view name,
-                                                            std::string_view type,
-                                                            MetaMember::size_type array_size) {
+    static void setMinMaxForValue(MetaValue &value,
+                                  const std::variant<s64, u64, float, double> &var_min,
+                                  const std::variant<s64, u64, float, double> &var_max) {
+        switch (value.type()) {
+        case MetaType::S8:
+            if (std::holds_alternative<s64>(var_min)) {
+                value.setMin(static_cast<s8>(std::get<s64>(var_min)));
+            }
+            if (std::holds_alternative<s64>(var_max)) {
+                value.setMax(static_cast<s8>(std::get<s64>(var_max)));
+            }
+            break;
+        case MetaType::U8:
+            if (std::holds_alternative<u64>(var_min)) {
+                value.setMin(static_cast<u8>(std::get<u64>(var_min)));
+            }
+            if (std::holds_alternative<u64>(var_max)) {
+                value.setMax(static_cast<u8>(std::get<u64>(var_max)));
+            }
+            break;
+        case MetaType::S16:
+            if (std::holds_alternative<s64>(var_min)) {
+                value.setMin(static_cast<s16>(std::get<s64>(var_min)));
+            }
+            if (std::holds_alternative<s64>(var_max)) {
+                value.setMax(static_cast<s16>(std::get<s64>(var_max)));
+            }
+            break;
+        case MetaType::U16:
+            if (std::holds_alternative<u64>(var_min)) {
+                value.setMin(static_cast<u16>(std::get<u64>(var_min)));
+            }
+            if (std::holds_alternative<u64>(var_max)) {
+                value.setMax(static_cast<u16>(std::get<u64>(var_max)));
+            }
+            break;
+        case MetaType::S32:
+            if (std::holds_alternative<s64>(var_min)) {
+                value.setMin(static_cast<s32>(std::get<s64>(var_min)));
+            }
+            if (std::holds_alternative<s64>(var_max)) {
+                value.setMax(static_cast<s32>(std::get<s64>(var_max)));
+            }
+            break;
+        case MetaType::U32:
+            if (std::holds_alternative<u64>(var_min)) {
+                value.setMin(static_cast<u32>(std::get<u64>(var_min)));
+            }
+            if (std::holds_alternative<u64>(var_max)) {
+                value.setMax(static_cast<u32>(std::get<u64>(var_max)));
+            }
+            break;
+        case MetaType::F32:
+            if (std::holds_alternative<float>(var_min)) {
+                value.setMin(std::get<float>(var_min));
+            }
+            if (std::holds_alternative<float>(var_max)) {
+                value.setMax(std::get<float>(var_max));
+            }
+            break;
+        case MetaType::F64:
+            if (std::holds_alternative<double>(var_min)) {
+                value.setMin(std::get<double>(var_min));
+            }
+            if (std::holds_alternative<double>(var_max)) {
+                value.setMax(std::get<double>(var_max));
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    std::optional<MetaMember>
+    Template::loadMemberPrimitive(std::string_view name, std::string_view type,
+                                  MetaMember::size_type array_size,
+                                  const std::variant<s64, u64, float, double> &var_min,
+                                  const std::variant<s64, u64, float, double> &var_max) {
         auto vtype = magic_enum::enum_cast<MetaType>(type);
         if (!vtype)
             return {};
 
         std::vector<MetaValue> values;
+        RefPtr<MetaValue> default_val = make_referable<MetaValue>(vtype.value());
+        setMinMaxForValue(*default_val, var_min, var_max);
 
         size_t asize = 1;
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
@@ -262,16 +339,17 @@ namespace Toolbox::Object {
 
         for (size_t i = 0; i < asize; ++i) {
             values.emplace_back(vtype.value());
+            setMinMaxForValue(values.back(), var_min, var_max);
         }
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
             return MetaMember(name, values, std::get<MetaMember::ReferenceInfo>(array_size),
-                              make_referable<MetaValue>(vtype.value()));
+                              default_val);
         }
-        return MetaMember(name, values, make_referable<MetaValue>(vtype.value()));
+
+        return MetaMember(name, values, default_val);
     }
 
     void Template::loadMembers(const json_t &members, std::vector<MetaMember> &out) {
-
         for (const auto &item : members.items()) {
             auto member_name = item.key();
             auto member_info = item.value();
@@ -280,6 +358,8 @@ namespace Toolbox::Object {
             if (s_alias_map.contains(member_type)) {
                 member_type = s_alias_map.at(member_type);
             }
+
+            // TODO: Fetch min/max if they exist in JSON and correctly translate to metavalues.
 
             MetaMember::size_type member_size;
 
@@ -329,7 +409,57 @@ namespace Toolbox::Object {
                     }
                 }
             } else {
-                auto member = loadMemberPrimitive(member_name, member_type, member_size);
+                std::variant<s64, u64, float, double> var_min;
+                std::variant<s64, u64, float, double> var_max;
+
+                if (member_info.contains("Min")) {
+                    switch (member_type_enum.value()) {
+                    case MetaType::S8:
+                    case MetaType::S16:
+                    case MetaType::S32:
+                        var_min = member_info["Min"].get<s64>();
+                        break;
+                    case MetaType::U8:
+                    case MetaType::U16:
+                    case MetaType::U32:
+                        var_min = member_info["Min"].get<u64>();
+                        break;
+                    case MetaType::F32:
+                        var_min = member_info["Min"].get<float>();
+                        break;
+                    case MetaType::F64:
+                        var_min = member_info["Min"].get<double>();
+                        break;
+                    default:
+                        break;
+                    }
+                }
+
+                if (member_info.contains("Max")) {
+                    switch (member_type_enum.value()) {
+                    case MetaType::S8:
+                    case MetaType::S16:
+                    case MetaType::S32:
+                        var_max = member_info["Max"].get<s64>();
+                        break;
+                    case MetaType::U8:
+                    case MetaType::U16:
+                    case MetaType::U32:
+                        var_max = member_info["Max"].get<u64>();
+                        break;
+                    case MetaType::F32:
+                        var_max = member_info["Max"].get<float>();
+                        break;
+                    case MetaType::F64:
+                        var_max = member_info["Max"].get<double>();
+                        break;
+                    default:
+                        break;
+                    }
+                }
+
+                auto member =
+                    loadMemberPrimitive(member_name, member_type, member_size, var_min, var_max);
                 if (member) {
                     out.push_back(member.value());
                 }
@@ -410,6 +540,7 @@ namespace Toolbox::Object {
                 auto member_it = std::find_if(
                     default_wizard.m_init_members.begin(), default_wizard.m_init_members.end(),
                     [&](const auto &e) { return e.name() == member_name; });
+
                 if (member_it != default_wizard.m_init_members.end()) {
                     MetaMember member = loadWizardMember(member_info, *member_it);
                     wizard.m_init_members.emplace_back(member);
@@ -546,13 +677,13 @@ namespace Toolbox::Object {
 
         if (!path_result.value()) {
             return make_fs_error<void>(std::error_code(),
-                                       {"(TemplateFactory) blob.json not found!"});
+                                       {"[TEMPLATE_FACTORY] blob.json not found!"});
         }
 
         std::ifstream file(blob_path, std::ios::in);
         if (!file.is_open()) {
             return make_fs_error<void>(std::error_code(),
-                                       {"(TemplateFactory) failed to open cache blob!"});
+                                       {"[TEMPLATE_FACTORY] Failed to open cache blob!"});
         }
 
         Deserializer in(file.rdbuf());
@@ -591,7 +722,7 @@ namespace Toolbox::Object {
 
                         std::ifstream file(path, std::ios::in);
                         if (!file.is_open()) {
-                            TOOLBOX_ERROR_V("(TemplateFactory) failed to open template json {}",
+                            TOOLBOX_ERROR_V("[TEMPLATE_FACTORY] Failed to open template json {}",
                                             path.filename().string());
                             return;
                         }
@@ -618,9 +749,12 @@ namespace Toolbox::Object {
 
         auto blob_path = s_cache_path / (is_custom ? "blob_custom.json" : "blob.json");
         if (!std::filesystem::exists(blob_path.parent_path())) {
-            auto result = Toolbox::Filesystem::create_directory(blob_path.parent_path());
+            auto result = Toolbox::Filesystem::create_directories(blob_path.parent_path());
             if (!result) {
                 return std::unexpected(result.error());
+            }
+            if (!result.value()) {
+                TOOLBOX_ERROR("[TEMPLATE_FACTORY] Failed to create cache directory!");
             }
         }
         Toolbox::Filesystem::is_directory(blob_path.parent_path())
@@ -634,7 +768,7 @@ namespace Toolbox::Object {
                 std::ofstream file(blob_path, std::ios::out);
                 if (!file.is_open()) {
                     return make_fs_error<bool>(std::error_code(),
-                                               {"(TemplateFactory) failed to open cache blob!"});
+                                               {"[TEMPLATE_FACTORY] Failed to open cache blob!"});
                 }
 
                 Serializer out(file.rdbuf());

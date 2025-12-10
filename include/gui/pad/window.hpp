@@ -131,7 +131,6 @@ namespace Toolbox::UI {
         std::optional<std::filesystem::path> m_file_path   = std::nullopt;
         std::optional<std::filesystem::path> m_load_path   = std::nullopt;
         std::optional<std::filesystem::path> m_import_path = std::nullopt;
-        std::optional<std::filesystem::path> m_export_path = std::nullopt;
 
         bool m_is_recording_pad_data     = false;
 

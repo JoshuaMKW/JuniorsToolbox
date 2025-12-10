@@ -61,13 +61,13 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as bool",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render struct \"{}\" as bool",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as bool",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render enum \"{}\" as bool",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_bools.size() != m_member->arraysize()) {
@@ -112,58 +112,84 @@ namespace Toolbox::UI {
 
     void NumberProperty::init() {
         m_member->syncArray();
-        m_numbers.resize(m_member->arraysize());
-        m_array_open.resize(m_member->arraysize(), true);
+
+        u32 member_array_size = m_member->arraysize();
+
+        m_numbers.resize(member_array_size);
+        m_array_open.resize(member_array_size, true);
+
+        if (member_array_size == 0) {
+            return;
+        }
 
         switch (Object::getMetaType(m_member).value()) {
         case Object::MetaType::S8:
             for (size_t i = 0; i < m_numbers.size(); ++i) {
                 m_numbers.at(i) = Object::getMetaValue<s8>(m_member, i).value();
             }
-            m_min = -128;
-            m_max = 127;
+            m_min =
+                Object::getMetaValueMin<s8>(m_member, 0).value_or(std::numeric_limits<s8>::min());
+            m_max =
+                Object::getMetaValueMax<s8>(m_member, 0).value_or(std::numeric_limits<s8>::max());
             break;
         case Object::MetaType::U8:
             for (size_t i = 0; i < m_numbers.size(); ++i) {
                 m_numbers.at(i) = Object::getMetaValue<u8>(m_member, i).value();
             }
-            m_min = 0;
-            m_max = 255;
+            m_min =
+                Object::getMetaValueMin<u8>(m_member, 0).value_or(std::numeric_limits<u8>::min());
+            m_max =
+                Object::getMetaValueMax<u8>(m_member, 0).value_or(std::numeric_limits<u8>::max());
             break;
         case Object::MetaType::S16:
             for (size_t i = 0; i < m_numbers.size(); ++i) {
                 m_numbers.at(i) = Object::getMetaValue<s16>(m_member, i).value();
             }
-            m_min = -32768;
-            m_max = 32767;
+            m_min =
+                Object::getMetaValueMin<s16>(m_member, 0).value_or(std::numeric_limits<s16>::min());
+            m_max =
+                Object::getMetaValueMax<s16>(m_member, 0).value_or(std::numeric_limits<s16>::max());
             break;
         case Object::MetaType::U16:
             for (size_t i = 0; i < m_numbers.size(); ++i) {
                 m_numbers.at(i) = Object::getMetaValue<u16>(m_member, i).value();
             }
-            m_min = 0;
-            m_max = 65535;
+            m_min =
+                Object::getMetaValueMin<u16>(m_member, 0).value_or(std::numeric_limits<u16>::min());
+            m_max =
+                Object::getMetaValueMax<u16>(m_member, 0).value_or(std::numeric_limits<u16>::max());
             break;
         case Object::MetaType::S32:
             for (size_t i = 0; i < m_numbers.size(); ++i) {
                 m_numbers.at(i) = Object::getMetaValue<s32>(m_member, i).value();
             }
-            m_min = -2147483648;
-            m_max = 2147483647;
+            m_min =
+                Object::getMetaValueMin<s32>(m_member, 0).value_or(std::numeric_limits<s32>::min());
+            m_max =
+                Object::getMetaValueMax<s32>(m_member, 0).value_or(std::numeric_limits<s32>::max());
             break;
         case Object::MetaType::U32:
             for (size_t i = 0; i < m_numbers.size(); ++i) {
                 m_numbers.at(i) = Object::getMetaValue<u32>(m_member, i).value();
             }
-            m_min = 0;
-            m_max = 4294967295;
+            m_min =
+                Object::getMetaValueMin<u32>(m_member, 0).value_or(std::numeric_limits<u32>::min());
+            m_max =
+                Object::getMetaValueMax<u32>(m_member, 0).value_or(std::numeric_limits<u32>::max());
             break;
         default:
+            TOOLBOX_WARN_V(
+                "[SCENE_PROPERTY] NumberProperty initialized with unsupported type \"{}\" for "
+                "member \"{}\"",
+                magic_enum::enum_name(Object::getMetaType(m_member).value()),
+                m_member->qualifiedName().toString());
             for (size_t i = 0; i < m_numbers.size(); ++i) {
                 m_numbers.at(i) = Object::getMetaValue<s32>(m_member, i).value();
             }
-            m_min = -2147483648;
-            m_max = 2147483647;
+            m_min =
+                Object::getMetaValueMin<u32>(m_member, 0).value_or(std::numeric_limits<s32>::min());
+            m_max =
+                Object::getMetaValueMax<u32>(m_member, 0).value_or(std::numeric_limits<s32>::max());
             break;
         }
     }
@@ -172,13 +198,13 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as number",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render struct \"{}\" as number",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as number",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render enum \"{}\" as number",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_numbers.size() != m_member->arraysize()) {
@@ -244,27 +270,35 @@ namespace Toolbox::UI {
 
     void FloatProperty::init() {
         m_member->syncArray();
-        m_numbers.resize(m_member->arraysize());
-        m_array_open.resize(m_member->arraysize(), true);
+
+        u32 member_array_size = m_member->arraysize();
+
+        m_numbers.resize(member_array_size);
+        m_array_open.resize(member_array_size, true);
+
+        if (member_array_size == 0) {
+            return;
+        }
 
         for (size_t i = 0; i < m_numbers.size(); ++i) {
             m_numbers.at(i) = Object::getMetaValue<f32>(m_member, i).value();
         }
-        m_min = -FLT_MAX;
-        m_max = FLT_MAX;
+
+        m_min = Object::getMetaValueMin<f32>(m_member, 0).value_or(std::numeric_limits<f32>::min());
+        m_max = Object::getMetaValueMax<f32>(m_member, 0).value_or(std::numeric_limits<f32>::max());
     }
 
     bool FloatProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as float",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render struct \"{}\" as float",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as float",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render enum \"{}\" as float",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_numbers.size() != m_member->arraysize()) {
@@ -330,27 +364,37 @@ namespace Toolbox::UI {
 
     void DoubleProperty::init() {
         m_member->syncArray();
-        m_numbers.resize(m_member->arraysize());
-        m_array_open.resize(m_member->arraysize(), true);
+
+        u32 member_array_size = m_member->arraysize();
+
+        m_numbers.resize(member_array_size);
+        m_array_open.resize(member_array_size, true);
+
+        if (member_array_size == 0) {
+            return;
+        }
+
+        RefPtr<MetaValue> value = m_member->value<MetaValue>(0).value();
 
         for (size_t i = 0; i < m_numbers.size(); ++i) {
             m_numbers.at(i) = Object::getMetaValue<f64>(m_member, i).value();
         }
-        m_min = -DBL_MAX;
-        m_max = DBL_MAX;
+
+        m_min = Object::getMetaValueMin<f64>(m_member, 0).value_or(std::numeric_limits<f64>::min());
+        m_max = Object::getMetaValueMax<f64>(m_member, 0).value_or(std::numeric_limits<f64>::max());
     }
 
     bool DoubleProperty::render(float label_width) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as double",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render struct \"{}\" as double",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as double",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render enum \"{}\" as double",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_numbers.size() != m_member->arraysize()) {
@@ -430,13 +474,13 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as string",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render struct \"{}\" as string",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as string",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render enum \"{}\" as string",
+                            m_member->qualifiedName().toString());
         }
 
         bool any_changed = false;
@@ -505,13 +549,13 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as color",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render struct \"{}\" as color",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as color",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render enum \"{}\" as color",
+                            m_member->qualifiedName().toString());
         }
 
         bool any_changed = false;
@@ -608,13 +652,13 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as vector",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render struct \"{}\" as vector",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as vector",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render enum \"{}\" as vector",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_vectors.size() != m_member->arraysize()) {
@@ -701,13 +745,13 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as transform",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render struct \"{}\" as transform",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render enum \"{}\" as transform",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render enum \"{}\" as transform",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_transforms.size() != m_member->arraysize()) {
@@ -857,13 +901,13 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeStruct()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as enum",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render struct \"{}\" as enum",
+                            m_member->qualifiedName().toString());
         }
 
         if (!m_member->isTypeEnum()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render value \"{}\" as enum",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render value \"{}\" as enum",
+                            m_member->qualifiedName().toString());
         }
 
         bool any_changed = false;
@@ -991,13 +1035,13 @@ namespace Toolbox::UI {
         ImGuiStyle &style = ImGui::GetStyle();
 
         if (m_member->isTypeEnum()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render struct \"{}\" as enum",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render struct \"{}\" as enum",
+                            m_member->qualifiedName().toString());
         }
 
         if (!m_member->isTypeStruct()) {
-            TOOLBOX_ERROR_V("(Property) Trying to render value \"{}\" as struct",
-                          m_member->qualifiedName().toString());
+            TOOLBOX_ERROR_V("[SCENE_PROPERTY] Trying to render value \"{}\" as struct",
+                            m_member->qualifiedName().toString());
         }
 
         if (m_children_ary.size() != m_member->arraysize()) {

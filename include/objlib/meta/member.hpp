@@ -1,11 +1,11 @@
 #pragma once
 
 #include "core/memory.hpp"
-#include "smart_resource.hpp"
 #include "enum.hpp"
 #include "errors.hpp"
-#include "objlib/qualname.hpp"
 #include "gameio.hpp"
+#include "objlib/qualname.hpp"
+#include "smart_resource.hpp"
 #include "struct.hpp"
 #include "value.hpp"
 #include <expected>
@@ -28,7 +28,7 @@ namespace Toolbox::Object {
     }
 
     inline Result<size_t, MetaScopeError> getArrayIndex(const QualifiedName &name,
-                                                               size_t scopeidx) {
+                                                        size_t scopeidx) {
         auto name_str = name[scopeidx];
 
         auto pos = name_str.find('[');
@@ -61,11 +61,9 @@ namespace Toolbox::Object {
             }
         };
 
-        using value_type = std::variant<RefPtr<MetaStruct>, RefPtr<MetaEnum>,
-                                        RefPtr<MetaValue>>;
+        using value_type = std::variant<RefPtr<MetaStruct>, RefPtr<MetaEnum>, RefPtr<MetaValue>>;
         using const_value_type =
-            std::variant<RefPtr<const MetaStruct>, RefPtr<const MetaEnum>,
-                         RefPtr<const MetaValue>>;
+            std::variant<RefPtr<const MetaStruct>, RefPtr<const MetaEnum>, RefPtr<const MetaValue>>;
         using size_type = std::variant<u32, ReferenceInfo>;
 
         MetaMember(std::string_view name, const ReferenceInfo &arraysize, value_type default_value)
@@ -164,8 +162,7 @@ namespace Toolbox::Object {
 
         [[nodiscard]] QualifiedName qualifiedName() const;
 
-        template <typename T>
-        [[nodiscard]] Result<RefPtr<T>, MetaError> value(size_t index) const {
+        template <typename T> [[nodiscard]] Result<RefPtr<T>, MetaError> value(size_t index) const {
             return std::unexpected("Invalid type");
         }
 
@@ -214,36 +211,28 @@ namespace Toolbox::Object {
                    std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::BOOL;
         }
         [[nodiscard]] bool isTypeS8() const {
-            return isTypeValue() &&
-                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::S8;
+            return isTypeValue() && std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::S8;
         }
         [[nodiscard]] bool isTypeU8() const {
-            return isTypeValue() &&
-                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::U8;
+            return isTypeValue() && std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::U8;
         }
         [[nodiscard]] bool isTypeS16() const {
-            return isTypeValue() &&
-                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::S16;
+            return isTypeValue() && std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::S16;
         }
         [[nodiscard]] bool isTypeU16() const {
-            return isTypeValue() &&
-                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::U16;
+            return isTypeValue() && std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::U16;
         }
         [[nodiscard]] bool isTypeS32() const {
-            return isTypeValue() &&
-                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::S32;
+            return isTypeValue() && std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::S32;
         }
         [[nodiscard]] bool isTypeU32() const {
-            return isTypeValue() &&
-                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::U32;
+            return isTypeValue() && std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::U32;
         }
         [[nodiscard]] bool isTypeF32() const {
-            return isTypeValue() &&
-                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::F32;
+            return isTypeValue() && std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::F32;
         }
         [[nodiscard]] bool isTypeF64() const {
-            return isTypeValue() &&
-                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::F64;
+            return isTypeValue() && std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::F64;
         }
         [[nodiscard]] bool isTypeString() const {
             return isTypeValue() &&
@@ -258,8 +247,7 @@ namespace Toolbox::Object {
                    std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::TRANSFORM;
         }
         [[nodiscard]] bool isTypeRGB() const {
-            return isTypeValue() &&
-                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::RGB;
+            return isTypeValue() && std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::RGB;
         }
         [[nodiscard]] bool isTypeRGBA() const {
             return isTypeValue() &&
@@ -290,14 +278,14 @@ namespace Toolbox::Object {
 
             for (size_t i = m_values.size(); i < asize; ++i) {
                 if (std::holds_alternative<RefPtr<MetaValue>>(m_default)) {
-                    m_values.emplace_back(make_referable<MetaValue>(
-                        *std::get<RefPtr<MetaValue>>(m_default)));
+                    m_values.emplace_back(
+                        make_referable<MetaValue>(*std::get<RefPtr<MetaValue>>(m_default)));
                 } else if (std::holds_alternative<RefPtr<MetaEnum>>(m_default)) {
-                    m_values.emplace_back(make_referable<MetaEnum>(
-                        *std::get<RefPtr<MetaEnum>>(m_default)));
+                    m_values.emplace_back(
+                        make_referable<MetaEnum>(*std::get<RefPtr<MetaEnum>>(m_default)));
                 } else {
-                    m_values.emplace_back(make_deep_clone<MetaStruct>(
-                        std::get<RefPtr<MetaStruct>>(m_default)));
+                    m_values.emplace_back(
+                        make_deep_clone<MetaStruct>(std::get<RefPtr<MetaStruct>>(m_default)));
                 }
             }
         }
@@ -332,8 +320,8 @@ namespace Toolbox::Object {
             return make_meta_error<RefPtr<MetaStruct>>(m_name, index, m_values.size());
         }
         if (!isTypeStruct()) {
-            return make_meta_error<RefPtr<MetaStruct>>(
-                m_name, "MetaStruct", isTypeValue() ? "MetaValue" : "MetaEnum");
+            return make_meta_error<RefPtr<MetaStruct>>(m_name, "MetaStruct",
+                                                       isTypeValue() ? "MetaValue" : "MetaEnum");
         }
         return std::get<RefPtr<MetaStruct>>(m_values[index]);
     }
@@ -344,8 +332,8 @@ namespace Toolbox::Object {
             return make_meta_error<RefPtr<MetaEnum>>(m_name, index, m_values.size());
         }
         if (!isTypeEnum()) {
-            return make_meta_error<RefPtr<MetaEnum>>(
-                m_name, "MetaEnum", isTypeValue() ? "MetaValue" : "MetaStruct");
+            return make_meta_error<RefPtr<MetaEnum>>(m_name, "MetaEnum",
+                                                     isTypeValue() ? "MetaValue" : "MetaStruct");
         }
         return std::get<RefPtr<MetaEnum>>(m_values[index]);
     }
@@ -356,8 +344,8 @@ namespace Toolbox::Object {
             return make_meta_error<RefPtr<MetaValue>>(m_name, index, m_values.size());
         }
         if (!isTypeValue()) {
-            return make_meta_error<RefPtr<MetaValue>>(
-                m_name, "MetaValue", isTypeStruct() ? "MetaStruct" : "MetaEnum");
+            return make_meta_error<RefPtr<MetaValue>>(m_name, "MetaValue",
+                                                      isTypeStruct() ? "MetaStruct" : "MetaEnum");
         }
         return std::get<RefPtr<MetaValue>>(m_values[index]);
     }
@@ -372,8 +360,8 @@ namespace Toolbox::Object {
     }
 
     template <typename T>
-    [[nodiscard]] inline Result<T, MetaError>
-    getMetaValue(RefPtr<MetaMember> member, size_t array_index = 0) {
+    [[nodiscard]] inline Result<T, MetaError> getMetaValue(RefPtr<MetaMember> member,
+                                                           size_t array_index = 0) {
         if (member->isTypeEnum()) {
             auto enum_result = member->value<MetaEnum>(array_index);
             if (!enum_result) {
@@ -397,8 +385,58 @@ namespace Toolbox::Object {
     }
 
     template <typename T>
-    [[nodiscard]] inline Result<bool, MetaError>
-    setMetaValue(RefPtr<MetaMember> member, size_t array_index, const T &value) {
+    [[nodiscard]] inline Result<T, MetaError> getMetaValueMin(RefPtr<MetaMember> member,
+                                                              size_t array_index = 0) {
+        if (member->isTypeEnum()) {
+            auto enum_result = member->value<MetaEnum>(array_index);
+            if (!enum_result) {
+                return std::unexpected(enum_result.error());
+            }
+            auto value_result = enum_result.value()->value()->min<T>();
+            if (!value_result) {
+                return make_meta_error<T>(value_result.error(), "T", "!T");
+            }
+            return value_result.value();
+        }
+        auto value_result = member->value<MetaValue>(array_index);
+        if (!value_result) {
+            return std::unexpected(value_result.error());
+        }
+        auto v_result = value_result.value()->min<T>();
+        if (!v_result) {
+            return make_meta_error<T>(v_result.error(), "T", "!T");
+        }
+        return v_result.value();
+    }
+
+    template <typename T>
+    [[nodiscard]] inline Result<T, MetaError> getMetaValueMax(RefPtr<MetaMember> member,
+                                                              size_t array_index = 0) {
+        if (member->isTypeEnum()) {
+            auto enum_result = member->value<MetaEnum>(array_index);
+            if (!enum_result) {
+                return std::unexpected(enum_result.error());
+            }
+            auto value_result = enum_result.value()->value()->max<T>();
+            if (!value_result) {
+                return make_meta_error<T>(value_result.error(), "T", "!T");
+            }
+            return value_result.value();
+        }
+        auto value_result = member->value<MetaValue>(array_index);
+        if (!value_result) {
+            return std::unexpected(value_result.error());
+        }
+        auto v_result = value_result.value()->max<T>();
+        if (!v_result) {
+            return make_meta_error<T>(v_result.error(), "T", "!T");
+        }
+        return v_result.value();
+    }
+
+    template <typename T>
+    [[nodiscard]] inline Result<bool, MetaError> setMetaValue(RefPtr<MetaMember> member,
+                                                              size_t array_index, const T &value) {
         auto type_result = getMetaType(member);
         if (!type_result) {
             return false;

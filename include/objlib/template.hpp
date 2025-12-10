@@ -104,8 +104,11 @@ namespace Toolbox::Object {
         std::optional<MetaMember> loadMemberStruct(std::string_view name, std::string_view type,
                                                    MetaMember::size_type array_size);
 
-        std::optional<MetaMember> loadMemberPrimitive(std::string_view name, std::string_view type,
-                                                      MetaMember::size_type array_size);
+        std::optional<MetaMember>
+        loadMemberPrimitive(std::string_view name, std::string_view type,
+                            MetaMember::size_type array_size,
+                            const std::variant<s64, u64, float, double> &var_min,
+                            const std::variant<s64, u64, float, double> &var_max);
 
         void loadMembers(const json_t &members, std::vector<MetaMember> &out);
         void loadWizards(const json_t &wizards, const json_t &render_infos);

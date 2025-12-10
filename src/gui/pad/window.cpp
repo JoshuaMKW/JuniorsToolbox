@@ -939,62 +939,22 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::renderFileDialogs() {
+        ImGuiWindow *window = ImGui::GetCurrentWindow();
+
         if (m_is_open_dialog_open) {
-            IGFD::FileDialogConfig config;
-            config.path = m_load_path ? m_load_path->string().c_str() : ".";
-            ImGuiFileDialog::Instance()->OpenDialog("OpenPadDialog", "Choose Folder", nullptr,
-                                                    config);
-        }
-
-        if (ImGuiFileDialog::Instance()->Display("OpenPadDialog")) {
-            m_is_open_dialog_open = false;
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
-
-                Toolbox::Filesystem::is_directory(path)
-                    .and_then([&path, this](bool is_dir) {
-                        if (!is_dir) {
-                            return make_fs_error<bool>(std::error_code(),
-                                                       {"Path is not a directory."});
-                        }
-
-                        m_load_path = path;
-
-                        m_pad_recorder.resetRecording();
-                        if (m_attached_scene_uuid) {
-                            GUIApplication::instance().dispatchEvent<BaseEvent, true>(
-                                m_attached_scene_uuid, SCENE_ENABLE_CONTROL_EVENT);
-                        }
-
-                        if (!onLoadData(*m_load_path)) {
-                            GUIApplication::instance().showErrorModal(
-                                this, name(),
-                                "Pad data failed to load!\n\n - (Check application log for "
-                                "details)");
-                        }
-
-                        return Result<bool, FSError>(true);
-                    })
-                    .or_else([&](const FSError &error) {
-                        UI::LogError(error);
-                        GUIApplication::instance().showErrorModal(
-                            this, name(),
-                            "Pad data failed to load!\n\n - (Check application log for "
-                            "details)");
-                        return Result<bool, FSError>(false);
-                    });
-
-                ImGuiFileDialog::Instance()->Close();
-                return;
+            if (!FileDialog::instance()->isAlreadyOpen()) {
+                FileDialog::instance()->openDialog(
+                    window, m_load_path ? m_load_path->string().c_str() : "", true);
             }
+            m_is_open_dialog_open = false;
         }
 
         if (m_is_save_dialog_open) {
             if (!m_is_save_default_ready) {
-                IGFD::FileDialogConfig config;
-                config.path = m_load_path ? m_load_path->string().c_str() : ".";
-                ImGuiFileDialog::Instance()->OpenDialog("SavePadDialog", "Choose Folder", nullptr,
-                                                        config);
+                if (!FileDialog::instance()->isAlreadyOpen()) {
+                    FileDialog::instance()->saveDialog(
+                        window, m_load_path ? m_load_path->string().c_str() : "", "pad", true);
+                }
             } else {
                 if (onSaveData(m_load_path)) {
                     GUIApplication::instance().showSuccessModal(this, name(),
@@ -1004,67 +964,129 @@ namespace Toolbox::UI {
                         this, name(),
                         "Pad data failed to save!\n\n - (Check application log for details)");
                 }
-                return;
             }
-        }
-
-        if (ImGuiFileDialog::Instance()->Display("SavePadDialog")) {
             m_is_save_dialog_open = false;
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                m_load_path = ImGuiFileDialog::Instance()->GetFilePathName();
-                if (onSaveData(m_load_path)) {
-                    GUIApplication::instance().showSuccessModal(this, name(),
-                                                                "Pad data saved successfully!");
-                } else {
-                    GUIApplication::instance().showErrorModal(
-                        this, name(),
-                        "Pad data failed to save!\n\n - (Check application log for details)");
-                }
-
-                ImGuiFileDialog::Instance()->Close();
-                return;
-            }
         }
 
         if (m_is_import_dialog_open) {
-            IGFD::FileDialogConfig config;
-            config.path = m_import_path ? m_import_path->string().c_str()
-                          : m_load_path ? m_load_path->string().c_str()
-                                        : ".";
-            ImGuiFileDialog::Instance()->OpenDialog("ImportPadRecordDialog", "Choose File",
-                                                    ".pad,.txt", config);
-        }
-
-        if (ImGuiFileDialog::Instance()->Display("ImportPadRecordDialog")) {
-            m_is_import_dialog_open = false;
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                m_import_path = ImGuiFileDialog::Instance()->GetFilePathName();
-
-                m_pad_recorder.loadPadRecording(m_cur_from_link, m_cur_to_link, *m_import_path);
-
-                ImGuiFileDialog::Instance()->Close();
-                return;
+            if (!FileDialog::instance()->isAlreadyOpen()) {
+                FileDialogFilter filter;
+                filter.addFilter("Pad Recording", "pad");
+                filter.addFilter("Pad Script", "txt");
+                FileDialog::instance()->openDialog(window,
+                                                   m_import_path ? m_import_path->string().c_str()
+                                                   : m_load_path ? m_load_path->string().c_str()
+                                                                 : "",
+                                                   false, filter);
             }
+            m_is_import_dialog_open = false;
         }
 
         if (m_is_export_dialog_open) {
             IGFD::FileDialogConfig config;
-            config.path = m_import_path ? m_import_path->string().c_str()
-                          : m_load_path ? m_load_path->string().c_str()
-                                        : ".";
-            ImGuiFileDialog::Instance()->OpenDialog("ExportPadRecordDialog", "Choose File",
-                                                    ".pad,.txt", config);
+            if (!FileDialog::instance()->isAlreadyOpen()) {
+                FileDialogFilter filter;
+                filter.addFilter("Pad Recording", "pad");
+                filter.addFilter("Pad Script", "txt");
+                FileDialog::instance()->saveDialog(window,
+                                                   m_import_path ? m_import_path->string().c_str()
+                                                   : m_load_path ? m_load_path->string().c_str()
+                                                                 : "",
+                                                   "", false, filter);
+            }
+            m_is_export_dialog_open = false;
         }
 
-        if (ImGuiFileDialog::Instance()->Display("ExportPadRecordDialog")) {
-            m_is_export_dialog_open = false;
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                m_export_path = ImGuiFileDialog::Instance()->GetFilePathName();
+        if (FileDialog::instance()->isDone(window)) {
+            FileDialog::instance()->close();
+            if (FileDialog::instance()->isOk()) {
+                switch (FileDialog::instance()->getFilenameMode()) {
+                case FileDialog::FileNameMode::MODE_OPEN: {
+                    fs_path selected_path = FileDialog::instance()->getFilenameResult();
 
-                m_pad_recorder.savePadRecording(m_cur_from_link, m_cur_to_link, *m_export_path);
+                    Toolbox::Filesystem::is_directory(selected_path)
+                        .and_then([&selected_path, this](bool is_dir) {
+                            if (!is_dir) {
+                                // We are importing into the current recording.
+                                m_import_path = selected_path;
+                                m_pad_recorder.loadPadRecording(m_cur_from_link, m_cur_to_link,
+                                                                *m_import_path);
+                                return Result<bool, FSError>(false);
+                            }
 
-                ImGuiFileDialog::Instance()->Close();
-                return;
+                            // We are loading a new recording.
+                            m_load_path = selected_path;
+
+                            m_pad_recorder.resetRecording();
+                            if (m_attached_scene_uuid) {
+                                GUIApplication::instance().dispatchEvent<BaseEvent, true>(
+                                    m_attached_scene_uuid, SCENE_ENABLE_CONTROL_EVENT);
+                            }
+
+                            if (!onLoadData(*m_load_path)) {
+                                GUIApplication::instance().showErrorModal(
+                                    this, name(),
+                                    "Pad data failed to load!\n\n - (Check application log for "
+                                    "details)");
+                            }
+
+                            return Result<bool, FSError>(true);
+                        })
+                        .or_else([&](const FSError &error) {
+                            UI::LogError(error);
+                            GUIApplication::instance().showErrorModal(
+                                this, name(),
+                                "Pad data failed to load!\n\n - (Check application log for "
+                                "details)");
+                            return Result<bool, FSError>(false);
+                        });
+                    break;
+                }
+                case FileDialog::FileNameMode::MODE_SAVE: {
+                    fs_path selected_path = FileDialog::instance()->getFilenameResult();
+
+                    Toolbox::Filesystem::is_directory(selected_path)
+                        .and_then([&selected_path, this](bool is_dir) {
+                            if (!is_dir) {
+                                // We are exporting the current recording.
+                                m_import_path = selected_path;
+                                m_pad_recorder.savePadRecording(m_cur_from_link, m_cur_to_link,
+                                                                *m_import_path);
+                                return Result<bool, FSError>(false);
+                            }
+
+                            // We are loading a new recording.
+                            m_load_path = selected_path;
+
+                            if (onSaveData(m_load_path)) {
+                                GUIApplication::instance().showSuccessModal(
+                                    this, name(), "Pad data saved successfully!");
+                            } else {
+                                GUIApplication::instance().showErrorModal(
+                                    this, name(),
+                                    "Pad data failed to save!\n\n - (Check application log for "
+                                    "details)");
+                            }
+
+                            return Result<bool, FSError>(true);
+                        })
+                        .or_else([&](const FSError &error) {
+                            UI::LogError(error);
+                            GUIApplication::instance().showErrorModal(
+                                this, name(),
+                                "Pad data failed to load!\n\n - (Check application log for "
+                                "details)");
+                            return Result<bool, FSError>(false);
+                        });
+                    break;
+                }
+                default:
+                    GUIApplication::instance().showErrorModal(
+                        this, name(),
+                        "Invalid file dialog state detected! (Create an issue on github with "
+                        "context please)");
+                    break;
+                }
             }
         }
     }
@@ -1301,6 +1323,8 @@ namespace Toolbox::UI {
                     });
                 }
             }
+
+            ImGui::Dummy({0,0});  // Newer ImGui wants this to grow parent boundaries
         }
         ImGui::EndChildPanel();
 
@@ -1537,17 +1561,19 @@ namespace Toolbox::UI {
         Game::TaskCommunicator &task_communicator =
             GUIApplication::instance().getTaskCommunicator();
 
-        RefPtr<RailNode> from_node = m_pad_rail.nodes()[from_link - 'A'];
+        if (!m_pad_rail.nodes().empty()) {
+            RefPtr<RailNode> from_node = m_pad_rail.nodes()[from_link - 'A'];
 
-        PadRecorder::PadFrameData data = m_pad_recorder.getPadFrameData(from_link, to_link, 0);
+            PadRecorder::PadFrameData data = m_pad_recorder.getPadFrameData(from_link, to_link, 0);
 
-        Transform from_transform;
-        from_transform.m_translation = from_node->getPosition();
-        from_transform.m_rotation    = {0.0f, PadData::convertAngleS16ToFloat(data.m_stick_angle),
-                                        0.0f};
-        from_transform.m_scale       = {1.0f, 1.0f, 1.0f};
+            Transform from_transform;
+            from_transform.m_translation = from_node->getPosition();
+            from_transform.m_rotation = {0.0f, PadData::convertAngleS16ToFloat(data.m_stick_angle),
+                                         0.0f};
+            from_transform.m_scale    = {1.0f, 1.0f, 1.0f};
 
-        task_communicator.setMarioTransform(from_transform, true);
+            task_communicator.setMarioTransform(from_transform, true);
+        }
 
         m_pad_recorder.playPadRecording(
             from_link, to_link,

@@ -57,10 +57,14 @@
             },
             "BodyColor": {
                 "Type": "INT",
+                "Min": 0,
+                "Max": 5,
                 "ArraySize": 1
             },
             "ClothesColor": {
                 "Type": "INT",
+                "Min": 0,
+                "Max": 255,
                 "ArraySize": 1
             },
             "PolluteState": {

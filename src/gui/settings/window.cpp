@@ -107,7 +107,7 @@ namespace Toolbox::UI {
                         LogError(result.error());
                     } else {
                         manager.setCurrentProfile(profile_name);
-                        TOOLBOX_INFO_V("(Settings) Created profile \"{}\" successfully!",
+                        TOOLBOX_INFO_V("[SETTINGS] Created profile \"{}\" successfully!",
                                        profile_name);
                     }
                 }
@@ -170,7 +170,7 @@ namespace Toolbox::UI {
             if (!result) {
                 LogError(result.error());
             } else {
-                TOOLBOX_INFO_V("(Settings) Deleted profile \"{}\" successfully!", profile_name);
+                TOOLBOX_INFO_V("[SETTINGS] Deleted profile \"{}\" successfully!", profile_name);
             }
         }
 
@@ -197,7 +197,7 @@ namespace Toolbox::UI {
         ImGui::Checkbox("Enable File Backup on Save", &settings.m_is_file_backup_allowed);
 
         static std::unordered_map<UpdateFrequency, std::string> s_values_map = {
-            {UpdateFrequency::NEVER, "Never Update"},
+            {UpdateFrequency::NEVER, "Never Update" },
             {UpdateFrequency::MAJOR, "Major Updates"},
             {UpdateFrequency::MINOR, "Minor Updates"},
             {UpdateFrequency::PATCH, "Patch Updates"},
@@ -205,7 +205,8 @@ namespace Toolbox::UI {
 
         ImGui::SetNextItemWidth(200.0f);
 
-        if (ImGui::BeginCombo("Check For Updates", s_values_map[settings.m_update_frequency].c_str())) {
+        if (ImGui::BeginCombo("Check For Updates",
+                              s_values_map[settings.m_update_frequency].c_str())) {
             for (const auto &[freq, val] : s_values_map) {
                 bool selected = freq == settings.m_update_frequency;
                 if (ImGui::Selectable(val.c_str(), selected,
@@ -395,54 +396,67 @@ namespace Toolbox::UI {
         ImGui::Checkbox("Pipe Logs To Terminal", &settings.m_log_to_cout_cerr);
 
         if (ImGui::Button("Clear Cache")) {
-            auto cwd_result = Toolbox::Filesystem::current_path();
-            if (!cwd_result) {
-                LogError(cwd_result.error());
-                return;
-            }
-
-            Toolbox::fs_path cwd = cwd_result.value();
-
-            auto template_cache_result = Toolbox::Filesystem::remove_all(cwd / "Templates/.cache");
-            if (!template_cache_result) {
-                LogError(template_cache_result.error());
-                return;
-            }
-
-            TOOLBOX_INFO("(Settings) Cleared Template cache successfully!");
+            fs_path cache_path = GUIApplication::instance().getAppDataPath() / ".cache";
+            Filesystem::remove_all(cache_path).and_then([](uintmax_t) {
+                TOOLBOX_INFO("[SETTINGS] Cleared Template cache successfully!");
+                return Result<uintmax_t, FSError>();
+            });
 
             // Any other caches...
         }
+        ImGuiWindow *window = ImGui::GetCurrentWindow();
+
+#ifdef TOOLBOX_PLATFORM_WINDOWS
+        const std::string desired_ext = ".exe";
+        const std::string filter_ext  = "exe";
+#elif defined(TOOLBOX_PLATFORM_LINUX)
+        const std::string desired_ext = "";
+        const std::string filter_ext  = "";
+#else
+        const std::string desired_ext = ".exe";
+        const std::string filter_ext  = "exe";
+#endif
 
         if (m_is_path_dialog_open) {
-            IGFD::FileDialogConfig config;
-            config.filePathName = settings.m_dolphin_path.string();
-            ImGuiFileDialog::Instance()->OpenDialog(
-                "OpenDolphinDialog", "Choose Dolphin EXE", {"Dolphin{.exe}"},
-                config);
+            if (!FileDialog::instance()->isAlreadyOpen()) {
+                FileDialogFilter filter;
+                filter.addFilter("Dolphin Emulator", filter_ext);
+                FileDialog::instance()->openDialog(window, settings.m_dolphin_path.string(), false,
+                                                   filter);
+            }
+            m_is_path_dialog_open = false;
         }
 
-        if (ImGuiFileDialog::Instance()->Display("OpenDolphinDialog")) {
-            ImGuiFileDialog::Instance()->Close();
-            m_is_path_dialog_open = false;
+        if (FileDialog::instance()->isDone(window)) {
+            FileDialog::instance()->close();
+            if (FileDialog::instance()->isOk()) {
+                switch (FileDialog::instance()->getFilenameMode()) {
+                case FileDialog::FileNameMode::MODE_OPEN: {
+                    std::filesystem::path selected_path =
+                        FileDialog::instance()->getFilenameResult();
 
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::filesystem::path path = ImGuiFileDialog::Instance()->GetFilePathName();
-
-                auto file_result = Toolbox::Filesystem::is_regular_file(path);
-                if (!file_result) {
-                    return;
+                    std::string extension = selected_path.extension().string();
+                    if (extension == desired_ext) {
+                        settings.m_dolphin_path = selected_path;
+                        std::string path_str    = selected_path.string();
+                        for (size_t i = 0;
+                             i < std::min(path_str.size(), m_dolphin_path_input.size()); ++i) {
+                            m_dolphin_path_input[i] = path_str[i];
+                        }
+                    } else {
+                        GUIApplication::instance().showErrorModal(
+                            this, name(),
+                            "The selected path does not have a valid extension! (look for an "
+                            "executable file)");
+                    }
+                    break;
                 }
-
-                if (!file_result.value()) {
-                    return;
-                }
-
-                settings.m_dolphin_path = path;
-                std::string path_str    = path.string();
-                for (size_t i = 0; i < std::min(path_str.size(), m_dolphin_path_input.size());
-                     ++i) {
-                    m_dolphin_path_input[i] = path_str[i];
+                default:
+                    GUIApplication::instance().showErrorModal(
+                        this, name(),
+                        "Invalid file dialog state detected! (Create an issue on github with "
+                        "context please)");
+                    break;
                 }
             }
         }

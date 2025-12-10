@@ -52,6 +52,8 @@
             },
             "BodyColor": {
                 "Type": "INT",
+                "Min": 0,
+                "Max": 6,
                 "ArraySize": 1
             },
             "ClothesColor": {
@@ -60,6 +62,8 @@
             },
             "PolluteState": {
                 "Type": "INT",
+                "Min": 0,
+                "Max": 255,
                 "ArraySize": 1
             },
             "Acc1Color": {
@@ -151,4 +155,4 @@
           }
         }
     }
-}map/montewcommon/i_mow_mino_rgba.bti
+}

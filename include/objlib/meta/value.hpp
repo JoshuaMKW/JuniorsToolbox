@@ -11,9 +11,9 @@
 #include "color.hpp"
 #include "core/types.hpp"
 #include "errors.hpp"
+#include "gameio.hpp"
 #include "jsonlib.hpp"
 #include "objlib/transform.hpp"
-#include "gameio.hpp"
 
 template <> struct std::formatter<glm::vec3> : std::formatter<string_view> {
     template <typename FormatContext> auto format(const glm::vec3 &obj, FormatContext &ctx) const {
@@ -26,7 +26,8 @@ template <> struct std::formatter<glm::vec3> : std::formatter<string_view> {
 template <> struct std::formatter<glm::vec4> : std::formatter<string_view> {
     template <typename FormatContext> auto format(const glm::vec4 &obj, FormatContext &ctx) const {
         std::string outstr;
-        std::format_to(std::back_inserter(outstr), "(x: {}, y: {}, z: {}, w: {})", obj.x, obj.y, obj.z, obj.w);
+        std::format_to(std::back_inserter(outstr), "(x: {}, y: {}, z: {}, w: {})", obj.x, obj.y,
+                       obj.z, obj.w);
         return std::formatter<string_view>::format(outstr, ctx);
     }
 };
@@ -331,12 +332,32 @@ namespace Toolbox::Object {
     public:
         MetaValue() {
             m_value_buf.initTo(0);
-            m_type      = MetaType::UNKNOWN;
+            m_type = MetaType::UNKNOWN;
         }
 
-        template <typename T> explicit MetaValue(T value) : m_value_buf() { set<T>(value); }
+        template <typename T>
+        explicit MetaValue(T value, T v_min = std::numeric_limits<T>::min(),
+                           T v_max = std::numeric_limits<T>::max())
+            : m_value_buf() {
+            m_type = map_to_type_enum<T>::value;
+
+            m_min_buf = Buffer();
+            m_min_buf.setBuf(&m_uint_min, sizeof(m_uint_min));
+            m_max_buf = Buffer();
+            m_max_buf.setBuf(&m_uint_max, sizeof(m_uint_max));
+            restoreMinMax();
+
+            set<T>(value);
+            setMin<T>(v_min);
+            setMax<T>(v_max);
+        }
 
         explicit MetaValue(MetaType type) : m_type(type), m_value_buf() {
+            m_min_buf = Buffer();
+            m_min_buf.setBuf(&m_uint_min, sizeof(m_uint_min));
+            m_max_buf = Buffer();
+            m_max_buf.setBuf(&m_uint_max, sizeof(m_uint_max));
+
             m_value_buf.alloc(meta_type_size(type));
             m_value_buf.initTo(0);
             switch (type) {
@@ -346,17 +367,47 @@ namespace Toolbox::Object {
             default:
                 break;
             }
+
+            restoreMinMax();
         }
 
         MetaValue(MetaType type, Buffer &&value_buf)
-            : m_type(type), m_value_buf(std::move(value_buf)) {}
-        MetaValue(MetaType type, const Buffer &value_buf)
-            : m_type(type), m_value_buf(value_buf) {}
+            : m_type(type), m_value_buf(std::move(value_buf)) {
+            m_min_buf = Buffer();
+            m_min_buf.setBuf(&m_uint_min, sizeof(m_uint_min));
+            m_max_buf = Buffer();
+            m_max_buf.setBuf(&m_uint_max, sizeof(m_uint_max));
+            restoreMinMax();
+        }
 
-        MetaValue(const MetaValue &other) = default;
-        MetaValue(MetaValue &&other) {
+        MetaValue(MetaType type, const Buffer &value_buf) : m_type(type), m_value_buf(value_buf) {
+            m_min_buf = Buffer();
+            m_min_buf.setBuf(&m_uint_min, sizeof(m_uint_min));
+            m_max_buf = Buffer();
+            m_max_buf.setBuf(&m_uint_max, sizeof(m_uint_max));
+            restoreMinMax();
+        }
+
+        MetaValue(const MetaValue &other) {
+            m_type      = other.m_type;
+            m_value_buf = other.m_value_buf;
+            m_min_buf   = Buffer();
+            m_min_buf.setBuf(&m_uint_min, sizeof(m_uint_min));
+            m_max_buf = Buffer();
+            m_max_buf.setBuf(&m_uint_max, sizeof(m_uint_max));
+            m_uint_min = other.m_uint_min;
+            m_uint_max = other.m_uint_max;
+        }
+
+        MetaValue(MetaValue &&other) noexcept {
             m_type      = other.m_type;
             m_value_buf = std::move(other.m_value_buf);
+            m_min_buf   = Buffer();
+            m_min_buf.setBuf(&m_uint_min, sizeof(m_uint_min));
+            m_max_buf = Buffer();
+            m_max_buf.setBuf(&m_uint_max, sizeof(m_uint_max));
+            m_uint_min = other.m_uint_min;
+            m_uint_max = other.m_uint_max;
         }
 
         ~MetaValue() override { m_value_buf.free(); }
@@ -378,12 +429,43 @@ namespace Toolbox::Object {
 
         [[nodiscard]] const Buffer &buf() const { return m_value_buf; }
 
-        template <typename T> [[nodiscard]] Result<T, std::string> get() const {
-            return getBuf<T>(m_type, m_value_buf);
+        template <typename T> [[nodiscard]] Result<T, std::string> min() const {
+            return std::unexpected("Unsupported type for min()");
         }
 
+        template <typename T> [[nodiscard]] Result<T, std::string> max() const {
+            return std::unexpected("Unsupported type for max()");
+        }
+
+        template <typename T> [[nodiscard]] Result<T, std::string> get() const {
+            return getBuf<T>(m_value_buf);
+        }
+
+        template <typename T> inline [[nodiscard]] bool setMin(T value) { return false; }
+
+        template <typename T> inline [[nodiscard]] bool setMax(T value) { return false; }
+
+        void restoreMinMax();
+
         template <typename T> bool set(const T &value) {
-            return setBuf<T>(m_type, m_value_buf, value);
+            m_type = map_to_type_enum<T>::value;
+            if constexpr (!std::is_integral_v<T> && !std::is_floating_point_v<T>) {
+                return setBuf<T>(m_value_buf, value);
+            } else {
+                Result<T, std::string> maybe_min = this->min<T>();
+                Result<T, std::string> maybe_max = this->max<T>();
+                if (!maybe_min && !maybe_max) {
+                    return setBuf<T>(m_value_buf, value);
+                }
+                T clamped_value = value;
+                if (maybe_min) {
+                    clamped_value = std::max<T>(clamped_value, maybe_min.value());
+                }
+                if (maybe_max) {
+                    clamped_value = std::min<T>(clamped_value, maybe_max.value());
+                }
+                return setBuf<T>(m_value_buf, value);
+            }
         }
 
         // NOTE: This does not change the underlying type, it only attempts
@@ -404,12 +486,28 @@ namespace Toolbox::Object {
 
     private:
         Buffer m_value_buf;
-        MetaType m_type    = MetaType::UNKNOWN;
+        Buffer m_min_buf;
+        Buffer m_max_buf;
+        MetaType m_type = MetaType::UNKNOWN;
+
+        union {
+            int64_t m_sint_min;
+            uint64_t m_uint_min;
+            float m_float_min;
+            double m_double_min;
+        };
+
+        union {
+            int64_t m_sint_max;
+            uint64_t m_uint_max;
+            float m_float_max;
+            double m_double_max;
+        };
     };
 
     template <typename T>
     [[nodiscard]]
-    inline Result<T, std::string> getBuf(const MetaType &m_type, const Buffer &m_value_buf) {
+    inline Result<T, std::string> getBuf(const Buffer &m_value_buf) {
         T value{};
         if (Deserializer::BytesToObject(m_value_buf, value, 0).has_value()) {
             return value;
@@ -420,8 +518,7 @@ namespace Toolbox::Object {
 
     template <>
     [[nodiscard]]
-    inline Result<std::string, std::string> getBuf(const MetaType &m_type,
-                                                   const Buffer &m_value_buf) {
+    inline Result<std::string, std::string> getBuf(const Buffer &m_value_buf) {
         std::string out;
         for (size_t i = 0; i < m_value_buf.size(); ++i) {
             char ch = m_value_buf.get<char>(i);
@@ -435,17 +532,14 @@ namespace Toolbox::Object {
 
     template <typename T>
     [[nodiscard]]
-    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf, const T &value) {
-        bool ret    = Serializer::ObjectToBytes(value, m_value_buf, 0).has_value();
-        m_type      = map_to_type_enum<T>::value;
+    inline bool setBuf(Buffer &m_value_buf, const T &value) {
+        bool ret = Serializer::ObjectToBytes(value, m_value_buf, 0).has_value();
         return ret;
     }
 
     template <>
     [[nodiscard]]
-    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf,
-                       const std::string &value) {
-        m_type = MetaType::STRING;
+    inline bool setBuf(Buffer &m_value_buf, const std::string &value) {
         m_value_buf.resize(value.size() + 1);
         for (size_t i = 0; i < value.size(); ++i) {
             m_value_buf.set<char>(i, value[i]);
@@ -456,9 +550,7 @@ namespace Toolbox::Object {
 
     template <>
     [[nodiscard]]
-    inline bool setBuf(MetaType &m_type, Buffer &m_value_buf,
-                       const Buffer &value) {
-        m_type = MetaType::UNKNOWN;
+    inline bool setBuf(Buffer &m_value_buf, const Buffer &value) {
         value.copyTo(m_value_buf);
         return true;
     }
@@ -611,6 +703,166 @@ namespace Toolbox::Object {
         } catch (std::exception &e) {
             return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
         }
+    }
+
+    template <> inline Result<s8, std::string> MetaValue::min<s8>() const {
+        return static_cast<s8>(m_sint_min);
+    }
+
+    template <> inline Result<u8, std::string> MetaValue::min<u8>() const {
+        return static_cast<u8>(m_uint_min);
+    }
+
+    template <> inline Result<s16, std::string> MetaValue::min<s16>() const {
+        return static_cast<s16>(m_sint_min);
+    }
+
+    template <> inline Result<u16, std::string> MetaValue::min<u16>() const {
+        return static_cast<u16>(m_uint_min);
+    }
+
+    template <> inline Result<s32, std::string> MetaValue::min<s32>() const {
+        return static_cast<s32>(m_sint_min);
+    }
+
+    template <> inline Result<u32, std::string> MetaValue::min<u32>() const {
+        return static_cast<u32>(m_uint_min);
+    }
+
+    template <> inline Result<s64, std::string> MetaValue::min<s64>() const {
+        return static_cast<s64>(m_uint_min);
+    }
+
+    template <> inline Result<u64, std::string> MetaValue::min<u64>() const {
+        return static_cast<u64>(m_uint_min);
+    }
+
+    template <> inline Result<float, std::string> MetaValue::min<float>() const {
+        return static_cast<float>(m_float_min);
+    }
+
+    template <> inline Result<double, std::string> MetaValue::min<double>() const {
+        return static_cast<double>(m_double_min);
+    }
+
+    template <> inline Result<s8, std::string> MetaValue::max<s8>() const {
+        return static_cast<s8>(m_sint_max);
+    }
+
+    template <> inline Result<u8, std::string> MetaValue::max<u8>() const {
+        return static_cast<u8>(m_uint_max);
+    }
+
+    template <> inline Result<s16, std::string> MetaValue::max<s16>() const {
+        return static_cast<s16>(m_sint_max);
+    }
+
+    template <> inline Result<u16, std::string> MetaValue::max<u16>() const {
+        return static_cast<u16>(m_uint_max);
+    }
+
+    template <> inline Result<s32, std::string> MetaValue::max<s32>() const {
+        return static_cast<s32>(m_sint_max);
+    }
+
+    template <> inline Result<u32, std::string> MetaValue::max<u32>() const {
+        return static_cast<u32>(m_uint_max);
+    }
+
+    template <> inline Result<s64, std::string> MetaValue::max<s64>() const {
+        return static_cast<s64>(m_uint_max);
+    }
+
+    template <> inline Result<u64, std::string> MetaValue::max<u64>() const {
+        return static_cast<u64>(m_uint_max);
+    }
+
+    template <> inline Result<float, std::string> MetaValue::max<float>() const {
+        return static_cast<float>(m_float_max);
+    }
+
+    template <> inline Result<double, std::string> MetaValue::max<double>() const {
+        return static_cast<double>(m_double_max);
+    }
+
+    template <> inline bool MetaValue::setMin<s8>(s8 min) {
+        return m_sint_min = static_cast<s64>(min);
+    }
+
+    template <> inline bool MetaValue::setMin<u8>(u8 min) {
+        return m_uint_min = static_cast<u64>(min);
+    }
+
+    template <> inline bool MetaValue::setMin<s16>(s16 min) {
+        return m_sint_min = static_cast<s64>(min);
+    }
+
+    template <> inline bool MetaValue::setMin<u16>(u16 min) {
+        return m_uint_min = static_cast<u64>(min);
+    }
+
+    template <> inline bool MetaValue::setMin<s32>(s32 min) {
+        return m_sint_min = static_cast<s64>(min);
+    }
+
+    template <> inline bool MetaValue::setMin<u32>(u32 min) {
+        return m_uint_min = static_cast<u64>(min);
+    }
+
+    template <> inline bool MetaValue::setMin<s64>(s64 min) {
+        return m_sint_min = static_cast<s64>(min);
+    }
+
+    template <> inline bool MetaValue::setMin<u64>(u64 min) {
+        return m_uint_min = static_cast<u64>(min);
+    }
+
+    template <> inline bool MetaValue::setMin<float>(float min) {
+        return m_float_min = static_cast<float>(min);
+    }
+
+    template <> inline bool MetaValue::setMin<double>(double min) {
+        return m_double_min = static_cast<double>(min);
+    }
+
+    template <> inline bool MetaValue::setMax<s8>(s8 max) {
+        return m_sint_max = static_cast<s64>(max);
+    }
+
+    template <> inline bool MetaValue::setMax<u8>(u8 max) {
+        return m_uint_max = static_cast<u64>(max);
+    }
+
+    template <> inline bool MetaValue::setMax<s16>(s16 max) {
+        return m_sint_max = static_cast<s64>(max);
+    }
+
+    template <> inline bool MetaValue::setMax<u16>(u16 max) {
+        return m_uint_max = static_cast<u64>(max);
+    }
+
+    template <> inline bool MetaValue::setMax<s32>(s32 max) {
+        return m_sint_max = static_cast<s64>(max);
+    }
+
+    template <> inline bool MetaValue::setMax<u32>(u32 max) {
+        return m_uint_max = static_cast<u64>(max);
+    }
+
+    template <> inline bool MetaValue::setMax<s64>(s64 max) {
+        return m_sint_max = static_cast<s64>(max);
+    }
+
+    template <> inline bool MetaValue::setMax<u64>(u64 max) {
+        return m_uint_max = static_cast<u64>(max);
+    }
+
+    template <> inline bool MetaValue::setMax<float>(float max) {
+        return m_float_max = static_cast<float>(max);
+    }
+
+    template <> inline bool MetaValue::setMax<double>(double max) {
+        return m_double_max = static_cast<double>(max);
     }
 
 }  // namespace Toolbox::Object

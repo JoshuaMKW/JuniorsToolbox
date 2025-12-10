@@ -43,6 +43,43 @@ namespace Toolbox::Object {
         }
     }
 
+    void MetaValue::restoreMinMax() {
+        switch (m_type) {
+        case MetaType::S8:
+            m_sint_min = std::numeric_limits<s8>::min();
+            m_sint_max = std::numeric_limits<s8>::max();
+            break;
+        case MetaType::U8:
+            m_sint_min = std::numeric_limits<u8>::min();
+            m_sint_max = std::numeric_limits<u8>::max();
+            break;
+        case MetaType::S16:
+            m_sint_min = std::numeric_limits<s16>::min();
+            m_sint_max = std::numeric_limits<s16>::max();
+            break;
+        case MetaType::U16:
+            m_sint_min = std::numeric_limits<u16>::min();
+            m_sint_max = std::numeric_limits<u16>::max();
+            break;
+        case MetaType::S32:
+            m_sint_min = std::numeric_limits<s32>::min();
+            m_sint_max = std::numeric_limits<s32>::max();
+            break;
+        case MetaType::U32:
+            m_sint_min = std::numeric_limits<u32>::min();
+            m_sint_max = std::numeric_limits<u32>::max();
+            break;
+        case MetaType::F32:
+            m_float_min = std::numeric_limits<u32>::min();
+            m_float_max = std::numeric_limits<u32>::max();
+            break;
+        case MetaType::F64:
+            m_double_min = std::numeric_limits<u32>::min();
+            m_double_max = std::numeric_limits<u32>::max();
+            break;
+        }
+    }
+
     bool MetaValue::setVariant(const std::any &variant) {
         try {
             switch (type()) {

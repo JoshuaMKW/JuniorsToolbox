@@ -457,7 +457,7 @@ namespace Toolbox::UI {
 
             J3D::Rendering::RenderPacketVector pick_packets =
                 J3D::Rendering::SortPackets(pick_models, position);
-            //J3D::Picking::RenderPickingScene(pick_packets);
+            J3D::Picking::RenderPickingScene(pick_packets);
             m_is_view_dirty = false;
         }
         viewportEnd();
