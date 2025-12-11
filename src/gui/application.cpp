@@ -700,10 +700,10 @@ namespace Toolbox {
         ImGui::BeginMainMenuBar();
 
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem(ICON_FK_FOLDER_OPEN " Open...")) {
-                m_is_file_dialog_open = true;
-            }
-            if (ImGui::MenuItem(ICON_FK_FOLDER_OPEN " Open Folder...")) {
+            //if (ImGui::MenuItem(ICON_FK_FOLDER_OPEN " Open...")) {
+            //    m_is_file_dialog_open = true;
+            //}
+            if (ImGui::MenuItem(ICON_FK_FOLDER_OPEN " Open Project...")) {
                 m_is_dir_dialog_open = true;
             }
 
