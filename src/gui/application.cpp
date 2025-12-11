@@ -74,6 +74,7 @@ namespace Toolbox {
         m_dockspace_id    = ImGuiID();
         m_render_window   = nullptr;
         m_windows         = {};
+        m_pending_drag_window = nullptr;
     }
 
     GUIApplication &GUIApplication::instance() {
@@ -746,9 +747,9 @@ namespace Toolbox {
 
             ImGui::SeparatorText("Asset Editors");
 
-            if (ImGui::MenuItem("BMG")) {
-                // TODO: createWindow<BMGEditorWindow>("BMG Editor");
-            }
+            //if (ImGui::MenuItem("BMG")) {
+            //    // TODO: createWindow<BMGEditorWindow>("BMG Editor");
+            //}
 
             if (ImGui::MenuItem("PAD")) {
                 createWindow<PadInputWindow>("Pad Recorder");

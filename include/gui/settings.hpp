@@ -59,7 +59,7 @@ namespace Toolbox {
 
         // Advanced
         std::filesystem::path m_dolphin_path = "";
-        s64 m_dolphin_refresh_rate           = 100;  // In milliseconds
+        s64 m_dolphin_refresh_rate           = 16;  // In milliseconds
         bool m_is_template_cache_allowed     = true;
         bool m_log_to_cout_cerr              = false;
     };
