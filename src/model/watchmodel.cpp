@@ -1265,18 +1265,22 @@ namespace Toolbox {
         if (!validateIndex(parent)) {
             int64_t flat_row = 0;
             bool inserted    = false;
-            for (auto it = m_index_map.begin(); it != m_index_map.end(); ++it) {
-                if (it->m_parent == 0 && ++flat_row >= row) {
-                    m_index_map.emplace(++it, data);
-                    inserted = true;
-                    break;
+            if (m_index_map.empty() && row == 0) {
+                m_index_map.emplace_back(data);
+            } else {
+                for (auto it = m_index_map.begin(); it != m_index_map.end(); ++it) {
+                    if (it->m_parent == 0 && ++flat_row >= row) {
+                        m_index_map.emplace(++it, data);
+                        inserted = true;
+                        break;
+                    }
                 }
-            }
 
-            if (!inserted) {
-                TOOLBOX_ERROR("[WatchDataModel] Invalid row index!");
-                delete data.m_watch;
-                return ModelIndex();
+                if (!inserted) {
+                    TOOLBOX_ERROR("[WatchDataModel] Invalid row index!");
+                    delete data.m_watch;
+                    return ModelIndex();
+                }
             }
         } else {
             _WatchIndexData &parent_data = getIndexData_(parent);
