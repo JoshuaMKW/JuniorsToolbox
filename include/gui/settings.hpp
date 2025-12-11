@@ -30,7 +30,7 @@ namespace Toolbox {
 
     struct AppSettings {
         // General
-        bool m_is_custom_obj_allowed  = false;
+        bool m_is_custom_obj_allowed  = true;
         bool m_is_file_backup_allowed = false;
         UpdateFrequency m_update_frequency = UpdateFrequency::MINOR;
 
