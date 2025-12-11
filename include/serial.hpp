@@ -125,18 +125,18 @@ namespace Toolbox {
 
         template <std::endian E = std::endian::native>
         Serializer &writeString(const std::string &str) {
+            write<u16, E>(str.size() & 0xFFFF);
             if (str.size() == 0)
                 return *this;
-            write<u16, E>(str.size() & 0xFFFF);
             writeBytes(std::span(str.data(), str.size()));
             return *this;
         }
 
         template <std::endian E = std::endian::native>
         Serializer &writeString(std::string_view str) {
+            write<u16, E>(str.size() & 0xFFFF);
             if (str.size() == 0)
                 return *this;
-            write<u16, E>(str.size() & 0xFFFF);
             writeBytes(std::span(str.data(), str.size()));
             return *this;
         }
