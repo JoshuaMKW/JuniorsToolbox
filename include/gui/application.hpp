@@ -286,6 +286,8 @@ namespace Toolbox {
 
         bool isAlreadyOpen() const { return m_thread_running; }
 
+        // TODO: Using viewport means any window that is not detached gets clobbered by
+        //       GUIApplication
         bool isDone(ImGuiWindow *window) const {
             return isDone(static_cast<GLFWwindow *>(window->Viewport->PlatformHandle));
         }

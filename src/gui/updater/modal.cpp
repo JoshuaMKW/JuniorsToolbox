@@ -207,7 +207,7 @@ namespace Toolbox::UI {
             netpp::HTTP_Request::create(netpp::EHTTP_RequestMethod::E_REQUEST_GET);
 
         m_http_releases_request->set_version("1.1");
-        m_http_releases_request->set_path("/repos/JoshuaMKW/JuniorsToolbox/releases");
+        m_http_releases_request->set_path("/repos/DotKuribo/BetterSunshineEngine/releases");
         m_http_releases_request->set_header("Host", CLIENT_HOST);
         m_http_releases_request->set_header("Connection", "keep-alive");
         m_http_releases_request->set_header("Accept", "application/vnd.github+json");
@@ -462,7 +462,7 @@ void ExampleMarkdownFormatCallback(const ImGui::MarkdownFormatInfo &markdownForm
         break;
     case ImGui::MarkdownFormatType::NORMAL_TEXT:
     case ImGui::MarkdownFormatType::UNORDERED_LIST:
-    case ImGui::MarkdownFormatType::ORDERED_LIST:
+    //case ImGui::MarkdownFormatType::ORDERED_LIST:
     case ImGui::MarkdownFormatType::LINK: {
         if (start_)
             ImGui::PushFont(T, font_size);
@@ -499,6 +499,8 @@ void Markdown(const std::string &markdown_) {
     // You can make your own Markdown function with your prefered string container and markdown
     // config. > C++14 can use ImGui::MarkdownConfig md_config{ LinkCallback, NULL, ImageCallback,
     // ICON_FA_LINK, { { H1, true }, { H2, true }, { H3, false } }, NULL };
+    //md_config.useComplexFormatting = false;
+
     md_config.linkCallback    = LinkCallback;
     md_config.tooltipCallback = NULL;
     md_config.imageCallback   = ImageCallback;
@@ -515,5 +517,6 @@ void Markdown(const std::string &markdown_) {
 
     md_config.userData       = NULL;
     md_config.formatCallback = ExampleMarkdownFormatCallback;
+
     ImGui::Markdown(markdown_.c_str(), markdown_.length(), md_config);
 }
