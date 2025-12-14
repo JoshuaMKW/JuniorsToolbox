@@ -281,7 +281,7 @@ namespace Toolbox::Scene {
 
         TemplateFactory::create("ScenarioArchiveName", m_scene_layout.includeCustomObjects())
             .and_then([&](TemplateFactory::create_ret_t obj_t) {
-                RefPtr<ISceneObject> scenario = ObjectFactory::create(*obj_t, "Default");
+                RefPtr<ISceneObject> scenario = ObjectFactory::create(*obj_t, "Default", fs_path());
                 if (!scenario) {
                     result = false;
                     return Result<TemplateFactory::create_ret_t, TemplateFactory::create_err_t>();
@@ -336,7 +336,7 @@ namespace Toolbox::Scene {
 
         TemplateFactory::create("ScenarioArchiveNameTable", m_scene_layout.includeCustomObjects())
             .and_then([&](TemplateFactory::create_ret_t obj_t) {
-                RefPtr<ISceneObject> scene = ObjectFactory::create(*obj_t, "Default");
+                RefPtr<ISceneObject> scene = ObjectFactory::create(*obj_t, "Default", fs_path());
                 if (!scene) {
                     result = false;
                     return Result<TemplateFactory::create_ret_t, TemplateFactory::create_err_t>();

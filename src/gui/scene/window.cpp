@@ -328,6 +328,9 @@ namespace Toolbox::UI {
 
             if (!m_hierarchy_selected_nodes.empty()) {
                 size_t i = 0;
+                TOOLBOX_CORE_ASSERT(
+                    m_hierarchy_selected_nodes.size() <= m_selection_transforms.size() &&
+                    "Critical desync between selected nodes and selection transforms detected!");
                 for (SelectionNodeInfo<Object::ISceneObject> &node : m_hierarchy_selected_nodes) {
                     const Transform &obj_transform = m_selection_transforms[i];
                     Transform new_transform        = gizmo_total_delta * obj_transform;
@@ -2280,7 +2283,8 @@ namespace Toolbox::UI {
             [this](size_t sibling_index, std::string_view name, const Object::Template &template_,
                    std::string_view wizard_name, CreateObjDialog::InsertPolicy policy,
                    SelectionNodeInfo<Object::ISceneObject> info) {
-                auto new_object_result = Object::ObjectFactory::create(template_, wizard_name);
+                auto new_object_result =
+                    Object::ObjectFactory::create(template_, wizard_name, m_current_scene->rootPath().value_or(""));
                 if (!name.empty()) {
                     new_object_result->setNameRef(name);
                 }

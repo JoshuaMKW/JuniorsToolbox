@@ -755,7 +755,7 @@ namespace Toolbox::Object {
         using create_t     = Result<create_ret_t, create_err_t>;
 
         static create_t create(Deserializer &in, bool include_custom);
-        static create_ret_t create(const Template &template_, std::string_view wizard_name);
+        static create_ret_t create(const Template &template_, std::string_view wizard_name, const fs_path &resource_path);
 
     protected:
         static bool isGroupObject(std::string_view type);
