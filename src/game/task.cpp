@@ -16,6 +16,119 @@
 
 using namespace Toolbox;
 
+#define STR_EQUAL(a, b) ((bool)(strcmp((a), (b)) == 0))
+
+namespace BetterSMS {
+
+    enum class ETask {
+        NONE                  = 0,
+        GET_NAMEREF_PTR       = 1,
+        CREATE_NAMEREF        = 2,
+        DELETE_NAMEREF        = 3,
+        SET_NAMEREF_PARAMETER = 4,
+        PLAY_CAMERA_DEMO      = 5,
+        UPDATE_SCENE_ARCHIVE  = 6,
+    };
+
+    namespace _impl {
+        static u32 s_requested_task_addr        = 0x800002E0;
+        static u32 s_request_buffer_p_addr      = 0x800002E4;
+        static u32 s_response_buffer_p_addr     = 0x800002E8;
+        static const u32 s_request_buffer_size  = 0x10000;
+        static const u32 s_response_buffer_size = 0x100;
+    }  // namespace _impl
+
+    // Interface functions
+    static Result<Buffer, std::string> getResponseBuffer() {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        u32 response_buffer_ptr =
+            communicator.read<u32>(_impl::s_response_buffer_p_addr).value_or(0);
+        if (response_buffer_ptr == 0) {
+            return std::unexpected("Response buffer pointer is null!");
+        }
+
+        u8 state = communicator.read<u8>(response_buffer_ptr).value_or(-1);
+        if (state == -1) {
+            char error_msg[_impl::s_response_buffer_size - 4];
+            communicator.readCString(error_msg, sizeof(error_msg), response_buffer_ptr + 4);
+            return std::unexpected(std::string(error_msg));
+        }
+
+        Buffer response_buffer;
+        response_buffer.setBuf((char *)communicator.manager().getMemoryView() +
+                                   communicator.manager().getAddressAsOffset(response_buffer_ptr + 4),
+                               _impl::s_response_buffer_size - 4);
+        return response_buffer;
+    }
+
+    static Result<Buffer, std::string> getRequestBuffer() {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        u32 request_buffer_ptr = communicator.read<u32>(_impl::s_request_buffer_p_addr).value_or(0);
+        if (request_buffer_ptr == 0) {
+            return std::unexpected("Response buffer pointer is null!");
+        }
+
+        Buffer request_buffer;
+        request_buffer.setBuf((char *)communicator.manager().getMemoryView() +
+                                  communicator.manager().getAddressAsOffset(request_buffer_ptr),
+                              _impl::s_request_buffer_size);
+
+        return request_buffer;
+    }
+
+    static void setRequestTaskAndFinalize(ETask task) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        communicator.write<u32>(_impl::s_requested_task_addr, static_cast<u32>(task));
+    }
+
+    static bool waitForResponse(std::optional<TimeStep> timeout) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        TimePoint start_time              = std::chrono::high_resolution_clock::now();
+        while (true) {
+            if (timeout.has_value()) {
+                TimeStep elapsed_time(start_time, std::chrono::high_resolution_clock::now());
+                if (elapsed_time >= timeout.value()) {
+                    return false;
+                }
+            }
+
+            u32 response_buffer_ptr =
+                communicator.read<u32>(_impl::s_response_buffer_p_addr).value_or(0);
+            if (response_buffer_ptr == 0) {
+                return false;
+            }
+
+            u8 state = communicator.read<u8>(response_buffer_ptr).value_or(-1);
+            if (state != 0) {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+
+    static void clearResponse() {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        u32 response_buffer_ptr =
+            communicator.read<u32>(_impl::s_response_buffer_p_addr).value_or(0);
+        if (response_buffer_ptr == 0) {
+            return;
+        }
+
+        Buffer response_buffer;
+        response_buffer.setBuf(
+            (char *)communicator.manager().getMemoryView() +
+                communicator.manager().getAddressAsOffset(response_buffer_ptr),
+            _impl::s_response_buffer_size);
+
+        response_buffer.initTo('\0');
+    }
+
+}  // namespace BetterSMS
+
 namespace Toolbox::Game {
 
     namespace {
@@ -50,15 +163,6 @@ namespace Toolbox::Game {
             "--------------------------------------------------------------------------");
         return result;
     }
-
-    enum class ETask {
-        NONE,
-        GET_NAMEREF_PTR,
-        CREATE_NAMEREF,
-        DELETE_NAMEREF,
-        PLAY_CAMERA_DEMO,
-        SET_NAMEREF_PARAMETER
-    };
 
     void TaskCommunicator::tRun(void *param) {
         m_game_interpreter = Interpreter::SystemDolphin();
@@ -364,6 +468,7 @@ namespace Toolbox::Game {
             return 0;
         }
 
+#if 0
         auto dolphin_interpreter = createInterpreterUnchecked();
         if (!dolphin_interpreter) {
             return 0;
@@ -391,6 +496,37 @@ namespace Toolbox::Game {
         auto snapshot = dolphin_interpreter->evaluateFunction(0x80198d0c, 2, argv, 0, nullptr);
 
         return static_cast<u32>(snapshot.m_gpr[3]);
+#else
+        Result<Buffer, std::string> maybe_request_buffer = BetterSMS::getRequestBuffer();
+        if (!maybe_request_buffer) {
+            TOOLBOX_ERROR_V("[TASK] {}", maybe_request_buffer.error());
+            return 0;
+        }
+
+        Buffer request_buffer = std::move(maybe_request_buffer.value());
+        std::memset(request_buffer.buf<u8>(), '\0', BetterSMS::_impl::s_request_buffer_size);
+
+        std::string actor_name = String::toGameEncoding(actor->getNameRef().name()).value_or("");
+        std::strncpy(request_buffer.buf<char>(), actor_name.data(), actor_name.size());
+
+        BetterSMS::setRequestTaskAndFinalize(BetterSMS::ETask::GET_NAMEREF_PTR);
+
+        if (BetterSMS::waitForResponse(TimeStep(5.0))) {
+            Result<Buffer, std::string> maybe_response_buffer = BetterSMS::getResponseBuffer();
+            if (!maybe_response_buffer) {
+                TOOLBOX_ERROR_V("[TASK] {}", maybe_response_buffer.error());
+                return 0;
+            }
+
+            Buffer response_buffer = std::move(maybe_response_buffer.value());
+            u32 actor_ptr          = std::byteswap(response_buffer.get<u32>(0));
+            BetterSMS::clearResponse();
+            return actor_ptr;
+        }
+
+        TOOLBOX_ERROR("[TASK] Timeout waiting for actor pointer response!");
+        return 0;
+#endif
     }
 
     u32 TaskCommunicator::getActorPtr(const std::string &name) {
@@ -398,6 +534,7 @@ namespace Toolbox::Game {
             return 0;
         }
 
+#ifdef TOOLBOX_USE_INTERPRETER
         auto dolphin_interpreter = createInterpreterUnchecked();
         if (!dolphin_interpreter) {
             return 0;
@@ -419,6 +556,37 @@ namespace Toolbox::Game {
         auto snapshot = dolphin_interpreter->evaluateFunction(0x80198D0C, 2, argv, 0, nullptr);
 
         return static_cast<u32>(snapshot.m_gpr[3]);
+#else
+        Result<Buffer, std::string> maybe_request_buffer = BetterSMS::getRequestBuffer();
+        if (!maybe_request_buffer) {
+            TOOLBOX_ERROR_V("[TASK] {}", maybe_request_buffer.error());
+            return 0;
+        }
+
+        Buffer request_buffer = std::move(maybe_request_buffer.value());
+        std::memset(request_buffer.buf<u8>(), '\0', BetterSMS::_impl::s_request_buffer_size);
+
+        std::string actor_name = String::toGameEncoding(name).value_or("");
+        std::strncpy(request_buffer.buf<char>(), actor_name.data(), actor_name.size());
+
+        BetterSMS::setRequestTaskAndFinalize(BetterSMS::ETask::GET_NAMEREF_PTR);
+
+        if (BetterSMS::waitForResponse(TimeStep(5.0))) {
+            Result<Buffer, std::string> maybe_response_buffer = BetterSMS::getResponseBuffer();
+            if (!maybe_response_buffer) {
+                TOOLBOX_ERROR_V("[TASK] {}", maybe_response_buffer.error());
+                return 0;
+            }
+
+            Buffer response_buffer = std::move(maybe_response_buffer.value());
+            u32 actor_ptr          = std::byteswap(response_buffer.get<u32>(0));
+            BetterSMS::clearResponse();
+            return actor_ptr;
+        }
+
+        TOOLBOX_ERROR("[TASK] Timeout waiting for actor pointer response!");
+        return 0;
+#endif
     }
 
     bool TaskCommunicator::isSceneLoaded() {

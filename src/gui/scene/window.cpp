@@ -1028,7 +1028,7 @@ namespace Toolbox::UI {
 
     static void recursiveAssignActorPtrs(Game::TaskCommunicator &communicator,
                                          std::vector<RefPtr<ISceneObject>> objects) {
-        std::for_each(std::execution::par, objects.begin(), objects.end(),
+        std::for_each(std::execution::seq, objects.begin(), objects.end(),
                       [&communicator](RefPtr<ISceneObject> object) {
                           u32 actor_ptr = communicator.getActorPtr(object);
                           object->setGamePtr(actor_ptr);
