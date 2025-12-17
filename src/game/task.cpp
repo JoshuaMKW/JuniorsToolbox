@@ -57,7 +57,7 @@ namespace BetterSMS {
             return std::unexpected("Response buffer pointer is null!");
         }
 
-        u8 state = communicator.read<u8>(response_buffer_ptr).value_or(-1);
+        s8 state = communicator.read<s8>(response_buffer_ptr).value_or(-1);
         if (state == -1) {
             char error_msg[_impl::s_response_buffer_size - 4];
             communicator.readCString(error_msg, sizeof(error_msg), response_buffer_ptr + 4);

@@ -306,7 +306,12 @@ namespace Toolbox::UI {
                     }
                 }
 
-                if (m_hierarchy_selected_nodes.empty() && m_rail_list_selected_nodes.empty() &&
+                const bool any_valid_object_selected = !m_hierarchy_selected_nodes.empty() && std::all_of(
+                    m_hierarchy_selected_nodes.begin(), m_hierarchy_selected_nodes.end(),
+                    [](const SelectionNodeInfo<Object::ISceneObject> &node) {
+                        return node.m_selected && node.m_selected->getTransform().has_value();
+                    });
+                if (!any_valid_object_selected && m_rail_list_selected_nodes.empty() &&
                     m_rail_node_list_selected_nodes.empty()) {
                     m_renderer.setGizmoVisible(false);
                 } else {

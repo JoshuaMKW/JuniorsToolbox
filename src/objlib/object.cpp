@@ -846,6 +846,8 @@ namespace Toolbox::Object {
         std::optional<std::string> model_file;
         std::optional<std::string> mat_file = info.m_file_materials;
 
+        m_scene_resource_path = asset_path;
+
         // Get model variable that exists in some objects
         auto model_member_result = getMember("Model");
         if (model_member_result) {
