@@ -705,6 +705,9 @@ namespace Toolbox::Object {
             if (m_model_instance)
                 obj->m_model_instance = make_referable<J3DModelInstance>(*m_model_instance);
 
+            if (m_model_data)
+                obj->m_model_data = make_referable<J3DModelData>(*m_model_data);
+
             if (deep) {
                 for (const auto &member : m_members) {
                     auto new_member = make_deep_clone<MetaMember>(member);

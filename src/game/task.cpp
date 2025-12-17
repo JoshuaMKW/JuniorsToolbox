@@ -1003,6 +1003,7 @@ namespace Toolbox::Game {
                 "GAME TASK", "Failed to remove object from game scene (Parent doesn't exist)!");
         }
 
+#ifdef TOOLBOX_USE_INTERPRETER
         if (parent->type() != "IdxGroup") {
             return make_error<void>(
                 "GAME TASK", "Failed to remove object from game scene (Parent isn't IdxGroup)!");
@@ -1062,10 +1063,90 @@ namespace Toolbox::Game {
                 }
             }
         });
+#else
+        // Remove the object from the parent list
+        Result<Buffer, std::string> maybe_request_buffer = BetterSMS::getRequestBuffer();
+        if (!maybe_request_buffer) {
+            return make_error<void>("TASK", maybe_request_buffer.error());
+        }
+        Buffer request_buffer = std::move(maybe_request_buffer.value());
+        request_buffer.initTo('\0');
+        std::string parent_type = String::toGameEncoding(parent->type()).value_or("");
+        std::strncpy(request_buffer.buf<char>(), parent_type.data(),
+                     std::min<size_t>(parent_type.size(), 0x7F));
+        std::string parent_name = String::toGameEncoding(parent->getNameRef().name()).value_or("");
+        std::strncpy(request_buffer.buf<char>() + 0x80, parent_name.data(),
+                     std::min<size_t>(parent_name.size(), 0x17F));
+        std::string obj_name = String::toGameEncoding(object->getNameRef().name()).value_or("");
+        std::strncpy(request_buffer.buf<char>() + 0x200, obj_name.data(),
+                     std::min<size_t>(obj_name.size(), 0x17F));
+        BetterSMS::setRequestTaskAndFinalize(BetterSMS::ETask::DELETE_NAMEREF);
+        if (BetterSMS::waitForResponse(TimeStep(5.0))) {
+            Result<Buffer, std::string> maybe_response_buffer = BetterSMS::getResponseBuffer();
+            if (!maybe_response_buffer) {
+                return make_error<void>("TASK", maybe_response_buffer.error());
+            }
+            request_buffer.initTo('\0');
+            maybe_response_buffer.value().initTo('\0');
+        } else {
+            return make_error<void>("TASK", "Timed out while removing object from game scene!");
+        }
+#endif
 
         // TODO: Call delete on object pointer using game interpreter
 
         return {};
+    }
+
+    Result<void> TaskCommunicator::taskRenameSceneObject(RefPtr<ISceneObject> object,
+                                                         const std::string &old_name,
+                                                         const std::string &new_name,
+                                                         transact_complete_cb complete_cb) {
+        if (!isSceneLoaded()) {
+            return make_error<void>("GAME TASK",
+                                    "Failed to rename object in game scene (Scene isn't loaded)!");
+        }
+
+        u32 obj_ptr = getActorPtr(object);
+        if (obj_ptr == 0) {
+            return make_error<void>(
+                "GAME TASK", "Failed to rename object in game scene (Object doesn't exist)!");
+        }
+
+        // Remove the object from the parent list
+        Result<Buffer, std::string> maybe_request_buffer = BetterSMS::getRequestBuffer();
+        if (!maybe_request_buffer) {
+            return make_error<void>("TASK", maybe_request_buffer.error());
+        }
+
+        Buffer request_buffer = std::move(maybe_request_buffer.value());
+        request_buffer.initTo('\0');
+
+        std::string obj_type = String::toGameEncoding(object->type()).value_or("");
+        std::string old_game_name = String::toGameEncoding(old_name).value_or("");
+        std::string new_game_name = String::toGameEncoding(new_name).value_or("");
+        u16 new_keycode           = NameRef::calcKeyCode(new_game_name);
+
+        std::strncpy(request_buffer.buf<char>(), obj_type.data(),
+                     std::min<size_t>(obj_type.size(), 0x7F));
+        std::strncpy(request_buffer.buf<char>() + 0x80, old_game_name.data(),
+                     std::min<size_t>(old_game_name.size(), 0x17F));
+        std::strncpy(request_buffer.buf<char>() + 0x200, new_game_name.data(),
+                     std::min<size_t>(new_game_name.size(), 0x17F));
+        *(u16 *)(request_buffer.buf<char>() + 0x380) = std::byteswap(new_keycode);
+
+        BetterSMS::setRequestTaskAndFinalize(BetterSMS::ETask::SET_NAMEREF_PARAMETER);
+
+        if (BetterSMS::waitForResponse(TimeStep(5.0))) {
+            Result<Buffer, std::string> maybe_response_buffer = BetterSMS::getResponseBuffer();
+            if (!maybe_response_buffer) {
+                return make_error<void>("TASK", maybe_response_buffer.error());
+            }
+            request_buffer.initTo('\0');
+            maybe_response_buffer.value().initTo('\0');
+        } else {
+            return make_error<void>("TASK", "Timed out while removing object from game scene!");
+        }
     }
 
     Result<void> TaskCommunicator::taskPlayCameraDemo(std::string_view demo_name,

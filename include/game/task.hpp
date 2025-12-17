@@ -47,6 +47,10 @@ namespace Toolbox::Game {
                                            RefPtr<GroupSceneObject> parent,
                                            transact_complete_cb complete_cb = nullptr);
 
+        Result<void> taskRenameSceneObject(RefPtr<ISceneObject> object, const std::string &old_name,
+                                           const std::string &new_name,
+                                           transact_complete_cb complete_cb = nullptr);
+
         Result<void> taskPlayCameraDemo(std::string_view demo_name,
                                         transact_complete_cb complete_cb = nullptr);
 

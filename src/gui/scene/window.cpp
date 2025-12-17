@@ -328,10 +328,13 @@ namespace Toolbox::UI {
 
             if (!m_hierarchy_selected_nodes.empty()) {
                 size_t i = 0;
-                TOOLBOX_CORE_ASSERT(
-                    m_hierarchy_selected_nodes.size() <= m_selection_transforms.size() &&
-                    "Critical desync between selected nodes and selection transforms detected!");
+                //TOOLBOX_CORE_ASSERT(
+                //    m_hierarchy_selected_nodes.size() <= m_selection_transforms.size() &&
+                //    "Critical desync between selected nodes and selection transforms detected!");
                 for (SelectionNodeInfo<Object::ISceneObject> &node : m_hierarchy_selected_nodes) {
+                    if (!node.m_selected->getTransform()) {
+                        continue;
+                    }
                     const Transform &obj_transform = m_selection_transforms[i];
                     Transform new_transform        = gizmo_total_delta * obj_transform;
                     node.m_selected->setTransform(new_transform);
@@ -1899,6 +1902,12 @@ namespace Toolbox::UI {
                         new_object->setNameRef(node_ref);
                         this_parent->addChild(new_object);
                         sibling_names.push_back(std::string(node_ref.name()));
+
+                        Game::TaskCommunicator &task_communicator =
+                            GUIApplication::instance().getTaskCommunicator();
+                        task_communicator.taskAddSceneObject(
+                            new_object, get_shared_ptr(*this_parent),
+                            [new_object](u32 actor_ptr) { new_object->setGamePtr(actor_ptr); });
                     }
                     m_update_render_objs = true;
                     return;
@@ -2340,7 +2349,12 @@ namespace Toolbox::UI {
                 LogError(result.error());
                 return;
             }
+            std::string old_name = std::string(info.m_selected->getNameRef().name());
             info.m_selected->setNameRef(new_name);
+            Game::TaskCommunicator &task_communicator =
+                GUIApplication::instance().getTaskCommunicator();
+            task_communicator.taskRenameSceneObject(info.m_selected, old_name,
+                                                    std::string(new_name));
         });
         m_rename_obj_dialog.setActionOnReject([](SelectionNodeInfo<Object::ISceneObject>) {});
     }
