@@ -1,5 +1,7 @@
 #pragma once
 
+#include <gcm.hpp>
+
 #include <atomic>
 #include <chrono>
 #include <mutex>
@@ -1203,6 +1205,75 @@ namespace Toolbox::Game {
     Result<void> TaskCommunicator::updateSceneObjectParameter(const QualifiedName &member_name,
                                                               size_t member_game_offset,
                                                               RefPtr<ISceneObject> object) {
+        return Result<void>();
+    }
+
+    Result<void> TaskCommunicator::flushFileInGameFST(const fs_path &root, const fs_path &fstpath) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        const u32 fst_start_address = communicator.read<u32>(0x80000038).value_or(0);
+        if (fst_start_address == 0) {
+            return make_error<void>("GAME TASK", "Failed to get pointer for FST");
+        }
+
+        const u32 fst_size = communicator.read<u32>(0x8000003C).value_or(0);
+        if (fst_size == 0) {
+            return make_error<void>("GAME TASK", "Failed to get pointer for FST");
+        }
+
+        const u32 fst_offset = communicator.manager().getAddressAsOffset(fst_start_address);
+        u8 *fst_data         = (u8 *)(communicator.manager().getMemoryView()) + fst_offset;
+
+        ScopePtr<gcm::FSTSector> fst;
+        {
+            gcm::ByteView fst_view = gcm::make_view(fst_data, (size_t)fst_size);
+            fst                    = gcm::FSTSector::FromData(fst_view);
+        }
+
+        if (!fst || !fst->IsValid()) {
+            return make_error<void>("GAME TASK", "FST was corrupt!");
+        }
+
+        fst->SetEntryPositionMin(0x300000);
+        fst->SetEntryPositionMax(0x70000000);
+
+        std::string the_file_path = fstpath.string();
+        gcm::u32 the_file_entry   = fst->GetEntryNum(fst->GetRootEntryNum(), the_file_path);
+        if (the_file_entry == gcm::FSTSector::INVALID_ENTRYNUM) {
+            return make_error<void>("GAME TASK", "FST doesn't have the filepath!");
+        }
+
+        size_t file_size =
+            Filesystem::file_size(root / fstpath).value_or(std::numeric_limits<size_t>::max());
+        if (file_size == std::numeric_limits<size_t>::max()) {
+            return make_error<void>("GAME TASK", "Filepath failed to report size!");
+        }
+
+        fst->SetEntrySize(the_file_entry, (gcm::u32)file_size);
+
+        std::vector<gcm::FSTSector::FileRuleset> rulesets;
+
+        gcm::FSTSector::FileRuleset adp_ruleset = {};
+        strncpy(adp_ruleset.m_extension, ".adp", 4);
+        adp_ruleset.m_alignment = 32768;
+        rulesets.emplace_back(adp_ruleset);
+
+        if (!fst->RecalculatePositions(rulesets)) {
+            return make_error<void>("GAME TASK", "Failed to recalculate the file positions in the FST!");
+        }
+
+        std::vector<gcm::u8> fst_out;
+        if (!fst->ToData(fst_out)) {
+            return make_error<void>("GAME TASK",
+                                    "Failed to serialize the new FST!");
+        }
+
+        if (fst_out.size() != fst_size) {
+            return make_error<void>("GAME TASK", "Somehow resizing the file resized the FST!");
+        }
+
+        std::memcpy((char *)fst_data, fst_out.data(), fst_out.size());
+
         return Result<void>();
     }
 

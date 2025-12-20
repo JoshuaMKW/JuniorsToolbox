@@ -58,6 +58,8 @@ namespace Toolbox::Game {
                                                 size_t member_game_offset,
                                                 RefPtr<ISceneObject> object);
 
+        Result<void> flushFileInGameFST(const fs_path &root, const fs_path &fstpath);
+
         Result<void> setObjectTransformToMario(RefPtr<PhysicalSceneObject> object);
         Result<void> setObjectTranslationToMario(RefPtr<PhysicalSceneObject> object);
 

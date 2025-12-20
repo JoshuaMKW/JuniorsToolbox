@@ -1470,6 +1470,17 @@ namespace Toolbox::UI {
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
         if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
                                  ImDrawFlags_RoundCornersBottomLeft)) {
+            fs_path scene_arc_path = m_current_scene->rootPath().value_or("");
+            if (!scene_arc_path.empty()) {
+                scene_arc_path = scene_arc_path.parent_path();
+                scene_arc_path.replace_extension(".szs");
+                fs_path root_path = scene_arc_path.parent_path().parent_path().parent_path();
+                scene_arc_path    = Filesystem::relative(scene_arc_path, root_path).value_or("");
+                if (!scene_arc_path.empty()) {
+                    task_communicator.flushFileInGameFST(root_path, scene_arc_path);
+                }
+            }
+
             task_communicator.taskLoadScene(m_stage, m_scenario,
                                             TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
         }
