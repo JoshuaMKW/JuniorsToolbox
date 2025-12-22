@@ -17,6 +17,8 @@
 #include "gui/imgui_ext.hpp"
 #include "gui/logging/errors.hpp"
 #include "gui/modelcache.hpp"
+#include "gui/project/events.hpp"
+#include "gui/scene/events.hpp"
 #include "gui/scene/window.hpp"
 #include "gui/settings.hpp"
 #include "gui/util.hpp"
@@ -36,48 +38,16 @@
 #if WIN32
 #include <windows.h>
 #endif
-#include <gui/context_menu.hpp>
+#include "gui/context_menu.hpp"
 
 #include <J3D/Material/J3DMaterialTableLoader.hpp>
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 
-#include "gui/scene/window.hpp"
 #include <glm/gtx/euler_angles.hpp>
 
 using namespace Toolbox;
 
 namespace Toolbox::UI {
-
-    /* icu
-
-    includes:
-
-    #include <unicode/ucnv.h>
-    #include <unicode/unistr.h>
-    #include <unicode/ustring.h>
-
-    std::string Utf8ToSjis(const std::string& value)
-    {
-        icu::UnicodeString src(value.c_str(), "utf8");
-        int length = src.extract(0, src.length(), NULL, "shift_jis");
-
-        std::vector<char> result(length + 1);
-        src.extract(0, src.length(), &result[0], "shift_jis");
-
-        return std::string(result.begin(), result.end() - 1);
-    }
-
-    std::string SjisToUtf8(const std::string& value)
-    {
-        icu::UnicodeString src(value.c_str(), "shift_jis");
-        int length = src.extract(0, src.length(), NULL, "utf8");
-
-        std::vector<char> result(length + 1);
-        src.extract(0, src.length(), &result[0], "utf8");
-
-        return std::string(result.begin(), result.end() - 1);
-    }
-    */
 
     static std::unordered_set<std::string> s_game_blacklist = {"Map", "Sky"};
 
@@ -193,6 +163,14 @@ namespace Toolbox::UI {
         if (!result) {
             LogError(result.error());
             return false;
+        }
+
+        const AppSettings &cur_settings =
+            GUIApplication::instance().getSettingsManager().getCurrentProfile();
+        if (cur_settings.m_repack_scenes_on_save && m_current_scene->rootPath().has_value()) {
+            m_repack_io_busy = true;
+            GUIApplication::instance().dispatchEvent<ProjectPackEvent, true>(
+                0, m_current_scene->rootPath().value().parent_path(), true, [&]() { m_repack_io_busy = false; });
         }
 
         return true;
@@ -1447,7 +1425,7 @@ namespace Toolbox::UI {
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.7f, 0.2f, 0.2f, 0.9f});
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.7f, 0.2f, 0.2f, 1.0f});
 
-        bool context_controls_disabled = !is_dolphin_running || m_control_disable_requested;
+        bool context_controls_disabled = !is_dolphin_running || m_control_disable_requested || m_repack_io_busy;
 
         if (context_controls_disabled) {
             ImGui::BeginDisabled();

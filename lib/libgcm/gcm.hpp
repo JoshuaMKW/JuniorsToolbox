@@ -119,13 +119,11 @@ namespace gcm {
 
 }
 
-#if GCM_HAS_CXX23
+#if GCM_HAS_CXX23 && false  // windows msvc and ubuntu clang with C++23 flags float/double due to integral concept enforcement, so this is disabled for now
 #include <bit>
 #define GCM_BYTESWAP(val) std::byteswap((val))
 #else
 namespace gcm {
-
-    namespace {
 
 #if GCM_HAS_CXX17
         template <typename T>
@@ -170,8 +168,6 @@ namespace gcm {
         }
 #endif
 
-    }
-
 }
 #define GCM_BYTESWAP(val) gcm::byteswap((val))
 #endif
@@ -196,21 +192,35 @@ namespace std {
 }
 #endif
 
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define GCM_BIG_TO_SYSTEM_ENDIAN(val) (val)
+#define GCM_SYSTEM_TO_BIG_ENDIAN(val) (val)
+#elif defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define GCM_BIG_TO_SYSTEM_ENDIAN(val) GCM_BYTESWAP(val)
+#define GCM_SYSTEM_TO_BIG_ENDIAN(val) GCM_BYTESWAP(val)
+#elif defined(_WIN32) || defined(_WIN64)
+#define GCM_BIG_TO_SYSTEM_ENDIAN(val) GCM_BYTESWAP(val)
+#define GCM_SYSTEM_TO_BIG_ENDIAN(val) GCM_BYTESWAP(val)
+#else
+#define GCM_BIG_TO_SYSTEM_ENDIAN(val) GCM_BYTESWAP(val)
+#define GCM_SYSTEM_TO_BIG_ENDIAN(val) GCM_BYTESWAP(val)
+#endif
+
 #if GCM_HAS_CXX20
 #include <span>
 
 namespace gcm {
 
-    using ByteView = std::span<u8>;
+    using ByteView = std::span<const u8>;
 
     // make_view(ptr, size)
-    GCM_CONSTEXPR inline ByteView make_view(u8* ptr, size_t count) GCM_NOEXCEPT {
+    GCM_CONSTEXPR inline ByteView make_view(const u8* ptr, size_t count) GCM_NOEXCEPT {
         return ByteView(ptr, count);
     }
 
     // make_view(C-Array)
     template <std::size_t N>
-    GCM_CONSTEXPR inline ByteView make_view(u8 (&arr)[N]) GCM_NOEXCEPT {
+    GCM_CONSTEXPR inline ByteView make_view(const u8 (&arr)[N]) GCM_NOEXCEPT {
         return ByteView(arr, N);
     }
 
@@ -352,13 +362,13 @@ namespace gcm {
     using ByteView = gcm::detail::span<const u8>;
 
     // make_view(ptr, size)
-    GCM_CONSTEXPR inline ByteView make_view(u8* ptr, size_t count) GCM_NOEXCEPT {
+    GCM_CONSTEXPR inline ByteView make_view(const u8* ptr, size_t count) GCM_NOEXCEPT {
         return ByteView(ptr, count);
     }
 
     // make_view(C-Array)
     template <std::size_t N>
-    GCM_CONSTEXPR inline ByteView make_view(u8 (&arr)[N]) GCM_NOEXCEPT {
+    GCM_CONSTEXPR inline ByteView make_view(const u8 (&arr)[N]) GCM_NOEXCEPT {
         return ByteView(arr, N);
     }
 
@@ -432,7 +442,7 @@ namespace gcm {
         void SetTrailerData(ByteView) GCM_NOEXCEPT;
 
     public:
-        Apploader() = default;
+        Apploader();
         ~Apploader() = default;
 
         _GCM_CLASS_COPYABLE(Apploader)
@@ -442,6 +452,87 @@ namespace gcm {
         _GCM_CLASS_EQUIVALENCE(Apploader)
 #else
         GCM_NODISCARD bool operator==(const Apploader& other) const GCM_NOEXCEPT {
+            return m_data == other.m_data;
+        }
+#endif
+
+    private:
+        std::vector<u8> m_data;
+    };
+
+    class DOLExecutable {
+    public:
+#if GCM_HAS_CXX17
+        static GCM_CONSTEXPR const u32 INVALID_SECTION = 0xFF;
+        static GCM_CONSTEXPR const u32 MAX_TEXT_SECTIONS = 7;
+        static GCM_CONSTEXPR const u32 MAX_DATA_SECTIONS = 11;
+#else
+        enum : u32 { INVALID_SECTION = 0xFF, MAX_TEXT_SECTIONS = 7, MAX_DATA_SECTIONS = 11 };
+#endif
+
+        GCM_NODISCARD static std::unique_ptr<DOLExecutable> FromData(ByteView _in);
+        GCM_NODISCARD static std::unique_ptr<DOLExecutable> FromFile(const std::string& _path);
+        GCM_NODISCARD bool ToData(std::vector<u8>& _out) const;
+        GCM_NODISCARD bool ToFile(const std::string& _path) const;
+
+        GCM_NODISCARD bool IsValid() const GCM_NOEXCEPT;
+
+        GCM_NODISCARD u32 GetBSSAddress() const GCM_NOEXCEPT;
+        GCM_NODISCARD u32 GetBSSSize() const GCM_NOEXCEPT;
+        GCM_NODISCARD u32 GetEntryAddress() const GCM_NOEXCEPT;
+        
+        void SetBSSAddress(u32) GCM_NOEXCEPT;
+        void SetBSSSize(u32) GCM_NOEXCEPT;
+        void SetEntryAddress(u32) GCM_NOEXCEPT;
+
+        GCM_NODISCARD u8 GetTextSectionCount() const GCM_NOEXCEPT;
+        GCM_NODISCARD u8 GetDataSectionCount() const GCM_NOEXCEPT;
+
+        GCM_NODISCARD u8 GetTextSectionForAddress(u32 virtual_addr, u32 desired_len = 1) const GCM_NOEXCEPT;
+        GCM_NODISCARD u8 GetDataSectionForAddress(u32 virtual_addr, u32 desired_len = 1) const GCM_NOEXCEPT;
+
+        GCM_NODISCARD u32 GetTextSectionAddress(u8 section_idx) const GCM_NOEXCEPT;
+        GCM_NODISCARD u32 GetDataSectionAddress(u8 section_idx) const GCM_NOEXCEPT;
+
+        GCM_NODISCARD ByteView GetTextSectionView(u8 section_idx) const GCM_NOEXCEPT;
+        GCM_NODISCARD ByteView GetDataSectionView(u8 section_idx) const GCM_NOEXCEPT;
+
+        void SetTextSectionData(u8 section_idx, ByteView) GCM_NOEXCEPT;
+        void SetDataSectionData(u8 section_idx, ByteView) GCM_NOEXCEPT;
+
+        GCM_NODISCARD bool ReadAddressBool(u32 virtual_addr) const GCM_NOEXCEPT;
+        GCM_NODISCARD s8 ReadAddressS8(u32 virtual_addr) const GCM_NOEXCEPT;
+        GCM_NODISCARD u8 ReadAddressU8(u32 virtual_addr) const GCM_NOEXCEPT;
+        GCM_NODISCARD s16 ReadAddressS16(u32 virtual_addr) const GCM_NOEXCEPT;
+        GCM_NODISCARD u16 ReadAddressU16(u32 virtual_addr) const GCM_NOEXCEPT;
+        GCM_NODISCARD s32 ReadAddressS32(u32 virtual_addr) const GCM_NOEXCEPT;
+        GCM_NODISCARD u32 ReadAddressU32(u32 virtual_addr) const GCM_NOEXCEPT;
+        GCM_NODISCARD f32 ReadAddressF32(u32 virtual_addr) const GCM_NOEXCEPT;
+        GCM_NODISCARD f64 ReadAddressF64(u32 virtual_addr) const GCM_NOEXCEPT;
+        GCM_NODISCARD std::string ReadAddressCString(u32 virtual_addr) const GCM_NOEXCEPT;
+
+        void WriteAddressBool(u32 virtual_addr, bool) GCM_NOEXCEPT;
+        void WriteAddressS8(u32 virtual_addr, s8) GCM_NOEXCEPT;
+        void WriteAddressU8(u32 virtual_addr, u8) GCM_NOEXCEPT;
+        void WriteAddressS16(u32 virtual_addr, s16) GCM_NOEXCEPT;
+        void WriteAddressU16(u32 virtual_addr, u16) GCM_NOEXCEPT;
+        void WriteAddressS32(u32 virtual_addr, s32) GCM_NOEXCEPT;
+        void WriteAddressU32(u32 virtual_addr, u32) GCM_NOEXCEPT;
+        void WriteAddressF32(u32 virtual_addr, f32) GCM_NOEXCEPT;
+        void WriteAddressF64(u32 virtual_addr, f64) GCM_NOEXCEPT;
+        void WriteAddressCString(u32 virtual_addr, const std::string&) GCM_NOEXCEPT;
+
+    public:
+        DOLExecutable();
+        ~DOLExecutable() = default;
+
+        _GCM_CLASS_COPYABLE(DOLExecutable)
+        _GCM_CLASS_MOVEABLE(DOLExecutable)
+
+#if GCM_HAS_CXX20
+        _GCM_CLASS_EQUIVALENCE(DOLExecutable)
+#else
+        GCM_NODISCARD bool operator==(const DOLExecutable& other) const GCM_NOEXCEPT {
             return m_data == other.m_data;
         }
 #endif
@@ -482,7 +573,7 @@ namespace gcm {
         void SetTrackSize(u32 _val) GCM_NOEXCEPT;
 
     public:
-        BI2Sector() = default;
+        BI2Sector();
         ~BI2Sector() = default;
 
         _GCM_CLASS_COPYABLE(BI2Sector)
@@ -550,7 +641,7 @@ namespace gcm {
         void SetFirstFileOffset(u32) GCM_NOEXCEPT;
 
     public:
-        BootSector() = default;
+        BootSector();
         ~BootSector() = default;
 
         _GCM_CLASS_COPYABLE(BootSector)
@@ -629,7 +720,7 @@ namespace gcm {
         GCM_NODISCARD bool RecalculatePositions(const std::vector<FileRuleset>& rulesets) GCM_NOEXCEPT;
 
     public:
-        FSTSector() = default;
+        FSTSector();
         ~FSTSector() = default;
 
         _GCM_CLASS_COPYABLE(FSTSector)
@@ -703,6 +794,7 @@ namespace gcm {
         std::unique_ptr<Apploader> m_apploader;
         std::unique_ptr<BI2Sector> m_bi2;
         std::unique_ptr<BootSector> m_boot;
+        std::unique_ptr<DOLExecutable> m_dol;
         std::unique_ptr<FSTSector> m_fst;
     };
 

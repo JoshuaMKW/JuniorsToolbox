@@ -246,7 +246,7 @@ namespace Toolbox {
         if (mem_watch.contains("length")) {
             watch_size = mem_watch["length"];
         } else {
-            watch_size = meta_type_size(watch_type);
+            watch_size = (u32)meta_type_size(watch_type);
         }
 
         return model.makeWatchIndex(name_str, watch_type, pointer_chain, watch_size,
@@ -294,14 +294,14 @@ namespace Toolbox {
                     size_t child_row = 0;
                     for (const json_t &child_watch : group_list) {
                         ModelIndex new_idx =
-                            LoadWatchFromJSON(*this, child_watch, child_row, group_idx);
+                            LoadWatchFromJSON(*this, child_watch, (int)child_row, group_idx);
                         if (validateIndex(new_idx)) {
                             child_row += 1;
                         }
                     }
                 } else {
                     ModelIndex new_idx =
-                        LoadWatchFromJSON(*this, watch_entry, root_row, ModelIndex());
+                        LoadWatchFromJSON(*this, watch_entry, (int)root_row, ModelIndex());
                     if (validateIndex(new_idx)) {
                         root_row += 1;
                     }
@@ -458,7 +458,7 @@ namespace Toolbox {
                 out.write<u8>((u8)_WatchIndexData::Type::GROUP);
                 out.writeString(name);
                 out.write<bool>(data.m_group->isLocked());
-                out.write<u32>(children.size());
+                out.write<u32>((u32)children.size());
                 for (const UUID64 &child_uuid : children) {
                     out.write<UUID64>(child_uuid);
                 }
@@ -1289,7 +1289,7 @@ namespace Toolbox {
                 delete data.m_watch;
                 return ModelIndex();
             }
-            if (row > parent_data.m_group->getChildCount()) {
+            if (row > (int64_t)parent_data.m_group->getChildCount()) {
                 TOOLBOX_ERROR_V("[WatchDataModel] Invalid row index: {} > {}", row,
                                 parent_data.m_group->getChildCount());
                 delete data.m_watch;
@@ -1323,7 +1323,7 @@ namespace Toolbox {
                 TOOLBOX_ERROR("[WatchDataModel] Invalid row index!");
                 return ModelIndex();
             }
-            if (row > parent_data.m_group->getChildCount()) {
+            if (row > (int64_t)parent_data.m_group->getChildCount()) {
                 TOOLBOX_ERROR_V("[WatchDataModel] Invalid row index: {} > {}", row,
                                 parent_data.m_group->getChildCount());
                 return ModelIndex();
@@ -1347,7 +1347,7 @@ namespace Toolbox {
                 delete data.m_group;
                 return ModelIndex();
             }
-            if (row > parent_data.m_group->getChildCount()) {
+            if (row > (int64_t)parent_data.m_group->getChildCount()) {
                 TOOLBOX_ERROR_V("[WatchDataModel] Invalid row index: {} > {}", row,
                                 parent_data.m_group->getChildCount());
                 delete data.m_group;
@@ -1483,7 +1483,7 @@ namespace Toolbox {
             cacheIndex_(src_parent);
         }
 
-        if (row < m_row_map[map_key].size()) {
+        if (row < (int64_t)m_row_map[map_key].size()) {
             int64_t the_row = m_row_map[map_key][row];
             return toProxyIndex(m_source_model->getIndex(the_row, column, src_parent));
         }
@@ -1617,7 +1617,7 @@ namespace Toolbox {
             cacheIndex_(src_parent);
         }
 
-        if (row < m_row_map[map_key].size()) {
+        if (row < (int64_t)m_row_map[map_key].size()) {
             int64_t the_row = m_row_map[map_key][row];
             return toProxyIndex(m_source_model->getIndex(the_row, column, src_parent));
         }

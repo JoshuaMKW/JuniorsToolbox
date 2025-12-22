@@ -1,3 +1,4 @@
+#include "gui/project/events.hpp"
 #include "gui/project/window.hpp"
 #include "gui/application.hpp"
 #include "gui/dragdrop/dragdropmanager.hpp"
@@ -9,6 +10,29 @@
 #include <imgui/imgui.h>
 
 namespace Toolbox::UI {
+
+    ProjectPackEvent::ProjectPackEvent(const UUID64 &target_id, const fs_path &path, bool compress,
+                                       RarcProcessor::task_cb on_complete)
+        : BaseEvent(target_id, PROJECT_PACK_DIRECTORY) {
+        m_target_dir = path;
+        m_cb         = on_complete;
+        m_compress   = compress;
+    }
+
+    ScopePtr<ISmartResource> ProjectPackEvent::clone(bool deep) const {
+        return make_scoped<ProjectPackEvent>(*this);
+    }
+
+    ProjectUnpackEvent::ProjectUnpackEvent(const UUID64 &target_id, const fs_path &path,
+                                           RarcProcessor::task_cb on_complete)
+        : BaseEvent(target_id, PROJECT_UNPACK_DIRECTORY) {
+        m_target_pack = path;
+        m_cb          = on_complete;
+    }
+
+    ScopePtr<ISmartResource> ProjectUnpackEvent::clone(bool deep) const {
+        return make_scoped<ProjectUnpackEvent>(*this);
+    }
 
     ProjectViewWindow::ProjectViewWindow(const std::string &name) : ImWindow(name) {}
 
@@ -426,6 +450,33 @@ namespace Toolbox::UI {
         t.detach();
 
         ev->accept();
+    }
+
+    void ProjectViewWindow::onEvent(RefPtr<BaseEvent> ev) {
+        ImWindow::onEvent(ev);
+        if (ev->isHandled()) {
+            return;
+        }
+
+        switch (ev->getType()) {
+        case PROJECT_PACK_DIRECTORY: {
+            RefPtr<ProjectPackEvent> pack_ev = ref_cast<ProjectPackEvent>(ev);
+            const fs_path &src_path          = pack_ev->getPath();
+            fs_path dst_path                 = src_path;
+            dst_path.replace_extension(pack_ev->wantsCompress() ? ".szs" : ".arc");
+            m_rarc_processor.requestCompileArchive(src_path, dst_path, pack_ev->wantsCompress(), pack_ev->cb());
+            ev->accept();
+            break;
+        }
+        case PROJECT_UNPACK_DIRECTORY: {
+            RefPtr<ProjectUnpackEvent> unpack_ev = ref_cast<ProjectUnpackEvent>(ev);
+            const fs_path &src_path          = unpack_ev->getPath();
+            fs_path dst_path                 = src_path;
+            m_rarc_processor.requestExtractArchive(src_path, src_path.parent_path(), unpack_ev->cb());
+            ev->accept();
+            break;
+        }
+        }
     }
 
     void ProjectViewWindow::buildContextMenu() {

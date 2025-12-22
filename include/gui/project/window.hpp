@@ -96,6 +96,7 @@ namespace Toolbox::UI {
         void onContextMenuEvent(RefPtr<ContextMenuEvent> ev) override;
         void onDragEvent(RefPtr<DragEvent> ev) override;
         void onDropEvent(RefPtr<DropEvent> ev) override;
+        void onEvent(RefPtr<BaseEvent> ev) override;
 
         void buildContextMenu();
 

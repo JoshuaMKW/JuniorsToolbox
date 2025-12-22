@@ -90,7 +90,7 @@ namespace Toolbox {
 
                 return result;
             } else if constexpr (std::is_standard_layout_v<_S>) {
-                buf_out.resize(offset + sizeof(_S));
+                buf_out.resize((uint32_t)(offset + sizeof(_S)));
                 _S *out_obj = reinterpret_cast<_S *>(buf_out.buf<char>() + offset);
                 *out_obj    = _s;
                 return {};

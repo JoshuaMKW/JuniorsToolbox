@@ -224,13 +224,13 @@ namespace Toolbox {
 
         operator bool() const { return m_size > 0; }
 
-        byte_t &operator[](int index) {
+        byte_t &operator[](uint32_t index) {
             byte_t *bf = buf<byte_t>();
             TOOLBOX_CORE_ASSERT(bf && index < m_size);
             return bf[index];
         }
 
-        byte_t operator[](int index) const {
+        byte_t operator[](uint32_t index) const {
             const byte_t *bf = buf<byte_t>();
             TOOLBOX_CORE_ASSERT(bf && index < m_size);
             return bf[index];
