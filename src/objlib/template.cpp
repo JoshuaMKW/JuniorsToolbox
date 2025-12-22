@@ -560,6 +560,20 @@ namespace Toolbox::Object {
                 if (render_info.contains("Textures")) {
                     wizard.m_render_info.m_texture_swap_map = render_info["Textures"];
                 }
+            } else if (render_infos.contains("Default")) {
+                auto &render_info = render_infos["Default"];
+                if (render_info.contains("Model")) {
+                    wizard.m_render_info.m_file_model = render_info["Model"];
+                }
+                if (render_info.contains("Materials")) {
+                    wizard.m_render_info.m_file_materials = render_info["Materials"];
+                }
+                if (render_info.contains("Animations")) {
+                    wizard.m_render_info.m_file_animations = render_info["Animations"];
+                }
+                if (render_info.contains("Textures")) {
+                    wizard.m_render_info.m_texture_swap_map = render_info["Textures"];
+                }
             }
             m_wizards.push_back(wizard);
         }

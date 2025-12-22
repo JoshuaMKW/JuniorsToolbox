@@ -20,6 +20,7 @@
 #include "gui/property/property.hpp"
 #include "gui/scene/billboard.hpp"
 #include "gui/scene/camera.hpp"
+#include "gui/scene/events.hpp"
 #include "gui/scene/nodeinfo.hpp"
 #include "gui/scene/objdialog.hpp"
 #include "gui/scene/path.hpp"
@@ -31,31 +32,6 @@
 #include <imgui.h>
 
 namespace Toolbox::UI {
-
-#define SCENE_CREATE_RAIL_EVENT     100
-#define SCENE_DISABLE_CONTROL_EVENT 101
-#define SCENE_ENABLE_CONTROL_EVENT  102
-
-    class SceneCreateRailEvent : public BaseEvent {
-    private:
-        SceneCreateRailEvent() = default;
-
-    public:
-        SceneCreateRailEvent(const SceneCreateRailEvent &)     = default;
-        SceneCreateRailEvent(SceneCreateRailEvent &&) noexcept = default;
-
-        SceneCreateRailEvent(const UUID64 &target_id, const Rail::Rail &rail);
-
-        [[nodiscard]] const Rail::Rail &getRail() const noexcept { return m_rail; }
-
-        ScopePtr<ISmartResource> clone(bool deep) const override;
-
-        SceneCreateRailEvent &operator=(const SceneCreateRailEvent &)     = default;
-        SceneCreateRailEvent &operator=(SceneCreateRailEvent &&) noexcept = default;
-
-    private:
-        Rail::Rail m_rail;
-    };
 
     class SceneWindow final : public ImWindow {
     public:
@@ -200,6 +176,7 @@ namespace Toolbox::UI {
         ScopePtr<Toolbox::SceneInstance> m_current_scene;
 
         fs_path m_io_context_path;
+        bool m_repack_io_busy = false;
 
         // Hierarchy view
         ImGuiTextFilter m_hierarchy_filter;

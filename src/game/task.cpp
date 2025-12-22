@@ -1,5 +1,7 @@
 #pragma once
 
+#include <gcm.hpp>
+
 #include <atomic>
 #include <chrono>
 #include <mutex>
@@ -14,7 +16,112 @@
 #include "gui/logging/errors.hpp"
 #include "gui/settings.hpp"
 
+// #define TOOLBOX_USE_INTERPRETER
+
 using namespace Toolbox;
+
+#define STR_EQUAL(a, b) ((bool)(strcmp((a), (b)) == 0))
+
+namespace BetterSMS {
+
+    enum class ETask {
+        NONE                  = 0,
+        GET_NAMEREF_PTR       = 1,
+        CREATE_NAMEREF        = 2,
+        DELETE_NAMEREF        = 3,
+        SET_NAMEREF_PARAMETER = 4,
+        PLAY_CAMERA_DEMO      = 5,
+        UPDATE_SCENE_ARCHIVE  = 6,
+        CHANGE_SCENE          = 7,
+    };
+
+    namespace _impl {
+        static u32 s_requested_task_addr        = 0x800002E0;
+        static u32 s_request_buffer_p_addr      = 0x800002E4;
+        static u32 s_response_buffer_p_addr     = 0x800002E8;
+        static const u32 s_request_buffer_size  = 0x10000;
+        static const u32 s_response_buffer_size = 0x100;
+    }  // namespace _impl
+
+    static bool isBetterSMSBusy() {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        return communicator.read<u32>(_impl::s_requested_task_addr).value_or((u32)ETask::NONE) !=
+               (u32)ETask::NONE;
+    }
+
+    // Interface functions
+    static Result<Buffer, std::string> getResponseBuffer() {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        u32 response_buffer_ptr =
+            communicator.read<u32>(_impl::s_response_buffer_p_addr).value_or(0);
+        if (response_buffer_ptr == 0) {
+            return std::unexpected("Response buffer pointer is null!");
+        }
+
+        s8 state = communicator.read<s8>(response_buffer_ptr).value_or(-1);
+        if (state == -1) {
+            char error_msg[_impl::s_response_buffer_size - 4];
+            communicator.readCString(error_msg, sizeof(error_msg), response_buffer_ptr + 4);
+            return std::unexpected(std::string(error_msg));
+        }
+
+        Buffer response_buffer;
+        response_buffer.setBuf(
+            (char *)communicator.manager().getMemoryView() +
+                communicator.manager().getAddressAsOffset(response_buffer_ptr + 4),
+            _impl::s_response_buffer_size - 4);
+        return response_buffer;
+    }
+
+    static Result<Buffer, std::string> getRequestBuffer() {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        u32 request_buffer_ptr = communicator.read<u32>(_impl::s_request_buffer_p_addr).value_or(0);
+        if (request_buffer_ptr == 0) {
+            return std::unexpected("Response buffer pointer is null!");
+        }
+
+        Buffer request_buffer;
+        request_buffer.setBuf((char *)communicator.manager().getMemoryView() +
+                                  communicator.manager().getAddressAsOffset(request_buffer_ptr),
+                              _impl::s_request_buffer_size);
+
+        return request_buffer;
+    }
+
+    static void setRequestTaskAndFinalize(ETask task) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        communicator.write<u32>(_impl::s_requested_task_addr, static_cast<u32>(task));
+    }
+
+    static bool waitForResponse(std::optional<TimeStep> timeout) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        TimePoint start_time              = std::chrono::high_resolution_clock::now();
+        while (true) {
+            if (timeout.has_value()) {
+                TimeStep elapsed_time(start_time, std::chrono::high_resolution_clock::now());
+                if (elapsed_time >= timeout.value()) {
+                    return false;
+                }
+            }
+
+            u32 response_buffer_ptr =
+                communicator.read<u32>(_impl::s_response_buffer_p_addr).value_or(0);
+            if (response_buffer_ptr == 0) {
+                return false;
+            }
+
+            u8 state = communicator.read<u8>(response_buffer_ptr).value_or(-1);
+            if (state != 0) {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+
+}  // namespace BetterSMS
 
 namespace Toolbox::Game {
 
@@ -50,15 +157,6 @@ namespace Toolbox::Game {
             "--------------------------------------------------------------------------");
         return result;
     }
-
-    enum class ETask {
-        NONE,
-        GET_NAMEREF_PTR,
-        CREATE_NAMEREF,
-        DELETE_NAMEREF,
-        PLAY_CAMERA_DEMO,
-        SET_NAMEREF_PARAMETER
-    };
 
     void TaskCommunicator::tRun(void *param) {
         m_game_interpreter = Interpreter::SystemDolphin();
@@ -360,6 +458,7 @@ namespace Toolbox::Game {
         if (u32 actor_ptr = actor->getGamePtr())
             return actor_ptr;
 
+#if 1
         if (!isSceneLoaded()) {
             return 0;
         }
@@ -391,13 +490,52 @@ namespace Toolbox::Game {
         auto snapshot = dolphin_interpreter->evaluateFunction(0x80198d0c, 2, argv, 0, nullptr);
 
         return static_cast<u32>(snapshot.m_gpr[3]);
-    }
-
-    u32 TaskCommunicator::getActorPtr(const std::string &name) {
-        if (!isSceneLoaded()) {
+#else
+        if (!isSceneLoaded() || BetterSMS::isBetterSMSBusy()) {
             return 0;
         }
 
+        Result<Buffer, std::string> maybe_request_buffer = BetterSMS::getRequestBuffer();
+        if (!maybe_request_buffer) {
+            TOOLBOX_ERROR_V("[TASK] {}", maybe_request_buffer.error());
+            return 0;
+        }
+
+        Buffer request_buffer = std::move(maybe_request_buffer.value());
+        std::memset(request_buffer.buf<u8>(), '\0', BetterSMS::_impl::s_request_buffer_size);
+
+        std::string actor_name = String::toGameEncoding(actor->getNameRef().name()).value_or("");
+        std::strncpy(request_buffer.buf<char>(), actor_name.data(), actor_name.size());
+
+        BetterSMS::setRequestTaskAndFinalize(BetterSMS::ETask::GET_NAMEREF_PTR);
+
+        if (BetterSMS::waitForResponse(TimeStep(5.0))) {
+            Result<Buffer, std::string> maybe_response_buffer = BetterSMS::getResponseBuffer();
+            if (!maybe_response_buffer) {
+                TOOLBOX_ERROR_V("[TASK] {}", maybe_response_buffer.error());
+                return 0;
+            }
+
+            Buffer response_buffer = std::move(maybe_response_buffer.value());
+            u32 actor_ptr          = std::byteswap(response_buffer.get<u32>(0));
+
+            request_buffer.initTo('\0');
+            response_buffer.initTo('\0');
+
+            return actor_ptr;
+        }
+
+        TOOLBOX_ERROR("[TASK] Timeout waiting for actor pointer response!");
+        return 0;
+#endif
+    }
+
+    u32 TaskCommunicator::getActorPtr(const std::string &name) {
+        if (!isSceneLoaded() || BetterSMS::isBetterSMSBusy()) {
+            return 0;
+        }
+
+#ifdef TOOLBOX_USE_INTERPRETER
         auto dolphin_interpreter = createInterpreterUnchecked();
         if (!dolphin_interpreter) {
             return 0;
@@ -419,6 +557,40 @@ namespace Toolbox::Game {
         auto snapshot = dolphin_interpreter->evaluateFunction(0x80198D0C, 2, argv, 0, nullptr);
 
         return static_cast<u32>(snapshot.m_gpr[3]);
+#else
+        Result<Buffer, std::string> maybe_request_buffer = BetterSMS::getRequestBuffer();
+        if (!maybe_request_buffer) {
+            TOOLBOX_ERROR_V("[TASK] {}", maybe_request_buffer.error());
+            return 0;
+        }
+
+        Buffer request_buffer = std::move(maybe_request_buffer.value());
+        std::memset(request_buffer.buf<u8>(), '\0', BetterSMS::_impl::s_request_buffer_size);
+
+        std::string actor_name = String::toGameEncoding(name).value_or("");
+        std::strncpy(request_buffer.buf<char>(), actor_name.data(), actor_name.size());
+
+        BetterSMS::setRequestTaskAndFinalize(BetterSMS::ETask::GET_NAMEREF_PTR);
+
+        if (BetterSMS::waitForResponse(TimeStep(5.0))) {
+            Result<Buffer, std::string> maybe_response_buffer = BetterSMS::getResponseBuffer();
+            if (!maybe_response_buffer) {
+                TOOLBOX_ERROR_V("[TASK] {}", maybe_response_buffer.error());
+                return 0;
+            }
+
+            Buffer response_buffer = std::move(maybe_response_buffer.value());
+            u32 actor_ptr          = std::byteswap(response_buffer.get<u32>(0));
+
+            request_buffer.initTo('\0');
+            response_buffer.initTo('\0');
+
+            return actor_ptr;
+        }
+
+        TOOLBOX_ERROR("[TASK] Timeout waiting for actor pointer response!");
+        return 0;
+#endif
     }
 
     bool TaskCommunicator::isSceneLoaded() {
@@ -542,6 +714,7 @@ namespace Toolbox::Game {
                     return false;
                 }
 
+#ifdef TOOLBOX_USE_INTERPRETER
                 u32 comm_state = communicator.read<u32>(0x80000298).value();
 
                 auto game_stage_result = communicator.read<u8>(application_addr + 0xE);
@@ -611,6 +784,54 @@ namespace Toolbox::Game {
                 }
 
                 return false;
+#else
+                static bool s_is_loading_stage = false;
+
+                if (BetterSMS::isBetterSMSBusy()) {
+                    return false;
+                } else if (s_is_loading_stage) {
+                    // Stage is loaded and the task was performed
+                    if (isSceneLoaded(stage, scenario)) {
+                        if (cb)
+                            cb(communicator.read<u32>(0x800002E8).value());
+                        TOOLBOX_INFO("[TASK] Successfully loaded the scene!");
+                        s_is_loading_stage = false;
+                        return true;
+                    }
+                    return false;
+                }
+
+                Result<Buffer, std::string> maybe_request_buffer = BetterSMS::getRequestBuffer();
+                if (!maybe_request_buffer) {
+                    TOOLBOX_ERROR_V("[TASK] {}", maybe_request_buffer.error());
+                    return false;
+                }
+
+                Buffer request_buffer = std::move(maybe_request_buffer.value());
+                request_buffer.initTo('\0');
+                request_buffer.set<u8>(0, stage);
+                request_buffer.set<u8>(1, scenario);
+
+                BetterSMS::setRequestTaskAndFinalize(BetterSMS::ETask::CHANGE_SCENE);
+
+                if (BetterSMS::waitForResponse(TimeStep(5.0))) {
+                    Result<Buffer, std::string> maybe_response_buffer =
+                        BetterSMS::getResponseBuffer();
+                    if (!maybe_response_buffer) {
+                        TOOLBOX_ERROR_V("[TASK] {}", maybe_response_buffer.error());
+                        return false;
+                    }
+
+                    request_buffer.initTo('\0');
+                    maybe_response_buffer.value().initTo('\0');
+
+                    s_is_loading_stage = true;
+                    return false;
+                }
+
+                TOOLBOX_ERROR("[TASK] Timeout waiting for actor pointer response!");
+                return false;
+#endif
             },
             stage, scenario, complete_cb);
     }
@@ -618,6 +839,7 @@ namespace Toolbox::Game {
     Result<void> TaskCommunicator::taskAddSceneObject(RefPtr<ISceneObject> object,
                                                       RefPtr<GroupSceneObject> parent,
                                                       transact_complete_cb complete_cb) {
+#ifdef TOOLBOX_USE_INTERPRETER
         u32 parent_ptr = getActorPtr(parent);
         if (parent_ptr == 0) {
             return make_error<void>(
@@ -715,6 +937,54 @@ namespace Toolbox::Game {
 
         // Object is initialized successfully
         return {};
+#else
+
+        Result<Buffer, std::string> maybe_request_buffer = BetterSMS::getRequestBuffer();
+        if (!maybe_request_buffer) {
+            return make_error<void>("TASK", maybe_request_buffer.error());
+        }
+
+        Buffer request_buffer = std::move(maybe_request_buffer.value());
+        std::memset(request_buffer.buf<u8>(), '\0', BetterSMS::_impl::s_request_buffer_size);
+
+        std::string parent_type = String::toGameEncoding(parent->type()).value_or("");
+        std::strncpy(request_buffer.buf<char>(), parent_type.data(),
+                     std::min<size_t>(parent_type.size(), 0x7F));
+
+        std::string parent_name = String::toGameEncoding(parent->getNameRef().name()).value_or("");
+        std::strncpy(request_buffer.buf<char>() + 0x80, parent_name.data(),
+                     std::min<size_t>(parent_name.size(), 0x17F));
+
+        std::span<u8> obj_data = object->getData();
+        if (obj_data.size() > (int64_t)(request_buffer.size() - 0x200)) {
+            return make_error<void>(
+                "TASK",
+                "Failed to add object to game scene (Obj data is too large for buffer)!");
+        }
+
+        std::memcpy(request_buffer.buf<char>() + 0x200, obj_data.data(), obj_data.size());
+
+        BetterSMS::setRequestTaskAndFinalize(BetterSMS::ETask::CREATE_NAMEREF);
+
+        if (BetterSMS::waitForResponse(TimeStep(5.0))) {
+            Result<Buffer, std::string> maybe_response_buffer = BetterSMS::getResponseBuffer();
+            if (!maybe_response_buffer) {
+                return make_error<void>("TASK", maybe_response_buffer.error());
+            }
+
+            Buffer response_buffer = std::move(maybe_response_buffer.value());
+            u32 actor_ptr          = std::byteswap(response_buffer.get<u32>(0));
+
+            request_buffer.initTo('\0');
+            response_buffer.initTo('\0');
+
+            object->setGamePtr(actor_ptr);
+            return {};
+        }
+
+        return make_error<void>(
+            "TASK", "Timed out while adding object to game scene!");
+#endif
     }
 
     Result<void> TaskCommunicator::taskRemoveSceneObject(RefPtr<ISceneObject> object,
@@ -735,6 +1005,7 @@ namespace Toolbox::Game {
                 "GAME TASK", "Failed to remove object from game scene (Parent doesn't exist)!");
         }
 
+#ifdef TOOLBOX_USE_INTERPRETER
         if (parent->type() != "IdxGroup") {
             return make_error<void>(
                 "GAME TASK", "Failed to remove object from game scene (Parent isn't IdxGroup)!");
@@ -794,10 +1065,90 @@ namespace Toolbox::Game {
                 }
             }
         });
+#else
+        // Remove the object from the parent list
+        Result<Buffer, std::string> maybe_request_buffer = BetterSMS::getRequestBuffer();
+        if (!maybe_request_buffer) {
+            return make_error<void>("TASK", maybe_request_buffer.error());
+        }
+        Buffer request_buffer = std::move(maybe_request_buffer.value());
+        request_buffer.initTo('\0');
+        std::string parent_type = String::toGameEncoding(parent->type()).value_or("");
+        std::strncpy(request_buffer.buf<char>(), parent_type.data(),
+                     std::min<size_t>(parent_type.size(), 0x7F));
+        std::string parent_name = String::toGameEncoding(parent->getNameRef().name()).value_or("");
+        std::strncpy(request_buffer.buf<char>() + 0x80, parent_name.data(),
+                     std::min<size_t>(parent_name.size(), 0x17F));
+        std::string obj_name = String::toGameEncoding(object->getNameRef().name()).value_or("");
+        std::strncpy(request_buffer.buf<char>() + 0x200, obj_name.data(),
+                     std::min<size_t>(obj_name.size(), 0x17F));
+        BetterSMS::setRequestTaskAndFinalize(BetterSMS::ETask::DELETE_NAMEREF);
+        if (BetterSMS::waitForResponse(TimeStep(5.0))) {
+            Result<Buffer, std::string> maybe_response_buffer = BetterSMS::getResponseBuffer();
+            if (!maybe_response_buffer) {
+                return make_error<void>("TASK", maybe_response_buffer.error());
+            }
+            request_buffer.initTo('\0');
+            maybe_response_buffer.value().initTo('\0');
+        } else {
+            return make_error<void>("TASK", "Timed out while removing object from game scene!");
+        }
+#endif
 
         // TODO: Call delete on object pointer using game interpreter
 
         return {};
+    }
+
+    Result<void> TaskCommunicator::taskRenameSceneObject(RefPtr<ISceneObject> object,
+                                                         const std::string &old_name,
+                                                         const std::string &new_name,
+                                                         transact_complete_cb complete_cb) {
+        if (!isSceneLoaded()) {
+            return make_error<void>("GAME TASK",
+                                    "Failed to rename object in game scene (Scene isn't loaded)!");
+        }
+
+        u32 obj_ptr = getActorPtr(object);
+        if (obj_ptr == 0) {
+            return make_error<void>(
+                "GAME TASK", "Failed to rename object in game scene (Object doesn't exist)!");
+        }
+
+        // Remove the object from the parent list
+        Result<Buffer, std::string> maybe_request_buffer = BetterSMS::getRequestBuffer();
+        if (!maybe_request_buffer) {
+            return make_error<void>("TASK", maybe_request_buffer.error());
+        }
+
+        Buffer request_buffer = std::move(maybe_request_buffer.value());
+        request_buffer.initTo('\0');
+
+        std::string obj_type = String::toGameEncoding(object->type()).value_or("");
+        std::string old_game_name = String::toGameEncoding(old_name).value_or("");
+        std::string new_game_name = String::toGameEncoding(new_name).value_or("");
+        u16 new_keycode           = NameRef::calcKeyCode(new_game_name);
+
+        std::strncpy(request_buffer.buf<char>(), obj_type.data(),
+                     std::min<size_t>(obj_type.size(), 0x7F));
+        std::strncpy(request_buffer.buf<char>() + 0x80, old_game_name.data(),
+                     std::min<size_t>(old_game_name.size(), 0x17F));
+        std::strncpy(request_buffer.buf<char>() + 0x200, new_game_name.data(),
+                     std::min<size_t>(new_game_name.size(), 0x17F));
+        *(u16 *)(request_buffer.buf<char>() + 0x380) = std::byteswap(new_keycode);
+
+        BetterSMS::setRequestTaskAndFinalize(BetterSMS::ETask::SET_NAMEREF_PARAMETER);
+
+        if (BetterSMS::waitForResponse(TimeStep(5.0))) {
+            Result<Buffer, std::string> maybe_response_buffer = BetterSMS::getResponseBuffer();
+            if (!maybe_response_buffer) {
+                return make_error<void>("TASK", maybe_response_buffer.error());
+            }
+            request_buffer.initTo('\0');
+            maybe_response_buffer.value().initTo('\0');
+        } else {
+            return make_error<void>("TASK", "Timed out while removing object from game scene!");
+        }
     }
 
     Result<void> TaskCommunicator::taskPlayCameraDemo(std::string_view demo_name,
@@ -854,6 +1205,75 @@ namespace Toolbox::Game {
     Result<void> TaskCommunicator::updateSceneObjectParameter(const QualifiedName &member_name,
                                                               size_t member_game_offset,
                                                               RefPtr<ISceneObject> object) {
+        return Result<void>();
+    }
+
+    Result<void> TaskCommunicator::flushFileInGameFST(const fs_path &root, const fs_path &fstpath) {
+        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+
+        const u32 fst_start_address = communicator.read<u32>(0x80000038).value_or(0);
+        if (fst_start_address == 0) {
+            return make_error<void>("GAME TASK", "Failed to get pointer for FST");
+        }
+
+        const u32 fst_size = communicator.read<u32>(0x8000003C).value_or(0);
+        if (fst_size == 0) {
+            return make_error<void>("GAME TASK", "Failed to get pointer for FST");
+        }
+
+        const u32 fst_offset = communicator.manager().getAddressAsOffset(fst_start_address);
+        u8 *fst_data         = (u8 *)(communicator.manager().getMemoryView()) + fst_offset;
+
+        ScopePtr<gcm::FSTSector> fst;
+        {
+            gcm::ByteView fst_view = gcm::make_view(fst_data, (size_t)fst_size);
+            fst                    = gcm::FSTSector::FromData(fst_view);
+        }
+
+        if (!fst || !fst->IsValid()) {
+            return make_error<void>("GAME TASK", "FST was corrupt!");
+        }
+
+        fst->SetEntryPositionMin(0x300000);
+        fst->SetEntryPositionMax(0x70000000);
+
+        std::string the_file_path = fstpath.string();
+        gcm::u32 the_file_entry   = fst->GetEntryNum(fst->GetRootEntryNum(), the_file_path);
+        if (the_file_entry == gcm::FSTSector::INVALID_ENTRYNUM) {
+            return make_error<void>("GAME TASK", "FST doesn't have the filepath!");
+        }
+
+        size_t file_size =
+            Filesystem::file_size(root / fstpath).value_or(std::numeric_limits<size_t>::max());
+        if (file_size == std::numeric_limits<size_t>::max()) {
+            return make_error<void>("GAME TASK", "Filepath failed to report size!");
+        }
+
+        fst->SetEntrySize(the_file_entry, (gcm::u32)file_size);
+
+        std::vector<gcm::FSTSector::FileRuleset> rulesets;
+
+        gcm::FSTSector::FileRuleset adp_ruleset = {};
+        strncpy(adp_ruleset.m_extension, ".adp", 4);
+        adp_ruleset.m_alignment = 32768;
+        rulesets.emplace_back(adp_ruleset);
+
+        if (!fst->RecalculatePositions(rulesets)) {
+            return make_error<void>("GAME TASK", "Failed to recalculate the file positions in the FST!");
+        }
+
+        std::vector<gcm::u8> fst_out;
+        if (!fst->ToData(fst_out)) {
+            return make_error<void>("GAME TASK",
+                                    "Failed to serialize the new FST!");
+        }
+
+        if (fst_out.size() != fst_size) {
+            return make_error<void>("GAME TASK", "Somehow resizing the file resized the FST!");
+        }
+
+        std::memcpy((char *)fst_data, fst_out.data(), fst_out.size());
+
         return Result<void>();
     }
 

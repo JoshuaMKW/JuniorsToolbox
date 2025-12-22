@@ -97,6 +97,7 @@ namespace Toolbox {
                 settings.m_dolphin_refresh_rate      = j["Dolphin Refresh Rate"];
                 settings.m_is_template_cache_allowed = j["Cache Object Templates"];
                 settings.m_log_to_cout_cerr          = j["Log To Terminal"];
+                settings.m_repack_scenes_on_save     = j["Repack Scenes on Save"];
             });
 
             if (!result) {
@@ -228,6 +229,7 @@ namespace Toolbox {
             j["Dolphin Refresh Rate"]   = profile.m_dolphin_refresh_rate;
             j["Cache Object Templates"] = profile.m_is_template_cache_allowed;
             j["Log To Terminal"]        = profile.m_log_to_cout_cerr;
+            j["Repack Scenes on Save"] = profile.m_repack_scenes_on_save;
         });
 
         if (!result) {

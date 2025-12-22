@@ -3,7 +3,7 @@
 namespace Toolbox {
 
     bool ProcessLayer::isTargetOfEvent(RefPtr<BaseEvent> ev) const noexcept {
-        bool is_same_id = ev->getTargetId() == getUUID();
+        const bool is_same_id = ev->getTargetId() == 0 || ev->getTargetId() == getUUID();
         return is_same_id;
     }
 

@@ -177,7 +177,7 @@ namespace Toolbox::Dolphin {
         }
 
         std::string dolphin_args =
-            std::format("-e \"{}/sys/main.dol\" -a HLE",
+            std::format("-e \"{}/sys/main.dol\" -v Vulkan -a HLE",  // -b for no emu UI (only game window)
                         application.getProjectManager().getProjectFolder().string());
 
         size_t last_not_null    = m_dolphin_path.string().find_last_not_of('\000');

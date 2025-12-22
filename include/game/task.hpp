@@ -47,12 +47,18 @@ namespace Toolbox::Game {
                                            RefPtr<GroupSceneObject> parent,
                                            transact_complete_cb complete_cb = nullptr);
 
+        Result<void> taskRenameSceneObject(RefPtr<ISceneObject> object, const std::string &old_name,
+                                           const std::string &new_name,
+                                           transact_complete_cb complete_cb = nullptr);
+
         Result<void> taskPlayCameraDemo(std::string_view demo_name,
                                         transact_complete_cb complete_cb = nullptr);
 
         Result<void> updateSceneObjectParameter(const QualifiedName &member_name,
                                                 size_t member_game_offset,
                                                 RefPtr<ISceneObject> object);
+
+        Result<void> flushFileInGameFST(const fs_path &root, const fs_path &fstpath);
 
         Result<void> setObjectTransformToMario(RefPtr<PhysicalSceneObject> object);
         Result<void> setObjectTranslationToMario(RefPtr<PhysicalSceneObject> object);

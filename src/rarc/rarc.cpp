@@ -246,18 +246,14 @@ namespace Toolbox::RARC {
         getSortedDirectoryListR(root, sorted_fs_tree);
 
         for (auto &path : sorted_fs_tree) {
+            if (path.filename() == ".DS_Store") {
+                continue;
+            }
             auto dir_result = Toolbox::Filesystem::is_directory(path);
             if (!dir_result) {
                 return std::unexpected(dir_result.error());
             }
             bool folder = dir_result.value();
-            if (err) {
-                std::cout << std::format("CREATE: {}\n", err.message().c_str());
-                continue;
-            }
-            if (path.filename() == ".DS_Store") {
-                continue;
-            }
             std::vector<char> data;
             if (!folder) {
                 auto fstrm = std::ifstream(path, std::ios::binary | std::ios::in);
@@ -313,10 +309,10 @@ namespace Toolbox::RARC {
                     p.siblingNext = static_cast<s32>(paths.size());
             }
         }
-        for (auto &p : paths) {
-            std::cout << std::format("CREATE: PATH={} (folder:{}, depth:{})\n", p.str, p.is_folder,
-                                     p.depth);
-        }
+        //for (auto &p : paths) {
+        //    std::cout << std::format("CREATE: PATH={} (folder:{}, depth:{})\n", p.str, p.is_folder,
+        //                             p.depth);
+        //}
         ResourceArchive result;
 
         s16 file_id = 0, folder_id = 0;

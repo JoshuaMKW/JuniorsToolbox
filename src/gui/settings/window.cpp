@@ -390,7 +390,12 @@ namespace Toolbox::UI {
         }
         ImGui::EndGroupPanel();
 
-        ImGui::Checkbox("Cache Object Templates", &settings.m_is_template_cache_allowed);
+        if (ImGui::BeginGroupPanel("Game Scene", nullptr, {})) {
+            ImGui::Checkbox("Repack Scenes on Save", &settings.m_repack_scenes_on_save);
+            ImGui::Checkbox("Cache Object Templates", &settings.m_is_template_cache_allowed);
+        }
+        ImGui::EndGroupPanel();
+
         ImGui::Checkbox("Pipe Logs To Terminal", &settings.m_log_to_cout_cerr);
 
         if (ImGui::Button("Clear Cache")) {

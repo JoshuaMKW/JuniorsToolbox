@@ -846,6 +846,8 @@ namespace Toolbox::Object {
         std::optional<std::string> model_file;
         std::optional<std::string> mat_file = info.m_file_materials;
 
+        m_scene_resource_path = asset_path;
+
         // Get model variable that exists in some objects
         auto model_member_result = getMember("Model");
         if (model_member_result) {
@@ -1155,11 +1157,22 @@ namespace Toolbox::Object {
     }
 
     ObjectFactory::create_ret_t ObjectFactory::create(const Template &template_,
-                                                      std::string_view wizard_name) {
+                                                      std::string_view wizard_name, const fs_path &resource_path) {
         if (isGroupObject(template_.type())) {
             return make_scoped<GroupSceneObject>(template_, wizard_name);
         } else if (isPhysicalObject(template_.type())) {
-            return make_scoped<PhysicalSceneObject>(template_, wizard_name);
+            ScopePtr<PhysicalSceneObject> obj =
+                make_scoped<PhysicalSceneObject>(template_, wizard_name);
+
+            auto wizard = template_.getWizard(wizard_name);
+            if (!wizard) {
+                TOOLBOX_WARN_V("[OBJECT_FACTORY] Failed to fetch wizard for {}, which may cause "
+                               "undefined behavior!", template_.type());
+                return obj;
+            }
+
+            obj->loadRenderData(resource_path, wizard->m_render_info, getResourceCache());
+            return obj;
         } else {
             return make_scoped<VirtualSceneObject>(template_, wizard_name);
         }

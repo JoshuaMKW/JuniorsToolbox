@@ -112,6 +112,8 @@ file(GLOB TOOLBOX_SRC
     "src/gui/updater/*.cpp"
     "include/gui/updater/*.hpp"
     "include/io/*.hpp"
+    "lib/libgcm/*.hpp"
+    "lib/libgcm/*.cpp"
     "lib/librii/*.hpp"
     "lib/librii/*.cpp"
     "lib/imgui_markdown/*.hpp"
@@ -135,6 +137,8 @@ target_link_libraries(JuniorsToolbox PRIVATE netpp)
 if(MSVC)
     # target_compile_options(j3dultra PRIVATE /w)
     target_compile_options(JuniorsToolbox PRIVATE /FS /MP)
+    target_compile_options(JuniorsToolbox PUBLIC /ZI)
+    target_link_options(JuniorsToolbox PUBLIC /INCREMENTAL)
 else()
     # target_compile_options(j3dultra PRIVATE -w)
 endif()
@@ -180,6 +184,7 @@ target_include_directories(JuniorsToolbox PRIVATE
     "lib/glm::glm"
     "lib/J3DUltra"
     "lib/libbti"
+    "lib/libgcm"
     "lib/imgui_markdown"
     "lib/nativefiledialog-extended/src/include"
     "lib/netpp")

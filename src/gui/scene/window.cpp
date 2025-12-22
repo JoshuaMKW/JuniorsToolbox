@@ -17,6 +17,8 @@
 #include "gui/imgui_ext.hpp"
 #include "gui/logging/errors.hpp"
 #include "gui/modelcache.hpp"
+#include "gui/project/events.hpp"
+#include "gui/scene/events.hpp"
 #include "gui/scene/window.hpp"
 #include "gui/settings.hpp"
 #include "gui/util.hpp"
@@ -36,48 +38,16 @@
 #if WIN32
 #include <windows.h>
 #endif
-#include <gui/context_menu.hpp>
+#include "gui/context_menu.hpp"
 
 #include <J3D/Material/J3DMaterialTableLoader.hpp>
 #include <J3D/Material/J3DUniformBufferObject.hpp>
 
-#include "gui/scene/window.hpp"
 #include <glm/gtx/euler_angles.hpp>
 
 using namespace Toolbox;
 
 namespace Toolbox::UI {
-
-    /* icu
-
-    includes:
-
-    #include <unicode/ucnv.h>
-    #include <unicode/unistr.h>
-    #include <unicode/ustring.h>
-
-    std::string Utf8ToSjis(const std::string& value)
-    {
-        icu::UnicodeString src(value.c_str(), "utf8");
-        int length = src.extract(0, src.length(), NULL, "shift_jis");
-
-        std::vector<char> result(length + 1);
-        src.extract(0, src.length(), &result[0], "shift_jis");
-
-        return std::string(result.begin(), result.end() - 1);
-    }
-
-    std::string SjisToUtf8(const std::string& value)
-    {
-        icu::UnicodeString src(value.c_str(), "shift_jis");
-        int length = src.extract(0, src.length(), NULL, "utf8");
-
-        std::vector<char> result(length + 1);
-        src.extract(0, src.length(), &result[0], "utf8");
-
-        return std::string(result.begin(), result.end() - 1);
-    }
-    */
 
     static std::unordered_set<std::string> s_game_blacklist = {"Map", "Sky"};
 
@@ -195,6 +165,14 @@ namespace Toolbox::UI {
             return false;
         }
 
+        const AppSettings &cur_settings =
+            GUIApplication::instance().getSettingsManager().getCurrentProfile();
+        if (cur_settings.m_repack_scenes_on_save && m_current_scene->rootPath().has_value()) {
+            m_repack_io_busy = true;
+            GUIApplication::instance().dispatchEvent<ProjectPackEvent, true>(
+                0, m_current_scene->rootPath().value().parent_path(), true, [&]() { m_repack_io_busy = false; });
+        }
+
         return true;
     }
 
@@ -306,7 +284,12 @@ namespace Toolbox::UI {
                     }
                 }
 
-                if (m_hierarchy_selected_nodes.empty() && m_rail_list_selected_nodes.empty() &&
+                const bool any_valid_object_selected = !m_hierarchy_selected_nodes.empty() && std::all_of(
+                    m_hierarchy_selected_nodes.begin(), m_hierarchy_selected_nodes.end(),
+                    [](const SelectionNodeInfo<Object::ISceneObject> &node) {
+                        return node.m_selected && node.m_selected->getTransform().has_value();
+                    });
+                if (!any_valid_object_selected && m_rail_list_selected_nodes.empty() &&
                     m_rail_node_list_selected_nodes.empty()) {
                     m_renderer.setGizmoVisible(false);
                 } else {
@@ -328,7 +311,13 @@ namespace Toolbox::UI {
 
             if (!m_hierarchy_selected_nodes.empty()) {
                 size_t i = 0;
+                //TOOLBOX_CORE_ASSERT(
+                //    m_hierarchy_selected_nodes.size() <= m_selection_transforms.size() &&
+                //    "Critical desync between selected nodes and selection transforms detected!");
                 for (SelectionNodeInfo<Object::ISceneObject> &node : m_hierarchy_selected_nodes) {
+                    if (!node.m_selected->getTransform()) {
+                        continue;
+                    }
                     const Transform &obj_transform = m_selection_transforms[i];
                     Transform new_transform        = gizmo_total_delta * obj_transform;
                     node.m_selected->setTransform(new_transform);
@@ -1028,7 +1017,7 @@ namespace Toolbox::UI {
 
     static void recursiveAssignActorPtrs(Game::TaskCommunicator &communicator,
                                          std::vector<RefPtr<ISceneObject>> objects) {
-        std::for_each(std::execution::par, objects.begin(), objects.end(),
+        std::for_each(std::execution::seq, objects.begin(), objects.end(),
                       [&communicator](RefPtr<ISceneObject> object) {
                           u32 actor_ptr = communicator.getActorPtr(object);
                           object->setGamePtr(actor_ptr);
@@ -1436,7 +1425,7 @@ namespace Toolbox::UI {
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.7f, 0.2f, 0.2f, 0.9f});
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.7f, 0.2f, 0.2f, 1.0f});
 
-        bool context_controls_disabled = !is_dolphin_running || m_control_disable_requested;
+        bool context_controls_disabled = !is_dolphin_running || m_control_disable_requested || m_repack_io_busy;
 
         if (context_controls_disabled) {
             ImGui::BeginDisabled();
@@ -1459,6 +1448,17 @@ namespace Toolbox::UI {
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
         if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
                                  ImDrawFlags_RoundCornersBottomLeft)) {
+            fs_path scene_arc_path = m_current_scene->rootPath().value_or("");
+            if (!scene_arc_path.empty()) {
+                scene_arc_path = scene_arc_path.parent_path();
+                scene_arc_path.replace_extension(".szs");
+                fs_path root_path = scene_arc_path.parent_path().parent_path().parent_path();
+                scene_arc_path    = Filesystem::relative(scene_arc_path, root_path).value_or("");
+                if (!scene_arc_path.empty()) {
+                    task_communicator.flushFileInGameFST(root_path, scene_arc_path);
+                }
+            }
+
             task_communicator.taskLoadScene(m_stage, m_scenario,
                                             TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
         }
@@ -1896,6 +1896,12 @@ namespace Toolbox::UI {
                         new_object->setNameRef(node_ref);
                         this_parent->addChild(new_object);
                         sibling_names.push_back(std::string(node_ref.name()));
+
+                        Game::TaskCommunicator &task_communicator =
+                            GUIApplication::instance().getTaskCommunicator();
+                        task_communicator.taskAddSceneObject(
+                            new_object, get_shared_ptr(*this_parent),
+                            [new_object](u32 actor_ptr) { new_object->setGamePtr(actor_ptr); });
                     }
                     m_update_render_objs = true;
                     return;
@@ -2280,7 +2286,8 @@ namespace Toolbox::UI {
             [this](size_t sibling_index, std::string_view name, const Object::Template &template_,
                    std::string_view wizard_name, CreateObjDialog::InsertPolicy policy,
                    SelectionNodeInfo<Object::ISceneObject> info) {
-                auto new_object_result = Object::ObjectFactory::create(template_, wizard_name);
+                auto new_object_result =
+                    Object::ObjectFactory::create(template_, wizard_name, m_current_scene->rootPath().value_or(""));
                 if (!name.empty()) {
                     new_object_result->setNameRef(name);
                 }
@@ -2336,7 +2343,12 @@ namespace Toolbox::UI {
                 LogError(result.error());
                 return;
             }
+            std::string old_name = std::string(info.m_selected->getNameRef().name());
             info.m_selected->setNameRef(new_name);
+            Game::TaskCommunicator &task_communicator =
+                GUIApplication::instance().getTaskCommunicator();
+            task_communicator.taskRenameSceneObject(info.m_selected, old_name,
+                                                    std::string(new_name));
         });
         m_rename_obj_dialog.setActionOnReject([](SelectionNodeInfo<Object::ISceneObject>) {});
     }

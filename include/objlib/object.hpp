@@ -700,11 +700,28 @@ namespace Toolbox::Object {
             obj->m_nameref   = m_nameref;
             obj->m_parent    = nullptr;
             obj->m_transform = m_transform;
-            obj->m_members.reserve(m_members.size());
 
+            obj->m_scene_resource_path = m_scene_resource_path;
+#if 0
             if (m_model_instance)
                 obj->m_model_instance = make_referable<J3DModelInstance>(*m_model_instance);
 
+            if (m_model_data)
+                obj->m_model_data = make_referable<J3DModelData>(*m_model_data);
+#else
+
+            auto maybe_template = TemplateFactory::create(m_type.name(), true);
+            if (maybe_template.has_value()) {
+                ScopePtr<Template> template_ = std::move(maybe_template.value());
+                std::optional<TemplateWizard> wizard = template_->getWizard("Default");
+                if (wizard) {
+                    obj->loadRenderData(obj->m_scene_resource_path, wizard->m_render_info,
+                                        getResourceCache());
+                }
+            }
+#endif
+
+            obj->m_members.reserve(m_members.size());
             if (deep) {
                 for (const auto &member : m_members) {
                     auto new_member = make_deep_clone<MetaMember>(member);
@@ -746,6 +763,8 @@ namespace Toolbox::Object {
         u32 m_game_ptr = 0;
 
         bool m_include_custom = false;
+
+        fs_path m_scene_resource_path;
     };
 
     class ObjectFactory {
@@ -755,7 +774,7 @@ namespace Toolbox::Object {
         using create_t     = Result<create_ret_t, create_err_t>;
 
         static create_t create(Deserializer &in, bool include_custom);
-        static create_ret_t create(const Template &template_, std::string_view wizard_name);
+        static create_ret_t create(const Template &template_, std::string_view wizard_name, const fs_path &resource_path);
 
     protected:
         static bool isGroupObject(std::string_view type);
