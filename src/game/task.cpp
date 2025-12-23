@@ -670,6 +670,11 @@ namespace Toolbox::Game {
             return false;
         }
 
+        u8 mar_director_state = communicator.read<u8>(mar_director_address + 0x64).value();
+        if (mar_director_state != 4) {
+            return false;
+        }
+
         return true;
     }
 
@@ -709,8 +714,11 @@ namespace Toolbox::Game {
                 transact_complete_cb cb) {
                 constexpr u32 application_addr = 0x803E9700;
 
+                static bool s_is_loading_stage = false;
+
                 // Early exit to avoid errors
                 if (!communicator.manager().isHooked()) {
+                    s_is_loading_stage = false;
                     return false;
                 }
 
@@ -785,7 +793,6 @@ namespace Toolbox::Game {
 
                 return false;
 #else
-                static bool s_is_loading_stage = false;
 
                 if (BetterSMS::isBetterSMSBusy()) {
                     return false;
