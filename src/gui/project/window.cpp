@@ -1,3 +1,4 @@
+#include "gui/project/events.hpp"
 #include "gui/project/window.hpp"
 #include "gui/application.hpp"
 #include "gui/dragdrop/dragdropmanager.hpp"
