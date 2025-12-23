@@ -1381,6 +1381,9 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
+        const AppSettings &settings =
+            GUIApplication::instance().getSettingsManager().getCurrentProfile();
+
         Game::TaskCommunicator &task_communicator =
             GUIApplication::instance().getTaskCommunicator();
 
@@ -1407,7 +1410,7 @@ namespace Toolbox::UI {
 
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
         if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
-            if (DolphinHookManager::instance().startProcess()) {
+            if (DolphinHookManager::instance().startProcess(settings.m_hide_dolphin_on_play)) {
                 task_communicator.taskLoadScene(m_stage, m_scenario,
                                                 TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
             }

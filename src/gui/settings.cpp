@@ -8,6 +8,12 @@
 #include <fstream>
 #include <imgui.h>
 
+template <typename json_t = nlohmann::json, typename value_t>
+auto JSONValueOr(const json_t &js, const std::string &key, value_t default_)
+    -> std::decay_t<decltype(js[key])> {
+    return js.contains(key) ? js[key] : std::decay_t<decltype(js[key])>(default_);
+}
+
 namespace Toolbox {
 
     bool SettingsManager::initialize(const fs_path &profile_path) {
@@ -67,37 +73,44 @@ namespace Toolbox {
                 in_stream >> j;
 
                 // General
-                settings.m_is_custom_obj_allowed  = j["Include Custom Objects"];
-                settings.m_is_file_backup_allowed = j["Backup File On Save"];
-                settings.m_update_frequency       = j["Update Frequency"];
+                settings.m_is_custom_obj_allowed  = JSONValueOr(j, "Include Custom Objects", true);
+                settings.m_is_file_backup_allowed = JSONValueOr(j, "Backup File On Save", false);
+                settings.m_update_frequency =
+                    JSONValueOr(j, "Update Frequency", UpdateFrequency::MINOR);
 
                 // Control
                 settings.m_gizmo_translate_mode_keybind =
-                    KeyBind::FromString(j["Gizmo Translate Mode"]);
-                settings.m_gizmo_rotate_mode_keybind = KeyBind::FromString(j["Gizmo Rotate Mode"]);
-                settings.m_gizmo_scale_mode_keybind  = KeyBind::FromString(j["Gizmo Scale Mode"]);
+                    KeyBind::FromString(JSONValueOr(j, "Gizmo Translate Mode", "1"));
+                settings.m_gizmo_rotate_mode_keybind =
+                    KeyBind::FromString(JSONValueOr(j, "Gizmo Rotate Mode", "2"));
+                settings.m_gizmo_scale_mode_keybind =
+                    KeyBind::FromString(JSONValueOr(j, "Gizmo Scale Mode", "3"));
 
                 // UI
-                settings.m_gui_theme   = j["App Theme"];
-                settings.m_font_family = j["Font Family"];
-                settings.m_font_size   = j["Font Size"];
+                settings.m_gui_theme   = JSONValueOr(j, "App Theme", std::string("Default"));
+                settings.m_font_family = JSONValueOr(j, "Font Family", "NotoSansJP-Regular");
+                settings.m_font_size   = JSONValueOr(j, "Font Size", 16);
 
                 // Preview
-                settings.m_is_rendering_simple  = j["Simple Rendering"];
-                settings.m_is_show_origin_point = j["Show Origin Point"];
-                settings.m_is_unique_rail_color = j["Unique Rail Colors"];
-                settings.m_camera_fov           = j["Camera FOV"];
-                settings.m_camera_speed         = j["Camera Speed"];
-                settings.m_camera_sensitivity   = j["Camera Sensitivity"];
-                settings.m_near_plane           = j["Camera Near Plane"];
-                settings.m_far_plane            = j["Camera Far Plane"];
+                settings.m_is_rendering_simple  = JSONValueOr(j, "Simple Rendering", false);
+                settings.m_is_show_origin_point = JSONValueOr(j, "Show Origin Point", true);
+                settings.m_is_unique_rail_color = JSONValueOr(j, "Unique Rail Colors", true);
+                settings.m_camera_fov           = JSONValueOr(j, "Camera FOV", 70.0f);
+                settings.m_camera_speed         = JSONValueOr(j, "Camera Speed", 1.0f);
+                settings.m_camera_sensitivity   = JSONValueOr(j, "Camera Sensitivity", 1.0f);
+                settings.m_near_plane           = JSONValueOr(j, "Camera Near Plane", 80.0f);
+                settings.m_far_plane            = JSONValueOr(j, "Camera Far Plane", 800000.0f);
 
                 // Advanced
-                settings.m_dolphin_path = std::filesystem::path(std::string(j["Dolphin Path"]));
-                settings.m_dolphin_refresh_rate      = j["Dolphin Refresh Rate"];
-                settings.m_is_template_cache_allowed = j["Cache Object Templates"];
-                settings.m_log_to_cout_cerr          = j["Log To Terminal"];
-                settings.m_repack_scenes_on_save     = j["Repack Scenes on Save"];
+                settings.m_dolphin_path         = std::string(JSONValueOr(j, "Dolphin Path", ""));
+                settings.m_dolphin_refresh_rate = JSONValueOr(j, "Dolphin Refresh Rate", 16);
+                settings.m_hide_dolphin_on_play = JSONValueOr(j, "Hide Dolphin on Play", false);
+
+                settings.m_repack_scenes_on_save = JSONValueOr(j, "Repack Scenes on Save", true);
+                settings.m_is_template_cache_allowed =
+                    JSONValueOr(j, "Cache Object Templates", true);
+
+                settings.m_log_to_cout_cerr = JSONValueOr(j, "Log To Terminal", false);
             });
 
             if (!result) {
@@ -225,11 +238,14 @@ namespace Toolbox {
             j["Camera Far Plane"]   = profile.m_far_plane;
 
             // Advanced
-            j["Dolphin Path"]           = profile.m_dolphin_path.string();
-            j["Dolphin Refresh Rate"]   = profile.m_dolphin_refresh_rate;
+            j["Dolphin Path"]         = profile.m_dolphin_path.string();
+            j["Dolphin Refresh Rate"] = profile.m_dolphin_refresh_rate;
+            j["Hide Dolphin on Play"] = profile.m_hide_dolphin_on_play;
+
+            j["Repack Scenes on Save"]  = profile.m_repack_scenes_on_save;
             j["Cache Object Templates"] = profile.m_is_template_cache_allowed;
-            j["Log To Terminal"]        = profile.m_log_to_cout_cerr;
-            j["Repack Scenes on Save"] = profile.m_repack_scenes_on_save;
+
+            j["Log To Terminal"] = profile.m_log_to_cout_cerr;
         });
 
         if (!result) {

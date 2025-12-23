@@ -39,7 +39,7 @@ namespace Toolbox::Platform {
     };
 
     Result<ProcessInformation> CreateExProcess(const fs_path &program_path,
-                                               std::string_view cmdargs);
+                                               std::string_view cmdargs, bool background_proc = false);
     Result<void> KillExProcess(const ProcessInformation &process,
                                size_t max_wait = std::numeric_limits<ProcessID>::max());
     bool IsExProcessRunning(const ProcessInformation &process);
@@ -55,6 +55,9 @@ namespace Toolbox::Platform {
 
     bool SetWindowTransparency(LowWindow window, uint8_t alpha);
     bool SetWindowClickThrough(LowWindow window, bool click_through);
+
+    bool HideWindow(LowWindow window);
+    bool ShowWindow(LowWindow window);
 
     bool OpenFileExplorer(const fs_path &path);
 

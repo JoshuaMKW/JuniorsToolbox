@@ -11,16 +11,16 @@
 #include <TlHelp32.h>
 #include <Windows.h>
 #elif defined(TOOLBOX_PLATFORM_LINUX)
+#include <GLFW/glfw3.h>
+#include <X11/Xatom.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <limits>
-#include <string.h>
 #include <signal.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
-#include <X11/Xutil.h>
-#include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
 #endif
@@ -55,7 +55,7 @@ namespace Toolbox::Platform {
     }
 
     Result<ProcessInformation> CreateExProcess(const fs_path &program_path,
-                                               std::string_view cmdargs) {
+                                               std::string_view cmdargs, bool background_proc) {
         std::string true_cmdargs =
             std::format("\"{}\" {}", program_path.string().c_str(), cmdargs.data());
 
@@ -66,8 +66,9 @@ namespace Toolbox::Platform {
         si.cb = sizeof(si);
         ZeroMemory(&pi, sizeof(pi));
 
-        if (!CreateProcess(program_path.string().data(), true_cmdargs.data(), NULL, NULL, FALSE, 0,
-                           NULL, NULL, &si, &pi)) {
+        DWORD creation_flags = background_proc ? CREATE_NO_WINDOW : 0;
+        if (!CreateProcess(program_path.string().data(), true_cmdargs.data(), NULL, NULL, FALSE,
+                           creation_flags, NULL, NULL, &si, &pi)) {
             return make_error<ProcessInformation>("PROCESS", GetLastErrorMessage());
         }
 
@@ -244,24 +245,29 @@ namespace Toolbox::Platform {
         return SetWindowLongPtr(window, GWL_EXSTYLE, style) >= 0;
     }
 
+    bool HideWindow(LowWindow window) { return ::ShowWindowAsync(window, SW_HIDE); }
+
+    bool ShowWindow(LowWindow window) { return ::ShowWindowAsync(window, SW_SHOW); }
+
     bool OpenFileExplorer(const fs_path &path) {
         std::wstring path_str = path.wstring();
-        return (int)ShellExecuteW(NULL, L"open", L"explorer.exe", path_str.c_str(), NULL, SW_SHOW) > 32;
+        return (int)ShellExecuteW(NULL, L"open", L"explorer.exe", path_str.c_str(), NULL, SW_SHOW) >
+               32;
     }
 
 #elif defined(TOOLBOX_PLATFORM_LINUX)
     std::string GetLastErrorMessage() { return strerror(errno); }
 
     Result<ProcessInformation> CreateExProcess(const fs_path &program_path,
-                                               std::string_view cmdargs) {
+                                               std::string_view cmdargs, bool background_proc) {
         ProcessID pid = fork();  // Fork the current process
         if (pid == -1) {
             // Handle error
             return make_error<ProcessInformation>("PROCESS", GetLastErrorMessage());
         } else if (pid > 0) {
             // Parent process
-            return ProcessInformation{.m_process_name=program_path.stem().string(),
-                                      .m_process_id=pid};
+            return ProcessInformation{.m_process_name = program_path.stem().string(),
+                                      .m_process_id   = pid};
         } else {
             // Split the argument string into components by spaces
             std::stringstream argsstream(cmdargs.data());
@@ -272,15 +278,15 @@ namespace Toolbox::Platform {
                 string_arg_parts.push_back(s_next);
             }
             // Convert the string vector into a vector of c strings
-            std::vector<const char*> cstr_arg_parts;
-            for(int i = 0; i < string_arg_parts.size(); ++i) {
+            std::vector<const char *> cstr_arg_parts;
+            for (int i = 0; i < string_arg_parts.size(); ++i) {
                 cstr_arg_parts.push_back(string_arg_parts[i].c_str());
             }
             // Terminate the argument vector with a null pointer
             cstr_arg_parts.push_back(nullptr);
 
             // Child process
-            execv(program_path.c_str(), const_cast<char* const*>(&cstr_arg_parts[0]));
+            execv(program_path.c_str(), const_cast<char *const *>(&cstr_arg_parts[0]));
             // If we get here, we probably want to know about it.
             std::perror("Error executing dolphin process");
             // execl only returns on error
@@ -297,9 +303,9 @@ namespace Toolbox::Platform {
         ProcessID result = waitpid(process.m_process_id, &status, WNOHANG);
         if (result == 0) {
             // Process is still running, try to wait for max_wait time
-            usleep(max_wait * 1000); // usleep sleeps for
-                                     // microseconds, so multiply the
-                                     // milliseconds by 1000
+            usleep(max_wait * 1000);  // usleep sleeps for
+                                      // microseconds, so multiply the
+                                      // milliseconds by 1000
             result = waitpid(process.m_process_id, &status, WNOHANG);
             if (result == 0) {
                 // Process is still running, force kill it
@@ -329,26 +335,24 @@ namespace Toolbox::Platform {
         return true;
     }
     std::string GetWindowTitle(LowWindow window) {
-        Display* display = getGLFWDisplay();
+        Display *display = getGLFWDisplay();
         XTextProperty title;
         XGetWMName(display, (Window)window, &title);
-        char** stringList;
+        char **stringList;
         int numStrings;
         if (!XTextPropertyToStringList(&title, &stringList, &numStrings)) {
             return "";
         }
-        if (numStrings < 1){
+        if (numStrings < 1) {
             return "";
         }
         std::string stringTitle(stringList[0]);
         XFreeStringList(stringList);
         return stringList[0];
     }
-    bool GetWindowZOrder(LowWindow window, int &zorder) {
-        return false;
-    }
+    bool GetWindowZOrder(LowWindow window, int &zorder) { return false; }
     bool ForceWindowToFront(LowWindow window) {
-        Display* display = getGLFWDisplay();
+        Display *display = getGLFWDisplay();
         return XRaiseWindow(display, (Window)window);
     }
     bool ForceWindowToFront(LowWindow window, LowWindow target) {
@@ -363,35 +367,31 @@ namespace Toolbox::Platform {
 
     bool GetWindowClientRect(LowWindow window, int &x, int &y, int &width, int &height) {
         XWindowAttributes attribs;
-        Display* display = getGLFWDisplay();
+        Display *display = getGLFWDisplay();
         if (!XGetWindowAttributes(display, (Window)window, &attribs)) {
             return false;
         }
-        x = attribs.x;
-        y = attribs.y;
-        width = attribs.width;
+        x      = attribs.x;
+        y      = attribs.y;
+        width  = attribs.width;
         height = attribs.height;
         return true;
     }
-    void searchWindowsOfProcess(const Window w, Display* display,
-                                const Atom PIDAtom, const int pid,
+    void searchWindowsOfProcess(const Window w, Display *display, const Atom PIDAtom, const int pid,
                                 std::vector<LowWindow> &result);
     std::vector<LowWindow> FindWindowsOfProcess(const ProcessInformation &process) {
-        Display* display = getGLFWDisplay();
-        Atom PIDAtom = XInternAtom(display, "_NET_WM_PID", True);
+        Display *display = getGLFWDisplay();
+        Atom PIDAtom     = XInternAtom(display, "_NET_WM_PID", True);
 
-        if(PIDAtom == None)
-        {
+        if (PIDAtom == None) {
             return std::vector<LowWindow>();
         }
         std::vector<LowWindow> result;
-        searchWindowsOfProcess(XDefaultRootWindow(display), display,
-                               PIDAtom, process.m_process_id,
+        searchWindowsOfProcess(XDefaultRootWindow(display), display, PIDAtom, process.m_process_id,
                                result);
         return result;
     }
-    void searchWindowsOfProcess(const Window w, Display* display,
-                                const Atom PIDAtom, const int pid,
+    void searchWindowsOfProcess(const Window w, Display *display, const Atom PIDAtom, const int pid,
                                 std::vector<LowWindow> &result) {
         // A bunch of output parameter storage, but we're only going
         // to use the last one.
@@ -400,19 +400,16 @@ namespace Toolbox::Platform {
         unsigned long nItems;
         unsigned long bytesAfter;
         // The storage for the PID of the window we're looking at.
-        unsigned char* propPID = 0;
-        if (XGetWindowProperty(display, w, PIDAtom,
-                               0 /*offset*/,
-                               1 /* length in words */,
-                               False, XA_CARDINAL,
-                               &type, &format, &nItems, &bytesAfter,
+        unsigned char *propPID = 0;
+        if (XGetWindowProperty(display, w, PIDAtom, 0 /*offset*/, 1 /* length in words */, False,
+                               XA_CARDINAL, &type, &format, &nItems, &bytesAfter,
                                &propPID) == Success) {
             if (propPID != 0) {
                 // If the result pointer isn't null, and it points to
                 // something matching the PID we're looking for, add
                 // it to our list.
-                if (pid == *((unsigned long*)propPID))
-                    result.push_back((void*)w);
+                if (pid == *((unsigned long *)propPID))
+                    result.push_back((void *)w);
                 // Clean up some X structures
                 XFree(propPID);
             }
@@ -423,11 +420,16 @@ namespace Toolbox::Platform {
         Window *wChildren;
         unsigned int nChildren;
         if (XQueryTree(display, w, &wRoot, &wParent, &wChildren, &nChildren) != 0) {
-            for(unsigned int i = 0; i < nChildren; ++i) {
+            for (unsigned int i = 0; i < nChildren; ++i) {
                 searchWindowsOfProcess(wChildren[i], display, PIDAtom, pid, result);
             }
         }
     }
+
+    bool HideWindow(LowWindow window) { return false; }
+
+    bool ShowWindow(LowWindow window) { return false; }
+
     bool OpenFileExplorer(const fs_path &path) {
         TOOLBOX_ERROR("Open file explorer currently unsupported on linux");
         return false;
