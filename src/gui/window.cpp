@@ -195,7 +195,7 @@ namespace Toolbox::UI {
             // Render the window
             bool did_render = onBeginWindow(window_name, &is_open, flags_);
             if (window) {
-                is_hidden = window->Hidden;
+                is_hidden = window->Hidden && !window->DockIsActive;
             }
 
             if (did_render) {

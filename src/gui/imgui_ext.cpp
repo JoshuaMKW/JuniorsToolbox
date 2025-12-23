@@ -1834,6 +1834,7 @@ void ImGui::TextWrappedWithAlign(float align_x, float size_x, const char *fmt, .
         const ImVec2 text_size = CalcTextSize(info.m_start, info.m_end);
         size_x                 = CalcItemSize(ImVec2(size_x, 0.0f), 0.0f, text_size.y).x;
 
+        const float backup_cursor_x = window->DC.CursorPos.x;
         ImVec2 pos(window->DC.CursorPos.x,
                    window->DC.CursorPos.y + window->DC.CurrLineTextBaseOffset);
         ImVec2 pos_max(pos.x + size_x, window->ClipRect.Max.y);
@@ -1855,6 +1856,7 @@ void ImGui::TextWrappedWithAlign(float align_x, float size_x, const char *fmt, .
         window->DC.CursorMaxPos.x =
             backup_max_pos.x;  // Cancel out extending content size because right-aligned text would
                                // otherwise mess it up.
+        window->DC.CursorPos.x = backup_cursor_x;
     }
 
     va_end(args);
@@ -1941,7 +1943,7 @@ ImVec2 ImGui::CalcTextWrappedWithAlignRect(float align_x, float size_x, const ch
         line_started_yet      = true;
         const float font_size = ImGui::GetCurrentContext()->FontSize;
         float next_c_width    = the_font->GetCharAdvance((ImWchar)c) * (font_size / the_font->Size);
-        if (width_cur + next_c_width >= size_x - the_font->FallbackAdvanceX) {
+        if (width_cur + next_c_width >= size_x) {
             int line_end                  = (last_word_end > 0 ? last_word_end : cursor_cur + 1);
             line_infos[line_info_count++] = LineInfo{
                 .m_start        = text + cursor_start,
@@ -1960,7 +1962,9 @@ ImVec2 ImGui::CalcTextWrappedWithAlignRect(float align_x, float size_x, const ch
 
     va_end(args);
 
-    return ImVec2(size_x, ImGui::GetCurrentContext()->FontSize * line_info_count + style.ItemSpacing.y * (line_info_count - 1));
+    const float font_size = ImGui::GetCurrentContext()->FontSize;
+    return ImVec2(size_x,
+                  font_size * line_info_count + style.ItemSpacing.y * (line_info_count - 1));
 }
 
 static bool IsRootOfOpenMenuSet() {

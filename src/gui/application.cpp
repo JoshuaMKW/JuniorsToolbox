@@ -482,6 +482,10 @@ namespace Toolbox {
     void GUIApplication::render(TimeStep delta_time) {  // Begin actual rendering
         glfwMakeContextCurrent(m_render_window);
 
+        ImGui::GetIO().FontDefault = FontManager::instance().getCurrentFont();
+        ImGui::GetStyle().FontSizeBase =
+            FontManager::instance().getCurrentFontSize();
+
         // The context renders both the ImGui elements and the background elements.
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();

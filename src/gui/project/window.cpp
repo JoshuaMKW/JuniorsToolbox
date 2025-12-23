@@ -129,8 +129,10 @@ namespace Toolbox::UI {
                     }
 
                     if ((i % x_count) == 0) {
+                        row_box_size = {box_base_width, box_base_height};
                         size_t row_end =
                             std::min(i + x_count, m_view_proxy->getRowCount(view_index));
+                        ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0.0f);
                         for (int j = i; j < row_end; ++j) {
                             ModelIndex test_index = m_view_proxy->getIndex(j, 0, view_index);
                             std::string item_name = m_view_proxy->getDisplayText(test_index);
@@ -141,6 +143,7 @@ namespace Toolbox::UI {
                                                               .y +
                                                           style.ItemInnerSpacing.y);
                         }
+                        ImGui::PopStyleVar();
                     }
 
                     ImVec2 win_min = ImGui::GetCursorScreenPos();
@@ -265,7 +268,9 @@ namespace Toolbox::UI {
             #else
                                 //ImGui::TextWrapped(text.c_str());
                                 ImGui::SetCursorScreenPos(text_pos);
+                                ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0.0f);
                                 ImGui::TextWrappedWithAlign(0.5f, label_width, text.c_str());
+                                ImGui::PopStyleVar();
                                 #endif
                             }
                         }
@@ -797,7 +802,13 @@ namespace Toolbox::UI {
                 return true;
             }
 
+            size_t scene, scenario;
+            app.getProjectManager().getSceneLayoutManager().getScenarioForFileName(
+                scene_folder.parent_path().filename().string(), scene, scenario);
+
             RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Scene Editor");
+            window->setStageScenario((u8)scene, (u8)scenario);
+
             if (!window->onLoadData(scene_folder)) {
                 app.showErrorModal(
                     this, name(),
