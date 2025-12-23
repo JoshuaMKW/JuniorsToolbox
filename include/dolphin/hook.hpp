@@ -23,6 +23,7 @@ namespace Toolbox::Dolphin {
 
     protected:
         DolphinHookManager()                                      = default;
+        ~DolphinHookManager();
 
     public:
         DolphinHookManager(const DolphinHookManager &)            = delete;
@@ -60,7 +61,7 @@ namespace Toolbox::Dolphin {
 
         //---
 
-        bool isProcessRunning();
+        bool isProcessRunning() const;
 
         const Platform::ProcessInformation &getProcess() const { return m_proc_info; }
         Result<void> startProcess(bool wants_hidden = false);
@@ -90,6 +91,7 @@ namespace Toolbox::Dolphin {
         fs_path m_dolphin_path;
 
         Platform::ProcessInformation m_proc_info;
+        bool m_proc_is_spawned = false;
 
         Platform::MemHandle m_mem_handle{};
         void *m_mem_view = nullptr;

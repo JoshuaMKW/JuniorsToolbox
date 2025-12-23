@@ -38,11 +38,13 @@ namespace Toolbox::Platform {
         ProcessID m_thread_id      = std::numeric_limits<ProcessID>::max();
     };
 
+    bool IsExProcessRunning(const ProcessInformation &process);
     Result<ProcessInformation> CreateExProcess(const fs_path &program_path,
                                                std::string_view cmdargs, bool background_proc = false);
+    Result<ProcessInformation> GetExProcess(const std::string &process_name);
     Result<void> KillExProcess(const ProcessInformation &process,
                                size_t max_wait = std::numeric_limits<ProcessID>::max());
-    bool IsExProcessRunning(const ProcessInformation &process);
+
 
     std::vector<LowWindow> FindWindowsOfProcess(const ProcessInformation &process);
 

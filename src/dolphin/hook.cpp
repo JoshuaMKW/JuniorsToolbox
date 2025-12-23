@@ -58,41 +58,6 @@ namespace Toolbox::Dolphin {
 #include <tlhelp32.h>
 #include <Windows.h>
 
-    static Result<Platform::ProcessID, BaseError> FindProcessPID(std::string_view process_name) {
-        std::string process_file = std::string(process_name) + ".exe";
-
-        Platform::LowHandle hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        if (hSnapshot == INVALID_HANDLE_VALUE) {
-            return make_error<Platform::ProcessID>(std::format(
-                "(PROCESS) Failed to create snapshot to find process \"{}\".", process_file));
-        }
-
-        PROCESSENTRY32 pe32;
-        pe32.dwSize = sizeof(PROCESSENTRY32);
-
-        if (!Process32First(hSnapshot, &pe32)) {
-            CloseHandle(hSnapshot);
-            return make_error<Platform::ProcessID>(
-                "(PROCESS) Failed to retrieve first process entry!");
-        }
-
-        Platform::ProcessID pid = std::numeric_limits<Platform::ProcessID>::max();
-        do {
-            if (strcmp(pe32.szExeFile, process_file.data()) == 0) {
-                // Sometimes dead processes are still in the list
-                if (pe32.cntThreads == 0) {
-                    continue;
-                }
-                pid = pe32.th32ProcessID;
-                break;
-            }
-        } while (Process32Next(hSnapshot, &pe32));
-
-        CloseHandle(hSnapshot);
-
-        return pid;
-    }
-
     static Result<Platform::MemHandle, BaseError> OpenProcessMemory(std::string_view memory_name) {
         Platform::MemHandle memory_handle =
             OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, memory_name.data());
@@ -195,7 +160,13 @@ namespace Toolbox::Dolphin {
         return _instance;
     }
 
-    bool DolphinHookManager::isProcessRunning() {
+    DolphinHookManager::~DolphinHookManager() {
+        if (isProcessRunning() && m_proc_is_spawned) {
+            stopProcess();
+        }
+    }
+
+    bool DolphinHookManager::isProcessRunning() const {
         return Platform::IsExProcessRunning(m_proc_info);
     }
 
@@ -235,7 +206,7 @@ namespace Toolbox::Dolphin {
             return std::unexpected(process_result.error());
         }
 
-
+        m_proc_is_spawned = true;
         m_proc_info = process_result.value();
         if (wants_hidden) {
             s_hide_windows_thr = make_scoped<HideWindowsThread>();
@@ -252,6 +223,7 @@ namespace Toolbox::Dolphin {
             return std::unexpected(process_result.error());
         }
 
+        m_proc_is_spawned = false;
         m_proc_info  = Platform::ProcessInformation{};
         m_mem_handle = NULL_MEMHANDLE;
         m_mem_view   = nullptr;
@@ -271,23 +243,15 @@ namespace Toolbox::Dolphin {
 
             size_t i = 0;
             for (auto &proc_name : target_processes) {
-                auto pid_result = FindProcessPID(proc_name);
-                if (!pid_result) {
-                    return std::unexpected(pid_result.error());
-                }
-                pid = pid_result.value();
-                if (pid != sentinel) {
+                Result<Platform::ProcessInformation> proc_info = Platform::GetExProcess(proc_name); 
+                if (proc_info.has_value()) {
+                    m_proc_info = proc_info.value();
                     break;
+                } else {
+                    TOOLBOX_DEBUG_LOG_V("{}", proc_info.error().m_message[0]);
                 }
                 i += 1;
             };
-
-            if (pid == sentinel) {
-                return false;
-            }
-
-            m_proc_info.m_process_name = target_processes[i];
-            m_proc_info.m_process_id   = pid;
         }
 
         std::string dolphin_memory_name = std::format("dolphin-emu.{}", m_proc_info.m_process_id);

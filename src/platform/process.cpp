@@ -54,6 +54,55 @@ namespace Toolbox::Platform {
         }
     }
 
+    // Helper to compare two FILETIMEs
+    // Returns -1 if ft1 < ft2, 1 if ft1 > ft2, 0 if equal
+    static int CompareFileTimeHelper(const FILETIME &ft1, const FILETIME &ft2) {
+        if (ft1.dwHighDateTime < ft2.dwHighDateTime)
+            return -1;
+        if (ft1.dwHighDateTime > ft2.dwHighDateTime)
+            return 1;
+        if (ft1.dwLowDateTime < ft2.dwLowDateTime)
+            return -1;
+        if (ft1.dwLowDateTime > ft2.dwLowDateTime)
+            return 1;
+        return 0;
+    }
+
+    static Result<Platform::ProcessID, BaseError> FindProcessPID(std::string_view process_name) {
+        std::string process_file = std::string(process_name) + ".exe";
+
+        Platform::LowHandle hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (hSnapshot == INVALID_HANDLE_VALUE) {
+            return make_error<Platform::ProcessID>(std::format(
+                "(PROCESS) Failed to create snapshot to find process \"{}\".", process_file));
+        }
+
+        PROCESSENTRY32 pe32;
+        pe32.dwSize = sizeof(PROCESSENTRY32);
+
+        if (!Process32First(hSnapshot, &pe32)) {
+            CloseHandle(hSnapshot);
+            return make_error<Platform::ProcessID>(
+                "(PROCESS) Failed to retrieve first process entry!");
+        }
+
+        Platform::ProcessID pid = std::numeric_limits<Platform::ProcessID>::max();
+        do {
+            if (strcmp(pe32.szExeFile, process_file.data()) == 0) {
+                // Sometimes dead processes are still in the list
+                if (pe32.cntThreads == 0) {
+                    continue;
+                }
+                pid = pe32.th32ProcessID;
+                break;
+            }
+        } while (Process32Next(hSnapshot, &pe32));
+
+        CloseHandle(hSnapshot);
+
+        return pid;
+    }
+
     Result<ProcessInformation> CreateExProcess(const fs_path &program_path,
                                                std::string_view cmdargs, bool background_proc) {
         std::string true_cmdargs =
@@ -77,15 +126,88 @@ namespace Toolbox::Platform {
         };
     }
 
-    Result<void> KillExProcess(const ProcessInformation &process, size_t max_wait) {
-        if (process.m_process) {
-            if (!TerminateProcess(process.m_process, 0)) {
-                return make_error<void>("PROCESS", GetLastErrorMessage());
-            }
-            CloseHandle(process.m_process);
+    Result<ProcessInformation> GetExProcess(const std::string &process_name) {
+        ProcessInformation info;
+        info.m_process_name = process_name;
+
+        auto pid_result = FindProcessPID(info.m_process_name);
+        if (!pid_result) {
+            return std::unexpected(pid_result.error());
         }
 
+        info.m_process_id = pid_result.value();
+        if (info.m_process_id == std::numeric_limits<Platform::ProcessID>::max()) {
+            return make_error<ProcessInformation>("PROCESS", GetLastErrorMessage());
+        }
+
+        DWORD proc_access = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | PROCESS_QUERY_INFORMATION |
+                            PROCESS_QUERY_LIMITED_INFORMATION;
+
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+
+        pi.dwProcessId = info.m_process_id;
+        pi.hProcess    = OpenProcess(proc_access, FALSE, pi.dwProcessId);
+
+        if (pi.hProcess == NULL) {
+            return make_error<ProcessInformation>("PROCESS", GetLastErrorMessage());
+        }
+
+        FILETIME the_thread_time = {std::numeric_limits<DWORD>::max(),
+                                    std::numeric_limits<DWORD>::max()};
+        DWORD the_thread_id      = std::numeric_limits<DWORD>::max();
+
+        HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+        if (snapshot != INVALID_HANDLE_VALUE) {
+            THREADENTRY32 thr;
+            thr.dwSize = sizeof(THREADENTRY32);
+
+            if (Thread32First(snapshot, &thr)) {
+                do {
+                    if (thr.th32OwnerProcessID != pi.dwProcessId) {
+                        continue;
+                    }
+                    pi.dwThreadId = thr.th32ThreadID;
+                    pi.hThread =
+                        OpenThread(THREAD_QUERY_INFORMATION | THREAD_QUERY_LIMITED_INFORMATION,
+                                   FALSE, pi.dwThreadId);
+                    if (pi.hThread == NULL) {
+                        continue;
+                    }
+
+                    FILETIME creation_time, exit_time, kernel_time, user_time;
+                    GetThreadTimes(pi.hThread, &creation_time, &exit_time, &kernel_time, &user_time);
+
+                    if (CompareFileTimeHelper(creation_time, the_thread_time) < 0) {
+                        the_thread_id   = pi.dwThreadId;
+                        the_thread_time = creation_time;
+                    }
+
+                    CloseHandle(pi.hThread);
+                } while (Thread32Next(snapshot, &thr));
+
+                pi.dwThreadId = the_thread_id;
+                pi.hThread    = OpenThread(THREAD_ALL_ACCESS, FALSE, pi.dwThreadId);
+            }
+            CloseHandle(snapshot);
+        }
+
+        if (pi.hThread == NULL) {
+            return make_error<ProcessInformation>("PROCESS", GetLastErrorMessage());
+        }
+
+        info.m_process   = pi.hProcess;
+        info.m_thread    = pi.hThread;
+        info.m_thread_id = pi.dwThreadId;
+
+        return info;
+    }
+
+    Result<void> KillExProcess(const ProcessInformation &process, size_t max_wait) {
         if (process.m_thread) {
+            // Gracefully signal the thread to terminate
+            PostThreadMessage(process.m_thread_id, WM_QUIT, 0, 0);
+#if 1
             DWORD result = WaitForSingleObject(process.m_thread, (DWORD)max_wait);
             if (result == WAIT_TIMEOUT) {
                 // Force thread to close
@@ -93,7 +215,44 @@ namespace Toolbox::Platform {
                     return make_error<void>("PROCESS", GetLastErrorMessage());
                 }
             }
+#else
+            // Wait again for the thread to exit
+            DWORD result = WaitForSingleObject(process.m_thread, (DWORD)max_wait);
+            if (result == WAIT_TIMEOUT) {
+                // If the thread still does not terminate, log an error or handle it appropriately
+                return make_error<void>("PROCESS", "Thread did not terminate gracefully.");
+            }
+#endif
             CloseHandle(process.m_thread);
+            return {};
+        }
+
+        if (process.m_process) {
+#if 0
+            if (!TerminateProcess(process.m_process, 0)) {
+                return make_error<void>("PROCESS", GetLastErrorMessage());
+            }
+            CloseHandle(process.m_process);
+#else
+            Platform::LowWindow main_window          = NULL;
+            std::vector<Platform::LowWindow> windows = Platform::FindWindowsOfProcess(process);
+            for (Platform::LowWindow window : windows) {
+                // Is the window the main window?
+                if (IsWindowVisible(window) && GetWindow(window, GW_OWNER) == NULL) {
+                    PostMessage(window, WM_CLOSE, 0, 0);
+                    main_window = window;
+                    break;
+                }
+            }
+
+            DWORD result = WaitForSingleObject(process.m_process, (DWORD)max_wait);
+            if (result == WAIT_TIMEOUT) {
+                if (!TerminateProcess(process.m_process, 0)) {
+                    return make_error<void>("PROCESS", GetLastErrorMessage());
+                }
+            }
+            CloseHandle(process.m_process);
+#endif
         }
 
         return {};
@@ -292,6 +451,10 @@ namespace Toolbox::Platform {
             // execl only returns on error
             _exit(EXIT_FAILURE);
         }
+    }
+
+    Result<ProcessInformation> GetExProcess(const std::string &process_name) {
+        return Result<ProcessInformation>();
     }
 
     Result<void> KillExProcess(const ProcessInformation &process, size_t max_wait) {
