@@ -1218,7 +1218,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
 
     // Render
     {
-        const ImU32 text_col                       = GetColorU32(ImGuiCol_Text);
+        const ImU32 text_col                          = GetColorU32(ImGuiCol_Text);
         ImGuiNavRenderCursorFlags nav_highlight_flags = ImGuiNavHighlightFlags_Compact;
         if (is_multi_select)
             nav_highlight_flags |=
@@ -1731,6 +1731,236 @@ void ImGui::TextColoredAndWidth(float width, ImVec4 col, const char *fmt, ...) {
 
     ImGui::Dummy(ImVec2(width, 0));
     va_end(args);
+}
+
+// align_x: 0.0f = left, 0.5f = center, 1.0f = right.
+// size_x : 0.0f = shortcut for GetContentRegionAvail().x
+void ImGui::TextWrappedWithAlign(float align_x, float size_x, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    ImGuiWindow *window = GetCurrentWindow();
+    if (window->SkipItems)
+        return;
+
+    if (size_x == 0.0f) {
+        return;
+    }
+
+    const char *text, *text_end;
+    ImFormatStringToTempBufferV(&text, &text_end, fmt, args);
+
+    ImFontBaked *the_font = ImGui::GetFontBaked();
+
+    struct LineInfo {
+        const char *m_start  = nullptr;
+        const char *m_end    = nullptr;
+        float m_render_width = 0.0f;
+    };
+
+    LineInfo line_infos[128];
+    int line_info_count = 0;
+
+    float width_cur          = 0.0f;
+    int last_word_end        = -1;
+    int cursor_start         = 0;
+    int cursor_cur           = 0;
+    bool line_started_yet    = false;
+    bool last_char_was_print = false;
+
+    while (true) {
+        if (text + cursor_cur >= text_end) {
+            line_infos[line_info_count++] = LineInfo{
+                .m_start        = text + cursor_start,
+                .m_end          = text_end,
+                .m_render_width = IM_TRUNC(width_cur, 0.99999f),
+            };
+            last_word_end = -1;
+            cursor_start  = cursor_cur;
+            width_cur     = 0.0f;
+            break;
+        }
+
+        ImWchar c = text[cursor_cur];
+        if (ImCharIsBlankW(c)) {
+            if (last_char_was_print) {
+                last_word_end = cursor_cur;
+            }
+            if (!line_started_yet) {
+                cursor_start = cursor_cur;
+            }
+            cursor_cur++;
+            continue;
+        }
+
+        if (c == '\n') {
+            int line_end                  = (last_word_end > 0 ? last_word_end : cursor_cur + 1);
+            line_infos[line_info_count++] = LineInfo{
+                .m_start        = text + cursor_start,
+                .m_end          = text + line_end,
+                .m_render_width = IM_TRUNC(width_cur, 0.99999f),
+            };
+            last_word_end = -1;
+            cursor_start  = line_end + 1;
+            cursor_cur    = cursor_start;
+            width_cur     = 0.0f;
+            continue;
+        }
+
+        last_char_was_print   = true;
+        line_started_yet      = true;
+        const float font_size = ImGui::GetCurrentContext()->FontSize;
+        float next_c_width    = the_font->GetCharAdvance((ImWchar)c) * (font_size / the_font->Size);
+        if (width_cur + next_c_width >= size_x - the_font->FallbackAdvanceX) {
+            int line_end                  = (last_word_end > 0 ? last_word_end : cursor_cur + 1);
+            line_infos[line_info_count++] = LineInfo{
+                .m_start        = text + cursor_start,
+                .m_end          = text + line_end,
+                .m_render_width = IM_TRUNC(width_cur, 0.99999f),
+            };
+            last_word_end = -1;
+            cursor_start  = line_end;
+            cursor_cur    = cursor_start;
+            width_cur     = 0.0f;
+            continue;
+        }
+        width_cur += next_c_width;
+        cursor_cur++;
+    }
+
+    for (size_t i = 0; i < line_info_count; ++i) {
+        const LineInfo &info = line_infos[i];
+
+        const ImVec2 text_size = CalcTextSize(info.m_start, info.m_end);
+        size_x                 = CalcItemSize(ImVec2(size_x, 0.0f), 0.0f, text_size.y).x;
+
+        ImVec2 pos(window->DC.CursorPos.x,
+                   window->DC.CursorPos.y + window->DC.CurrLineTextBaseOffset);
+        ImVec2 pos_max(pos.x + size_x, window->ClipRect.Max.y);
+        ImVec2 size(ImMin(size_x, text_size.x), text_size.y);
+        window->DC.CursorMaxPos.x = ImMax(window->DC.CursorMaxPos.x, pos.x + text_size.x);
+        window->DC.IdealMaxPos.x  = ImMax(window->DC.IdealMaxPos.x, pos.x + text_size.x);
+        if (align_x > 0.0f && text_size.x < size_x)
+            pos.x += ImTrunc((size_x - text_size.x) * align_x);
+        if (i == line_info_count - 1) {
+            RenderTextEllipsis(window->DrawList, pos, pos_max, pos_max.x, info.m_start, info.m_end,
+                               &text_size);
+        } else {
+            RenderText(pos, info.m_start, info.m_end);
+        }
+
+        const ImVec2 backup_max_pos = window->DC.CursorMaxPos;
+        ItemSize(size);
+        ItemAdd(ImRect(pos, pos + size), 0);
+        window->DC.CursorMaxPos.x =
+            backup_max_pos.x;  // Cancel out extending content size because right-aligned text would
+                               // otherwise mess it up.
+    }
+
+    va_end(args);
+}
+
+ImVec2 ImGui::CalcTextWrappedWithAlignRect(float align_x, float size_x, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    ImGuiWindow *window = GetCurrentWindow();
+    if (window->SkipItems)
+        return {};
+
+    if (size_x == 0.0f) {
+        return {};
+    }
+    const ImGuiStyle &style = GetStyle();
+
+    const char *text, *text_end;
+    ImFormatStringToTempBufferV(&text, &text_end, fmt, args);
+
+    ImFontBaked *the_font = ImGui::GetFontBaked();
+
+    struct LineInfo {
+        const char *m_start  = nullptr;
+        const char *m_end    = nullptr;
+        float m_render_width = 0.0f;
+    };
+
+    LineInfo line_infos[128];
+    int line_info_count = 0;
+
+    float width_cur          = 0.0f;
+    int last_word_end        = -1;
+    int cursor_start         = 0;
+    int cursor_cur           = 0;
+    bool line_started_yet    = false;
+    bool last_char_was_print = false;
+
+    while (true) {
+        if (line_info_count >= 128) {
+            break;
+        }
+
+        if (text + cursor_cur >= text_end) {
+            line_infos[line_info_count++] = LineInfo{
+                .m_start        = text + cursor_start,
+                .m_end          = text_end,
+                .m_render_width = IM_TRUNC(width_cur, 0.99999f),
+            };
+            last_word_end = -1;
+            cursor_start  = cursor_cur;
+            width_cur     = 0.0f;
+            break;
+        }
+
+        ImWchar c = text[cursor_cur];
+        if (ImCharIsBlankW(c)) {
+            if (last_char_was_print) {
+                last_word_end = cursor_cur;
+            }
+            if (!line_started_yet) {
+                cursor_start = cursor_cur;
+            }
+            cursor_cur++;
+            continue;
+        }
+
+        if (c == '\n') {
+            int line_end                  = (last_word_end > 0 ? last_word_end : cursor_cur + 1);
+            line_infos[line_info_count++] = LineInfo{
+                .m_start        = text + cursor_start,
+                .m_end          = text + line_end,
+                .m_render_width = IM_TRUNC(width_cur, 0.99999f),
+            };
+            last_word_end = -1;
+            cursor_start  = line_end + 1;
+            cursor_cur    = cursor_start;
+            width_cur     = 0.0f;
+            continue;
+        }
+
+        last_char_was_print   = true;
+        line_started_yet      = true;
+        const float font_size = ImGui::GetCurrentContext()->FontSize;
+        float next_c_width    = the_font->GetCharAdvance((ImWchar)c) * (font_size / the_font->Size);
+        if (width_cur + next_c_width >= size_x - the_font->FallbackAdvanceX) {
+            int line_end                  = (last_word_end > 0 ? last_word_end : cursor_cur + 1);
+            line_infos[line_info_count++] = LineInfo{
+                .m_start        = text + cursor_start,
+                .m_end          = text + line_end,
+                .m_render_width = IM_TRUNC(width_cur, 0.99999f),
+            };
+            last_word_end = -1;
+            cursor_start  = line_end;
+            cursor_cur    = cursor_start;
+            width_cur     = 0.0f;
+            continue;
+        }
+        width_cur += next_c_width;
+        cursor_cur++;
+    }
+
+    va_end(args);
+
+    return ImVec2(size_x, ImGui::GetCurrentContext()->FontSize * line_info_count + style.ItemSpacing.y * (line_info_count - 1));
 }
 
 static bool IsRootOfOpenMenuSet() {

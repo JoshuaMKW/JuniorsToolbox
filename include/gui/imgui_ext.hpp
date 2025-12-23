@@ -110,6 +110,8 @@ namespace ImGui {
                                   ImGuiDropFlags flags);
     void TextAndWidth(float width, const char *fmt, ...);
     void TextColoredAndWidth(float width, ImVec4 col, const char *fmt, ...);
+    void TextWrappedWithAlign(float align_x, float size_x, const char *fmt, ...);
+    ImVec2 CalcTextWrappedWithAlignRect(float align_x, float size_x, const char *fmt, ...);
 
     bool BeginMenuGroup(const char *str_id, float *hovered_delta, bool enabled = true);
     void EndMenuGroup();

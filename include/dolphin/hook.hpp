@@ -63,7 +63,7 @@ namespace Toolbox::Dolphin {
         bool isProcessRunning();
 
         const Platform::ProcessInformation &getProcess() const { return m_proc_info; }
-        Result<void> startProcess();
+        Result<void> startProcess(bool wants_hidden = false);
         Result<void> stopProcess();
 
         bool isHooked() const { return m_mem_view && Platform::IsExProcessRunning(m_proc_info); }

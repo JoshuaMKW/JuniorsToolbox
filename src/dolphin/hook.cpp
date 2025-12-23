@@ -9,15 +9,50 @@
 
 #include "dolphin/hook.hpp"
 
+#include "core/threaded.hpp"
+
 #ifdef TOOLBOX_PLATFORM_LINUX
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #endif
 
+using namespace std::chrono_literals;
 using std::string_view_literals::operator""sv;
 
 namespace Toolbox::Dolphin {
+
+    // Dolphin Emulator windows async open after some time...
+    class HideWindowsThread : public Threaded<void> {
+    public:
+        void setExpectedWindowCount(size_t windows) { m_expected_windows = windows; }
+
+    protected:
+        void tRun(void* param) override {
+            Platform::ProcessInformation *proc_info =
+                static_cast<Platform::ProcessInformation *>(param);
+            if (!proc_info) {
+                return;
+            }
+
+            while (!tIsSignalKill()) {
+                std::vector<Platform::LowWindow> windows =
+                    Platform::FindWindowsOfProcess(*proc_info);
+                if (windows.size() >= m_expected_windows) {
+                    for (Platform::LowWindow window : windows) {
+                        Platform::HideWindow(window);
+                    }
+                    break;
+                }
+                std::this_thread::sleep_for(16ms);
+            }
+        }
+
+    private:
+        size_t m_expected_windows = 1;
+    };
+
+    static ScopePtr<HideWindowsThread> s_hide_windows_thr;
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <tlhelp32.h>
@@ -164,7 +199,7 @@ namespace Toolbox::Dolphin {
         return Platform::IsExProcessRunning(m_proc_info);
     }
 
-    Result<void> DolphinHookManager::startProcess() {
+    Result<void> DolphinHookManager::startProcess(bool wants_hidden) {
         GUIApplication &application = GUIApplication::instance();
 
         if (isProcessRunning()) {
@@ -180,6 +215,10 @@ namespace Toolbox::Dolphin {
             std::format("-e \"{}/sys/main.dol\" -v Vulkan -a HLE",  // -b for no emu UI (only game window)
                         application.getProjectManager().getProjectFolder().string());
 
+        if (wants_hidden) {
+            dolphin_args += " -b";
+        }
+
         size_t last_not_null    = m_dolphin_path.string().find_last_not_of('\000');
         std::string used_substr = m_dolphin_path.string().substr(last_not_null - 5, last_not_null);
         if (!used_substr.starts_with("-nogui"sv)) {
@@ -191,12 +230,19 @@ namespace Toolbox::Dolphin {
         putenv("QT_QPA_PLATFORM=xcb");
 #endif
 
-        auto process_result = Platform::CreateExProcess(m_dolphin_path, dolphin_args);
+        auto process_result = Platform::CreateExProcess(m_dolphin_path, dolphin_args, wants_hidden);
         if (!process_result) {
             return std::unexpected(process_result.error());
         }
 
+
         m_proc_info = process_result.value();
+        if (wants_hidden) {
+            s_hide_windows_thr = make_scoped<HideWindowsThread>();
+            s_hide_windows_thr->setExpectedWindowCount(10);  // Opens 11 but being safe. Potentially rewrite this logic?
+            s_hide_windows_thr->tStart(true, &m_proc_info);
+        }
+
         return {};
     }
 

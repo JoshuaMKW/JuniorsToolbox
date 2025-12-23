@@ -1,8 +1,8 @@
-#include "gui/project/events.hpp"
 #include "gui/project/window.hpp"
 #include "gui/application.hpp"
 #include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/new_item/window.hpp"
+#include "gui/project/events.hpp"
 #include "model/fsmodel.hpp"
 
 #include <cctype>
@@ -102,13 +102,13 @@ namespace Toolbox::UI {
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
                 ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
 
-                const float box_width   = 76.0f;
-                const float box_height  = 100.0f;
-                const float label_width = box_width - style.WindowPadding.x * 4.0f;
+                const float box_base_width   = 60.0f + ImGui::GetFontSize();
+                const float box_base_height  = 60.0f + ImGui::GetFontSize();
+                const float label_width = box_base_width - style.WindowPadding.x * 4.0f;
 
                 ImVec2 size = ImGui::GetContentRegionAvail();
 
-                size_t x_count = (size_t)(size.x / (box_width + style.ItemSpacing.x) + 0.1f);
+                size_t x_count = (size_t)(size.x / (box_base_width + style.ItemSpacing.x) + 0.1f);
                 if (x_count == 0) {
                     x_count = 1;
                 }
@@ -118,6 +118,8 @@ namespace Toolbox::UI {
                 const IDataModel::index_container &selection =
                     m_selection_mgr.getState().getSelection();
 
+                ImVec2 row_box_size = {box_base_width, box_base_height};
+
                 for (size_t i = 0; i < m_view_proxy->getRowCount(view_index); ++i) {
                     ModelIndex child_index = m_view_proxy->getIndex(i, 0, view_index);
                     if (!m_view_proxy->validateIndex(child_index)) {
@@ -125,8 +127,23 @@ namespace Toolbox::UI {
                         continue;
                     }
 
+                    if ((i % x_count) == 0) {
+                        size_t row_end =
+                            std::min(i + x_count, m_view_proxy->getRowCount(view_index));
+                        for (int j = i; j < row_end; ++j) {
+                            ModelIndex test_index = m_view_proxy->getIndex(j, 0, view_index);
+                            std::string item_name = m_view_proxy->getDisplayText(test_index);
+                            row_box_size.y =
+                                ImMax(row_box_size.y, box_base_height +
+                                                          ImGui::CalcTextWrappedWithAlignRect(
+                                                          0.5f, label_width, item_name.c_str())
+                                                              .y +
+                                                          style.ItemInnerSpacing.y);
+                        }
+                    }
+
                     ImVec2 win_min = ImGui::GetCursorScreenPos();
-                    ImVec2 win_max = win_min + ImVec2(box_width, box_height);
+                    ImVec2 win_max = win_min + row_box_size;
 
                     const bool is_selected = m_selection_mgr.getState().isSelected(child_index);
                     const bool is_hovered =
@@ -178,11 +195,11 @@ namespace Toolbox::UI {
                                                             2.0f);
                     }
 
-                    if (ImGui::BeginChild(child_index.getUUID(), {box_width, 100.0f}, true,
+                    if (ImGui::BeginChild(child_index.getUUID(), row_box_size, true,
                                           window_flags)) {
                         ImVec2 pos       = ImGui::GetCursorScreenPos() + style.WindowPadding;
-                        ImVec2 icon_size = ImVec2(box_width - style.WindowPadding.x * 2.0f,
-                                                  box_width - style.WindowPadding.x * 2.0f);
+                        ImVec2 icon_size = ImVec2(row_box_size.x - style.WindowPadding.x * 2.0f,
+                                                  row_box_size.x - style.WindowPadding.x * 2.0f);
 
                         m_icon_painter.setTintColor({1.0f, 1.0f, 1.0f, render_alpha});
                         m_icon_painter.render(*m_view_proxy->getDecoration(child_index), pos,
@@ -234,6 +251,7 @@ namespace Toolbox::UI {
                                 ImVec2 text_pos =
                                     pos + ImVec2(style.WindowPadding.x,
                                                  icon_size.y + style.ItemInnerSpacing.y);
+            #if 0
                                 text_pos.x +=
                                     std::max((label_width / 2.0f) - (text_width / 2.0f), 0.0f);
 
@@ -243,6 +261,11 @@ namespace Toolbox::UI {
                                 ImGui::RenderTextEllipsis(ImGui::GetWindowDrawList(), text_pos,
                                                           text_clip_max, ellipsis_max, text.c_str(),
                                                           nullptr, nullptr);
+            #else
+                                //ImGui::TextWrapped(text.c_str());
+                                ImGui::SetCursorScreenPos(text_pos);
+                                ImGui::TextWrappedWithAlign(0.5f, label_width, text.c_str());
+                                #endif
                             }
                         }
 
@@ -338,7 +361,7 @@ namespace Toolbox::UI {
 
                 if (ImGui::BeginPopupModal("Delete?", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
                     std::string message = "";
-                     
+
                     if (selection.size() == 1) {
                         message = TOOLBOX_FORMAT_FN("Are you sure you want to delete {}?",
                                                     m_view_proxy->getDisplayText(selection[0]));
@@ -464,15 +487,17 @@ namespace Toolbox::UI {
             const fs_path &src_path          = pack_ev->getPath();
             fs_path dst_path                 = src_path;
             dst_path.replace_extension(pack_ev->wantsCompress() ? ".szs" : ".arc");
-            m_rarc_processor.requestCompileArchive(src_path, dst_path, pack_ev->wantsCompress(), pack_ev->cb());
+            m_rarc_processor.requestCompileArchive(src_path, dst_path, pack_ev->wantsCompress(),
+                                                   pack_ev->cb());
             ev->accept();
             break;
         }
         case PROJECT_UNPACK_DIRECTORY: {
             RefPtr<ProjectUnpackEvent> unpack_ev = ref_cast<ProjectUnpackEvent>(ev);
-            const fs_path &src_path          = unpack_ev->getPath();
-            fs_path dst_path                 = src_path;
-            m_rarc_processor.requestExtractArchive(src_path, src_path.parent_path(), unpack_ev->cb());
+            const fs_path &src_path              = unpack_ev->getPath();
+            fs_path dst_path                     = src_path;
+            m_rarc_processor.requestExtractArchive(src_path, src_path.parent_path(),
+                                                   unpack_ev->cb());
             ev->accept();
             break;
         }
@@ -808,9 +833,10 @@ namespace Toolbox::UI {
 
         RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Pad Recorder");
         if (!window->onLoadData(pad_path)) {
-            app.showErrorModal(this, name(),
-                               "Failed to open the folder as a pad recording!\n\n - (Check application "
-                               "log for details)");
+            app.showErrorModal(
+                this, name(),
+                "Failed to open the folder as a pad recording!\n\n - (Check application "
+                "log for details)");
             app.removeWindow(window);
             return false;
         }

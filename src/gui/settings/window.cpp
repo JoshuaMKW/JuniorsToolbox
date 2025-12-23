@@ -387,6 +387,7 @@ namespace Toolbox::UI {
             ImGui::SliderScalar("Hook Refresh Rate", ImGuiDataType_S64,
                                 &settings.m_dolphin_refresh_rate, &min, &max, nullptr,
                                 ImGuiSliderFlags_AlwaysClamp);
+            ImGui::Checkbox("Hide Dolphin on Play", &settings.m_hide_dolphin_on_play);
         }
         ImGui::EndGroupPanel();
 
