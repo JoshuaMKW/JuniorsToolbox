@@ -66,7 +66,6 @@ namespace Toolbox {
         bool m_is_template_cache_allowed     = true;
 
         bool m_log_to_cout_cerr              = false;
-        bool m_repack_scenes_on_save         = true;
     };
 
     class SettingsManager {
