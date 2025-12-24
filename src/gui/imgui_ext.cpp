@@ -1818,10 +1818,12 @@ void ImGui::TextWrappedWithAlign(float align_x, float size_x, const char *fmt, .
                 .m_end          = text + line_end,
                 .m_render_width = IM_TRUNC(width_cur, 0.99999f),
             };
-            last_word_end = -1;
-            cursor_start  = line_end;
-            cursor_cur    = cursor_start;
-            width_cur     = 0.0f;
+            last_char_was_print = false;
+            last_word_end       = -1;
+            line_started_yet    = true;
+            cursor_start        = line_end;
+            cursor_cur          = cursor_start;
+            width_cur           = 0.0f;
             continue;
         }
         width_cur += next_c_width;
