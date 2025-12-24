@@ -76,7 +76,7 @@ namespace Toolbox::Dolphin {
         u32 getAddressAsOffset(u32 address) const { return address & 0x7FFFFFFF; }
 
         void *getMemoryView() const { return isHooked() ? m_mem_view : nullptr; }
-        size_t getMemorySize() const { return isHooked() ? 0x1800000 : 0; }
+        size_t getMemorySize() const { return isHooked() ? m_mem_size : 0; }
 
         Result<void> readBytes(char *buf, u32 address, size_t size);
         Result<void> writeBytes(const char *buf, u32 address, size_t size);
@@ -95,6 +95,7 @@ namespace Toolbox::Dolphin {
 
         Platform::MemHandle m_mem_handle{};
         void *m_mem_view = nullptr;
+        u32 m_mem_size   = 0;
 
         std::mutex m_memory_mutex;
 

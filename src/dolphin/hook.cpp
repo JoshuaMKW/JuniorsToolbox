@@ -271,6 +271,7 @@ namespace Toolbox::Dolphin {
         }
 
         m_mem_view = view_result.value();
+        m_mem_size = 0x1800000;
 
         TOOLBOX_INFO_V("DOLPHIN: Successfully hooked to process! (Name={}, PID={}, View={})",
                        m_proc_info.m_process_name, m_proc_info.m_process_id, m_mem_view);
@@ -280,6 +281,14 @@ namespace Toolbox::Dolphin {
         if ((magic[0] != 'G' || magic[1] != 'M' || magic[2] != 'S') &&
             (magic[0] != '\0' || magic[1] != '\0' || magic[2] != '\0')) {
             TOOLBOX_WARN("DOLPHIN: Game found is not Super Mario Sunshine (GMS)!");
+        }
+
+        u32 sim_mem_size;
+        readBytes((char *)&sim_mem_size, 0x800000F0, 4);
+        m_mem_size = std::byteswap(sim_mem_size);
+        if (m_mem_size == 0) {
+            unhook();
+            return make_error<bool>("DOLPHIN", "Memory size  was marked as 0!");
         }
 
         return {};
@@ -338,7 +347,7 @@ namespace Toolbox::Dolphin {
         }
 
         u32 true_address = address & 0x7FFFFFFF;
-        if (true_address >= 0x1800000) {
+        if (true_address >= m_mem_size) {
             return make_error<void>("SHARED_MEMORY",
                                     "Tried to read bytes to a protected memory region!");
         }
@@ -356,7 +365,7 @@ namespace Toolbox::Dolphin {
         }
 
         u32 true_address = address & 0x7FFFFFFF;
-        if (true_address >= 0x1800000) {
+        if (true_address >= m_mem_size) {
             return make_error<void>("SHARED_MEMORY",
                                     "Tried to write bytes to a protected memory region!");
         }
@@ -374,7 +383,7 @@ namespace Toolbox::Dolphin {
         }
 
         u32 true_address = address & 0x7FFFFFFF;
-        if (true_address >= 0x1800000) {
+        if (true_address >= m_mem_size) {
             return make_error<void>("SHARED_MEMORY",
                                     "Tried to read bytes to a protected memory region!");
         }
@@ -382,7 +391,7 @@ namespace Toolbox::Dolphin {
         const char *addr_buf = static_cast<const char *>(m_mem_view) + true_address;
 
         size_t i = 0;
-        while (true_address + i < 0x1800000 && i < buf_len) {
+        while (true_address + i < m_mem_size && i < buf_len) {
             if (addr_buf[i] == '\0') {
                 buf[i] = '\0';
                 return {};
@@ -403,7 +412,7 @@ namespace Toolbox::Dolphin {
         }
 
         u32 true_address = address & 0x7FFFFFFF;
-        if (true_address >= 0x1800000) {
+        if (true_address >= m_mem_size) {
             return make_error<void>("SHARED_MEMORY",
                                     "Tried to read bytes to a protected memory region!");
         }
@@ -411,7 +420,7 @@ namespace Toolbox::Dolphin {
         char *addr_buf = static_cast<char *>(m_mem_view) + true_address;
 
         size_t i = 0;
-        while (true_address + i < 0x1800000 && (buf_len == 0 || i < buf_len)) {
+        while (true_address + i < m_mem_size && (buf_len == 0 || i < buf_len)) {
             if (buf[i] == '\0') {
                 addr_buf[i] = '\0';
                 return {};
