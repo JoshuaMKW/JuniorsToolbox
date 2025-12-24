@@ -35,9 +35,128 @@ namespace Toolbox::UI {
         return make_scoped<ProjectUnpackEvent>(*this);
     }
 
-    ProjectViewWindow::ProjectViewWindow(const std::string &name) : ImWindow(name) {}
+    ProjectViewWindow::ProjectViewWindow(const std::string &name) : ImWindow(name) {
+        memset(m_rename_buffer, '\0', sizeof(m_rename_buffer));
+        m_search_buf.fill('\0');
+        m_view_history_stack.reserve(256);
+    }
 
-    void ProjectViewWindow::onRenderMenuBar() {}
+    void ProjectViewWindow::onRenderMenuBar() {
+        if (!ImGui::BeginMenuBar()) {
+            return;
+        }
+
+        ImVec2 avail_size = ImGui::GetContentRegionAvail();
+
+        const bool can_undo = m_view_history_index > 1;
+        const bool can_redo = !m_view_history_stack.empty() && m_view_history_index < m_view_history_stack.size();
+
+        if (!can_undo) {
+            ImGui::BeginDisabled();
+        }
+
+        if (ImGui::MenuItem(ICON_FK_ARROW_LEFT)) {
+            undoViewHistory();
+        }
+
+        if (!can_undo) {
+            ImGui::EndDisabled();
+        }
+
+        if (!can_redo) {
+            ImGui::BeginDisabled();
+        }
+
+        if (ImGui::MenuItem(ICON_FK_ARROW_RIGHT)) {
+            redoViewHistory();
+        }
+
+        if (!can_redo) {
+            ImGui::EndDisabled();
+        }
+
+        ModelIndex parent_index = m_file_system_model->getParent(m_view_index);
+        const bool can_surface = m_file_system_model->validateIndex(m_view_index);
+
+        if (!can_surface) {
+            ImGui::BeginDisabled();
+        }
+
+        if (ImGui::MenuItem(ICON_FK_ARROW_UP)) {
+            setViewIndex(parent_index, false);
+        }
+
+        if (!can_surface) {
+            ImGui::EndDisabled();
+        }
+
+        ImGui::Separator();
+
+        std::vector<ModelIndex> path_chain = { m_view_index };
+        path_chain.reserve(16);
+
+        ModelIndex the_index = m_view_index;
+        while (true) {
+            the_index = m_file_system_model->getParent(the_index);
+            if (!m_file_system_model->validateIndex(the_index)) {
+                break;
+            }
+            path_chain.emplace_back(the_index);
+        }
+
+        for (auto r_it = path_chain.rbegin(); r_it != path_chain.rend(); ++r_it) {
+            fs_path r_path = m_file_system_model->getPath(*r_it);
+            fs_path r_parent_path = r_path.parent_path();
+            std::string button_label =
+                std::format("{}##{}", r_path.filename().string(), r_parent_path.string());
+            if (ImGui::MenuItem(button_label.c_str())) {
+                setViewIndex(*r_it, false);
+                break;
+            }
+
+            if (*r_it == m_view_index) {
+                break;
+            }
+
+            std::string child_label = std::format(">##{}", r_parent_path.string());
+            if (ImGui::BeginMenu(child_label.c_str())) {
+                for (size_t i = 0; i < m_file_system_model->getRowCount(*r_it); ++i) {
+                    ModelIndex subdir_idx = m_file_system_model->getIndex(i, 0, *r_it);
+                    if (!m_file_system_model->validateIndex(subdir_idx)) {
+                        TOOLBOX_DEBUG_LOG_V("[PROJECT] Failed to get index for subpath of {}",
+                            r_path.string());
+                        continue;
+                    }
+
+                    if (!m_file_system_model->isDirectory(subdir_idx)) {
+                        continue;
+                    }
+
+                    std::string subdir_name = m_file_system_model->getDisplayText(subdir_idx);
+                    if (ImGui::MenuItem(subdir_name.c_str())) {
+                        setViewIndex(subdir_idx, false);
+                    }
+                }
+                ImGui::EndMenu();
+            }
+        }
+
+        //ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, 0.0f});
+
+        const ImVec2 search_size = { 250.0f, avail_size.y };
+        ImGui::SetCursorPosX(avail_size.x - search_size.x - (ImGui::CalcTextSize(ICON_FK_SEARCH).x + ImGui::GetStyle().FramePadding.x * 2));
+        ImGui::SetNextItemWidth(search_size.x);
+        if (ImGui::InputTextWithHint("##ProjectViewSearchBar", "Search Here...", m_search_buf.data(), m_search_buf.size(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue)) {
+            std::string search_str = m_search_buf.data();
+            m_view_proxy->setFilter(search_str);
+        }
+        //ImGui::SameLine()
+        ImGui::MenuItem(ICON_FK_SEARCH);
+
+        //ImGui::PopStyleVar();
+
+        ImGui::EndMenuBar();
+    }
 
     void ProjectViewWindow::onRenderBody(TimeStep delta_time) {
         renderProjectTreeView();
@@ -286,7 +405,7 @@ namespace Toolbox::UI {
                                             m_view_proxy->toSourceIndex(child_index);
                                         if (m_view_index != new_view_index) {
                                             m_selection_mgr.getState().clearSelection();
-                                            m_view_index = new_view_index;
+                                            setViewIndex(new_view_index, false);
                                             m_file_system_model->watchPathForUpdates(m_view_index,
                                                                                      true);
                                         }
@@ -433,7 +552,8 @@ namespace Toolbox::UI {
         m_view_proxy->setSourceModel(m_file_system_model);
         m_view_proxy->setSortRole(FileSystemModelSortRole::SORT_ROLE_NAME);
 
-        m_view_index = m_file_system_model->getIndex(0, 0);
+        m_view_history_stack.clear();
+        setViewIndex(m_file_system_model->getIndex(0, 0), false);
         m_file_system_model->watchPathForUpdates(m_view_index, true);
 
         m_selection_mgr = ModelSelectionManager(m_view_proxy);
@@ -725,7 +845,7 @@ namespace Toolbox::UI {
                 ModelIndex new_view_index = m_view_proxy->toSourceIndex(item_index);
                 if (m_view_index != new_view_index) {
                     m_selection_mgr.getState().clearSelection();
-                    m_view_index = new_view_index;
+                    setViewIndex(new_view_index, false);
                     m_file_system_model->watchPathForUpdates(m_view_index, true);
                 }
                 continue;
@@ -919,7 +1039,7 @@ namespace Toolbox::UI {
                 ModelIndex new_view_index = m_tree_proxy->toSourceIndex(index);
                 if (m_view_index != new_view_index) {
                     m_selection_mgr.getState().clearSelection();
-                    m_view_index = new_view_index;
+                    setViewIndex(new_view_index, false);
                     m_file_system_model->watchPathForUpdates(m_view_index, true);
                 }
                 // m_fs_watchdog.addPath(m_view_proxy->getPath(m_view_index));
@@ -987,6 +1107,44 @@ namespace Toolbox::UI {
             (void)m_view_proxy->removeIndex(index);
         }
         m_cut_indices.clear();
+    }
+
+    void ProjectViewWindow::setViewIndex(const ModelIndex &index, bool replace_present_history) {
+        m_view_index = index;
+        m_view_history_stack.erase(m_view_history_stack.begin() + m_view_history_index,
+                                   m_view_history_stack.end());
+        if (replace_present_history) {
+            m_view_history_stack.back() = index;
+        } else {
+            m_view_history_stack.emplace_back(index);
+            m_view_history_index++;
+        }
+    }
+
+    bool ProjectViewWindow::redoViewHistory() {
+        if (m_view_history_stack.empty()) {
+            return false;
+        }
+
+        if (m_view_history_index >= m_view_history_stack.size()) {
+            return false;
+        }
+
+        m_view_index = m_view_history_stack[++m_view_history_index - 1];
+        return true;
+    }
+
+    bool ProjectViewWindow::undoViewHistory() {
+        if (m_view_history_stack.empty()) {
+            return false;
+        }
+
+        if (m_view_history_index < 1) {
+            return false;
+        }
+
+        m_view_index = m_view_history_stack[--m_view_history_index - 1];
+        return true;
     }
 
     bool char_equals(char a, char b) {

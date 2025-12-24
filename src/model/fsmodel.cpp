@@ -220,7 +220,7 @@ namespace Toolbox {
         return findUniqueName_(index, name);
     }
 
-ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &name) {
+    ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &name) {
         SignalQueue pending_signals;
         ModelIndex result;
 
@@ -897,7 +897,7 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
                     return Result<bool, FSError>();
                 });
         } else if (isArchive_(index)) {
-            //TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
+            // TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
 
             Filesystem::remove(getPath_(index))
                 .and_then([&](bool removed) {
@@ -1248,8 +1248,7 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
     }
 
     bool FileSystemModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
-                                          SignalQueue &sig_queue,
-                                          ModelInsertPolicy policy) {
+                                          SignalQueue &sig_queue, ModelInsertPolicy policy) {
         if (!data.has_urls()) {
             return false;
         }
@@ -1289,8 +1288,8 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
         }
 
         _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
-        size_t cached_size = data->m_children.size();
-        size_t real_size   = 0;
+        size_t cached_size         = data->m_children.size();
+        size_t real_size           = 0;
         for (const auto &entry : Filesystem::directory_iterator(data->m_path)) {
             if (entry.is_regular_file() || entry.is_directory()) {
                 real_size += 1;
@@ -1575,8 +1574,7 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
                     data->m_type = _FileSystemIndexData::Type::FILE;
                 }
             } else {
-                TOOLBOX_ERROR_V("[FileSystemModel] Invalid path: {}",
-                                data->m_path.string());
+                TOOLBOX_ERROR_V("[FileSystemModel] Invalid path: {}", data->m_path.string());
             }
 
             // Establish icon
@@ -1755,7 +1753,13 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
     }
 
     const std::string &FileSystemModelSortFilterProxy::getFilter() const & { return m_filter; }
-    void FileSystemModelSortFilterProxy::setFilter(const std::string &filter) { m_filter = filter; }
+    void FileSystemModelSortFilterProxy::setFilter(const std::string &filter) {
+        m_filter = filter;
+
+        //std::unique_lock lk(m_cache_mutex);
+        //m_filter_map.clear();
+        //m_row_map.clear();
+    }
 
     void FileSystemModelSortFilterProxy::setReadOnly(bool read_only) {
         m_source_model->setReadOnly(read_only);
@@ -2057,9 +2061,9 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
             map_key = 0;
         }
 
-        //if (m_row_map.find(map_key) != m_row_map.end()) {
-        //    return;
-        //}
+        // if (m_row_map.find(map_key) != m_row_map.end()) {
+        //     return;
+        // }
 
         if (!m_source_model->validateIndex(dir_index)) {
             proxy_children.reserve(orig_children.size() * 0.5f);
@@ -2159,10 +2163,10 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
             return;
         }
 
-        //if ((flags & FileSystemModelEventFlags::EVENT_IS_FILE) &&
-        //    (flags & ModelEventFlags::EVENT_INDEX_MODIFIED)) {
-        //    
-        //}
+        // if ((flags & FileSystemModelEventFlags::EVENT_IS_FILE) &&
+        //     (flags & ModelEventFlags::EVENT_INDEX_MODIFIED)) {
+        //
+        // }
 
         {
             std::scoped_lock lock(m_cache_mutex);
@@ -2181,7 +2185,7 @@ ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &n
                 return Result<void, FSError>();
             });
     }
-     
+
     void FileSystemProcessorGC::tRun(void *param) {
         m_model = static_cast<FileSystemModel *>(param);
 

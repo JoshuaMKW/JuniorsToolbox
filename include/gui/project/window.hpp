@@ -53,6 +53,10 @@ namespace Toolbox::UI {
         void optionDeleteProc_();
         void optionPasteProc_();
 
+        void setViewIndex(const ModelIndex &index, bool replace_present_history);
+        bool redoViewHistory();
+        bool undoViewHistory();
+
     public:
         ImGuiWindowFlags flags() const override {
             return ImWindow::flags() | ImGuiWindowFlags_MenuBar;
@@ -144,6 +148,11 @@ namespace Toolbox::UI {
         bool m_did_drag_drop = false;
 
         ImVec2 m_last_reg_mouse_pos;
+
+        std::vector<ModelIndex> m_view_history_stack;
+        size_t m_view_history_index = 0;
+
+        std::array<char, 128> m_search_buf;
     };
 
 }  // namespace Toolbox::UI
