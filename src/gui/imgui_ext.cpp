@@ -1775,7 +1775,9 @@ void ImGui::TextWrappedWithAlign(float align_x, float size_x, const char *fmt, .
                 .m_end          = text_end,
                 .m_render_width = IM_TRUNC(width_cur, 0.99999f),
             };
-            last_word_end = -1;
+            last_char_was_print = false;
+            last_word_end       = -1;
+            line_started_yet    = false;
             cursor_start  = cursor_cur;
             width_cur     = 0.0f;
             break;
@@ -1800,7 +1802,9 @@ void ImGui::TextWrappedWithAlign(float align_x, float size_x, const char *fmt, .
                 .m_end          = text + line_end,
                 .m_render_width = IM_TRUNC(width_cur, 0.99999f),
             };
-            last_word_end = -1;
+            last_char_was_print = false;
+            last_word_end       = -1;
+            line_started_yet    = false;
             cursor_start  = line_end + 1;
             cursor_cur    = cursor_start;
             width_cur     = 0.0f;
@@ -1820,7 +1824,7 @@ void ImGui::TextWrappedWithAlign(float align_x, float size_x, const char *fmt, .
             };
             last_char_was_print = false;
             last_word_end       = -1;
-            line_started_yet    = true;
+            line_started_yet    = false;
             cursor_start        = line_end;
             cursor_cur          = cursor_start;
             width_cur           = 0.0f;
@@ -1909,9 +1913,12 @@ ImVec2 ImGui::CalcTextWrappedWithAlignRect(float align_x, float size_x, const ch
                 .m_end          = text_end,
                 .m_render_width = IM_TRUNC(width_cur, 0.99999f),
             };
-            last_word_end = -1;
-            cursor_start  = cursor_cur;
-            width_cur     = 0.0f;
+
+            last_char_was_print = false;
+            last_word_end       = -1;
+            line_started_yet    = false;
+            cursor_start        = cursor_cur;
+            width_cur           = 0.0f;
             break;
         }
 
@@ -1934,7 +1941,10 @@ ImVec2 ImGui::CalcTextWrappedWithAlignRect(float align_x, float size_x, const ch
                 .m_end          = text + line_end,
                 .m_render_width = IM_TRUNC(width_cur, 0.99999f),
             };
-            last_word_end = -1;
+
+            last_char_was_print = false;
+            last_word_end       = -1;
+            line_started_yet    = false;
             cursor_start  = line_end + 1;
             cursor_cur    = cursor_start;
             width_cur     = 0.0f;
@@ -1952,7 +1962,10 @@ ImVec2 ImGui::CalcTextWrappedWithAlignRect(float align_x, float size_x, const ch
                 .m_end          = text + line_end,
                 .m_render_width = IM_TRUNC(width_cur, 0.99999f),
             };
-            last_word_end = -1;
+
+            last_char_was_print = false;
+            last_word_end       = -1;
+            line_started_yet    = false;
             cursor_start  = line_end;
             cursor_cur    = cursor_start;
             width_cur     = 0.0f;
