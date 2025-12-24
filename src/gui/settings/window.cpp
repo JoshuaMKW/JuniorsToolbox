@@ -425,13 +425,13 @@ namespace Toolbox::UI {
             if (!FileDialog::instance()->isAlreadyOpen()) {
                 FileDialogFilter filter;
                 filter.addFilter("Dolphin Emulator", filter_ext);
-                FileDialog::instance()->openDialog(window, settings.m_dolphin_path.string(), false,
+                FileDialog::instance()->openDialog(*this, settings.m_dolphin_path.string(), false,
                                                    filter);
             }
             m_is_path_dialog_open = false;
         }
 
-        if (FileDialog::instance()->isDone(window)) {
+        if (FileDialog::instance()->isDone(*this)) {
             FileDialog::instance()->close();
             if (FileDialog::instance()->isOk()) {
                 switch (FileDialog::instance()->getFilenameMode()) {

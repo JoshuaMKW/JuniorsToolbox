@@ -772,7 +772,7 @@ namespace Toolbox {
 
         if (m_is_dir_dialog_open) {
             if (!FileDialog::instance()->isAlreadyOpen()) {
-                FileDialog::instance()->openDialog(m_render_window, m_load_path, true);
+                FileDialog::instance()->openDialog(m_render_window, m_uuid, m_load_path, true);
             }
             m_is_dir_dialog_open = false;
         }
@@ -781,12 +781,12 @@ namespace Toolbox {
             if (!FileDialog::instance()->isAlreadyOpen()) {
                 FileDialogFilter filter;
                 filter.addFilter("Nintendo Scene Archive", "szs,arc");
-                FileDialog::instance()->openDialog(m_render_window, m_load_path, false, filter);
+                FileDialog::instance()->openDialog(m_render_window, m_uuid, m_load_path, false, filter);
             }
             m_is_file_dialog_open = false;
         }
 
-        if (FileDialog::instance()->isDone(m_render_window)) {
+        if (FileDialog::instance()->isDone(m_uuid)) {
             FileDialog::instance()->close();
             if (FileDialog::instance()->isOk()) {
                 std::filesystem::path selected_path = FileDialog::instance()->getFilenameResult();
@@ -909,14 +909,14 @@ namespace Toolbox {
         return dur.seconds() >= m_seconds_to_close;
     }
 
-    void FileDialog::openDialog(ImGuiWindow *parent_window,
+    void FileDialog::openDialog(const ImWindow &parent_window,
                                 const std::filesystem::path &starting_path, bool is_directory,
                                 std::optional<FileDialogFilter> maybe_filters) {
-        GLFWwindow *op_window = static_cast<GLFWwindow *>(parent_window->Viewport->PlatformHandle);
-        openDialog(op_window, starting_path, is_directory, maybe_filters);
+        GLFWwindow *op_window = static_cast<GLFWwindow *>(parent_window.getImGuiWindow()->Viewport->PlatformHandle);
+        openDialog(op_window, parent_window.getUUID(), starting_path, is_directory, maybe_filters);
     }
 
-    void FileDialog::openDialog(GLFWwindow *parent_window,
+    void FileDialog::openDialog(GLFWwindow *parent_window, UUID64 owner_uuid,
                                 const std::filesystem::path &starting_path, bool is_directory,
                                 std::optional<FileDialogFilter> maybe_filters) {
         if (m_thread_initialized) {
@@ -928,7 +928,8 @@ namespace Toolbox {
         m_closed         = false;
         m_result         = NFD_ERROR;
 
-        m_control_info.m_owner         = parent_window;
+        m_control_info.m_owner_window  = parent_window;
+        m_control_info.m_owner_uuid    = owner_uuid;
         m_control_info.m_starting_path = starting_path.string();
         m_control_info.m_default_name  = "";
         m_control_info.m_opt_filters   = maybe_filters;
@@ -938,15 +939,15 @@ namespace Toolbox {
         m_thread = std::thread([&]() { NFD_OpenDialogRoutine(*this); });
     }
 
-    void FileDialog::saveDialog(ImGuiWindow *parent_window,
+    void FileDialog::saveDialog(const ImWindow &parent_window,
                                 const std::filesystem::path &starting_path,
                                 const std::string &default_name, bool is_directory,
                                 std::optional<FileDialogFilter> maybe_filters) {
-        GLFWwindow *op_window = static_cast<GLFWwindow *>(parent_window->Viewport->PlatformHandle);
-        saveDialog(op_window, starting_path, default_name, is_directory, maybe_filters);
+        GLFWwindow *op_window = static_cast<GLFWwindow *>(parent_window.getImGuiWindow()->Viewport->PlatformHandle);
+        saveDialog(op_window, parent_window.getUUID(), starting_path, default_name, is_directory, maybe_filters);
     }
 
-    void FileDialog::saveDialog(GLFWwindow *parent_window,
+    void FileDialog::saveDialog(GLFWwindow *parent_window, UUID64 parent_uuid,
                                 const std::filesystem::path &starting_path,
                                 const std::string &default_name, bool is_directory,
                                 std::optional<FileDialogFilter> maybe_filters) {
@@ -959,7 +960,8 @@ namespace Toolbox {
         m_closed         = false;
         m_result         = NFD_ERROR;
 
-        m_control_info.m_owner         = parent_window;
+        m_control_info.m_owner_window  = parent_window;
+        m_control_info.m_owner_uuid    = parent_uuid;
         m_control_info.m_starting_path = starting_path.string();
         m_control_info.m_default_name  = "";
         m_control_info.m_opt_filters   = maybe_filters;
@@ -975,7 +977,7 @@ namespace Toolbox {
         if (self.m_control_info.m_is_directory) {
             nfdpickfolderu8args_t args;
             args.defaultPath = self.m_control_info.m_starting_path.c_str();
-            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner, &args.parentWindow);
+            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window, &args.parentWindow);
             self.m_result = NFD_PickFolderU8_With(&self.m_selected_path, &args);
         } else {
             int num_filters                = 0;
@@ -994,7 +996,7 @@ namespace Toolbox {
             args.filterList  = const_cast<const nfdu8filteritem_t *>(nfd_filters);
             args.filterCount = num_filters;
             args.defaultPath = self.m_control_info.m_starting_path.c_str();
-            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner, &args.parentWindow);
+            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window, &args.parentWindow);
             self.m_result = NFD_OpenDialogU8_With(&self.m_selected_path, &args);
             if (self.m_control_info.m_opt_filters) {
                 delete[] nfd_filters;
@@ -1010,7 +1012,7 @@ namespace Toolbox {
         if (self.m_control_info.m_is_directory) {
             nfdpickfolderu8args_t args;
             args.defaultPath = self.m_control_info.m_starting_path.c_str();
-            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner, &args.parentWindow);
+            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window, &args.parentWindow);
             self.m_result = NFD_PickFolderU8_With(&self.m_selected_path, &args);
         } else {
             int num_filters                = 0;
@@ -1030,7 +1032,7 @@ namespace Toolbox {
             args.filterCount = num_filters;
             args.defaultPath = self.m_control_info.m_starting_path.c_str();
             args.defaultName = self.m_control_info.m_default_name.c_str();
-            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner, &args.parentWindow);
+            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window, &args.parentWindow);
             self.m_result = NFD_SaveDialogU8_With(&self.m_selected_path, &args);
             if (self.m_control_info.m_opt_filters) {
                 delete[] nfd_filters;

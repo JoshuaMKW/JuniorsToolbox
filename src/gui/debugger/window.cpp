@@ -145,7 +145,7 @@ namespace Toolbox::UI {
                 if (!FileDialog::instance()->isAlreadyOpen()) {
                     FileDialogFilter filter;
                     filter.addFilter("Toolbox Memory Watch List", "mwl");
-                    FileDialog::instance()->openDialog(window, cwd, false, filter);
+                    FileDialog::instance()->openDialog(*this, cwd, false, filter);
                 }
                 m_is_open_dialog = false;
             }
@@ -154,7 +154,7 @@ namespace Toolbox::UI {
                 if (!FileDialog::instance()->isAlreadyOpen()) {
                     FileDialogFilter filter;
                     filter.addFilter("Toolbox Memory Watch List", "mwl");
-                    FileDialog::instance()->saveDialog(window, cwd, fname, false, filter);
+                    FileDialog::instance()->saveDialog(*this, cwd, fname, false, filter);
                 }
                 m_is_save_dialog = false;
             }
@@ -163,12 +163,12 @@ namespace Toolbox::UI {
                 if (!FileDialog::instance()->isAlreadyOpen()) {
                     FileDialogFilter filter;
                     filter.addFilter("Dolphin Memory Watches File", "dmw");
-                    FileDialog::instance()->openDialog(window, cwd, false, filter);
+                    FileDialog::instance()->openDialog(*this, cwd, false, filter);
                 }
                 m_is_load_dme_dialog = false;
             }
 
-            if (FileDialog::instance()->isDone(window)) {
+            if (FileDialog::instance()->isDone(*this)) {
                 FileDialog::instance()->close();
                 if (FileDialog::instance()->isOk()) {
                     switch (FileDialog::instance()->getFilenameMode()) {

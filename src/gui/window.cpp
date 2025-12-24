@@ -146,10 +146,12 @@ namespace Toolbox::UI {
     void ImWindow::onImGuiRender(TimeStep delta_time) {
         std::string window_name = std::format("{}###{}", title(), getUUID());
         ImGuiWindow *window     = ImGui::FindWindowByName(window_name.c_str());
+        m_imgui_window          = window;
 
         if (m_is_new_icon) {
-            if (window && window->Viewport && window->Viewport->PlatformHandle) {
-                GLFWwindow *glfw_window = (GLFWwindow *)window->Viewport->PlatformHandle;
+            if (m_imgui_window && m_imgui_window->Viewport &&
+                m_imgui_window->Viewport->PlatformHandle) {
+                GLFWwindow *glfw_window = (GLFWwindow *)m_imgui_window->Viewport->PlatformHandle;
                 GLFWimage icon          = {m_icon_size.x, m_icon_size.y, m_icon_data.buf<u8>()};
                 glfwSetWindowIcon(glfw_window, 1, &icon);
                 m_is_new_icon = false;
@@ -194,14 +196,13 @@ namespace Toolbox::UI {
 
             // Render the window
             bool did_render = onBeginWindow(window_name, &is_open, flags_);
-            if (window) {
-                is_hidden = window->Hidden && !window->DockIsActive;
+            if (m_imgui_window) {
+                is_hidden = m_imgui_window->Hidden && !m_imgui_window->DockIsActive;
             }
 
             if (did_render) {
-                ImGuiWindow *im_window = ImGui::GetCurrentWindow();
-                if (im_window) {
-                    m_im_order = im_window->BeginOrderWithinContext;
+                if (m_imgui_window) {
+                    m_im_order = m_imgui_window->BeginOrderWithinContext;
                 }
 
                 if (m_first_render) {
@@ -245,19 +246,19 @@ namespace Toolbox::UI {
         }
 
         // Establish window constraints
-        if (window) {
-            if (window->Size != m_prev_size) {
+        if (m_imgui_window) {
+            if (m_imgui_window->Size != m_prev_size) {
                 if (m_next_size.x >= 0.0f && m_next_size.y >= 0.0f) {
                     GUIApplication::instance().dispatchEvent<WindowEvent, true>(
-                        getUUID(), EVENT_WINDOW_RESIZE, window->Size);
+                        getUUID(), EVENT_WINDOW_RESIZE, m_imgui_window->Size);
                 }
-                ImGui::SetWindowSize(window, m_prev_size, ImGuiCond_Always);
+                ImGui::SetWindowSize(m_imgui_window, m_prev_size, ImGuiCond_Always);
             }
 
-            if (window->Pos != m_prev_pos) {
+            if (m_imgui_window->Pos != m_prev_pos) {
                 GUIApplication::instance().dispatchEvent<WindowEvent, true>(
-                    getUUID(), EVENT_WINDOW_MOVE, window->Pos);
-                ImGui::SetWindowPos(window, m_prev_pos, ImGuiCond_Always);
+                    getUUID(), EVENT_WINDOW_MOVE, m_imgui_window->Pos);
+                ImGui::SetWindowPos(m_imgui_window, m_prev_pos, ImGuiCond_Always);
             }
         }
 

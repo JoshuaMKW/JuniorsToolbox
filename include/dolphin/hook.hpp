@@ -37,17 +37,17 @@ namespace Toolbox::Dolphin {
 
         // Check if a specific UUID owns the lock
         bool hasLock(const UUID64 &uuid) const {
-            return m_owner.has_value() && m_owner.value() == uuid;
+            return m_owner_window.has_value() && m_owner_window.value() == uuid;
         }
 
         // Locks the usage to a specific UUID. The idea here
         // is no component knows of another's UUID which
         // forces isolated ownership.
         bool lock(const UUID64 &uuid) {
-            if (m_owner.has_value()) {
+            if (m_owner_window.has_value()) {
                 return false;
             }
-            m_owner = uuid;
+            m_owner_window = uuid;
             return true;
         }
 
@@ -56,7 +56,7 @@ namespace Toolbox::Dolphin {
             if (!hasLock(uuid)) {
                 return false;
             }
-            m_owner = std::nullopt;
+            m_owner_window = std::nullopt;
         }
 
         //---
@@ -98,7 +98,7 @@ namespace Toolbox::Dolphin {
 
         std::mutex m_memory_mutex;
 
-        std::optional<UUID64> m_owner;
+        std::optional<UUID64> m_owner_window;
     };
 
 }  // namespace Toolbox::Dolphin

@@ -942,7 +942,7 @@ namespace Toolbox::UI {
 
         if (m_is_open_dialog_open) {
             if (!FileDialog::instance()->isAlreadyOpen()) {
-                FileDialog::instance()->openDialog(window, m_load_path ? *m_load_path : "", true);
+                FileDialog::instance()->openDialog(*this, m_load_path ? *m_load_path : "", true);
             }
             m_is_open_dialog_open = false;
         }
@@ -950,7 +950,7 @@ namespace Toolbox::UI {
         if (m_is_save_dialog_open) {
             if (!m_is_save_default_ready) {
                 if (!FileDialog::instance()->isAlreadyOpen()) {
-                    FileDialog::instance()->saveDialog(window, m_load_path ? *m_load_path : "",
+                    FileDialog::instance()->saveDialog(*this, m_load_path ? *m_load_path : "",
                                                        "pad", true);
                 }
             } else {
@@ -971,7 +971,7 @@ namespace Toolbox::UI {
                 FileDialogFilter filter;
                 filter.addFilter("Pad Recording", "pad");
                 filter.addFilter("Pad Script", "txt");
-                FileDialog::instance()->openDialog(window,
+                FileDialog::instance()->openDialog(*this,
                                                    m_import_path ? *m_import_path
                                                    : m_load_path ? *m_load_path
                                                                  : "",
@@ -985,7 +985,7 @@ namespace Toolbox::UI {
                 FileDialogFilter filter;
                 filter.addFilter("Pad Recording", "pad");
                 filter.addFilter("Pad Script", "txt");
-                FileDialog::instance()->saveDialog(window,
+                FileDialog::instance()->saveDialog(*this,
                                                    m_import_path ? *m_import_path
                                                    : m_load_path ? *m_load_path
                                                                  : "",
@@ -994,7 +994,7 @@ namespace Toolbox::UI {
             m_is_export_dialog_open = false;
         }
 
-        if (FileDialog::instance()->isDone(window)) {
+        if (FileDialog::instance()->isDone(*this)) {
             FileDialog::instance()->close();
             if (FileDialog::instance()->isOk()) {
                 switch (FileDialog::instance()->getFilenameMode()) {

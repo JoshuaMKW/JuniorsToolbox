@@ -115,6 +115,7 @@ namespace Toolbox::UI {
 
         [[nodiscard]] std::string title() const;
 
+        [[nodiscard]] ImGuiWindow *getImGuiWindow() const noexcept { return m_imgui_window; }
         [[nodiscard]] Platform::LowWindow getLowHandle() const noexcept { return m_low_handle; }
 
     protected:
@@ -156,6 +157,7 @@ namespace Toolbox::UI {
         int m_z_order = -1;
         int m_im_order = -1;
 
+        ImGuiWindow *m_imgui_window      = nullptr;
         Platform::LowWindow m_low_handle = nullptr;
     };
 

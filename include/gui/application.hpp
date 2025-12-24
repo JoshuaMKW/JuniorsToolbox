@@ -59,13 +59,11 @@ namespace Toolbox {
 
         void onEvent(RefPtr<BaseEvent> ev) override;
 
-        void addWindow(RefPtr<ImWindow> window) {
-            m_windows_to_add.emplace_back(window);
-        }
+        void addWindow(RefPtr<ImWindow> window) { m_windows_to_add.emplace_back(window); }
 
         void removeWindow(RefPtr<ImWindow> window) {
             m_windows_to_gc.emplace_back(
-                    GCTimeInfo{std::chrono::high_resolution_clock::now(), 0.5f}, window);
+                GCTimeInfo{std::chrono::high_resolution_clock::now(), 0.5f}, window);
         }
 
         const std::vector<RefPtr<ImWindow>> &getWindows() const & { return m_windows; }
@@ -178,6 +176,8 @@ namespace Toolbox {
         void gcClosedWindows();
 
     private:
+        UUID64 m_uuid;
+
         TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_clipboard;
         TypedDataClipboard<SelectionNodeInfo<Rail::Rail>> m_rail_clipboard;
         TypedDataClipboard<SelectionNodeInfo<Rail::RailNode>> m_rail_node_clipboard;
@@ -270,17 +270,17 @@ namespace Toolbox {
         std::filesystem::path getFilenameResult() const { return m_selected_path; }
         FileNameMode getFilenameMode() const { return m_control_info.m_file_mode; }
 
-        void openDialog(ImGuiWindow *parent_window, const std::filesystem::path &starting_path,
+        void openDialog(const ImWindow &parent_window, const std::filesystem::path &starting_path,
                         bool is_directory                             = false,
                         std::optional<FileDialogFilter> maybe_filters = std::nullopt);
-        void openDialog(GLFWwindow *parent_window, const std::filesystem::path &starting_path,
-                        bool is_directory                             = false,
+        void openDialog(GLFWwindow *parent_window, UUID64 owner_uuid,
+                        const std::filesystem::path &starting_path, bool is_directory = false,
                         std::optional<FileDialogFilter> maybe_filters = std::nullopt);
 
-        void saveDialog(ImGuiWindow *parent_window, const std::filesystem::path &starting_path,
+        void saveDialog(const ImWindow &parent_window, const std::filesystem::path &starting_path,
                         const std::string &default_name, bool is_directory = false,
                         std::optional<FileDialogFilter> maybe_filters = std::nullopt);
-        void saveDialog(GLFWwindow *parent_window, const std::filesystem::path &starting_path,
+        void saveDialog(GLFWwindow *parent_window, UUID64 owner_uuid, const std::filesystem::path &starting_path,
                         const std::string &default_name, bool is_directory = false,
                         std::optional<FileDialogFilter> maybe_filters = std::nullopt);
 
@@ -288,12 +288,10 @@ namespace Toolbox {
 
         // TODO: Using viewport means any window that is not detached gets clobbered by
         //       GUIApplication
-        bool isDone(ImGuiWindow *window) const {
-            return isDone(static_cast<GLFWwindow *>(window->Viewport->PlatformHandle));
-        }
-        bool isDone(GLFWwindow *window) const {
-            return m_control_info.m_owner == window && !m_thread_running && m_result.has_value() &&
-                   m_thread_initialized && !m_closed;
+        bool isDone(const ImWindow &window) const { return isDone(window.getUUID()); }
+        bool isDone(UUID64 owner_uuid) const {
+            return m_control_info.m_owner_uuid == owner_uuid && !m_thread_running &&
+                   m_result.has_value() && m_thread_initialized && !m_closed;
         }
 
         bool isOk() const { return m_result.has_value() ? m_result.value() == NFD_OKAY : false; }
@@ -306,7 +304,8 @@ namespace Toolbox {
 
     private:
         struct {
-            GLFWwindow *m_owner = nullptr;
+            GLFWwindow *m_owner_window = nullptr;
+            UUID64 m_owner_uuid        = 0;
             std::string m_starting_path;
             std::string m_default_name;
             std::optional<FileDialogFilter> m_opt_filters;

@@ -2880,12 +2880,12 @@ namespace Toolbox::UI {
 
         if (m_is_save_as_dialog_open) {
             if (!FileDialog::instance()->isAlreadyOpen()) {
-                FileDialog::instance()->saveDialog(window, m_io_context_path, "scene", true);
+                FileDialog::instance()->saveDialog(*this, m_io_context_path, "scene", true);
             }
             m_is_save_as_dialog_open = false;
         }
 
-        if (FileDialog::instance()->isDone(window)) {
+        if (FileDialog::instance()->isDone(*this)) {
             FileDialog::instance()->close();
             if (FileDialog::instance()->isOk()) {
                 switch (FileDialog::instance()->getFilenameMode()) {
