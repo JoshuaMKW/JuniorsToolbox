@@ -50,33 +50,29 @@ namespace Toolbox {
 
     class FileSystemModel;
 
-    namespace {
+    class FileSystemCopyProcessor : public TaskThread<void> {
+    public:
+        FileSystemCopyProcessor(const fs_path &src, const fs_path &dst)
+            : TaskThread(), m_src(src), m_dst(dst) {}
 
-        class FileSystemCopyProcessor : public TaskThread<void> {
-        public:
-            FileSystemCopyProcessor(const fs_path &src, const fs_path &dst)
-                : TaskThread(), m_src(src), m_dst(dst) {}
+    protected:
+        void tRun(void *param) override;
 
-        protected:
-            void tRun(void *param) override;
+    private:
+        fs_path m_src;
+        fs_path m_dst;
+    };
 
-        private:
-            fs_path m_src;
-            fs_path m_dst;
-        };
+    class FileSystemProcessorGC : public Threaded<void> {
+    public:
+        FileSystemProcessorGC() : Threaded(), m_model(nullptr) {}
 
-        class FileSystemProcessorGC : public Threaded<void> {
-        public:
-            FileSystemProcessorGC() : Threaded(), m_model(nullptr) {}
+    protected:
+        void tRun(void *param) override;
 
-        protected:
-            void tRun(void *param) override;
-
-        private:
-            FileSystemModel *m_model;
-        };
-
-    }
+    private:
+        FileSystemModel *m_model;
+    };
 
     class FileSystemModel : public IDataModel {
     public:
