@@ -1754,11 +1754,13 @@ namespace Toolbox {
 
     const std::string &FileSystemModelSortFilterProxy::getFilter() const & { return m_filter; }
     void FileSystemModelSortFilterProxy::setFilter(const std::string &filter) {
-        m_filter = filter;
+        m_filter.clear();
+        m_filter.reserve(filter.size());
+        std::transform(filter.begin(), filter.end(), std::back_inserter(m_filter),
+                       [](char c) { return ::tolower(static_cast<int>(c)); });
 
-        //std::unique_lock lk(m_cache_mutex);
-        //m_filter_map.clear();
-        //m_row_map.clear();
+        std::unique_lock lk(m_cache_mutex);
+        flushCache_();
     }
 
     void FileSystemModelSortFilterProxy::setReadOnly(bool read_only) {
@@ -1901,8 +1903,18 @@ namespace Toolbox {
     }
 
     size_t FileSystemModelSortFilterProxy::getRowCount(const ModelIndex &index) const {
-        ModelIndex &&source_index = toSourceIndex(index);
-        return m_source_model->getRowCount(source_index);
+        ModelIndex &&source_index     = toSourceIndex(index);
+
+        u64 map_key = source_index.getUUID();
+        if (!m_source_model->validateIndex(source_index)) {
+            map_key = 0;
+        }
+
+        if (m_row_map.find(map_key) == m_row_map.end()) {
+            cacheIndex_(source_index);
+        }
+
+        return m_row_map[map_key].size();
     }
 
     int64_t FileSystemModelSortFilterProxy::getColumn(const ModelIndex &index) const {
@@ -2041,7 +2053,9 @@ namespace Toolbox {
             return true;
         }
 
-        const std::string &name = child_index.data<_FileSystemIndexData>()->m_name;
+        std::string name = child_index.data<_FileSystemIndexData>()->m_name;
+        std::transform(name.begin(), name.end(), name.begin(),
+                       [](char c) { return ::tolower(static_cast<int>(c)); });
         return !name.starts_with(m_filter);
     }
 
@@ -2060,10 +2074,6 @@ namespace Toolbox {
         if (!m_source_model->validateIndex(dir_index)) {
             map_key = 0;
         }
-
-        // if (m_row_map.find(map_key) != m_row_map.end()) {
-        //     return;
-        // }
 
         if (!m_source_model->validateIndex(dir_index)) {
             proxy_children.reserve(orig_children.size() * 0.5f);
@@ -2156,6 +2166,11 @@ namespace Toolbox {
         for (size_t i = 0; i < proxy_children.size(); i++) {
             m_row_map[map_key][i] = orig_index_map[proxy_children[i]];
         }
+    }
+
+    void FileSystemModelSortFilterProxy::flushCache_() const {
+        m_row_map.clear();
+        m_filter_map.clear();
     }
 
     void FileSystemModelSortFilterProxy::fsUpdateEvent(const ModelIndex &path, int flags) {

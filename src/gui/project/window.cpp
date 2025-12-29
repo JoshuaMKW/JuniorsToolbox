@@ -151,7 +151,10 @@ namespace Toolbox::UI {
             m_view_proxy->setFilter(search_str);
         }
         //ImGui::SameLine()
-        ImGui::MenuItem(ICON_FK_SEARCH);
+        if (ImGui::MenuItem(ICON_FK_SEARCH)) {
+            std::string search_str = m_search_buf.data();
+            m_view_proxy->setFilter(search_str);
+        }
 
         //ImGui::PopStyleVar();
 

@@ -377,6 +377,7 @@ namespace Toolbox {
 
         void cacheIndex(const ModelIndex &index) const;
         void cacheIndex_(const ModelIndex &index) const;
+        void flushCache_() const;
 
         ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) {
             return ModelIndex();
