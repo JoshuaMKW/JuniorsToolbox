@@ -107,6 +107,7 @@ namespace Toolbox::UI {
                               ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_None)) {
             bool is_auto_scroll_mode = ImGui::GetScrollMaxY() - ImGui::GetScrollY() < 12.0f;
 
+            Log::AppLogger::LogLock lock = Log::AppLogger::instance().acquireReadLock();
             auto &messages = Log::AppLogger::instance().messages();
             size_t begin   = (size_t)std::max<s64>(
                 0, messages.size() - 5000);  // Have up to 5000 messages at once displayed

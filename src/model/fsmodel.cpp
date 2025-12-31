@@ -119,15 +119,14 @@ namespace Toolbox {
     }
 
     FileSystemModel::~FileSystemModel() {
-        for (auto &[key, value] : m_index_map) {
-            delete value.data<_FileSystemIndexData>();
-        }
+        reset();
         m_watchdog.tKill(true);
     }
 
     void FileSystemModel::initialize() {
         m_icon_map.clear();
         m_index_map.clear();
+        m_path_map.clear();
         m_root_path  = fs_path();
         m_root_index = 0;
         m_options    = FileSystemModelOptions();
@@ -163,16 +162,18 @@ namespace Toolbox {
             return;
         }
 
+        reset();
+
         {
             std::scoped_lock lock(m_mutex);
-
-            m_watchdog.reset();
             m_watchdog.addPath(path);
-
-            m_index_map.clear();
-
             m_root_path  = path;
-            m_root_index = makeIndex(path, 0, ModelIndex()).getUUID();
+
+            ModelIndex root = makeIndex(path, 0, ModelIndex());
+            m_root_index = root.getUUID();
+            if (canFetchMore_(root)) {
+                fetchMore_(root);
+            }
         }
     }
 
@@ -450,6 +451,8 @@ namespace Toolbox {
     void FileSystemModel::reset() {
         std::scoped_lock lock(m_mutex);
 
+        m_watchdog.reset();
+
         for (auto &[key, val] : m_index_map) {
             _FileSystemIndexData *p = val.data<_FileSystemIndexData>();
             if (p) {
@@ -458,6 +461,7 @@ namespace Toolbox {
         }
 
         m_index_map.clear();
+        m_path_map.clear();
     }
 
     void FileSystemModel::addEventListener(UUID64 uuid, event_listener_t listener,
@@ -844,6 +848,9 @@ namespace Toolbox {
         if (result) {
             sig_queue.emplace_back(index, event_flags);
 
+            m_path_map.erase(index.data<_FileSystemIndexData>()->m_path_hash);
+            delete index.data<_FileSystemIndexData>();
+
             ModelIndex parent = getParent_(index);
             if (validateIndex(parent)) {
                 _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
@@ -853,7 +860,6 @@ namespace Toolbox {
                                               parent_data->m_children.end());
                 parent_data->m_size -= 1;
             }
-            delete index.data<_FileSystemIndexData>();
             m_index_map.erase(index.getUUID());
         }
 
@@ -925,6 +931,9 @@ namespace Toolbox {
         if (result) {
             sig_queue.emplace_back(index, event_flags);
 
+            m_path_map.erase(index.data<_FileSystemIndexData>()->m_path_hash);
+            delete index.data<_FileSystemIndexData>();
+
             ModelIndex parent = getParent_(index);
             if (validateIndex(parent)) {
                 _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
@@ -934,7 +943,7 @@ namespace Toolbox {
                                               parent_data->m_children.end());
                 parent_data->m_size -= 1;
             }
-            delete index.data<_FileSystemIndexData>();
+
             m_index_map.erase(index.getUUID());
         }
 
@@ -997,8 +1006,11 @@ namespace Toolbox {
             return ModelIndex();
         }
 
+        m_path_map.erase(file.data<_FileSystemIndexData>()->m_path_hash);
         delete file.data<_FileSystemIndexData>();
+
         m_index_map.erase(file.getUUID());
+
         parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
                                                   parent_data->m_children.end(), file.getUUID()),
                                       parent_data->m_children.end());
@@ -1099,14 +1111,51 @@ namespace Toolbox {
         std::hash<fs_path> hasher;
         size_t path_hash = hasher(path);
 
-        for (const auto &[uuid, index] : m_index_map) {
-            size_t other_hash = getPathHash_(index);
-            if (path_hash == other_hash) {
-                return index;
-            }
+        auto index_it = m_path_map.find(path_hash);
+        if (index_it != m_path_map.end()) {
+            return index_it->second;
         }
 
-        return ModelIndex();
+        // Check if path is an unfetched child of the root
+        const fs_path abs_path = (m_root_path / path).lexically_normal();
+        if (!Filesystem::is_directory(abs_path).value_or(false)) {
+            return ModelIndex();  // The path does not exist so return invalid
+        }
+        
+        fs_path rel_path = Filesystem::relative(abs_path, m_root_path).value_or("");
+
+        std::vector<fs_path> parent_paths;
+        parent_paths.reserve(16);
+
+        while (!rel_path.empty()) {
+            parent_paths.emplace_back(rel_path);
+
+            size_t this_hash    = std::hash<fs_path>()(rel_path);
+            auto existing_it = m_path_map.find(this_hash);
+            if (existing_it != m_path_map.end()) {
+                if (validateIndex(existing_it->second)) {
+                    break;
+                }
+            }
+
+            rel_path = rel_path.parent_path();
+        }
+
+        for (auto r_it = parent_paths.rbegin(); r_it != parent_paths.rend(); ++r_it) {
+            size_t this_hash = std::hash<fs_path>()(*r_it);
+            auto existing_it = m_path_map.find(this_hash);
+            if (existing_it == m_path_map.end()) {
+                break;
+            }
+            fetchMore_(existing_it->second);
+        }
+
+        auto existing_it = m_path_map.find(path_hash);
+        if (existing_it == m_path_map.end()) {
+            return ModelIndex();
+        }
+
+        return existing_it->second;
     }
 
     ModelIndex FileSystemModel::getIndex_(const UUID64 &uuid) const { return m_index_map.at(uuid); }
@@ -1147,7 +1196,7 @@ namespace Toolbox {
             return fs_path();
         }
 
-        return index.data<_FileSystemIndexData>()->m_path;
+        return m_root_path / index.data<_FileSystemIndexData>()->m_path;
     }
 
     size_t FileSystemModel::getPathHash_(const ModelIndex &index) const {
@@ -1278,7 +1327,7 @@ namespace Toolbox {
         return true;
     }
 
-    bool FileSystemModel::canFetchMore_(const ModelIndex &index) {
+    bool FileSystemModel::canFetchMore_(const ModelIndex &index) const {
         if (!validateIndex(index)) {
             return false;
         }
@@ -1290,7 +1339,7 @@ namespace Toolbox {
         _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
         size_t cached_size         = data->m_children.size();
         size_t real_size           = 0;
-        for (const auto &entry : Filesystem::directory_iterator(data->m_path)) {
+        for (const auto &entry : Filesystem::directory_iterator(m_root_path / data->m_path)) {
             if (entry.is_regular_file() || entry.is_directory()) {
                 real_size += 1;
             }
@@ -1299,19 +1348,20 @@ namespace Toolbox {
         return cached_size != real_size;
     }
 
-    void FileSystemModel::fetchMore_(const ModelIndex &index) {
+    void FileSystemModel::fetchMore_(const ModelIndex &index) const {
         if (!validateIndex(index)) {
             return;
         }
 
         _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
         for (UUID64 uuid : data->m_children) {
+            m_path_map.erase(m_index_map[uuid].data<_FileSystemIndexData>()->m_path_hash);
             m_index_map.erase(uuid);
         }
         data->m_children.clear();
 
         if (isDirectory_(index)) {
-            fs_path path = getPath_(index);
+            fs_path path = (m_root_path / getPath_(index)).lexically_normal();
 
             size_t i = 0;
             for (const auto &entry : Filesystem::directory_iterator(path)) {
@@ -1321,7 +1371,12 @@ namespace Toolbox {
     }
 
     ModelIndex FileSystemModel::makeIndex(const fs_path &path, int64_t row,
-                                          const ModelIndex &parent) {
+                                          const ModelIndex &parent) const {
+        const fs_path rel_path = Filesystem::relative(path, m_root_path).value_or("");
+        if (rel_path == "") {
+            return ModelIndex();
+        }
+        
         _FileSystemIndexData *parent_data = nullptr;
 
         if (!validateIndex(parent)) {
@@ -1338,8 +1393,8 @@ namespace Toolbox {
         }
 
         _FileSystemIndexData *data = new _FileSystemIndexData;
-        data->m_path               = path;
-        data->m_path_hash          = std::hash<fs_path>()(path);
+        data->m_path               = rel_path;
+        data->m_path_hash          = std::hash<fs_path>()(rel_path);
         data->m_name               = path.filename().string();
         data->m_children           = {};
 
@@ -1407,7 +1462,8 @@ namespace Toolbox {
 
         if (!validateIndex(parent)) {
             index.setData(data);
-            m_index_map[index.getUUID()] = std::move(index);
+            m_index_map[index.getUUID()] = index;
+            m_path_map[data->m_path_hash] = index;
         } else {
             data->m_parent = parent.getUUID();
             index.setData(data);
@@ -1418,7 +1474,8 @@ namespace Toolbox {
                 parent_data->m_size += 1;
             }
 
-            m_index_map[index.getUUID()] = std::move(index);
+            m_index_map[index.getUUID()] = index;
+            m_path_map[data->m_path_hash] = index;
         }
 
         return index;
@@ -1445,7 +1502,7 @@ namespace Toolbox {
 
         if (isDirectory_(index)) {
             // Count the children in the filesystem
-            for (const auto &entry : Filesystem::directory_iterator(getPath_(index))) {
+            for (const auto &entry : Filesystem::directory_iterator(m_root_path / getPath_(index))) {
                 count += 1;
             }
         } else if (isArchive_(index)) {
@@ -1700,13 +1757,16 @@ namespace Toolbox {
         {
             std::scoped_lock lock(m_mutex);
 
+            m_path_map.erase(index.data<_FileSystemIndexData>()->m_path_hash);
+            delete index.data<_FileSystemIndexData>();
+
             _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
             parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
                                                       parent_data->m_children.end(),
                                                       index.getUUID()),
                                           parent_data->m_children.end());
             parent_data->m_size -= 1;
-            delete index.data<_FileSystemIndexData>();
+
             m_index_map.erase(index.getUUID());
         }
     }

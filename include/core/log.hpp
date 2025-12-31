@@ -21,6 +21,17 @@ namespace Toolbox::Log {
 
     class AppLogger {
     public:
+        struct LogLock {
+            LogLock(std::mutex *mutex) {
+                m_mutex = mutex;
+                m_mutex->lock();
+            }
+            ~LogLock() { m_mutex->unlock(); }
+
+        private:
+            std::mutex *m_mutex;
+        };
+
         struct LogMessage {
             ReportLevel m_level;
             std::string m_message;
@@ -69,6 +80,8 @@ namespace Toolbox::Log {
             }
 #endif
         }
+
+        LogLock acquireReadLock() { return LogLock(&m_write_mutex); }
 
         void log(ReportLevel level, const std::string &message);
 

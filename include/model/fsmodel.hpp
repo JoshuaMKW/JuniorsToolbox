@@ -235,11 +235,11 @@ namespace Toolbox {
         insertMimeData_(const ModelIndex &index, const MimeData &data, SignalQueue &sig_queue,
                         ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER);
 
-        [[nodiscard]] bool canFetchMore_(const ModelIndex &index);
-        void fetchMore_(const ModelIndex &index);
+        [[nodiscard]] bool canFetchMore_(const ModelIndex &index) const;
+        void fetchMore_(const ModelIndex &index) const;
         // -- END -- //
 
-        virtual ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent);
+        virtual ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) const;
 
         ModelIndex getParentArchive(const ModelIndex &index) const;
 
@@ -273,6 +273,7 @@ namespace Toolbox {
         UUID64 m_root_index;
 
         mutable std::unordered_map<UUID64, ModelIndex> m_index_map;
+        mutable std::unordered_map<size_t, ModelIndex> m_path_map;
         mutable std::unordered_map<std::string, RefPtr<const ImageHandle>> m_icon_map;
 
         fs_path m_rename_src;

@@ -104,11 +104,13 @@ namespace Toolbox::UI {
             path_chain.emplace_back(the_index);
         }
 
+        const float font_scale = ImGui::GetFontSize() / 16.0f;
+
+        ImGui::PushStyleVarX(ImGuiStyleVar_ItemSpacing, 4.0f * font_scale);
+
         for (auto r_it = path_chain.rbegin(); r_it != path_chain.rend(); ++r_it) {
-            fs_path r_path = m_file_system_model->getPath(*r_it);
-            fs_path r_parent_path = r_path.parent_path();
-            std::string button_label =
-                std::format("{}##{}", r_path.filename().string(), r_parent_path.string());
+            std::string button_label = std::format("{}##{}", m_file_system_model->getDisplayText(*r_it),
+                                                   r_it->getUUID());
             if (ImGui::MenuItem(button_label.c_str())) {
                 setViewIndex(*r_it, false);
                 break;
@@ -118,13 +120,13 @@ namespace Toolbox::UI {
                 break;
             }
 
-            std::string child_label = std::format(">##{}", r_parent_path.string());
+            std::string child_label = std::format(">##{}", r_it->getUUID());
             if (ImGui::BeginMenu(child_label.c_str())) {
                 for (size_t i = 0; i < m_file_system_model->getRowCount(*r_it); ++i) {
                     ModelIndex subdir_idx = m_file_system_model->getIndex(i, 0, *r_it);
                     if (!m_file_system_model->validateIndex(subdir_idx)) {
                         TOOLBOX_DEBUG_LOG_V("[PROJECT] Failed to get index for subpath of {}",
-                            r_path.string());
+                            m_file_system_model->getPath(*r_it).string());
                         continue;
                     }
 
@@ -140,10 +142,10 @@ namespace Toolbox::UI {
                 ImGui::EndMenu();
             }
         }
+        
+        ImGui::PopStyleVar();
 
-        //ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, 0.0f});
-
-        const ImVec2 search_size = { 250.0f, avail_size.y };
+        const ImVec2 search_size = {120.0f * font_scale, avail_size.y};
         ImGui::SetCursorPosX(avail_size.x - search_size.x - (ImGui::CalcTextSize(ICON_FK_SEARCH).x + ImGui::GetStyle().FramePadding.x * 2));
         ImGui::SetNextItemWidth(search_size.x);
         if (ImGui::InputTextWithHint("##ProjectViewSearchBar", "Search Here...", m_search_buf.data(), m_search_buf.size(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue)) {
@@ -176,6 +178,23 @@ namespace Toolbox::UI {
     void ProjectViewWindow::renderProjectTreeView() {
         if (ImGui::BeginChild("Tree View", {300, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
+            size_t valid_shortcuts = 0;
+            for (const ModelIndex &pinned : m_pinned_folders) {
+                if (!m_tree_proxy->validateIndex(pinned)) {
+                    continue;
+                }
+                std::string folder_name = m_tree_proxy->getDisplayText(pinned);
+                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                if (ImGui::Button(folder_name.c_str())) {
+                    setViewIndex(m_tree_proxy->toSourceIndex(pinned), false);
+                }
+                valid_shortcuts++;
+            }
+
+            if (valid_shortcuts > 0) {
+                ImGui::Separator();
+            }
+
             ModelIndex index = m_tree_proxy->getIndex(0, 0);
             renderFolderTree(index);
         }
@@ -561,6 +580,9 @@ namespace Toolbox::UI {
 
         m_selection_mgr = ModelSelectionManager(m_view_proxy);
         m_selection_mgr.setDeepSpans(false);
+
+        m_pinned_folders = { m_tree_proxy->getIndex("files/data/scene") };
+
         return true;
     }
 

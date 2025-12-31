@@ -128,6 +128,7 @@ namespace Toolbox::UI {
         ModelSelectionManager m_selection_mgr;
         std::vector<ProjectAsset> m_view_assets;
         ModelIndex m_view_index;
+        std::vector<ModelIndex> m_pinned_folders;
 
         RarcProcessor m_rarc_processor;
         std::unordered_map<std::string, ImageHandle> m_icon_map;
