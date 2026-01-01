@@ -704,16 +704,16 @@ namespace Toolbox {
         ImGui::BeginMainMenuBar();
 
         if (ImGui::BeginMenu("File")) {
-            //if (ImGui::MenuItem(ICON_FK_FOLDER_OPEN " Open...")) {
+            //if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Open...")) {
             //    m_is_file_dialog_open = true;
             //}
-            if (ImGui::MenuItem(ICON_FK_FOLDER_OPEN " Open Project...")) {
+            if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Open Project...")) {
                 m_is_dir_dialog_open = true;
             }
 
             ImGui::Separator();
 
-            if (ImGui::MenuItem(ICON_FK_FLOPPY_O " Save All")) {
+            if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save All")) {
                 for (auto &window : m_windows) {
                     (void)window->onSaveData(std::nullopt);
                 }
@@ -721,7 +721,7 @@ namespace Toolbox {
 
             ImGui::Separator();
 
-            if (ImGui::MenuItem(ICON_FK_WINDOW_CLOSE " Close All")) {
+            if (ImGui::MenuItem(ICON_FA_XMARK " Close All")) {
                 for (auto &window : m_windows) {
                     removeLayer(window);
                 }
@@ -732,7 +732,7 @@ namespace Toolbox {
         }
 
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem(ICON_FK_COG " Settings")) {
+            if (ImGui::MenuItem(ICON_FA_WRENCH " Settings")) {
                 createWindow<SettingsWindow>("Application Settings");
             }
             ImGui::EndMenu();
@@ -761,7 +761,7 @@ namespace Toolbox {
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu(ICON_FK_QUESTION_CIRCLE)) {
+        if (ImGui::BeginMenu(ICON_FA_QUESTION)) {
             if (ImGui::MenuItem("About")) {
                 // TODO: Create about window
             }

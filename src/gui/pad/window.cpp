@@ -347,11 +347,11 @@ namespace Toolbox::UI {
         const ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
         const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
 
-        std::string combo_preview = ICON_FK_EYE " Player";
+        std::string combo_preview = ICON_FA_EYE " Player";
         if (m_is_viewing_shadow_mario) {
-            combo_preview = ICON_FK_EYE " Shadow Mario";
+            combo_preview = ICON_FA_EYE " Shadow Mario";
         } else if (m_is_viewing_piantissimo) {
-            combo_preview = ICON_FK_EYE " Piantissimo";
+            combo_preview = ICON_FA_EYE " Piantissimo";
         }
 
         ImGui::SetNextItemWidth(130.0f);
@@ -401,7 +401,7 @@ namespace Toolbox::UI {
         window_bar_height *= 2.0f;
 
         const ImVec2 window_size = ImGui::GetWindowSize();
-        ImVec2 cmd_button_size   = ImGui::CalcTextSize(ICON_FK_UNDO) + frame_padding;
+        ImVec2 cmd_button_size   = ImGui::CalcTextSize(ICON_FA_BACKWARD) + frame_padding;
         cmd_button_size.x        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.5f;
         cmd_button_size.y        = combo_height;
 
@@ -416,7 +416,7 @@ namespace Toolbox::UI {
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.7f, 0.2f, 1.0f});
 
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
-        if (ImGui::AlignedButton(ICON_FK_CIRCLE, cmd_button_size)) {
+        if (ImGui::AlignedButton(ICON_FA_CIRCLE, cmd_button_size)) {
             m_pad_recorder.startRecording();
             m_is_recording_pad_data = true;
             if (m_attached_scene_uuid) {
@@ -442,7 +442,7 @@ namespace Toolbox::UI {
         }
 
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 + cmd_button_size.x);
-        if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
+        if (ImGui::AlignedButton(ICON_FA_STOP, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
                                  ImDrawFlags_RoundCornersRight)) {
             m_pad_recorder.stopRecording();
             m_cur_from_link = '*';
@@ -466,7 +466,7 @@ namespace Toolbox::UI {
         }
 
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
-        if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
+        if (ImGui::AlignedButton(ICON_FA_BACKWARD, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
                                  ImDrawFlags_RoundCornersLeft)) {
             m_pad_recorder.resetRecording();
             m_pad_rail.clearNodes();
@@ -1131,7 +1131,7 @@ namespace Toolbox::UI {
 
         bool is_recording = m_pad_recorder.isRecording(from_link, to_link);
 
-        std::string link_name = std::format(ICON_FK_LINK " {} -> {}", from_link, to_link);
+        std::string link_name = std::format(ICON_FA_LINK " {} -> {}", from_link, to_link);
         ImGuiID id            = ImGui::GetID(link_name.c_str());
 
         ImGuiStyle &style = ImGui::GetStyle();
@@ -1214,11 +1214,11 @@ namespace Toolbox::UI {
             // Pad record data controls
             {
                 f32 record_button_width =
-                    ImGui::CalcTextSize(ICON_FK_CIRCLE).x * 2.0f + style.FramePadding.x * 2;
+                    ImGui::CalcTextSize(ICON_FA_CIRCLE).x * 2.0f + style.FramePadding.x * 2;
                 f32 play_button_width =
-                    ImGui::CalcTextSize(ICON_FK_PLAY).x * 2.0f + style.FramePadding.x * 2;
+                    ImGui::CalcTextSize(ICON_FA_PLAY).x * 2.0f + style.FramePadding.x * 2;
                 f32 trash_button_width =
-                    ImGui::CalcTextSize(ICON_FK_TRASH).x * 2.0f + style.FramePadding.x * 2;
+                    ImGui::CalcTextSize(ICON_FA_TRASH).x * 2.0f + style.FramePadding.x * 2;
 
                 ImVec2 button_panel_pos = {
                     anchor_pos.x + group_size.x -
@@ -1230,13 +1230,13 @@ namespace Toolbox::UI {
 
                 std::string button_label;
                 if (m_pad_recorder.hasRecordData(from_link, to_link)) {
-                    button_label = ICON_FK_UNDO;
+                    button_label = ICON_FA_BACKWARD;
                 } else {
-                    button_label = ICON_FK_CIRCLE;
+                    button_label = ICON_FA_CIRCLE;
                 }
 
                 if (is_recording) {
-                    button_label = ICON_FK_SQUARE;
+                    button_label = ICON_FA_SQUARE;
                 }
 
                 if (ImGui::AlignedButton(button_label.c_str(), {record_button_width, 0.0f},
@@ -1292,13 +1292,13 @@ namespace Toolbox::UI {
 
                 // Submit task to play back pad data
                 if (!m_pad_recorder.isPlaying(from_link, to_link)) {
-                    if (ImGui::AlignedButton(ICON_FK_PLAY, {play_button_width, 0.0f})) {
+                    if (ImGui::AlignedButton(ICON_FA_PLAY, {play_button_width, 0.0f})) {
                         m_update_tasks.push_back([this, from_link, to_link]() {
                             signalPadPlayback(from_link, to_link);
                         });
                     }
                 } else {
-                    if (ImGui::AlignedButton(ICON_FK_SQUARE, {play_button_width, 0.0f})) {
+                    if (ImGui::AlignedButton(ICON_FA_SQUARE, {play_button_width, 0.0f})) {
                         m_update_tasks.push_back(
                             [this, from_link, to_link]() { m_pad_recorder.stopPadPlayback(); });
                     }
@@ -1310,7 +1310,7 @@ namespace Toolbox::UI {
                                      button_panel_pos.y});
 
                 // Submit task to clear pad data
-                if (ImGui::AlignedButton(ICON_FK_TRASH, {trash_button_width, 0.0f},
+                if (ImGui::AlignedButton(ICON_FA_TRASH, {trash_button_width, 0.0f},
                                          ImGuiButtonFlags_None, 5.0f,
                                          ImDrawFlags_RoundCornersRight)) {
                     // TODO: Defer to later so caller loop doesn't die

@@ -504,7 +504,7 @@ void Markdown(const std::string &markdown_) {
     md_config.linkCallback    = LinkCallback;
     md_config.tooltipCallback = NULL;
     md_config.imageCallback   = ImageCallback;
-    md_config.linkIcon        = ICON_FK_LINK;
+    md_config.linkIcon        = ICON_FA_LINK;
 #ifdef IMGUI_HAS_TEXTURES  // used to detect dynamic font capability
     md_config.headingFormats[0] = {H1, true, font_size * 2.0f};
     md_config.headingFormats[1] = {H2, true, font_size * 1.5f};
@@ -517,6 +517,7 @@ void Markdown(const std::string &markdown_) {
 
     md_config.userData       = NULL;
     md_config.formatCallback = ExampleMarkdownFormatCallback;
+    md_config.formatFlags    = ImGuiMarkdownFormatFlags_GithubStyle;
 
     ImGui::Markdown(markdown_.c_str(), markdown_.length(), md_config);
 }

@@ -24,13 +24,13 @@ namespace Toolbox::UI {
         ImGui::SameLine();
 
         ImVec2 padding     = ImGui::GetStyle().FramePadding;
-        ImVec2 text_size   = ImGui::CalcTextSize(ICON_FK_KEYBOARD_O);
+        ImVec2 text_size   = ImGui::CalcTextSize(ICON_FA_KEYBOARD);
         ImVec2 button_size = {
             text_size.x + padding.x * 2,
             text_size.y + padding.y * 2,
         };
 
-        if (ImGui::Button((*is_reading) ? ICON_FK_UNDO : ICON_FK_KEYBOARD_O, button_size)) {
+        if (ImGui::Button((*is_reading) ? ICON_FA_BACKWARD : ICON_FA_KEYBOARD, button_size)) {
             *is_reading ^= true;
         }
 

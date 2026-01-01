@@ -1395,7 +1395,7 @@ namespace Toolbox::UI {
         const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
 
         const ImVec2 window_size = ImGui::GetWindowSize();
-        ImVec2 cmd_button_size   = ImGui::CalcTextSize(ICON_FK_UNDO) + frame_padding;
+        ImVec2 cmd_button_size   = ImGui::CalcTextSize(ICON_FA_BACKWARD) + frame_padding;
         cmd_button_size.x        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.5f;
         cmd_button_size.y        = std::max(cmd_button_size.x, cmd_button_size.y) * 1.f;
 
@@ -1409,7 +1409,7 @@ namespace Toolbox::UI {
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.7f, 0.2f, 1.0f});
 
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2);
-        if (ImGui::AlignedButton(ICON_FK_PLAY, cmd_button_size)) {
+        if (ImGui::AlignedButton(ICON_FA_PLAY, cmd_button_size)) {
             if (DolphinHookManager::instance().startProcess(settings.m_hide_dolphin_on_play)) {
                 task_communicator.taskLoadScene(m_stage, m_scenario,
                                                 TOOLBOX_BIND_EVENT_FN(reassignAllActorPtrs));
@@ -1435,7 +1435,7 @@ namespace Toolbox::UI {
         }
 
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 + cmd_button_size.x);
-        if (ImGui::AlignedButton(ICON_FK_STOP, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
+        if (ImGui::AlignedButton(ICON_FA_STOP, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
                                  ImDrawFlags_RoundCornersBottomRight)) {
             DolphinHookManager::instance().stopProcess();
         }
@@ -1449,7 +1449,7 @@ namespace Toolbox::UI {
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2f, 0.4f, 0.8f, 1.0f});
 
         ImGui::SetCursorPosX(window_size.x / 2 - cmd_button_size.x / 2 - cmd_button_size.x);
-        if (ImGui::AlignedButton(ICON_FK_UNDO, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
+        if (ImGui::AlignedButton(ICON_FA_BACKWARD, cmd_button_size, ImGuiButtonFlags_None, 5.0f,
                                  ImDrawFlags_RoundCornersBottomLeft)) {
             fs_path scene_arc_path = m_current_scene->rootPath().value_or("");
             if (!scene_arc_path.empty()) {
@@ -2849,10 +2849,10 @@ namespace Toolbox::UI {
 
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("File", true)) {
-                if (ImGui::MenuItem(ICON_FK_FLOPPY_O " Save")) {
+                if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save")) {
                     m_is_save_default_ready = true;
                 }
-                if (ImGui::MenuItem(ICON_FK_FLOPPY_O " Save As...")) {
+                if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save As...")) {
                     m_is_save_as_dialog_open = true;
                 }
                 ImGui::EndMenu();

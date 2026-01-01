@@ -974,7 +974,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
     if (!label_end)
         label_end = FindRenderedTextEnd(label);
     const ImVec2 label_size = CalcTextSize(label, label_end, false);
-    const ImVec2 eye_size   = CalcTextSize(ICON_FK_EYE, nullptr, false);
+    const ImVec2 eye_size   = CalcTextSize(ICON_FA_EYE, nullptr, false);
 
     const float text_offset_x =
         g.FontSize + (display_frame
@@ -1288,7 +1288,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0, 0, 0, 0});
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0, 0, 0, 0});
 
-        ImGui::RenderText(eye_pos, *visible ? ICON_FK_EYE : ICON_FK_EYE_SLASH, nullptr, false);
+        ImGui::RenderText(eye_pos, *visible ? ICON_FA_EYE : ICON_FA_EYE_SLASH, nullptr, false);
 
         ImGui::PopStyleColor(3);
     }

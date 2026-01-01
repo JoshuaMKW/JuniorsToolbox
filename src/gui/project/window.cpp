@@ -1,4 +1,3 @@
-#include "gui/project/events.hpp"
 #include "gui/project/window.hpp"
 #include "gui/application.hpp"
 #include "gui/dragdrop/dragdropmanager.hpp"
@@ -49,13 +48,14 @@ namespace Toolbox::UI {
         ImVec2 avail_size = ImGui::GetContentRegionAvail();
 
         const bool can_undo = m_view_history_index > 1;
-        const bool can_redo = !m_view_history_stack.empty() && m_view_history_index < m_view_history_stack.size();
+        const bool can_redo =
+            !m_view_history_stack.empty() && m_view_history_index < m_view_history_stack.size();
 
         if (!can_undo) {
             ImGui::BeginDisabled();
         }
 
-        if (ImGui::MenuItem(ICON_FK_ARROW_LEFT)) {
+        if (ImGui::MenuItem(ICON_FA_ARROW_LEFT)) {
             undoViewHistory();
         }
 
@@ -67,7 +67,7 @@ namespace Toolbox::UI {
             ImGui::BeginDisabled();
         }
 
-        if (ImGui::MenuItem(ICON_FK_ARROW_RIGHT)) {
+        if (ImGui::MenuItem(ICON_FA_ARROW_RIGHT)) {
             redoViewHistory();
         }
 
@@ -76,13 +76,13 @@ namespace Toolbox::UI {
         }
 
         ModelIndex parent_index = m_file_system_model->getParent(m_view_index);
-        const bool can_surface = m_file_system_model->validateIndex(m_view_index);
+        const bool can_surface  = m_file_system_model->validateIndex(m_view_index);
 
         if (!can_surface) {
             ImGui::BeginDisabled();
         }
 
-        if (ImGui::MenuItem(ICON_FK_ARROW_UP)) {
+        if (ImGui::MenuItem(ICON_FA_ARROW_UP)) {
             setViewIndex(parent_index, false);
         }
 
@@ -92,7 +92,7 @@ namespace Toolbox::UI {
 
         ImGui::Separator();
 
-        std::vector<ModelIndex> path_chain = { m_view_index };
+        std::vector<ModelIndex> path_chain = {m_view_index};
         path_chain.reserve(16);
 
         ModelIndex the_index = m_view_index;
@@ -109,8 +109,8 @@ namespace Toolbox::UI {
         ImGui::PushStyleVarX(ImGuiStyleVar_ItemSpacing, 4.0f * font_scale);
 
         for (auto r_it = path_chain.rbegin(); r_it != path_chain.rend(); ++r_it) {
-            std::string button_label = std::format("{}##{}", m_file_system_model->getDisplayText(*r_it),
-                                                   r_it->getUUID());
+            std::string button_label =
+                std::format("{}##{}", m_file_system_model->getDisplayText(*r_it), r_it->getUUID());
             if (ImGui::MenuItem(button_label.c_str())) {
                 setViewIndex(*r_it, false);
                 break;
@@ -126,7 +126,7 @@ namespace Toolbox::UI {
                     ModelIndex subdir_idx = m_file_system_model->getIndex(i, 0, *r_it);
                     if (!m_file_system_model->validateIndex(subdir_idx)) {
                         TOOLBOX_DEBUG_LOG_V("[PROJECT] Failed to get index for subpath of {}",
-                            m_file_system_model->getPath(*r_it).string());
+                                            m_file_system_model->getPath(*r_it).string());
                         continue;
                     }
 
@@ -142,23 +142,28 @@ namespace Toolbox::UI {
                 ImGui::EndMenu();
             }
         }
-        
+
         ImGui::PopStyleVar();
 
         const ImVec2 search_size = {120.0f * font_scale, avail_size.y};
-        ImGui::SetCursorPosX(avail_size.x - search_size.x - (ImGui::CalcTextSize(ICON_FK_SEARCH).x + ImGui::GetStyle().FramePadding.x * 2));
+        ImGui::SetCursorPosX(avail_size.x - search_size.x -
+                             (ImGui::CalcTextSize(ICON_FA_MAGNIFYING_GLASS).x +
+                              ImGui::GetStyle().FramePadding.x * 2));
         ImGui::SetNextItemWidth(search_size.x);
-        if (ImGui::InputTextWithHint("##ProjectViewSearchBar", "Search Here...", m_search_buf.data(), m_search_buf.size(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue)) {
+        if (ImGui::InputTextWithHint("##ProjectViewSearchBar", "Search Here...",
+                                     m_search_buf.data(), m_search_buf.size(),
+                                     ImGuiInputTextFlags_AutoSelectAll |
+                                         ImGuiInputTextFlags_EnterReturnsTrue)) {
             std::string search_str = m_search_buf.data();
             m_view_proxy->setFilter(search_str);
         }
-        //ImGui::SameLine()
-        if (ImGui::MenuItem(ICON_FK_SEARCH)) {
+        // ImGui::SameLine()
+        if (ImGui::MenuItem(ICON_FA_MAGNIFYING_GLASS)) {
             std::string search_str = m_search_buf.data();
             m_view_proxy->setFilter(search_str);
         }
 
-        //ImGui::PopStyleVar();
+        // ImGui::PopStyleVar();
 
         ImGui::EndMenuBar();
     }
@@ -178,18 +183,56 @@ namespace Toolbox::UI {
     void ProjectViewWindow::renderProjectTreeView() {
         if (ImGui::BeginChild("Tree View", {300, 0}, true,
                               ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_NoDecoration)) {
+            const ImGuiStyle &style = ImGui::GetStyle();
+
+            const float shortcut_width = ImGui::GetContentRegionAvail().x;
+            const ImVec2 pin_size      = ImGui::CalcTextSize(ICON_FA_THUMBTACK);
+            const ImVec2 pin_item_size =
+                ImGui::CalcItemSize({0.0f, 0.0f}, pin_size.x + style.FramePadding.x * 2.0f,
+                                    pin_size.y + style.FramePadding.y * 2.0f);
+
+            ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, {0.0f, 0.5f});
+            ImGui::PushStyleColor(ImGuiCol_Button, {0.0f, 0.0f, 0.0f, 0.0f});
+
             size_t valid_shortcuts = 0;
             for (const ModelIndex &pinned : m_pinned_folders) {
                 if (!m_tree_proxy->validateIndex(pinned)) {
                     continue;
                 }
                 std::string folder_name = m_tree_proxy->getDisplayText(pinned);
-                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-                if (ImGui::Button(folder_name.c_str())) {
+
+                ImVec2 size = ImGui::CalcItemSize({0, 0}, pin_size.x + style.FramePadding.x * 2.0f,
+                                                  pin_size.y + style.FramePadding.y * 2.0f);
+
+                const ImVec2 pin_icon_pos =
+                    ImGui::GetWindowPos() +
+                    ImVec2(shortcut_width - pin_size.x, ImGui::GetCursorPosY());
+
+                float cursor_y = ImGui::GetCursorPosY();
+                if (ImGui::Button(folder_name.c_str(), {shortcut_width, 0.0f})) {
                     setViewIndex(m_tree_proxy->toSourceIndex(pinned), false);
                 }
+
+                const float font_size = ImGui::GetFontSize();
+                ImGui::PushFont(nullptr, font_size * 0.75f);
+                const ImVec2 pin_size = ImGui::CalcTextSize(ICON_FA_THUMBTACK);
+                const ImVec2 pin_item_size =
+                    ImGui::CalcItemSize({0.0f, 0.0f}, pin_size.x + style.FramePadding.x * 2.0f,
+                                        pin_size.y + style.FramePadding.y * 2.0f);
+                const ImVec2 font_adj = {0.0f, ImGui::GetFontSize() * 0.25f};
+                const ImRect bb =
+                    ImRect(pin_icon_pos + font_adj,
+                           pin_icon_pos + pin_item_size + font_adj);
+                ImGui::RenderTextClipped(bb.Min + style.FramePadding, bb.Max - style.FramePadding,
+                                         ICON_FA_THUMBTACK, nullptr, &pin_size, ImVec2(0.5f, 0.5f),
+                                         &bb);
+                ImGui::PopFont();
+
                 valid_shortcuts++;
             }
+
+            ImGui::PopStyleColor();
+            ImGui::PopStyleVar();
 
             if (valid_shortcuts > 0) {
                 ImGui::Separator();
@@ -244,9 +287,9 @@ namespace Toolbox::UI {
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {2, 2});
                 ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 3.0f);
 
-                const float box_base_width   = 60.0f + ImGui::GetFontSize();
-                const float box_base_height  = 60.0f + ImGui::GetFontSize();
-                const float label_width = box_base_width - style.WindowPadding.x * 4.0f;
+                const float box_base_width  = 60.0f + ImGui::GetFontSize();
+                const float box_base_height = 60.0f + ImGui::GetFontSize();
+                const float label_width     = box_base_width - style.WindowPadding.x * 4.0f;
 
                 ImVec2 size = ImGui::GetContentRegionAvail();
 
@@ -280,7 +323,7 @@ namespace Toolbox::UI {
                             row_box_size.y =
                                 ImMax(row_box_size.y, box_base_height +
                                                           ImGui::CalcTextWrappedWithAlignRect(
-                                                          0.5f, label_width, item_name.c_str())
+                                                              0.5f, label_width, item_name.c_str())
                                                               .y +
                                                           style.ItemInnerSpacing.y);
                         }
@@ -396,7 +439,7 @@ namespace Toolbox::UI {
                                 ImVec2 text_pos =
                                     pos + ImVec2(style.WindowPadding.x,
                                                  icon_size.y + style.ItemInnerSpacing.y);
-            #if 0
+#if 0
                                 text_pos.x +=
                                     std::max((label_width / 2.0f) - (text_width / 2.0f), 0.0f);
 
@@ -406,13 +449,13 @@ namespace Toolbox::UI {
                                 ImGui::RenderTextEllipsis(ImGui::GetWindowDrawList(), text_pos,
                                                           text_clip_max, ellipsis_max, text.c_str(),
                                                           nullptr, nullptr);
-            #else
-                                //ImGui::TextWrapped(text.c_str());
+#else
+                                // ImGui::TextWrapped(text.c_str());
                                 ImGui::SetCursorScreenPos(text_pos);
                                 ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0.0f);
                                 ImGui::TextWrappedWithAlign(0.5f, label_width, text.c_str());
                                 ImGui::PopStyleVar();
-                                #endif
+#endif
                             }
                         }
 
@@ -581,7 +624,7 @@ namespace Toolbox::UI {
         m_selection_mgr = ModelSelectionManager(m_view_proxy);
         m_selection_mgr.setDeepSpans(false);
 
-        m_pinned_folders = { m_tree_proxy->getIndex("files/data/scene") };
+        m_pinned_folders = {m_tree_proxy->getIndex("files/data/scene")};
 
         return true;
     }

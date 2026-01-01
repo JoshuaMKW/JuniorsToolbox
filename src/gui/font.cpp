@@ -20,7 +20,7 @@ namespace Toolbox::UI {
             if (!Filesystem::is_regular_file(child_path).value_or(false)) {
                 continue;
             }
-            if (child_path.path().stem().string() == "forkawesome") {
+            if (child_path.path().stem().string() == "forkawesomev7-solid") {
                 continue;
             }
             addFont(child_path.path(), nullptr, io.Fonts->GetGlyphRangesJapanese());
@@ -83,14 +83,14 @@ namespace Toolbox::UI {
             return false;
         }
 
-        auto fork_awesome_path = cwd_result.value() / "Fonts" / "forkawesome.ttf";
+        auto fork_awesome_path = cwd_result.value() / "Fonts" / "forkawesomev7-solid.ttf";
 
         ImFontConfig font_cfg = font_cfg_template ? *font_cfg_template : ImFontConfig();
         ImFontConfig fork_awesome_cfg;
         fork_awesome_cfg.MergeMode  = true;
         fork_awesome_cfg.PixelSnapH = true;
 
-        static const ImWchar icons_ranges[] = {ICON_MIN_FK, ICON_MAX_16_FK, 0};
+        static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
 
 #if USE_LEGACY_FONT_API
         for (auto &size : fontSizes()) {
