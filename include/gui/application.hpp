@@ -239,7 +239,7 @@ namespace Toolbox {
 
         void addFilter(const std::string &label, const std::string &csv_filters);
         bool hasFilter(const std::string &label) const;
-        int numFilters() const { return m_filters.size(); };
+        size_t numFilters() const { return m_filters.size(); };
         void copyFiltersOutU8(std::vector<std::pair<std::string, std::string>> &out_filters) const;
 
     private:

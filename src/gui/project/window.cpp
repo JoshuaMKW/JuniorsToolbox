@@ -194,6 +194,8 @@ namespace Toolbox::UI {
             ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, {0.0f, 0.5f});
             ImGui::PushStyleColor(ImGuiCol_Button, {0.0f, 0.0f, 0.0f, 0.0f});
 
+            ModelIndex hovered_pin = ModelIndex();
+
             size_t valid_shortcuts = 0;
             for (const ModelIndex &pinned : m_pinned_folders) {
                 if (!m_tree_proxy->validateIndex(pinned)) {
@@ -213,6 +215,12 @@ namespace Toolbox::UI {
                     setViewIndex(m_tree_proxy->toSourceIndex(pinned), false);
                 }
 
+                const ImRect item_rect = {ImGui::GetItemRectMin(), ImGui::GetItemRectMax()};
+                if (ImGui::IsMouseHoveringRect(item_rect.Min, item_rect.Max)) {
+                    hovered_pin = pinned;
+                    m_pinned_view_context_menu.tryOpen(0);
+                }
+
                 const float font_size = ImGui::GetFontSize();
                 ImGui::PushFont(nullptr, font_size * 0.75f);
                 const ImVec2 pin_size = ImGui::CalcTextSize(ICON_FA_THUMBTACK);
@@ -221,8 +229,7 @@ namespace Toolbox::UI {
                                         pin_size.y + style.FramePadding.y * 2.0f);
                 const ImVec2 font_adj = {0.0f, ImGui::GetFontSize() * 0.25f};
                 const ImRect bb =
-                    ImRect(pin_icon_pos + font_adj,
-                           pin_icon_pos + pin_item_size + font_adj);
+                    ImRect(pin_icon_pos + font_adj, pin_icon_pos + pin_item_size + font_adj);
                 ImGui::RenderTextClipped(bb.Min + style.FramePadding, bb.Max - style.FramePadding,
                                          ICON_FA_THUMBTACK, nullptr, &pin_size, ImVec2(0.5f, 0.5f),
                                          &bb);
@@ -240,6 +247,16 @@ namespace Toolbox::UI {
 
             ModelIndex index = m_tree_proxy->getIndex(0, 0);
             renderFolderTree(index);
+
+            m_tree_view_context_menu.tryRender(m_tree_selection_mgr.getState().getLastSelected(),
+                                               ImGuiHoveredFlags_AllowWhenBlockedByPopup |
+                                                   ImGuiHoveredFlags_AllowWhenOverlapped);
+            m_tree_view_context_menu.applyDeferredCmds();
+
+            m_pinned_view_context_menu.tryRender(hovered_pin,
+                                                 ImGuiHoveredFlags_AllowWhenBlockedByPopup |
+                                                     ImGuiHoveredFlags_AllowWhenOverlapped);
+            m_pinned_view_context_menu.applyDeferredCmds();
         }
         ImGui::EndChild();
     }
@@ -301,7 +318,7 @@ namespace Toolbox::UI {
 
                 ModelIndex view_index = m_view_proxy->toProxyIndex(m_view_index);
                 const IDataModel::index_container &selection =
-                    m_selection_mgr.getState().getSelection();
+                    m_folder_selection_mgr.getState().getSelection();
 
                 ImVec2 row_box_size = {box_base_width, box_base_height};
 
@@ -333,7 +350,8 @@ namespace Toolbox::UI {
                     ImVec2 win_min = ImGui::GetCursorScreenPos();
                     ImVec2 win_max = win_min + row_box_size;
 
-                    const bool is_selected = m_selection_mgr.getState().isSelected(child_index);
+                    const bool is_selected =
+                        m_folder_selection_mgr.getState().isSelected(child_index);
                     const bool is_hovered =
                         is_window_hovered && ImGui::IsMouseHoveringRect(win_min, win_max);
                     const bool is_cut = std::find(m_cut_indices.begin(), m_cut_indices.end(),
@@ -373,7 +391,7 @@ namespace Toolbox::UI {
                                                     ImGuiWindowFlags_NoDecoration |
                                                     ImGuiWindowFlags_NoScrollWithMouse;
 
-                    if (child_index == m_selection_mgr.getState().getLastSelected()) {
+                    if (child_index == m_folder_selection_mgr.getState().getLastSelected()) {
                         ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_Text);
                         col.w *= render_alpha;
                         ImGui::GetWindowDrawList()->AddRect(win_min - (style.FramePadding / 2.0f),
@@ -469,7 +487,7 @@ namespace Toolbox::UI {
                                         ModelIndex new_view_index =
                                             m_view_proxy->toSourceIndex(child_index);
                                         if (m_view_index != new_view_index) {
-                                            m_selection_mgr.getState().clearSelection();
+                                            m_folder_selection_mgr.getState().clearSelection();
                                             setViewIndex(new_view_index, false);
                                             m_file_system_model->watchPathForUpdates(m_view_index,
                                                                                      true);
@@ -484,7 +502,7 @@ namespace Toolbox::UI {
                                         m_is_renaming = false;
                                     }
                                 }
-                                m_selection_mgr.handleActionsByMouseInput(child_index, true);
+                                m_folder_selection_mgr.handleActionsByMouseInput(child_index, true);
                             }
                         }
                     }
@@ -503,18 +521,18 @@ namespace Toolbox::UI {
                                                Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL);
                     const bool is_shft_state = Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT) ||
                                                Input::GetKey(Input::KeyCode::KEY_RIGHTSHIFT);
-                    if (!is_ctrl_state && !is_shft_state && !m_selection_mgr.isDragState()) {
-                        m_selection_mgr.getState().clearSelection();
+                    if (!is_ctrl_state && !is_shft_state && !m_folder_selection_mgr.isDragState()) {
+                        m_folder_selection_mgr.getState().clearSelection();
                     }
 
                     m_is_renaming = false;
                 }
 
-                if (m_selection_mgr.processDragState()) {
+                if (m_folder_selection_mgr.processDragState()) {
                     if (DragDropManager::instance().getCurrentDragAction() == nullptr) {
                         RefPtr<DragAction> action = DragDropManager::instance().createDragAction(
                             getUUID(), getLowHandle(),
-                            std::move(*m_selection_mgr.actionCopySelection().release()));
+                            std::move(*m_folder_selection_mgr.actionCopySelection().release()));
                         if (action) {
                             action->setHotSpot(mouse_pos);
                             action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {
@@ -568,7 +586,8 @@ namespace Toolbox::UI {
                     ImGui::Checkbox("Don't ask me next time", &m_delete_without_request);
                     ImGui::PopStyleVar();
                     if (ImGui::Button("OK", ImVec2(120, 0))) {
-                        std::thread t = std::thread(TOOLBOX_BIND_EVENT_FN(optionDeleteProc_));
+                        std::thread t =
+                            std::thread(TOOLBOX_BIND_EVENT_FN(optionFolderViewDeleteProc_));
                         t.detach();
                         ImGui::CloseCurrentPopup();
                     }
@@ -621,8 +640,14 @@ namespace Toolbox::UI {
         setViewIndex(m_file_system_model->getIndex(0, 0), false);
         m_file_system_model->watchPathForUpdates(m_view_index, true);
 
-        m_selection_mgr = ModelSelectionManager(m_view_proxy);
-        m_selection_mgr.setDeepSpans(false);
+        m_folder_selection_mgr = ModelSelectionManager(m_view_proxy);
+        m_folder_selection_mgr.setDeepSpans(false);
+
+        m_tree_selection_mgr = ModelSelectionManager(m_tree_proxy);
+        m_tree_selection_mgr.setDeepSpans(false);
+
+        m_pinned_selection_mgr = ModelSelectionManager(m_tree_proxy);
+        m_pinned_selection_mgr.setDeepSpans(false);
 
         m_pinned_folders = {m_tree_proxy->getIndex("files/data/scene")};
 
@@ -706,7 +731,7 @@ namespace Toolbox::UI {
                 "Open", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_O}),
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     return selection.size() > 0 &&
                            std::all_of(
                                selection.begin(), selection.end(), [this](const ModelIndex &index) {
@@ -715,7 +740,7 @@ namespace Toolbox::UI {
                 },
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     actionOpenIndexes(selection);
                 })
             .addOption(
@@ -724,7 +749,7 @@ namespace Toolbox::UI {
                 [this](const ModelIndex &index) { return true; },
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     if (selection.size() == 0) {
                         Toolbox::Platform::OpenFileExplorer(
                             m_file_system_model->getPath(m_view_index));
@@ -750,7 +775,7 @@ namespace Toolbox::UI {
                 [this](const ModelIndex &index) { return true; },
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
 
                     std::string paths;
                     if (selection.size() == 0) {
@@ -768,31 +793,32 @@ namespace Toolbox::UI {
                 "Cut", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_X}),
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     return selection.size() > 0;
                 },
                 [this](const ModelIndex &index) {
-                    actionCutIndexes(m_selection_mgr.getState().getSelection());
+                    actionCutIndexes(m_folder_selection_mgr.getState().getSelection());
                 })
             .addOption(
                 "Copy", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C}),
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     return selection.size() > 0;
                 },
-                [this](const ModelIndex &index) { m_selection_mgr.actionCopySelection(); })
+                [this](const ModelIndex &index) { m_folder_selection_mgr.actionCopySelection(); })
             .addDivider()
             .addOption(
                 "Delete", KeyBind({KeyCode::KEY_DELETE}),
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     return selection.size() > 0;
                 },
                 [this](const ModelIndex &index) {
                     if (m_delete_without_request) {
-                        std::thread t = std::thread(TOOLBOX_BIND_EVENT_FN(optionDeleteProc_));
+                        std::thread t =
+                            std::thread(TOOLBOX_BIND_EVENT_FN(optionFolderViewDeleteProc_));
                         t.detach();
                     } else {
                         m_delete_requested = true;
@@ -802,19 +828,19 @@ namespace Toolbox::UI {
                 "Rename", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R}),
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     return selection.size() == 1;
                 },
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     actionRenameIndex(selection[0]);
                 })
             .addOption(
                 "Paste", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V}),
                 [this](const ModelIndex &index) { return true; },
                 [this](const ModelIndex &index) {
-                    std::thread t = std::thread(TOOLBOX_BIND_EVENT_FN(optionPasteProc_));
+                    std::thread t = std::thread(TOOLBOX_BIND_EVENT_FN(optionFolderViewPasteProc_));
                     t.detach();
                 })
             .addDivider()
@@ -823,12 +849,12 @@ namespace Toolbox::UI {
                 KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_E}),
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     return selection.size() == 1 && m_view_proxy->isArchive(selection[0]);
                 },
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     fs_path arc_path = m_view_proxy->getPath(selection[0]);
                     m_rarc_processor.requestExtractArchive(arc_path, arc_path.parent_path());
                 })
@@ -837,12 +863,12 @@ namespace Toolbox::UI {
                 KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_R}),
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     return selection.size() == 1 && m_view_proxy->isDirectory(selection[0]);
                 },
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     fs_path src_path = m_view_proxy->getPath(selection[0]);
                     fs_path dst_path = src_path;
                     dst_path.replace_extension(".arc");
@@ -853,12 +879,12 @@ namespace Toolbox::UI {
                 KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_S}),
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     return selection.size() == 1 && m_view_proxy->isDirectory(selection[0]);
                 },
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     fs_path src_path = m_view_proxy->getPath(selection[0]);
                     fs_path dst_path = src_path;
                     dst_path.replace_extension(".szs");
@@ -869,17 +895,17 @@ namespace Toolbox::UI {
                 KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_N}),
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     return selection.size() == 0;
                 },
                 [this](const ModelIndex &view_index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     std::string folder_name = m_file_system_model->findUniqueName(
                         m_view_proxy->toSourceIndex(view_index), "New Folder");
                     ModelIndex new_index = m_view_proxy->mkdir(view_index, folder_name);
                     if (m_view_proxy->validateIndex(new_index)) {
-                        m_selection_mgr.actionSelectIndex(new_index, true);
+                        m_folder_selection_mgr.actionSelectIndex(new_index, true);
                         actionRenameIndex(new_index);
                     }
                 })
@@ -887,7 +913,7 @@ namespace Toolbox::UI {
                 "New Item...", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N}),
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
-                        m_selection_mgr.getState().getSelection();
+                        m_folder_selection_mgr.getState().getSelection();
                     return selection.size() == 0;
                 },
                 [this](const ModelIndex &view_index) {
@@ -896,6 +922,160 @@ namespace Toolbox::UI {
                     if (window) {
                         window->setContextPath(m_view_proxy->getPath(view_index));
                     }
+                });
+
+        m_tree_view_context_menu = ContextMenu<ModelIndex>();
+
+        ContextMenuBuilder(&m_tree_view_context_menu)
+            .addOption(
+                "Open", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_O}),
+                [this](const ModelIndex &index) { return m_tree_proxy->isDirectory(index); },
+                [this](const ModelIndex &index) {
+                    ModelIndex new_view_index = m_tree_proxy->toSourceIndex(index);
+                    if (m_view_index != new_view_index) {
+                        m_folder_selection_mgr.getState().clearSelection();
+                        setViewIndex(new_view_index, false);
+                        m_file_system_model->watchPathForUpdates(m_view_index, true);
+                    }
+                })
+            .addOption(
+                "Open in Explorer",
+                KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O}),
+                [this](const ModelIndex &index) { return m_tree_proxy->validateIndex(index); },
+                [this](const ModelIndex &index) {
+                    Toolbox::Platform::OpenFileExplorer(m_tree_proxy->getPath(index));
+                })
+            .addDivider()
+            .addOption(
+                "Copy Path",
+                KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C}),
+                [this](const ModelIndex &index) { return m_tree_proxy->validateIndex(index); },
+                [this](const ModelIndex &index) {
+                    const IDataModel::index_container &selection =
+                        m_tree_selection_mgr.getState().getSelection();
+
+                    std::string paths;
+                    if (selection.size() == 0) {
+                        paths = m_file_system_model->getPath(index).string();
+                    } else {
+                        for (const ModelIndex &item_index : selection) {
+                            fs_path path = m_view_proxy->getPath(item_index);
+                            paths += path.string() + "\n";
+                        }
+                    }
+                    ImGui::SetClipboardText(paths.c_str());
+                })
+            .addDivider()
+            .addOption(
+                "Delete", KeyBind({KeyCode::KEY_DELETE}),
+                [this](const ModelIndex &index) { return m_tree_proxy->validateIndex(index); },
+                [this](const ModelIndex &index) {
+                    if (m_delete_without_request) {
+                        std::thread t =
+                            std::thread(TOOLBOX_BIND_EVENT_FN(optionTreeViewDeleteProc_));
+                        t.detach();
+                    } else {
+                        m_delete_requested = true;
+                    }
+                })
+            //.addOption(
+            //    "Rename", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R}),
+            //    [this](const ModelIndex &index) {
+            //        const IDataModel::index_container &selection =
+            //            m_tree_selection_mgr.getState().getSelection();
+            //        return selection.size() == 1;
+            //    },
+            //    [this](const ModelIndex &index) {
+            //        const IDataModel::index_container &selection =
+            //            m_tree_selection_mgr.getState().getSelection();
+            //        actionRenameIndex(selection[0]);
+            //    })
+            .addDivider()
+            .addOption(
+                "Extract Here",
+                KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_E}),
+                [this](const ModelIndex &index) {
+                    const IDataModel::index_container &selection =
+                        m_tree_selection_mgr.getState().getSelection();
+                    return selection.size() == 1 && m_tree_proxy->isArchive(index);
+                },
+                [this](const ModelIndex &index) {
+                    const IDataModel::index_container &selection =
+                        m_tree_selection_mgr.getState().getSelection();
+                    fs_path arc_path = m_tree_proxy->getPath(index);
+                    m_rarc_processor.requestExtractArchive(arc_path, arc_path.parent_path());
+                })
+            .addOption(
+                "Compile to RARC",
+                KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_R}),
+                [this](const ModelIndex &index) {
+                    const IDataModel::index_container &selection =
+                        m_tree_selection_mgr.getState().getSelection();
+                    return selection.size() == 1 && m_tree_proxy->isDirectory(index);
+                },
+                [this](const ModelIndex &index) {
+                    fs_path src_path = m_tree_proxy->getPath(index);
+                    fs_path dst_path = src_path;
+                    dst_path.replace_extension(".arc");
+                    m_rarc_processor.requestCompileArchive(src_path, dst_path, false);
+                })
+            .addOption(
+                "Compile to SZS",
+                KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_S}),
+                [this](const ModelIndex &index) {
+                    const IDataModel::index_container &selection =
+                        m_tree_selection_mgr.getState().getSelection();
+                    return selection.size() == 1 && m_tree_proxy->isDirectory(selection[0]);
+                },
+                [this](const ModelIndex &index) {
+                    const IDataModel::index_container &selection =
+                        m_tree_selection_mgr.getState().getSelection();
+                    fs_path src_path = m_tree_proxy->getPath(selection[0]);
+                    fs_path dst_path = src_path;
+                    dst_path.replace_extension(".szs");
+                    m_rarc_processor.requestCompileArchive(src_path, dst_path, true);
+                });
+
+        m_pinned_view_context_menu = ContextMenu<ModelIndex>();
+
+        ContextMenuBuilder(&m_pinned_view_context_menu)
+            .addOption(
+                "Open", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_O}),
+                [this](const ModelIndex &index) { return m_tree_proxy->isDirectory(index); },
+                [this](const ModelIndex &index) {
+                    ModelIndex new_view_index = m_tree_proxy->toSourceIndex(index);
+                    if (m_view_index != new_view_index) {
+                        m_folder_selection_mgr.getState().clearSelection();
+                        setViewIndex(new_view_index, false);
+                        m_file_system_model->watchPathForUpdates(m_view_index, true);
+                    }
+                })
+            .addOption(
+                "Open in Explorer",
+                KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O}),
+                [this](const ModelIndex &index) { return m_tree_proxy->validateIndex(index); },
+                [this](const ModelIndex &index) {
+                    Toolbox::Platform::OpenFileExplorer(m_tree_proxy->getPath(index));
+                })
+            .addDivider()
+            .addOption(
+                "Copy Path",
+                KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_C}),
+                [this](const ModelIndex &index) { return true; },
+                [this](const ModelIndex &index) {
+                    const IDataModel::index_container &selection =
+                        m_pinned_selection_mgr.getState().getSelection();
+
+                    std::string paths;
+                    if (selection.size() == 0) {
+                        paths = m_file_system_model->getPath(index).string();
+                    } else {
+                        for (const ModelIndex &item_index : selection) {
+                            fs_path path = m_tree_proxy->getPath(item_index);
+                            paths += path.string() + "\n";
+                        }
+                    }
+                    ImGui::SetClipboardText(paths.c_str());
                 });
     }
 
@@ -912,7 +1092,7 @@ namespace Toolbox::UI {
             if (m_view_proxy->isDirectory(item_index)) {
                 ModelIndex new_view_index = m_view_proxy->toSourceIndex(item_index);
                 if (m_view_index != new_view_index) {
-                    m_selection_mgr.getState().clearSelection();
+                    m_folder_selection_mgr.getState().clearSelection();
                     setViewIndex(new_view_index, false);
                     m_file_system_model->watchPathForUpdates(m_view_index, true);
                 }
@@ -926,7 +1106,7 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::actionCutIndexes(const std::vector<ModelIndex> &indices) {
         m_cut_indices           = indices;
-        ScopePtr<MimeData> data = m_selection_mgr.actionCopySelection();
+        ScopePtr<MimeData> data = m_folder_selection_mgr.actionCopySelection();
         SystemClipboard::instance().setContent(*data);
     }
 
@@ -1088,7 +1268,7 @@ namespace Toolbox::UI {
             if (m_tree_proxy->canFetchMore(index)) {
                 m_tree_proxy->fetchMore(index);
             }
-            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None;
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
             if (m_tree_proxy->hasChildren(index)) {
                 flags |= ImGuiTreeNodeFlags_OpenOnArrow;
             } else {
@@ -1101,16 +1281,34 @@ namespace Toolbox::UI {
             if (isViewedAncestor(index)) {
                 flags |= ImGuiTreeNodeFlags_DefaultOpen;
             }
-            is_open = ImGui::TreeNodeEx(m_tree_proxy->getDisplayText(index).c_str(), flags);
+            /*if (m_tree_selection_mgr.getState().getLastSelected() == index) {
+                flags |= ImGuiTreeNodeFlags_Framed;
+            }*/
 
-            if (ImGui::IsItemClicked()) {
+            is_open = ImGui::TreeNodeEx(m_tree_proxy->getDisplayText(index).c_str(), flags);
+            if (m_tree_selection_mgr.getState().getLastSelected() == index) {
+                const ImRect node_rect = {ImGui::GetItemRectMin(), ImGui::GetItemRectMax()};
+                ImGui::GetWindowDrawList()->AddRect(node_rect.Min, node_rect.Max,
+                                                    ImGui::GetColorU32(ImGuiCol_Text));
+            }
+
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
                 ModelIndex new_view_index = m_tree_proxy->toSourceIndex(index);
                 if (m_view_index != new_view_index) {
-                    m_selection_mgr.getState().clearSelection();
+                    m_folder_selection_mgr.getState().clearSelection();
                     setViewIndex(new_view_index, false);
                     m_file_system_model->watchPathForUpdates(m_view_index, true);
                 }
+                m_tree_selection_mgr.actionSelectIndex(index, true);
                 // m_fs_watchdog.addPath(m_view_proxy->getPath(m_view_index));
+            }
+
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+                m_tree_selection_mgr.getState().setLastSelected(index);
+            }
+
+            if (ImGui::IsItemHovered()) {
+                m_tree_view_context_menu.tryOpen(0);
             }
 
             if (is_open) {
@@ -1123,8 +1321,35 @@ namespace Toolbox::UI {
                 ImGui::TreePop();
             }
         } else {
-            if (ImGui::TreeNodeEx(m_tree_proxy->getDisplayText(index).c_str(),
-                                  ImGuiTreeNodeFlags_Leaf)) {
+            is_open = ImGui::TreeNodeEx(m_tree_proxy->getDisplayText(index).c_str(),
+                                        ImGuiTreeNodeFlags_Leaf);
+
+            if (m_tree_selection_mgr.getState().getLastSelected() == index) {
+                const ImRect node_rect = {ImGui::GetItemRectMin(), ImGui::GetItemRectMax()};
+                ImGui::GetWindowDrawList()->AddRect(node_rect.Min, node_rect.Max,
+                                                    ImGui::GetColorU32(ImGuiCol_Text));
+            }
+
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+                ModelIndex new_view_index = m_tree_proxy->toSourceIndex(index);
+                if (m_view_index != new_view_index) {
+                    m_folder_selection_mgr.getState().clearSelection();
+                    setViewIndex(new_view_index, false);
+                    m_file_system_model->watchPathForUpdates(m_view_index, true);
+                }
+                m_tree_selection_mgr.actionSelectIndex(index, true);
+                // m_fs_watchdog.addPath(m_view_proxy->getPath(m_view_index));
+            }
+
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+                m_tree_selection_mgr.getState().setLastSelected(index);
+            }
+
+            if (ImGui::IsItemHovered()) {
+                m_tree_view_context_menu.tryOpen(0);
+            }
+
+            if (is_open) {
                 ImGui::TreePop();
             }
         }
@@ -1137,10 +1362,21 @@ namespace Toolbox::UI {
         (void)m_view_proxy->insertMimeData(m_view_proxy->toProxyIndex(m_view_index), data, policy);
     }
 
-    void ProjectViewWindow::optionDeleteProc_() { m_selection_mgr.actionDeleteSelection(); }
+    void ProjectViewWindow::optionFolderViewDeleteProc_() {
+        m_folder_selection_mgr.actionDeleteSelection();
+    }
 
-    void ProjectViewWindow::optionPasteProc_() {
-        const IDataModel::index_container &selection = m_selection_mgr.getState().getSelection();
+    void ProjectViewWindow::optionTreeViewDeleteProc_() {
+        m_tree_selection_mgr.actionDeleteSelection();
+    }
+
+    void ProjectViewWindow::optionPinnedViewDeleteProc_() {
+        m_pinned_selection_mgr.actionDeleteSelection();
+    }
+
+    void ProjectViewWindow::optionFolderViewPasteProc_() {
+        const IDataModel::index_container &selection =
+            m_folder_selection_mgr.getState().getSelection();
 
         auto content_types = SystemClipboard::instance().getAvailableContentFormats();
         if (!content_types) {
@@ -1160,7 +1396,7 @@ namespace Toolbox::UI {
         bool success = false;
 
         if (selection.size() > 0) {
-            success |= m_selection_mgr.actionPasteIntoSelection(maybe_data.value());
+            success |= m_folder_selection_mgr.actionPasteIntoSelection(maybe_data.value());
         } else {
             if (m_view_proxy->isReadOnly()) {
                 return;

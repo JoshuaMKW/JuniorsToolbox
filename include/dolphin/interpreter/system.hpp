@@ -37,7 +37,7 @@ namespace Toolbox::Interpreter {
         void setMemoryBuffer(void *buf, size_t size) {
             if (m_storage.buf<void>() == buf)
                 return;
-            m_storage.setBuf(buf, size);
+            m_storage.setBuf(buf, static_cast<uint32_t>(size));
             m_evaluating = false;
         }
 
@@ -55,7 +55,7 @@ namespace Toolbox::Interpreter {
 
         void applyMemory(const void *buf, size_t size) {
             if (!m_storage) {
-                m_storage.alloc(size);
+                m_storage.alloc(static_cast<uint32_t>(size));
             }
             std::memcpy(m_storage.buf<void>(), buf, size);
         }

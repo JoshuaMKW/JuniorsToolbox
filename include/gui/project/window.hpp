@@ -50,8 +50,10 @@ namespace Toolbox::UI {
 
         //void startCopyProc(const ModelIndex &from, const ModelIndex &to);
         void evInsertProc_(MimeData data);
-        void optionDeleteProc_();
-        void optionPasteProc_();
+        void optionFolderViewDeleteProc_();
+        void optionTreeViewDeleteProc_();
+        void optionPinnedViewDeleteProc_();
+        void optionFolderViewPasteProc_();
 
         void setViewIndex(const ModelIndex &index, bool replace_present_history);
         bool redoViewHistory();
@@ -125,7 +127,9 @@ namespace Toolbox::UI {
         RefPtr<FileSystemModel> m_file_system_model;
 
         ModelIndex m_last_selected_index;
-        ModelSelectionManager m_selection_mgr;
+        ModelSelectionManager m_folder_selection_mgr;
+        ModelSelectionManager m_tree_selection_mgr;
+        ModelSelectionManager m_pinned_selection_mgr;
         std::vector<ProjectAsset> m_view_assets;
         ModelIndex m_view_index;
         std::vector<ModelIndex> m_pinned_folders;
@@ -136,6 +140,7 @@ namespace Toolbox::UI {
 
         ContextMenu<ModelIndex> m_folder_view_context_menu;
         ContextMenu<ModelIndex> m_tree_view_context_menu;
+        ContextMenu<ModelIndex> m_pinned_view_context_menu;
 
         std::vector<ModelIndex> m_cut_indices;
 

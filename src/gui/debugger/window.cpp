@@ -576,13 +576,13 @@ namespace Toolbox::UI {
                     if (ImLengthSqr(difference) > 10.0f) {
                         if (cur_address < m_address_selection_begin) {
                             m_address_selection_end_nibble =
-                                (ImClamp<u8>((mouse_pos.x - text_rect.Min.x) / ch_width, 0,
+                                (ImClamp<u8>(static_cast<u8>((mouse_pos.x - text_rect.Min.x) / ch_width), 0,
                                              nibble_width - 1) &
                                  ~1);
                             m_address_selection_end = cur_address;
                         } else if (cur_address > m_address_selection_begin) {
                             m_address_selection_end_nibble =
-                                (ImClamp<u8>((mouse_pos.x - text_rect.Min.x) / ch_width, 0,
+                                (ImClamp<u8>(static_cast<u8>((mouse_pos.x - text_rect.Min.x) / ch_width), 0,
                                              nibble_width - 1) &
                                  ~1) +
                                 2;
@@ -593,7 +593,7 @@ namespace Toolbox::UI {
                             }
                         } else {
                             m_address_selection_end_nibble =
-                                (ImClamp<u8>((mouse_pos.x - text_rect.Min.x) / ch_width, 0,
+                                (ImClamp<u8>(static_cast<u8>((mouse_pos.x - text_rect.Min.x) / ch_width), 0,
                                              nibble_width - 1) &
                                  ~1);
                             m_address_selection_end = cur_address;
@@ -663,7 +663,7 @@ namespace Toolbox::UI {
         {
 
             char *ascii_buf = new char[char_width];
-            for (int i = 0; i < char_width; ++i) {
+            for (u32 i = 0; i < char_width; ++i) {
                 int ch = ((char *)mem_ptr)[i];
                 ch &= 0xFF;
                 if (std::isprint(ch)) {
@@ -754,7 +754,7 @@ namespace Toolbox::UI {
                 m_address_selection_mouse_start = mouse_pos;
 
                 m_address_cursor        = (base_address + column_hovered) & ~(byte_width - 1);
-                m_address_cursor_nibble = (column_hovered * 2) % nibble_width;
+                m_address_cursor_nibble = static_cast<u8>((column_hovered * 2) % nibble_width);
 
                 m_address_selection_begin = m_address_cursor;
                 m_address_selection_end   = m_address_cursor;
@@ -770,7 +770,7 @@ namespace Toolbox::UI {
                 m_selection_was_ascii = true;
 
                 m_address_cursor        = (base_address + column_hovered) & ~(byte_width - 1);
-                m_address_cursor_nibble = (column_hovered * 2) % nibble_width;
+                m_address_cursor_nibble = static_cast<u8>((column_hovered * 2) % nibble_width);
 
                 // Check if selection is outside the existing span
                 u32 cursor_addr = m_address_cursor + m_address_cursor_nibble / 2;
@@ -814,8 +814,8 @@ namespace Toolbox::UI {
                 if (ImLengthSqr(difference) > 10.0f) {
                     int64_t remainder = column_hovered % byte_width;
                     m_address_selection_end =
-                        base_address + ((int64_t)(column_hovered / byte_width) * byte_width) + 1;
-                    m_address_selection_end_nibble = remainder * 2;
+                        base_address + static_cast<u32>(((int64_t)(column_hovered / byte_width) * byte_width) + 1);
+                    m_address_selection_end_nibble = static_cast<u32>(remainder * 2);
                 }
 
                 m_byte_view_context_menu.setCanOpen(false);
@@ -829,7 +829,7 @@ namespace Toolbox::UI {
             }
 
             int16_t cursor_idx = (m_address_cursor + (m_address_cursor_nibble / 2)) - base_address;
-            if (m_selection_was_ascii && cursor_idx >= 0 && cursor_idx < char_width) {
+            if (m_selection_was_ascii && cursor_idx >= 0 && cursor_idx < static_cast<int16_t>(char_width)) {
                 m_cursor_anim_timer += m_delta_time;
                 bool cursor_visible = (m_cursor_anim_timer <= 0.0f) ||
                                       ImFmod(m_cursor_anim_timer, 1.20f) <= 0.80f;
@@ -934,7 +934,7 @@ namespace Toolbox::UI {
 
                     if (results <= SCANNER_TABLE_MAX_RENDER_COUNT && !m_scan_model->isScanBusy()) {
                         ImGuiListClipper clipper;
-                        clipper.Begin(results);
+                        clipper.Begin(static_cast<int>(results));
 
                         while (clipper.Step()) {
                             for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; n++) {
@@ -1562,7 +1562,7 @@ namespace Toolbox::UI {
             // Render the address input combo box
             if (ImGui::InputComboTextBox(
                     "##AddressComboBox", m_address_input.data(), m_address_input.size(),
-                    history_strs, m_address_search_history.size(), nullptr, ImGuiComboFlags_None,
+                    history_strs, static_cast<int>(m_address_search_history.size()), nullptr, ImGuiComboFlags_None,
                     ImGuiInputTextFlags_EnterReturnsTrue)) {
                 // Parse the input address
                 std::string input_str(m_address_input.data());
@@ -1704,7 +1704,7 @@ namespace Toolbox::UI {
                 float column_count_pred =
                     std::max<float>(size.x - address_col_width, 0.0f) / full_col_width + adjust;
 
-                column_count = (column_count_pred * factor);  // Give space for ascii column
+                column_count = static_cast<u32>(column_count_pred * factor);  // Give space for ascii column
                 if (column_count == 0) {
                     column_count = 1;
                 }
@@ -1729,7 +1729,7 @@ namespace Toolbox::UI {
                 return;
             }
 
-            u32 memory_size    = manager.getMemorySize();
+            u32 memory_size    = static_cast<u32>(manager.getMemorySize());
             u32 memory_address = m_base_address;
 
             // Process controls
@@ -1872,9 +1872,8 @@ namespace Toolbox::UI {
                 std::unordered_map<UUID64, bool> open_state = m_watch_node_open_state;
                 std::vector<ModelIndex> render_flat_tree    = computeModelWatchFlatTree(open_state);
 
-                // TODO:FIX WHATEVER THE FUCK IS GOING WRONG HERE!!!!11!11!
                 ImGuiListClipper clipper;
-                clipper.Begin(render_flat_tree.size());
+                clipper.Begin(static_cast<int>(render_flat_tree.size()));
 
                 while (clipper.Step()) {  // Header row
                     std::stack<size_t> layer_stack;
@@ -1885,7 +1884,7 @@ namespace Toolbox::UI {
                             if (open_state[index.getUUID()]) {
                                 size_t group_size = m_watch_proxy_model->getRowCount(index);
                                 if (group_size > 0) {
-                                    ImGui::PushID(layer_stack.size());
+                                    ImGui::PushID(static_cast<int>(layer_stack.size()));
                                     layer_stack.push(group_size);
                                     continue;
                                 }
@@ -1906,19 +1905,19 @@ namespace Toolbox::UI {
 
                         const ModelIndex &index = render_flat_tree[i];
                         if (m_watch_proxy_model->isIndexGroup(index)) {
-                            renderWatchGroup(index, render_depth, table_start_x, table_width,
-                                             is_table_focused, is_table_hovered);
+                            renderWatchGroup(index, static_cast<int>(render_depth), table_start_x,
+                                             table_width, is_table_focused, is_table_hovered);
                             if (open_state[index.getUUID()]) {
                                 size_t group_size = m_watch_proxy_model->getRowCount(index);
                                 if (group_size > 0) {
-                                    ImGui::PushID(layer_stack.size());
+                                    ImGui::PushID(static_cast<int>(layer_stack.size()));
                                     layer_stack.push(group_size);
                                     continue;
                                 }
                             }
                         } else {
-                            renderMemoryWatch(index, render_depth, table_start_x, table_width,
-                                              is_table_focused, is_table_hovered);
+                            renderMemoryWatch(index, static_cast<int>(render_depth), table_start_x,
+                                              table_width, is_table_focused, is_table_hovered);
                         }
                         while (!layer_stack.empty()) {
                             size_t &current_left = layer_stack.top();
@@ -2005,8 +2004,8 @@ namespace Toolbox::UI {
         {
             double mouse_x, mouse_y;
             Input::GetMousePosition(mouse_x, mouse_y);
-            mouse_pos.x = mouse_x;
-            mouse_pos.y = mouse_y;
+            mouse_pos.x = static_cast<float>(mouse_x);
+            mouse_pos.y = static_cast<float>(mouse_y);
         }
 
         bool is_left_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);
@@ -2136,7 +2135,7 @@ namespace Toolbox::UI {
 
         if (ImGui::TableNextColumn()) {
             const u32 start_addr = 0x80000000;
-            const u32 end_addr   = start_addr | mem_size;
+            const u32 end_addr   = start_addr | static_cast<u32>(mem_size);
 
             if (mem_size == 0) {
                 ImGui::Text("Dolphin Not Found");
@@ -2185,8 +2184,8 @@ namespace Toolbox::UI {
         {
             double mouse_x, mouse_y;
             Input::GetMousePosition(mouse_x, mouse_y);
-            mouse_pos.x = mouse_x;
-            mouse_pos.y = mouse_y;
+            mouse_pos.x = static_cast<float>(mouse_x);
+            mouse_pos.y = static_cast<float>(mouse_y);
         }
 
         bool is_left_click         = Input::GetMouseButtonDown(MouseButton::BUTTON_LEFT);

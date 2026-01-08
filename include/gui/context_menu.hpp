@@ -134,7 +134,7 @@ namespace Toolbox::UI {
         _DataT m_deferred_ctx;
         std::vector<typename option_t::operator_t> m_deferred_cmds;
 
-        std::vector<option_t*> m_matched_keybinds;
+        std::vector<option_t *> m_matched_keybinds;
     };
 
     template <typename _DataT>
@@ -211,7 +211,19 @@ namespace Toolbox::UI {
         ImGuiID id = window->GetID(m_label.c_str());
         IM_ASSERT(id != 0);  // You cannot pass a NULL str_id if the last item has no identifier
                              // (e.g. a Text() item)
-        int mouse_button = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
+        const ImGuiPopupFlags button_flag = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
+        ImGuiMouseButton mouse_button;
+        switch (button_flag) {
+        case ImGuiPopupFlags_MouseButtonLeft:
+            mouse_button = ImGuiMouseButton_Left;
+            break;
+        case ImGuiPopupFlags_MouseButtonMiddle:
+            mouse_button = ImGuiMouseButton_Middle;
+            break;
+        case ImGuiPopupFlags_MouseButtonRight:
+            mouse_button = ImGuiMouseButton_Right;
+            break;
+        }
         if (ImGui::IsMouseReleased(mouse_button)) {
             ImGui::OpenPopupEx(id, popup_flags);
             m_id = id;

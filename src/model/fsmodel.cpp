@@ -23,6 +23,7 @@ namespace Toolbox {
         };
 
         UUID64 m_parent                = 0;
+        UUID64 m_parent_archive        = 0;  // Cache
         UUID64 m_self_uuid             = 0;
         std::vector<UUID64> m_children = {};
 
@@ -175,6 +176,11 @@ namespace Toolbox {
                 fetchMore_(root);
             }
         }
+    }
+
+    void FileSystemModel::setInteropPath(const fs_path &path) {
+        m_arc_manip_path = path / ".archives";
+        m_history_stack_path = path / ".history";
     }
 
     FileSystemModelOptions FileSystemModel::getOptions() const { return m_options; }
@@ -555,6 +561,25 @@ namespace Toolbox {
         return index.data<_FileSystemIndexData>()->m_size;
     }
 
+    fs_path FileSystemModel::getPhysicalPath_(const ModelIndex &index) const {
+        TOOLBOX_ASSERT(!m_arc_manip_path.empty(),
+                       "Interop path must be specified for all FileSystemModel instances");
+        
+        const ModelIndex parent_archive = getParentArchive_(index);
+        if (!validateIndex(parent_archive)) {
+            return getPath_(index);
+        }
+
+        return m_arc_manip_path / getPath_(index);
+    }
+
+    fs_path FileSystemModel::getHistoryStackPath_(const ModelIndex &index) const {
+        TOOLBOX_ASSERT(!m_history_stack_path.empty(),
+                       "Interop path must be specified for all FileSystemModel instances");
+
+        return m_history_stack_path / getPath_(index);
+    }
+
     std::any FileSystemModel::getData_(const ModelIndex &index, int role) const {
         if (!validateIndex(index)) {
             return {};
@@ -692,7 +717,7 @@ namespace Toolbox {
 #endif
 
         int event_flags = ModelEventFlags::EVENT_INDEX_ADDED;
-        if (isArchive_(parent) || validateIndex(getParentArchive(parent))) {
+        if (isArchive_(parent) || validateIndex(getParentArchive_(parent))) {
             event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
         }
         event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
@@ -752,7 +777,7 @@ namespace Toolbox {
 #endif
 
         int event_flags = ModelEventFlags::EVENT_INDEX_ADDED;
-        if (isArchive_(parent) || validateIndex(getParentArchive(parent))) {
+        if (isArchive_(parent) || validateIndex(getParentArchive_(parent))) {
             event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
         }
         event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
@@ -800,7 +825,7 @@ namespace Toolbox {
 #endif
 
         int event_flags = ModelEventFlags::EVENT_INDEX_REMOVED;
-        if (validateIndex(getParentArchive(index))) {
+        if (validateIndex(getParentArchive_(index))) {
             event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
         }
         event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
@@ -881,7 +906,7 @@ namespace Toolbox {
 #endif
 
         int event_flags = ModelEventFlags::EVENT_INDEX_REMOVED;
-        if (validateIndex(getParentArchive(index))) {
+        if (validateIndex(getParentArchive_(index))) {
             event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
         }
         event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
@@ -984,7 +1009,7 @@ namespace Toolbox {
 #endif
 
         int event_flags = ModelEventFlags::EVENT_INDEX_MODIFIED;
-        if (validateIndex(getParentArchive(file))) {
+        if (validateIndex(getParentArchive_(file))) {
             event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
         }
 
@@ -1481,12 +1506,35 @@ namespace Toolbox {
         return index;
     }
 
-    ModelIndex FileSystemModel::getParentArchive(const ModelIndex &index) const {
+    ModelIndex FileSystemModel::getParentArchive_(const ModelIndex &index) const {
+        _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
+        
+        // Check the search cache
+        if (data->m_parent_archive != 0) {
+            ModelIndex parent_archive = getIndex_(data->m_parent_archive);
+            if (validateIndex(parent_archive)) {
+                return parent_archive;
+            }
+        }
+
         ModelIndex parent = getParent_(index);
         do {
             if (isArchive_(parent)) {
+                data->m_parent_archive = parent.getUUID();
                 return parent;
             }
+            
+            _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
+
+            // Check the search cache
+            if (parent_data->m_parent_archive != 0) {
+                ModelIndex parent_archive = getIndex_(parent_data->m_parent_archive);
+                if (validateIndex(parent_archive)) {
+                    data->m_parent_archive = parent_data->m_parent_archive;
+                    return parent_archive;
+                }
+            }
+
             parent = getParent_(parent);
         } while (validateIndex(parent));
 
@@ -1675,21 +1723,25 @@ namespace Toolbox {
                 return;
             }
 
-            if (validateIndex(getParentArchive(index))) {
-                event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
-            }
+            {
+                const ModelIndex parent_archive = getParentArchive_(index);
+                if (validateIndex(parent_archive)) {
+                    event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
+                }
 
-            if (isDirectory_(index)) {
-                event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
-            } else if (isFile_(index)) {
-                event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
-            } else if (isArchive_(index)) {
-                event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
+                if (isDirectory_(index)) {
+                    event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
+                } else if (isFile_(index)) {
+                    event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
+                } else if (isArchive_(index)) {
+                    event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
+                }
             }
 
             _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
             data->m_path               = new_path;
             data->m_name               = new_path.filename().string();
+            data->m_parent_archive     = 0;  // Reset cache
 
             // Reparent index if necessary
             ModelIndex parent = getParent_(index);
@@ -1739,7 +1791,7 @@ namespace Toolbox {
             }
         }
 
-        if (validateIndex(getParentArchive(index))) {
+        if (validateIndex(getParentArchive_(index))) {
             event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
         }
 

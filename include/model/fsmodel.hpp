@@ -93,6 +93,7 @@ namespace Toolbox {
 
         [[nodiscard]] const fs_path &getRoot() const &;
         void setRoot(const fs_path &path);
+        void setInteropPath(const fs_path &path);
 
         [[nodiscard]] FileSystemModelOptions getOptions() const;
         void setOptions(FileSystemModelOptions options);
@@ -189,6 +190,9 @@ namespace Toolbox {
         [[nodiscard]] size_t getFileSize_(const ModelIndex &index) const;
         [[nodiscard]] size_t getDirSize_(const ModelIndex &index, bool recursive) const;
 
+        [[nodiscard]] fs_path getPhysicalPath_(const ModelIndex &index) const;
+        [[nodiscard]] fs_path getHistoryStackPath_(const ModelIndex &index) const;
+
         // Implementation of public API for mutex locking reasons
         [[nodiscard]] std::any getData_(const ModelIndex &index, int role) const;
 
@@ -241,7 +245,7 @@ namespace Toolbox {
 
         virtual ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) const;
 
-        ModelIndex getParentArchive(const ModelIndex &index) const;
+        ModelIndex getParentArchive_(const ModelIndex &index) const;
 
         size_t pollChildren(const ModelIndex &index) const;
 
@@ -266,6 +270,8 @@ namespace Toolbox {
         std::unordered_map<UUID64, std::pair<event_listener_t, int>> m_listeners;
 
         fs_path m_root_path;
+        fs_path m_arc_manip_path;
+        fs_path m_history_stack_path;
 
         FileSystemModelOptions m_options = FileSystemModelOptions::NONE;
         bool m_read_only                 = false;

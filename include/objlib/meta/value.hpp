@@ -358,7 +358,7 @@ namespace Toolbox::Object {
             m_max_buf = Buffer();
             m_max_buf.setBuf(&m_uint_max, sizeof(m_uint_max));
 
-            m_value_buf.alloc(meta_type_size(type));
+            m_value_buf.alloc(static_cast<uint32_t>(meta_type_size(type)));
             m_value_buf.initTo(0);
             switch (type) {
             case MetaType::TRANSFORM:
@@ -521,7 +521,7 @@ namespace Toolbox::Object {
     inline Result<std::string, std::string> getBuf(const Buffer &m_value_buf) {
         std::string out;
         for (size_t i = 0; i < m_value_buf.size(); ++i) {
-            char ch = m_value_buf.get<char>(i);
+            char ch = m_value_buf.get<char>(static_cast<uint32_t>(i));
             if (ch == '\0')
                 break;
 
@@ -540,11 +540,11 @@ namespace Toolbox::Object {
     template <>
     [[nodiscard]]
     inline bool setBuf(Buffer &m_value_buf, const std::string &value) {
-        m_value_buf.resize(value.size() + 1);
+        m_value_buf.resize(static_cast<uint32_t>(value.size() + 1));
         for (size_t i = 0; i < value.size(); ++i) {
-            m_value_buf.set<char>(i, value[i]);
+            m_value_buf.set<char>(static_cast<uint32_t>(i), value[i]);
         }
-        m_value_buf.set<char>(value.size(), '\0');
+        m_value_buf.set<char>(static_cast<uint32_t>(value.size()), '\0');
         return true;
     }
 
