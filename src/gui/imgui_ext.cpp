@@ -1318,7 +1318,20 @@ bool ImGui::BeginPopupContextItem(const char *str_id, ImGuiPopupFlags popup_flag
                                      // Using LastItemID as a Popup ID won't conflict!
     IM_ASSERT(id != 0);  // You cannot pass a NULL str_id if the last item has no identifier (e.g. a
                          // Text() item)
-    int mouse_button = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
+    const ImGuiPopupFlags button_flag = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
+    ImGuiMouseButton mouse_button;
+    switch (button_flag) {
+    case ImGuiPopupFlags_MouseButtonLeft:
+        mouse_button = ImGuiMouseButton_Left;
+        break;
+    case ImGuiPopupFlags_MouseButtonMiddle:
+        mouse_button = ImGuiMouseButton_Middle;
+        break;
+    case ImGuiPopupFlags_MouseButtonRight:
+    default:
+        mouse_button = ImGuiMouseButton_Right;
+        break;
+    }
     if (IsMouseReleased(mouse_button) && IsItemHovered(hover_flags))
         OpenPopupEx(id, popup_flags);
     return BeginPopupEx(id, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
@@ -1334,7 +1347,20 @@ bool ImGui::BeginPopupContextItem(ImGuiID id, ImGuiPopupFlags popup_flags,
 
     IM_ASSERT(id != 0);  // You cannot pass a NULL str_id if the last item has no identifier (e.g. a
                          // Text() item)
-    int mouse_button = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
+    const ImGuiPopupFlags button_flag = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
+    ImGuiMouseButton mouse_button;
+    switch (button_flag) {
+    case ImGuiPopupFlags_MouseButtonLeft:
+        mouse_button = ImGuiMouseButton_Left;
+        break;
+    case ImGuiPopupFlags_MouseButtonMiddle:
+        mouse_button = ImGuiMouseButton_Middle;
+        break;
+    case ImGuiPopupFlags_MouseButtonRight:
+    default:
+        mouse_button = ImGuiMouseButton_Right;
+        break;
+    }
     if (IsMouseReleased(mouse_button) && IsItemHovered(hover_flags))
         OpenPopupEx(id, popup_flags);
     return BeginPopupEx(id, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
@@ -1353,7 +1379,20 @@ bool ImGui::BeginPopupContextConditional(const char *str_id, ImGuiPopupFlags pop
                                      // Using LastItemID as a Popup ID won't conflict!
     IM_ASSERT(id != 0);  // You cannot pass a NULL str_id if the last item has no identifier (e.g. a
                          // Text() item)
-    int mouse_button = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
+    const ImGuiPopupFlags button_flag = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
+    ImGuiMouseButton mouse_button;
+    switch (button_flag) {
+    case ImGuiPopupFlags_MouseButtonLeft:
+        mouse_button = ImGuiMouseButton_Left;
+        break;
+    case ImGuiPopupFlags_MouseButtonMiddle:
+        mouse_button = ImGuiMouseButton_Middle;
+        break;
+    case ImGuiPopupFlags_MouseButtonRight:
+    default:
+        mouse_button = ImGuiMouseButton_Right;
+        break;
+    }
     if (IsMouseReleased(mouse_button) && condition)
         OpenPopupEx(id, popup_flags);
     return BeginPopupEx(id, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
@@ -1372,7 +1411,20 @@ bool ImGui::BeginPopupContextForRect(const char *str_id, const ImRect &rect,
                                      // Using LastItemID as a Popup ID won't conflict!
     IM_ASSERT(id != 0);  // You cannot pass a NULL str_id if the last item has no identifier (e.g. a
                          // Text() item)
-    int mouse_button = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
+    const ImGuiPopupFlags button_flag = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
+    ImGuiMouseButton mouse_button;
+    switch (button_flag) {
+    case ImGuiPopupFlags_MouseButtonLeft:
+        mouse_button = ImGuiMouseButton_Left;
+        break;
+    case ImGuiPopupFlags_MouseButtonMiddle:
+        mouse_button = ImGuiMouseButton_Middle;
+        break;
+    case ImGuiPopupFlags_MouseButtonRight:
+    default:
+        mouse_button = ImGuiMouseButton_Right;
+        break;
+    }
     if (IsMouseReleased(mouse_button) && IsMouseHoveringRect(rect.Min, rect.Max, false))
         OpenPopupEx(id, popup_flags);
     return BeginPopupEx(id, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |

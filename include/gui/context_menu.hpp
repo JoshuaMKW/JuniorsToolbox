@@ -221,6 +221,7 @@ namespace Toolbox::UI {
             mouse_button = ImGuiMouseButton_Middle;
             break;
         case ImGuiPopupFlags_MouseButtonRight:
+        default:
             mouse_button = ImGuiMouseButton_Right;
             break;
         }

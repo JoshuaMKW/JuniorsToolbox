@@ -2160,6 +2160,10 @@ namespace Toolbox {
         ModelIndex child_index = m_source_model->getIndex(uuid);
         bool is_file =
             child_index.data<_FileSystemIndexData>()->m_type == _FileSystemIndexData::Type::FILE;
+        #if 1
+        is_file |=
+            child_index.data<_FileSystemIndexData>()->m_type == _FileSystemIndexData::Type::ARCHIVE;
+        #endif
 
         if (isDirsOnly() && is_file) {
             return true;

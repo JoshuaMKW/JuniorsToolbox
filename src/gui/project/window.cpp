@@ -228,8 +228,9 @@ namespace Toolbox::UI {
                     ImGui::CalcItemSize({0.0f, 0.0f}, pin_size.x + style.FramePadding.x * 2.0f,
                                         pin_size.y + style.FramePadding.y * 2.0f);
                 const ImVec2 font_adj = {0.0f, ImGui::GetFontSize() * 0.25f};
-                const ImRect bb =
+                ImRect bb =
                     ImRect(pin_icon_pos + font_adj, pin_icon_pos + pin_item_size + font_adj);
+                bb.TranslateY(-ImGui::GetScrollY());
                 ImGui::RenderTextClipped(bb.Min + style.FramePadding, bb.Max - style.FramePadding,
                                          ICON_FA_THUMBTACK, nullptr, &pin_size, ImVec2(0.5f, 0.5f),
                                          &bb);
