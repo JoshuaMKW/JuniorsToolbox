@@ -91,6 +91,10 @@ namespace Toolbox {
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
+        [[nodiscard]] bool validateIndex(const ModelIndex& index) const override {
+            return IDataModel::validateIndex(index) && m_index_map.contains(index.getUUID());
+        }
+
         [[nodiscard]] const fs_path &getRoot() const &;
         void setRoot(const fs_path &path);
         void setInteropPath(const fs_path &path);

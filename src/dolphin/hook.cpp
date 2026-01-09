@@ -248,7 +248,7 @@ namespace Toolbox::Dolphin {
                     m_proc_info = proc_info.value();
                     break;
                 } else {
-                    TOOLBOX_DEBUG_LOG_V("{}", proc_info.error().m_message[0]);
+                    //TOOLBOX_DEBUG_LOG_V("{}", proc_info.error().m_message[0]);
                 }
                 i += 1;
             };

@@ -44,6 +44,8 @@ namespace Toolbox::UI {
         if (!ImGui::BeginMenuBar()) {
             return;
         }
+        
+        std::unique_lock lk(m_async_io_mutex);
 
         ImVec2 avail_size = ImGui::GetContentRegionAvail();
 
@@ -92,16 +94,16 @@ namespace Toolbox::UI {
 
         ImGui::Separator();
 
-        std::vector<ModelIndex> path_chain = {m_view_index};
+        std::vector<ModelIndex> path_chain;
         path_chain.reserve(16);
 
         ModelIndex the_index = m_view_index;
         while (true) {
-            the_index = m_file_system_model->getParent(the_index);
             if (!m_file_system_model->validateIndex(the_index)) {
                 break;
             }
             path_chain.emplace_back(the_index);
+            the_index = m_file_system_model->getParent(the_index);
         }
 
         const float font_scale = ImGui::GetFontSize() / 16.0f;
@@ -169,13 +171,13 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::onRenderBody(TimeStep delta_time) {
+        std::unique_lock lk(m_async_io_mutex);
+
         renderProjectTreeView();
         ImGui::SameLine();
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
         renderProjectFolderView();
-        renderProjectFolderButton();
-        renderProjectFileButton();
 
         m_did_drag_drop = DragDropManager::instance().getCurrentDragAction() != nullptr;
     }
@@ -246,8 +248,50 @@ namespace Toolbox::UI {
                 ImGui::Separator();
             }
 
+            ModelIndex context_index = m_tree_selection_mgr.getState().getLastSelected();
+
             ModelIndex index = m_tree_proxy->getIndex(0, 0);
             renderFolderTree(index);
+
+            ImVec2 center = ImGui::GetWindowViewport()->GetCenter();
+            ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+            if (ImGui::BeginPopupModal("Delete?##TreeView", NULL,
+                                       ImGuiWindowFlags_AlwaysAutoResize)) {
+                std::string message = "";
+
+                if (m_tree_proxy->validateIndex(context_index)) {
+                    message = TOOLBOX_FORMAT_FN("Are you sure you want to delete {}?",
+                                                m_tree_proxy->getDisplayText(context_index));
+                } else {
+                    TOOLBOX_ERROR("Selected 0 files to delete!");
+                }
+                ImGui::Text(message.c_str());
+                ImGui::Separator();
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+                ImGui::Checkbox("Don't ask me next time", &m_delete_without_request);
+                ImGui::PopStyleVar();
+                if (ImGui::Button("OK", ImVec2(120, 0))) {
+                    std::thread t = std::thread([&]() {
+                        std::unique_lock lk(m_async_io_mutex);
+                        optionTreeViewDeleteProc_();
+                    });
+                    t.detach();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SetItemDefaultFocus();
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            } else {
+                // Delete stuff
+                if (m_tree_view_delete_requested) {
+                    ImGui::OpenPopup("Delete?##TreeView");
+                    m_tree_view_delete_requested = false;
+                }
+            }
 
             m_tree_view_context_menu.tryRender(m_tree_selection_mgr.getState().getLastSelected(),
                                                ImGuiHoveredFlags_AllowWhenBlockedByPopup |
@@ -318,25 +362,29 @@ namespace Toolbox::UI {
                 bool any_items_hovered = false;
 
                 ModelIndex view_index = m_view_proxy->toProxyIndex(m_view_index);
-                const IDataModel::index_container &selection =
+                const IDataModel::index_container &view_selection =
                     m_folder_selection_mgr.getState().getSelection();
 
                 ImVec2 row_box_size = {box_base_width, box_base_height};
 
-                for (size_t i = 0; i < m_view_proxy->getRowCount(view_index); ++i) {
+                const size_t folder_size = m_view_proxy->getRowCount(view_index);
+                for (size_t i = 0; i < folder_size; ++i) {
                     ModelIndex child_index = m_view_proxy->getIndex(i, 0, view_index);
                     if (!m_view_proxy->validateIndex(child_index)) {
                         TOOLBOX_DEBUG_LOG_V("Invalid index: {}", i);
-                        continue;
+                        break;
                     }
 
                     if ((i % x_count) == 0) {
-                        row_box_size = {box_base_width, box_base_height};
-                        size_t row_end =
-                            std::min(i + x_count, m_view_proxy->getRowCount(view_index));
+                        row_box_size   = {box_base_width, box_base_height};
+                        size_t row_end = std::min(i + x_count, folder_size);
                         ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0.0f);
                         for (int j = i; j < row_end; ++j) {
                             ModelIndex test_index = m_view_proxy->getIndex(j, 0, view_index);
+                            if (!m_view_proxy->validateIndex(test_index)) {
+                                TOOLBOX_DEBUG_LOG_V("Invalid index: {},{}", i, j);
+                                break;
+                            }
                             std::string item_name = m_view_proxy->getDisplayText(test_index);
                             row_box_size.y =
                                 ImMax(row_box_size.y, box_base_height +
@@ -440,7 +488,7 @@ namespace Toolbox::UI {
                                 // Pop text color
                                 ImGui::PopStyleColor(1);
                                 if (edited) {
-                                    m_is_valid_name = isValidName(m_rename_buffer, selection);
+                                    m_is_valid_name = isValidName(m_rename_buffer, view_selection);
                                 }
                                 if (ImGui::IsItemDeactivatedAfterEdit() && m_is_valid_name) {
                                     if (std::strlen(m_rename_buffer) == 0) {
@@ -565,19 +613,21 @@ namespace Toolbox::UI {
                     }
                 }
 
-                ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+                ImGui::PopStyleVar(5);
+
+                ImVec2 center = ImGui::GetWindowViewport()->GetCenter();
                 ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
-                if (ImGui::BeginPopupModal("Delete?", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                if (ImGui::BeginPopupModal("Delete?##FolderView", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
                     std::string message = "";
 
-                    if (selection.size() == 1) {
+                    if (view_selection.size() == 1) {
                         message = TOOLBOX_FORMAT_FN("Are you sure you want to delete {}?",
-                                                    m_view_proxy->getDisplayText(selection[0]));
-                    } else if (selection.size() > 1) {
+                                                    m_view_proxy->getDisplayText(view_selection[0]));
+                    } else if (view_selection.size() > 1) {
                         message = TOOLBOX_FORMAT_FN(
                             "Are you sure you want to delete the {} selected files?",
-                            selection.size());
+                            view_selection.size());
                     } else {
                         TOOLBOX_ERROR("Selected 0 files to delete!");
                     }
@@ -587,8 +637,10 @@ namespace Toolbox::UI {
                     ImGui::Checkbox("Don't ask me next time", &m_delete_without_request);
                     ImGui::PopStyleVar();
                     if (ImGui::Button("OK", ImVec2(120, 0))) {
-                        std::thread t =
-                            std::thread(TOOLBOX_BIND_EVENT_FN(optionFolderViewDeleteProc_));
+                        std::thread t = std::thread([&]() {
+                            std::unique_lock lk(m_async_io_mutex);
+                            optionFolderViewDeleteProc_();
+                        });
                         t.detach();
                         ImGui::CloseCurrentPopup();
                     }
@@ -600,13 +652,11 @@ namespace Toolbox::UI {
                     ImGui::EndPopup();
                 } else {
                     // Delete stuff
-                    if (m_delete_requested) {
-                        ImGui::OpenPopup("Delete?");
-                        m_delete_requested = false;
+                    if (m_folder_view_delete_requested) {
+                        ImGui::OpenPopup("Delete?##FolderView");
+                        m_folder_view_delete_requested = false;
                     }
                 }
-
-                ImGui::PopStyleVar(5);
             }
         }
         ImGui::EndChild();
@@ -689,7 +739,11 @@ namespace Toolbox::UI {
             return;
         }
 
-        std::thread t = std::thread(TOOLBOX_BIND_EVENT_FN(evInsertProc_), ev->getMimeData());
+        std::thread t = std::thread(
+            [&]() {
+                std::unique_lock lk(m_async_io_mutex);
+                evInsertProc_(ev->getMimeData());
+            });
         t.detach();
 
         ev->accept();
@@ -822,7 +876,7 @@ namespace Toolbox::UI {
                             std::thread(TOOLBOX_BIND_EVENT_FN(optionFolderViewDeleteProc_));
                         t.detach();
                     } else {
-                        m_delete_requested = true;
+                        m_folder_view_delete_requested = true;
                     }
                 })
             .addOption(
@@ -976,7 +1030,7 @@ namespace Toolbox::UI {
                             std::thread(TOOLBOX_BIND_EVENT_FN(optionTreeViewDeleteProc_));
                         t.detach();
                     } else {
-                        m_delete_requested = true;
+                        m_tree_view_delete_requested = true;
                     }
                 })
             //.addOption(
@@ -1251,15 +1305,20 @@ namespace Toolbox::UI {
     }
 
     bool ProjectViewWindow::isViewedAncestor(const ModelIndex &index) {
-        if (m_view_index == m_tree_proxy->toSourceIndex(index)) {
+        if (!m_tree_proxy->validateIndex(index)) {
             return true;
         }
-        for (size_t i = 0; i < m_tree_proxy->getRowCount(index); ++i) {
-            ModelIndex child_index = m_tree_proxy->getIndex(i, 0, index);
-            if (isViewedAncestor(child_index)) {
+
+        const ModelIndex target_index = m_tree_proxy->toSourceIndex(index);
+
+        ModelIndex cur_index   = m_view_index;
+        while (m_file_system_model->validateIndex(cur_index)) {
+            if (cur_index == target_index) {
                 return true;
             }
+            cur_index = m_file_system_model->getParent(cur_index);
         }
+
         return false;
     }
 
@@ -1368,7 +1427,28 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::optionTreeViewDeleteProc_() {
-        m_tree_selection_mgr.actionDeleteSelection();
+        ModelSelectionState state    = m_tree_selection_mgr.getState();
+        const ModelIndex to_delete   = m_tree_proxy->toSourceIndex(state.getLastSelected());
+
+        const fs_path index_path = m_file_system_model->getPath(m_view_index);
+        const fs_path view_path  = m_file_system_model->getPath(to_delete);
+
+        bool is_subpath = [](const fs_path &path, const fs_path &base) {
+            fs_path rel = Filesystem::relative(path, base).value_or("");
+            return !rel.empty() && rel.native()[0] != '.';
+        }(index_path, view_path);
+
+        if (is_subpath) {
+            TOOLBOX_DEBUG_LOG(
+                "[PROJECT] Deleted index is an ancestor of the current view, updating "
+                "view to parent path.");
+            m_view_index = m_file_system_model->getParent(to_delete);
+        }
+
+        if (!m_file_system_model->removeIndex(to_delete)) {
+            TOOLBOX_DEBUG_LOG("[PROJECT] Failed to delete index from tree view, maintaining view state.");
+            return;
+        }
     }
 
     void ProjectViewWindow::optionPinnedViewDeleteProc_() {

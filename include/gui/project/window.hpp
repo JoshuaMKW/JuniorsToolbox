@@ -149,7 +149,8 @@ namespace Toolbox::UI {
         bool m_is_valid_name = true;
 
         bool m_delete_without_request = false;
-        bool m_delete_requested       = false;
+        bool m_folder_view_delete_requested = false;
+        bool m_tree_view_delete_requested = false;
 
         bool m_did_drag_drop = false;
 
@@ -159,6 +160,8 @@ namespace Toolbox::UI {
         size_t m_view_history_index = 0;
 
         std::array<char, 128> m_search_buf;
+
+        std::mutex m_async_io_mutex;
     };
 
 }  // namespace Toolbox::UI

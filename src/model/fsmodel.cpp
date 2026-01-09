@@ -168,10 +168,10 @@ namespace Toolbox {
         {
             std::scoped_lock lock(m_mutex);
             m_watchdog.addPath(path);
-            m_root_path  = path;
+            m_root_path = path;
 
             ModelIndex root = makeIndex(path, 0, ModelIndex());
-            m_root_index = root.getUUID();
+            m_root_index    = root.getUUID();
             if (canFetchMore_(root)) {
                 fetchMore_(root);
             }
@@ -179,7 +179,7 @@ namespace Toolbox {
     }
 
     void FileSystemModel::setInteropPath(const fs_path &path) {
-        m_arc_manip_path = path / ".archives";
+        m_arc_manip_path     = path / ".archives";
         m_history_stack_path = path / ".history";
     }
 
@@ -564,7 +564,7 @@ namespace Toolbox {
     fs_path FileSystemModel::getPhysicalPath_(const ModelIndex &index) const {
         TOOLBOX_ASSERT(!m_arc_manip_path.empty(),
                        "Interop path must be specified for all FileSystemModel instances");
-        
+
         const ModelIndex parent_archive = getParentArchive_(index);
         if (!validateIndex(parent_archive)) {
             return getPath_(index);
@@ -873,10 +873,11 @@ namespace Toolbox {
         if (result) {
             sig_queue.emplace_back(index, event_flags);
 
+            ModelIndex parent = getParent_(index);
+
             m_path_map.erase(index.data<_FileSystemIndexData>()->m_path_hash);
             delete index.data<_FileSystemIndexData>();
 
-            ModelIndex parent = getParent_(index);
             if (validateIndex(parent)) {
                 _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
                 parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
@@ -956,10 +957,11 @@ namespace Toolbox {
         if (result) {
             sig_queue.emplace_back(index, event_flags);
 
+            ModelIndex parent = getParent_(index);
+
             m_path_map.erase(index.data<_FileSystemIndexData>()->m_path_hash);
             delete index.data<_FileSystemIndexData>();
 
-            ModelIndex parent = getParent_(index);
             if (validateIndex(parent)) {
                 _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
                 parent_data->m_children.erase(std::remove(parent_data->m_children.begin(),
@@ -1133,29 +1135,31 @@ namespace Toolbox {
             return ModelIndex();
         }
 
+        const fs_path abs_path = (m_root_path / path).lexically_normal();
+
+        // Check if path is an unfetched child of the root
+        if (!Filesystem::is_directory(abs_path).value_or(false)) {
+            return ModelIndex();  // The path does not exist so return invalid
+        }
+
+        const fs_path rel_path = Filesystem::relative(abs_path, m_root_path).value_or("");
+
         std::hash<fs_path> hasher;
-        size_t path_hash = hasher(path);
+        size_t path_hash = hasher(rel_path);
 
         auto index_it = m_path_map.find(path_hash);
         if (index_it != m_path_map.end()) {
             return index_it->second;
         }
 
-        // Check if path is an unfetched child of the root
-        const fs_path abs_path = (m_root_path / path).lexically_normal();
-        if (!Filesystem::is_directory(abs_path).value_or(false)) {
-            return ModelIndex();  // The path does not exist so return invalid
-        }
-        
-        fs_path rel_path = Filesystem::relative(abs_path, m_root_path).value_or("");
-
         std::vector<fs_path> parent_paths;
         parent_paths.reserve(16);
 
-        while (!rel_path.empty()) {
-            parent_paths.emplace_back(rel_path);
+        fs_path proc_path = rel_path;
+        while (!proc_path.empty()) {
+            parent_paths.emplace_back(proc_path);
 
-            size_t this_hash    = std::hash<fs_path>()(rel_path);
+            size_t this_hash = std::hash<fs_path>()(proc_path);
             auto existing_it = m_path_map.find(this_hash);
             if (existing_it != m_path_map.end()) {
                 if (validateIndex(existing_it->second)) {
@@ -1163,7 +1167,7 @@ namespace Toolbox {
                 }
             }
 
-            rel_path = rel_path.parent_path();
+            proc_path = proc_path.parent_path();
         }
 
         for (auto r_it = parent_paths.rbegin(); r_it != parent_paths.rend(); ++r_it) {
@@ -1172,7 +1176,9 @@ namespace Toolbox {
             if (existing_it == m_path_map.end()) {
                 break;
             }
-            fetchMore_(existing_it->second);
+            if (canFetchMore_(existing_it->second)) {
+                fetchMore_(existing_it->second);
+            }
         }
 
         auto existing_it = m_path_map.find(path_hash);
@@ -1183,7 +1189,12 @@ namespace Toolbox {
         return existing_it->second;
     }
 
-    ModelIndex FileSystemModel::getIndex_(const UUID64 &uuid) const { return m_index_map.at(uuid); }
+    ModelIndex FileSystemModel::getIndex_(const UUID64 &uuid) const {
+        if (!m_index_map.contains(uuid)) {
+            return ModelIndex();
+        }
+        return m_index_map.at(uuid);
+    }
 
     ModelIndex FileSystemModel::getIndex_(int64_t row, int64_t column,
                                           const ModelIndex &parent) const {
@@ -1242,6 +1253,8 @@ namespace Toolbox {
             return ModelIndex();
         }
 
+        TOOLBOX_CORE_ASSERT(m_index_map.contains(id),
+                            "Cached parent ID was non-zero, yet didn't exist in the index map!");
         return m_index_map.at(id);
     }
 
@@ -1401,7 +1414,7 @@ namespace Toolbox {
         if (rel_path == "") {
             return ModelIndex();
         }
-        
+
         _FileSystemIndexData *parent_data = nullptr;
 
         if (!validateIndex(parent)) {
@@ -1436,7 +1449,7 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        Filesystem::last_write_time(data->m_path)
+        Filesystem::last_write_time(path)
             .and_then([&](Filesystem::file_time_type &&time) {
                 data->m_date = std::move(time);
                 return Result<Filesystem::file_time_type, FSError>();
@@ -1448,7 +1461,7 @@ namespace Toolbox {
             });
 
         if (data->m_type == _FileSystemIndexData::Type::FILE) {
-            Filesystem::file_size(data->m_path)
+            Filesystem::file_size(path)
                 .and_then([&](size_t size) {
                     data->m_size = size;
                     return Result<size_t, FSError>();
@@ -1468,9 +1481,7 @@ namespace Toolbox {
         {
             std::string ext = data->m_path.extension().string();
 
-            if (!validateIndex(index)) {
-                data->m_icon = m_icon_map["_Invalid"];
-            } else if (data->m_type == _FileSystemIndexData::Type::DIRECTORY) {
+            if (data->m_type == _FileSystemIndexData::Type::DIRECTORY) {
                 data->m_icon = m_icon_map["_Folder"];
             } else if (data->m_type == _FileSystemIndexData::Type::ARCHIVE) {
                 data->m_icon = m_icon_map["_Archive"];
@@ -1487,7 +1498,7 @@ namespace Toolbox {
 
         if (!validateIndex(parent)) {
             index.setData(data);
-            m_index_map[index.getUUID()] = index;
+            m_index_map[index.getUUID()]  = index;
             m_path_map[data->m_path_hash] = index;
         } else {
             data->m_parent = parent.getUUID();
@@ -1499,7 +1510,7 @@ namespace Toolbox {
                 parent_data->m_size += 1;
             }
 
-            m_index_map[index.getUUID()] = index;
+            m_index_map[index.getUUID()]  = index;
             m_path_map[data->m_path_hash] = index;
         }
 
@@ -1508,7 +1519,7 @@ namespace Toolbox {
 
     ModelIndex FileSystemModel::getParentArchive_(const ModelIndex &index) const {
         _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
-        
+
         // Check the search cache
         if (data->m_parent_archive != 0) {
             ModelIndex parent_archive = getIndex_(data->m_parent_archive);
@@ -1523,7 +1534,7 @@ namespace Toolbox {
                 data->m_parent_archive = parent.getUUID();
                 return parent;
             }
-            
+
             _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
 
             // Check the search cache
@@ -1550,7 +1561,8 @@ namespace Toolbox {
 
         if (isDirectory_(index)) {
             // Count the children in the filesystem
-            for (const auto &entry : Filesystem::directory_iterator(m_root_path / getPath_(index))) {
+            for (const auto &entry :
+                 Filesystem::directory_iterator(m_root_path / getPath_(index))) {
                 count += 1;
             }
         } else if (isArchive_(index)) {
@@ -1599,7 +1611,7 @@ namespace Toolbox {
 
             _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
 
-            Filesystem::last_write_time(data->m_path)
+            Filesystem::last_write_time(m_root_path / data->m_path)
                 .and_then([&](Filesystem::file_time_type &&time) {
                     data->m_date = std::move(time);
                     return Result<Filesystem::file_time_type, FSError>();
@@ -1648,7 +1660,7 @@ namespace Toolbox {
 
             _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
 
-            Filesystem::last_write_time(data->m_path)
+            Filesystem::last_write_time(m_root_path / data->m_path)
                 .and_then([&](Filesystem::file_time_type &&time) {
                     data->m_date = std::move(time);
                     return Result<Filesystem::file_time_type, FSError>();
@@ -1659,7 +1671,7 @@ namespace Toolbox {
                     return Result<Filesystem::file_time_type, FSError>();
                 });
 
-            Filesystem::file_size(data->m_path)
+            Filesystem::file_size(m_root_path / data->m_path)
                 .and_then([&](size_t size) {
                     data->m_size = size;
                     return Result<size_t, FSError>();
@@ -1670,7 +1682,7 @@ namespace Toolbox {
                     return Result<size_t, FSError>();
                 });
 
-            if (Filesystem::is_directory(data->m_path).value_or(false)) {
+            if (Filesystem::is_directory(m_root_path / data->m_path).value_or(false)) {
                 data->m_type = _FileSystemIndexData::Type::DIRECTORY;
             } else if (Filesystem::is_regular_file(data->m_path).value_or(false)) {
                 if (ResourceArchive::IsFilePathRARC(data->m_path)) {
@@ -2015,7 +2027,7 @@ namespace Toolbox {
     }
 
     size_t FileSystemModelSortFilterProxy::getRowCount(const ModelIndex &index) const {
-        ModelIndex &&source_index     = toSourceIndex(index);
+        ModelIndex &&source_index = toSourceIndex(index);
 
         u64 map_key = source_index.getUUID();
         if (!m_source_model->validateIndex(source_index)) {
@@ -2157,13 +2169,17 @@ namespace Toolbox {
     }
 
     bool FileSystemModelSortFilterProxy::isFiltered(const UUID64 &uuid) const {
-        ModelIndex child_index = m_source_model->getIndex(uuid);
+        ModelIndex child_index = getIndex(uuid);
+        if (!validateIndex(child_index)) {
+            return false;
+        }
+
         bool is_file =
             child_index.data<_FileSystemIndexData>()->m_type == _FileSystemIndexData::Type::FILE;
-        #if 1
+#if 1
         is_file |=
             child_index.data<_FileSystemIndexData>()->m_type == _FileSystemIndexData::Type::ARCHIVE;
-        #endif
+#endif
 
         if (isDirsOnly() && is_file) {
             return true;
@@ -2181,6 +2197,10 @@ namespace Toolbox {
     }
 
     void FileSystemModelSortFilterProxy::cacheIndex_(const ModelIndex &dir_index) const {
+        if (m_source_model->canFetchMore(dir_index)) {
+            m_source_model->fetchMore(dir_index);
+        }
+
         std::vector<UUID64> orig_children  = {};
         std::vector<UUID64> proxy_children = {};
 
@@ -2270,7 +2290,7 @@ namespace Toolbox {
         }
 
         // Build the row map
-        m_row_map[map_key] = {};
+        m_row_map[map_key].clear();
         m_row_map[map_key].resize(proxy_children.size());
 
         std::unordered_map<UUID64, size_t> orig_index_map;
@@ -2303,7 +2323,10 @@ namespace Toolbox {
             std::scoped_lock lock(m_cache_mutex);
 
             m_filter_map.clear();
-            m_row_map.clear();
+
+            if (m_row_map.contains(path.getUUID())) {
+                m_row_map.erase(path.getUUID());
+            }
         }
     }
 
