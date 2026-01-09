@@ -44,7 +44,7 @@ namespace Toolbox::UI {
         if (!ImGui::BeginMenuBar()) {
             return;
         }
-        
+
         std::unique_lock lk(m_async_io_mutex);
 
         ImVec2 avail_size = ImGui::GetContentRegionAvail();
@@ -203,7 +203,29 @@ namespace Toolbox::UI {
                 if (!m_tree_proxy->validateIndex(pinned)) {
                     continue;
                 }
-                std::string folder_name = m_tree_proxy->getDisplayText(pinned);
+
+                const bool is_child_of_root = [this](const ModelIndex &index) {
+                    size_t depth          = 0;
+                    ModelIndex parent_idx = m_tree_proxy->getParent(index);
+                    while (m_tree_proxy->validateIndex(parent_idx)) {
+                        parent_idx = m_tree_proxy->getParent(parent_idx);
+                        depth++;
+                        if (depth > 0) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }(pinned);
+
+                const fs_path folder_path     = m_tree_proxy->getPath(pinned);
+                const std::string folder_name = folder_path.filename().string();
+                const std::string parent_path_name =
+                    is_child_of_root
+                        ? Filesystem::relative(folder_path.parent_path(),
+                                               m_file_system_model->getRoot().parent_path())
+                              .value()
+                              .string()
+                        : "";
 
                 ImVec2 size = ImGui::CalcItemSize({0, 0}, pin_size.x + style.FramePadding.x * 2.0f,
                                                   pin_size.y + style.FramePadding.y * 2.0f);
@@ -212,10 +234,42 @@ namespace Toolbox::UI {
                     ImGui::GetWindowPos() +
                     ImVec2(shortcut_width - pin_size.x, ImGui::GetCursorPosY());
 
-                float cursor_y = ImGui::GetCursorPosY();
-                if (ImGui::Button(folder_name.c_str(), {shortcut_width, 0.0f})) {
+                const ImVec2 cursor_pos = ImGui::GetCursorPos();
+
+                std::string button_label = std::format("{}##{}", folder_name, folder_path.string());
+                const ImVec2 main_label_size = ImGui::CalcTextSize(
+                    button_label.c_str(), button_label.c_str() + button_label.size(), true);
+
+                if (ImGui::Button(button_label.c_str(), {shortcut_width, 0.0f})) {
                     setViewIndex(m_tree_proxy->toSourceIndex(pinned), false);
                 }
+
+                // Render a helper tag that shows the parent path
+                const ImVec2 button_size = ImGui::GetItemRectSize();
+                const ImVec2 content_pos = ImGui::GetWindowPos() + cursor_pos + style.FramePadding;
+
+                ImVec2 sub_label_pos = content_pos;
+                sub_label_pos.x += main_label_size.x;
+                sub_label_pos.x += style.ItemSpacing.x;
+
+                const ImVec2 sub_label_size =
+                    ImGui::CalcTextSize(parent_path_name.c_str(),
+                                        parent_path_name.c_str() + parent_path_name.size(), true);
+
+                ImRect label_bb =
+                    ImRect(sub_label_pos, content_pos + button_size - style.FramePadding * 2.0f);
+                label_bb.Max.x -= (style.ItemSpacing.x * 2.0f + pin_size.x);
+                label_bb.TranslateY(-ImGui::GetScrollY());
+
+                ImVec4 color = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+                color.w *= 0.5f;
+
+                ImGui::PushStyleColor(ImGuiCol_Text, color);
+                ImGui::RenderTextEllipsis(ImGui::GetWindowDrawList(), label_bb.Min, label_bb.Max,
+                    label_bb.Max.x, parent_path_name.c_str(),
+                                          parent_path_name.c_str() + parent_path_name.size(),
+                                          &sub_label_size);
+                ImGui::PopStyleColor();
 
                 const ImRect item_rect = {ImGui::GetItemRectMin(), ImGui::GetItemRectMax()};
                 if (ImGui::IsMouseHoveringRect(item_rect.Min, item_rect.Max)) {
@@ -225,17 +279,15 @@ namespace Toolbox::UI {
 
                 const float font_size = ImGui::GetFontSize();
                 ImGui::PushFont(nullptr, font_size * 0.75f);
-                const ImVec2 pin_size = ImGui::CalcTextSize(ICON_FA_THUMBTACK);
-                const ImVec2 pin_item_size =
-                    ImGui::CalcItemSize({0.0f, 0.0f}, pin_size.x + style.FramePadding.x * 2.0f,
-                                        pin_size.y + style.FramePadding.y * 2.0f);
-                const ImVec2 font_adj = {0.0f, ImGui::GetFontSize() * 0.25f};
-                ImRect bb =
-                    ImRect(pin_icon_pos + font_adj, pin_icon_pos + pin_item_size + font_adj);
-                bb.TranslateY(-ImGui::GetScrollY());
-                ImGui::RenderTextClipped(bb.Min + style.FramePadding, bb.Max - style.FramePadding,
-                                         ICON_FA_THUMBTACK, nullptr, &pin_size, ImVec2(0.5f, 0.5f),
-                                         &bb);
+                {
+                    const ImVec2 font_adj = {0.0f, ImGui::GetFontSize() * 0.25f};
+                    ImRect bb =
+                        ImRect(pin_icon_pos + font_adj, pin_icon_pos + pin_item_size + font_adj);
+                    bb.TranslateY(-ImGui::GetScrollY());
+                    ImGui::RenderTextClipped(bb.Min + style.FramePadding,
+                                             bb.Max - style.FramePadding, ICON_FA_THUMBTACK,
+                                             nullptr, &pin_size, ImVec2(0.5f, 0.5f), &bb);
+                }
                 ImGui::PopFont();
 
                 valid_shortcuts++;
@@ -618,12 +670,14 @@ namespace Toolbox::UI {
                 ImVec2 center = ImGui::GetWindowViewport()->GetCenter();
                 ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
-                if (ImGui::BeginPopupModal("Delete?##FolderView", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                if (ImGui::BeginPopupModal("Delete?##FolderView", NULL,
+                                           ImGuiWindowFlags_AlwaysAutoResize)) {
                     std::string message = "";
 
                     if (view_selection.size() == 1) {
-                        message = TOOLBOX_FORMAT_FN("Are you sure you want to delete {}?",
-                                                    m_view_proxy->getDisplayText(view_selection[0]));
+                        message =
+                            TOOLBOX_FORMAT_FN("Are you sure you want to delete {}?",
+                                              m_view_proxy->getDisplayText(view_selection[0]));
                     } else if (view_selection.size() > 1) {
                         message = TOOLBOX_FORMAT_FN(
                             "Are you sure you want to delete the {} selected files?",
@@ -739,11 +793,10 @@ namespace Toolbox::UI {
             return;
         }
 
-        std::thread t = std::thread(
-            [&]() {
-                std::unique_lock lk(m_async_io_mutex);
-                evInsertProc_(ev->getMimeData());
-            });
+        std::thread t = std::thread([&]() {
+            std::unique_lock lk(m_async_io_mutex);
+            evInsertProc_(ev->getMimeData());
+        });
         t.detach();
 
         ev->accept();
@@ -982,6 +1035,25 @@ namespace Toolbox::UI {
         m_tree_view_context_menu = ContextMenu<ModelIndex>();
 
         ContextMenuBuilder(&m_tree_view_context_menu)
+            .addOption(
+                "Pin Folder", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_P}),
+                [this](const ModelIndex &index) {
+                    return m_tree_proxy->isDirectory(index) &&
+                           m_tree_proxy->validateIndex(m_tree_proxy->getParent(index)) &&
+                           std::find(m_pinned_folders.begin(), m_pinned_folders.end(), index) ==
+                               m_pinned_folders.end();
+                },
+                [this](const ModelIndex &index) { m_pinned_folders.push_back(index); })
+            .addOption(
+                "Unpin Folder", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_P}),
+                [this](const ModelIndex &index) {
+                    return m_tree_proxy->isDirectory(index) &&
+                           m_tree_proxy->validateIndex(m_tree_proxy->getParent(index)) &&
+                           std::find(m_pinned_folders.begin(), m_pinned_folders.end(), index) !=
+                               m_pinned_folders.end();
+                },
+                [this](const ModelIndex &index) { std::erase(m_pinned_folders, index); })
+            .addDivider()
             .addOption(
                 "Open", KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_O}),
                 [this](const ModelIndex &index) { return m_tree_proxy->isDirectory(index); },
@@ -1311,7 +1383,7 @@ namespace Toolbox::UI {
 
         const ModelIndex target_index = m_tree_proxy->toSourceIndex(index);
 
-        ModelIndex cur_index   = m_view_index;
+        ModelIndex cur_index = m_view_index;
         while (m_file_system_model->validateIndex(cur_index)) {
             if (cur_index == target_index) {
                 return true;
@@ -1427,8 +1499,8 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::optionTreeViewDeleteProc_() {
-        ModelSelectionState state    = m_tree_selection_mgr.getState();
-        const ModelIndex to_delete   = m_tree_proxy->toSourceIndex(state.getLastSelected());
+        ModelSelectionState state  = m_tree_selection_mgr.getState();
+        const ModelIndex to_delete = m_tree_proxy->toSourceIndex(state.getLastSelected());
 
         const fs_path index_path = m_file_system_model->getPath(m_view_index);
         const fs_path view_path  = m_file_system_model->getPath(to_delete);
@@ -1446,7 +1518,8 @@ namespace Toolbox::UI {
         }
 
         if (!m_file_system_model->removeIndex(to_delete)) {
-            TOOLBOX_DEBUG_LOG("[PROJECT] Failed to delete index from tree view, maintaining view state.");
+            TOOLBOX_DEBUG_LOG(
+                "[PROJECT] Failed to delete index from tree view, maintaining view state.");
             return;
         }
     }

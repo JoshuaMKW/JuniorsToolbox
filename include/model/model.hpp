@@ -54,7 +54,12 @@ namespace Toolbox {
     public:
         friend class IDataModel;
 
-        ModelIndex() = default;
+        ModelIndex() {
+            m_uuid       = 0;
+            m_model_uuid = 0;
+            m_data.m_ptr = nullptr;
+        }
+
         ModelIndex(UUID64 model_uuid) : m_model_uuid(model_uuid) {}
         ModelIndex(UUID64 model_uuid, UUID64 self_uuid)
             : m_model_uuid(model_uuid), m_uuid(self_uuid) {}
