@@ -91,7 +91,7 @@ namespace Toolbox {
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
-        [[nodiscard]] bool validateIndex(const ModelIndex& index) const override {
+        [[nodiscard]] bool validateIndex(const ModelIndex &index) const override {
             return IDataModel::validateIndex(index) && m_index_map.contains(index.getUUID());
         }
 
@@ -203,7 +203,8 @@ namespace Toolbox {
         [[nodiscard]] std::string findUniqueName_(const ModelIndex &index,
                                                   const std::string &name) const;
 
-        ModelIndex mkdir_(const ModelIndex &parent, const std::string &name, SignalQueue &sig_queue);
+        ModelIndex mkdir_(const ModelIndex &parent, const std::string &name,
+                          SignalQueue &sig_queue);
         ModelIndex touch_(const ModelIndex &parent, const std::string &name,
                           SignalQueue &sig_queue);
         ModelIndex rename_(const ModelIndex &file, const std::string &new_name,
@@ -247,7 +248,8 @@ namespace Toolbox {
         void fetchMore_(const ModelIndex &index) const;
         // -- END -- //
 
-        virtual ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) const;
+        virtual ModelIndex makeIndex(const fs_path &path, int64_t row,
+                                     const ModelIndex &parent) const;
 
         ModelIndex getParentArchive_(const ModelIndex &index) const;
 
@@ -265,6 +267,8 @@ namespace Toolbox {
         void pathRemoved(const fs_path &path);
 
         void signalEventListeners(const ModelIndex &index, int flags);
+
+        void getFlatListOfChildren_(const ModelIndex &index, std::vector<UUID64> &flat_list) const;
 
     private:
         UUID64 m_uuid;
@@ -297,6 +301,11 @@ namespace Toolbox {
     public:
         FileSystemModelSortFilterProxy()  = default;
         ~FileSystemModelSortFilterProxy() = default;
+
+        [[nodiscard]] bool validateIndex(const ModelIndex &index) const override {
+            ModelIndex &&src_index = toSourceIndex(index);
+            return m_source_model->validateIndex(src_index);
+        }
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
@@ -384,11 +393,12 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex toProxyIndex(int64_t row, int64_t column,
                                               const ModelIndex &parent = ModelIndex()) const;
 
-        [[nodiscard]] bool isFiltered(const UUID64 &uuid) const;
+        [[nodiscard]] bool isSrcFiltered_(const UUID64 &uuid) const;
 
-        void cacheIndex(const ModelIndex &index) const;
-        void cacheIndex_(const ModelIndex &index) const;
-        void flushCache_() const;
+        u64 getCacheKey_(const ModelIndex &src_idx) const;
+        void cacheIndex(const ModelIndex &src_idx) const;
+        void flushCache() const;
+        bool isCached(const ModelIndex &src_idx) const;
 
         ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) {
             return ModelIndex();

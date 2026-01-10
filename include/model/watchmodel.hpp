@@ -450,7 +450,7 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex toProxyIndex(int64_t row, int64_t column,
                                               const ModelIndex &parent = ModelIndex()) const;
 
-        [[nodiscard]] bool isFiltered(const UUID64 &uuid) const;
+        [[nodiscard]] bool isSrcFiltered_(const UUID64 &uuid) const;
 
         void cacheIndex(const ModelIndex &index) const;
         void cacheIndex_(const ModelIndex &index) const;
