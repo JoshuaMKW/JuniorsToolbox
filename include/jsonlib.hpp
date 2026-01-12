@@ -15,6 +15,12 @@ struct JSONError : public Toolbox::BaseError {
     std::size_t m_byte;
 };
 
+template <typename json_t = nlohmann::json, typename value_t>
+inline auto JSONValueOr(const json_t &js, const std::string &key, value_t default_)
+    -> std::decay_t<decltype(js[key])> {
+    return js.contains(key) ? js[key] : std::decay_t<decltype(js[key])>(default_);
+}
+
 template <typename T>
 inline Toolbox::Result<T, JSONError> make_json_error(const std::string &context,
                                                      const std::string &reason, std::size_t byte) {

@@ -4,7 +4,7 @@
 
 namespace Toolbox::UI {
 
-    bool Toolbox::UI::ImagePainter::render(const ImageHandle &image) const {
+    bool ImagePainter::render(const ImageHandle &image) const {
         return render(image, {(float)image.m_image_width, (float)image.m_image_height});
     }
 

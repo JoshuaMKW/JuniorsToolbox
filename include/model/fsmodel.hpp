@@ -153,6 +153,7 @@ namespace Toolbox {
         [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
 
         [[nodiscard]] fs_path getPath(const ModelIndex &index) const;
+        [[nodiscard]] fs_path getRealPath(const ModelIndex &index) const;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
         [[nodiscard]] ModelIndex getSibling(int64_t row, int64_t column,
@@ -224,6 +225,7 @@ namespace Toolbox {
         [[nodiscard]] bool removeIndex_(const ModelIndex &index, SignalQueue &sig_queue);
 
         [[nodiscard]] fs_path getPath_(const ModelIndex &index) const;
+        [[nodiscard]] fs_path getRealPath_(const ModelIndex &index) const;
         [[nodiscard]] size_t getPathHash_(const ModelIndex &index) const;
 
         [[nodiscard]] ModelIndex getParent_(const ModelIndex &index) const;
@@ -354,6 +356,7 @@ namespace Toolbox {
                                           const ModelIndex &parent = ModelIndex()) const override;
         [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
         [[nodiscard]] fs_path getPath(const ModelIndex &index) const;
+        [[nodiscard]] fs_path getRealPath(const ModelIndex &index) const;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
         [[nodiscard]] ModelIndex getSibling(int64_t row, int64_t column,

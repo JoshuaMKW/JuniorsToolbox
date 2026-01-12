@@ -385,6 +385,11 @@ namespace Toolbox {
         return getPath_(index);
     }
 
+    fs_path FileSystemModel::getRealPath(const ModelIndex &index) const {
+        std::scoped_lock lock(m_mutex);
+        return getRealPath_(index);
+    }
+
     ModelIndex FileSystemModel::getParent(const ModelIndex &index) const {
         std::scoped_lock lock(m_mutex);
         return getParent_(index);
@@ -521,6 +526,7 @@ namespace Toolbox {
             {".sb",      FSTypeInfo("Sunscript",                "fs_sb.png")            },
             {".szs",     FSTypeInfo("Yaz0 Compressed Data",     "fs_szs.png")           },
             {".thp",     FSTypeInfo("DolphinOS Movie Data",     "fs_thp.png")           },
+            {".proj",    FSTypeInfo("Toolbox Project Info",     "fs_proj.png")          },
         };
         // clang-format on
         return s_type_map;
@@ -567,17 +573,17 @@ namespace Toolbox {
 
         const ModelIndex parent_archive = getParentArchive_(index);
         if (!validateIndex(parent_archive)) {
-            return getPath_(index);
+            return getRealPath_(index);
         }
 
-        return m_arc_manip_path / getPath_(index);
+        return m_arc_manip_path / getRealPath_(index);
     }
 
     fs_path FileSystemModel::getHistoryStackPath_(const ModelIndex &index) const {
         TOOLBOX_ASSERT(!m_history_stack_path.empty(),
                        "Interop path must be specified for all FileSystemModel instances");
 
-        return m_history_stack_path / getPath_(index);
+        return m_history_stack_path / getRealPath_(index);
     }
 
     std::any FileSystemModel::getData_(const ModelIndex &index, int role) const {
@@ -597,7 +603,7 @@ namespace Toolbox {
 
             Filesystem::file_time_type result = Filesystem::file_time_type();
 
-            fs_path path = getPath_(index);
+            fs_path path = getRealPath_(index);
             Filesystem::last_write_time(path)
                 .and_then([&](Filesystem::file_time_type &&time) {
                     result = std::move(time);
@@ -615,7 +621,7 @@ namespace Toolbox {
 
             Filesystem::file_status result = Filesystem::file_status();
 
-            fs_path path = getPath_(index);
+            fs_path path = getRealPath_(index);
             Filesystem::status(path)
                 .and_then([&](Filesystem::file_status &&status) {
                     result = std::move(status);
@@ -710,7 +716,7 @@ namespace Toolbox {
 #if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
         m_watchdog.sleep();
 #endif
-        fs_path path = getPath_(parent) / name;
+        fs_path path = getRealPath_(parent) / name;
 
 #if !TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
         m_watchdog.ignorePathOnce(path);
@@ -816,7 +822,7 @@ namespace Toolbox {
         }
 
         bool result        = false;
-        fs_path index_path = getPath_(index);
+        fs_path index_path = getRealPath_(index);
 
 #if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
         m_watchdog.sleep();
@@ -910,7 +916,7 @@ namespace Toolbox {
         }
 
         bool result        = false;
-        fs_path index_path = getPath_(index);
+        fs_path index_path = getRealPath_(index);
 
 #if TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
         m_watchdog.sleep();
@@ -925,11 +931,11 @@ namespace Toolbox {
         event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
 
         if (isFile_(index)) {
-            Filesystem::remove(getPath_(index))
+            Filesystem::remove(index_path)
                 .and_then([&](bool removed) {
                     if (!removed) {
                         TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove file: {}",
-                                        getPath_(index).string());
+                                        index_path.string());
                         return Result<bool, FSError>();
                     }
                     result = true;
@@ -943,11 +949,11 @@ namespace Toolbox {
         } else if (isArchive_(index)) {
             // TOOLBOX_ERROR("[FileSystemModel] Index is not a file!");
 
-            Filesystem::remove(getPath_(index))
+            Filesystem::remove(index_path)
                 .and_then([&](bool removed) {
                     if (!removed) {
                         TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove file: {}",
-                                        getPath_(index).string());
+                                        index_path.string());
                         return Result<bool, FSError>();
                     }
                     result = true;
@@ -990,7 +996,7 @@ namespace Toolbox {
     }
 
     void FileSystemModel::watchPathForUpdates_(const ModelIndex &index, bool watch) {
-        fs_path index_path = getPath_(index);
+        fs_path index_path = getRealPath_(index);
         m_watchdog.flagPathVisible(index_path, watch);
     }
 
@@ -1006,7 +1012,7 @@ namespace Toolbox {
 
         bool result = false;
 
-        fs_path from                      = getPath_(file);
+        fs_path from                      = getRealPath_(file);
         fs_path to                        = from.parent_path() / new_name;
         ModelIndex parent                 = getParent_(file);
         _FileSystemIndexData *parent_data = parent.data<_FileSystemIndexData>();
@@ -1244,6 +1250,14 @@ namespace Toolbox {
             return fs_path();
         }
 
+        return index.data<_FileSystemIndexData>()->m_path;
+    }
+
+    fs_path FileSystemModel::getRealPath_(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return fs_path();
+        }
+
         return m_root_path / index.data<_FileSystemIndexData>()->m_path;
     }
 
@@ -1337,7 +1351,7 @@ namespace Toolbox {
 #elif defined TOOLBOX_PLATFORM_WINDOWS
             const char *prefix = "file:///";
 #endif
-            std::string path = getPath_(index).string();
+            std::string path = getRealPath_(index).string();
             copied_paths.push_back(prefix + path);
         }
 
@@ -1411,7 +1425,7 @@ namespace Toolbox {
         data->m_children.clear();
 
         if (isDirectory_(index)) {
-            fs_path path = (m_root_path / getPath_(index)).lexically_normal();
+            fs_path path = getRealPath_(index).lexically_normal();
 
             size_t i = 0;
             for (const auto &entry : Filesystem::directory_iterator(path)) {
@@ -1574,7 +1588,7 @@ namespace Toolbox {
         if (isDirectory_(index)) {
             // Count the children in the filesystem
             for (const auto &entry :
-                 Filesystem::directory_iterator(m_root_path / getPath_(index))) {
+                 Filesystem::directory_iterator(getRealPath_(index))) {
                 count += 1;
             }
         } else if (isArchive_(index)) {
@@ -2029,12 +2043,17 @@ namespace Toolbox {
     }
 
     fs_path FileSystemModelSortFilterProxy::getPath(const ModelIndex &index) const {
-        ModelIndex source_index = toSourceIndex(index);
+        ModelIndex &&source_index = toSourceIndex(index);
         return m_source_model->getPath(std::move(source_index));
     }
 
+    fs_path FileSystemModelSortFilterProxy::getRealPath(const ModelIndex &index) const {
+        ModelIndex &&source_index = toSourceIndex(index);
+        return m_source_model->getRealPath(std::move(source_index));
+    }
+
     ModelIndex FileSystemModelSortFilterProxy::getParent(const ModelIndex &index) const {
-        ModelIndex source_index = toSourceIndex(index);
+        ModelIndex &&source_index = toSourceIndex(index);
         return toProxyIndex(m_source_model->getParent(std::move(source_index)));
     }
 

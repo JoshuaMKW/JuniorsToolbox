@@ -23,6 +23,7 @@
 #include "gui/project/rarc_processor.hpp"
 #include "gui/selection.hpp"
 #include "gui/window.hpp"
+#include "project/config.hpp"
 
 #include "model/fsmodel.hpp"
 
@@ -160,8 +161,11 @@ namespace Toolbox::UI {
         size_t m_view_history_index = 0;
 
         std::array<char, 128> m_search_buf;
+        std::string m_search_str;
 
         std::mutex m_async_io_mutex;
+
+        ProjectConfig m_project_config;
     };
 
 }  // namespace Toolbox::UI
