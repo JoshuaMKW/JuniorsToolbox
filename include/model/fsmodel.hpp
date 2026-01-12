@@ -41,6 +41,7 @@ namespace Toolbox {
         EVENT_FS_ANY =
             ModelEventFlags::EVENT_ANY | EVENT_IS_VIRTUAL | EVENT_IS_FILE | EVENT_IS_DIRECTORY,
     };
+    TOOLBOX_BITWISE_ENUM(FileSystemModelEventFlags)
 
     enum FileSystemDataRole {
         FS_DATA_ROLE_DATE = ModelDataRole::DATA_ROLE_USER,
@@ -186,7 +187,11 @@ namespace Toolbox {
         static const std::unordered_map<std::string, FSTypeInfo> &TypeMap();
 
     protected:
-        using SignalQueue = std::vector<std::pair<ModelIndex, int>>;
+        using Signal      = std::pair<ModelIndex, int>;
+        using SignalQueue = std::vector<Signal>;
+
+        [[nodiscard]] virtual Signal createSignalForIndex_(const ModelIndex &index,
+                                                           ModelEventFlags base_event) const;
 
         [[nodiscard]] bool isDirectory_(const ModelIndex &index) const;
         [[nodiscard]] bool isFile_(const ModelIndex &index) const;
@@ -204,17 +209,14 @@ namespace Toolbox {
         [[nodiscard]] std::string findUniqueName_(const ModelIndex &index,
                                                   const std::string &name) const;
 
-        ModelIndex mkdir_(const ModelIndex &parent, const std::string &name,
-                          SignalQueue &sig_queue);
-        ModelIndex touch_(const ModelIndex &parent, const std::string &name,
-                          SignalQueue &sig_queue);
-        ModelIndex rename_(const ModelIndex &file, const std::string &new_name,
-                           SignalQueue &sig_queue);
+        ModelIndex mkdir_(const ModelIndex &parent, const std::string &name);
+        ModelIndex touch_(const ModelIndex &parent, const std::string &name);
+        ModelIndex rename_(const ModelIndex &file, const std::string &new_name);
         ModelIndex copy_(const fs_path &file_path, const ModelIndex &new_parent,
-                         const std::string &new_name, SignalQueue &sig_queue);
+                         const std::string &new_name);
 
-        bool rmdir_(const ModelIndex &index, SignalQueue &sig_queue);
-        bool remove_(const ModelIndex &index, SignalQueue &sig_queue);
+        bool rmdir_(const ModelIndex &index);
+        bool remove_(const ModelIndex &index);
 
         void watchPathForUpdates_(const ModelIndex &index, bool watch);
 
@@ -222,7 +224,7 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex_(const UUID64 &path) const;
         [[nodiscard]] ModelIndex getIndex_(int64_t row, int64_t column,
                                            const ModelIndex &parent = ModelIndex()) const;
-        [[nodiscard]] bool removeIndex_(const ModelIndex &index, SignalQueue &sig_queue);
+        [[nodiscard]] bool removeIndex_(const ModelIndex &index);
 
         [[nodiscard]] fs_path getPath_(const ModelIndex &index) const;
         [[nodiscard]] fs_path getRealPath_(const ModelIndex &index) const;
@@ -243,7 +245,7 @@ namespace Toolbox {
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData_(const IDataModel::index_container &indexes) const;
         [[nodiscard]] bool
-        insertMimeData_(const ModelIndex &index, const MimeData &data, SignalQueue &sig_queue,
+        insertMimeData_(const ModelIndex &index, const MimeData &data,
                         ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index) const;

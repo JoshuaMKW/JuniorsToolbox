@@ -228,84 +228,127 @@ namespace Toolbox {
     }
 
     ModelIndex FileSystemModel::mkdir(const ModelIndex &parent, const std::string &name) {
-        SignalQueue pending_signals;
         ModelIndex result;
 
-        {
-            // 1. Acquire Lock
-            std::scoped_lock lock(m_mutex);
-            // 2. Perform logic, populating the signal queue
-            result = mkdir_(parent, name, pending_signals);
-        }
-        // 3. Lock is released here
+        const Signal pre_signal = createSignalForIndex_(parent, ModelEventFlags::EVENT_INSERT);
 
-        // 4. Signal listeners safely outside the lock
-        for (const auto &[index, flags] : pending_signals) {
-            signalEventListeners(index, flags);
+        signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = mkdir_(parent, name);
+        }
+
+        if (validateIndex(result)) {
+            const Signal post_signal =
+                createSignalForIndex_(result, ModelEventFlags::EVENT_INDEX_ADDED);
+            signalEventListeners(post_signal.first, post_signal.second |
+                                                        ModelEventFlags::EVENT_POST |
+                                                        ModelEventFlags::EVENT_SUCCESS);
+
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST |
+                                                       ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST);
         }
 
         return result;
     }
 
     ModelIndex FileSystemModel::touch(const ModelIndex &parent, const std::string &name) {
-        SignalQueue pending_signals;
         ModelIndex result;
+
+        const Signal pre_signal = createSignalForIndex_(parent, ModelEventFlags::EVENT_INSERT);
+
+        signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_PRE);
 
         {
             std::scoped_lock lock(m_mutex);
-            result = touch_(parent, name, pending_signals);
+            result = touch_(parent, name);
         }
 
-        for (const auto &[index, flags] : pending_signals) {
-            signalEventListeners(index, flags);
+        if (validateIndex(result)) {
+            const Signal post_signal = createSignalForIndex_(result, ModelEventFlags::EVENT_INDEX_ADDED);
+            signalEventListeners(post_signal.first, post_signal.second |
+                                                        ModelEventFlags::EVENT_POST |
+                                                        ModelEventFlags::EVENT_SUCCESS);
+
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST | ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST);
         }
 
         return result;
     }
 
     bool FileSystemModel::rmdir(const ModelIndex &index) {
-        SignalQueue pending_signals;
-        bool result;
+        bool result = false;
+
+        const Signal remove_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_REMOVED);
+
+        signalEventListeners(remove_signal.first,
+                             remove_signal.second | ModelEventFlags::EVENT_PRE);
 
         {
             std::scoped_lock lock(m_mutex);
-            result = rmdir_(index, pending_signals);
+            result = rmdir_(index);
         }
 
-        for (const auto &[idx, flags] : pending_signals) {
-            signalEventListeners(idx, flags);
+        if (result) {
+            signalEventListeners(remove_signal.first, remove_signal.second |
+                                                          ModelEventFlags::EVENT_POST |
+                                                          ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(remove_signal.first,
+                                 remove_signal.second | ModelEventFlags::EVENT_POST);
         }
 
         return result;
     }
 
     bool FileSystemModel::remove(const ModelIndex &index) {
-        SignalQueue pending_signals;
-        bool result;
+        bool result = false;
+
+        const Signal remove_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_REMOVED);
+
+        signalEventListeners(remove_signal.first,
+                             remove_signal.second | ModelEventFlags::EVENT_PRE);
 
         {
             std::scoped_lock lock(m_mutex);
-            result = remove_(index, pending_signals);
+            result = remove_(index);
         }
 
-        for (const auto &[idx, flags] : pending_signals) {
-            signalEventListeners(idx, flags);
+        if (result) {
+            signalEventListeners(remove_signal.first,
+                                 remove_signal.second | ModelEventFlags::EVENT_POST | ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(remove_signal.first,
+                                 remove_signal.second | ModelEventFlags::EVENT_POST);
         }
 
         return result;
     }
 
     ModelIndex FileSystemModel::rename(const ModelIndex &file, const std::string &new_name) {
-        SignalQueue pending_signals;
         ModelIndex result;
+
+        const Signal pre_signal = createSignalForIndex_(file, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_PRE);
 
         {
             std::scoped_lock lock(m_mutex);
-            result = rename_(file, new_name, pending_signals);
+            result = rename_(file, new_name);
         }
 
-        for (const auto &[idx, flags] : pending_signals) {
-            signalEventListeners(idx, flags);
+        if (validateIndex(result)) {
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST |
+                                                       ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST);
         }
 
         return result;
@@ -313,16 +356,28 @@ namespace Toolbox {
 
     ModelIndex FileSystemModel::copy(const fs_path &file, const ModelIndex &new_parent,
                                      const std::string &new_name) {
-        SignalQueue pending_signals;
         ModelIndex result;
+
+        const Signal pre_signal = createSignalForIndex_(new_parent, ModelEventFlags::EVENT_INSERT);
+
+        signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_PRE);
 
         {
             std::scoped_lock lock(m_mutex);
-            result = copy_(file, new_parent, new_name, pending_signals);
+            result = copy_(file, new_parent, new_name);
         }
 
-        for (const auto &[idx, flags] : pending_signals) {
-            signalEventListeners(idx, flags);
+        if (validateIndex(result)) {
+            const Signal post_signal =
+                createSignalForIndex_(result, ModelEventFlags::EVENT_INDEX_ADDED);
+            signalEventListeners(post_signal.first, post_signal.second |
+                                                        ModelEventFlags::EVENT_POST |
+                                                        ModelEventFlags::EVENT_SUCCESS);
+
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST |
+                                                       ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST);
         }
 
         return result;
@@ -365,16 +420,25 @@ namespace Toolbox {
     }
 
     bool FileSystemModel::removeIndex(const ModelIndex &index) {
-        SignalQueue pending_signals;
         bool result;
+
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_REMOVED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
 
         {
             std::scoped_lock lock(m_mutex);
-            result = removeIndex_(index, pending_signals);
+            result = removeIndex_(index);
         }
 
-        for (const auto &[idx, flags] : pending_signals) {
-            signalEventListeners(idx, flags);
+        if (result) {
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
         }
 
         return result;
@@ -434,12 +498,11 @@ namespace Toolbox {
 
     bool FileSystemModel::insertMimeData(const ModelIndex &index, const MimeData &data,
                                          ModelInsertPolicy policy) {
-        SignalQueue pending_signals;
         bool result;
 
         {
             std::scoped_lock lock(m_mutex);
-            result = insertMimeData_(index, data, pending_signals, policy);
+            result = insertMimeData_(index, data, policy);
         }
 
         return result;
@@ -526,10 +589,26 @@ namespace Toolbox {
             {".sb",      FSTypeInfo("Sunscript",                "fs_sb.png")            },
             {".szs",     FSTypeInfo("Yaz0 Compressed Data",     "fs_szs.png")           },
             {".thp",     FSTypeInfo("DolphinOS Movie Data",     "fs_thp.png")           },
-            {".proj",    FSTypeInfo("Toolbox Project Info",     "fs_proj.png")          },
+            {".tbox",    FSTypeInfo("Toolbox Project Info",     "fs_tbox.png")          },
         };
         // clang-format on
         return s_type_map;
+    }
+
+    FileSystemModel::Signal
+    FileSystemModel::createSignalForIndex_(const ModelIndex &index,
+                                           ModelEventFlags base_event) const {
+        FileSystemModelEventFlags event_flags =
+            (FileSystemModelEventFlags)ModelEventFlags::EVENT_NONE;
+        if (validateIndex(getParentArchive_(index))) {
+            event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
+        }
+        if (isDirectory_(index)) {
+            event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
+        } else if (isFile_(index)) {
+            event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
+        }
+        return {index, (int)base_event | event_flags};
     }
 
     bool FileSystemModel::isDirectory_(const ModelIndex &index) const {
@@ -705,8 +784,7 @@ namespace Toolbox {
         return result_name;
     }
 
-    ModelIndex FileSystemModel::mkdir_(const ModelIndex &parent, const std::string &name,
-                                       SignalQueue &sig_queue) {
+    ModelIndex FileSystemModel::mkdir_(const ModelIndex &parent, const std::string &name) {
         if (!validateIndex(parent)) {
             return ModelIndex();
         }
@@ -721,12 +799,6 @@ namespace Toolbox {
 #if !TOOLBOX_FS_WATCHDOG_SLEEP_ON_SELF_UPDATE
         m_watchdog.ignorePathOnce(path);
 #endif
-
-        int event_flags = ModelEventFlags::EVENT_INDEX_ADDED;
-        if (isArchive_(parent) || validateIndex(getParentArchive_(parent))) {
-            event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
-        }
-        event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
 
         if (isDirectory_(parent)) {
             Filesystem::create_directory(path)
@@ -758,14 +830,11 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        ModelIndex ret_index = makeIndex(parent.data<_FileSystemIndexData>()->m_path / name,
-                                         getRowCount_(parent), parent);
-        sig_queue.emplace_back(ret_index, event_flags);
-        return ret_index;
+        return makeIndex(parent.data<_FileSystemIndexData>()->m_path / name, getRowCount_(parent),
+                         parent);
     }
 
-    ModelIndex FileSystemModel::touch_(const ModelIndex &parent, const std::string &name,
-                                       SignalQueue &sig_queue) {
+    ModelIndex FileSystemModel::touch_(const ModelIndex &parent, const std::string &name) {
         if (!validateIndex(parent)) {
             return ModelIndex();
         }
@@ -810,13 +879,11 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        ModelIndex ret_index = makeIndex(parent.data<_FileSystemIndexData>()->m_path / name,
-                                         getRowCount_(parent), parent);
-        sig_queue.emplace_back(ret_index, event_flags);
-        return ret_index;
+        return makeIndex(parent.data<_FileSystemIndexData>()->m_path / name, getRowCount_(parent),
+                         parent);
     }
 
-    bool FileSystemModel::rmdir_(const ModelIndex &index, SignalQueue &sig_queue) {
+    bool FileSystemModel::rmdir_(const ModelIndex &index) {
         if (!validateIndex(index)) {
             return false;
         }
@@ -829,12 +896,6 @@ namespace Toolbox {
 #else
         m_watchdog.ignorePathOnce(index_path);
 #endif
-
-        int event_flags = ModelEventFlags::EVENT_INDEX_REMOVED;
-        if (validateIndex(getParentArchive_(index))) {
-            event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
-        }
-        event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
 
         if (isDirectory_(index)) {
             Filesystem::remove_all(index_path)
@@ -877,8 +938,6 @@ namespace Toolbox {
 #endif
 
         if (result) {
-            sig_queue.emplace_back(index, event_flags);
-
             ModelIndex parent = getParent_(index);
 
             // Remove all children as well
@@ -910,7 +969,7 @@ namespace Toolbox {
         return result;
     }
 
-    bool FileSystemModel::remove_(const ModelIndex &index, SignalQueue &sig_queue) {
+    bool FileSystemModel::remove_(const ModelIndex &index) {
         if (!validateIndex(index)) {
             return false;
         }
@@ -923,12 +982,6 @@ namespace Toolbox {
 #else
         m_watchdog.ignorePathOnce(index_path);
 #endif
-
-        int event_flags = ModelEventFlags::EVENT_INDEX_REMOVED;
-        if (validateIndex(getParentArchive_(index))) {
-            event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
-        }
-        event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
 
         if (isFile_(index)) {
             Filesystem::remove(index_path)
@@ -973,8 +1026,6 @@ namespace Toolbox {
 #endif
 
         if (result) {
-            sig_queue.emplace_back(index, event_flags);
-
             ModelIndex parent = getParent_(index);
 
             m_path_map.erase(index.data<_FileSystemIndexData>()->m_path_hash);
@@ -1000,8 +1051,7 @@ namespace Toolbox {
         m_watchdog.flagPathVisible(index_path, watch);
     }
 
-    ModelIndex FileSystemModel::rename_(const ModelIndex &file, const std::string &new_name,
-                                        SignalQueue &sig_queue) {
+    ModelIndex FileSystemModel::rename_(const ModelIndex &file, const std::string &new_name) {
         if (!validateIndex(file)) {
             return ModelIndex();
         }
@@ -1027,11 +1077,6 @@ namespace Toolbox {
         m_watchdog.ignorePathOnce(from);
         m_watchdog.ignorePathOnce(to);
 #endif
-
-        int event_flags = ModelEventFlags::EVENT_INDEX_MODIFIED;
-        if (validateIndex(getParentArchive_(file))) {
-            event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
-        }
 
         Filesystem::rename(from, to)
             .and_then([&result]() {
@@ -1061,13 +1106,11 @@ namespace Toolbox {
                                       parent_data->m_children.end());
         parent_data->m_size -= 1;
 
-        ModelIndex ret_index = makeIndex(to, dest_index, parent);
-        sig_queue.emplace_back(ret_index, event_flags);
-        return ret_index;
+        return makeIndex(to, dest_index, parent);
     }
 
     ModelIndex FileSystemModel::copy_(const fs_path &file, const ModelIndex &new_parent,
-                                      const std::string &new_name, SignalQueue &sig_queue) {
+                                      const std::string &new_name) {
         if (!validateIndex(new_parent)) {
             TOOLBOX_ERROR("[FileSystemModel] New parent isn't a valid index!");
             return ModelIndex();
@@ -1077,29 +1120,29 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        int event_flags = ModelEventFlags::EVENT_INDEX_ADDED;
-        {
-            ModelIndex src_index = getIndex_(file);
-            if (validateIndex(src_index)) {
-                if (isFile_(src_index)) {
-                    event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
-                }
-                if (isDirectory_(src_index)) {
-                    event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
-                }
-                if (isArchive_(src_index)) {
-                    event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
-                }
-            } else {
-                if (Filesystem::is_regular_file(file).value_or(false)) {
-                    event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
-                }
+        //int event_flags = ModelEventFlags::EVENT_INDEX_ADDED;
+        //{
+        //    ModelIndex src_index = getIndex_(file);
+        //    if (validateIndex(src_index)) {
+        //        if (isFile_(src_index)) {
+        //            event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
+        //        }
+        //        if (isDirectory_(src_index)) {
+        //            event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
+        //        }
+        //        if (isArchive_(src_index)) {
+        //            event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
+        //        }
+        //    } else {
+        //        if (Filesystem::is_regular_file(file).value_or(false)) {
+        //            event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
+        //        }
 
-                if (Filesystem::is_directory(file).value_or(false)) {
-                    event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
-                }
-            }
-        }
+        //        if (Filesystem::is_directory(file).value_or(false)) {
+        //            event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
+        //        }
+        //    }
+        //}
 
         ModelIndex dst_parent = new_parent;
 
@@ -1231,17 +1274,17 @@ namespace Toolbox {
         return m_index_map.at(parent_data->m_children[row]);
     }
 
-    bool FileSystemModel::removeIndex_(const ModelIndex &index, SignalQueue &sig_queue) {
+    bool FileSystemModel::removeIndex_(const ModelIndex &index) {
         if (!validateIndex(index) || isReadOnly()) {
             return false;
         }
 
         if (isDirectory_(index)) {
-            return rmdir_(index, sig_queue);
+            return rmdir_(index);
         } else if (isArchive_(index)) {
-            return remove_(index, sig_queue);
+            return remove_(index);
         } else {
-            return remove_(index, sig_queue);
+            return remove_(index);
         }
     }
 
@@ -1360,8 +1403,7 @@ namespace Toolbox {
         return data;
     }
 
-    bool FileSystemModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
-                                          SignalQueue &sig_queue, ModelInsertPolicy policy) {
+    bool FileSystemModel::insertMimeData_(const ModelIndex &index, const MimeData &data, ModelInsertPolicy policy) {
         if (!data.has_urls()) {
             return false;
         }
@@ -1385,7 +1427,7 @@ namespace Toolbox {
             }
 
             fs_path fs_src_path = std::move(san_path);
-            copy_(fs_src_path, index, fs_src_path.filename().string(), sig_queue);
+            copy_(fs_src_path, index, fs_src_path.filename().string());
         }
 
         return true;
@@ -1587,8 +1629,7 @@ namespace Toolbox {
 
         if (isDirectory_(index)) {
             // Count the children in the filesystem
-            for (const auto &entry :
-                 Filesystem::directory_iterator(getRealPath_(index))) {
+            for (const auto &entry : Filesystem::directory_iterator(getRealPath_(index))) {
                 count += 1;
             }
         } else if (isArchive_(index)) {
@@ -2384,9 +2425,12 @@ namespace Toolbox {
         //
         // }
 
-        {
+        if ((flags & ModelEventFlags::EVENT_PRE)) {
             std::unique_lock lock(m_cache_mutex);
             m_row_map.erase(path.getUUID());
+
+            ModelIndex parent = m_source_model->getParent(path);
+            m_row_map.erase(parent.getUUID());
         }
     }
 

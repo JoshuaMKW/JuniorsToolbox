@@ -517,7 +517,21 @@ void Markdown(const std::string &markdown_) {
 
     md_config.userData       = NULL;
     md_config.formatCallback = ExampleMarkdownFormatCallback;
-    md_config.formatFlags    = ImGuiMarkdownFormatFlags_GithubStyle;
+    md_config.formatFlags    = ImGuiMarkdownFormatFlags_GithubStyle | ImGuiMarkdownFormatFlags_IncludeAllListPrefixes | ImGuiMarkdownFormatFlags_ExoticIndents;
 
-    ImGui::Markdown(markdown_.c_str(), markdown_.length(), md_config);
+    const char *text         = R"(   ## Fixes/Repairs
+
+- dwadw
+    + fwefw
+          * fe4wf
+                             *- fewf*
+        - kfeok
+              - r3r33r
+        # fefef
+    - sefsfe
+**FA WEF A FAWF**
+
+*fejoi*)";
+
+    ImGui::Markdown(text, strlen(text), md_config);
 }

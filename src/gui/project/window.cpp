@@ -810,7 +810,7 @@ namespace Toolbox::UI {
         m_pinned_selection_mgr = ModelSelectionManager(m_tree_proxy);
         m_pinned_selection_mgr.setDeepSpans(false);
 
-        m_project_config.loadFromFile(m_project_root / ".ToolboxConfig.proj");
+        m_project_config.loadFromFile(m_project_root / ".ToolboxConfig.tbox");
         
         for (const fs_path &pinned_folder_path : m_project_config.getPinnedFolders()) {
             ModelIndex pinned_index = m_tree_proxy->getIndex(pinned_folder_path);
@@ -839,7 +839,7 @@ namespace Toolbox::UI {
                                return m_tree_proxy->getPath(index);
                            });
             m_project_config.setPinnedFolders(pinned_folders);
-            m_project_config.saveToFile(m_project_root / ".ToolboxConfig.proj");
+            m_project_config.saveToFile(m_project_root / ".ToolboxConfig.tbox");
         }
         ImWindow::onDetach();
     }
