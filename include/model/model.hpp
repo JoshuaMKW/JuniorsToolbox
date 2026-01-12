@@ -41,13 +41,17 @@ namespace Toolbox {
 
     enum ModelEventFlags {
         EVENT_NONE           = 0,
-        EVENT_RESET          = BIT(0),
-        EVENT_INSERT         = BIT(1),
-        EVENT_INDEX_ADDED    = BIT(2),
-        EVENT_INDEX_MODIFIED = BIT(3),
-        EVENT_INDEX_REMOVED  = BIT(4),
+        EVENT_SUCCESS        = BIT(0),
+        EVENT_PRE            = BIT(1),
+        EVENT_POST           = BIT(2),
+        EVENT_RESET          = BIT(3),
+        EVENT_INSERT         = BIT(4),
+        EVENT_INDEX_ADDED    = BIT(5),
+        EVENT_INDEX_MODIFIED = BIT(6),
+        EVENT_INDEX_REMOVED  = BIT(7),
         EVENT_INDEX_ANY      = EVENT_INDEX_ADDED | EVENT_INDEX_MODIFIED | EVENT_INDEX_REMOVED,
-        EVENT_ANY            = EVENT_RESET | EVENT_INSERT | EVENT_INDEX_ANY,
+        EVENT_ANY =
+            EVENT_SUCCESS | EVENT_PRE | EVENT_POST | EVENT_RESET | EVENT_INSERT | EVENT_INDEX_ANY,
     };
 
     class ModelIndex final : public IUnique {
@@ -180,6 +184,8 @@ namespace Toolbox {
         virtual void removeEventListener(UUID64 uuid)    = 0;
 
     protected:
+        //[[nodiscard]] virtual int getEventFlagsForIndex(const ModelIndex &index) = 0;
+
         static void setIndexUUID(ModelIndex &index, UUID64 uuid) { index.m_uuid = uuid; }
     };
 
