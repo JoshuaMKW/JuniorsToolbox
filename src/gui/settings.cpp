@@ -8,12 +8,6 @@
 #include <fstream>
 #include <imgui.h>
 
-template <typename json_t = nlohmann::json, typename value_t>
-auto JSONValueOr(const json_t &js, const std::string &key, value_t default_)
-    -> std::decay_t<decltype(js[key])> {
-    return js.contains(key) ? js[key] : std::decay_t<decltype(js[key])>(default_);
-}
-
 namespace Toolbox {
 
     bool SettingsManager::initialize(const fs_path &profile_path) {

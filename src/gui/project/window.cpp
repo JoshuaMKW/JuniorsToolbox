@@ -128,7 +128,7 @@ namespace Toolbox::UI {
                     ModelIndex subdir_idx = m_file_system_model->getIndex(i, 0, *r_it);
                     if (!m_file_system_model->validateIndex(subdir_idx)) {
                         TOOLBOX_DEBUG_LOG_V("[PROJECT] Failed to get index for subpath of {}",
-                                            m_file_system_model->getPath(*r_it).string());
+                                            m_file_system_model->getRealPath(*r_it).string());
                         continue;
                     }
 
@@ -156,13 +156,23 @@ namespace Toolbox::UI {
                                      m_search_buf.data(), m_search_buf.size(),
                                      ImGuiInputTextFlags_AutoSelectAll |
                                          ImGuiInputTextFlags_EnterReturnsTrue)) {
+            m_search_str.clear();
+            m_search_str.reserve(m_search_buf.size());
             std::string search_str = m_search_buf.data();
-            m_view_proxy->setFilter(search_str);
+
+            std::transform(search_str.begin(), search_str.end(), std::back_inserter(m_search_str),
+                           [](char c) { return ::tolower(static_cast<int>(c)); });
+            // m_view_proxy->setFilter(search_str);
         }
         // ImGui::SameLine()
         if (ImGui::MenuItem(ICON_FA_MAGNIFYING_GLASS)) {
+            m_search_str.clear();
+            m_search_str.reserve(m_search_buf.size());
             std::string search_str = m_search_buf.data();
-            m_view_proxy->setFilter(search_str);
+
+            std::transform(search_str.begin(), search_str.end(), std::back_inserter(m_search_str),
+                           [](char c) { return ::tolower(static_cast<int>(c)); });
+            // m_view_proxy->setFilter(search_str);
         }
 
         // ImGui::PopStyleVar();
@@ -217,7 +227,7 @@ namespace Toolbox::UI {
                     return false;
                 }(pinned);
 
-                const fs_path folder_path     = m_tree_proxy->getPath(pinned);
+                const fs_path folder_path     = m_tree_proxy->getRealPath(pinned);
                 const std::string folder_name = folder_path.filename().string();
                 const std::string parent_path_name =
                     is_child_of_root
@@ -236,39 +246,62 @@ namespace Toolbox::UI {
 
                 const ImVec2 cursor_pos = ImGui::GetCursorPos();
 
-                std::string button_label = std::format("{}##{}", folder_name, folder_path.string());
-                const ImVec2 main_label_size = ImGui::CalcTextSize(
-                    button_label.c_str(), button_label.c_str() + button_label.size(), true);
+                std::string button_id = std::format("##{}", folder_path.string());
 
-                if (ImGui::Button(button_label.c_str(), {shortcut_width, 0.0f})) {
+                if (ImGui::Button(button_id.c_str(), {shortcut_width, 0.0f})) {
                     setViewIndex(m_tree_proxy->toSourceIndex(pinned), false);
                 }
 
-                // Render a helper tag that shows the parent path
-                const ImVec2 button_size = ImGui::GetItemRectSize();
-                const ImVec2 content_pos = ImGui::GetWindowPos() + cursor_pos + style.FramePadding;
-
-                ImVec2 sub_label_pos = content_pos;
-                sub_label_pos.x += main_label_size.x;
-                sub_label_pos.x += style.ItemSpacing.x;
+                const ImVec2 main_label_size = ImGui::CalcTextSize(
+                    folder_name.c_str(), folder_name.c_str() + folder_name.size(), true);
 
                 const ImVec2 sub_label_size =
                     ImGui::CalcTextSize(parent_path_name.c_str(),
                                         parent_path_name.c_str() + parent_path_name.size(), true);
 
-                ImRect label_bb =
+                // Render a helper tag that shows the parent path
+                const ImVec2 button_pos  = ImGui::GetItemRectMin();
+                const ImVec2 button_size = ImGui::GetItemRectSize();
+
+                const ImVec2 content_pos = button_pos + style.FramePadding;
+
+                ImVec2 image_pos = content_pos;
+                image_pos.y -= ImGui::GetScrollY();
+                const ImVec2 image_size = {ImGui::GetFontSize(), ImGui::GetFontSize()};
+
+                ImVec2 main_label_pos = content_pos;
+                main_label_pos.x += image_size.x + style.ItemSpacing.x;
+
+                ImVec2 sub_label_pos = content_pos;
+                sub_label_pos.x += main_label_size.x + image_size.x + style.ItemSpacing.x * 2;
+
+                // Render the image
+                RefPtr<const ImageHandle> image_handle = m_tree_proxy->getDecoration(pinned);
+                ImagePainter painter;
+                painter.render(*image_handle, image_pos, image_size);
+
+                // Render the main label
+                ImRect main_label_bb = ImRect(main_label_pos, main_label_pos + main_label_size);
+                main_label_bb.TranslateY(-ImGui::GetScrollY());
+
+                ImGui::RenderTextClipped(main_label_bb.Min, main_label_bb.Max, folder_name.c_str(),
+                                         folder_name.c_str() + folder_name.size(),
+                                         &main_label_size);
+
+                // Render the sub label
+                ImRect sub_label_bb =
                     ImRect(sub_label_pos, content_pos + button_size - style.FramePadding * 2.0f);
-                label_bb.Max.x -= (style.ItemSpacing.x * 2.0f + pin_size.x);
-                label_bb.TranslateY(-ImGui::GetScrollY());
+                sub_label_bb.Max.x -= (style.ItemSpacing.x * 2.0f + pin_size.x);
+                sub_label_bb.TranslateY(-ImGui::GetScrollY());
 
                 ImVec4 color = ImGui::GetStyleColorVec4(ImGuiCol_Text);
                 color.w *= 0.5f;
 
                 ImGui::PushStyleColor(ImGuiCol_Text, color);
-                ImGui::RenderTextEllipsis(ImGui::GetWindowDrawList(), label_bb.Min, label_bb.Max,
-                    label_bb.Max.x, parent_path_name.c_str(),
-                                          parent_path_name.c_str() + parent_path_name.size(),
-                                          &sub_label_size);
+                ImGui::RenderTextEllipsis(
+                    ImGui::GetWindowDrawList(), sub_label_bb.Min, sub_label_bb.Max,
+                    sub_label_bb.Max.x, parent_path_name.c_str(),
+                    parent_path_name.c_str() + parent_path_name.size(), &sub_label_size);
                 ImGui::PopStyleColor();
 
                 const ImRect item_rect = {ImGui::GetItemRectMin(), ImGui::GetItemRectMax()};
@@ -419,6 +452,7 @@ namespace Toolbox::UI {
 
                 ImVec2 row_box_size = {box_base_width, box_base_height};
 
+                size_t rendered_count    = 0;
                 const size_t folder_size = m_view_proxy->getRowCount(view_index);
                 for (size_t i = 0; i < folder_size; ++i) {
                     ModelIndex child_index = m_view_proxy->getIndex(i, 0, view_index);
@@ -427,9 +461,24 @@ namespace Toolbox::UI {
                         break;
                     }
 
-                    if ((i % x_count) == 0) {
+                    // Get the label and it's size
+                    std::string text = m_view_proxy->getDisplayText(child_index);
+
+                    std::string lowered_text;
+                    lowered_text.reserve(text.size());
+                    std::transform(text.begin(), text.end(), std::back_inserter(lowered_text),
+                                   [](char c) { return ::tolower(static_cast<int>(c)); });
+
+                    if (!lowered_text.starts_with(m_search_str)) {
+                        continue;
+                    }
+
+                    ImVec2 text_size   = ImGui::CalcTextSize(text.c_str());
+                    ImVec2 rename_size = ImGui::CalcTextSize(m_rename_buffer);
+
+                    if ((rendered_count % x_count) == 0) {
                         row_box_size   = {box_base_width, box_base_height};
-                        size_t row_end = std::min(i + x_count, folder_size);
+                        size_t row_end = std::min(rendered_count + x_count, folder_size);
                         ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0.0f);
                         for (int j = i; j < row_end; ++j) {
                             ModelIndex test_index = m_view_proxy->getIndex(j, 0, view_index);
@@ -438,6 +487,16 @@ namespace Toolbox::UI {
                                 break;
                             }
                             std::string item_name = m_view_proxy->getDisplayText(test_index);
+
+                            std::string lowered_text;
+                            lowered_text.reserve(text.size());
+                            std::transform(text.begin(), text.end(),
+                                           std::back_inserter(lowered_text),
+                                           [](char c) { return ::tolower(static_cast<int>(c)); });
+                            if (!lowered_text.starts_with(m_search_str)) {
+                                continue;
+                            }
+
                             row_box_size.y =
                                 ImMax(row_box_size.y, box_base_height +
                                                           ImGui::CalcTextWrappedWithAlignRect(
@@ -478,11 +537,6 @@ namespace Toolbox::UI {
                     }
 
                     const bool is_selected_rename = m_is_renaming && is_selected;
-
-                    // Get the label and it's size
-                    std::string text   = m_view_proxy->getDisplayText(child_index);
-                    ImVec2 text_size   = ImGui::CalcTextSize(text.c_str());
-                    ImVec2 rename_size = ImGui::CalcTextSize(m_rename_buffer);
 
                     const float text_width = is_selected_rename
                                                  ? std::min(rename_size.x, label_width)
@@ -611,9 +665,11 @@ namespace Toolbox::UI {
                     ImGui::EndChild();
                     ImGui::PopStyleColor(1);
 
-                    if ((i + 1) % x_count != 0) {
+                    if ((rendered_count + 1) % x_count != 0) {
                         ImGui::SameLine();
                     }
+
+                    rendered_count += 1;
                 }
 
                 if (is_window_hovered && !any_items_hovered &&
@@ -754,7 +810,16 @@ namespace Toolbox::UI {
         m_pinned_selection_mgr = ModelSelectionManager(m_tree_proxy);
         m_pinned_selection_mgr.setDeepSpans(false);
 
-        m_pinned_folders = {m_tree_proxy->getIndex("files/data/scene")};
+        m_project_config.loadFromFile(m_project_root / ".ToolboxConfig.proj");
+        
+        for (const fs_path &pinned_folder_path : m_project_config.getPinnedFolders()) {
+            ModelIndex pinned_index = m_tree_proxy->getIndex(pinned_folder_path);
+            if (m_tree_proxy->validateIndex(pinned_index)) {
+                m_pinned_folders.emplace_back(pinned_index);
+            }
+        }
+
+        // m_pinned_folders = {m_tree_proxy->getIndex("files/data/scene")};
 
         return true;
     }
@@ -766,7 +831,18 @@ namespace Toolbox::UI {
         m_rarc_processor.tStart(true, nullptr);
     }
 
-    void ProjectViewWindow::onDetach() { ImWindow::onDetach(); }
+    void ProjectViewWindow::onDetach() {
+        if (!m_project_root.empty()) {
+            std::vector<fs_path> pinned_folders;
+            std::transform(m_pinned_folders.begin(), m_pinned_folders.end(),
+                           std::back_inserter(pinned_folders), [this](const ModelIndex &index) {
+                               return m_tree_proxy->getPath(index);
+                           });
+            m_project_config.setPinnedFolders(pinned_folders);
+            m_project_config.saveToFile(m_project_root / ".ToolboxConfig.proj");
+        }
+        ImWindow::onDetach();
+    }
 
     void ProjectViewWindow::onImGuiUpdate(TimeStep delta_time) {}
 
@@ -860,11 +936,11 @@ namespace Toolbox::UI {
                         m_folder_selection_mgr.getState().getSelection();
                     if (selection.size() == 0) {
                         Toolbox::Platform::OpenFileExplorer(
-                            m_file_system_model->getPath(m_view_index));
+                            m_file_system_model->getRealPath(m_view_index));
                     } else {
                         std::set<fs_path> paths;
                         for (const ModelIndex &item_index : selection) {
-                            fs_path path = m_view_proxy->getPath(item_index);
+                            fs_path path = m_view_proxy->getRealPath(item_index);
                             if (m_view_proxy->isDirectory(item_index)) {
                                 paths.insert(path);
                             } else {
@@ -887,10 +963,10 @@ namespace Toolbox::UI {
 
                     std::string paths;
                     if (selection.size() == 0) {
-                        paths = m_file_system_model->getPath(m_view_index).string();
+                        paths = m_file_system_model->getRealPath(m_view_index).string();
                     } else {
                         for (const ModelIndex &item_index : selection) {
-                            fs_path path = m_view_proxy->getPath(item_index);
+                            fs_path path = m_view_proxy->getRealPath(item_index);
                             paths += path.string() + "\n";
                         }
                     }
@@ -963,7 +1039,7 @@ namespace Toolbox::UI {
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
                         m_folder_selection_mgr.getState().getSelection();
-                    fs_path arc_path = m_view_proxy->getPath(selection[0]);
+                    fs_path arc_path = m_view_proxy->getRealPath(selection[0]);
                     m_rarc_processor.requestExtractArchive(arc_path, arc_path.parent_path());
                 })
             .addOption(
@@ -977,7 +1053,7 @@ namespace Toolbox::UI {
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
                         m_folder_selection_mgr.getState().getSelection();
-                    fs_path src_path = m_view_proxy->getPath(selection[0]);
+                    fs_path src_path = m_view_proxy->getRealPath(selection[0]);
                     fs_path dst_path = src_path;
                     dst_path.replace_extension(".arc");
                     m_rarc_processor.requestCompileArchive(src_path, dst_path, false);
@@ -993,7 +1069,7 @@ namespace Toolbox::UI {
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
                         m_folder_selection_mgr.getState().getSelection();
-                    fs_path src_path = m_view_proxy->getPath(selection[0]);
+                    fs_path src_path = m_view_proxy->getRealPath(selection[0]);
                     fs_path dst_path = src_path;
                     dst_path.replace_extension(".szs");
                     m_rarc_processor.requestCompileArchive(src_path, dst_path, true);
@@ -1028,7 +1104,7 @@ namespace Toolbox::UI {
                     RefPtr<NewItemWindow> window =
                         GUIApplication::instance().createWindow<NewItemWindow>("New Item");
                     if (window) {
-                        window->setContextPath(m_view_proxy->getPath(view_index));
+                        window->setContextPath(m_view_proxy->getRealPath(view_index));
                     }
                 });
 
@@ -1070,7 +1146,7 @@ namespace Toolbox::UI {
                 KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O}),
                 [this](const ModelIndex &index) { return m_tree_proxy->validateIndex(index); },
                 [this](const ModelIndex &index) {
-                    Toolbox::Platform::OpenFileExplorer(m_tree_proxy->getPath(index));
+                    Toolbox::Platform::OpenFileExplorer(m_tree_proxy->getRealPath(index));
                 })
             .addDivider()
             .addOption(
@@ -1083,10 +1159,10 @@ namespace Toolbox::UI {
 
                     std::string paths;
                     if (selection.size() == 0) {
-                        paths = m_file_system_model->getPath(index).string();
+                        paths = m_file_system_model->getRealPath(index).string();
                     } else {
                         for (const ModelIndex &item_index : selection) {
-                            fs_path path = m_view_proxy->getPath(item_index);
+                            fs_path path = m_view_proxy->getRealPath(item_index);
                             paths += path.string() + "\n";
                         }
                     }
@@ -1129,7 +1205,7 @@ namespace Toolbox::UI {
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
                         m_tree_selection_mgr.getState().getSelection();
-                    fs_path arc_path = m_tree_proxy->getPath(index);
+                    fs_path arc_path = m_tree_proxy->getRealPath(index);
                     m_rarc_processor.requestExtractArchive(arc_path, arc_path.parent_path());
                 })
             .addOption(
@@ -1141,7 +1217,7 @@ namespace Toolbox::UI {
                     return selection.size() == 1 && m_tree_proxy->isDirectory(index);
                 },
                 [this](const ModelIndex &index) {
-                    fs_path src_path = m_tree_proxy->getPath(index);
+                    fs_path src_path = m_tree_proxy->getRealPath(index);
                     fs_path dst_path = src_path;
                     dst_path.replace_extension(".arc");
                     m_rarc_processor.requestCompileArchive(src_path, dst_path, false);
@@ -1157,7 +1233,7 @@ namespace Toolbox::UI {
                 [this](const ModelIndex &index) {
                     const IDataModel::index_container &selection =
                         m_tree_selection_mgr.getState().getSelection();
-                    fs_path src_path = m_tree_proxy->getPath(selection[0]);
+                    fs_path src_path = m_tree_proxy->getRealPath(selection[0]);
                     fs_path dst_path = src_path;
                     dst_path.replace_extension(".szs");
                     m_rarc_processor.requestCompileArchive(src_path, dst_path, true);
@@ -1182,7 +1258,7 @@ namespace Toolbox::UI {
                 KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O}),
                 [this](const ModelIndex &index) { return m_tree_proxy->validateIndex(index); },
                 [this](const ModelIndex &index) {
-                    Toolbox::Platform::OpenFileExplorer(m_tree_proxy->getPath(index));
+                    Toolbox::Platform::OpenFileExplorer(m_tree_proxy->getRealPath(index));
                 })
             .addDivider()
             .addOption(
@@ -1195,10 +1271,10 @@ namespace Toolbox::UI {
 
                     std::string paths;
                     if (selection.size() == 0) {
-                        paths = m_file_system_model->getPath(index).string();
+                        paths = m_file_system_model->getRealPath(index).string();
                     } else {
                         for (const ModelIndex &item_index : selection) {
-                            fs_path path = m_tree_proxy->getPath(item_index);
+                            fs_path path = m_tree_proxy->getRealPath(item_index);
                             paths += path.string() + "\n";
                         }
                     }
@@ -1252,7 +1328,7 @@ namespace Toolbox::UI {
 
         if (m_view_proxy->isDirectory(index)) {
             // ./scene/
-            fs_path scene_path = m_view_proxy->getPath(index);
+            fs_path scene_path = m_view_proxy->getRealPath(index);
 
             RefPtr<ImWindow> existing_editor = app.findWindow("Scene Editor", scene_path.string());
             if (existing_editor) {
@@ -1280,7 +1356,7 @@ namespace Toolbox::UI {
             TOOLBOX_ERROR("[PROJECT] Archives are not supported yet");
         } else if (m_view_proxy->isFile(index)) {
             // ./scene/map/scene.bin
-            fs_path scene_path = m_view_proxy->getPath(index);
+            fs_path scene_path = m_view_proxy->getRealPath(index);
             if (scene_path.filename().string() != "scene.bin") {
                 return false;
             }
@@ -1327,7 +1403,7 @@ namespace Toolbox::UI {
         GUIApplication &app = GUIApplication::instance();
 
         // ./scene/map/map/pad/
-        fs_path pad_path = m_view_proxy->getPath(index);
+        fs_path pad_path = m_view_proxy->getRealPath(index);
         if (pad_path.filename().string() != "pad") {
             return false;
         }
@@ -1357,12 +1433,12 @@ namespace Toolbox::UI {
         }
 
         if (m_view_proxy->isDirectory(index)) {
-            fs_path scene_path = m_view_proxy->getPath(index);
+            fs_path scene_path = m_view_proxy->getRealPath(index);
             if (scene_path.filename().string() == "scene") {
                 return true;
             }
         } else if (m_view_proxy->isFile(index)) {
-            fs_path scene_path = m_view_proxy->getPath(index);
+            fs_path scene_path = m_view_proxy->getRealPath(index);
             if (scene_path.filename().string() == "scene.bin") {
                 fs_path scene_folder = scene_path.parent_path().parent_path();
                 if (scene_folder.filename().string() == "scene") {
@@ -1417,7 +1493,10 @@ namespace Toolbox::UI {
                 flags |= ImGuiTreeNodeFlags_Framed;
             }*/
 
-            is_open = ImGui::TreeNodeEx(m_tree_proxy->getDisplayText(index).c_str(), flags);
+            ImTextureID texture_id = ImTextureID(*m_tree_proxy->getDecoration(index));
+            is_open = ImGui::TreeNodeEx(texture_id, m_tree_proxy->getDisplayText(index).c_str(),
+                                        flags, false);
+
             if (m_tree_selection_mgr.getState().getLastSelected() == index) {
                 const ImRect node_rect = {ImGui::GetItemRectMin(), ImGui::GetItemRectMax()};
                 ImGui::GetWindowDrawList()->AddRect(node_rect.Min, node_rect.Max,
@@ -1432,7 +1511,7 @@ namespace Toolbox::UI {
                     m_file_system_model->watchPathForUpdates(m_view_index, true);
                 }
                 m_tree_selection_mgr.actionSelectIndex(index, true);
-                // m_fs_watchdog.addPath(m_view_proxy->getPath(m_view_index));
+                // m_fs_watchdog.addPath(m_view_proxy->getRealPath(m_view_index));
             }
 
             if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
@@ -1453,8 +1532,9 @@ namespace Toolbox::UI {
                 ImGui::TreePop();
             }
         } else {
-            is_open = ImGui::TreeNodeEx(m_tree_proxy->getDisplayText(index).c_str(),
-                                        ImGuiTreeNodeFlags_Leaf);
+            ImTextureID texture_id = ImTextureID(*m_tree_proxy->getDecoration(index));
+            is_open = ImGui::TreeNodeEx(texture_id, m_tree_proxy->getDisplayText(index).c_str(),
+                                        ImGuiTreeNodeFlags_Leaf, false);
 
             if (m_tree_selection_mgr.getState().getLastSelected() == index) {
                 const ImRect node_rect = {ImGui::GetItemRectMin(), ImGui::GetItemRectMax()};
@@ -1470,7 +1550,7 @@ namespace Toolbox::UI {
                     m_file_system_model->watchPathForUpdates(m_view_index, true);
                 }
                 m_tree_selection_mgr.actionSelectIndex(index, true);
-                // m_fs_watchdog.addPath(m_view_proxy->getPath(m_view_index));
+                // m_fs_watchdog.addPath(m_view_proxy->getRealPath(m_view_index));
             }
 
             if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
@@ -1502,8 +1582,8 @@ namespace Toolbox::UI {
         ModelSelectionState state  = m_tree_selection_mgr.getState();
         const ModelIndex to_delete = m_tree_proxy->toSourceIndex(state.getLastSelected());
 
-        const fs_path index_path = m_file_system_model->getPath(m_view_index);
-        const fs_path view_path  = m_file_system_model->getPath(to_delete);
+        const fs_path index_path = m_file_system_model->getRealPath(m_view_index);
+        const fs_path view_path  = m_file_system_model->getRealPath(to_delete);
 
         bool is_subpath = [](const fs_path &path, const fs_path &base) {
             fs_path rel = Filesystem::relative(path, base).value_or("");

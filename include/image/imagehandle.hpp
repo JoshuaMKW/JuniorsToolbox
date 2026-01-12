@@ -41,6 +41,7 @@ namespace Toolbox {
         ImageHandle &operator=(ImageHandle &&) noexcept;
 
         operator bool() const noexcept;
+        explicit operator ImTextureID() const noexcept { return m_image_handle; }
 
     protected:
         void loadGL(const Buffer &data, int channels, int dx, int dy);

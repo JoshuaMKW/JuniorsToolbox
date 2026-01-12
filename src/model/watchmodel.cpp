@@ -1625,7 +1625,7 @@ namespace Toolbox {
         return ModelIndex();
     }
 
-    bool WatchDataModelSortFilterProxy::isFiltered(const UUID64 &uuid) const {
+    bool WatchDataModelSortFilterProxy::isSrcFiltered_(const UUID64 &uuid) const {
         ModelIndex child_index = m_source_model->getIndex(uuid);
 
         std::string name = m_source_model->getDisplayText(child_index);
@@ -1653,7 +1653,7 @@ namespace Toolbox {
         ModelIndex root_s = m_source_model->getIndex(i++, 0, src_parent);
         while (m_source_model->validateIndex(root_s)) {
             orig_children.push_back(root_s.getUUID());
-            if (isFiltered(root_s.getUUID())) {
+            if (isSrcFiltered_(root_s.getUUID())) {
                 root_s = m_source_model->getIndex(i++, 0, src_parent);
                 continue;
             }

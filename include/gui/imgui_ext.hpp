@@ -72,10 +72,15 @@ namespace ImGui {
                              const char *format, ImGuiInputTextFlags flags = 0);
     bool TreeNodeEx(const char *label, ImGuiTreeNodeFlags flags, bool focused);
     bool TreeNodeEx(const char *label, ImGuiTreeNodeFlags flags, bool focused, bool *visible);
+    bool TreeNodeEx(ImTextureID image_handle, const char *label, ImGuiTreeNodeFlags flags,
+                    bool focused);
     bool TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *label,
                           const char *label_end, bool focused);
     bool TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *label,
                           const char *label_end, bool focused, bool *visible);
+    bool TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, ImTextureID image_handle,
+                          const char *label,
+                          const char *label_end, bool focused);
     bool BeginPopupContextItem(const char *str_id, ImGuiPopupFlags popup_flags,
                                ImGuiHoveredFlags hover_flags);
     bool BeginPopupContextItem(ImGuiID id, ImGuiPopupFlags popup_flags,
