@@ -1,6 +1,6 @@
 #include <cmath>
 
-#include "gui/application.hpp"
+#include "gui/appmain/application.hpp"
 #include "gui/font.hpp"
 #include "gui/logging/window.hpp"
 #include "gui/window.hpp"

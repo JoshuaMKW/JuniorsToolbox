@@ -1,7 +1,7 @@
 #include <imgui_internal.h>
 #include <imgui.h>
 
-#include "gui/application.hpp"
+#include "gui/appmain/application.hpp"
 #include "gui/widget/widget.hpp"
 
 namespace Toolbox::UI {

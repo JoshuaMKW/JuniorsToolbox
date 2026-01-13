@@ -2,7 +2,7 @@
 #include <compare>
 #include <set>
 
-#include "gui/application.hpp"
+#include "gui/appmain/application.hpp"
 #include "model/fsmodel.hpp"
 #include "rarc/rarc.hpp"
 

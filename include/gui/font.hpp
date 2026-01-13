@@ -10,7 +10,7 @@
 
 #include "IconsForkAwesome.h"
 #include "fsystem.hpp"
-#include "gui/settings.hpp"
+#include "gui/appmain/settings/settings.hpp"
 
 #if IMGUI_VERSION_NUM < 19201
 #define TOOLBOX_USE_LEGACY_IMFONT_API

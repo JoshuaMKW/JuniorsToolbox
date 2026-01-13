@@ -1,4 +1,4 @@
-#include "gui/settings.hpp"
+#include "gui/appmain/settings/settings.hpp"
 #include "core/keybind/keybind.hpp"
 #include "fsystem.hpp"
 #include "gui/logging/errors.hpp"

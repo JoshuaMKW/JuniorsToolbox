@@ -2,7 +2,7 @@
 
 #include "core/threaded.hpp"
 #include "dolphin/process.hpp"
-#include "gui/settings.hpp"
+#include "gui/appmain/settings/settings.hpp"
 #include "instructions/forms.hpp"
 #include "processor.hpp"
 #include "registers.hpp"

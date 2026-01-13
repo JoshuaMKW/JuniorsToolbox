@@ -1,5 +1,5 @@
 #include "dolphin/watch.hpp"
-#include "gui/application.hpp"
+#include "gui/appmain/application.hpp"
 #include "objlib/meta/member.hpp"
 
 using namespace Toolbox::Dolphin;

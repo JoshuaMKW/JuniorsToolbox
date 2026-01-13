@@ -6,7 +6,7 @@
 #include "core/mimedata/mimedata.hpp"
 #include "gui/dragdrop/dragaction.hpp"
 #include "gui/dragdrop/dropaction.hpp"
-#include "gui/application.hpp"
+#include "gui/appmain/application.hpp"
 
 #ifdef TOOLBOX_PLATFORM_WINDOWS
 #include <Windows.h>

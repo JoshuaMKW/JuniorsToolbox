@@ -12,9 +12,9 @@
 
 #include "game/task.hpp"
 
-#include "gui/application.hpp"
+#include "gui/appmain/application.hpp"
 #include "gui/logging/errors.hpp"
-#include "gui/settings.hpp"
+#include "gui/appmain/settings/settings.hpp"
 
 // #define TOOLBOX_USE_INTERPRETER
 

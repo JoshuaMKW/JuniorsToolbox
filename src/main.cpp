@@ -4,7 +4,7 @@
 #include "objlib/object.hpp"
 #include "objlib/template.hpp"
 #include "scene/scene.hpp"
-#include "gui/application.hpp"
+#include "gui/appmain/application.hpp"
 
 using namespace Toolbox::Object;
 

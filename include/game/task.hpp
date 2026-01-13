@@ -11,7 +11,7 @@
 #include "core/types.hpp"
 #include "dolphin/interpreter/system.hpp"
 #include "dolphin/process.hpp"
-#include "gui/scene/camera.hpp"
+#include "gui/appmain/scene/camera.hpp"
 #include "objlib/object.hpp"
 
 using namespace Toolbox::Dolphin;

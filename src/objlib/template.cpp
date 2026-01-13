@@ -9,7 +9,7 @@
 #include "color.hpp"
 #include "core/log.hpp"
 #include "gui/logging/errors.hpp"
-#include "gui/settings.hpp"
+#include "gui/appmain/settings/settings.hpp"
 #include "jsonlib.hpp"
 #include "magic_enum.hpp"
 #include "objlib/meta/enum.hpp"

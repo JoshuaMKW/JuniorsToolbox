@@ -17,7 +17,7 @@
 #include "core/log.hpp"
 #include "core/types.hpp"
 #include "gui/context_menu.hpp"
-#include "gui/property/property.hpp"
+#include "gui/appmain/property/property.hpp"
 #include "gui/window.hpp"
 
 #include <imgui.h>

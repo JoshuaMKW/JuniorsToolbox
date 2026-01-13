@@ -4,7 +4,7 @@
 #include <set>
 
 #include "dolphin/watch.hpp"
-#include "gui/application.hpp"
+#include "gui/appmain/application.hpp"
 #include "model/memscanmodel.hpp"
 
 using namespace Toolbox::Object;

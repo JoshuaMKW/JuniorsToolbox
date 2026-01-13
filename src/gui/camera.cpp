@@ -1,4 +1,4 @@
-#include "gui/scene/camera.hpp"
+#include "gui/appmain/scene/camera.hpp"
 #include <assert.h>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>

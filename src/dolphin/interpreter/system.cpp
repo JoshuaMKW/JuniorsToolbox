@@ -2,7 +2,7 @@
 #include "dolphin/interpreter/instructions/forms.hpp"
 #include "dolphin/process.hpp"
 
-#include "gui/application.hpp"
+#include "gui/appmain/application.hpp"
 #include "core/log.hpp"
 
 using namespace Toolbox::Dolphin;

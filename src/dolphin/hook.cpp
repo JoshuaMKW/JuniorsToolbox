@@ -4,8 +4,8 @@
 #include <string_view>
 #include <thread>
 
-#include "gui/application.hpp"
-#include "gui/settings.hpp"
+#include "gui/appmain/application.hpp"
+#include "gui/appmain/settings/settings.hpp"
 
 #include "dolphin/hook.hpp"
 
