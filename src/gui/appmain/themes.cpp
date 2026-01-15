@@ -207,7 +207,7 @@ namespace Toolbox::UI {
     }
 
     Result<void, FSError> ThemeManager::initialize() {
-        const ResourceManager &manager = GUIApplication::instance().getResourceManager();
+        const ResourceManager &manager = MainApplication::instance().getResourceManager();
         UUID64 themes_uuid             = ResourceManager::getResourcePathUUID("Themes");
         if (!manager.hasResourcePath(themes_uuid)) {
             return make_fs_error<void>(std::error_code(), {"Themes not found"});

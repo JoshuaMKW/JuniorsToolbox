@@ -23,10 +23,10 @@ namespace Toolbox {
         ImageHandle(ImageHandle &&) noexcept;
         ~ImageHandle();
 
-        ImageHandle(const std::filesystem::path &res_path);
+        ImageHandle(const fs_path &res_path);
 
-        ImageHandle(std::span<u8> data);
-        ImageHandle(std::span<u8> data, int channels, int dx, int dy);
+        ImageHandle(std::span<const u8> data);
+        ImageHandle(std::span<const u8> data, int channels, int dx, int dy);
 
         ImageHandle(const Buffer &data);
         ImageHandle(const ImageData &data);

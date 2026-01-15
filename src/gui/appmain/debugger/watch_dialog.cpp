@@ -588,7 +588,7 @@ namespace Toolbox::UI {
             return;
         }
 
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             snprintf(preview_out, preview_size, "???");
             return;
@@ -724,7 +724,7 @@ namespace Toolbox::UI {
 
     Color::RGBShader AddWatchDialog::calcColorRGB(u32 address) {
 
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             return Color::RGBShader(0.0f, 0.0f, 0.0f);
         }
@@ -748,7 +748,7 @@ namespace Toolbox::UI {
 
     Color::RGBAShader AddWatchDialog::calcColorRGBA(u32 address) {
 
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             return Color::RGBAShader(0.0f, 0.0f, 0.0f, 0.0f);
         }

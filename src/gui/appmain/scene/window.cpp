@@ -84,9 +84,9 @@ namespace Toolbox::UI {
         }
 
         Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
+            MainApplication::instance().getTaskCommunicator();
 
-        const bool include_custom_objs = GUIApplication::instance()
+        const bool include_custom_objs = MainApplication::instance()
                                              .getSettingsManager()
                                              .getCurrentProfile()
                                              .m_is_custom_obj_allowed;
@@ -166,10 +166,10 @@ namespace Toolbox::UI {
         }
 
         const AppSettings &cur_settings =
-            GUIApplication::instance().getSettingsManager().getCurrentProfile();
+            MainApplication::instance().getSettingsManager().getCurrentProfile();
         if (cur_settings.m_repack_scenes_on_save && m_current_scene->rootPath().has_value()) {
             m_repack_io_busy = true;
-            GUIApplication::instance().dispatchEvent<ProjectPackEvent, true>(
+            MainApplication::instance().dispatchEvent<ProjectPackEvent, true>(
                 0, m_current_scene->rootPath().value().parent_path(), true, [&]() { m_repack_io_busy = false; });
         }
 
@@ -223,7 +223,7 @@ namespace Toolbox::UI {
         calcDolphinVPMatrix();
 
         Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
+            MainApplication::instance().getTaskCommunicator();
 
         if (task_communicator.isSceneLoaded()) {
             if (Input::GetKeyDown(KeyCode::KEY_E)) {
@@ -299,7 +299,7 @@ namespace Toolbox::UI {
         }
 
         Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
+            MainApplication::instance().getTaskCommunicator();
 
         if (m_selection_transforms_needs_update) {
             calcNewGizmoMatrixFromSelection();
@@ -1034,7 +1034,7 @@ namespace Toolbox::UI {
     void SceneWindow::calcDolphinVPMatrix() {
         m_dolphin_vp_mtx = glm::identity<glm::mat4x4>();
 
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             return;
         }
@@ -1092,7 +1092,7 @@ namespace Toolbox::UI {
 
     void SceneWindow::reassignAllActorPtrs(u32 param) {
         Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
+            MainApplication::instance().getTaskCommunicator();
         RefPtr<ISceneObject> root = m_current_scene->getObjHierarchy().getRoot();
         std::vector<RefPtr<ISceneObject>> objects;
         recursiveFlattenActorTree(root, objects);
@@ -1337,7 +1337,7 @@ namespace Toolbox::UI {
 
     void SceneWindow::renderScene(TimeStep delta_time) {
         const AppSettings &settings =
-            GUIApplication::instance().getSettingsManager().getCurrentProfile();
+            MainApplication::instance().getSettingsManager().getCurrentProfile();
 
         std::vector<J3DLight> lights;
 
@@ -1382,10 +1382,10 @@ namespace Toolbox::UI {
 
     void SceneWindow::renderPlaybackButtons(TimeStep delta_time) {
         const AppSettings &settings =
-            GUIApplication::instance().getSettingsManager().getCurrentProfile();
+            MainApplication::instance().getSettingsManager().getCurrentProfile();
 
         Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
+            MainApplication::instance().getTaskCommunicator();
 
         float window_bar_height =
             ImGui::GetStyle().FramePadding.y * 2.0f + ImGui::GetTextLineHeight();
@@ -1489,7 +1489,7 @@ namespace Toolbox::UI {
 
     void SceneWindow::renderDolphin(TimeStep delta_time) {
         Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
+            MainApplication::instance().getTaskCommunicator();
 
         std::string dolphin_view_str = ImWindowComponentTitle(*this, "Dolphin View");
 
@@ -1515,9 +1515,9 @@ namespace Toolbox::UI {
             // Render the Dolphin view and overlays
             {
                 DolphinCommunicator &communicator =
-                    GUIApplication::instance().getDolphinCommunicator();
+                    MainApplication::instance().getDolphinCommunicator();
                 Game::TaskCommunicator &task_communicator =
-                    GUIApplication::instance().getTaskCommunicator();
+                    MainApplication::instance().getTaskCommunicator();
 
                 m_dolphin_image = std::move(task_communicator.captureXFBAsTexture(
                     static_cast<int>(ImGui::GetWindowWidth()),
@@ -1626,13 +1626,13 @@ namespace Toolbox::UI {
             .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
                        [this](SelectionNodeInfo<Object::ISceneObject> info) {
                            info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-                           GUIApplication::instance().getSceneObjectClipboard().setData(info);
+                           MainApplication::instance().getSceneObjectClipboard().setData(info);
                            return;
                        })
             .addOption(
                 "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
                 [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                    auto nodes = GUIApplication::instance().getSceneObjectClipboard().getData();
+                    auto nodes = MainApplication::instance().getSceneObjectClipboard().getData();
                     auto this_parent = info.m_selected->getParent();
                     if (!this_parent) {
                         LogError(make_error<void>("Scene Hierarchy",
@@ -1671,7 +1671,7 @@ namespace Toolbox::UI {
                            this_parent->removeChild(info.m_selected->getNameRef().name());
 
                            Game::TaskCommunicator &task_communicator =
-                               GUIApplication::instance().getTaskCommunicator();
+                               MainApplication::instance().getTaskCommunicator();
                            task_communicator.taskRemoveSceneObject(info.m_selected,
                                                                    get_shared_ptr(*this_parent));
 
@@ -1720,13 +1720,13 @@ namespace Toolbox::UI {
             .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
                        [this](SelectionNodeInfo<Object::ISceneObject> info) {
                            info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-                           GUIApplication::instance().getSceneObjectClipboard().setData(info);
+                           MainApplication::instance().getSceneObjectClipboard().setData(info);
                            return;
                        })
             .addOption(
                 "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
                 [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                    auto nodes = GUIApplication::instance().getSceneObjectClipboard().getData();
+                    auto nodes = MainApplication::instance().getSceneObjectClipboard().getData();
                     auto this_parent =
                         std::reinterpret_pointer_cast<GroupSceneObject>(info.m_selected);
                     if (!this_parent) {
@@ -1766,7 +1766,7 @@ namespace Toolbox::UI {
                            this_parent->removeChild(info.m_selected->getNameRef().name());
 
                            Game::TaskCommunicator &task_communicator =
-                               GUIApplication::instance().getTaskCommunicator();
+                               MainApplication::instance().getTaskCommunicator();
                            task_communicator.taskRemoveSceneObject(info.m_selected,
                                                                    get_shared_ptr(*this_parent));
 
@@ -1871,13 +1871,13 @@ namespace Toolbox::UI {
             .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
                        [this](SelectionNodeInfo<Object::ISceneObject> info) {
                            info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
-                           GUIApplication::instance().getSceneObjectClipboard().setData(info);
+                           MainApplication::instance().getSceneObjectClipboard().setData(info);
                            return;
                        })
             .addOption(
                 "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
                 [this](SelectionNodeInfo<Object::ISceneObject> info) {
-                    auto nodes = GUIApplication::instance().getSceneObjectClipboard().getData();
+                    auto nodes = MainApplication::instance().getSceneObjectClipboard().getData();
                     auto this_parent =
                         reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
                     if (!this_parent) {
@@ -1901,7 +1901,7 @@ namespace Toolbox::UI {
                         sibling_names.push_back(std::string(node_ref.name()));
 
                         Game::TaskCommunicator &task_communicator =
-                            GUIApplication::instance().getTaskCommunicator();
+                            MainApplication::instance().getTaskCommunicator();
                         task_communicator.taskAddSceneObject(
                             new_object, get_shared_ptr(*this_parent),
                             [new_object](u32 actor_ptr) { new_object->setGamePtr(actor_ptr); });
@@ -1923,7 +1923,7 @@ namespace Toolbox::UI {
                            this_parent->removeChild(info.m_selected->getNameRef().name());
 
                            Game::TaskCommunicator &task_communicator =
-                               GUIApplication::instance().getTaskCommunicator();
+                               MainApplication::instance().getTaskCommunicator();
                            task_communicator.taskRemoveSceneObject(info.m_selected,
                                                                    get_shared_ptr(*this_parent));
 
@@ -1939,12 +1939,12 @@ namespace Toolbox::UI {
                 {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
                 [this](SelectionNodeInfo<Object::ISceneObject>) {
                     Game::TaskCommunicator &task_communicator =
-                        GUIApplication::instance().getTaskCommunicator();
+                        MainApplication::instance().getTaskCommunicator();
                     return task_communicator.isSceneLoaded();
                 },
                 [this](SelectionNodeInfo<Object::ISceneObject> info) {
                     Game::TaskCommunicator &task_communicator =
-                        GUIApplication::instance().getTaskCommunicator();
+                        MainApplication::instance().getTaskCommunicator();
                     task_communicator.setObjectTransformToMario(
                         ref_cast<PhysicalSceneObject>(info.m_selected));
                     m_update_render_objs = true;
@@ -1955,12 +1955,12 @@ namespace Toolbox::UI {
                 {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
                 [this](SelectionNodeInfo<Object::ISceneObject>) {
                     Game::TaskCommunicator &task_communicator =
-                        GUIApplication::instance().getTaskCommunicator();
+                        MainApplication::instance().getTaskCommunicator();
                     return task_communicator.isSceneLoaded();
                 },
                 [this](SelectionNodeInfo<Object::ISceneObject> info) {
                     Game::TaskCommunicator &task_communicator =
-                        GUIApplication::instance().getTaskCommunicator();
+                        MainApplication::instance().getTaskCommunicator();
                     task_communicator.setObjectTranslationToMario(
                         ref_cast<PhysicalSceneObject>(info.m_selected));
                     m_update_render_objs = true;
@@ -1978,13 +1978,13 @@ namespace Toolbox::UI {
                            for (auto &info : infos) {
                                info.m_selected = make_deep_clone<ISceneObject>(info.m_selected);
                            }
-                           GUIApplication::instance().getSceneObjectClipboard().setData(infos);
+                           MainApplication::instance().getSceneObjectClipboard().setData(infos);
                            return;
                        })
             .addOption(
                 "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
                 [this](std::vector<SelectionNodeInfo<Object::ISceneObject>> infos) {
-                    auto nodes = GUIApplication::instance().getSceneObjectClipboard().getData();
+                    auto nodes = MainApplication::instance().getSceneObjectClipboard().getData();
                     for (auto &info : infos) {
                         auto this_parent =
                             reinterpret_cast<GroupSceneObject *>(info.m_selected->getParent());
@@ -2028,7 +2028,7 @@ namespace Toolbox::UI {
                         this_parent->removeChild(info.m_selected->getNameRef().name());
 
                         Game::TaskCommunicator &task_communicator =
-                            GUIApplication::instance().getTaskCommunicator();
+                            MainApplication::instance().getTaskCommunicator();
                         task_communicator.taskRemoveSceneObject(info.m_selected,
                                                                 get_shared_ptr(*this_parent));
 
@@ -2065,13 +2065,13 @@ namespace Toolbox::UI {
             .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
                        [this](SelectionNodeInfo<Rail::Rail> info) {
                            info.m_selected = make_deep_clone<Rail::Rail>(info.m_selected);
-                           GUIApplication::instance().getSceneRailClipboard().setData(info);
+                           MainApplication::instance().getSceneRailClipboard().setData(info);
                            return;
                        })
             .addOption(
                 "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
                 [this](SelectionNodeInfo<Rail::Rail> info) {
-                    auto nodes = GUIApplication::instance().getSceneRailClipboard().getData();
+                    auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
                     if (nodes.size() > 0) {
                         RailData &data        = m_current_scene->getRailData();
                         size_t selected_index = data.getRailCount();
@@ -2123,13 +2123,13 @@ namespace Toolbox::UI {
                            for (auto &select : info) {
                                select.m_selected = make_deep_clone<Rail::Rail>(select.m_selected);
                            }
-                           GUIApplication::instance().getSceneRailClipboard().setData(info);
+                           MainApplication::instance().getSceneRailClipboard().setData(info);
                            return;
                        })
             .addOption(
                 "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
                 [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
-                    auto nodes = GUIApplication::instance().getSceneRailClipboard().getData();
+                    auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
                     if (nodes.size() > 0) {
                         RailData &data        = m_current_scene->getRailData();
                         size_t selected_index = data.getRailCount();
@@ -2205,7 +2205,7 @@ namespace Toolbox::UI {
             .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
                        [this](SelectionNodeInfo<Rail::RailNode> info) {
                            info.m_selected = make_deep_clone<Rail::RailNode>(info.m_selected);
-                           GUIApplication::instance().getSceneRailNodeClipboard().setData(info);
+                           MainApplication::instance().getSceneRailNodeClipboard().setData(info);
                            return Result<void>();
                        })
             .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
@@ -2218,7 +2218,7 @@ namespace Toolbox::UI {
                                selected_index = result.value();
                            }
                            auto nodes =
-                               GUIApplication::instance().getSceneRailNodeClipboard().getData();
+                               MainApplication::instance().getSceneRailNodeClipboard().getData();
                            for (auto &node : nodes) {
                                rail->insertNode(selected_index + 1, node.m_selected);
                                selected_index += 1;
@@ -2247,7 +2247,7 @@ namespace Toolbox::UI {
                                select.m_selected =
                                    make_deep_clone<Rail::RailNode>(select.m_selected);
                            }
-                           GUIApplication::instance().getSceneRailNodeClipboard().setData(info);
+                           MainApplication::instance().getSceneRailNodeClipboard().setData(info);
                            return Result<void>();
                        })
             .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
@@ -2260,7 +2260,7 @@ namespace Toolbox::UI {
                                selected_index = result.value();
                            }
                            auto nodes =
-                               GUIApplication::instance().getSceneRailNodeClipboard().getData();
+                               MainApplication::instance().getSceneRailNodeClipboard().getData();
                            for (auto &node : nodes) {
                                rail->insertNode(selected_index + 1, node.m_selected);
                                selected_index += 1;
@@ -2281,7 +2281,7 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::buildCreateObjDialog() {
-        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
+        AppSettings &settings = MainApplication::instance().getSettingsManager().getCurrentProfile();
 
         m_create_obj_dialog.setExtendedMode(settings.m_is_custom_obj_allowed);
         m_create_obj_dialog.setup();
@@ -2326,7 +2326,7 @@ namespace Toolbox::UI {
                 RefPtr<ISceneObject> object = this_parent->getChild(std::string(name));
 
                 Game::TaskCommunicator &task_communicator =
-                    GUIApplication::instance().getTaskCommunicator();
+                    MainApplication::instance().getTaskCommunicator();
                 task_communicator.taskAddSceneObject(
                     object, get_shared_ptr(*this_parent),
                     [object](u32 actor_ptr) { object->setGamePtr(actor_ptr); });
@@ -2349,7 +2349,7 @@ namespace Toolbox::UI {
             std::string old_name = std::string(info.m_selected->getNameRef().name());
             info.m_selected->setNameRef(new_name);
             Game::TaskCommunicator &task_communicator =
-                GUIApplication::instance().getTaskCommunicator();
+                MainApplication::instance().getTaskCommunicator();
             task_communicator.taskRenameSceneObject(info.m_selected, old_name,
                                                     std::string(new_name));
         });
@@ -2867,10 +2867,10 @@ namespace Toolbox::UI {
             m_is_save_default_ready = false;
             if (!m_io_context_path.empty()) {
                 if (onSaveData(m_io_context_path)) {
-                    GUIApplication::instance().showSuccessModal(this, name(),
+                    MainApplication::instance().showSuccessModal(this, name(),
                                                                 "Scene saved successfully!");
                 } else {
-                    GUIApplication::instance().showErrorModal(this, name(),
+                    MainApplication::instance().showErrorModal(this, name(),
                                                               "Scene failed to save!");
                 }
             } else {
@@ -2904,10 +2904,10 @@ namespace Toolbox::UI {
 
                     m_io_context_path = selected_path;
                     if (onSaveData(m_io_context_path)) {
-                        GUIApplication::instance().showSuccessModal(this, name(),
+                        MainApplication::instance().showSuccessModal(this, name(),
                                                                     "Scene saved successfully!");
                     } else {
-                        GUIApplication::instance().showErrorModal(this, name(),
+                        MainApplication::instance().showErrorModal(this, name(),
                                                                   "Scene failed to save!");
                     }
                     break;

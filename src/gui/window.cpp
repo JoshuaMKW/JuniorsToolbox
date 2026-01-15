@@ -38,19 +38,19 @@ namespace Toolbox::UI {
         if (size == getSize()) {
             return;
         }
-        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_RESIZE,
+        MainApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_RESIZE,
                                                                     size);
     }
     void ImWindow::setPos(const ImVec2 &pos) noexcept {
         if (pos == getPos()) {
             return;
         }
-        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_MOVE,
+        MainApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_MOVE,
                                                                     pos);
     }
 
     void ImWindow::setIcon(const std::string &icon_name) {
-        ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
+        ResourceManager &res_manager = MainApplication::instance().getResourceManager();
         UUID64 icon_dir              = res_manager.getResourcePathUUID("Images/Icons");
 
         auto result = res_manager.getRawData(icon_name, icon_dir);
@@ -82,31 +82,31 @@ namespace Toolbox::UI {
     }
 
     void ImWindow::close() {
-        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_CLOSE,
+        MainApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_CLOSE,
                                                                     ImVec2{0, 0});
         defocus();
     }
 
     void ImWindow::defocus() {
-        GUIApplication::instance().dispatchEvent<BaseEvent, true>(getUUID(), EVENT_FOCUS_OUT);
+        MainApplication::instance().dispatchEvent<BaseEvent, true>(getUUID(), EVENT_FOCUS_OUT);
     }
 
     void ImWindow::focus() {
-        GUIApplication::instance().dispatchEvent<BaseEvent, true>(getUUID(), EVENT_FOCUS_IN);
+        MainApplication::instance().dispatchEvent<BaseEvent, true>(getUUID(), EVENT_FOCUS_IN);
     }
 
     void ImWindow::open() {
-        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_SHOW,
+        MainApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_SHOW,
                                                                     ImVec2{0, 0});
     }
 
     void ImWindow::hide() {
-        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_HIDE,
+        MainApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_HIDE,
                                                                     ImVec2{0, 0});
     }
 
     void ImWindow::show() {
-        GUIApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_SHOW,
+        MainApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_SHOW,
                                                                     ImVec2{0, 0});
     }
 
@@ -137,8 +137,8 @@ namespace Toolbox::UI {
 
     void ImWindow::onDetach() {
         if (m_low_handle) {
-            GUIApplication::instance().deregisterDragDropSource(m_low_handle);
-            GUIApplication::instance().deregisterDragDropTarget(m_low_handle);
+            MainApplication::instance().deregisterDragDropSource(m_low_handle);
+            MainApplication::instance().deregisterDragDropTarget(m_low_handle);
         }
         m_low_handle = nullptr;
     }
@@ -225,8 +225,8 @@ namespace Toolbox::UI {
                         m_z_order = -1;
                     }
 
-                    GUIApplication::instance().registerDragDropSource(m_low_handle);
-                    GUIApplication::instance().registerDragDropTarget(m_low_handle);
+                    MainApplication::instance().registerDragDropSource(m_low_handle);
+                    MainApplication::instance().registerDragDropTarget(m_low_handle);
                 }
 
                 if ((flags_ & ImGuiWindowFlags_NoBackground)) {
@@ -249,14 +249,14 @@ namespace Toolbox::UI {
         if (m_imgui_window) {
             if (m_imgui_window->Size != m_prev_size) {
                 if (m_next_size.x >= 0.0f && m_next_size.y >= 0.0f) {
-                    GUIApplication::instance().dispatchEvent<WindowEvent, true>(
+                    MainApplication::instance().dispatchEvent<WindowEvent, true>(
                         getUUID(), EVENT_WINDOW_RESIZE, m_imgui_window->Size);
                 }
                 ImGui::SetWindowSize(m_imgui_window, m_prev_size, ImGuiCond_Always);
             }
 
             if (m_imgui_window->Pos != m_prev_pos) {
-                GUIApplication::instance().dispatchEvent<WindowEvent, true>(
+                MainApplication::instance().dispatchEvent<WindowEvent, true>(
                     getUUID(), EVENT_WINDOW_MOVE, m_imgui_window->Pos);
                 ImGui::SetWindowPos(m_imgui_window, m_prev_pos, ImGuiCond_Always);
             }

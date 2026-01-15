@@ -7,11 +7,11 @@
 namespace Toolbox::UI {
 
     void ImWidget::defocus() {
-        GUIApplication::instance().dispatchEvent<BaseEvent, true>(getUUID(), EVENT_FOCUS_OUT);
+        MainApplication::instance().dispatchEvent<BaseEvent, true>(getUUID(), EVENT_FOCUS_OUT);
     }
 
     void ImWidget::focus() {
-        GUIApplication::instance().dispatchEvent<BaseEvent, true>(getUUID(), EVENT_FOCUS_IN);
+        MainApplication::instance().dispatchEvent<BaseEvent, true>(getUUID(), EVENT_FOCUS_IN);
     }
 
     void ImWidget::onAttach() {
@@ -62,12 +62,12 @@ namespace Toolbox::UI {
             is_focused = ImGui::IsWindowFocused();
 
             if (updated_size != size) {
-                GUIApplication::instance().dispatchEvent<WindowEvent, true>(
+                MainApplication::instance().dispatchEvent<WindowEvent, true>(
                     getUUID(), EVENT_WINDOW_RESIZE, updated_size);
             }
 
             if (updated_pos != pos) {
-                GUIApplication::instance().dispatchEvent<WindowEvent, true>(
+                MainApplication::instance().dispatchEvent<WindowEvent, true>(
                     getUUID(), EVENT_WINDOW_MOVE, updated_pos);
             }
 

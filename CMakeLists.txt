@@ -1,7 +1,9 @@
 ﻿# CMakeList.txt : Top-level CMake project file, do global configuration
 # and include sub-projects here.
 #
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.25)
+
+project(JuniorsToolbox VERSION 0.1.2)
 
 # Require C++23 for stacktrace etc
 set(CMAKE_CXX_STANDARD 23)
@@ -12,8 +14,6 @@ if (POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
-
-project(JuniorsToolbox VERSION 0.1.2)
 
 file(GLOB TOOLBOX_SRC
     "lib/*.hpp"
@@ -49,6 +49,11 @@ file(GLOB TOOLBOX_SRC
     "include/dolphin/interpreter/instructions/*.hpp"
     "src/game/*.cpp"
     "include/game/*.hpp"
+    
+    "src/gui/bootstrap/*.cpp"
+    "include/gui/bootstrap/*.hpp"
+    "src/gui/bootstrap/project/*.cpp"
+    "include/gui/bootstrap/project/*.hpp"
 
     "src/gui/appmain/*.cpp"
     "include/gui/appmain/*.hpp"
@@ -88,7 +93,9 @@ file(GLOB TOOLBOX_SRC
     "include/gui/layer/*.hpp"
     "src/gui/widget/*.cpp"
     "include/gui/widget/*.hpp"
-
+    
+    "src/github/*.cpp"
+    "include/github/*.hpp"
     "src/image/*.cpp"
     "include/image/*.hpp"
     "src/model/*.cpp"
@@ -128,6 +135,8 @@ file(GLOB TOOLBOX_SRC
 
 add_executable(JuniorsToolbox ${TOOLBOX_SRC})
 
+target_compile_features(JuniorsToolbox PUBLIC cxx_std_23)
+
 # set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(NFD_OVERRIDE_RECENT_WITH_DEFAULT ON CACHE BOOL "Force NFD to use default path" FORCE)
 
@@ -142,15 +151,18 @@ target_link_libraries(JuniorsToolbox PRIVATE netpp)
 
 if(MSVC)
     # target_compile_options(j3dultra PRIVATE /w)
-    target_compile_options(JuniorsToolbox PRIVATE /FS /MP)
+    target_compile_options(JuniorsToolbox PRIVATE /FS /MP /permissive- /volatile:iso /Zc:preprocessor /EHsc /Zc:__cplusplus /Zc:externConstexpr /Zc:throwingNew)
     target_compile_options(JuniorsToolbox PUBLIC /ZI)
     target_link_options(JuniorsToolbox PUBLIC /INCREMENTAL)
 else()
     # target_compile_options(j3dultra PRIVATE -w)
 endif()
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 find_package(ICU REQUIRED COMPONENTS uc i18n)
 # find_package(Iconv REQUIRED)
+find_package(git2 REQUIRED)
+include_directories(${GIT2_INCLUDE_DIR})
 
 if(CMAKE_COMPILER_IS_GNUCXX)
   find_package(PkgConfig REQUIRED)
@@ -163,7 +175,8 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     target_link_libraries(JuniorsToolbox PRIVATE stdc++_libbacktrace)
   endif()
 else()
-  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ICU::uc ICU::i18n)
+  message(STATUS "Linking to" ${GIT2_LIBRARIES})
+  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw ICU::uc ICU::i18n ${GIT2_LIBRARIES})
 #  target_link_libraries(JuniorsToolbox PRIVATE j3dultra imgui glfw Iconv::Iconv)
 endif()
 

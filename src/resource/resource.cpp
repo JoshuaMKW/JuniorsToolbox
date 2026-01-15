@@ -229,7 +229,7 @@ namespace Toolbox {
         if (m_data_preload_cache.find(path) != m_data_preload_cache.end()) {
             const ResourceData &data = m_data_preload_cache[path];
 
-            std::span<u8> data_span(static_cast<u8 *>(data.m_data_ptr), data.m_data_size);
+            std::span<const u8> data_span(static_cast<const u8 *>(data.m_data_ptr), data.m_data_size);
             RefPtr<const ImageHandle> handle = make_referable<const ImageHandle>(data_span);
 
             if (!handle->isValid()) {
@@ -267,7 +267,7 @@ namespace Toolbox {
         if (m_data_preload_cache.find(path) != m_data_preload_cache.end()) {
             const ResourceData &data = m_data_preload_cache[path];
 
-            std::span<u8> data_span(static_cast<u8 *>(data.m_data_ptr), data.m_data_size);
+            std::span<const u8> data_span(static_cast<const u8 *>(data.m_data_ptr), data.m_data_size);
             RefPtr<const ImageHandle> handle = make_referable<const ImageHandle>(data_span);
 
             if (!handle->isValid()) {

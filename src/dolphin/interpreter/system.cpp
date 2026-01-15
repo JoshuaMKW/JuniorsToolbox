@@ -94,7 +94,7 @@ namespace Toolbox::Interpreter {
     }
 
     void SystemDolphin::evaluateInstruction() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         u32 inst      = read<u32>((u32)m_system_proc.m_pc);
         Opcode opcode = FORM_OPCD(inst);

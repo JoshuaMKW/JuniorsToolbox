@@ -1102,7 +1102,7 @@ namespace Toolbox::UI {
                 },
                 [this](const ModelIndex &view_index) {
                     RefPtr<NewItemWindow> window =
-                        GUIApplication::instance().createWindow<NewItemWindow>("New Item");
+                        MainApplication::instance().createWindow<NewItemWindow>("New Item");
                     if (window) {
                         window->setContextPath(m_view_proxy->getRealPath(view_index));
                     }
@@ -1324,7 +1324,7 @@ namespace Toolbox::UI {
             return false;
         }
 
-        GUIApplication &app = GUIApplication::instance();
+        MainApplication &app = MainApplication::instance();
 
         if (m_view_proxy->isDirectory(index)) {
             // ./scene/
@@ -1400,7 +1400,7 @@ namespace Toolbox::UI {
             return false;
         }
 
-        GUIApplication &app = GUIApplication::instance();
+        MainApplication &app = MainApplication::instance();
 
         // ./scene/map/map/pad/
         fs_path pad_path = m_view_proxy->getRealPath(index);

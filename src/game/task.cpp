@@ -44,14 +44,14 @@ namespace BetterSMS {
     }  // namespace _impl
 
     static bool isBetterSMSBusy() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         return communicator.read<u32>(_impl::s_requested_task_addr).value_or((u32)ETask::NONE) !=
                (u32)ETask::NONE;
     }
 
     // Interface functions
     static Result<Buffer, std::string> getResponseBuffer() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         u32 response_buffer_ptr =
             communicator.read<u32>(_impl::s_response_buffer_p_addr).value_or(0);
@@ -75,7 +75,7 @@ namespace BetterSMS {
     }
 
     static Result<Buffer, std::string> getRequestBuffer() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         u32 request_buffer_ptr = communicator.read<u32>(_impl::s_request_buffer_p_addr).value_or(0);
         if (request_buffer_ptr == 0) {
@@ -91,12 +91,12 @@ namespace BetterSMS {
     }
 
     static void setRequestTaskAndFinalize(ETask task) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         communicator.write<u32>(_impl::s_requested_task_addr, static_cast<u32>(task));
     }
 
     static bool waitForResponse(std::optional<TimeStep> timeout) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         TimePoint start_time              = std::chrono::high_resolution_clock::now();
         while (true) {
             if (timeout.has_value()) {
@@ -186,7 +186,7 @@ namespace Toolbox::Game {
         m_game_interpreter.setGlobalsPointerRW(0x804141C0);
 
         while (!tIsSignalKill()) {
-            DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+            DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
             m_game_interpreter.setMemoryBuffer(communicator.manager().getMemoryView(),
                                                communicator.manager().getMemorySize());
@@ -208,7 +208,7 @@ namespace Toolbox::Game {
     }
 
     u32 TaskCommunicator::allocGameMemory(u32 heap_ptr, u32 size, u32 alignment) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         u32 alloc_fn_ptr = 0;
 
@@ -252,7 +252,7 @@ namespace Toolbox::Game {
 
     void TaskCommunicator::waitMutex(u32 mutex_ptr) {
         while (true) {
-            DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+            DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
             u32 mutex_lock_count              = communicator.read<u32>(mutex_ptr + 0xC).value();
             if (mutex_lock_count == 0) {
                 return;
@@ -262,7 +262,7 @@ namespace Toolbox::Game {
     }
 
     void TaskCommunicator::lockMutex(u32 thread_ptr, u32 mutex_ptr) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         while (true) {
             u32 mutex_thread_ptr = communicator.read<u32>(mutex_ptr + 0x8).value();
@@ -291,7 +291,7 @@ namespace Toolbox::Game {
     }
 
     void TaskCommunicator::unlockMutex(u32 thread_ptr, u32 mutex_ptr) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         u32 mutex_thread_ptr = communicator.read<u32>(mutex_ptr + 0x8).value();
         u32 mutex_lock_count = communicator.read<u32>(mutex_ptr + 0xC).value();
@@ -307,7 +307,7 @@ namespace Toolbox::Game {
     }
 
     u32 TaskCommunicator::listInsert(u32 list_ptr, u32 iter_at, u32 item_ptr) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         u32 prev_it = communicator.read<u32>(iter_at + 0x4).value();
 
@@ -340,26 +340,26 @@ namespace Toolbox::Game {
     }
 
     u32 TaskCommunicator::listBegin(u32 list_ptr) const {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         return communicator.read<u32>(list_ptr + 0x8).value();
     }
 
     u32 TaskCommunicator::listEnd(u32 list_ptr) const { return list_ptr + 0x8; }
 
     u32 TaskCommunicator::listNext(u32 iter) const {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         return communicator.read<u32>(iter).value();
     }
 
     u32 TaskCommunicator::listItem(u32 iter) const {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         return communicator.read<u32>(iter + 0x8).value();
     }
 
     void TaskCommunicator::listForEach(u32 list_ptr,
                                        std::function<void(DolphinCommunicator &, u32, u32)> fn) {
         TOOLBOX_ASSERT(fn, "Must provide a callback to listForEach!");
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         u32 list_it                       = listBegin(list_ptr);
         u32 list_end                      = listEnd(list_ptr);
         while (list_it && list_it != list_end) {
@@ -369,17 +369,17 @@ namespace Toolbox::Game {
     }
 
     u32 TaskCommunicator::vectorInsert(u32 vector_ptr, u32 iter_at, u32 item_ptr) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         return 0;
     }
 
     u32 TaskCommunicator::vectorBegin(u32 vector_ptr) const {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         return communicator.read<u32>(vector_ptr + 0x4).value();
     }
 
     u32 TaskCommunicator::vectorEnd(u32 vector_ptr) const {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         return communicator.read<u32>(vector_ptr + 0x8).value();
     }
 
@@ -390,7 +390,7 @@ namespace Toolbox::Game {
     void TaskCommunicator::vectorForEach(u32 vector_ptr, u32 item_size,
                                          std::function<void(DolphinCommunicator &, u32)> fn) {
         TOOLBOX_ASSERT(fn, "Must provide a callback to vectorForEach!");
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         u32 vector_it                     = vectorBegin(vector_ptr);
         u32 vector_end                    = vectorEnd(vector_ptr);
         while (vector_it != vector_end) {
@@ -400,7 +400,7 @@ namespace Toolbox::Game {
     }
 
     bool TaskCommunicator::checkForAcquiredStackFrameAndBuffer() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             m_game_interpreter.setStackPointer(0);
             return false;
@@ -597,7 +597,7 @@ namespace Toolbox::Game {
         constexpr u8 c_mar_director_id = 5;
         constexpr u32 application_addr = 0x803E9700;
 
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         // Early exit to avoid errors
         if (!communicator.manager().isHooked()) {
@@ -623,7 +623,7 @@ namespace Toolbox::Game {
         constexpr u8 c_mar_director_id = 5;
         constexpr u32 application_addr = 0x803E9700;
 
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         // Early exit to avoid errors
         if (!communicator.manager().isHooked()) {
@@ -681,7 +681,7 @@ namespace Toolbox::Game {
     bool TaskCommunicator::getLoadedScene(u8 &stage, u8 &scenario) {
         constexpr u32 application_addr = 0x803E9700;
 
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         // Early exit to avoid errors
         if (!communicator.manager().isHooked()) {
@@ -706,7 +706,7 @@ namespace Toolbox::Game {
     }
 
     Result<void> TaskCommunicator::taskLoadScene(u8 stage, u8 scenario,
-                                                 transact_complete_cb complete_cb) {
+                                                 transact_complete_cb clone_complete_cb) {
         constexpr u8 c_mar_director_id = 5;
 
         return submitTask(
@@ -840,12 +840,12 @@ namespace Toolbox::Game {
                 return false;
 #endif
             },
-            stage, scenario, complete_cb);
+            stage, scenario, clone_complete_cb);
     }
 
     Result<void> TaskCommunicator::taskAddSceneObject(RefPtr<ISceneObject> object,
                                                       RefPtr<GroupSceneObject> parent,
-                                                      transact_complete_cb complete_cb) {
+                                                      transact_complete_cb clone_complete_cb) {
 #ifdef TOOLBOX_USE_INTERPRETER
         u32 parent_ptr = getActorPtr(parent);
         if (parent_ptr == 0) {
@@ -996,7 +996,7 @@ namespace Toolbox::Game {
 
     Result<void> TaskCommunicator::taskRemoveSceneObject(RefPtr<ISceneObject> object,
                                                          RefPtr<GroupSceneObject> parent,
-                                                         transact_complete_cb complete_cb) {
+                                                         transact_complete_cb clone_complete_cb) {
         if (!isSceneLoaded())
             return make_error<void>(
                 "GAME TASK", "Failed to remove object from game scene (Scene isn't loaded)!");
@@ -1110,7 +1110,7 @@ namespace Toolbox::Game {
     Result<void> TaskCommunicator::taskRenameSceneObject(RefPtr<ISceneObject> object,
                                                          const std::string &old_name,
                                                          const std::string &new_name,
-                                                         transact_complete_cb complete_cb) {
+                                                         transact_complete_cb clone_complete_cb) {
         if (!isSceneLoaded()) {
             return make_error<void>("GAME TASK",
                                     "Failed to rename object in game scene (Scene isn't loaded)!");
@@ -1159,8 +1159,8 @@ namespace Toolbox::Game {
     }
 
     Result<void> TaskCommunicator::taskPlayCameraDemo(std::string_view demo_name,
-                                                      transact_complete_cb complete_cb) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+                                                      transact_complete_cb clone_complete_cb) {
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         if (!isSceneLoaded()) {
             return make_error<void>("GAME TASK",
@@ -1216,7 +1216,7 @@ namespace Toolbox::Game {
     }
 
     Result<void> TaskCommunicator::flushFileInGameFST(const fs_path &root, const fs_path &fstpath) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         const u32 fst_start_address = communicator.read<u32>(0x80000038).value_or(0);
         if (fst_start_address == 0) {
@@ -1285,7 +1285,7 @@ namespace Toolbox::Game {
     }
 
     Result<void> TaskCommunicator::setObjectTransformToMario(RefPtr<PhysicalSceneObject> object) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         auto transform_result = object->getMember("Transform");
         if (!transform_result) {
@@ -1326,7 +1326,7 @@ namespace Toolbox::Game {
     }
 
     Result<void> TaskCommunicator::setObjectTranslationToMario(RefPtr<PhysicalSceneObject> object) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         auto transform_result = object->getMember("Transform");
         if (!transform_result) {
@@ -1359,7 +1359,7 @@ namespace Toolbox::Game {
     }
 
     Result<void> TaskCommunicator::setCameraTransformToGameCamera(Camera &camera) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
@@ -1394,7 +1394,7 @@ namespace Toolbox::Game {
     }
 
     Result<void> TaskCommunicator::getMarioTranslation(glm::vec3 &translation) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         if (!isSceneLoaded()) {
             return make_error<void>("GAME TASK", "Failed to set object translation in scene!");
@@ -1410,7 +1410,7 @@ namespace Toolbox::Game {
 
     Result<void> TaskCommunicator::setMarioTranslation(const glm::vec3 &translation,
                                                        bool warp_camera) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         if (!isSceneLoaded()) {
             return make_error<void>("GAME TASK",
@@ -1425,7 +1425,7 @@ namespace Toolbox::Game {
     }
 
     Result<void> TaskCommunicator::getMarioTransform(Transform &transform) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
@@ -1445,7 +1445,7 @@ namespace Toolbox::Game {
     }
 
     Result<void> TaskCommunicator::setMarioTransform(const Transform &transform, bool warp_camera) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
@@ -1487,7 +1487,7 @@ namespace Toolbox::Game {
 
     Result<void> TaskCommunicator::setObjectTransform(RefPtr<PhysicalSceneObject> object,
                                                       const Transform &transform) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
@@ -1535,7 +1535,7 @@ namespace Toolbox::Game {
     }
 
     ImageHandle TaskCommunicator::captureXFBAsTexture(int width, int height) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             return ImageHandle();
         }
@@ -1551,7 +1551,7 @@ namespace Toolbox::Game {
     }
 
     ScopePtr<Interpreter::SystemDolphin> TaskCommunicator::createInterpreter() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         if (!communicator.manager().isHooked()) {
             TOOLBOX_ERROR("[INTERPRETER] Dolphin is not hooked!");
@@ -1562,7 +1562,7 @@ namespace Toolbox::Game {
     }
 
     ScopePtr<Interpreter::SystemDolphin> TaskCommunicator::createInterpreterUnchecked() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         auto dolphin_interpreter = Toolbox::make_scoped<Interpreter::SystemDolphin>();
 

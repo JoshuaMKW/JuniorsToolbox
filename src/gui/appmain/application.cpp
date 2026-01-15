@@ -20,9 +20,6 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_internal.h>
 
-#ifndef STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
-#endif
 #include <stb/stb_image.h>
 
 #include "core/core.hpp"
@@ -35,6 +32,7 @@
 #include "gui/logging/window.hpp"
 
 #include "gui/appmain/application.hpp"
+#include "gui/appmain/window.hpp"
 #include "gui/appmain/debugger/window.hpp"
 #include "gui/appmain/pad/window.hpp"
 #include "gui/appmain/project/window.hpp"
@@ -52,6 +50,19 @@
 #include <nfd_glfw3.h>
 
 // void ImGuiSetupTheme(bool, float);
+
+static std::vector<std::string> VectorizeCSV(const std::string &csv_string) {
+    std::vector<std::string> values;
+
+    int64_t comma_pos = -1;
+    do {
+        size_t next_comma_pos = csv_string.find(',', comma_pos);
+        values.emplace_back(csv_string.substr(comma_pos + 1, next_comma_pos));
+        comma_pos = next_comma_pos;
+    } while (comma_pos != (int64_t)std::string::npos);
+
+    return values;
+}
 
 namespace Toolbox {
 
@@ -71,20 +82,62 @@ namespace Toolbox {
         }
     }
 
-    GUIApplication::GUIApplication() {
-        m_dockspace_built = false;
-        m_dockspace_id    = ImGuiID();
-        m_render_window   = nullptr;
-        m_windows         = {};
+    MainApplication::MainApplication() {
+        m_dockspace_built     = false;
+        m_dockspace_id        = ImGuiID();
+        m_render_window       = nullptr;
+        m_windows             = {};
         m_pending_drag_window = nullptr;
     }
 
-    GUIApplication &GUIApplication::instance() {
-        static GUIApplication _inst;
+    MainApplication &MainApplication::instance() {
+        static MainApplication _inst;
         return _inst;
     }
 
-    void GUIApplication::onInit(int argc, const char **argv) {
+    void MainApplication::onInit(int argc, const char **argv) {
+
+#define STR_EQ(str1, str2) (strcmp((str1), (str2)) == 0)
+
+        std::string settings_profile;
+        std::vector<WindowArguments> init_windows;
+        for (int arg = 0; arg < argc;) {
+            const int args_left = argc - arg - 1;
+            if (args_left <= 0) {
+                arg += 1;
+                continue;
+            }
+
+            if (STR_EQ(argv[arg], "--profile")) {
+                settings_profile = argv[arg + 1];
+                arg += 2;
+                continue;
+            }
+
+            if (STR_EQ(argv[arg], "--open-window")) {
+                WindowArguments window_args;
+                window_args.m_window_type = argv[arg + 1];
+                arg += 2;
+                if (args_left >= 3) {
+                    if (STR_EQ(argv[arg], "--window-load-path")) {
+                        window_args.m_load_path = argv[arg + 1];
+                        arg += 2;
+                        if (args_left >= 5) {
+                            if (STR_EQ(argv[arg], "--window-args")) {
+                                window_args.m_vargs = VectorizeCSV(argv[arg + 1]);
+                                arg += 2;
+                            }
+                        }
+                    }
+                }
+                init_windows.emplace_back(std::move(window_args));
+                continue;
+            }
+            arg += 1;
+        }
+
+#undef STR_EQ
+
         // Initialize GLFW
         if (!glfwInit()) {
             setExitCode(EXIT_CODE_FAILED_SETUP);
@@ -99,7 +152,7 @@ namespace Toolbox {
         }
 
         // Initialize the AppData directory
-        const fs_path &app_data_path = GUIApplication::getAppDataPath();
+        const fs_path &app_data_path = MainApplication::getAppDataPath();
         if (!Filesystem::exists(app_data_path).value_or(false)) {
             if (!Filesystem::create_directories(app_data_path).value_or(false)) {
                 std::string err =
@@ -140,7 +193,8 @@ namespace Toolbox {
         glfwWindowHint(GLFW_DEPTH_BITS, 32);
         glfwWindowHint(GLFW_SAMPLES, 4);
 
-        m_render_window = glfwCreateWindow(1280, 720, "Junior's Toolbox " TOOLBOX_VERSION_TAG, nullptr, nullptr);
+        m_render_window =
+            glfwCreateWindow(1280, 720, "Junior's Toolbox " TOOLBOX_VERSION_TAG, nullptr, nullptr);
         if (m_render_window == nullptr) {
             glfwTerminate();
             setExitCode(EXIT_CODE_FAILED_SETUP);
@@ -238,6 +292,11 @@ namespace Toolbox {
         determineEnvironmentConflicts();
         hookClipboardIntoGLFW();
 
+        // Dynamic windows based on CLI args
+        for (const WindowArguments &args : init_windows) {
+            WindowFactory::create(args);
+        }
+
         if (settings.m_update_frequency != UpdateFrequency::NEVER) {
             RefPtr<UpdaterModal> updater_win = createWindow<UpdaterModal>("Update Checker");
             if (updater_win) {
@@ -246,7 +305,7 @@ namespace Toolbox {
         }
     }
 
-    void GUIApplication::onUpdate(TimeStep delta_time) {
+    void MainApplication::onUpdate(TimeStep delta_time) {
         // Try to make sure we return an error if anything's fucky
         if (m_render_window == nullptr || glfwWindowShouldClose(m_render_window)) {
             stop();
@@ -290,7 +349,7 @@ namespace Toolbox {
         }
     }
 
-    void GUIApplication::onExit() {
+    void MainApplication::onExit() {
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
@@ -306,11 +365,12 @@ namespace Toolbox {
         m_task_communicator.tKill(true);
 
         DragDropManager::instance().shutdown();
+        FontManager::instance().teardown();
 
         netpp::sockets_deinitialize();
     }
 
-    void GUIApplication::onEvent(RefPtr<BaseEvent> ev) {
+    void MainApplication::onEvent(RefPtr<BaseEvent> ev) {
         CoreApplication::onEvent(ev);
 
         if (ev->getType() == EVENT_DROP) {
@@ -348,14 +408,14 @@ namespace Toolbox {
         }
     }
 
-    RefPtr<ImWindow> GUIApplication::findWindow(UUID64 uuid) {
+    RefPtr<ImWindow> MainApplication::findWindow(UUID64 uuid) {
         auto it = std::find_if(m_windows.begin(), m_windows.end(),
                                [&uuid](const auto &window) { return window->getUUID() == uuid; });
         return it != m_windows.end() ? *it : nullptr;
     }
 
-    RefPtr<ImWindow> GUIApplication::findWindow(const std::string &title,
-                                                const std::string &context) {
+    RefPtr<ImWindow> MainApplication::findWindow(const std::string &title,
+                                                 const std::string &context) {
         auto it = std::find_if(m_windows.begin(), m_windows.end(),
                                [&title, &context](const auto &window) {
                                    return window->name() == title && window->context() == context;
@@ -363,7 +423,7 @@ namespace Toolbox {
         return it != m_windows.end() ? *it : nullptr;
     }
 
-    std::vector<RefPtr<ImWindow>> GUIApplication::findWindows(const std::string &title) {
+    std::vector<RefPtr<ImWindow>> MainApplication::findWindows(const std::string &title) {
         std::vector<RefPtr<ImWindow>> result;
         std::copy_if(m_windows.begin(), m_windows.end(), std::back_inserter(result),
                      [&title](RefPtr<ImWindow> window) { return window->title() == title; });
@@ -371,7 +431,7 @@ namespace Toolbox {
     }
 
 #ifdef _WIN32
-    const fs_path &GUIApplication::getAppDataPath() const {
+    const fs_path &MainApplication::getAppDataPath() const {
         static fs_path app_data_path = []() -> fs_path {
             char *appdata = nullptr;
             size_t len    = 0;
@@ -401,7 +461,8 @@ namespace Toolbox {
     }
 #endif
 
-    RefPtr<ImWindow> GUIApplication::getImWindowFromPlatformWindow(Platform::LowWindow low_window) {
+    RefPtr<ImWindow>
+    MainApplication::getImWindowFromPlatformWindow(Platform::LowWindow low_window) {
         for (RefPtr<ImWindow> window : m_windows) {
             if (window->getLowHandle() == low_window) {
                 return window;
@@ -411,54 +472,54 @@ namespace Toolbox {
         return nullptr;
     }
 
-    void GUIApplication::showSuccessModal(ImWindow *parent, const std::string &title,
-                                          const std::string &message) {
+    void MainApplication::showSuccessModal(ImWindow *parent, const std::string &title,
+                                           const std::string &message) {
         m_success_modal_queue.emplace_back(parent, title, message);
     }
 
-    void GUIApplication::showErrorModal(ImWindow *parent, const std::string &title,
-                                        const std::string &message) {
+    void MainApplication::showErrorModal(ImWindow *parent, const std::string &title,
+                                         const std::string &message) {
         m_error_modal_queue.emplace_back(parent, title, message);
     }
 
-    bool GUIApplication::registerDragDropSource(Platform::LowWindow window) {
+    bool MainApplication::registerDragDropSource(Platform::LowWindow window) {
         return m_drag_drop_source_delegate->initializeForWindow(window);
     }
 
-    void GUIApplication::deregisterDragDropSource(Platform::LowWindow window) {
+    void MainApplication::deregisterDragDropSource(Platform::LowWindow window) {
         m_drag_drop_source_delegate->shutdownForWindow(window);
     }
 
-    bool GUIApplication::registerDragDropTarget(Platform::LowWindow window) {
+    bool MainApplication::registerDragDropTarget(Platform::LowWindow window) {
         return m_drag_drop_target_delegate->initializeForWindow(window);
     }
 
-    void GUIApplication::deregisterDragDropTarget(Platform::LowWindow window) {
+    void MainApplication::deregisterDragDropTarget(Platform::LowWindow window) {
         m_drag_drop_target_delegate->shutdownForWindow(window);
     }
 
-    bool GUIApplication::startDragAction(Platform::LowWindow source, RefPtr<DragAction> action) {
+    bool MainApplication::startDragAction(Platform::LowWindow source, RefPtr<DragAction> action) {
         m_pending_drag_action = action;
         m_pending_drag_window = source;
         return true;
     }
 
-    void GUIApplication::registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
-                                                SceneWindow::render_layer_cb cb) {
+    void MainApplication::registerDolphinOverlay(UUID64 scene_uuid, const std::string &name,
+                                                 SceneWindow::render_layer_cb cb) {
         RefPtr<SceneWindow> scene_window = ref_cast<SceneWindow>(findWindow(scene_uuid));
         if (scene_window) {
             scene_window->registerOverlay(name, cb);
         }
     }
 
-    void GUIApplication::deregisterDolphinOverlay(UUID64 scene_uuid, const std::string &name) {
+    void MainApplication::deregisterDolphinOverlay(UUID64 scene_uuid, const std::string &name) {
         RefPtr<SceneWindow> scene_window = ref_cast<SceneWindow>(findWindow(scene_uuid));
         if (scene_window) {
             scene_window->deregisterOverlay(name);
         }
     }
 
-    void GUIApplication::initializeIcon() {
+    void MainApplication::initializeIcon() {
         auto result = m_resource_manager.getRawData(
             "toolbox.png", m_resource_manager.getResourcePathUUID(fs_path("Images") / "Icons"));
         if (!result) {
@@ -481,12 +542,11 @@ namespace Toolbox {
         }
     }
 
-    void GUIApplication::render(TimeStep delta_time) {  // Begin actual rendering
+    void MainApplication::render(TimeStep delta_time) {  // Begin actual rendering
         glfwMakeContextCurrent(m_render_window);
 
-        ImGui::GetIO().FontDefault = FontManager::instance().getCurrentFont();
-        ImGui::GetStyle().FontSizeBase =
-            FontManager::instance().getCurrentFontSize();
+        ImGui::GetIO().FontDefault     = FontManager::instance().getCurrentFont();
+        ImGui::GetStyle().FontSizeBase = FontManager::instance().getCurrentFontSize();
 
         // The context renders both the ImGui elements and the background elements.
         ImGui_ImplOpenGL3_NewFrame();
@@ -534,14 +594,15 @@ namespace Toolbox {
             m_windows_processing = false;
 
             for (auto it = m_windows_to_gc.begin(); it != m_windows_to_gc.end();) {
-                const std::pair<GCTimeInfo, RefPtr<ImWindow>> &window_gc_data = m_windows_to_gc.front();
+                const std::pair<GCTimeInfo, RefPtr<ImWindow>> &window_gc_data =
+                    m_windows_to_gc.front();
                 if (!window_gc_data.first.isReadyToGC()) {
                     ++it;
                     continue;
                 }
 
                 RefPtr<ImWindow> window = window_gc_data.second;
-                it = m_windows_to_gc.erase(it);
+                it                      = m_windows_to_gc.erase(it);
 
                 removeLayer(window);
                 std::erase(m_windows, window);
@@ -702,13 +763,13 @@ namespace Toolbox {
         }
     }
 
-    void GUIApplication::renderMenuBar() {
+    void MainApplication::renderMenuBar() {
         ImGui::BeginMainMenuBar();
 
         if (ImGui::BeginMenu("File")) {
-            //if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Open...")) {
-            //    m_is_file_dialog_open = true;
-            //}
+            // if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Open...")) {
+            //     m_is_file_dialog_open = true;
+            // }
             if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Open Project...")) {
                 m_is_dir_dialog_open = true;
             }
@@ -753,9 +814,9 @@ namespace Toolbox {
 
             ImGui::SeparatorText("Asset Editors");
 
-            //if (ImGui::MenuItem("BMG")) {
-            //    // TODO: createWindow<BMGEditorWindow>("BMG Editor");
-            //}
+            // if (ImGui::MenuItem("BMG")) {
+            //     // TODO: createWindow<BMGEditorWindow>("BMG Editor");
+            // }
 
             if (ImGui::MenuItem("PAD")) {
                 createWindow<PadInputWindow>("Pad Recorder");
@@ -783,7 +844,8 @@ namespace Toolbox {
             if (!FileDialog::instance()->isAlreadyOpen()) {
                 FileDialogFilter filter;
                 filter.addFilter("Nintendo Scene Archive", "szs,arc");
-                FileDialog::instance()->openDialog(m_render_window, m_uuid, m_load_path, false, filter);
+                FileDialog::instance()->openDialog(m_render_window, m_uuid, m_load_path, false,
+                                                   filter);
             }
             m_is_file_dialog_open = false;
         }
@@ -800,7 +862,7 @@ namespace Toolbox {
                         RefPtr<ProjectViewWindow> project_window =
                             createWindow<ProjectViewWindow>("Project View");
                         if (!project_window->onLoadData(selected_path)) {
-                            GUIApplication::instance().showErrorModal(
+                            MainApplication::instance().showErrorModal(
                                 nullptr, "Application",
                                 "Failed to open the folder as a project!\n\n - (Check application "
                                 "log for details)");
@@ -808,7 +870,7 @@ namespace Toolbox {
                         }
                     }
                 } else {
-                    m_load_path                = selected_path.parent_path();
+                    m_load_path = selected_path.parent_path();
                 }
 
                 // if (selected_path.extension() == ".szs" || selected_path.extension() == ".arc") {
@@ -837,7 +899,7 @@ namespace Toolbox {
         }
     }
 
-    void GUIApplication::finalizeFrame() {
+    void MainApplication::finalizeFrame() {
         // Update buffer size
         {
             int width, height;
@@ -874,7 +936,7 @@ namespace Toolbox {
         glfwSwapBuffers(m_render_window);
     }
 
-    bool GUIApplication::determineEnvironmentConflicts() {
+    bool MainApplication::determineEnvironmentConflicts() {
         bool conflicts_found = false;
 
         TRY(Platform::IsServiceRunning("NahimicService"))
@@ -890,7 +952,7 @@ namespace Toolbox {
         return conflicts_found;
     }
 
-    void GUIApplication::gcClosedWindows() {
+    void MainApplication::gcClosedWindows() {
         // Check for closed windows that need destroyed
         for (auto it = m_windows.begin(); it != m_windows.end();) {
             RefPtr<ImWindow> win = *it;
@@ -905,7 +967,7 @@ namespace Toolbox {
         }
     }
 
-    bool GUIApplication::GCTimeInfo::isReadyToGC() const {
+    bool MainApplication::GCTimeInfo::isReadyToGC() const {
         TimePoint now = std::chrono::high_resolution_clock::now();
         TimeStep dur  = TimeStep(m_closed_time, now);
         return dur.seconds() >= m_seconds_to_close;
@@ -914,7 +976,8 @@ namespace Toolbox {
     void FileDialog::openDialog(const ImWindow &parent_window,
                                 const std::filesystem::path &starting_path, bool is_directory,
                                 std::optional<FileDialogFilter> maybe_filters) {
-        GLFWwindow *op_window = static_cast<GLFWwindow *>(parent_window.getImGuiWindow()->Viewport->PlatformHandle);
+        GLFWwindow *op_window =
+            static_cast<GLFWwindow *>(parent_window.getImGuiWindow()->Viewport->PlatformHandle);
         openDialog(op_window, parent_window.getUUID(), starting_path, is_directory, maybe_filters);
     }
 
@@ -945,8 +1008,10 @@ namespace Toolbox {
                                 const std::filesystem::path &starting_path,
                                 const std::string &default_name, bool is_directory,
                                 std::optional<FileDialogFilter> maybe_filters) {
-        GLFWwindow *op_window = static_cast<GLFWwindow *>(parent_window.getImGuiWindow()->Viewport->PlatformHandle);
-        saveDialog(op_window, parent_window.getUUID(), starting_path, default_name, is_directory, maybe_filters);
+        GLFWwindow *op_window =
+            static_cast<GLFWwindow *>(parent_window.getImGuiWindow()->Viewport->PlatformHandle);
+        saveDialog(op_window, parent_window.getUUID(), starting_path, default_name, is_directory,
+                   maybe_filters);
     }
 
     void FileDialog::saveDialog(GLFWwindow *parent_window, UUID64 parent_uuid,
@@ -979,7 +1044,8 @@ namespace Toolbox {
         if (self.m_control_info.m_is_directory) {
             nfdpickfolderu8args_t args;
             args.defaultPath = self.m_control_info.m_starting_path.c_str();
-            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window, &args.parentWindow);
+            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window,
+                                              &args.parentWindow);
             self.m_result = NFD_PickFolderU8_With(&self.m_selected_path, &args);
         } else {
             int num_filters                = 0;
@@ -998,7 +1064,8 @@ namespace Toolbox {
             args.filterList  = const_cast<const nfdu8filteritem_t *>(nfd_filters);
             args.filterCount = num_filters;
             args.defaultPath = self.m_control_info.m_starting_path.c_str();
-            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window, &args.parentWindow);
+            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window,
+                                              &args.parentWindow);
             self.m_result = NFD_OpenDialogU8_With(&self.m_selected_path, &args);
             if (self.m_control_info.m_opt_filters) {
                 delete[] nfd_filters;
@@ -1014,7 +1081,8 @@ namespace Toolbox {
         if (self.m_control_info.m_is_directory) {
             nfdpickfolderu8args_t args;
             args.defaultPath = self.m_control_info.m_starting_path.c_str();
-            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window, &args.parentWindow);
+            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window,
+                                              &args.parentWindow);
             self.m_result = NFD_PickFolderU8_With(&self.m_selected_path, &args);
         } else {
             int num_filters                = 0;
@@ -1034,7 +1102,8 @@ namespace Toolbox {
             args.filterCount = num_filters;
             args.defaultPath = self.m_control_info.m_starting_path.c_str();
             args.defaultName = self.m_control_info.m_default_name.c_str();
-            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window, &args.parentWindow);
+            NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window,
+                                              &args.parentWindow);
             self.m_result = NFD_SaveDialogU8_With(&self.m_selected_path, &args);
             if (self.m_control_info.m_opt_filters) {
                 delete[] nfd_filters;

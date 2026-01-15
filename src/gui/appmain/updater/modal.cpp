@@ -95,7 +95,7 @@ namespace Toolbox::UI {
     void UpdaterModal::onAttach() {
         ImModal::onAttach();
 
-        const fs_path credentials_path = GUIApplication::instance().getAppDataPath() / ".updater";
+        const fs_path credentials_path = MainApplication::instance().getAppDataPath() / ".updater";
         const fs_path key_file         = credentials_path / CLIENT_KEY_NAME;
 
         if (!Filesystem::exists(key_file).value_or(false)) {
@@ -158,7 +158,7 @@ namespace Toolbox::UI {
                 }
 
                 const AppSettings &cur_settings =
-                    GUIApplication::instance().getSettingsManager().getCurrentProfile();
+                    MainApplication::instance().getSettingsManager().getCurrentProfile();
 
                 json_t body_json = json_t::parse(response->body());
                 if (!body_json.is_array()) {
@@ -217,7 +217,7 @@ namespace Toolbox::UI {
 
         m_http_github_client->send(m_http_releases_request);
 
-        ResourceManager &manager = GUIApplication::instance().getResourceManager();
+        ResourceManager &manager = MainApplication::instance().getResourceManager();
         UUID64 image_dir_id      = manager.getResourcePathUUID("Images");
 
         m_github_logo =

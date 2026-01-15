@@ -37,22 +37,22 @@ namespace Toolbox::Game {
         u32 getActorPtr(const std::string &name);
 
         Result<void> taskLoadScene(u8 stage, u8 scenario,
-                                   transact_complete_cb complete_cb = nullptr);
+                                   transact_complete_cb clone_complete_cb = nullptr);
 
         Result<void> taskAddSceneObject(RefPtr<ISceneObject> object,
                                         RefPtr<GroupSceneObject> parent,
-                                        transact_complete_cb complete_cb = nullptr);
+                                        transact_complete_cb clone_complete_cb = nullptr);
 
         Result<void> taskRemoveSceneObject(RefPtr<ISceneObject> object,
                                            RefPtr<GroupSceneObject> parent,
-                                           transact_complete_cb complete_cb = nullptr);
+                                           transact_complete_cb clone_complete_cb = nullptr);
 
         Result<void> taskRenameSceneObject(RefPtr<ISceneObject> object, const std::string &old_name,
                                            const std::string &new_name,
-                                           transact_complete_cb complete_cb = nullptr);
+                                           transact_complete_cb clone_complete_cb = nullptr);
 
         Result<void> taskPlayCameraDemo(std::string_view demo_name,
-                                        transact_complete_cb complete_cb = nullptr);
+                                        transact_complete_cb clone_complete_cb = nullptr);
 
         Result<void> updateSceneObjectParameter(const QualifiedName &member_name,
                                                 size_t member_game_offset,

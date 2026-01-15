@@ -16,7 +16,7 @@ namespace Toolbox {
 
     ImageHandle::ImageHandle(ImageHandle &&other) noexcept { moveGL(std::move(other)); }
 
-    ImageHandle::ImageHandle(const std::filesystem::path &res_path) {
+    ImageHandle::ImageHandle(const fs_path &res_path) {
         int width, height, channels;
         stbi_uc *data = stbi_load(res_path.string().c_str(), &width, &height, &channels, 0);
 
@@ -28,7 +28,7 @@ namespace Toolbox {
         stbi_image_free(data);
     }
 
-    ImageHandle::ImageHandle(std::span<u8> data) {
+    ImageHandle::ImageHandle(std::span<const u8> data) {
         int width, height, channels;
         stbi_uc *stbi_buf =
             stbi_load_from_memory(data.data(), data.size(), &width, &height, &channels, 0);
@@ -41,7 +41,7 @@ namespace Toolbox {
         stbi_image_free(stbi_buf);
     }
 
-    ImageHandle::ImageHandle(std::span<u8> data, int channels, int dx, int dy) {
+    ImageHandle::ImageHandle(std::span<const u8> data, int channels, int dx, int dy) {
         Buffer data_buf;
         data_buf.setBuf(data.data(), data.size());
 

@@ -231,7 +231,7 @@ namespace Toolbox::UI {
                     if (!is_record_complete) {
                         TOOLBOX_ERROR("[PAD RECORD] Record is not complete. Please check remaining "
                                       "links for missing pad data.");
-                        GUIApplication::instance().showErrorModal(
+                        MainApplication::instance().showErrorModal(
                             this, name(),
                             "Pad data failed to save!\n\n - (Check application log for "
                             "details)");
@@ -342,7 +342,7 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::renderControlButtons() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         const ImVec2 frame_padding  = ImGui::GetStyle().FramePadding;
         const ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
@@ -420,7 +420,7 @@ namespace Toolbox::UI {
             m_pad_recorder.startRecording();
             m_is_recording_pad_data = true;
             if (m_attached_scene_uuid) {
-                GUIApplication::instance().dispatchEvent<BaseEvent, true>(
+                MainApplication::instance().dispatchEvent<BaseEvent, true>(
                     m_attached_scene_uuid, SCENE_DISABLE_CONTROL_EVENT);
             }
         }
@@ -481,7 +481,7 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::renderControllerOverlay(const ImVec2 &center, f32 scale, u8 alpha) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             ImVec2 image_pos = ImGui::GetContentRegionAvail() / 2.0f;
             image_pos.x -= 100.0f;
@@ -840,7 +840,7 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::renderRecordedInputData() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         ImGui::SeparatorText("Record Links");
         {
@@ -875,7 +875,7 @@ namespace Toolbox::UI {
         if (ImGui::BeginChild("##Scene Context Elem")) {
             std::string window_preview = "Scene not selected.";
 
-            const std::vector<RefPtr<ImWindow>> &windows = GUIApplication::instance().getWindows();
+            const std::vector<RefPtr<ImWindow>> &windows = MainApplication::instance().getWindows();
             auto window_it =
                 std::find_if(windows.begin(), windows.end(), [this](RefPtr<ImWindow> window) {
                     return window->getUUID() == m_attached_scene_uuid;
@@ -896,10 +896,10 @@ namespace Toolbox::UI {
                     }
                     bool selected = window->getUUID() == m_attached_scene_uuid;
                     if (ImGui::Selectable(window->context().c_str(), &selected)) {
-                        GUIApplication::instance().deregisterDolphinOverlay(m_attached_scene_uuid,
+                        MainApplication::instance().deregisterDolphinOverlay(m_attached_scene_uuid,
                                                                             "Pad Record Overlay");
                         m_attached_scene_uuid = window->getUUID();
-                        GUIApplication::instance().registerDolphinOverlay(
+                        MainApplication::instance().registerDolphinOverlay(
                             m_attached_scene_uuid, "Pad Record Overlay",
                             [this](TimeStep delta_time, std::string_view layer_name, int width,
                                    int height, const glm::mat4x4 &vp_mtx, UUID64 window_uuid) {
@@ -922,7 +922,7 @@ namespace Toolbox::UI {
             ImGui::SetCursorPosX(cursor_pos_x);
 
             if (ImGui::Button("Apply Rail")) {
-                GUIApplication::instance().dispatchEvent<SceneCreateRailEvent, true>(
+                MainApplication::instance().dispatchEvent<SceneCreateRailEvent, true>(
                     m_attached_scene_uuid, m_pad_rail);
             }
 
@@ -955,10 +955,10 @@ namespace Toolbox::UI {
                 }
             } else {
                 if (onSaveData(m_load_path)) {
-                    GUIApplication::instance().showSuccessModal(this, name(),
+                    MainApplication::instance().showSuccessModal(this, name(),
                                                                 "Pad data saved successfully!");
                 } else {
-                    GUIApplication::instance().showErrorModal(
+                    MainApplication::instance().showErrorModal(
                         this, name(),
                         "Pad data failed to save!\n\n - (Check application log for details)");
                 }
@@ -1016,12 +1016,12 @@ namespace Toolbox::UI {
 
                             m_pad_recorder.resetRecording();
                             if (m_attached_scene_uuid) {
-                                GUIApplication::instance().dispatchEvent<BaseEvent, true>(
+                                MainApplication::instance().dispatchEvent<BaseEvent, true>(
                                     m_attached_scene_uuid, SCENE_ENABLE_CONTROL_EVENT);
                             }
 
                             if (!onLoadData(*m_load_path)) {
-                                GUIApplication::instance().showErrorModal(
+                                MainApplication::instance().showErrorModal(
                                     this, name(),
                                     "Pad data failed to load!\n\n - (Check application log for "
                                     "details)");
@@ -1031,7 +1031,7 @@ namespace Toolbox::UI {
                         })
                         .or_else([&](const FSError &error) {
                             UI::LogError(error);
-                            GUIApplication::instance().showErrorModal(
+                            MainApplication::instance().showErrorModal(
                                 this, name(),
                                 "Pad data failed to load!\n\n - (Check application log for "
                                 "details)");
@@ -1056,10 +1056,10 @@ namespace Toolbox::UI {
                             m_load_path = selected_path;
 
                             if (onSaveData(m_load_path)) {
-                                GUIApplication::instance().showSuccessModal(
+                                MainApplication::instance().showSuccessModal(
                                     this, name(), "Pad data saved successfully!");
                             } else {
-                                GUIApplication::instance().showErrorModal(
+                                MainApplication::instance().showErrorModal(
                                     this, name(),
                                     "Pad data failed to save!\n\n - (Check application log for "
                                     "details)");
@@ -1069,7 +1069,7 @@ namespace Toolbox::UI {
                         })
                         .or_else([&](const FSError &error) {
                             UI::LogError(error);
-                            GUIApplication::instance().showErrorModal(
+                            MainApplication::instance().showErrorModal(
                                 this, name(),
                                 "Pad data failed to load!\n\n - (Check application log for "
                                 "details)");
@@ -1078,7 +1078,7 @@ namespace Toolbox::UI {
                     break;
                 }
                 default:
-                    GUIApplication::instance().showErrorModal(
+                    MainApplication::instance().showErrorModal(
                         this, name(),
                         "Invalid file dialog state detected! (Create an issue on github with "
                         "context please)");
@@ -1253,7 +1253,7 @@ namespace Toolbox::UI {
                         // Submit task to record pad data
                         m_update_tasks.push_back([this, from_link, to_link]() {
                             Game::TaskCommunicator &task_communicator =
-                                GUIApplication::instance().getTaskCommunicator();
+                                MainApplication::instance().getTaskCommunicator();
 
                             Transform player_transform;
                             size_t from_index = from_link - 'A';
@@ -1279,7 +1279,7 @@ namespace Toolbox::UI {
                             m_pad_recorder.startRecording(from_link, to_link);
                             m_is_recording_pad_data = true;
                             if (m_attached_scene_uuid) {
-                                GUIApplication::instance().dispatchEvent<BaseEvent, true>(
+                                MainApplication::instance().dispatchEvent<BaseEvent, true>(
                                     m_attached_scene_uuid, SCENE_DISABLE_CONTROL_EVENT);
                             }
                         });
@@ -1345,7 +1345,7 @@ namespace Toolbox::UI {
     void PadInputWindow::loadMimePadData(Buffer &buffer) {}
 
     void PadInputWindow::tryReuseOrCreateRailNode(const ReplayLinkNode &link_node) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         u32 player_ptr                    = communicator.read<u32>(0x8040E108).value();
         if (!player_ptr) {
             if (m_pad_recorder.isCameraInversed()) {
@@ -1368,7 +1368,7 @@ namespace Toolbox::UI {
         }
 
         Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
+            MainApplication::instance().getTaskCommunicator();
         {
             glm::vec3 player_position;
             task_communicator.getMarioTranslation(player_position);
@@ -1397,7 +1397,7 @@ namespace Toolbox::UI {
 
     void PadInputWindow::tryRenderNodes(TimeStep delta_time, std::string_view layer_name, int width,
                                         int height, const glm::mat4x4 &vp_mtx, UUID64 window_uuid) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         u32 application_address = 0x803E9700;
         u32 display_address     = communicator.read<u32>(application_address + 0x1C).value();
@@ -1556,7 +1556,7 @@ namespace Toolbox::UI {
         }
 
         Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
+            MainApplication::instance().getTaskCommunicator();
 
         if (!m_pad_rail.nodes().empty()) {
             RefPtr<RailNode> from_node = m_pad_rail.nodes()[from_link - 'A'];
@@ -1578,7 +1578,7 @@ namespace Toolbox::UI {
     }
 
     f32 PadInputWindow::getDistanceFromPlayer(const glm::vec3 &pos) const {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         u32 mario_address                 = communicator.read<u32>(0x8040E108).value();
         glm::vec3 player_position         = {
             communicator.read<f32>(mario_address + 0x10).value(),
@@ -1619,7 +1619,7 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::onAttach() {
-        ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
+        ResourceManager &res_manager = MainApplication::instance().getResourceManager();
         UUID64 images_dir            = res_manager.getResourcePathUUID("Images");
 
         m_pad_recorder.onCreateLink(
@@ -1654,7 +1654,7 @@ namespace Toolbox::UI {
         }
 
         if (m_pad_recorder.isPlaying(m_cur_from_link, m_cur_to_link)) {
-            DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+            DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
             if (communicator.manager().isHooked()) {
             }
         }
@@ -1662,7 +1662,7 @@ namespace Toolbox::UI {
         if (!m_pad_recorder.isRecording() && m_is_recording_pad_data) {
             m_is_recording_pad_data = false;
             if (m_attached_scene_uuid) {
-                GUIApplication::instance().dispatchEvent<BaseEvent, true>(
+                MainApplication::instance().dispatchEvent<BaseEvent, true>(
                     m_attached_scene_uuid, SCENE_ENABLE_CONTROL_EVENT);
             }
         }

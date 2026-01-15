@@ -18,7 +18,7 @@ namespace Toolbox::UI {
         _BuiltinItemInfo("Basic Scene", "", "A minimal scene that runs in game.", "toolbox.png",
                          [](const fs_path &context_path) -> RefPtr<SceneWindow> {
                              RefPtr<SceneWindow> window =
-                                 GUIApplication::instance().createWindow<SceneWindow>(
+                                 MainApplication::instance().createWindow<SceneWindow>(
                                      "Scene Editor");
                              window->initToBasic();
                              window->setIOContextPath(context_path);
@@ -64,7 +64,7 @@ namespace Toolbox::UI {
 
     NewItemWindow::NewItemWindow(const std::string &name)
         : ImWindow(name), m_selected_item_index(-1) {
-        ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
+        ResourceManager &res_manager = MainApplication::instance().getResourceManager();
         UUID64 icon_path_uuid        = res_manager.getResourcePathUUID("Images/Icons");
         m_item_infos.resize(s_default_items.size());
         std::transform(

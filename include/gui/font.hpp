@@ -22,6 +22,7 @@ namespace Toolbox::UI {
         std::string m_current_font_family;
         float m_current_font_size;
         std::multimap<std::string, ImFont *> m_loaded_fonts;
+        fs_path m_font_directory;
 
     public:
         static FontManager &instance() {
@@ -53,6 +54,7 @@ namespace Toolbox::UI {
         bool addFontTTF(const std::string_view name, const ImFontConfig *font_cfg_template,
                         const ImWchar *glyph_ranges);
         void finalize();
+        void teardown();
 
 #ifdef TOOLBOX_USE_LEGACY_IMFONT_API
         ImFont *getFont(std::string_view name, float size) const;

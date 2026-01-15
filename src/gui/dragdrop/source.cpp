@@ -410,7 +410,7 @@ namespace Toolbox::UI {
 
             return DRAGDROP_S_DROP;
         default:
-            GUIApplication::instance().processEvents();
+            MainApplication::instance().processEvents();
             return S_OK;
         }
     }
@@ -576,7 +576,7 @@ namespace Toolbox::UI {
     void
     WindowsDragDropSourceDelegate::emitSynthesizedReleaseEvent(Platform::LowWindow low_window) {
         RefPtr<ImWindow> window =
-            GUIApplication::instance().getImWindowFromPlatformWindow(low_window);
+            MainApplication::instance().getImWindowFromPlatformWindow(low_window);
 
         // Get the local mouse position
         // ---
@@ -586,7 +586,7 @@ namespace Toolbox::UI {
 
         // Synthesize a mouse release event
         // ---
-        GUIApplication::instance().dispatchEvent<MouseEvent, true>(
+        MainApplication::instance().dispatchEvent<MouseEvent, true>(
             window->getUUID(), EVENT_MOUSE_RELEASE, position, Input::MouseButton::BUTTON_LEFT,
             Input::MouseButtonState::STATE_RELEASE);
     }

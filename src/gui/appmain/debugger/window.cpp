@@ -71,7 +71,7 @@ namespace Toolbox::UI {
         }
 
         RefPtr<ImWindow> scene_window =
-            GUIApplication::instance().findWindow(m_attached_scene_uuid);
+            MainApplication::instance().findWindow(m_attached_scene_uuid);
         if (!scene_window) {
             return "MRAM";
         }
@@ -98,10 +98,10 @@ namespace Toolbox::UI {
                         m_is_save_dialog = true;
                     } else {
                         if (onSaveData(m_resource_path)) {
-                            GUIApplication::instance().showSuccessModal(
+                            MainApplication::instance().showSuccessModal(
                                 this, "Debugger", "Watchlist saved successfully!");
                         } else {
-                            GUIApplication::instance().showErrorModal(this, "Debugger",
+                            MainApplication::instance().showErrorModal(this, "Debugger",
                                                                       "Watchlist failed to save!");
                         }
                     }
@@ -185,7 +185,7 @@ namespace Toolbox::UI {
 
                         if (selected_path.extension() == ".mwl") {
                             if (!onLoadData(selected_path)) {
-                                GUIApplication::instance().showErrorModal(
+                                MainApplication::instance().showErrorModal(
                                     this, name(),
                                     "Watchlist failed to load!\n\n - (Check application log for "
                                     "details)");
@@ -194,13 +194,13 @@ namespace Toolbox::UI {
                             auto result = m_watch_model->loadFromDMEFile(selected_path);
                             if (!result) {
                                 LogError(result.error());
-                                GUIApplication::instance().showErrorModal(
+                                MainApplication::instance().showErrorModal(
                                     this, name(),
                                     "Watchlist failed to load!\n\n - (Check application log for "
                                     "details)");
                             }
                         } else {
-                            GUIApplication::instance().showErrorModal(
+                            MainApplication::instance().showErrorModal(
                                 this, name(),
                                 "The selected path does not have a valid extension! (look for a "
                                 ".mwl or .dmw file)");
@@ -213,15 +213,15 @@ namespace Toolbox::UI {
 
                         if (selected_path.extension() == ".mwl") {
                             if (onSaveData(selected_path)) {
-                                GUIApplication::instance().showSuccessModal(
+                                MainApplication::instance().showSuccessModal(
                                     this, "Debugger", "Watchlist saved successfully!");
                             } else {
-                                GUIApplication::instance().showErrorModal(
+                                MainApplication::instance().showErrorModal(
                                     this, "Debugger", "Watchlist failed to save!");
                             }
                             m_resource_path = selected_path;
                         } else {
-                            GUIApplication::instance().showErrorModal(
+                            MainApplication::instance().showErrorModal(
                                 this, name(),
                                 "The selected path does not have a valid extension! (save as a "
                                 ".mwl file)");
@@ -229,7 +229,7 @@ namespace Toolbox::UI {
                         break;
                     }
                     default:
-                        GUIApplication::instance().showErrorModal(
+                        MainApplication::instance().showErrorModal(
                             this, name(),
                             "Invalid file dialog state detected! (Create an issue on github with "
                             "context please)");
@@ -1794,7 +1794,7 @@ namespace Toolbox::UI {
         bool any_interactive_clicked = false;
 
         const AppSettings &settings =
-            GUIApplication::instance().getSettingsManager().getCurrentProfile();
+            MainApplication::instance().getSettingsManager().getCurrentProfile();
 
         m_watch_model->setRefreshRate(settings.m_dolphin_refresh_rate);
 
@@ -2453,7 +2453,7 @@ namespace Toolbox::UI {
         m_watch_model->initialize();
 
         const AppSettings &settings =
-            GUIApplication::instance().getSettingsManager().getCurrentProfile();
+            MainApplication::instance().getSettingsManager().getCurrentProfile();
 
         m_watch_model->setRefreshRate(settings.m_dolphin_refresh_rate);
 
@@ -3421,7 +3421,7 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::overwriteNibbleAtCursor(u8 nibble_value) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         if ((m_address_cursor & 0x1FFFFFF) + (m_address_cursor_nibble / 2) >=
             communicator.manager().getMemorySize()) {
@@ -3482,7 +3482,7 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::overwriteCharAtCursor(char char_value) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         if ((m_address_cursor & 0x1FFFFFF) + (m_address_cursor_nibble / 2) >=
             communicator.manager().getMemorySize()) {
@@ -3710,7 +3710,7 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::CopyBytesFromAddressSpan(const AddressSpan &span) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         u32 begin = std::min<u32>(span.m_begin, span.m_end);
         u32 end   = std::max<u32>(span.m_begin, span.m_end);
@@ -3749,7 +3749,7 @@ namespace Toolbox::UI {
     }
 
     void DebuggerWindow::CopyASCIIFromAddressSpan(const AddressSpan &span) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         u32 begin = std::min<u32>(span.m_begin, span.m_end);
         u32 end   = std::max<u32>(span.m_begin, span.m_end);
@@ -3770,7 +3770,7 @@ namespace Toolbox::UI {
 
     void DebuggerWindow::FillAddressSpan(const AddressSpan &span, u8 initial_val,
                                          transformer_t transformer) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         u32 start_addr = std::min<u32>(span.m_begin, span.m_end);
         u32 end_addr   = std::max<u32>(span.m_begin, span.m_end);

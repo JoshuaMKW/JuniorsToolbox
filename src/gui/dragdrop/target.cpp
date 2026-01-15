@@ -15,7 +15,7 @@
 namespace Toolbox::UI {
 
     static std::pair<UUID64, Platform::LowWindow> searchDropTarget(const ImVec2 &mouse_pos) {
-        std::vector<RefPtr<ImWindow>> windows = GUIApplication::instance().getWindows();
+        std::vector<RefPtr<ImWindow>> windows = MainApplication::instance().getWindows();
 
         std::pair<UUID64, Platform::LowWindow> target = {0, 0};
         int target_z_order                            = std::numeric_limits<int>::max();
@@ -418,7 +418,7 @@ namespace Toolbox::UI {
             // If we are blocking implicit drag events, we don't
             // dispatch drag leave events for the previous target.
             if (prev_uuid != 0) {
-                GUIApplication::instance().dispatchEvent<DragEvent, true>(
+                MainApplication::instance().dispatchEvent<DragEvent, true>(
                     EVENT_DRAG_LEAVE, mouse_pos.x, mouse_pos.y, action);
             }
 
@@ -426,7 +426,7 @@ namespace Toolbox::UI {
 
             // If the new target UUID is valid, we dispatch a drag enter event.
             if (new_uuid != 0) {
-                GUIApplication::instance().dispatchEvent<DragEvent, true>(
+                MainApplication::instance().dispatchEvent<DragEvent, true>(
                     EVENT_DRAG_ENTER, mouse_pos.x, mouse_pos.y, action);
             }
         }
@@ -440,7 +440,7 @@ namespace Toolbox::UI {
         // If the target UUID has changed, we need to dispatch
         // drag leave events accordingly.
         if (prev_uuid != new_uuid && prev_uuid != 0) {
-            GUIApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_LEAVE, mouse_pos.x,
+            MainApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_LEAVE, mouse_pos.x,
                                                                       mouse_pos.y, action);
         }
 
@@ -458,7 +458,7 @@ namespace Toolbox::UI {
             // If we are blocking implicit drag events, we don't
             // dispatch drag leave events for the previous target.
             if (!m_block_implicit_drag_events && prev_uuid != 0) {
-                GUIApplication::instance().dispatchEvent<DragEvent, true>(
+                MainApplication::instance().dispatchEvent<DragEvent, true>(
                     EVENT_DRAG_LEAVE, mouse_pos.x, mouse_pos.y, action);
             }
 
@@ -467,7 +467,7 @@ namespace Toolbox::UI {
 
             // If the new target UUID is valid, we dispatch a drag enter event.
             if (new_uuid != 0) {
-                GUIApplication::instance().dispatchEvent<DragEvent, true>(
+                MainApplication::instance().dispatchEvent<DragEvent, true>(
                     EVENT_DRAG_ENTER, mouse_pos.x, mouse_pos.y, action);
             }
         }
@@ -479,7 +479,7 @@ namespace Toolbox::UI {
         // we always dispatch a drag move event to update the
         // position of the drag action.
         if (new_uuid != 0) {
-            GUIApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_MOVE, mouse_pos.x,
+            MainApplication::instance().dispatchEvent<DragEvent, true>(EVENT_DRAG_MOVE, mouse_pos.x,
                                                                       mouse_pos.y, action);
         }
     }
@@ -491,7 +491,7 @@ namespace Toolbox::UI {
         action->setTargetUUID(new_uuid);
 
         if (new_uuid != 0) {
-            GUIApplication::instance().dispatchEvent<DropEvent, true>(mouse_pos, action);
+            MainApplication::instance().dispatchEvent<DropEvent, true>(mouse_pos, action);
         }
     }
 

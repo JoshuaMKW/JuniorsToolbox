@@ -28,7 +28,7 @@ namespace Toolbox {
                 playPadData(delta_time);
 
                 Game::TaskCommunicator &task_communicator =
-                    GUIApplication::instance().getTaskCommunicator();
+                    MainApplication::instance().getTaskCommunicator();
                 if (!task_communicator.isSceneLoaded()) {
                     sleep();
                 }
@@ -42,7 +42,7 @@ namespace Toolbox {
     void PadRecorder::sleep() { std::this_thread::sleep_for(std::chrono::milliseconds(1)); }
 
     Result<void> PadRecorder::processCurrentFrame(PadFrameData &&frame_data) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         frame_data.m_stick_mag *= 32.0f;
 
@@ -214,7 +214,7 @@ namespace Toolbox {
     }
 
     void PadRecorder::startRecording() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             TOOLBOX_ERROR("[PAD RECORD] Dolphin is not running or the memory is not hooked.");
             return;
@@ -245,7 +245,7 @@ namespace Toolbox {
     }
 
     void PadRecorder::startRecording(char from_link, char to_link) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             TOOLBOX_ERROR("[PAD RECORD] Dolphin is not running or the memory is not hooked.");
             return;
@@ -522,7 +522,7 @@ namespace Toolbox {
             return false;
         }
 
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         u32 application_ptr = 0x803E9700;
         u32 director_ptr    = communicator.read<u32>(application_ptr + 0x4).value();
@@ -668,7 +668,7 @@ namespace Toolbox {
             return;
         }
 
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         m_playback_frame += 4 * delta_time * 30.0f;
         if (m_playback_frame >= getPadFrameCount(m_current_link, m_next_link)) {
@@ -687,7 +687,7 @@ namespace Toolbox {
             return;
         }
 
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             TOOLBOX_ERROR("[PAD RECORD] Dolphin is not running or the memory is not hooked.");
             return;
@@ -813,7 +813,7 @@ namespace Toolbox {
 
     bool PadRecorder::setPlayerTransRot(const glm::vec3 &pos, f32 rotY) {
         Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
+            MainApplication::instance().getTaskCommunicator();
         Transform player_transform;
         task_communicator.getMarioTransform(player_transform);
         player_transform.m_translation = pos;
@@ -912,7 +912,7 @@ namespace Toolbox {
     }
 
     s32 PadRecorder::getFrameStep() const {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             return -1;
         }
@@ -931,7 +931,7 @@ namespace Toolbox {
     }
 
     Result<PadRecorder::PadFrameData> PadRecorder::readPadFrameDataPlayer() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         u32 application_ptr = 0x803E9700;
         u32 gamepad_ptr = communicator.read<u32>(application_ptr + 0x20 + (m_port << 2)).value();
@@ -982,10 +982,10 @@ namespace Toolbox {
     }
 
     Result<PadRecorder::PadFrameData> PadRecorder::readPadFrameDataEMario() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
+            MainApplication::instance().getTaskCommunicator();
         if (!task_communicator.isSceneLoaded(m_scene_id, m_episode_id) || m_shadow_mario_ptr == 0) {
             if (!task_communicator.getLoadedScene(m_scene_id, m_episode_id)) {
                 m_shadow_mario_ptr        = 0;
@@ -1033,10 +1033,10 @@ namespace Toolbox {
     }
 
     Result<PadRecorder::PadFrameData> PadRecorder::readPadFrameDataPiantissimo() {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         Game::TaskCommunicator &task_communicator =
-            GUIApplication::instance().getTaskCommunicator();
+            MainApplication::instance().getTaskCommunicator();
         if (!task_communicator.isSceneLoaded(m_scene_id, m_episode_id) || m_piantissimo_ptr == 0) {
             if (!task_communicator.getLoadedScene(m_scene_id, m_episode_id)) {
                 m_piantissimo_ptr        = 0;

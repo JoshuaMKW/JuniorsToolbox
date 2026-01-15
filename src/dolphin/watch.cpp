@@ -10,7 +10,7 @@ namespace Toolbox {
     template <typename T> static T readSingleFromMem(u32 address) {
         static_assert(std::is_default_constructible_v<T>, "T must be default constructible");
 
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             TOOLBOX_ERROR("Dolphin is not hooked.");
             return T();
@@ -28,7 +28,7 @@ namespace Toolbox {
     }
 
     static std::string readStringFromMem(u32 address, u32 length) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             TOOLBOX_ERROR("Dolphin is not hooked.");
             return std::string();
@@ -46,7 +46,7 @@ namespace Toolbox {
         communicator.readCString(value.data(), length, address)
             .and_then([&]() { return Result<void>{}; })
             .or_else([&](const BaseError &err) {
-                TOOLBOX_ERROR("Failed to read string from memory: %s", err.m_message);
+                TOOLBOX_ERROR_V("Failed to read string from memory: %s", err.m_message);
                 return Result<void>{};
             });
 
@@ -54,7 +54,7 @@ namespace Toolbox {
     }
 
     static glm::vec3 readVec3FromMem(u32 address) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             TOOLBOX_ERROR("Dolphin is not hooked.");
             return glm::vec3();
@@ -77,7 +77,7 @@ namespace Toolbox {
     }
 
     static Transform readTransformFromMem(u32 address) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             TOOLBOX_ERROR("Dolphin is not hooked.");
             return Transform();
@@ -106,7 +106,7 @@ namespace Toolbox {
     }
 
     static glm::mat3x4 readMtx34FromMem(u32 address) {
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             TOOLBOX_ERROR("Dolphin is not hooked.");
             return glm::mat3x4();

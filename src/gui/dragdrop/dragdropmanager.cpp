@@ -24,7 +24,7 @@ namespace Toolbox::UI {
         m_current_drag_action->setPayload(data);
         if (system_level) {
             createSystemDragDropSource(std::move(data)).and_then([&]() {
-                GUIApplication::instance().startDragAction(low_window, m_current_drag_action);
+                MainApplication::instance().startDragAction(low_window, m_current_drag_action);
                 return Result<void, BaseError>();
             });
         }
@@ -74,6 +74,7 @@ namespace Toolbox::UI {
         OleUninitialize();
         if (m_is_thread_running) {
             m_drag_thread.join();
+            m_is_thread_running = false;
         }
     }
 

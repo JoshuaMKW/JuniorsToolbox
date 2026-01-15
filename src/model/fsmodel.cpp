@@ -133,7 +133,7 @@ namespace Toolbox {
         m_options    = FileSystemModelOptions();
         m_read_only  = false;
 
-        const ResourceManager &res_manager = GUIApplication::instance().getResourceManager();
+        const ResourceManager &res_manager = MainApplication::instance().getResourceManager();
         UUID64 fs_icons_uuid = res_manager.getResourcePathUUID("Images/Icons/Filesystem");
 
         for (auto &[key, value] : TypeMap()) {
@@ -1322,8 +1322,7 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        TOOLBOX_CORE_ASSERT(m_index_map.contains(id),
-                            "Cached parent ID was non-zero, yet didn't exist in the index map!");
+        TOOLBOX_CORE_ASSERT(m_index_map.contains(id) && "Cached parent ID was non-zero, yet didn't exist in the index map!");
         return m_index_map.at(id);
     }
 

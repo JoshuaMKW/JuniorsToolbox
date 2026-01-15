@@ -657,7 +657,7 @@ namespace Toolbox::UI {
 
     bool Renderer::inputUpdate(TimeStep delta_time) {
         const AppSettings &settings =
-            GUIApplication::instance().getSettingsManager().getCurrentProfile();
+            MainApplication::instance().getSettingsManager().getCurrentProfile();
 
         if (m_is_view_manipulating && Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {
             double delta_x, delta_y;

@@ -9,7 +9,7 @@ static std::string s_message_pool;
 
 namespace Toolbox::UI {
     void LoggingWindow::appendMessageToPool(const Log::AppLogger::LogMessage &message) {
-        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
+        AppSettings &settings = MainApplication::instance().getSettingsManager().getCurrentProfile();
         if (settings.m_log_to_cout_cerr) {
             if (message.m_level == Log::ReportLevel::REPORT_ERROR)
                 std::cerr << message.m_message << std::endl;

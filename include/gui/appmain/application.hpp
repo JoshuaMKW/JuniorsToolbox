@@ -38,20 +38,20 @@ using namespace Toolbox::Dolphin;
 
 namespace Toolbox {
 
-    class GUIApplication final : public CoreApplication {
+    class MainApplication final : public CoreApplication {
     public:
-        static GUIApplication &instance();
+        static MainApplication &instance();
 
     protected:
-        GUIApplication();
+        MainApplication();
 
     public:
-        GUIApplication(const GUIApplication &)            = delete;
-        GUIApplication(GUIApplication &&)                 = delete;
-        GUIApplication &operator=(const GUIApplication &) = delete;
-        GUIApplication &operator=(GUIApplication &&)      = delete;
+        MainApplication(const MainApplication &)            = delete;
+        MainApplication(MainApplication &&)                 = delete;
+        MainApplication &operator=(const MainApplication &) = delete;
+        MainApplication &operator=(MainApplication &&)      = delete;
 
-        virtual ~GUIApplication() {}
+        virtual ~MainApplication() {}
 
         void onInit(int argc, const char **argv) override;
         void onUpdate(TimeStep delta_time) override;

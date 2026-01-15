@@ -90,7 +90,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderProfileBar(TimeStep delta_time) {
-        SettingsManager &manager = GUIApplication::instance().getSettingsManager();
+        SettingsManager &manager = MainApplication::instance().getSettingsManager();
 
         ImGui::Text("Current Profile");
 
@@ -192,7 +192,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsGeneral(TimeStep delta_time) {
-        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
+        AppSettings &settings = MainApplication::instance().getSettingsManager().getCurrentProfile();
         ImGui::Checkbox("Include Custom Objects", &settings.m_is_custom_obj_allowed);
         ImGui::Checkbox("Enable File Backup on Save", &settings.m_is_file_backup_allowed);
 
@@ -219,7 +219,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsControl(TimeStep delta_time) {
-        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
+        AppSettings &settings = MainApplication::instance().getSettingsManager().getCurrentProfile();
 
         static KeyBind s_gizmo_translate_keybind = {};
         static KeyBind s_gizmo_rotate_keybind    = {};
@@ -279,8 +279,8 @@ namespace Toolbox::UI {
 
     void SettingsWindow::renderSettingsUI(TimeStep delta_time) {
         FontManager &font_manager         = FontManager::instance();
-        ThemeManager &themes_manager      = GUIApplication::instance().getThemeManager();
-        SettingsManager &settings_manager = GUIApplication::instance().getSettingsManager();
+        ThemeManager &themes_manager      = MainApplication::instance().getThemeManager();
+        SettingsManager &settings_manager = MainApplication::instance().getSettingsManager();
         AppSettings &settings             = settings_manager.getCurrentProfile();
 
         auto themes = themes_manager.themes();
@@ -338,7 +338,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsPreview(TimeStep delta_time) {
-        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
+        AppSettings &settings = MainApplication::instance().getSettingsManager().getCurrentProfile();
 
         ImGui::Checkbox("Use Simple Rendering", &settings.m_is_rendering_simple);
         ImGui::Checkbox("Show Origin Point", &settings.m_is_show_origin_point);
@@ -364,7 +364,7 @@ namespace Toolbox::UI {
     }
 
     void SettingsWindow::renderSettingsAdvanced(TimeStep delta_time) {
-        AppSettings &settings = GUIApplication::instance().getSettingsManager().getCurrentProfile();
+        AppSettings &settings = MainApplication::instance().getSettingsManager().getCurrentProfile();
 
         if (ImGui::BeginGroupPanel("Dolphin Integration", nullptr, {})) {
             s64 min = 1;
@@ -402,7 +402,7 @@ namespace Toolbox::UI {
         ImGui::Checkbox("Pipe Logs To Terminal", &settings.m_log_to_cout_cerr);
 
         if (ImGui::Button("Clear Cache")) {
-            fs_path cache_path = GUIApplication::instance().getAppDataPath() / ".cache";
+            fs_path cache_path = MainApplication::instance().getAppDataPath() / ".cache";
             Filesystem::remove_all(cache_path).and_then([](uintmax_t) {
                 TOOLBOX_INFO("[SETTINGS] Cleared Template cache successfully!");
                 return Result<uintmax_t, FSError>();
@@ -450,7 +450,7 @@ namespace Toolbox::UI {
                             m_dolphin_path_input[i] = path_str[i];
                         }
                     } else {
-                        GUIApplication::instance().showErrorModal(
+                        MainApplication::instance().showErrorModal(
                             this, name(),
                             "The selected path does not have a valid extension! (look for an "
                             "executable file)");
@@ -458,7 +458,7 @@ namespace Toolbox::UI {
                     break;
                 }
                 default:
-                    GUIApplication::instance().showErrorModal(
+                    MainApplication::instance().showErrorModal(
                         this, name(),
                         "Invalid file dialog state detected! (Create an issue on github with "
                         "context please)");

@@ -171,7 +171,7 @@ namespace Toolbox::Dolphin {
     }
 
     Result<void> DolphinHookManager::startProcess(bool wants_hidden) {
-        GUIApplication &application = GUIApplication::instance();
+        MainApplication &application = MainApplication::instance();
 
         if (isProcessRunning()) {
             return {};

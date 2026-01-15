@@ -36,7 +36,7 @@ namespace Toolbox::UI {
     void DolphinOverlay::onImGuiUpdate(TimeStep delta_time) {
         m_is_dolphin_attached = false;
 
-        DolphinCommunicator &communicator = GUIApplication::instance().getDolphinCommunicator();
+        DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
         if (!communicator.manager().isHooked()) {
             return;
         }

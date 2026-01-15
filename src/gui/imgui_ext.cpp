@@ -2154,7 +2154,7 @@ void ImGui::TextWrappedWithAlign(float align_x, float size_x, const char *fmt, .
             line_infos[line_info_count++] = LineInfo{
                 .m_start        = text + cursor_start,
                 .m_end          = text_end,
-                .m_render_width = IM_TRUNC(width_cur, 0.99999f),
+                .m_render_width = IM_TRUNC(width_cur),
             };
             last_char_was_print = false;
             last_word_end       = -1;
@@ -2181,7 +2181,7 @@ void ImGui::TextWrappedWithAlign(float align_x, float size_x, const char *fmt, .
             line_infos[line_info_count++] = LineInfo{
                 .m_start        = text + cursor_start,
                 .m_end          = text + line_end,
-                .m_render_width = IM_TRUNC(width_cur, 0.99999f),
+                .m_render_width = IM_TRUNC(width_cur),
             };
             last_char_was_print = false;
             last_word_end       = -1;
@@ -2201,7 +2201,7 @@ void ImGui::TextWrappedWithAlign(float align_x, float size_x, const char *fmt, .
             line_infos[line_info_count++] = LineInfo{
                 .m_start        = text + cursor_start,
                 .m_end          = text + line_end,
-                .m_render_width = IM_TRUNC(width_cur, 0.99999f),
+                .m_render_width = IM_TRUNC(width_cur),
             };
             last_char_was_print = false;
             last_word_end       = -1;
@@ -2292,7 +2292,7 @@ ImVec2 ImGui::CalcTextWrappedWithAlignRect(float align_x, float size_x, const ch
             line_infos[line_info_count++] = LineInfo{
                 .m_start        = text + cursor_start,
                 .m_end          = text_end,
-                .m_render_width = IM_TRUNC(width_cur, 0.99999f),
+                .m_render_width = IM_TRUNC(width_cur),
             };
 
             last_char_was_print = false;
@@ -2320,7 +2320,7 @@ ImVec2 ImGui::CalcTextWrappedWithAlignRect(float align_x, float size_x, const ch
             line_infos[line_info_count++] = LineInfo{
                 .m_start        = text + cursor_start,
                 .m_end          = text + line_end,
-                .m_render_width = IM_TRUNC(width_cur, 0.99999f),
+                .m_render_width = IM_TRUNC(width_cur),
             };
 
             last_char_was_print = false;
@@ -2341,7 +2341,7 @@ ImVec2 ImGui::CalcTextWrappedWithAlignRect(float align_x, float size_x, const ch
             line_infos[line_info_count++] = LineInfo{
                 .m_start        = text + cursor_start,
                 .m_end          = text + line_end,
-                .m_render_width = IM_TRUNC(width_cur, 0.99999f),
+                .m_render_width = IM_TRUNC(width_cur),
             };
 
             last_char_was_print = false;
