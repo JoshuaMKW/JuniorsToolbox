@@ -23,3 +23,6 @@
 	path = lib/imgui_markdown
 	url = https://github.com/JoshuaMKW/imgui_markdown.git
 	branch = rigorous-list-detection
+[submodule "lib/libgcm"]
+	path = lib/libgcm
+	url = https://github.com/JoshuaMKW/libgcm.git
