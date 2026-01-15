@@ -3,7 +3,7 @@
 #
 cmake_minimum_required (VERSION 3.25)
 
-project(JuniorsToolbox VERSION 0.1.2)
+project(JuniorsToolbox VERSION 0.2.0)
 
 # Require C++23 for stacktrace etc
 set(CMAKE_CXX_STANDARD 23)
