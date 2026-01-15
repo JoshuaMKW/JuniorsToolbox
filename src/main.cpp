@@ -52,6 +52,12 @@ int main(int argc, char **argv) {
         return ec;  // Exit if bootstrap failed
     }
 
+    if (!bootstrap.hasResults()) {
+        MainApplication &main_app = MainApplication::instance();
+        main_app.run(argc, const_cast<const char **>(argv));
+        return main_app.getExitCode();
+    }
+
     const BootStrapApplication::BootStrapArguments results = bootstrap.getResults();
     
     char *argv_main[128]{};

@@ -48,6 +48,7 @@ namespace Toolbox::UI {
         };
 
         static BootStrapApplication &instance();
+        bool hasResults() const { return m_results_ready; }
         BootStrapArguments getResults() const { return m_results; }
 
     protected:
