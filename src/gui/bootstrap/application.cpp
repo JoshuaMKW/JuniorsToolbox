@@ -62,12 +62,6 @@ namespace Toolbox {
             return;
         }
 
-        if (!netpp::sockets_initialize()) {
-            setExitCode(EXIT_CODE_FAILED_SETUP);
-            stop();
-            return;
-        }
-
         // Initialize the AppData directory
         const fs_path &app_data_path = BootStrapApplication::getAppDataPath();
         if (!Filesystem::exists(app_data_path).value_or(false)) {
@@ -200,8 +194,6 @@ namespace Toolbox {
 
         DragDropManager::instance().shutdown();
         FontManager::instance().teardown();
-
-        netpp::sockets_deinitialize();
 
         const bool has_project_path = m_project_path.has_value();
         if (has_project_path &&
@@ -934,7 +926,7 @@ namespace Toolbox {
         }
 
         if (pressed) {
-            m_project_path               = project_path / "root";
+            m_project_path               = project_path;
             m_scene_path                 = std::nullopt;
             m_results.m_settings_profile = std::nullopt;
             m_results.m_windows          = {};
