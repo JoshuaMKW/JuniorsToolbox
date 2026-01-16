@@ -36,6 +36,8 @@ namespace Toolbox {
             return make_serial_error<void>(err.m_message[0], err.m_reason, err.m_byte,
                                            path.string());
         }
+
+        return Result<void, SerialError>();
     }
 
     Result<void, SerialError> ProjectConfig::saveToFile(const fs_path &path) const {

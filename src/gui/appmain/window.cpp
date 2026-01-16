@@ -5,9 +5,9 @@
 #include <string>
 #include <vector>
 
+#include "core/memory.hpp"
 #include "fsystem.hpp"
 #include "gui/window.hpp"
-#include "core/memory.hpp"
 
 #include "gui/appmain/window.hpp"
 
@@ -20,17 +20,27 @@
 
 namespace Toolbox::UI {
 
+    using window_ctor_t = std::function<RefPtr<ImWindow>(const std::string &name)>;
+
 #define TOOLBOX_WINDOW_ENTRY(WindowClass)                                                          \
     {TOOLBOX_STRINGIFY_MACRO(WindowClass),                                                         \
-     [](const std::string &name) -> ::Toolbox::RefPtr<::Toolbox::UI::ImWindow> {               \
-         return ::Toolbox::MainApplication::instance().createWindow<WindowClass>(name);        \
+     [](const std::string &name) -> ::Toolbox::RefPtr<::Toolbox::UI::ImWindow> {                   \
+         return ::Toolbox::MainApplication::instance().createWindow<WindowClass>(name);            \
+     }}
+
+#define TOOLBOX_WINDOW_ENTRY_WITH_ALIAS(WindowClass, Alias)                                        \
+    {TOOLBOX_STRINGIFY_MACRO(WindowClass),                                                         \
+     [](const std::string &name) -> ::Toolbox::RefPtr<::Toolbox::UI::ImWindow> {                   \
+         return ::Toolbox::MainApplication::instance().createWindow<WindowClass>(Alias);           \
      }}
 
     Toolbox::RefPtr<ImWindow> WindowFactory::create(const WindowArguments &args) {
         static const std::unordered_map<std::string, window_ctor_t> window_ctor_map = {
-            TOOLBOX_WINDOW_ENTRY(DebuggerWindow), TOOLBOX_WINDOW_ENTRY(PadInputWindow),
-            TOOLBOX_WINDOW_ENTRY(ProjectViewWindow), TOOLBOX_WINDOW_ENTRY(SceneWindow),
-            TOOLBOX_WINDOW_ENTRY(SettingsWindow)};
+            TOOLBOX_WINDOW_ENTRY_WITH_ALIAS(DebuggerWindow, "Memory Debugger"),
+            TOOLBOX_WINDOW_ENTRY_WITH_ALIAS(PadInputWindow, "Pad Recorder"),
+            TOOLBOX_WINDOW_ENTRY_WITH_ALIAS(ProjectViewWindow, "Project View"),
+            TOOLBOX_WINDOW_ENTRY_WITH_ALIAS(SceneWindow, "Scene Editor"),
+            TOOLBOX_WINDOW_ENTRY_WITH_ALIAS(SettingsWindow, "Application Settings")};
 
         if (window_ctor_map.contains(args.m_window_type)) {
             Toolbox::RefPtr<ImWindow> window =

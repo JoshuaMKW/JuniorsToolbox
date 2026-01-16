@@ -386,7 +386,7 @@ namespace Toolbox {
 
         size_t i = 0;
         for (const auto &[k, v] : m_index_map) {
-            if (row == i) {
+            if (row == i++) {
                 return v;
             }
         }
@@ -830,7 +830,7 @@ namespace Toolbox {
         ComparatorFunc comparator;
 
         comparator = [&](const _ProjectIndexData &l, const _ProjectIndexData &r) {
-            return _ProjectIndexDataCompareByDate(l, r, ModelSortOrder::SORT_ASCENDING);
+            return _ProjectIndexDataCompareByDate(l, r, ModelSortOrder::SORT_DESCENDING);
         };
 
         // Only sort if a valid role was chosen

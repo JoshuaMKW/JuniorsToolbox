@@ -132,6 +132,9 @@ file(GLOB TOOLBOX_SRC
     "lib/imgui_markdown/*.hpp"
 )
 
+if(WIN32)
+    add_compile_definitions(NOMINMAX)
+endif()
 
 add_executable(JuniorsToolbox ${TOOLBOX_SRC})
 

@@ -37,6 +37,52 @@
 constexpr float LEFT_PANEL_RATIO  = 0.7f;
 constexpr float RIGHT_PANEL_RATIO = (1.0f - LEFT_PANEL_RATIO);
 
+static Toolbox::UI::ProjectAgeCategory
+GetAgeCategoryForProject(const system_clock::time_point &project_date) {
+    const system_clock::time_point &time_now = system_clock::now();
+    const year_month_day today_ymd           = year_month_day(floor<days>(time_now));
+
+    const year_month_day yesterday_ymd  = sys_days{today_ymd} - days(1);
+    const year_month_day last_week_ymd  = sys_days{today_ymd} - weeks(1);
+    const year_month_day last_month_ymd = today_ymd - months(1);
+    const year_month_day last_year_ymd  = today_ymd - years(1);
+
+    const sys_days yesterday_tp  = yesterday_ymd;
+    const sys_days last_week_tp  = last_week_ymd;
+    const sys_days last_month_tp = last_month_ymd;
+    const sys_days last_year_tp  = last_year_ymd;
+
+    if (project_date >= yesterday_tp) {
+        return ProjectAgeCategory::AGE_DAY;
+    }
+
+    if (project_date >= last_week_tp) {
+        return ProjectAgeCategory::AGE_WEEK;
+    }
+
+    if (project_date >= last_month_tp) {
+        return ProjectAgeCategory::AGE_MONTH;
+    }
+
+    if (project_date >= last_year_tp) {
+        return ProjectAgeCategory::AGE_YEAR;
+    }
+
+    return ProjectAgeCategory::AGE_LONG_AGO;
+}
+
+// Returns a string in the following format: "YYYY-MM-DD HH:MM:SS (AM/PM)"
+static std::string GetDateStringForProject(const system_clock::time_point &project_date) {
+    if (project_date == system_clock::time_point::min()) {
+        return "Never Opened";
+    }
+
+    std::time_t tt = system_clock::to_time_t(project_date);
+    char buffer[64];
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %I:%M:%S %p", std::localtime(&tt));
+    return std::string(buffer);
+}
+
 namespace Toolbox {
 
     BootStrapApplication::BootStrapApplication() { m_render_window = nullptr; }
@@ -196,8 +242,7 @@ namespace Toolbox {
         FontManager::instance().teardown();
 
         const bool has_project_path = m_project_path.has_value();
-        if (has_project_path &&
-            Filesystem::is_directory(m_project_path.value()).value_or(false)) {
+        if (has_project_path && Filesystem::is_directory(m_project_path.value()).value_or(false)) {
             m_results.m_windows.emplace_back(BootStrapArguments::WindowArguments{
                 .m_window_type = "ProjectViewWindow",
                 .m_load_path   = m_project_path,
@@ -229,7 +274,8 @@ namespace Toolbox {
             if (m_project_model->validateIndex(existing_project)) {
                 m_project_model->setLastAccessed(existing_project, system_clock::now());
             } else {
-                ModelIndex new_project = m_project_model->makeIndex(m_project_path.value(), 0, ModelIndex());
+                ModelIndex new_project =
+                    m_project_model->makeIndex(m_project_path.value(), 0, ModelIndex());
                 m_project_model->setLastAccessed(new_project, system_clock::now());
             }
             m_project_model->saveToJSON(getAppDataPath() / fs_path(".ToolboxProjectsCache.json"));
@@ -506,7 +552,7 @@ namespace Toolbox {
         ImGui::PopStyleVar();
     }
 
-    void UI::BootStrapApplication::renderLandingPage() {
+    void BootStrapApplication::renderLandingPage() {
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4.0f, 4.0f});
         ImGui::PushFont(nullptr, 32.0f);
         ImGui::Text("Junior's Toolbox " TOOLBOX_VERSION_TAG);
@@ -537,6 +583,10 @@ namespace Toolbox {
                 }
 
                 ImGui::Separator();
+                ImGui::NewLine();
+
+                ProjectAgeCategory current_category = ProjectAgeCategory::AGE_NONE;
+                bool should_render_projects         = true;
 
                 const size_t projects_count = m_sort_filter_proxy->getRowCount(ModelIndex());
                 for (size_t i = 0; i < projects_count; ++i) {
@@ -544,7 +594,23 @@ namespace Toolbox {
                     if (!m_sort_filter_proxy->validateIndex(project_index)) {
                         continue;
                     }
+
+                    const system_clock::time_point project_tp =
+                        m_sort_filter_proxy->getLastAccessed(project_index);
+                    const ProjectAgeCategory this_category = GetAgeCategoryForProject(project_tp);
+
+                    if (this_category != current_category) {
+                        should_render_projects = renderProjectAgeGroup(this_category);
+                        current_category       = this_category;
+                    }
+
+                    if (!should_render_projects) {
+                        continue;
+                    }
+
+                    ImGui::Indent();
                     renderProjectRow(project_index);
+                    ImGui::Unindent();
                 }
 
                 ImGui::Dummy({0.0f, 0.0f});
@@ -616,9 +682,9 @@ namespace Toolbox {
         }
     }
 
-    void UI::BootStrapApplication::renderLocalConfigPage() {}
+    void BootStrapApplication::renderLocalConfigPage() {}
 
-    void UI::BootStrapApplication::renderRepositoryConfigPage() {
+    void BootStrapApplication::renderRepositoryConfigPage() {
         ImFont *default_font = FontManager::instance().getFont("Markdown/Roboto-Medium");
         ImFont *bold_font    = FontManager::instance().getFont("Markdown/Roboto-Bold");
         ImFont *italic_font  = FontManager::instance().getFont("Markdown/Roboto-MediumItalic");
@@ -772,14 +838,28 @@ namespace Toolbox {
                         [this](const fs_path &out_path, bool success) {
                             std::unique_lock<std::mutex> lock(m_event_mutex);
                             if (success) {
-                                m_load_path                  = out_path;
-                                m_project_path               = out_path / "root";
+                                m_load_path    = out_path;
+                                m_project_path = [&out_path]() -> fs_path {
+                                    const fs_path with_root = out_path / "root";
+                                    if (Filesystem::exists(with_root).value_or(false)) {
+                                        return with_root;
+                                    }
+                                    return out_path;
+                                }();
                                 m_scene_path                 = std::nullopt;
                                 m_results.m_settings_profile = std::nullopt;
                                 m_results.m_windows          = {};
-                                m_results_ready              = true;
+                                m_results_ready = Filesystem::is_directory(m_project_path.value())
+                                                      .value_or(false);
+                                if (!m_results_ready) {
+                                    m_project_error_msg = "The cloned repository is not a valid "
+                                                          "project! Make sure it "
+                                                          "contains the extracted ISO as \"root\"!";
+                                    ImGui::OpenPopup("Project error");
+                                }
                             } else {
-                                m_git_clone_error_msg = Git::GitCloneLastError();
+                                m_project_error_msg = Git::GitCloneLastError();
+                                ImGui::OpenPopup("git clone error");
                             }
                             m_is_git_busy = false;
                         });
@@ -796,10 +876,34 @@ namespace Toolbox {
             ImGui::OpenPopup("git clone");
         }
 
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing,
+                                {0.5f, 0.5f});
         ImGui::SetNextWindowSize({500.0f, 0.0f}, ImGuiCond_Appearing);
         if (ImGui::BeginPopupModal("git clone")) {
             ImGui::Text(m_git_clone_job.c_str());
             ImGui::ProgressBar(m_git_clone_progress, ImVec2(-FLT_MIN, 0), m_git_clone_msg.c_str());
+            ImGui::EndPopup();
+            if (!is_git_busy_static) {
+                ImGui::ClosePopupToLevel(ImGui::GetCurrentContext()->BeginPopupStack.Size, true);
+            }
+        }
+
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing,
+                                {0.5f, 0.5f});
+        ImGui::SetNextWindowSize({500.0f, 0.0f}, ImGuiCond_Appearing);
+        if (ImGui::BeginPopupModal("git clone error")) {
+            ImGui::Text(m_project_error_msg.c_str());
+            ImGui::EndPopup();
+            if (!is_git_busy_static) {
+                ImGui::ClosePopupToLevel(ImGui::GetCurrentContext()->BeginPopupStack.Size, true);
+            }
+        }
+
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing,
+                                {0.5f, 0.5f});
+        ImGui::SetNextWindowSize({500.0f, 0.0f}, ImGuiCond_Appearing);
+        if (ImGui::BeginPopupModal("Project error")) {
+            ImGui::Text(m_project_error_msg.c_str());
             ImGui::EndPopup();
             if (!is_git_busy_static) {
                 ImGui::ClosePopupToLevel(ImGui::GetCurrentContext()->BeginPopupStack.Size, true);
@@ -823,6 +927,60 @@ namespace Toolbox {
         }
     }
 
+    bool BootStrapApplication::renderProjectAgeGroup(ProjectAgeCategory category) {
+        std::string category_name;
+        switch (category) {
+        case ProjectAgeCategory::AGE_DAY:
+            category_name = "Today";
+            break;
+        case ProjectAgeCategory::AGE_WEEK:
+            category_name = "This Week";
+            break;
+        case ProjectAgeCategory::AGE_MONTH:
+            category_name = "This Month";
+            break;
+        case ProjectAgeCategory::AGE_YEAR:
+            category_name = "This Year";
+            break;
+        case ProjectAgeCategory::AGE_LONG_AGO:
+            category_name = "Long Ago";
+            break;
+        }
+
+        const ImGuiStyle &style = ImGui::GetStyle();
+
+        const ImRect arrow_bb = ImRect(ImGui::GetCursorScreenPos(),
+                                       ImGui::GetCursorScreenPos() +
+                                           ImVec2(ImGui::GetFontSize(), ImGui::GetFontSize()));
+
+        const ImGuiID arrow_id =
+            ImGui::GetID(TOOLBOX_FORMAT_FN("##AgeCategoryButton{}", int(category)).c_str());
+        ImGui::ItemSize(arrow_bb.GetSize(), style.FramePadding.y);
+        if (!ImGui::ItemAdd(arrow_bb, arrow_id)) {
+            return !m_category_closed_map[category];
+        }
+
+        bool hovered, held;
+        bool pressed = ImGui::ButtonBehavior(arrow_bb, arrow_id, &hovered, &held);
+        if (pressed) {
+            m_category_closed_map[category] ^= true;
+        }
+
+        ImGui::RenderArrow(ImGui::GetWindowDrawList(), arrow_bb.Min,
+                           ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_Text)),
+                           m_category_closed_map[category] ? ImGuiDir_Right : ImGuiDir_Down);
+
+        const ImVec2 text_size = ImGui::CalcTextSize(
+            category_name.c_str(), category_name.c_str() + category_name.size(), true);
+        const ImRect text_bb(
+            ImVec2(arrow_bb.Max.x + style.ItemSpacing.x, arrow_bb.Min.y),
+            ImVec2(arrow_bb.Max.x + style.ItemSpacing.x + text_size.x, arrow_bb.Max.y));
+        ImGui::RenderTextClipped(text_bb.Min, text_bb.Max, category_name.c_str(),
+                                 category_name.c_str() + category_name.size(), &text_size);
+
+        return !m_category_closed_map[category];
+    }
+
     void BootStrapApplication::renderProjectRow(const ModelIndex &index) {
         const fs_path project_path                   = m_sort_filter_proxy->getProjectPath(index);
         const std::string project_name               = m_sort_filter_proxy->getDisplayText(index);
@@ -830,16 +988,12 @@ namespace Toolbox {
         const bool project_pinned                    = m_sort_filter_proxy->getPinned(index);
         const system_clock::time_point last_accessed = m_sort_filter_proxy->getLastAccessed(index);
 
-        const std::string last_accessed_str =
-            [](const system_clock::time_point &tp) -> std::string {
-            if (tp == system_clock::time_point::min()) {
-                return "Never Opened";
-            }
-            std::time_t tt = system_clock::to_time_t(tp);
-            char buffer[64];
-            std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", std::localtime(&tt));
-            return std::string(buffer);
-        }(last_accessed);
+        const std::string last_accessed_str = GetDateStringForProject(last_accessed);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8.0f, 8.0f});
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {5.0f, 5.0f});
+
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, {0.0f, 0.0f, 0.0f, 0.0f});
 
         const ImGuiStyle &style = ImGui::GetStyle();
 
@@ -858,9 +1012,9 @@ namespace Toolbox {
         bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held);
 
         // Render background
-        ImU32 bg_color = hovered ? ImGui::GetColorU32(ImGuiCol_FrameBgHovered)
-                         : held  ? ImGui::GetColorU32(ImGuiCol_FrameBgActive)
-                                 : ImGui::GetColorU32(ImGuiCol_FrameBg);
+        ImU32 bg_color = held      ? ImGui::GetColorU32(ImGuiCol_FrameBgActive)
+                         : hovered ? ImGui::GetColorU32(ImGuiCol_FrameBgHovered)
+                                   : ImGui::GetColorU32(ImGuiCol_FrameBg);
         ImGui::RenderFrame(bb.Min, bb.Max, bg_color, true, style.FrameRounding);
 
         // Render project details
@@ -873,7 +1027,8 @@ namespace Toolbox {
             ImGui::PushFont(nullptr, 14.0f);
             const ImVec2 last_accessed_layout_size =
                 ImGui::CalcTextSize(last_accessed_str.c_str(),
-                                    last_accessed_str.c_str() + last_accessed_str.size(), true) + ImVec2(style.FramePadding.x, 0.0f);
+                                    last_accessed_str.c_str() + last_accessed_str.size(), true) +
+                ImVec2(style.FramePadding.x, 0.0f);
             ImGui::PopFont();
 
             // Project name
@@ -881,7 +1036,8 @@ namespace Toolbox {
                 const ImVec2 text_size = ImGui::CalcTextSize(
                     project_name.c_str(), project_name.c_str() + project_name.size(), true);
                 const ImRect text_bb(
-                    pos + ImVec2(icon_size.x + style.ItemSpacing.x, style.FramePadding.y),
+                    pos + ImVec2(icon_size.x + style.ItemSpacing.x + style.FramePadding.x,
+                                 style.FramePadding.y),
                     pos + ImVec2(size.x - last_accessed_layout_size.x - style.ItemSpacing.x,
                                  style.FramePadding.y + text_size.y));
                 ImGui::RenderTextEllipsis(ImGui::GetWindowDrawList(), text_bb.Min, text_bb.Max,
@@ -897,7 +1053,7 @@ namespace Toolbox {
                     ImGui::CalcTextSize(project_path_str.c_str(),
                                         project_path_str.c_str() + project_path_str.size(), true);
                 const ImRect text_bb(
-                    pos + ImVec2(icon_size.x + style.ItemSpacing.x,
+                    pos + ImVec2(icon_size.x + style.ItemSpacing.x + style.FramePadding.x,
                                  size.y - style.FramePadding.y - text_size.y),
                     pos + ImVec2(size.x - last_accessed_layout_size.x - style.ItemSpacing.x,
                                  size.y - style.FramePadding.y));
@@ -915,8 +1071,7 @@ namespace Toolbox {
                     ImGui::CalcTextSize(last_accessed_str.c_str(),
                                         last_accessed_str.c_str() + last_accessed_str.size(), true);
                 const ImRect text_bb(
-                    pos + ImVec2(size.x - last_accessed_layout_size.x,
-                                 style.FramePadding.y),
+                    pos + ImVec2(size.x - last_accessed_layout_size.x, style.FramePadding.y),
                     pos + ImVec2(size.x - style.FramePadding.x, size.y - style.FramePadding.y));
                 ImGui::RenderTextClipped(text_bb.Min, text_bb.Max, last_accessed_str.c_str(),
                                          last_accessed_str.c_str() + last_accessed_str.size(),
@@ -924,6 +1079,9 @@ namespace Toolbox {
                 ImGui::PopFont();
             }
         }
+
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(2);
 
         if (pressed) {
             m_project_path               = project_path;

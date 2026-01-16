@@ -18,8 +18,6 @@ namespace Toolbox::UI {
 
     class WindowFactory {
     public:
-        using window_ctor_t = std::function<RefPtr<ImWindow>(const std::string &name)>;
-
         static Toolbox::RefPtr<ImWindow> create(const WindowArguments &args);
     };
 

@@ -1,6 +1,10 @@
 #pragma once
 
+#include <array>
 #include <optional>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "core/application/application.hpp"
 
@@ -33,6 +37,15 @@
 #include <nfd.h>
 
 namespace Toolbox::UI {
+
+    enum class ProjectAgeCategory {
+        AGE_NONE,
+        AGE_DAY,
+        AGE_WEEK,
+        AGE_MONTH,
+        AGE_YEAR,
+        AGE_LONG_AGO,
+    };
 
     class BootStrapApplication final : public CoreApplication {
     public:
@@ -100,6 +113,7 @@ namespace Toolbox::UI {
         void renderLandingPage();
         void renderLocalConfigPage();
         void renderRepositoryConfigPage();
+        bool renderProjectAgeGroup(ProjectAgeCategory category);
         void renderProjectRow(const ModelIndex &index);
         void finalizeFrame();
 
@@ -144,7 +158,7 @@ namespace Toolbox::UI {
         float m_git_clone_progress = 0.0f;
         int m_git_clone_job_index  = 0;
         int m_git_clone_job_max    = 0;
-        std::string m_git_clone_error_msg;
+        std::string m_project_error_msg;
 
         enum class RenderPage {
             LANDING,
@@ -156,6 +170,8 @@ namespace Toolbox::UI {
         std::optional<fs_path> m_scene_path;
         BootStrapArguments m_results;
         bool m_results_ready = false;
+
+        std::unordered_map<ProjectAgeCategory, bool> m_category_closed_map;
 
         // std::vector<SuccessModal> m_success_modal_queue;
         // std::vector<FailureModal> m_error_modal_queue;
