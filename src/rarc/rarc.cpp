@@ -1620,9 +1620,18 @@ namespace Toolbox::RARC {
 
         ResourceArchive::Node dir_node;
         if (low_node) {
+            if (low_node.value().name != low_dir.name) {
+                // Note: This error is entirely user facing, but the actual logic for correcting
+                // this corruption is to just always accept the entry reported by low_node, since
+                // software need this entry to be correct for functionality to not break.
+
+                TOOLBOX_WARN("Encountered desynced directory name fields! This is usually caused "
+                             "by creating the RARC using inaccurate RARC script or program.");
+                TOOLBOX_WARN("Attempting to correct the desync...");
+            }
             dir_node = {.id    = static_cast<s32>(low_node->folder.dir_node),
                         .flags = static_cast<u16>(low_node->type >> 8),
-                        .name  = low.string_data.data() + low_dir.name};
+                        .name  = low.string_data.data() + low_node.value().name};
         } else {
             // This is the ROOT directory (exists without an fs node to further
             // describe it)
