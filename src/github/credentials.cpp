@@ -48,11 +48,6 @@ namespace Toolbox::Git {
     void GitConfigureCredentials(const std::string &username, const std::string &password,
                                  const std::vector<char> &public_key,
                                  const std::vector<char> &private_key) {
-        if (git_credential_ssh_key_new(nullptr, username.c_str(), public_key.data(),
-                                       private_key.data(), password.c_str()) != 0) {
-            TOOLBOX_ERROR_V("Failed to configure SSH credentials for Git");
-        }
-
         s_git_username   = username;
         s_git_password   = password;
         s_git_cred_types = GIT_CREDENTIAL_SSH_KEY;

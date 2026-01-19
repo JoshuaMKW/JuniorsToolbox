@@ -34,8 +34,9 @@
 
 // void ImGuiSetupTheme(bool, float);
 
-constexpr float LEFT_PANEL_RATIO  = 0.7f;
-constexpr float RIGHT_PANEL_RATIO = (1.0f - LEFT_PANEL_RATIO);
+constexpr float LEFT_PANEL_RATIO   = 0.65f;
+constexpr float RIGHT_PANEL_RATIO  = 0.3f;
+constexpr float MIDDLE_PANEL_RATIO = (1.0f - LEFT_PANEL_RATIO - RIGHT_PANEL_RATIO);
 
 static Toolbox::UI::ProjectAgeCategory
 GetAgeCategoryForProject(const system_clock::time_point &project_date) {
@@ -85,7 +86,11 @@ static std::string GetDateStringForProject(const system_clock::time_point &proje
 
 namespace Toolbox {
 
-    BootStrapApplication::BootStrapApplication() { m_render_window = nullptr; }
+    BootStrapApplication::BootStrapApplication()
+        : m_github_passkey_str(), m_github_username_str(), m_repo_input_str(), m_repo_path_str(),
+          m_search_str() {
+        m_render_window = nullptr;
+    }
 
     BootStrapApplication &BootStrapApplication::instance() {
         static BootStrapApplication _inst;
@@ -618,7 +623,7 @@ namespace Toolbox {
             ImGui::EndChild();
         }
 
-        ImGui::SameLine();
+        ImGui::SameLine(0.0f, window_avail.x * MIDDLE_PANEL_RATIO);
 
         // The panel for starting a new project
         {
@@ -789,7 +794,7 @@ namespace Toolbox {
             ImGui::EndChild();
         }
 
-        ImGui::SameLine();
+        ImGui::SameLine(0.0f, window_avail.x * MIDDLE_PANEL_RATIO);
 
         const bool is_git_busy_static = m_is_git_busy;
 
