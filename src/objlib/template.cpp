@@ -75,17 +75,20 @@ namespace Toolbox::Object {
                 const json_t &enum_data   = metadata["Enums"];
 
                 if (!member_data.is_object()) {
-                    return make_json_error<void>("Template JSON is missing 'Members' object.", "",
+                    return make_json_error<void>(
+                        "TEMPLATE", "Template JSON is missing 'Members' object.",
                                                  0);
                 }
 
                 if (!struct_data.is_object()) {
-                    return make_json_error<void>("Template JSON is missing 'Structs' object.", "",
+                    return make_json_error<void>(
+                        "TEMPLATE", "Template JSON is missing 'Structs' object.",
                                                  0);
                 }
 
                 if (!enum_data.is_object()) {
-                    return make_json_error<void>("Template JSON is missing 'Enums' object.", "", 0);
+                    return make_json_error<void>("TEMPLATE",
+                                                 "Template JSON is missing 'Enums' object.", 0);
                 }
 
                 if (j.find("Dependencies") != j.end()) {
@@ -124,20 +127,23 @@ namespace Toolbox::Object {
 
     Result<void, JSONError> Template::loadFromJSON(const json_t &the_json) {
         auto result = tryJSON(the_json, [&](const json_t &j) {
-            const json_t &member_data       = j["Members"];
-            const json_t &struct_data       = j["Structs"];
-            const json_t &enum_data         = j["Enums"];
+            const json_t &member_data = j["Members"];
+            const json_t &struct_data = j["Structs"];
+            const json_t &enum_data   = j["Enums"];
 
             if (!member_data.is_object()) {
-                return make_json_error<void>("Template JSON is missing 'Members' object.", "", 0);
+                return make_json_error<void>("TEMPLATE",
+                                             "Template JSON is missing 'Members' object.", 0);
             }
 
             if (!struct_data.is_object()) {
-                return make_json_error<void>("Template JSON is missing 'Structs' object.", "", 0);
+                return make_json_error<void>("TEMPLATE",
+                                             "Template JSON is missing 'Structs' object.", 0);
             }
 
             if (!enum_data.is_object()) {
-                return make_json_error<void>("Template JSON is missing 'Enums' object.", "", 0);
+                return make_json_error<void>("TEMPLATE", "Template JSON is missing 'Enums' object.",
+                                             0);
             }
 
             if (j.find("Dependencies") != j.end()) {
@@ -169,10 +175,43 @@ namespace Toolbox::Object {
         return {};
     }
 
-    void Template::cacheEnums(const json_t &enums) {
+    Result<void, JSONError> Template::cacheEnums(const json_t &enums) {
         for (const auto &item : enums.items()) {
-            const auto &e    = item.value();
-            auto member_type = e["Type"].get<std::string>();
+            const json_t &e = item.value();
+            if (!e.contains("Type")) {
+                return make_json_error<void>(
+                    "TEMPLATE", "Enum definition is missing 'Type' field for enum: " + item.key(),
+                    0);
+            }
+
+            if (!e["Type"].is_string()) {
+                return make_json_error<void>(
+                    "TEMPLATE", "Enum 'Type' field is not a string for enum: " + item.key(), 0);
+            }
+
+            if (!e.contains("Flags")) {
+                return make_json_error<void>(
+                    "TEMPLATE", "Enum definition is missing 'Flags' field for enum: " + item.key(),
+                    0);
+            }
+
+            if (!e["Flags"].is_object()) {
+                return make_json_error<void>(
+                    "TEMPLATE", "Enum 'Flags' field is not an object for enum: " + item.key(), 0);
+            }
+
+            if (!e.contains("Multi")) {
+                return make_json_error<void>(
+                    "TEMPLATE", "Enum definition is missing 'Multi' field for enum: " + item.key(),
+                    0);
+            }
+
+            if (!e["Multi"].is_boolean()) {
+                return make_json_error<void>(
+                    "TEMPLATE", "Enum 'Multi' field is not a boolean for enum: " + item.key(), 0);
+            }
+
+            std::string member_type = e["Type"].get<std::string>();
 
             if (s_alias_map.contains(member_type)) {
                 member_type = s_alias_map.at(member_type);
@@ -182,6 +221,7 @@ namespace Toolbox::Object {
             if (!enum_type.has_value()) {
                 continue;
             }
+
             bool enum_bitmask = e["Multi"].get<bool>();
             std::vector<MetaEnum::enum_type> values;
             for (auto &value : e["Flags"].items()) {
@@ -213,20 +253,25 @@ namespace Toolbox::Object {
             MetaEnum menum(item.key(), enum_type.value(), values, enum_bitmask);
             m_enum_cache.emplace_back(menum);
         }
+        return {};
     }
 
-    void Template::cacheStructs(const json_t &structs) {
+    Result<void, JSONError> Template::cacheStructs(const json_t &structs) {
         std::vector<std::string> visited;
         for (const auto &item : structs.items()) {
-            auto name         = item.key();
-            auto json_members = item.value();
+            const std::string name     = item.key();
+            const json_t &json_members = item.value();
 
             std::vector<MetaMember> members;
-            loadMembers(json_members, members);
+            Result<void, JSONError> result = loadMembers(json_members, members);
+            if (!result) {
+                return result;
+            }
 
             MetaStruct mstruct(item.key(), members);
             m_struct_cache.emplace_back(mstruct);
         }
+        return {};
     }
 
     std::optional<MetaMember> Template::loadMemberEnum(std::string_view name, std::string_view type,
@@ -402,7 +447,7 @@ namespace Toolbox::Object {
             const json_t managers = dependencies["Managers"];
             if (!managers.is_array()) {
                 return make_json_error<TemplateDependencies>(
-                    "'Managers' dependency is not an array.", "", 0);
+                    "TEMPLATE", "'Managers' dependency is not an array.", 0);
             }
 
             for (const auto &item : managers.items()) {
@@ -414,7 +459,7 @@ namespace Toolbox::Object {
             const json_t asset_paths = dependencies["AssetPaths"];
             if (!asset_paths.is_array()) {
                 return make_json_error<TemplateDependencies>(
-                    "'AssetPaths' dependency is not an array.", "", 0);
+                    "TEMPLATE", "'AssetPaths' dependency is not an array.", 0);
             }
 
             for (const auto &item : asset_paths.items()) {
@@ -426,7 +471,7 @@ namespace Toolbox::Object {
             const json_t table_objs = dependencies["TablesBin"];
             if (!table_objs.is_array()) {
                 return make_json_error<TemplateDependencies>(
-                    "'TablesBin' dependency is not an array.", "", 0);
+                    "TEMPLATE", "'TablesBin' dependency is not an array.", 0);
             }
 
             for (const auto &item : table_objs.items()) {
@@ -437,12 +482,38 @@ namespace Toolbox::Object {
         return deps;
     }
 
-    void Template::loadMembers(const json_t &members, std::vector<MetaMember> &out) {
+    Result<void, JSONError> Template::loadMembers(const json_t &members,
+                                                  std::vector<MetaMember> &out) {
         for (const auto &item : members.items()) {
-            auto member_name = item.key();
-            auto member_info = item.value();
+            const std::string member_name = item.key();
+            const json_t &member_info     = item.value();
 
-            auto member_type = member_info["Type"].get<std::string>();
+            if (!member_info.contains("Type")) {
+                return make_json_error<void>(
+                    "TEMPLATE",
+                    "Member definition is missing 'Type' field for member: " + member_name, 0);
+            }
+
+            if (!member_info["Type"].is_string()) {
+                return make_json_error<void>(
+                    "TEMPLATE", "Member 'Type' field is not a string for member: " + member_name,
+                    0);
+            }
+
+            if (!member_info.contains("ArraySize")) {
+                return make_json_error<void>(
+                    "TEMPLATE",
+                    "Member definition is missing 'ArraySize' field for member: " + member_name, 0);
+            }
+
+            if (!member_info["ArraySize"].is_number() && !member_info["ArraySize"].is_string()) {
+                return make_json_error<void>(
+                    "TEMPLATE",
+                    "Member 'ArraySize' field is not a number or string for member: " + member_name,
+                    0);
+            }
+
+            std::string member_type = member_info["Type"].get<std::string>();
             if (s_alias_map.contains(member_type)) {
                 member_type = s_alias_map.at(member_type);
             }
@@ -451,12 +522,12 @@ namespace Toolbox::Object {
 
             MetaMember::size_type member_size;
 
-            auto member_size_info = member_info["ArraySize"];
+            const json_t &member_size_info = member_info["ArraySize"];
             if (member_size_info.is_number()) {
                 member_size = member_size_info.get<u32>();
             } else {
-                auto member_size_str = member_size_info.get<std::string>();
-                auto member_it       = std::find_if(out.begin(), out.end(), [&](const auto &e) {
+                std::string member_size_str = member_size_info.get<std::string>();
+                auto member_it = std::find_if(out.begin(), out.end(), [&](const auto &e) {
                     return e.name() == member_size_str;
                 });
                 if (member_it != out.end()) {
@@ -553,19 +624,29 @@ namespace Toolbox::Object {
                 }
             }
         }
+        return {};
     }
 
-    static MetaMember loadWizardMember(Template::json_t &member_json, MetaMember default_member) {
+    static Result<MetaMember, JSONError> loadWizardMember(const Template::json_t &member_json,
+                                                          MetaMember default_member) {
         default_member.syncArray();
 
         if (default_member.isTypeStruct()) {
             std::vector<MetaStruct> inst_structs;
             for (size_t i = 0; i < default_member.arraysize(); ++i) {
                 std::vector<MetaMember> inst_struct_members;
-                auto struct_ = default_member.value<MetaStruct>(i).value();
+                RefPtr<MetaStruct> struct_ = default_member.value<MetaStruct>(i).value();
                 for (auto &mbr : struct_->members()) {
-                    auto &mbr_json = member_json[mbr->name()];
-                    inst_struct_members.emplace_back(loadWizardMember(mbr_json, *mbr));
+                    if (!member_json.contains(mbr->name())) {
+                        return make_json_error<MetaMember>(
+                            "TEMPLATE", "Wizard does not contain struct member: " + mbr->name(), 0);
+                    }
+                    const Template::json_t &mbr_json = member_json[mbr->name()];
+                    Result<MetaMember, JSONError> member_result = loadWizardMember(mbr_json, *mbr);
+                    if (!member_result) {
+                        return std::unexpected(member_result.error());
+                    }
+                    inst_struct_members.emplace_back(member_result.value());
                 }
                 inst_structs.emplace_back(struct_->name(), inst_struct_members);
             }
@@ -578,13 +659,14 @@ namespace Toolbox::Object {
             return MetaMember(default_member.name(), inst_structs, default_member.defaultValue());
         }
 
-        // Todo: Actually use member_json  here :P
-
         if (default_member.isTypeEnum()) {
             std::vector<MetaEnum> inst_enums;
             for (size_t i = 0; i < default_member.arraysize(); ++i) {
-                auto value = MetaEnum(*default_member.value<MetaEnum>(i).value());
-                value.loadJSON(member_json);
+                MetaEnum value = MetaEnum(*default_member.value<MetaEnum>(i).value());
+                Result<void, JSONError> result = value.loadJSON(member_json);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
                 inst_enums.push_back(value);
             }
             MetaMember::size_type array_size = default_member.arraysize_();
@@ -611,9 +693,10 @@ namespace Toolbox::Object {
         return MetaMember(default_member.name(), inst_values, default_member.defaultValue());
     }
 
-    void Template::loadWizards(const json_t &wizards, const json_t &render_infos) {
+    Result<void, JSONError> Template::loadWizards(const json_t &wizards,
+                                                  const json_t &render_infos) {
         if (m_wizards.size() == 0) {
-            return;
+            return {};
         }
 
         for (const auto &item : wizards.items()) {
@@ -622,16 +705,19 @@ namespace Toolbox::Object {
             wizard.m_name    = item.key();
             auto wizard_json = item.value();
             for (auto &member_item : wizard_json.items()) {
-                auto member_name = member_item.key();
-                auto member_info = member_item.value();
+                const std::string &member_name = member_item.key();
+                const json_t &member_info      = member_item.value();
 
                 auto member_it = std::find_if(
                     default_wizard.m_init_members.begin(), default_wizard.m_init_members.end(),
                     [&](const auto &e) { return e.name() == member_name; });
 
                 if (member_it != default_wizard.m_init_members.end()) {
-                    MetaMember member = loadWizardMember(member_info, *member_it);
-                    wizard.m_init_members.emplace_back(member);
+                    Result<MetaMember, JSONError> member_result = loadWizardMember(member_info, *member_it);
+                    if (!member_result) {
+                        return std::unexpected(member_result.error());
+                    }
+                    wizard.m_init_members.emplace_back(member_result.value());
                 }
             }
             if (render_infos.contains(wizard.m_name)) {
@@ -665,6 +751,8 @@ namespace Toolbox::Object {
             }
             m_wizards.push_back(wizard);
         }
+
+        return {};
     }
 
     static std::mutex s_templates_mutex;

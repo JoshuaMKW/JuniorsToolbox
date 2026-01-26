@@ -107,8 +107,8 @@ namespace Toolbox::Object {
         Result<void, JSONError> loadFromJSON(const json_t &the_json);
 
     protected:
-        void cacheEnums(const json_t &enums);
-        void cacheStructs(const json_t &structs);
+        Result<void, JSONError> cacheEnums(const json_t &enums);
+        Result<void, JSONError> cacheStructs(const json_t &structs);
 
         std::optional<MetaMember> loadMemberEnum(std::string_view name, std::string_view type,
                                                  MetaMember::size_type array_size);
@@ -123,8 +123,8 @@ namespace Toolbox::Object {
                             const std::variant<s64, u64, float, double> &var_max);
 
         Result<TemplateDependencies, JSONError> loadDependencies(const json_t &dependencies);
-        void loadMembers(const json_t &members, std::vector<MetaMember> &out);
-        void loadWizards(const json_t &wizards, const json_t &render_infos);
+        Result<void, JSONError> loadMembers(const json_t &members, std::vector<MetaMember> &out);
+        Result<void, JSONError> loadWizards(const json_t &wizards, const json_t &render_infos);
 
         static void threadLoadTemplate(const std::string &type, bool is_custom);
         static void threadLoadTemplateBlob(const std::string &type, const json_t &the_json,
