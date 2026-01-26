@@ -1,5 +1,12 @@
 #pragma once
 
+#include <expected>
+#include <format>
+#include <string>
+#include <unordered_map>
+#include <variant>
+#include <vector>
+
 #include "core/types.hpp"
 #include "fsystem.hpp"
 #include "jsonlib.hpp"
@@ -9,12 +16,6 @@
 #include "qualname.hpp"
 #include "serial.hpp"
 #include "transform.hpp"
-#include <expected>
-#include <format>
-#include <string>
-#include <unordered_map>
-#include <variant>
-#include <vector>
 
 namespace Toolbox::Object {
 
@@ -41,6 +42,13 @@ namespace Toolbox::Object {
         }
     };
 
+    struct TemplateDependencies {
+        std::vector<std::string> m_managers;
+        //std::vector<std::string> m_objects;
+        std::vector<std::string> m_asset_paths;
+        std::vector<std::string> m_table_objs;
+    };
+
     class Template : public ISerializable {
     public:
         friend class TemplateFactory;
@@ -59,6 +67,10 @@ namespace Toolbox::Object {
 
     public:
         [[nodiscard]] std::string_view type() const { return m_type; }
+
+        [[nodiscard]] const TemplateDependencies &dependencies() const {
+            return m_dependencies;
+        }
 
         [[nodiscard]] std::vector<TemplateWizard> wizards() const { return m_wizards; }
 
@@ -110,6 +122,7 @@ namespace Toolbox::Object {
                             const std::variant<s64, u64, float, double> &var_min,
                             const std::variant<s64, u64, float, double> &var_max);
 
+        Result<TemplateDependencies, JSONError> loadDependencies(const json_t &dependencies);
         void loadMembers(const json_t &members, std::vector<MetaMember> &out);
         void loadWizards(const json_t &wizards, const json_t &render_infos);
 
@@ -120,7 +133,8 @@ namespace Toolbox::Object {
     private:
         std::string m_type;
 
-        std::vector<TemplateWizard> m_wizards = {};
+        TemplateDependencies m_dependencies;
+        std::vector<TemplateWizard> m_wizards   = {};
 
         std::vector<MetaStruct> m_struct_cache = {};
         std::vector<MetaEnum> m_enum_cache     = {};

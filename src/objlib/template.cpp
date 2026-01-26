@@ -8,8 +8,8 @@
 
 #include "color.hpp"
 #include "core/log.hpp"
-#include "gui/logging/errors.hpp"
 #include "gui/appmain/settings/settings.hpp"
+#include "gui/logging/errors.hpp"
 #include "jsonlib.hpp"
 #include "magic_enum.hpp"
 #include "objlib/meta/enum.hpp"
@@ -74,6 +74,28 @@ namespace Toolbox::Object {
                 const json_t &struct_data = metadata["Structs"];
                 const json_t &enum_data   = metadata["Enums"];
 
+                if (!member_data.is_object()) {
+                    return make_json_error<void>("Template JSON is missing 'Members' object.", "",
+                                                 0);
+                }
+
+                if (!struct_data.is_object()) {
+                    return make_json_error<void>("Template JSON is missing 'Structs' object.", "",
+                                                 0);
+                }
+
+                if (!enum_data.is_object()) {
+                    return make_json_error<void>("Template JSON is missing 'Enums' object.", "", 0);
+                }
+
+                if (j.find("Dependencies") != j.end()) {
+                    auto dep_result = loadDependencies(j["Dependencies"]);
+                    if (!dep_result) {
+                        return Result<void, JSONError>(std::unexpected(dep_result.error()));
+                    }
+                    m_dependencies = dep_result.value();
+                }
+
                 TemplateWizard default_wizard;
 
                 cacheEnums(enum_data);
@@ -87,6 +109,8 @@ namespace Toolbox::Object {
                             rendering_it == metadata.end() ? json_t() : metadata["Rendering"]);
                 break;
             }
+
+            return Result<void, JSONError>();
         });
 
         if (!result) {
@@ -100,9 +124,29 @@ namespace Toolbox::Object {
 
     Result<void, JSONError> Template::loadFromJSON(const json_t &the_json) {
         auto result = tryJSON(the_json, [&](const json_t &j) {
-            const json_t &member_data = j["Members"];
-            const json_t &struct_data = j["Structs"];
-            const json_t &enum_data   = j["Enums"];
+            const json_t &member_data       = j["Members"];
+            const json_t &struct_data       = j["Structs"];
+            const json_t &enum_data         = j["Enums"];
+
+            if (!member_data.is_object()) {
+                return make_json_error<void>("Template JSON is missing 'Members' object.", "", 0);
+            }
+
+            if (!struct_data.is_object()) {
+                return make_json_error<void>("Template JSON is missing 'Structs' object.", "", 0);
+            }
+
+            if (!enum_data.is_object()) {
+                return make_json_error<void>("Template JSON is missing 'Enums' object.", "", 0);
+            }
+
+            if (j.find("Dependencies") != j.end()) {
+                auto dep_result = loadDependencies(j["Dependencies"]);
+                if (!dep_result) {
+                    return Result<void, JSONError>(std::unexpected(dep_result.error()));
+                }
+                m_dependencies = std::move(dep_result.value());
+            }
 
             TemplateWizard default_wizard;
 
@@ -114,6 +158,8 @@ namespace Toolbox::Object {
 
             auto rendering_it = j.find("Rendering");
             loadWizards(j["Wizard"], rendering_it == j.end() ? json_t() : j["Rendering"]);
+
+            return Result<void, JSONError>();
         });
 
         if (!result) {
@@ -347,6 +393,48 @@ namespace Toolbox::Object {
         }
 
         return MetaMember(name, values, default_val);
+    }
+
+    Result<TemplateDependencies, JSONError> Template::loadDependencies(const json_t &dependencies) {
+        TemplateDependencies deps;
+
+        if (dependencies.contains("Managers")) {
+            const json_t managers = dependencies["Managers"];
+            if (!managers.is_array()) {
+                return make_json_error<TemplateDependencies>(
+                    "'Managers' dependency is not an array.", "", 0);
+            }
+
+            for (const auto &item : managers.items()) {
+                deps.m_managers.push_back(item.value().get<std::string>());
+            }
+        }
+
+        if (dependencies.contains("AssetPaths")) {
+            const json_t asset_paths = dependencies["AssetPaths"];
+            if (!asset_paths.is_array()) {
+                return make_json_error<TemplateDependencies>(
+                    "'AssetPaths' dependency is not an array.", "", 0);
+            }
+
+            for (const auto &item : asset_paths.items()) {
+                deps.m_asset_paths.push_back(item.value().get<std::string>());
+            }
+        }
+
+        if (dependencies.contains("TablesBin")) {
+            const json_t table_objs = dependencies["TablesBin"];
+            if (!table_objs.is_array()) {
+                return make_json_error<TemplateDependencies>(
+                    "'TablesBin' dependency is not an array.", "", 0);
+            }
+
+            for (const auto &item : table_objs.items()) {
+                deps.m_table_objs.push_back(item.value().get<std::string>());
+            }
+        }
+
+        return deps;
     }
 
     void Template::loadMembers(const json_t &members, std::vector<MetaMember> &out) {

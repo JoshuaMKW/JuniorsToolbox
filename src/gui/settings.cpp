@@ -25,6 +25,17 @@ namespace Toolbox {
         m_current_profile = std::string(name);
 
         std::filesystem::path child_path = m_profile_path / "profile.txt";
+
+        const bool is_path = Toolbox::Filesystem::is_directory(m_profile_path).value_or(false);
+        if (!is_path) {
+            TOOLBOX_WARN("[SETTINGS] Folder \"Profiles\" not found, generating the folder now.");
+            auto result = Toolbox::Filesystem::create_directory(m_profile_path);
+            if (!result) {
+                TOOLBOX_ERROR("[SETTINGS] Folder \"Profiles\" failed to create!");
+                return;
+            }
+        }
+
         std::ofstream out_stream(child_path, std::ios::out);
         out_stream << m_current_profile;
     }
@@ -135,8 +146,8 @@ namespace Toolbox {
     }
 
     Result<void, SerialError> SettingsManager::saveProfiles() {
-        auto path_result = Toolbox::Filesystem::is_directory(m_profile_path);
-        if (!path_result || !path_result.value()) {
+        const bool is_path = Toolbox::Filesystem::is_directory(m_profile_path).value_or(false);
+        if (!is_path) {
             TOOLBOX_WARN("[SETTINGS] Folder \"Profiles\" not found, generating the folder now.");
             auto result = Toolbox::Filesystem::create_directory(m_profile_path);
             if (!result) {

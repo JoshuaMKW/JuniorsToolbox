@@ -1,5 +1,10 @@
 {
     "Strollin' Stu": {
+        "Dependencies": {
+            "Managers": [ "HamuKuriManager" ],
+            "AssetPaths": [ "hamukuri", "hamukurianm" ],
+            "TablesBin": [ "StageEnemyInfo" ]
+        },
         "Enums": {},
         "Structs": {
             "LightInfo": {
