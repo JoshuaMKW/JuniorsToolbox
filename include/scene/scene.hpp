@@ -33,6 +33,8 @@ namespace Toolbox {
         std::string_view name() const { return m_name; }
         void setName(std::string_view name) { m_name = name; }
 
+        size_t getSize() const { return 1 + m_root->getTotalChildren(); }
+
         RefPtr<Object::GroupSceneObject> getRoot() const { return m_root; }
         void setRoot(RefPtr<Object::GroupSceneObject> root) { m_root = root; }
 
@@ -55,6 +57,15 @@ namespace Toolbox {
                 return m_root;
             }
             return m_root->getChild(id);
+        }
+
+        RefPtr<Object::ISceneObject>
+        findObjectByType(std::string_view type,
+                         std::optional<std::string_view> name = std::nullopt) const {
+            if (m_root->type() == name) {
+                return m_root;
+            }
+            return m_root->getChildByType(type, name);
         }
 
         Result<void, SerialError> serialize(Serializer &out) const override {
@@ -110,7 +121,11 @@ namespace Toolbox {
     };
 
     class SceneInstance : public ISmartResource {
-        friend class Entity;
+    public:
+        using validate_progress_cb =
+            std::function<void(double progress, const std::string &progress_text)>;
+        using validate_error_cb =
+            std::function<void(const std::string &reason)>;
 
     public:
         SceneInstance();
@@ -127,6 +142,10 @@ namespace Toolbox {
             return make_scoped<SceneInstance>(std::move(scene));
         }
         [[nodiscard]] static ScopePtr<SceneInstance> BasicScene();
+
+        // WARNING: This method is exhaustive and may take awhile to complete!
+        [[nodiscard]] bool validate(bool check_dependencies, validate_progress_cb,
+                                    validate_error_cb) const;
 
         [[nodiscard]] std::optional<std::filesystem::path> rootPath() const { return m_root_path; }
 

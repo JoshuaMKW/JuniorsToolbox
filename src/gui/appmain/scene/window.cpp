@@ -9,18 +9,19 @@
 
 #include "core/input/input.hpp"
 #include "core/log.hpp"
+#include "core/threaded.hpp"
 #include "core/timing.hpp"
 
 #include "IconsForkAwesome.h"
 #include "gui/appmain/application.hpp"
-#include "gui/font.hpp"
-#include "gui/imgui_ext.hpp"
-#include "gui/logging/errors.hpp"
-#include "gui/modelcache.hpp"
 #include "gui/appmain/project/events.hpp"
 #include "gui/appmain/scene/events.hpp"
 #include "gui/appmain/scene/window.hpp"
 #include "gui/appmain/settings/settings.hpp"
+#include "gui/font.hpp"
+#include "gui/imgui_ext.hpp"
+#include "gui/logging/errors.hpp"
+#include "gui/modelcache.hpp"
 #include "gui/util.hpp"
 
 #include "gui/imgui_ext.hpp"
@@ -170,7 +171,8 @@ namespace Toolbox::UI {
         if (cur_settings.m_repack_scenes_on_save && m_current_scene->rootPath().has_value()) {
             m_repack_io_busy = true;
             MainApplication::instance().dispatchEvent<ProjectPackEvent, true>(
-                0, m_current_scene->rootPath().value().parent_path(), true, [&]() { m_repack_io_busy = false; });
+                0, m_current_scene->rootPath().value().parent_path(), true,
+                [&]() { m_repack_io_busy = false; });
         }
 
         return true;
@@ -284,11 +286,13 @@ namespace Toolbox::UI {
                     }
                 }
 
-                const bool any_valid_object_selected = !m_hierarchy_selected_nodes.empty() && std::all_of(
-                    m_hierarchy_selected_nodes.begin(), m_hierarchy_selected_nodes.end(),
-                    [](const SelectionNodeInfo<Object::ISceneObject> &node) {
-                        return node.m_selected && node.m_selected->getTransform().has_value();
-                    });
+                const bool any_valid_object_selected =
+                    !m_hierarchy_selected_nodes.empty() &&
+                    std::all_of(
+                        m_hierarchy_selected_nodes.begin(), m_hierarchy_selected_nodes.end(),
+                        [](const SelectionNodeInfo<Object::ISceneObject> &node) {
+                            return node.m_selected && node.m_selected->getTransform().has_value();
+                        });
                 if (!any_valid_object_selected && m_rail_list_selected_nodes.empty() &&
                     m_rail_node_list_selected_nodes.empty()) {
                     m_renderer.setGizmoVisible(false);
@@ -311,9 +315,9 @@ namespace Toolbox::UI {
 
             if (!m_hierarchy_selected_nodes.empty()) {
                 size_t i = 0;
-                //TOOLBOX_CORE_ASSERT(
-                //    m_hierarchy_selected_nodes.size() <= m_selection_transforms.size() &&
-                //    "Critical desync between selected nodes and selection transforms detected!");
+                // TOOLBOX_CORE_ASSERT(
+                //     m_hierarchy_selected_nodes.size() <= m_selection_transforms.size() &&
+                //     "Critical desync between selected nodes and selection transforms detected!");
                 for (SelectionNodeInfo<Object::ISceneObject> &node : m_hierarchy_selected_nodes) {
                     if (!node.m_selected->getTransform()) {
                         continue;
@@ -448,6 +452,51 @@ namespace Toolbox::UI {
         renderRailEditor();
         renderScene(deltaTime);
         renderDolphin(deltaTime);
+
+        if (m_scene_verifier) {
+            if (m_scene_verifier->tIsAlive()) {
+                ImGui::OpenPopup("Scene Validator");
+
+                if (ImGui::BeginPopupModal("Scene Validator", nullptr,
+                                           ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::Text("Validating scene, please wait...");
+                    ImGui::Separator();
+
+                    float progress = m_scene_verifier->getProgress();
+                    std::string progress_text = m_scene_verifier->getProgressText();
+
+                    ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0.0f), progress_text.c_str());
+                    ImGui::EndPopup();
+                }
+            } else if (m_scene_verifier->tIsKilled()) {
+                if (!m_scene_validator_result_opened) {
+                    ImGui::OpenPopup("Scene Validator Result");
+                    m_scene_validator_result_opened = true;
+                }
+
+                if (ImGui::BeginPopupModal("Scene Validator Result", nullptr,
+                                           ImGuiWindowFlags_AlwaysAutoResize)) {
+                    if (m_scene_verifier->isValid()) {
+                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                           "Scene validation completed successfully!");
+                    } else {
+                        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                                           "Scene validation failed with errors:");
+                        ImGui::Separator();
+                        std::vector<std::string> errors = m_scene_verifier->getErrors();
+                        for (const auto &error : errors) {
+                            ImGui::TextWrapped("- %s", error.c_str());
+                        }
+                    }
+                    if (ImGui::Button("Close")) {
+                        ImGui::CloseCurrentPopup();
+                        m_scene_verifier.reset();
+                        m_scene_validator_result_opened = false;
+                    }
+                    ImGui::EndPopup();
+                }
+            }
+        }
     }
 
     void SceneWindow::renderHierarchy() {
@@ -1428,7 +1477,8 @@ namespace Toolbox::UI {
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.7f, 0.2f, 0.2f, 0.9f});
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.7f, 0.2f, 0.2f, 1.0f});
 
-        bool context_controls_disabled = !is_dolphin_running || m_control_disable_requested || m_repack_io_busy;
+        bool context_controls_disabled = !is_dolphin_running || m_control_disable_requested ||
+                                         m_repack_io_busy;
 
         if (context_controls_disabled) {
             ImGui::BeginDisabled();
@@ -2281,7 +2331,8 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::buildCreateObjDialog() {
-        AppSettings &settings = MainApplication::instance().getSettingsManager().getCurrentProfile();
+        AppSettings &settings =
+            MainApplication::instance().getSettingsManager().getCurrentProfile();
 
         m_create_obj_dialog.setExtendedMode(settings.m_is_custom_obj_allowed);
         m_create_obj_dialog.setup();
@@ -2289,8 +2340,8 @@ namespace Toolbox::UI {
             [this](size_t sibling_index, std::string_view name, const Object::Template &template_,
                    std::string_view wizard_name, CreateObjDialog::InsertPolicy policy,
                    SelectionNodeInfo<Object::ISceneObject> info) {
-                auto new_object_result =
-                    Object::ObjectFactory::create(template_, wizard_name, m_current_scene->rootPath().value_or(""));
+                auto new_object_result = Object::ObjectFactory::create(
+                    template_, wizard_name, m_current_scene->rootPath().value_or(""));
                 if (!name.empty()) {
                     new_object_result->setNameRef(name);
                 }
@@ -2858,7 +2909,8 @@ namespace Toolbox::UI {
                 ImGui::EndMenu();
             }
             if (ImGui::MenuItem("Verify")) {
-                // TODO: Flag scene verification (ideally on new process or thread)
+                m_scene_verifier = make_scoped<ToolboxSceneVerifier>(ref_cast<const SceneInstance>(m_current_scene));
+                m_scene_verifier->tStart(true, nullptr);
             }
             ImGui::EndMenuBar();
         }
@@ -2868,10 +2920,10 @@ namespace Toolbox::UI {
             if (!m_io_context_path.empty()) {
                 if (onSaveData(m_io_context_path)) {
                     MainApplication::instance().showSuccessModal(this, name(),
-                                                                "Scene saved successfully!");
+                                                                 "Scene saved successfully!");
                 } else {
                     MainApplication::instance().showErrorModal(this, name(),
-                                                              "Scene failed to save!");
+                                                               "Scene failed to save!");
                 }
             } else {
                 m_is_save_as_dialog_open = true;
@@ -2905,10 +2957,10 @@ namespace Toolbox::UI {
                     m_io_context_path = selected_path;
                     if (onSaveData(m_io_context_path)) {
                         MainApplication::instance().showSuccessModal(this, name(),
-                                                                    "Scene saved successfully!");
+                                                                     "Scene saved successfully!");
                     } else {
                         MainApplication::instance().showErrorModal(this, name(),
-                                                                  "Scene failed to save!");
+                                                                   "Scene failed to save!");
                     }
                     break;
                 }
@@ -2920,3 +2972,13 @@ namespace Toolbox::UI {
     }
 
 }  // namespace Toolbox::UI
+
+void ToolboxSceneVerifier::tRun(void *param) {
+    m_successful = m_scene->validate(
+        true,
+        [this](double progress, const std::string &progress_text) {
+            setProgress(progress);
+            m_progress_text = progress_text;
+        },
+        [this](const std::string &error_msg) { m_errors.push_back(error_msg); });
+}

@@ -102,6 +102,8 @@ namespace Toolbox::Object {
         virtual Result<void, ObjectGroupError> _setParent(ISceneObject *parent) = 0;
 
     public:
+        [[nodiscard]] virtual size_t getTotalChildren() const = 0;
+
         [[nodiscard]] virtual std::span<u8> getData() const = 0;
         [[nodiscard]] virtual size_t getDataSize() const    = 0;
 
@@ -121,6 +123,9 @@ namespace Toolbox::Object {
         [[nodiscard]] virtual std::vector<RefPtr<ISceneObject>> getChildren()           = 0;
         [[nodiscard]] virtual RefPtr<ISceneObject> getChild(const QualifiedName &name)  = 0;
         [[nodiscard]] virtual RefPtr<ISceneObject> getChild(UUID64 id)                  = 0;
+        [[nodiscard]] virtual RefPtr<ISceneObject>
+        getChildByType(std::string_view type,
+                       std::optional<std::string_view> name = std::nullopt) = 0;
 
         [[nodiscard]] virtual std::optional<Transform> getTransform() const      = 0;
         virtual Result<void, MetaError> setTransform(const Transform &transform) = 0;
@@ -238,6 +243,8 @@ namespace Toolbox::Object {
             return {};
         }
 
+        size_t getTotalChildren() const override { return 0; }
+
         std::span<u8> getData() const override;
         size_t getDataSize() const override;
 
@@ -283,6 +290,12 @@ namespace Toolbox::Object {
             return nullptr;
         }
         [[nodiscard]] RefPtr<ISceneObject> getChild(UUID64 id) override { return nullptr; }
+
+        [[nodiscard]] RefPtr<ISceneObject>
+        getChildByType(std::string_view type,
+                       std::optional<std::string_view> name = std::nullopt) override {
+            return nullptr;
+        }
 
         [[nodiscard]] std::optional<Transform> getTransform() const override { return {}; }
         Result<void, MetaError> setTransform(const Transform &transform) override { return {}; }
@@ -404,6 +417,14 @@ namespace Toolbox::Object {
 
         [[nodiscard]] bool isGroupObject() const override { return true; }
 
+        [[nodiscard]] size_t getTotalChildren() const override {
+            size_t total_size = 0;
+            for (const auto &child : m_children) {
+                total_size += 1 + child->getTotalChildren();
+            }
+            return total_size;
+        }
+
         [[nodiscard]] std::span<u8> getData() const override;
         [[nodiscard]] size_t getDataSize() const override;
 
@@ -416,6 +437,9 @@ namespace Toolbox::Object {
         [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override;
         [[nodiscard]] RefPtr<ISceneObject> getChild(const QualifiedName &name) override;
         [[nodiscard]] RefPtr<ISceneObject> getChild(UUID64 id) override;
+        [[nodiscard]] RefPtr<ISceneObject>
+        getChildByType(std::string_view type,
+                       std::optional<std::string_view> name = std::nullopt) override;
 
         [[nodiscard]] bool getCanPerform() const { return true; }
         [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
@@ -557,6 +581,8 @@ namespace Toolbox::Object {
             return {};
         }
 
+        size_t getTotalChildren() const override { return 0; }
+
         std::span<u8> getData() const override;
         size_t getDataSize() const override;
 
@@ -602,6 +628,12 @@ namespace Toolbox::Object {
             return {};
         }
         [[nodiscard]] RefPtr<ISceneObject> getChild(UUID64 id) override { return nullptr; }
+
+        [[nodiscard]] RefPtr<ISceneObject>
+        getChildByType(std::string_view type,
+                       std::optional<std::string_view> name = std::nullopt) override {
+            return nullptr;
+        }
 
         [[nodiscard]] std::optional<Transform> getTransform() const override { return m_transform; }
         Result<void, MetaError> setTransform(const Transform &transform) override {
@@ -712,7 +744,7 @@ namespace Toolbox::Object {
 
             auto maybe_template = TemplateFactory::create(m_type.name(), true);
             if (maybe_template.has_value()) {
-                ScopePtr<Template> template_ = std::move(maybe_template.value());
+                ScopePtr<Template> template_         = std::move(maybe_template.value());
                 std::optional<TemplateWizard> wizard = template_->getWizard("Default");
                 if (wizard) {
                     obj->loadRenderData(obj->m_scene_resource_path, wizard->m_render_info,
@@ -774,7 +806,8 @@ namespace Toolbox::Object {
         using create_t     = Result<create_ret_t, create_err_t>;
 
         static create_t create(Deserializer &in, bool include_custom);
-        static create_ret_t create(const Template &template_, std::string_view wizard_name, const fs_path &resource_path);
+        static create_ret_t create(const Template &template_, std::string_view wizard_name,
+                                   const fs_path &resource_path);
 
     protected:
         static bool isGroupObject(std::string_view type);

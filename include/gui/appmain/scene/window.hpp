@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "core/memory.hpp"
+#include "core/threaded.hpp"
 #include "fsystem.hpp"
 #include "objlib/object.hpp"
 #include "objlib/template.hpp"
@@ -16,7 +17,6 @@
 
 #include "core/clipboard.hpp"
 #include "game/task.hpp"
-#include "gui/image/imagepainter.hpp"
 #include "gui/appmain/property/property.hpp"
 #include "gui/appmain/scene/billboard.hpp"
 #include "gui/appmain/scene/camera.hpp"
@@ -25,11 +25,31 @@
 #include "gui/appmain/scene/objdialog.hpp"
 #include "gui/appmain/scene/path.hpp"
 #include "gui/appmain/scene/renderer.hpp"
+#include "gui/image/imagepainter.hpp"
 #include "gui/window.hpp"
 
 #include "raildialog.hpp"
 #include <gui/context_menu.hpp>
 #include <imgui.h>
+
+class ToolboxSceneVerifier : public TaskThread<void> {
+public:
+    ToolboxSceneVerifier() = delete;
+    ToolboxSceneVerifier(RefPtr<const SceneInstance> scene) : m_scene(scene) {}
+
+    void tRun(void *param) override;
+
+    bool isValid() const { return m_successful; }
+    std::vector<std::string> getErrors() const { return m_errors; }
+    std::string getProgressText() const { return m_progress_text; }
+
+private:
+    RefPtr<const SceneInstance> m_scene;
+
+    std::string m_progress_text;
+    std::vector<std::string> m_errors;
+    bool m_successful = true;
+};
 
 namespace Toolbox::UI {
 
@@ -173,7 +193,7 @@ namespace Toolbox::UI {
 
     private:
         u8 m_stage = 0xFF, m_scenario = 0xFF;
-        ScopePtr<Toolbox::SceneInstance> m_current_scene;
+        RefPtr<Toolbox::SceneInstance> m_current_scene;
 
         fs_path m_io_context_path;
         bool m_repack_io_busy = false;
@@ -263,5 +283,8 @@ namespace Toolbox::UI {
         int m_rail_node_drop_target = -1;
 
         Toolbox::Buffer m_drop_target_buffer;
+
+        ScopePtr<ToolboxSceneVerifier> m_scene_verifier;
+        bool m_scene_validator_result_opened = false;
     };
 }  // namespace Toolbox::UI

@@ -14,6 +14,7 @@ namespace Toolbox {
         virtual ScopePtr<ISmartResource> clone(bool deep) const = 0;
 
         RefPtr<ISmartResource> ptr() { return shared_from_this(); }
+        RefPtr<const ISmartResource> ptr() const { return shared_from_this(); }
     };
 
     template <typename _T = ISmartResource, typename _DT = std::decay_t<_T>>

@@ -420,6 +420,29 @@ namespace Toolbox::Object {
         return nullptr;
     }
 
+    RefPtr<ISceneObject> GroupSceneObject::getChildByType(std::string_view type,
+                                                          std::optional<std::string_view> name) {
+        for (RefPtr<ISceneObject> child : getChildren()) {
+            if (!child) {
+                continue;
+            }
+            if (child->type() == type) {
+                if (name.has_value()) {
+                    if (child->getNameRef().name() == name.value()) {
+                        return child;
+                    }
+                } else {
+                    return child;
+                }
+            }
+            RefPtr<ISceneObject> result = child->getChildByType(type, name);
+            if (result) {
+                return result;
+            }
+        }
+        return nullptr;
+    }
+
     Result<void, ObjectError> GroupSceneObject::performScene(float delta_time, bool animate,
                                                              std::vector<RenderInfo> &renderables,
                                                              ResourceCache &resource_cache,
