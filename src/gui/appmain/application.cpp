@@ -32,7 +32,6 @@
 #include "gui/logging/window.hpp"
 
 #include "gui/appmain/application.hpp"
-#include "gui/appmain/window.hpp"
 #include "gui/appmain/debugger/window.hpp"
 #include "gui/appmain/pad/window.hpp"
 #include "gui/appmain/project/window.hpp"
@@ -43,6 +42,7 @@
 #include "gui/appmain/status/modal_success.hpp"
 #include "gui/appmain/themes.hpp"
 #include "gui/appmain/updater/modal.hpp"
+#include "gui/appmain/window.hpp"
 
 #include "gui/util.hpp"
 #include "platform/service.hpp"
@@ -472,14 +472,21 @@ namespace Toolbox {
         return nullptr;
     }
 
+    void MainApplication::showInfoModal(ImWindow *parent, const std::string &title,
+                                        const std::string &message) {
+        m_info_modal_queue.emplace_back(parent, title, message);
+    }
+
     void MainApplication::showSuccessModal(ImWindow *parent, const std::string &title,
-                                           const std::string &message) {
-        m_success_modal_queue.emplace_back(parent, title, message);
+                                           const std::string &message,
+                                           const std::vector<std::string> &extra_info) {
+        m_success_modal_queue.emplace_back(parent, title, message, extra_info);
     }
 
     void MainApplication::showErrorModal(ImWindow *parent, const std::string &title,
-                                         const std::string &message) {
-        m_error_modal_queue.emplace_back(parent, title, message);
+                                         const std::string &message,
+                                         const std::vector<std::string> &extra_info) {
+        m_error_modal_queue.emplace_back(parent, title, message, extra_info);
     }
 
     bool MainApplication::registerDragDropSource(Platform::LowWindow window) {
@@ -621,6 +628,19 @@ namespace Toolbox {
 
                 if (modal.is_closed()) {
                     m_success_modal_queue.erase(m_success_modal_queue.begin());
+                }
+            } else if (!m_info_modal_queue.empty()) {
+                InfoModal &modal = m_info_modal_queue.front();
+                if (!modal.is_open()) {
+                    modal.open();
+                }
+
+                if (!modal.render()) {
+                    modal.close();  // It is somehow invisible
+                }
+
+                if (modal.is_closed()) {
+                    m_info_modal_queue.erase(m_info_modal_queue.begin());
                 }
             } else {
                 // Loop over queued status modals
@@ -826,7 +846,9 @@ namespace Toolbox {
 
         if (ImGui::BeginMenu(ICON_FA_QUESTION)) {
             if (ImGui::MenuItem("About")) {
-                // TODO: Create about window
+                showInfoModal(nullptr, "About Junior's Toolbox",
+                              "Junior's Toolbox is a really cool program!\n\n- JoshuaMK 2026 "
+                              "<joshuamkw2002@gmail.com>");
             }
             ImGui::EndMenu();
         }

@@ -16,18 +16,19 @@
 #undef GLFW_INCLUDE_NONE
 
 #include "gui/appmain/dolphin/overlay.hpp"
-#include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/appmain/scene/window.hpp"
+#include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/window.hpp"
 
 #include "core/clipboard.hpp"
 #include "dolphin/process.hpp"
 
-#include "gui/font.hpp"
 #include "gui/appmain/settings/settings.hpp"
 #include "gui/appmain/status/modal_failure.hpp"
+#include "gui/appmain/status/modal_info.hpp"
 #include "gui/appmain/status/modal_success.hpp"
 #include "gui/appmain/themes.hpp"
+#include "gui/font.hpp"
 #include "project/project.hpp"
 #include "resource/resource.hpp"
 
@@ -132,9 +133,12 @@ namespace Toolbox {
 
         RefPtr<ImWindow> getImWindowFromPlatformWindow(Platform::LowWindow window);
 
+        void showInfoModal(ImWindow *parent, const std::string &title, const std::string &message);
         void showSuccessModal(ImWindow *parent, const std::string &title,
-                              const std::string &message);
-        void showErrorModal(ImWindow *parent, const std::string &title, const std::string &message);
+                              const std::string &message,
+                              const std::vector<std::string> &extra_info = {});
+        void showErrorModal(ImWindow *parent, const std::string &title, const std::string &message,
+                            const std::vector<std::string> &extra_info = {});
 
         bool registerDragDropSource(Platform::LowWindow window);
         void deregisterDragDropSource(Platform::LowWindow window);
@@ -228,6 +232,7 @@ namespace Toolbox {
         DolphinCommunicator m_dolphin_communicator;
         Game::TaskCommunicator m_task_communicator;
 
+        std::vector<InfoModal> m_info_modal_queue;
         std::vector<SuccessModal> m_success_modal_queue;
         std::vector<FailureModal> m_error_modal_queue;
     };
@@ -280,8 +285,9 @@ namespace Toolbox {
         void saveDialog(const ImWindow &parent_window, const std::filesystem::path &starting_path,
                         const std::string &default_name, bool is_directory = false,
                         std::optional<FileDialogFilter> maybe_filters = std::nullopt);
-        void saveDialog(GLFWwindow *parent_window, UUID64 owner_uuid, const std::filesystem::path &starting_path,
-                        const std::string &default_name, bool is_directory = false,
+        void saveDialog(GLFWwindow *parent_window, UUID64 owner_uuid,
+                        const std::filesystem::path &starting_path, const std::string &default_name,
+                        bool is_directory                             = false,
                         std::optional<FileDialogFilter> maybe_filters = std::nullopt);
 
         bool isAlreadyOpen() const { return m_thread_running; }

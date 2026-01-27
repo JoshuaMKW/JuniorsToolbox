@@ -24,10 +24,12 @@ namespace Toolbox::UI {
 
     class SuccessModal {
     public:
-        SuccessModal(ImWindow *parent, const std::string &name, const std::string &message) {
+        SuccessModal(ImWindow *parent, const std::string &name, const std::string &message,
+                     const std::vector<std::string> &extra_info = {}) {
             m_parent  = parent;
             m_name    = name;
             m_message = message;
+            m_extra_info = extra_info;
         }
         ~SuccessModal() = default;
 
@@ -42,6 +44,7 @@ namespace Toolbox::UI {
         ImWindow *m_parent;
         std::string m_name;
         std::string m_message;
+        std::vector<std::string> m_extra_info;
         bool m_is_open = false;
         bool m_is_closed = false;
     };

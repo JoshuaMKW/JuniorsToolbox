@@ -14,10 +14,8 @@ namespace Toolbox::Object {
         using reverse_iterator       = std::vector<std::string>::reverse_iterator;
         using const_reverse_iterator = std::vector<std::string>::const_reverse_iterator;
 
-    protected:
-        constexpr QualifiedName() = default;
-
     public:
+        constexpr QualifiedName() = default;
         constexpr QualifiedName(const char *name) : m_scopes({name}) {}
         constexpr QualifiedName(const std::string &name) : m_scopes({name}) {}
         constexpr QualifiedName(std::string_view name) : m_scopes({std::string(name)}) {}

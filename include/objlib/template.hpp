@@ -43,10 +43,15 @@ namespace Toolbox::Object {
     };
 
     struct TemplateDependencies {
-        std::vector<std::string> m_managers;
-        //std::vector<std::string> m_objects;
+        struct ObjectInfo {
+            std::string m_type;
+            std::string m_name;
+            QualifiedName m_ancestry;
+        };
+
+        std::vector<ObjectInfo> m_managers;
         std::vector<std::string> m_asset_paths;
-        std::vector<std::string> m_table_objs;
+        std::vector<ObjectInfo> m_table_objs;
     };
 
     class Template : public ISerializable {

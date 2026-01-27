@@ -445,13 +445,19 @@ namespace Toolbox::Object {
 
         if (dependencies.contains("Managers")) {
             const json_t managers = dependencies["Managers"];
-            if (!managers.is_array()) {
+            if (!managers.is_object()) {
                 return make_json_error<TemplateDependencies>(
-                    "TEMPLATE", "'Managers' dependency is not an array.", 0);
+                    "TEMPLATE", "'Managers' dependency is not an object.", 0);
             }
 
             for (const auto &item : managers.items()) {
-                deps.m_managers.push_back(item.value().get<std::string>());
+                TemplateDependencies::ObjectInfo manager_info;
+                manager_info.m_type = item.key();
+                manager_info.m_name = item.value()["Name"].get<std::string>();
+                manager_info.m_ancestry =
+                    QualifiedName(item.value()["Ancestry"].get<std::vector<std::string>>());
+
+                deps.m_managers.push_back(manager_info);
             }
         }
 
@@ -469,13 +475,19 @@ namespace Toolbox::Object {
 
         if (dependencies.contains("TablesBin")) {
             const json_t table_objs = dependencies["TablesBin"];
-            if (!table_objs.is_array()) {
+            if (!table_objs.is_object()) {
                 return make_json_error<TemplateDependencies>(
-                    "TEMPLATE", "'TablesBin' dependency is not an array.", 0);
+                    "TEMPLATE", "'TablesBin' dependency is not an object.", 0);
             }
 
             for (const auto &item : table_objs.items()) {
-                deps.m_table_objs.push_back(item.value().get<std::string>());
+                TemplateDependencies::ObjectInfo table_obj_info;
+                table_obj_info.m_type = item.key();
+                table_obj_info.m_name = item.value()["Name"].get<std::string>();
+                table_obj_info.m_ancestry =
+                    QualifiedName(item.value()["Ancestry"].get<std::vector<std::string>>());
+
+                deps.m_table_objs.push_back(table_obj_info);
             }
         }
 

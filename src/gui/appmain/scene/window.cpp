@@ -453,16 +453,20 @@ namespace Toolbox::UI {
         renderScene(deltaTime);
         renderDolphin(deltaTime);
 
+        const ImGuiStyle &style = ImGui::GetStyle();
+
         if (m_scene_verifier) {
             if (m_scene_verifier->tIsAlive()) {
                 ImGui::OpenPopup("Scene Validator");
 
-                if (ImGui::BeginPopupModal("Scene Validator", nullptr,
-                                           ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
+                                        ImGuiCond_Appearing, {0.5f, 0.5f});
+
+                if (ImGui::BeginPopupModal("Scene Validator", nullptr, ImGuiWindowFlags_NoResize)) {
                     ImGui::Text("Validating scene, please wait...");
                     ImGui::Separator();
 
-                    float progress = m_scene_verifier->getProgress();
+                    float progress            = m_scene_verifier->getProgress();
                     std::string progress_text = m_scene_verifier->getProgressText();
 
                     ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0.0f), progress_text.c_str());
@@ -470,30 +474,55 @@ namespace Toolbox::UI {
                 }
             } else if (m_scene_verifier->tIsKilled()) {
                 if (!m_scene_validator_result_opened) {
-                    ImGui::OpenPopup("Scene Validator Result");
+                    if (m_scene_verifier->isValid()) {
+                        MainApplication::instance().showSuccessModal(
+                            this, "Scene Validator Result",
+                            "Scene validation completed successfully!");
+                    } else {
+                        std::vector<std::string> errors = m_scene_verifier->getErrors();
+                        MainApplication::instance().showErrorModal(
+                            this, "Scene Validator Result", "Scene validation failed with errors !",
+                            errors);
+                    }
                     m_scene_validator_result_opened = true;
                 }
+            }
+        }
 
-                if (ImGui::BeginPopupModal("Scene Validator Result", nullptr,
-                                           ImGuiWindowFlags_AlwaysAutoResize)) {
-                    if (m_scene_verifier->isValid()) {
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                           "Scene validation completed successfully!");
-                    } else {
-                        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                                           "Scene validation failed with errors:");
-                        ImGui::Separator();
-                        std::vector<std::string> errors = m_scene_verifier->getErrors();
-                        for (const auto &error : errors) {
-                            ImGui::TextWrapped("- %s", error.c_str());
-                        }
-                    }
-                    if (ImGui::Button("Close")) {
-                        ImGui::CloseCurrentPopup();
-                        m_scene_verifier.reset();
-                        m_scene_validator_result_opened = false;
-                    }
+        if (m_scene_mender) {
+            if (m_scene_mender->tIsAlive()) {
+                ImGui::OpenPopup("Scene Repair");
+
+                ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
+                                        ImGuiCond_Appearing, {0.5f, 0.5f});
+
+                if (ImGui::BeginPopupModal("Scene Repair", nullptr, ImGuiWindowFlags_NoResize)) {
+                    ImGui::Text("Validating scene, please wait...");
+                    ImGui::Separator();
+
+                    std::string progress_text = m_scene_mender->getProgressText();
+
+                    ImGui::ProgressBar(-1.0f * ImGui::GetTime(), ImVec2(-FLT_MIN, 0.0f),
+                                       progress_text.c_str());
                     ImGui::EndPopup();
+                }
+            } else if (m_scene_mender->tIsKilled()) {
+                if (!m_scene_mender_result_opened) {
+                    if (m_scene_mender->isValid()) {
+                        std::vector<std::string> changes = m_scene_mender->getChanges();
+                        MainApplication::instance().showSuccessModal(
+                            this, "Scene Repair Result",
+                            changes.empty() ? "The scene was already valid!"
+                                            : "Scene repair completed successfully!",
+                            changes);
+                    } else {
+                        std::vector<std::string> errors  = m_scene_mender->getErrors();
+                        MainApplication::instance().showErrorModal(
+                            this, "Scene Repair Result",
+                            "Scene repair failed with errors !",
+                            errors);
+                    }
+                    m_scene_mender_result_opened = true;
                 }
             }
         }
@@ -2908,9 +2937,40 @@ namespace Toolbox::UI {
                 }
                 ImGui::EndMenu();
             }
-            if (ImGui::MenuItem("Verify")) {
-                m_scene_verifier = make_scoped<ToolboxSceneVerifier>(ref_cast<const SceneInstance>(m_current_scene));
-                m_scene_verifier->tStart(true, nullptr);
+            if (ImGui::BeginMenu("Validation")) {
+                const bool is_verifying = m_scene_verifier && m_scene_verifier->tIsAlive();
+                const bool is_repairing = m_scene_mender && m_scene_mender->tIsAlive();
+
+                if (is_verifying || is_repairing) {
+                    ImGui::BeginDisabled();
+                }
+
+                if (ImGui::MenuItem("Verify Scene")) {
+                    m_scene_verifier = make_scoped<ToolboxSceneVerifier>(
+                        ref_cast<const SceneInstance>(m_current_scene), false);
+                    m_scene_verifier->tStart(true, nullptr);
+                    m_scene_validator_result_opened = false;
+                }
+
+                if (ImGui::MenuItem("Verify Scene & Dependencies")) {
+                    m_scene_verifier = make_scoped<ToolboxSceneVerifier>(
+                        ref_cast<const SceneInstance>(m_current_scene), true);
+                    m_scene_verifier->tStart(true, nullptr);
+                    m_scene_validator_result_opened = false;
+                }
+
+                if (ImGui::MenuItem("Repair Dependencies")) {
+                    m_scene_mender = make_scoped<ToolboxSceneDependencyMender>(
+                        ref_cast<const SceneInstance>(m_current_scene));
+                    m_scene_mender->tStart(true, nullptr);
+                    m_scene_mender_result_opened = false;
+                }
+
+                if (is_verifying || is_repairing) {
+                    ImGui::EndDisabled();
+                }
+
+                ImGui::EndMenu();
             }
             ImGui::EndMenuBar();
         }
@@ -2975,10 +3035,17 @@ namespace Toolbox::UI {
 
 void ToolboxSceneVerifier::tRun(void *param) {
     m_successful = m_scene->validate(
-        true,
+        m_check_dependencies,
         [this](double progress, const std::string &progress_text) {
             setProgress(progress);
             m_progress_text = progress_text;
         },
+        [this](const std::string &error_msg) { m_errors.push_back(error_msg); });
+}
+
+void ToolboxSceneDependencyMender::tRun(void *param) {
+    m_successful = m_scene->repair(
+        true, [this](const std::string &progress_text) { m_progress_text = progress_text; },
+        [this](const std::string &change_msg) { m_changes.push_back(change_msg); },
         [this](const std::string &error_msg) { m_errors.push_back(error_msg); });
 }

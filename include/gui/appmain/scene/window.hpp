@@ -35,7 +35,7 @@
 class ToolboxSceneVerifier : public TaskThread<void> {
 public:
     ToolboxSceneVerifier() = delete;
-    ToolboxSceneVerifier(RefPtr<const SceneInstance> scene) : m_scene(scene) {}
+    ToolboxSceneVerifier(RefPtr<const SceneInstance> scene, bool check_dependencies) : m_scene(scene), m_check_dependencies(check_dependencies) {}
 
     void tRun(void *param) override;
 
@@ -45,8 +45,31 @@ public:
 
 private:
     RefPtr<const SceneInstance> m_scene;
+    bool m_check_dependencies = true;
 
     std::string m_progress_text;
+    std::vector<std::string> m_errors;
+    bool m_successful = true;
+};
+
+class ToolboxSceneDependencyMender : public TaskThread<void> {
+public:
+    ToolboxSceneDependencyMender() = delete;
+    ToolboxSceneDependencyMender(RefPtr<const SceneInstance> scene)
+        : m_scene(scene) {}
+
+    void tRun(void *param) override;
+
+    bool isValid() const { return m_successful; }
+    std::vector<std::string> getChanges() const { return m_changes; }
+    std::vector<std::string> getErrors() const { return m_errors; }
+    std::string getProgressText() const { return m_progress_text; }
+
+private:
+    RefPtr<const SceneInstance> m_scene;
+
+    std::string m_progress_text;
+    std::vector<std::string> m_changes;
     std::vector<std::string> m_errors;
     bool m_successful = true;
 };
@@ -285,6 +308,8 @@ namespace Toolbox::UI {
         Toolbox::Buffer m_drop_target_buffer;
 
         ScopePtr<ToolboxSceneVerifier> m_scene_verifier;
+        ScopePtr<ToolboxSceneDependencyMender> m_scene_mender;
         bool m_scene_validator_result_opened = false;
+        bool m_scene_mender_result_opened = false;
     };
 }  // namespace Toolbox::UI

@@ -1,21 +1,19 @@
-#include "gui/appmain/status/modal_success.hpp"
+#include "gui/appmain/status/modal_info.hpp"
 #include "platform/audio.hpp"
 
 namespace Toolbox::UI {
 
-    bool SuccessModal::open() {
+    bool InfoModal::open() {
         if (!m_is_open && !m_is_closed) {
             ImGui::OpenPopup(m_name.c_str());
-            Platform::PlaySystemSound(Platform::SystemSound::S_SUCCESS);
+            Platform::PlaySystemSound(Platform::SystemSound::S_NOTIFICATION);
             m_is_open = true;
             return true;
         }
         return false;
     }
 
-    bool SuccessModal::render() {
-        const ImGuiStyle &style = ImGui::GetStyle();
-
+    bool InfoModal::render() {
         ImGuiWindowFlags modal_flags = ImGuiWindowFlags_AlwaysAutoResize |
                                        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse |
                                        ImGuiWindowFlags_NoMove;
@@ -25,9 +23,7 @@ namespace Toolbox::UI {
             ImGuiViewportFlags_NoAutoMerge | ImGuiViewportFlags_TopMost;
         ImGui::SetNextWindowClass(&modal_class);
 
-        const float modal_scalar = ImGui::GetFontSize() / 16.0f;
-        ImVec2 modal_size        = {400.0f * modal_scalar,
-                             m_extra_info.empty() ? 0.0f : 300.0f * modal_scalar};
+        ImVec2 modal_size = {500.0f * (ImGui::GetFontSize() / 16.0f), 0.0f};
         ImGui::SetNextWindowSize(modal_size);
 
         ImVec2 modal_pos = m_parent ? m_parent->getPos() + m_parent->getSize() / 2.0f
@@ -36,21 +32,7 @@ namespace Toolbox::UI {
 
         if (ImGui::BeginPopupModal(m_name.c_str(), &m_is_open, modal_flags)) {
             ImGui::TextWrapped("%s", m_message.c_str());
-            if (!m_extra_info.empty()) {
-                ImGui::Separator();
-
-                const ImVec2 avail_size = ImGui::GetContentRegionAvail();
-                const ImVec2 panel_size = {avail_size.x, avail_size.y - ImGui::GetFontSize() -
-                                                             style.ItemSpacing.y -
-                                                             style.WindowPadding.y};
-                if (ImGui::BeginChild("##ChangesPanel", panel_size, ImGuiChildFlags_Borders)) {
-                    for (const auto &info : m_extra_info) {
-                        ImGui::TextWrapped("- %s", info.c_str());
-                    }
-                }
-                ImGui::EndChild();
-            }
-            if (ImGui::Button("OK", ImVec2(120.0f * modal_scalar, 0))) {
+            if (ImGui::Button("OK", ImVec2(120, 0))) {
                 close();
             }
             ImGui::EndPopup();
@@ -59,7 +41,7 @@ namespace Toolbox::UI {
         return false;
     }
 
-    void SuccessModal::close() {
+    void InfoModal::close() {
         if (m_is_open) {
             ImGui::CloseCurrentPopup();
         }

@@ -124,8 +124,11 @@ namespace Toolbox {
     public:
         using validate_progress_cb =
             std::function<void(double progress, const std::string &progress_text)>;
-        using validate_error_cb =
-            std::function<void(const std::string &reason)>;
+        using validate_error_cb = std::function<void(const std::string &reason)>;
+
+        using repair_progress_cb = std::function<void(const std::string &progress_text)>;
+        using repair_change_cb   = std::function<void(const std::string &change_text)>;
+        using repair_error_cb    = std::function<void(const std::string &reason)>;
 
     public:
         SceneInstance();
@@ -146,6 +149,10 @@ namespace Toolbox {
         // WARNING: This method is exhaustive and may take awhile to complete!
         [[nodiscard]] bool validate(bool check_dependencies, validate_progress_cb,
                                     validate_error_cb) const;
+
+        // WARNING: This method is exhaustive and may take awhile to complete!
+        [[nodiscard]] bool repair(bool check_dependencies, repair_progress_cb, repair_change_cb,
+                                  repair_error_cb) const;
 
         [[nodiscard]] std::optional<std::filesystem::path> rootPath() const { return m_root_path; }
 

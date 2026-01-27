@@ -1,9 +1,19 @@
 {
     "Strollin' Stu": {
         "Dependencies": {
-            "Managers": [ "HamuKuriManager" ],
+            "Managers": {
+                "HamuKuriManager": {
+                    "Name": "ハムクリマネージャー",
+                    "Ancestry": [ "全体シーン", "コンダクター初期化用" ]
+                }
+            },
             "AssetPaths": [ "hamukuri", "hamukurianm" ],
-            "TablesBin": [ "StageEnemyInfo" ]
+            "TablesBin": {
+                "StageEnemyInfo": {
+                    "Name": "",
+                    "Ancestry": ""
+                }
+            }
         },
         "Enums": {},
         "Structs": {
