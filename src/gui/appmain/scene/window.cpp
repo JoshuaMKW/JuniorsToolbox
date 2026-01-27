@@ -481,7 +481,7 @@ namespace Toolbox::UI {
                     } else {
                         std::vector<std::string> errors = m_scene_verifier->getErrors();
                         MainApplication::instance().showErrorModal(
-                            this, "Scene Validator Result", "Scene validation failed with errors !",
+                            this, "Scene Validator Result", "Scene validation failed with errors!",
                             errors);
                     }
                     m_scene_validator_result_opened = true;
@@ -519,7 +519,7 @@ namespace Toolbox::UI {
                         std::vector<std::string> errors  = m_scene_mender->getErrors();
                         MainApplication::instance().showErrorModal(
                             this, "Scene Repair Result",
-                            "Scene repair failed with errors !",
+                            "Scene repair failed with errors!",
                             errors);
                     }
                     m_scene_mender_result_opened = true;
