@@ -1,4 +1,4 @@
-{
+﻿{
     "Pokey Head Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "サンボヘッドマネージャー キャラ",
-                "MaxObjs": 20,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "サンボヘッドマネージャー キャラ",
+                    "MaxObjs": 20,
+                    "MActorSets": 0
+                }
             }
         }
     }

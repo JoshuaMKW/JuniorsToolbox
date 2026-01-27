@@ -1,4 +1,4 @@
-{
+﻿{
     "Area Sphere": {
         "Enums": {},
         "Structs": {
@@ -41,31 +41,39 @@
         },
         "Wizard": {
             "Swoopin' Stu Appearance Area": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "エリア円柱 キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Swoopin' Stu Appearance Area",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "ナメクリ出現エリアマネージャー",
-                "SpawnRate": 0
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "エリア円柱 キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "ナメクリ出現エリアマネージャー",
+                    "SpawnRate": 0
+                }
             }
         }
     }

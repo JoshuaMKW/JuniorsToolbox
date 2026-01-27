@@ -1,4 +1,4 @@
-{
+﻿{
     "Manhole": {
         "Enums": {},
         "Structs": {
@@ -37,30 +37,38 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "manhole キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "manhole"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "manhole キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "manhole"
+                }
             }
         }
     }

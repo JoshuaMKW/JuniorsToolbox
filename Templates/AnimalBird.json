@@ -1,4 +1,4 @@
-{
+﻿{
     "Bird": {
         "Enums": {},
         "Structs": {
@@ -45,32 +45,40 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "鳥マネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "鳥マネージャー",
-                "Rail": "(null)",
-                "SpawnObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "鳥マネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "鳥マネージャー",
+                    "Rail": "(null)",
+                    "SpawnObjID": -1
+                }
             }
         },
         "Rendering": {

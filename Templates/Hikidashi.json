@@ -1,4 +1,4 @@
-{
+﻿{
     "Secret Stage \"Hikidashi\"": {
         "Enums": {},
         "Structs": {
@@ -45,32 +45,40 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "ひきだし キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "hikidashi",
-                "Rail": "(null)",
-                "Bounce": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ひきだし キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "hikidashi",
+                    "Rail": "(null)",
+                    "Bounce": -1
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Bowser Jr. Balloon": {
         "Enums": {},
         "Structs": {
@@ -37,30 +37,38 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        8,
-                        8,
-                        8
-                    ]
-                ],
-                "Character": "風船（クッパＪｒ） キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "balloonKoopaJr"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            8,
+                            8,
+                            8
+                        ]
+                    ],
+                    "Character": "風船（クッパＪｒ） キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "balloonKoopaJr"
+                }
             }
         }
     }

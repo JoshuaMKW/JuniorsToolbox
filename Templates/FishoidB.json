@@ -1,4 +1,4 @@
-{
+﻿{
     "Fish B": {
         "Enums": {},
         "Structs": {
@@ -49,33 +49,41 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "回遊魚マネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "回遊魚マネージャー",
-                "Rail": "(null)",
-                "ObjCount": 1,
-                "FollowObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "回遊魚マネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "回遊魚マネージャー",
+                    "Rail": "(null)",
+                    "ObjCount": 1,
+                    "FollowObjID": -1
+                }
             }
         },
         "Rendering": {

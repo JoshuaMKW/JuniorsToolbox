@@ -1,4 +1,4 @@
-{
+﻿{
     "Hula Dancer Pianta Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "フラダンスモンテ女マネージャー キャラ",
-                "MaxObjs": 8,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "フラダンスモンテ女マネージャー キャラ",
+                    "MaxObjs": 8,
+                    "MActorSets": 0
+                }
             }
         }
     }

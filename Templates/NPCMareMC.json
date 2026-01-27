@@ -1,4 +1,4 @@
-{
+﻿{
     "Pinna Park Director": {
         "Enums": {
             "Accessories": {
@@ -110,88 +110,98 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "園長マレー男マネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "園長マレー男マネージャー",
-                "Rail": "(null)",
-                "BodyColor": 0,
-                "ClothesColor": 0,
-                "PolluteState": 0,
-                "Acc1Color": 0,
-                "Acc2Color": 4,
-                "Acc3Color": 0,
-                "Accessory": 1872,
-                "Idle": 0,
-                "Chucking": 100,
-                "ThrowLength": -1,
-                "ThrowHeight": 0,
-                "RewardObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "園長マレー男マネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "園長マレー男マネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 0,
+                    "ClothesColor": 0,
+                    "PolluteState": 0,
+                    "Acc1Color": 0,
+                    "Acc2Color": 4,
+                    "Acc3Color": 0,
+                    "Accessory": 1872,
+                    "Idle": 0,
+                    "Chucking": 100,
+                    "ThrowLength": -1,
+                    "ThrowHeight": 0,
+                    "RewardObjID": -1
+                }
             }
         },
         "Rendering": {
-          "Default": {
-            "Model": "maremc/maremc.bmd",
-            "Textures": { "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti" },
-            "Animations": [
-              "maremc/maremc_appear.bck",
-              "maremc/maremc_cry.btp",
-              "maremc/maremc_dance.bck",
-              "maremc/maremc_fall.bck",
-              "maremc/maremc_happy.bck",
-              "maremc/maremc_jump.bck",
-              "maremc/maremc_jump.btp",
-              "maremc/maremc_recover.bck",
-              "maremc/maremc_recover.btp",
-              "maremc/maremc_run.bck",
-              "maremc/maremc_sad.btp",
-              "maremc/maremc_sit.bck",
-              "maremc/maremc_sittalk.bck",
-              "maremc/maremc_sleep.btp",
-              "maremc/maremc_sleep_a.btp",
-              "maremc/maremc_smile.btp",
-              "maremc/maremc_stand.bck",
-              "maremc/maremc_stand.btp",
-              "maremc/maremc_stand_a.bck",
-              "maremc/maremc_stand_a.btp",
-              "maremc/maremc_step.bck",
-              "maremc/maremc_talk.bck",
-              "maremc/maremc_talk.btp",
-              "maremc/maremc_wait.bck",
-              "maremc/maremc_wait_a.bck",
-              "maremc/maremc_wait_fall.bck",
-              "maremc/maremc_wait_yogure.bck",
-              "maremc/maremc_walk.bck",
-              "maremc/maremc_wash.bck",
-              "maremc/maremc_wash.btp",
-              "maremc/maremc_wet.bck",
-              "maremc/maremc_wet.btp",
-              "maremc/maremc_wet_a.bck",
-              "maremc/maremc_wet_a.btp",
-              "maremc/maremc_wink.btp",
-              "maremc/maremc_wink_a.btp"
-            ]
-          }
+            "Default": {
+                "Model": "maremc/maremc.bmd",
+                "Textures": {
+                    "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti"
+                },
+                "Animations": [
+                    "maremc/maremc_appear.bck",
+                    "maremc/maremc_cry.btp",
+                    "maremc/maremc_dance.bck",
+                    "maremc/maremc_fall.bck",
+                    "maremc/maremc_happy.bck",
+                    "maremc/maremc_jump.bck",
+                    "maremc/maremc_jump.btp",
+                    "maremc/maremc_recover.bck",
+                    "maremc/maremc_recover.btp",
+                    "maremc/maremc_run.bck",
+                    "maremc/maremc_sad.btp",
+                    "maremc/maremc_sit.bck",
+                    "maremc/maremc_sittalk.bck",
+                    "maremc/maremc_sleep.btp",
+                    "maremc/maremc_sleep_a.btp",
+                    "maremc/maremc_smile.btp",
+                    "maremc/maremc_stand.bck",
+                    "maremc/maremc_stand.btp",
+                    "maremc/maremc_stand_a.bck",
+                    "maremc/maremc_stand_a.btp",
+                    "maremc/maremc_step.bck",
+                    "maremc/maremc_talk.bck",
+                    "maremc/maremc_talk.btp",
+                    "maremc/maremc_wait.bck",
+                    "maremc/maremc_wait_a.bck",
+                    "maremc/maremc_wait_fall.bck",
+                    "maremc/maremc_wait_yogure.bck",
+                    "maremc/maremc_walk.bck",
+                    "maremc/maremc_wash.bck",
+                    "maremc/maremc_wash.btp",
+                    "maremc/maremc_wet.bck",
+                    "maremc/maremc_wet.btp",
+                    "maremc/maremc_wet_a.bck",
+                    "maremc/maremc_wet_a.btp",
+                    "maremc/maremc_wink.btp",
+                    "maremc/maremc_wink_a.btp"
+                ]
+            }
         }
     }
 }

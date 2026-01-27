@@ -1,4 +1,4 @@
-{
+﻿{
     "Map": {
         "Enums": {},
         "Structs": {
@@ -69,72 +69,88 @@
         },
         "Wizard": {
             "Default": {
-                "XluJointCount": 0,
-                "XBorder": 0,
-                "ZBorder": 0,
-                "BGCheckDataCount": 0,
-                "BGCheckListCount": 0,
-                "BGCheckListWarpCount": 0,
-                "WarpCount": 0,
-                "InitWarpID": 0,
-                "VertexRenderArray": {
-                    "VertexArray": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "WarpArray": {
-                    "PointArray": {
-                        "Name": "(null)",
-                        "Transform": [
-                            [
-                                0,
-                                0,
-                                0
-                            ],
-                            [
-                                0,
-                                0,
-                                0
-                            ],
-                            [
-                                1,
-                                1,
-                                1
+                "Members": {
+                    "XluJointCount": 0,
+                    "XBorder": 0,
+                    "ZBorder": 0,
+                    "BGCheckDataCount": 0,
+                    "BGCheckListCount": 0,
+                    "BGCheckListWarpCount": 0,
+                    "WarpCount": 0,
+                    "InitWarpID": 0,
+                    "VertexRenderArray": {
+                        "VertexArray": 0
+                    },
+                    "WarpArray": {
+                        "PointArray": {
+                            "Name": "(null)",
+                            "Transform": [
+                                [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                [
+                                    1,
+                                    1,
+                                    1
+                                ]
                             ]
-                        ]
+                        }
                     }
                 }
             },
             "マップ": {
-                "XluJointCount": 0,
-                "XBorder": 60,
-                "ZBorder": 60,
-                "BGCheckDataCount": 20000,
-                "BGCheckListCount": 29000,
-                "BGCheckListWarpCount": 3000,
-                "WarpCount": 0,
-                "InitWarpID": 0,
-                "VertexRenderArray": {
-                    "VertexArray": 0
+                "Name": "マップ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "WarpArray": {
-                    "PointArray": {
-                        "Name": "(null)",
-                        "Transform": [
-                            [
-                                0,
-                                0,
-                                0
-                            ],
-                            [
-                                0,
-                                0,
-                                0
-                            ],
-                            [
-                                1,
-                                1,
-                                1
+                "Members": {
+                    "XluJointCount": 0,
+                    "XBorder": 60,
+                    "ZBorder": 60,
+                    "BGCheckDataCount": 20000,
+                    "BGCheckListCount": 29000,
+                    "BGCheckListWarpCount": 3000,
+                    "WarpCount": 0,
+                    "InitWarpID": 0,
+                    "VertexRenderArray": {
+                        "VertexArray": 0
+                    },
+                    "WarpArray": {
+                        "PointArray": {
+                            "Name": "(null)",
+                            "Transform": [
+                                [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                [
+                                    1,
+                                    1,
+                                    1
+                                ]
                             ]
-                        ]
+                        }
                     }
                 }
             }

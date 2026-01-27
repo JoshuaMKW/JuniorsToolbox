@@ -1,4 +1,4 @@
-{
+﻿{
     "Engineer Pianta Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "大砲の掃除モンテ男マネージャー キャラ",
-                "MaxObjs": 1,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "大砲の掃除モンテ男マネージャー キャラ",
+                    "MaxObjs": 1,
+                    "MActorSets": 0
+                }
             }
         }
     }

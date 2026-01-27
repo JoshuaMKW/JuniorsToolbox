@@ -1,4 +1,4 @@
-{
+﻿{
     "Cheep-Cheep Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "とびプク発射台マネージャー キャラ",
-                "MaxObjs": 20,
-                "MActorSets": 3
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "とびプク発射台マネージャー キャラ",
+                    "MaxObjs": 20,
+                    "MActorSets": 3
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Sun": {
         "Enums": {},
         "Structs": {
@@ -33,28 +33,36 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        200000,
-                        500000,
-                        200000
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            200000,
+                            500000,
+                            200000
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            30,
+                            30,
+                            30
+                        ]
                     ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        30,
-                        30,
-                        30
-                    ]
-                ],
-                "Character": "太陽モデル キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                    "Character": "太陽モデル キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    }
                 }
             }
         },

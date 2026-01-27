@@ -1,4 +1,4 @@
-{
+﻿{
     "Mother Noki Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "赤ちゃんを抱くマレー女マネージャー キャラ",
-                "MaxObjs": 8,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "赤ちゃんを抱くマレー女マネージャー キャラ",
+                    "MaxObjs": 8,
+                    "MActorSets": 0
+                }
             }
         }
     }

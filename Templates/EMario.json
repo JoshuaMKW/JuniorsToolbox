@@ -1,4 +1,4 @@
-{
+﻿{
     "EMario (Shadow Mario/Il Piantissimo)": {
         "Enums": {},
         "Structs": {
@@ -73,39 +73,47 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "マリオモドキ キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "マリオモドキマネージャー",
-                "Rail": "mariomodoki",
-                "Behavior": 0,
-                "Rail0Node": 0,
-                "Rail1Node": 255,
-                "Rail2Node": 255,
-                "Rail3Node": 255,
-                "Rail4Node": 255,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "DisplayColor": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "マリオモドキ キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "マリオモドキマネージャー",
+                    "Rail": "mariomodoki",
+                    "Behavior": 0,
+                    "Rail0Node": 0,
+                    "Rail1Node": 255,
+                    "Rail2Node": 255,
+                    "Rail3Node": 255,
+                    "Rail4Node": 255,
+                    "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "DisplayColor": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

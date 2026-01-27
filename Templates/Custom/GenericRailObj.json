@@ -1,4 +1,4 @@
-{
+﻿{
     "Generic Rail Object": {
         "Enums": {},
         "Structs": {
@@ -69,42 +69,50 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "model_name",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "model_name",
-                "Rail": "(null)",
-                "Spin": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "AnimSpeed": 1.0,
-                "SoundID": -1,
-                "SoundSpeed": 60,
-                "SoundStrength": 1.0,
-                "AnimOnContact": 0,
-                "CullModel": 1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "model_name",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "model_name",
+                    "Rail": "(null)",
+                    "Spin": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "AnimSpeed": 1.0,
+                    "SoundID": -1,
+                    "SoundSpeed": 60,
+                    "SoundStrength": 1.0,
+                    "AnimOnContact": 0,
+                    "CullModel": 1
+                }
             }
         }
     }

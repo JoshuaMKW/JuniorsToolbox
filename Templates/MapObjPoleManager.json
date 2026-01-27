@@ -1,4 +1,4 @@
-{
+﻿{
     "Pole Manager": {
         "Enums": {},
         "Structs": {
@@ -25,8 +25,16 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ポールマネージャー キャラ",
-                "MaxObjs": 100
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ポールマネージャー キャラ",
+                    "MaxObjs": 100
+                }
             }
         }
     }

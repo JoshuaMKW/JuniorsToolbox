@@ -1,4 +1,4 @@
-{
+﻿{
     "Flag Manager": {
         "Enums": {},
         "Structs": {
@@ -25,8 +25,16 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "旗マネージャー キャラ",
-                "MaxObjs": 20
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "旗マネージャー キャラ",
+                    "MaxObjs": 20
+                }
             }
         }
     }

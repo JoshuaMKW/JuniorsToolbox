@@ -1,7 +1,6 @@
-{
+﻿{
     "Bathtub Bullet Bill Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "バスタブキラーマネージャー キャラ",
-                "MaxObjs": 8,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "バスタブキラーマネージャー キャラ",
+                    "MaxObjs": 8,
+                    "MActorSets": 0
+                }
             }
         }
     }

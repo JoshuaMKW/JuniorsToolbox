@@ -1,4 +1,4 @@
-{
+﻿{
     "Scenario Archive Name": {
         "Enums": {},
         "Structs": {
@@ -21,7 +21,15 @@
         },
         "Wizard": {
             "Default": {
-                "Name": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Name": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

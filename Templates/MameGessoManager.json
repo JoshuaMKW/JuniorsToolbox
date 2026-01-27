@@ -1,4 +1,4 @@
-{
+﻿{
     "Jumping Blooper Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "まめゲッソーマネージャー キャラ",
-                "MaxObjs": 20,
-                "MActorSets": 3
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "まめゲッソーマネージャー キャラ",
+                    "MaxObjs": 20,
+                    "MActorSets": 3
+                }
             }
         }
     }

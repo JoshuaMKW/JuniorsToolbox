@@ -1,4 +1,4 @@
-{
+﻿{
     "Red Rail Block": {
         "Enums": {},
         "Structs": {
@@ -45,32 +45,40 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "移動ローリングボード赤 キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "railblockr",
-                "Rail": "(null)",
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "移動ローリングボード赤 キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "railblockr",
+                    "Rail": "(null)",
+                    "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

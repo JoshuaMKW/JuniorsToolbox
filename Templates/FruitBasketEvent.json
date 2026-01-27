@@ -1,4 +1,4 @@
-{
+﻿{
     "Fruit Basket (Event)": {
         "Enums": {},
         "Structs": {
@@ -53,40 +53,48 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "バスケット キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "FruitBasket",
-                "SpawnObjID": -1,
-                "SpawnLength": 100,
-                "SpawnHeight": -1,
-                "SpawnDuration": 120
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "バスケット キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "FruitBasket",
+                    "SpawnObjID": -1,
+                    "SpawnLength": 100,
+                    "SpawnHeight": -1,
+                    "SpawnDuration": 120
+                }
             }
         },
         "Rendering": {
-            "Default":  {
+            "Default": {
                 "Model": "mapobj/basket.bmd",
-                "Animations":  [
+                "Animations": [
                     "mapobj/basket.bck"
                 ]
             }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Piranha Plant Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "パックンマネージャー キャラ",
-                "MaxObjs": 40,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "パックンマネージャー キャラ",
+                    "MaxObjs": 40,
+                    "MActorSets": 0
+                }
             }
         }
     }

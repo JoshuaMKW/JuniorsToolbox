@@ -1,4 +1,4 @@
-{
+﻿{
     "Enemy Stage Spawn Info": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Enemy": "Generated from Bin Editor Template by Junior's Toolbox",
-                "GoopSpawn": 0,
-                "SpawnRate": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Enemy": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "GoopSpawn": 0,
+                    "SpawnRate": 0
+                }
             }
         }
     }

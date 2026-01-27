@@ -1,7 +1,6 @@
-{
+﻿{
     "Eely-Mouth Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "めおとウナギマネージャー キャラ",
-                "MaxObjs": 1,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "めおとウナギマネージャー キャラ",
+                    "MaxObjs": 1,
+                    "MActorSets": 0
+                }
             }
         }
     }

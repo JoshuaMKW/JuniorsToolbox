@@ -1,7 +1,6 @@
-{
+﻿{
     "Beehive Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ハチの巣マネージャー キャラ",
-                "MaxObjs": 8,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ハチの巣マネージャー キャラ",
+                    "MaxObjs": 8,
+                    "MActorSets": 0
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Tanooki": {
         "Enums": {
             "Accessories": {
@@ -103,121 +103,145 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "タヌキマネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "タヌキマネージャー",
-                "Rail": "(null)",
-                "BodyColor": 255,
-                "ClothesColor": 0,
-                "PolluteState": 255,
-                "Acc1Color": 0,
-                "Acc2Color": 255,
-                "Acc3Color": 255,
-                "Accessory": 0,
-                "Idle": 120,
-                "Chucking": 100,
-                "ThrowLength": -1,
-                "ThrowHeight": 0,
-                "RewardObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "タヌキマネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "タヌキマネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 255,
+                    "ClothesColor": 0,
+                    "PolluteState": 255,
+                    "Acc1Color": 0,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": 0,
+                    "Idle": 120,
+                    "Chucking": 100,
+                    "ThrowLength": -1,
+                    "ThrowHeight": 0,
+                    "RewardObjID": -1
+                }
             },
             "マニ屋親タヌキ": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "タヌキマネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "マニ屋親タヌキ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "タヌキマネージャー",
-                "Rail": "(null)",
-                "BodyColor": 255,
-                "ClothesColor": 0,
-                "PolluteState": 255,
-                "Acc1Color": 0,
-                "Acc2Color": 255,
-                "Acc3Color": 255,
-                "Accessory": 0,
-                "Idle": 120,
-                "Chucking": 100,
-                "ThrowLength": -1,
-                "ThrowHeight": 0,
-                "RewardObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "タヌキマネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "タヌキマネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 255,
+                    "ClothesColor": 0,
+                    "PolluteState": 255,
+                    "Acc1Color": 0,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": 0,
+                    "Idle": 120,
+                    "Chucking": 100,
+                    "ThrowLength": -1,
+                    "ThrowHeight": 0,
+                    "RewardObjID": -1
+                }
             },
             "マニ屋子タヌキ": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0.6,
-                        0.6,
-                        0.6
-                    ]
-                ],
-                "Character": "タヌキマネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "マニ屋子タヌキ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "タヌキマネージャー",
-                "Rail": "(null)",
-                "BodyColor": 255,
-                "ClothesColor": 1,
-                "PolluteState": 255,
-                "Acc1Color": 1,
-                "Acc2Color": 255,
-                "Acc3Color": 255,
-                "Accessory": 0,
-                "Idle": 120,
-                "Chucking": 100,
-                "ThrowLength": -1,
-                "ThrowHeight": 0,
-                "RewardObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0.6,
+                            0.6,
+                            0.6
+                        ]
+                    ],
+                    "Character": "タヌキマネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "タヌキマネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 255,
+                    "ClothesColor": 1,
+                    "PolluteState": 255,
+                    "Acc1Color": 1,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": 0,
+                    "Idle": 120,
+                    "Chucking": 100,
+                    "ThrowLength": -1,
+                    "ThrowHeight": 0,
+                    "RewardObjID": -1
+                }
             }
         },
         "Rendering": {

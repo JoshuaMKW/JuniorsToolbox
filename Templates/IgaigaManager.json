@@ -1,7 +1,6 @@
-{
+﻿{
     "Glorpedo Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "イガイガマネージャー キャラ",
-                "MaxObjs": 20,
-                "MActorSets": 3
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "イガイガマネージャー キャラ",
+                    "MaxObjs": 20,
+                    "MActorSets": 3
+                }
             }
         }
     }

@@ -1,7 +1,6 @@
-{
+﻿{
     "Item Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -34,10 +33,18 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "アイテムマネージャー キャラ",
-                "MaxObjs": 300,
-                "ClipRadius": 12000,
-                "FarClip": 500
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "アイテムマネージャー キャラ",
+                    "MaxObjs": 300,
+                    "ClipRadius": 12000,
+                    "FarClip": 500
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Mario Return Point Position Object": {
         "Enums": {},
         "Structs": {
@@ -21,25 +21,33 @@
         },
         "Wizard": {
             "Default": {
-                "WarpPointArray": {
-                    "Name": "WarpXY",
-                    "Transform": [
-                        [
-                            0,
-                            0,
-                            0
-                        ],
-                        [
-                            0,
-                            0,
-                            0
-                        ],
-                        [
-                            1,
-                            1,
-                            1
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "WarpPointArray": {
+                        "Name": "WarpXY",
+                        "Transform": [
+                            [
+                                0,
+                                0,
+                                0
+                            ],
+                            [
+                                0,
+                                0,
+                                0
+                            ],
+                            [
+                                1,
+                                1,
+                                1
+                            ]
                         ]
-                    ]
+                    }
                 }
             }
         }

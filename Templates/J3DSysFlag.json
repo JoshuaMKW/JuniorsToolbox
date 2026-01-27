@@ -1,7 +1,6 @@
-{
+﻿{
     "J3D System Flag": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -16,7 +15,15 @@
         },
         "Members": {},
         "Wizard": {
-            "Default": {}
+            "Default": {
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            }
         }
     }
 }

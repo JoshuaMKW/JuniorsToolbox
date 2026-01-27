@@ -1,4 +1,4 @@
-{
+﻿{
     "Ukulelist Pianta": {
         "Enums": {
             "Accessories": {
@@ -114,54 +114,62 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ]
-                ],
-                "Character": "ウクレレモンテ男マネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "ウクレレモンテ男マネージャー",
-                "Rail": "(null)",
-                "BodyColor": 0,
-                "ClothesColor": 0,
-                "PolluteState": 0,
-                "Acc1Color": 0,
-                "Acc2Color": 0,
-                "Acc3Color": 255,
-                "Accessory": 2049,
-                "Idle": 9,
-                "Chucking": 100,
-                "ThrowLength": -1,
-                "ThrowHeight": 0,
-                "RewardObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ]
+                    ],
+                    "Character": "ウクレレモンテ男マネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "ウクレレモンテ男マネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 0,
+                    "ClothesColor": 0,
+                    "PolluteState": 0,
+                    "Acc1Color": 0,
+                    "Acc2Color": 0,
+                    "Acc3Color": 255,
+                    "Accessory": 2049,
+                    "Idle": 9,
+                    "Chucking": 100,
+                    "ThrowLength": -1,
+                    "ThrowHeight": 0,
+                    "RewardObjID": -1
+                }
             }
         },
         "Rendering": {
-          "Default": {
-            "Model": "montemh/momh_model.bmd",
-            "Textures": {
-              "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti",
-              "I_mom_mino_dummyI4": "montemcommon/i_mom_mino_rgba.bti"
-            },
-            "Animations": []
-          }
+            "Default": {
+                "Model": "montemh/momh_model.bmd",
+                "Textures": {
+                    "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti",
+                    "I_mom_mino_dummyI4": "montemcommon/i_mom_mino_rgba.bti"
+                },
+                "Animations": []
+            }
         }
     }
 }

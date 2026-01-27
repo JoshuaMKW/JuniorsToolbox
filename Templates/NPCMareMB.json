@@ -1,4 +1,4 @@
-{
+﻿{
     "Noki Elder": {
         "Enums": {
             "Accessories": {
@@ -109,88 +109,98 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "仙人マレー男マネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "仙人マレー男マネージャー",
-                "Rail": "(null)",
-                "BodyColor": 2,
-                "ClothesColor": 255,
-                "PolluteState": 0,
-                "Acc1Color": 0,
-                "Acc2Color": 3,
-                "Acc3Color": 0,
-                "Accessory": 784,
-                "Idle": 120,
-                "Chucking": 100,
-                "ThrowLength": -1,
-                "ThrowHeight": 0,
-                "RewardObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "仙人マレー男マネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "仙人マレー男マネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 2,
+                    "ClothesColor": 255,
+                    "PolluteState": 0,
+                    "Acc1Color": 0,
+                    "Acc2Color": 3,
+                    "Acc3Color": 0,
+                    "Accessory": 784,
+                    "Idle": 120,
+                    "Chucking": 100,
+                    "ThrowLength": -1,
+                    "ThrowHeight": 0,
+                    "RewardObjID": -1
+                }
             }
         },
         "Rendering": {
-          "Default": {
-            "Model": "marem/marem.bmd",
-            "Textures": { "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti" },
-            "Animations": [
-              "maremb/maremb_appear.bck",
-              "maremb/maremb_cry.btp",
-              "maremb/maremb_dance.bck",
-              "maremb/maremb_fall.bck",
-              "maremb/maremb_happy.bck",
-              "maremb/maremb_jump.bck",
-              "maremb/maremb_jump.btp",
-              "maremb/maremb_recover.bck",
-              "maremb/maremb_recover.btp",
-              "maremb/maremb_run.bck",
-              "maremb/maremb_sad.btp",
-              "maremb/maremb_sit.bck",
-              "maremb/maremb_sittalk.bck",
-              "maremb/maremb_sleep.btp",
-              "maremb/maremb_sleep_a.btp",
-              "maremb/maremb_smile.btp",
-              "maremb/maremb_stand.bck",
-              "maremb/maremb_stand.btp",
-              "maremb/maremb_stand_a.bck",
-              "maremb/maremb_stand_a.btp",
-              "maremb/maremb_step.bck",
-              "maremb/maremb_talk.bck",
-              "maremb/maremb_talk.btp",
-              "maremb/maremb_wait.bck",
-              "maremb/maremb_wait_a.bck",
-              "maremb/maremb_wait_fall.bck",
-              "maremb/maremb_wait_yogure.bck",
-              "maremb/maremb_walk.bck",
-              "maremb/maremb_wash.bck",
-              "maremb/maremb_wash.btp",
-              "maremb/maremb_wet.bck",
-              "maremb/maremb_wet.btp",
-              "maremb/maremb_wet_a.bck",
-              "maremb/maremb_wet_a.btp",
-              "maremb/maremb_wink.btp",
-              "maremb/maremb_wink_a.btp"
-            ]
-          }
+            "Default": {
+                "Model": "marem/marem.bmd",
+                "Textures": {
+                    "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti"
+                },
+                "Animations": [
+                    "maremb/maremb_appear.bck",
+                    "maremb/maremb_cry.btp",
+                    "maremb/maremb_dance.bck",
+                    "maremb/maremb_fall.bck",
+                    "maremb/maremb_happy.bck",
+                    "maremb/maremb_jump.bck",
+                    "maremb/maremb_jump.btp",
+                    "maremb/maremb_recover.bck",
+                    "maremb/maremb_recover.btp",
+                    "maremb/maremb_run.bck",
+                    "maremb/maremb_sad.btp",
+                    "maremb/maremb_sit.bck",
+                    "maremb/maremb_sittalk.bck",
+                    "maremb/maremb_sleep.btp",
+                    "maremb/maremb_sleep_a.btp",
+                    "maremb/maremb_smile.btp",
+                    "maremb/maremb_stand.bck",
+                    "maremb/maremb_stand.btp",
+                    "maremb/maremb_stand_a.bck",
+                    "maremb/maremb_stand_a.btp",
+                    "maremb/maremb_step.bck",
+                    "maremb/maremb_talk.bck",
+                    "maremb/maremb_talk.btp",
+                    "maremb/maremb_wait.bck",
+                    "maremb/maremb_wait_a.bck",
+                    "maremb/maremb_wait_fall.bck",
+                    "maremb/maremb_wait_yogure.bck",
+                    "maremb/maremb_walk.bck",
+                    "maremb/maremb_wash.bck",
+                    "maremb/maremb_wash.btp",
+                    "maremb/maremb_wet.bck",
+                    "maremb/maremb_wet.btp",
+                    "maremb/maremb_wet_a.bck",
+                    "maremb/maremb_wet_a.btp",
+                    "maremb/maremb_wink.btp",
+                    "maremb/maremb_wink_a.btp"
+                ]
+            }
         }
     }
 }

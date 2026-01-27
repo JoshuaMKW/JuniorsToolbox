@@ -1,4 +1,4 @@
-{
+﻿{
     "Rail Fence": {
         "Enums": {},
         "Structs": {
@@ -49,33 +49,41 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "fence キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "RailFence",
-                "Rail": "(null)",
-                "RailFence": "Generated from Bin Editor Template by Junior's Toolbox",
-                "bambooRailFence": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "fence キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "RailFence",
+                    "Rail": "(null)",
+                    "RailFence": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "bambooRailFence": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Male Pianta (Tank Top) Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ランニングモンテ男マネージャー キャラ",
-                "MaxObjs": 50,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ランニングモンテ男マネージャー キャラ",
+                    "MaxObjs": 50,
+                    "MActorSets": 0
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Ocean Wave Effect": {
         "Enums": {},
         "Structs": {
@@ -21,10 +21,26 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "波 キャラ"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "波 キャラ"
+                }
             },
             "波": {
-                "Character": "波 キャラ"
+                "Name": "波",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "波 キャラ"
+                }
             }
         },
         "Rendering": {

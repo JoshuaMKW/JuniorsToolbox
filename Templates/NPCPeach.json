@@ -1,4 +1,4 @@
-{
+﻿{
     "Princess Peach": {
         "Enums": {
             "Accessories": {
@@ -109,43 +109,51 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "ピーチ姫マネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "ピーチ姫マネージャー",
-                "Rail": "(null)",
-                "BodyColor": 255,
-                "ClothesColor": 255,
-                "PolluteState": 255,
-                "Acc1Color": 255,
-                "Acc2Color": 255,
-                "Acc3Color": 255,
-                "Accessory": 1,
-                "Idle": 120,
-                "Chucking": 100,
-                "ThrowLength": -1,
-                "ThrowHeight": 0,
-                "RewardObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ピーチ姫マネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "ピーチ姫マネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 255,
+                    "ClothesColor": 255,
+                    "PolluteState": 255,
+                    "Acc1Color": 255,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": 1,
+                    "Idle": 120,
+                    "Chucking": 100,
+                    "ThrowLength": -1,
+                    "ThrowHeight": 0,
+                    "RewardObjID": -1
+                }
             }
         },
         "Rendering": {

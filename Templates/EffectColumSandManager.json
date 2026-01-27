@@ -1,7 +1,6 @@
-{
+﻿{
     "Sand Column Effect Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "エフェクト砂柱マネージャー キャラ",
-                "MaxObjs": 10,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "エフェクト砂柱マネージャー キャラ",
+                    "MaxObjs": 10,
+                    "MActorSets": 0
+                }
             }
         }
     }

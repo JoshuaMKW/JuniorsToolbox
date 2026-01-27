@@ -1,4 +1,4 @@
-{
+﻿{
     "Pinna Park Director Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "園長マレー男マネージャー キャラ",
-                "MaxObjs": 8,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "園長マレー男マネージャー キャラ",
+                    "MaxObjs": 8,
+                    "MActorSets": 0
+                }
             }
         }
     }

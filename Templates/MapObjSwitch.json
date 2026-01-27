@@ -1,4 +1,4 @@
-{
+﻿{
     "Switch Object": {
         "Enums": {},
         "Structs": {
@@ -49,33 +49,41 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "オブジェスイッチ キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "ObjSwitch",
-                "Timer": 230,
-                "Unknown": 255,
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "オブジェスイッチ キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "ObjSwitch",
+                    "Timer": 230,
+                    "Unknown": 255,
+                    "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

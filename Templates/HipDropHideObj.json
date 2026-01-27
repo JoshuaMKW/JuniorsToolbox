@@ -1,4 +1,4 @@
-{
+﻿{
     "Hidden Object (Ground Pound)": {
         "Enums": {},
         "Structs": {
@@ -53,34 +53,42 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "ヒップドロップコイン キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "HipDropHideObj",
-                "SpawnObjID": -1,
-                "SpawnLength": 100,
-                "SpawnHeight": -1,
-                "SpawnDuration": 120
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ヒップドロップコイン キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "HipDropHideObj",
+                    "SpawnObjID": -1,
+                    "SpawnLength": 100,
+                    "SpawnHeight": -1,
+                    "SpawnDuration": 120
+                }
             }
         }
     }

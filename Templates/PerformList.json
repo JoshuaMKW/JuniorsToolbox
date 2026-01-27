@@ -1,4 +1,4 @@
-{
+﻿{
     "Perform List": {
         "Enums": {},
         "Structs": {
@@ -21,7 +21,15 @@
         },
         "Wizard": {
             "Default": {
-                "Unknown": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Unknown": 0
+                }
             }
         }
     }

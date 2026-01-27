@@ -1,4 +1,4 @@
-{
+﻿{
     "Female Pianta (Dress) Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ムームーモンテ女マネージャー キャラ",
-                "MaxObjs": 50,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ムームーモンテ女マネージャー キャラ",
+                    "MaxObjs": 50,
+                    "MActorSets": 0
+                }
             }
         }
     }

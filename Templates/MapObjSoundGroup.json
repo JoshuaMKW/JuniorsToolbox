@@ -1,4 +1,4 @@
-{
+﻿{
     "Sound Group": {
         "Enums": {},
         "Structs": {
@@ -21,7 +21,15 @@
         },
         "Wizard": {
             "Ocean Sounds": {
-                "SoundName": "ms_sea"
+                "Name": "Ocean Sounds",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "SoundName": "ms_sea"
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Pokey Head": {
         "Enums": {},
         "Structs": {
@@ -49,33 +49,41 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "サンボヘッドマネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "サンボヘッドマネージャー",
-                "Rail": "(null)",
-                "SpawnObjID": -1,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "サンボヘッドマネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "サンボヘッドマネージャー",
+                    "Rail": "(null)",
+                    "SpawnObjID": -1,
+                    "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

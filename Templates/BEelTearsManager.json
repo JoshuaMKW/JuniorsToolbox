@@ -1,7 +1,6 @@
-{
+﻿{
     "Eely-Mouth's Toxic Tears Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "めおとウナギ涙マネージャー キャラ",
-                "MaxObjs": 20,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "めおとウナギ涙マネージャー キャラ",
+                    "MaxObjs": 20,
+                    "MActorSets": 0
+                }
             }
         }
     }

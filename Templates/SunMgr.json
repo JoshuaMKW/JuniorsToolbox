@@ -1,4 +1,4 @@
-{
+﻿{
     "Sun Manager": {
         "Enums": {},
         "Structs": {
@@ -37,11 +37,19 @@
         },
         "Wizard": {
             "Default": {
-                "Unknown": 0,
-                "Unknown1": 0,
-                "Unknown2": 0,
-                "Unknown3": 0,
-                "Unknown4": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Unknown": 0,
+                    "Unknown1": 0,
+                    "Unknown2": 0,
+                    "Unknown3": 0,
+                    "Unknown4": 0
+                }
             }
         }
     }

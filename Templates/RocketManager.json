@@ -1,4 +1,4 @@
-{
+﻿{
     "Water Rocket Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ロケットマネージャー キャラ",
-                "MaxObjs": 20,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ロケットマネージャー キャラ",
+                    "MaxObjs": 20,
+                    "MActorSets": 0
+                }
             }
         }
     }

@@ -1,7 +1,6 @@
-{
+﻿{
     "Camera Map Info": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -38,19 +37,27 @@
         },
         "Wizard": {
             "Starting Camera": {
-                "Position": [
-                    0,
-                    0,
-                    0
-                ],
-                "Rotation": [
-                    0,
-                    0,
-                    0
-                ],
-                "Type": 22,
-                "Unknown": -1,
-                "Other": 0
+                "Name": "Starting Camera",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Type": 22,
+                    "Unknown": -1,
+                    "Other": 0
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Sample Character": {
         "Enums": {},
         "Structs": {
@@ -21,7 +21,15 @@
         },
         "Wizard": {
             "Default": {
-                "Path": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Path": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

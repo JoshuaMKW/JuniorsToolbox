@@ -1,4 +1,4 @@
-{
+﻿{
     "Event Handler (Noki Bay Walls Sink)": {
         "Enums": {},
         "Structs": {
@@ -15,7 +15,15 @@
         },
         "Members": {},
         "Wizard": {
-            "Default": {}
+            "Default": {
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            }
         }
     }
 }

@@ -1,7 +1,6 @@
-{
+﻿{
     "Coaster Bullet Bill Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "キラーマネージャー キャラ",
-                "MaxObjs": 20,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "キラーマネージャー キャラ",
+                    "MaxObjs": 20,
+                    "MActorSets": 0
+                }
             }
         }
     }

@@ -1,7 +1,6 @@
-{
+﻿{
     "Phantamanta Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ボスマンタマネージャー キャラ",
-                "MaxObjs": 128,
-                "MActorSets": 3
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ボスマンタマネージャー キャラ",
+                    "MaxObjs": 128,
+                    "MActorSets": 3
+                }
             }
         }
     }

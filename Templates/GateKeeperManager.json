@@ -1,7 +1,6 @@
-{
+﻿{
     "Proto Piranha Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ゲートキーパーマネージャー キャラ",
-                "MaxObjs": 3,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ゲートキーパーマネージャー キャラ",
+                    "MaxObjs": 3,
+                    "MActorSets": 0
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Beehive": {
         "Enums": {},
         "Structs": {
@@ -57,35 +57,43 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "ハチの巣マネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "ハチの巣マネージャー",
-                "Rail": "(null)",
-                "ObjCount": 10,
-                "HiveSpawnObjID": -1,
-                "BeeSpawnObjID": -1,
-                "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ハチの巣マネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "ハチの巣マネージャー",
+                    "Rail": "(null)",
+                    "ObjCount": 10,
+                    "HiveSpawnObjID": -1,
+                    "BeeSpawnObjID": -1,
+                    "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

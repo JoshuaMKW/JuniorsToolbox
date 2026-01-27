@@ -1,4 +1,4 @@
-{
+﻿{
     "Wire Trap Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ワイヤートラップマネージャー キャラ",
-                "MaxObjs": 10,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ワイヤートラップマネージャー キャラ",
+                    "MaxObjs": 10,
+                    "MActorSets": 0
+                }
             }
         }
     }

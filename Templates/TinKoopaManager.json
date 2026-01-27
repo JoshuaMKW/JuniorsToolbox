@@ -1,4 +1,4 @@
-{
+﻿{
     "Mecha-Bowser Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "メカクッパマネージャー キャラ",
-                "MaxObjs": 1,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "メカクッパマネージャー キャラ",
+                    "MaxObjs": 1,
+                    "MActorSets": 0
+                }
             }
         }
     }

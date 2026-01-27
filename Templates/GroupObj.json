@@ -1,7 +1,6 @@
-{
+﻿{
     "Object Group": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -14,10 +13,17 @@
                 }
             }
         },
-        "Members": {
-        },
+        "Members": {},
         "Wizard": {
-            "Default": {}
+            "Default": {
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            }
         }
     }
 }

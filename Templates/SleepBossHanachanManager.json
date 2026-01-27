@@ -1,4 +1,4 @@
-{
+﻿{
     "Sleeping Wiggler Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "居眠りボスハナチャンマネージャー キャラ",
-                "MaxObjs": 1,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "居眠りボスハナチャンマネージャー キャラ",
+                    "MaxObjs": 1,
+                    "MActorSets": 0
+                }
             }
         }
     }

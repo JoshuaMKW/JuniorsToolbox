@@ -1,4 +1,4 @@
-{
+﻿{
     "Female Noki": {
         "Enums": {
             "Accessories": {
@@ -106,88 +106,98 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "マレー族女マネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "マレー族女マネージャー",
-                "Rail": "(null)",
-                "BodyColor": 1,
-                "ClothesColor": 0,
-                "PolluteState": 0,
-                "Acc1Color": 1,
-                "Acc2Color": 1,
-                "Acc3Color": 0,
-                "Accessory": 768,
-                "Idle": 120,
-                "Chucking": 100,
-                "ThrowLength": -1,
-                "ThrowHeight": 0,
-                "RewardObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "マレー族女マネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "マレー族女マネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 1,
+                    "ClothesColor": 0,
+                    "PolluteState": 0,
+                    "Acc1Color": 1,
+                    "Acc2Color": 1,
+                    "Acc3Color": 0,
+                    "Accessory": 768,
+                    "Idle": 120,
+                    "Chucking": 100,
+                    "ThrowLength": -1,
+                    "ThrowHeight": 0,
+                    "RewardObjID": -1
+                }
             }
         },
         "Rendering": {
-          "Default": {
-            "Model": "marew/marew.bmd",
-            "Textures": { "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti" },
-            "Animations": [
-              "marew/marew_appear.bck",
-              "marew/marew_cry.btp",
-              "marew/marew_dance.bck",
-              "marew/marew_fall.bck",
-              "marew/marew_happy.bck",
-              "marew/marew_jump.bck",
-              "marew/marew_jump.btp",
-              "marew/marew_recover.bck",
-              "marew/marew_recover.btp",
-              "marew/marew_run.bck",
-              "marew/marew_sad.btp",
-              "marew/marew_sit.bck",
-              "marew/marew_sittalk_a.bck",
-              "marew/marew_sleep.btp",
-              "marew/marew_sleep_a.btp",
-              "marew/marew_smile.btp",
-              "marew/marew_stand.bck",
-              "marew/marew_stand.btp",
-              "marew/marew_stand_a.bck",
-              "marew/marew_stand_a.btp",
-              "marew/marew_step.bck",
-              "marew/marew_talk.bck",
-              "marew/marew_talk.btp",
-              "marew/marew_wait.bck",
-              "marew/marew_wait_a.bck",
-              "marew/marew_wait_fall.bck",
-              "marew/marew_wait_yogure.bck",
-              "marew/marew_walk.bck",
-              "marew/marew_wash.bck",
-              "marew/marew_wash.btp",
-              "marew/marew_wet.bck",
-              "marew/marew_wet.btp",
-              "marew/marew_wet_a.bck",
-              "marew/marew_wet_a.btp",
-              "marew/marew_wink.btp",
-              "marew/marew_wink_a.btp"
-            ]
-          }
+            "Default": {
+                "Model": "marew/marew.bmd",
+                "Textures": {
+                    "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti"
+                },
+                "Animations": [
+                    "marew/marew_appear.bck",
+                    "marew/marew_cry.btp",
+                    "marew/marew_dance.bck",
+                    "marew/marew_fall.bck",
+                    "marew/marew_happy.bck",
+                    "marew/marew_jump.bck",
+                    "marew/marew_jump.btp",
+                    "marew/marew_recover.bck",
+                    "marew/marew_recover.btp",
+                    "marew/marew_run.bck",
+                    "marew/marew_sad.btp",
+                    "marew/marew_sit.bck",
+                    "marew/marew_sittalk_a.bck",
+                    "marew/marew_sleep.btp",
+                    "marew/marew_sleep_a.btp",
+                    "marew/marew_smile.btp",
+                    "marew/marew_stand.bck",
+                    "marew/marew_stand.btp",
+                    "marew/marew_stand_a.bck",
+                    "marew/marew_stand_a.btp",
+                    "marew/marew_step.bck",
+                    "marew/marew_talk.bck",
+                    "marew/marew_talk.btp",
+                    "marew/marew_wait.bck",
+                    "marew/marew_wait_a.bck",
+                    "marew/marew_wait_fall.bck",
+                    "marew/marew_wait_yogure.bck",
+                    "marew/marew_walk.bck",
+                    "marew/marew_wash.bck",
+                    "marew/marew_wash.btp",
+                    "marew/marew_wet.bck",
+                    "marew/marew_wet.btp",
+                    "marew/marew_wet_a.bck",
+                    "marew/marew_wet_a.btp",
+                    "marew/marew_wink.btp",
+                    "marew/marew_wink_a.btp"
+                ]
+            }
         }
     }
 }

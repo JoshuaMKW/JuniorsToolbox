@@ -1,7 +1,6 @@
-{
+﻿{
     "Sleepy Boo Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "デブテルサマネージャー キャラ",
-                "MaxObjs": 50,
-                "MActorSets": 3
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "デブテルサマネージャー キャラ",
+                    "MaxObjs": 50,
+                    "MActorSets": 3
+                }
             }
         }
     }

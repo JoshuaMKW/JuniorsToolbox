@@ -1,4 +1,4 @@
-{
+﻿{
     "Flutist Noki": {
         "Enums": {
             "Accessories": {
@@ -108,88 +108,98 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "笛吹きマレー男マネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "笛吹きマレー男マネージャー",
-                "Rail": "(null)",
-                "BodyColor": 1,
-                "ClothesColor": 0,
-                "PolluteState": 0,
-                "Acc1Color": 0,
-                "Acc2Color": 0,
-                "Acc3Color": 0,
-                "Accessory": 290,
-                "Idle": 15,
-                "Chucking": 100,
-                "ThrowLength": -1,
-                "ThrowHeight": 0,
-                "RewardObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "笛吹きマレー男マネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "笛吹きマレー男マネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 1,
+                    "ClothesColor": 0,
+                    "PolluteState": 0,
+                    "Acc1Color": 0,
+                    "Acc2Color": 0,
+                    "Acc3Color": 0,
+                    "Accessory": 290,
+                    "Idle": 15,
+                    "Chucking": 100,
+                    "ThrowLength": -1,
+                    "ThrowHeight": 0,
+                    "RewardObjID": -1
+                }
             }
         },
         "Rendering": {
-          "Default": {
-            "Model": "maremd/maremd.bmd",
-            "Textures": { "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti" },
-            "Animations": [
-              "maremd/maremd_appear.bck",
-              "maremd/maremd_cry.btp",
-              "maremd/maremd_dance.bck",
-              "maremd/maremd_fall.bck",
-              "maremd/maremd_happy.bck",
-              "maremd/maremd_jump.bck",
-              "maremd/maremd_jump.btp",
-              "maremd/maremd_recover.bck",
-              "maremd/maremd_recover.btp",
-              "maremd/maremd_run.bck",
-              "maremd/maremd_sad.btp",
-              "maremd/maremd_sit.bck",
-              "maremd/maremd_sittalk.bck",
-              "maremd/maremd_sleep.btp",
-              "maremd/maremd_sleep_a.btp",
-              "maremd/maremd_smile.btp",
-              "maremd/maremd_stand.bck",
-              "maremd/maremd_stand.btp",
-              "maremd/maremd_stand_a.bck",
-              "maremd/maremd_stand_a.btp",
-              "maremd/maremd_step.bck",
-              "maremd/maremd_talk.bck",
-              "maremd/maremd_talk.btp",
-              "maremd/maremd_wait.bck",
-              "maremd/maremd_wait_a.bck",
-              "maremd/maremd_wait_fall.bck",
-              "maremd/maremd_wait_yogure.bck",
-              "maremd/maremd_walk.bck",
-              "maremd/maremd_wash.bck",
-              "maremd/maremd_wash.btp",
-              "maremd/maremd_wet.bck",
-              "maremd/maremd_wet.btp",
-              "maremd/maremd_wet_a.bck",
-              "maremd/maremd_wet_a.btp",
-              "maremd/maremd_wink.btp",
-              "maremd/maremd_wink_a.btp"
-            ]
-          }
+            "Default": {
+                "Model": "maremd/maremd.bmd",
+                "Textures": {
+                    "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti"
+                },
+                "Animations": [
+                    "maremd/maremd_appear.bck",
+                    "maremd/maremd_cry.btp",
+                    "maremd/maremd_dance.bck",
+                    "maremd/maremd_fall.bck",
+                    "maremd/maremd_happy.bck",
+                    "maremd/maremd_jump.bck",
+                    "maremd/maremd_jump.btp",
+                    "maremd/maremd_recover.bck",
+                    "maremd/maremd_recover.btp",
+                    "maremd/maremd_run.bck",
+                    "maremd/maremd_sad.btp",
+                    "maremd/maremd_sit.bck",
+                    "maremd/maremd_sittalk.bck",
+                    "maremd/maremd_sleep.btp",
+                    "maremd/maremd_sleep_a.btp",
+                    "maremd/maremd_smile.btp",
+                    "maremd/maremd_stand.bck",
+                    "maremd/maremd_stand.btp",
+                    "maremd/maremd_stand_a.bck",
+                    "maremd/maremd_stand_a.btp",
+                    "maremd/maremd_step.bck",
+                    "maremd/maremd_talk.bck",
+                    "maremd/maremd_talk.btp",
+                    "maremd/maremd_wait.bck",
+                    "maremd/maremd_wait_a.bck",
+                    "maremd/maremd_wait_fall.bck",
+                    "maremd/maremd_wait_yogure.bck",
+                    "maremd/maremd_walk.bck",
+                    "maremd/maremd_wash.bck",
+                    "maremd/maremd_wash.btp",
+                    "maremd/maremd_wet.bck",
+                    "maremd/maremd_wet.btp",
+                    "maremd/maremd_wet_a.bck",
+                    "maremd/maremd_wet_a.btp",
+                    "maremd/maremd_wink.btp",
+                    "maremd/maremd_wink_a.btp"
+                ]
+            }
         }
     }
 }

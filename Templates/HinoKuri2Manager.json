@@ -1,7 +1,6 @@
-{
+﻿{
     "Tramplin' Stu (2) Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ヒノクリ２マネージャー キャラ",
-                "MaxObjs": 3,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ヒノクリ２マネージャー キャラ",
+                    "MaxObjs": 3,
+                    "MActorSets": 0
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Boo Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "テレサマネージャー キャラ",
-                "MaxObjs": 50,
-                "MActorSets": 3
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "テレサマネージャー キャラ",
+                    "MaxObjs": 50,
+                    "MActorSets": 3
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "RailBlock": {
         "Enums": {},
         "Structs": {
@@ -33,26 +33,34 @@
         },
         "Wizard": {
             "railvariant0": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
+                "Name": "railvariant0",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
                     ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Manager": "railvariant0 キャラ",
-                "Unknown": 0,
-                "Model": "railvariant0"
+                    "Manager": "railvariant0 キャラ",
+                    "Unknown": 0,
+                    "Model": "railvariant0"
+                }
             }
         }
     }

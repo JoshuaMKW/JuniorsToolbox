@@ -1,4 +1,4 @@
-{
+﻿{
     "Wood Block": {
         "Enums": {},
         "Structs": {
@@ -49,37 +49,45 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "WoodBlockCube キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "WoodBlockCube",
-                "Rail": "(null)",
-                "Bounce": -1,
-                "Color": [
-                    255,
-                    255,
-                    255
-                ]
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "WoodBlockCube キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "WoodBlockCube",
+                    "Rail": "(null)",
+                    "Bounce": -1,
+                    "Color": [
+                        255,
+                        255,
+                        255
+                    ]
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Event Handler (Road to the Big Windmill Sink)": {
         "Enums": {},
         "Structs": {
@@ -29,25 +29,33 @@
         },
         "Wizard": {
             "Default": {
-                "Unknown": 0,
-                "Warp": "Generated from Bin Editor Template by Junior's Toolbox",
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Unknown": 0,
+                    "Warp": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ]
                     ]
-                ]
+                }
             }
         }
     }

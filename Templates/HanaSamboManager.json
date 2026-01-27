@@ -1,7 +1,6 @@
-{
+﻿{
     "Pokey Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ハナサンボマネージャー キャラ",
-                "MaxObjs": 30,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ハナサンボマネージャー キャラ",
+                    "MaxObjs": 30,
+                    "MActorSets": 0
+                }
             }
         }
     }

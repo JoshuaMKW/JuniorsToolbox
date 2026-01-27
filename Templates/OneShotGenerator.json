@@ -1,4 +1,4 @@
-{
+﻿{
     "One Use Generator": {
         "Enums": {},
         "Structs": {
@@ -45,32 +45,40 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ]
-                ],
-                "Character": "Generated from Bin Editor Template by Junior's Toolbox",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Rail": "(null)",
-                "Spawn": "Generated from Bin Editor Template by Junior's Toolbox",
-                "SpawnSpeed": 0
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ]
+                    ],
+                    "Character": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Rail": "(null)",
+                    "Spawn": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "SpawnSpeed": 0
+                }
             }
         }
     }

@@ -1,7 +1,6 @@
-{
+﻿{
     "Swipin' Stu Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ドロクリマネージャー キャラ",
-                "MaxObjs": 10,
-                "MActorSets": 3
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ドロクリマネージャー キャラ",
+                    "MaxObjs": 10,
+                    "MActorSets": 3
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Flow Cube": {
         "Enums": {},
         "Structs": {
@@ -45,32 +45,40 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        10,
-                        3,
-                        10
-                    ]
-                ],
-                "vvvv": 128,
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "vvvv2": 0,
-                "Power": 100,
-                "State": 0
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            10,
+                            3,
+                            10
+                        ]
+                    ],
+                    "vvvv": 128,
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "vvvv2": 0,
+                    "Power": 100,
+                    "State": 0
+                }
             }
         }
     }

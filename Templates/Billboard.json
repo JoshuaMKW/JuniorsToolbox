@@ -1,4 +1,4 @@
-{
+﻿{
     "Billboard": {
         "Enums": {},
         "Structs": {
@@ -69,38 +69,46 @@
         },
         "Wizard": {
             "Benvenuto! Billboard": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "太陽の看板 キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Benvenuto! Billboard",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "billboard_sun",
-                "SpawnObjID": -1,
-                "SpawnLength": 100,
-                "SpawnHeight": -1,
-                "SpawnDuration": 120,
-                "billboard_sun": "Generated from Bin Editor Template by Junior's Toolbox",
-                "billboard_dolphin": "Generated from Bin Editor Template by Junior's Toolbox",
-                "billboard_restaurant": "Generated from Bin Editor Template by Junior's Toolbox",
-                "billboard_fish": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "太陽の看板 キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "billboard_sun",
+                    "SpawnObjID": -1,
+                    "SpawnLength": 100,
+                    "SpawnHeight": -1,
+                    "SpawnDuration": 120,
+                    "billboard_sun": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "billboard_dolphin": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "billboard_restaurant": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "billboard_fish": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

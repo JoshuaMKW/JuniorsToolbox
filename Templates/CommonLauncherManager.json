@@ -1,7 +1,6 @@
-{
+﻿{
     "Goophill Generator Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "コモンランチャーマネージャー キャラ",
-                "MaxObjs": 20,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "コモンランチャーマネージャー キャラ",
+                    "MaxObjs": 20,
+                    "MActorSets": 0
+                }
             }
         }
     }

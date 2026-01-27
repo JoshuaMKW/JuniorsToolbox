@@ -1,7 +1,6 @@
-{
+﻿{
     "Electro-Koopa Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "電気ノコノコマネージャー キャラ",
-                "MaxObjs": 20,
-                "MActorSets": 3
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "電気ノコノコマネージャー キャラ",
+                    "MaxObjs": 20,
+                    "MActorSets": 3
+                }
             }
         }
     }

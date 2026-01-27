@@ -1,4 +1,4 @@
-{
+﻿{
     "Male Noki Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "マレー族男マネージャー キャラ",
-                "MaxObjs": 100,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "マレー族男マネージャー キャラ",
+                    "MaxObjs": 100,
+                    "MActorSets": 0
+                }
             }
         }
     }

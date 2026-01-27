@@ -1,4 +1,4 @@
-{
+﻿{
     "Mirror Draw Buffer": {
         "Enums": {},
         "Structs": {
@@ -25,8 +25,16 @@
         },
         "Wizard": {
             "Default": {
-                "Unknown": 3,
-                "Unknown^2": 32
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Unknown": 3,
+                    "Unknown^2": 32
+                }
             }
         }
     }

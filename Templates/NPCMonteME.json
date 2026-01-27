@@ -1,4 +1,4 @@
-{
+﻿{
     "Engineer Pianta": {
         "Enums": {
             "Accessories": {
@@ -114,54 +114,62 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "大砲の掃除モンテ男マネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "大砲の掃除モンテ男マネージャー",
-                "Rail": "(null)",
-                "BodyColor": 255,
-                "ClothesColor": 255,
-                "PolluteState": 255,
-                "Acc1Color": 0,
-                "Acc2Color": 0,
-                "Acc3Color": 0,
-                "Accessory": 256,
-                "Idle": 120,
-                "Chucking": 100,
-                "ThrowLength": -1,
-                "ThrowHeight": 0,
-                "RewardObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "大砲の掃除モンテ男マネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "大砲の掃除モンテ男マネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 255,
+                    "ClothesColor": 255,
+                    "PolluteState": 255,
+                    "Acc1Color": 0,
+                    "Acc2Color": 0,
+                    "Acc3Color": 0,
+                    "Accessory": 256,
+                    "Idle": 120,
+                    "Chucking": 100,
+                    "ThrowLength": -1,
+                    "ThrowHeight": 0,
+                    "RewardObjID": -1
+                }
             }
         },
         "Rendering": {
-          "Default": {
-            "Model": "monteme/mome_model.bmd",
-            "Textures": {
-              "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti",
-              "I_mom_mino_dummyI4": "montemcommon/i_mom_mino_rgba.bti"
-            },
-            "Animations": []
-          }
+            "Default": {
+                "Model": "monteme/mome_model.bmd",
+                "Textures": {
+                    "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti",
+                    "I_mom_mino_dummyI4": "montemcommon/i_mom_mino_rgba.bti"
+                },
+                "Animations": []
+            }
         }
     }
 }

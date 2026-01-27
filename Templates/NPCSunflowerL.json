@@ -1,4 +1,4 @@
-{
+﻿{
     "Great Sunflower": {
         "Enums": {},
         "Structs": {
@@ -95,43 +95,51 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "大ひまわりマネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "大ひまわりマネージャー",
-                "Rail": "(null)",
-                "BodyColor": 255,
-                "ClothesColor": 255,
-                "PolluteState": 255,
-                "Acc1Color": 255,
-                "Acc2Color": 255,
-                "Acc3Color": 255,
-                "Accessory": -1,
-                "Idle": 120,
-                "Chucking": 100,
-                "ThrowLength": -1,
-                "ThrowHeight": -1,
-                "RewardObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "大ひまわりマネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "大ひまわりマネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 255,
+                    "ClothesColor": 255,
+                    "PolluteState": 255,
+                    "Acc1Color": 255,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": -1,
+                    "Idle": 120,
+                    "Chucking": 100,
+                    "ThrowLength": -1,
+                    "ThrowHeight": -1,
+                    "RewardObjID": -1
+                }
             }
         },
         "Rendering": {

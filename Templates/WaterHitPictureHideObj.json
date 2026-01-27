@@ -1,4 +1,4 @@
-{
+﻿{
     "Graffiti": {
         "Enums": {},
         "Structs": {
@@ -73,39 +73,47 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "クッパＪｒサイン（Ｍ） キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "KoopaJrSignM",
-                "SpawnObjID": -1,
-                "SpawnLength": 100,
-                "SpawnHeight": -1,
-                "SpawnDuration": 120,
-                "R": 255,
-                "G": 255,
-                "B": 255,
-                "KoopaJrSignM": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ChipShine": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "クッパＪｒサイン（Ｍ） キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "KoopaJrSignM",
+                    "SpawnObjID": -1,
+                    "SpawnLength": 100,
+                    "SpawnHeight": -1,
+                    "SpawnDuration": 120,
+                    "R": 255,
+                    "G": 255,
+                    "B": 255,
+                    "KoopaJrSignM": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "ChipShine": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

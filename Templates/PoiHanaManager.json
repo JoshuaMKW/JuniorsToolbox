@@ -1,4 +1,4 @@
-{
+﻿{
     "Cataquack Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ポイハナマネージャー キャラ",
-                "MaxObjs": 30,
-                "MActorSets": 3
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ポイハナマネージャー キャラ",
+                    "MaxObjs": 30,
+                    "MActorSets": 3
+                }
             }
         }
     }

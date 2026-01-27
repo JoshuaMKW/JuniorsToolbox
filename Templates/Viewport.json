@@ -1,4 +1,4 @@
-{
+﻿{
     "Viewport": {
         "Enums": {},
         "Structs": {
@@ -33,10 +33,18 @@
         },
         "Wizard": {
             "Default": {
-                "X1": 0,
-                "Y1": 0,
-                "X2": 256,
-                "Y2": 256
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "X1": 0,
+                    "Y1": 0,
+                    "X2": 256,
+                    "Y2": 256
+                }
             }
         }
     }

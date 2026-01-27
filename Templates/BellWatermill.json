@@ -1,4 +1,4 @@
-{
+﻿{
     "Bell Watermill": {
         "Enums": {},
         "Structs": {
@@ -57,35 +57,43 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ]
-                ],
-                "Character": "BiaWatermill00 キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "BiaWatermill00",
-                "SpawnObjID": -1,
-                "SpawnLength": 100,
-                "SpawnHeight": -1,
-                "SpawnDuration": 120,
-                "DisplayTexture": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ]
+                    ],
+                    "Character": "BiaWatermill00 キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "BiaWatermill00",
+                    "SpawnObjID": -1,
+                    "SpawnLength": 100,
+                    "SpawnHeight": -1,
+                    "SpawnDuration": 120,
+                    "DisplayTexture": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

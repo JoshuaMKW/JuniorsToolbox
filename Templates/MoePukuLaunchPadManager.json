@@ -1,4 +1,4 @@
-{
+﻿{
     "Jumping Lava Cheep-Cheep Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "モエプク発射台マネージャー キャラ",
-                "MaxObjs": 10,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "モエプク発射台マネージャー キャラ",
+                    "MaxObjs": 10,
+                    "MActorSets": 0
+                }
             }
         }
     }

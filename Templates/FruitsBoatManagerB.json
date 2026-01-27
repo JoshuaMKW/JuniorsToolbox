@@ -1,7 +1,6 @@
-{
+﻿{
     "Fruit Boat B Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "フルーツ運搬船Ｂマネージャー キャラ",
-                "MaxObjs": 4,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "フルーツ運搬船Ｂマネージャー キャラ",
+                    "MaxObjs": 4,
+                    "MActorSets": 0
+                }
             }
         }
     }

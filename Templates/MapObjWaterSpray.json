@@ -1,4 +1,4 @@
-{
+﻿{
     "Water Spray Effect": {
         "Enums": {},
         "Structs": {
@@ -61,36 +61,44 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "汎用水しぶき（シリンダー） キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "WaterSprayCylinder",
-                "Speed": 50,
-                "Intensity": 300,
-                "R": 255,
-                "G": 255,
-                "B": 255,
-                "Alpha": 255
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "汎用水しぶき（シリンダー） キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "WaterSprayCylinder",
+                    "Speed": 50,
+                    "Intensity": 300,
+                    "R": 255,
+                    "G": 255,
+                    "B": 255,
+                    "Alpha": 255
+                }
             }
         }
     }

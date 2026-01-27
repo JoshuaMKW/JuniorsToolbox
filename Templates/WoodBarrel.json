@@ -1,4 +1,4 @@
-{
+﻿{
     "Barrel": {
         "Enums": {},
         "Structs": {
@@ -57,35 +57,43 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "木樽 キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "wood_barrel",
-                "wood_barrel": "Generated from Bin Editor Template by Junior's Toolbox",
-                "wood_barrel_tex": "Generated from Bin Editor Template by Junior's Toolbox",
-                "wood_barrel_once": "Generated from Bin Editor Template by Junior's Toolbox",
-                "wood_barrel_once_tex": "Generated from Bin Editor Template by Junior's Toolbox",
-                "drum_can": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "木樽 キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "wood_barrel",
+                    "wood_barrel": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "wood_barrel_tex": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "wood_barrel_once": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "wood_barrel_once_tex": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "drum_can": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Jellyfish Rider Noki (M)": {
         "Enums": {
             "Accessories": {
@@ -107,88 +107,98 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "クラゲマレー男マネージャー キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Manager": "クラゲマレー男マネージャー",
-                "Rail": "(null)",
-                "BodyColor": 1,
-                "ClothesColor": 0,
-                "PolluteState": 0,
-                "Acc1Color": 0,
-                "Acc2Color": 0,
-                "Acc3Color": 0,
-                "Accessory": 34,
-                "Idle": 9,
-                "Chucking": 100,
-                "ThrowLength": -1,
-                "ThrowHeight": 0,
-                "RewardObjID": -1
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "クラゲマレー男マネージャー キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Manager": "クラゲマレー男マネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 1,
+                    "ClothesColor": 0,
+                    "PolluteState": 0,
+                    "Acc1Color": 0,
+                    "Acc2Color": 0,
+                    "Acc3Color": 0,
+                    "Accessory": 34,
+                    "Idle": 9,
+                    "Chucking": 100,
+                    "ThrowLength": -1,
+                    "ThrowHeight": 0,
+                    "RewardObjID": -1
+                }
             }
         },
         "Rendering": {
-          "Default": {
-            "Model": "marema/marema.bmd",
-            "Textures": { "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti" },
-            "Animations": [
-              "marema/marema_appear.bck",
-              "marema/marema_cry.btp",
-              "marema/marema_dance.bck",
-              "marema/marema_fall.bck",
-              "marema/marema_happy.bck",
-              "marema/marema_jump.bck",
-              "marema/marema_jump.btp",
-              "marema/marema_recover.bck",
-              "marema/marema_recover.btp",
-              "marema/marema_run.bck",
-              "marema/marema_sad.btp",
-              "marema/marema_sit.bck",
-              "marema/marema_sittalk.bck",
-              "marema/marema_sleep.btp",
-              "marema/marema_sleep_a.btp",
-              "marema/marema_smile.btp",
-              "marema/marema_stand.bck",
-              "marema/marema_stand.btp",
-              "marema/marema_stand_a.bck",
-              "marema/marema_stand_a.btp",
-              "marema/marema_step.bck",
-              "marema/marema_talk.bck",
-              "marema/marema_talk.btp",
-              "marema/marema_wait.bck",
-              "marema/marema_wait_a.bck",
-              "marema/marema_wait_fall.bck",
-              "marema/marema_wait_yogure.bck",
-              "marema/marema_walk.bck",
-              "marema/marema_wash.bck",
-              "marema/marema_wash.btp",
-              "marema/marema_wet.bck",
-              "marema/marema_wet.btp",
-              "marema/marema_wet_a.bck",
-              "marema/marema_wet_a.btp",
-              "marema/marema_wink.btp",
-              "marema/marema_wink_a.btp"
-            ]
-          }
+            "Default": {
+                "Model": "marema/marema.bmd",
+                "Textures": {
+                    "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti"
+                },
+                "Animations": [
+                    "marema/marema_appear.bck",
+                    "marema/marema_cry.btp",
+                    "marema/marema_dance.bck",
+                    "marema/marema_fall.bck",
+                    "marema/marema_happy.bck",
+                    "marema/marema_jump.bck",
+                    "marema/marema_jump.btp",
+                    "marema/marema_recover.bck",
+                    "marema/marema_recover.btp",
+                    "marema/marema_run.bck",
+                    "marema/marema_sad.btp",
+                    "marema/marema_sit.bck",
+                    "marema/marema_sittalk.bck",
+                    "marema/marema_sleep.btp",
+                    "marema/marema_sleep_a.btp",
+                    "marema/marema_smile.btp",
+                    "marema/marema_stand.bck",
+                    "marema/marema_stand.btp",
+                    "marema/marema_stand_a.bck",
+                    "marema/marema_stand_a.btp",
+                    "marema/marema_step.bck",
+                    "marema/marema_talk.bck",
+                    "marema/marema_talk.btp",
+                    "marema/marema_wait.bck",
+                    "marema/marema_wait_a.bck",
+                    "marema/marema_wait_fall.bck",
+                    "marema/marema_wait_yogure.bck",
+                    "marema/marema_walk.bck",
+                    "marema/marema_wash.bck",
+                    "marema/marema_wash.btp",
+                    "marema/marema_wet.bck",
+                    "marema/marema_wet.btp",
+                    "marema/marema_wet_a.bck",
+                    "marema/marema_wet_a.btp",
+                    "marema/marema_wink.btp",
+                    "marema/marema_wink_a.btp"
+                ]
+            }
         }
     }
 }

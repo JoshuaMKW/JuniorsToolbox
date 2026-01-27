@@ -1,4 +1,4 @@
-{
+﻿{
     "Sea Floating Map Object": {
         "Enums": {},
         "Structs": {
@@ -49,33 +49,41 @@
         },
         "Wizard": {
             "Dolphin Ship": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "riccoShipLog キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Dolphin Ship",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "riccoShipDol",
-                "riccoShipLog_tex": "Generated from Bin Editor Template by Junior's Toolbox",
-                "riccoShipDol_tex": "Generated from Bin Editor Template by Junior's Toolbox",
-                "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "riccoShipLog キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "riccoShipDol",
+                    "riccoShipLog_tex": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "riccoShipDol_tex": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "ForceDrawMode": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

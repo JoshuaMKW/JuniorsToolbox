@@ -1,7 +1,6 @@
-{
+﻿{
     "Event Handler (Airstrip Sink)": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "SinkInfo": {
                 "Region": {
@@ -16,8 +15,8 @@
         },
         "Members": {
             "SinkCount": {
-              "Type": "U32",
-              "ArraySize": 1
+                "Type": "U32",
+                "ArraySize": 1
             },
             "VTXStart": {
                 "Type": "INT",
@@ -30,11 +29,19 @@
         },
         "Wizard": {
             "Default": {
-                "SinkCount": 0,
-                "VTXStart": 0,
-                "SinkInfo": {
-                    "Region": 0,
-                    "ClearCondition": 1
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "SinkCount": 0,
+                    "VTXStart": 0,
+                    "SinkInfo": {
+                        "Region": 0,
+                        "ClearCondition": 1
+                    }
                 }
             }
         }

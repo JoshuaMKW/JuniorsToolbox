@@ -1,4 +1,4 @@
-{
+﻿{
     "Jellyfish Rider Noki (F) Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "クラゲマレー女マネージャー キャラ",
-                "MaxObjs": 100,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "クラゲマレー女マネージャー キャラ",
+                    "MaxObjs": 100,
+                    "MActorSets": 0
+                }
             }
         }
     }

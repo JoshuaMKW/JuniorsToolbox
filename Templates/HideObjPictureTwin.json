@@ -1,4 +1,4 @@
-{
+﻿{
     "Twin Graffiti": {
         "Enums": {},
         "Structs": {
@@ -77,40 +77,48 @@
         },
         "Wizard": {
             "Default": {
-                "Transform": [
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        1,
-                        1,
-                        1
-                    ]
-                ],
-                "Character": "ふたご落書き（バツ） キャラ",
-                "LightCount": 0,
-                "LightArray": {
-                    "ID": 0,
-                    "Name": "LightX"
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
                 },
-                "Model": "SignCross",
-                "SpawnObjID": -1,
-                "SpawnLength": 100,
-                "SpawnHeight": -1,
-                "SpawnDuration": 120,
-                "R": 255,
-                "G": 255,
-                "B": 255,
-                "SignCross": "Generated from Bin Editor Template by Junior's Toolbox",
-                "SignCircle": "Generated from Bin Editor Template by Junior's Toolbox",
-                "SignTriangle": "Generated from Bin Editor Template by Junior's Toolbox"
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ふたご落書き（バツ） キャラ",
+                    "LightCount": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "LightX"
+                    },
+                    "Model": "SignCross",
+                    "SpawnObjID": -1,
+                    "SpawnLength": 100,
+                    "SpawnHeight": -1,
+                    "SpawnDuration": 120,
+                    "R": 255,
+                    "G": 255,
+                    "B": 255,
+                    "SignCross": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "SignCircle": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "SignTriangle": "Generated from Bin Editor Template by Junior's Toolbox"
+                }
             }
         }
     }

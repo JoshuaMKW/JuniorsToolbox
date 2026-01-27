@@ -1,4 +1,4 @@
-{
+﻿{
     "Snooza Koopa Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "タマノコマネージャー キャラ",
-                "MaxObjs": 5,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "タマノコマネージャー キャラ",
+                    "MaxObjs": 5,
+                    "MActorSets": 0
+                }
             }
         }
     }

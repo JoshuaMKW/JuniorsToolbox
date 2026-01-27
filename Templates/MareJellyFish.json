@@ -1,4 +1,4 @@
-{
+﻿{
     "Noki Jellyfish Manager": {
         "Enums": {},
         "Structs": {
@@ -29,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "マーレクラゲマネージャー キャラ",
-                "MaxObjs": 64,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "マーレクラゲマネージャー キャラ",
+                    "MaxObjs": 64,
+                    "MActorSets": 0
+                }
             }
         }
     }

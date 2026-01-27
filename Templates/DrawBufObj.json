@@ -1,7 +1,6 @@
-{
+﻿{
     "Draw Buffer": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -26,8 +25,16 @@
         },
         "Wizard": {
             "Default": {
-                "Unknown": 3,
-                "Unknown^2": 1
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Unknown": 3,
+                    "Unknown^2": 1
+                }
             }
         }
     }

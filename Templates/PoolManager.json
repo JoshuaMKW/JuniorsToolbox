@@ -1,4 +1,4 @@
-{
+﻿{
     "Pool Manager": {
         "Enums": {},
         "Structs": {
@@ -33,10 +33,18 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "アイテムマネージャー キャラ",
-                "MaxObjs": 10,
-                "ClipRadius": 290000,
-                "FarClip": 5000
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "アイテムマネージャー キャラ",
+                    "MaxObjs": 10,
+                    "ClipRadius": 290000,
+                    "FarClip": 5000
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-{
+﻿{
     "Light": {
         "Enums": {},
         "Structs": {
@@ -29,18 +29,26 @@
         },
         "Wizard": {
             "Default": {
-                "Position": [
-                    0,
-                    0,
-                    0
-                ],
-                "Color": [
-                    255,
-                    255,
-                    255,
-                    255
-                ],
-                "Intensity": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Color": [
+                        255,
+                        255,
+                        255,
+                        255
+                    ],
+                    "Intensity": 0
+                }
             }
         }
     }

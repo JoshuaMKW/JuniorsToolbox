@@ -1,7 +1,6 @@
-{
+﻿{
     "Chain Chomp Manager": {
-        "Enums": {
-        },
+        "Enums": {},
         "Structs": {
             "LightInfo": {
                 "ID": {
@@ -30,9 +29,17 @@
         },
         "Wizard": {
             "Default": {
-                "Character": "ボスワンワンマネージャー キャラ",
-                "MaxObjs": 1,
-                "MActorSets": 0
+                "Name": "Default",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ボスワンワンマネージャー キャラ",
+                    "MaxObjs": 1,
+                    "MActorSets": 0
+                }
             }
         }
     }
