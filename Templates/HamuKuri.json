@@ -1,19 +1,5 @@
 ﻿{
     "Strollin' Stu": {
-        "Dependencies": {
-            "Managers": {
-            },
-            "AssetPaths": [
-                "hamukuri",
-                "hamukurianm"
-            ],
-            "TablesBin": {
-                "StageEnemyInfo": {
-                    "Name": "",
-                    "Ancestry": ""
-                }
-            }
-        },
         "Enums": {},
         "Structs": {
             "LightInfo": {
