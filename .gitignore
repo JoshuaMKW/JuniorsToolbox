@@ -37,3 +37,7 @@ out/*
 /enc_temp_folder
 /.idea
 vcpkg_installed
+
+# Avoid including assets (need to be installed seperately)
+SceneAssets/*
+!SceneAssets/README.md
