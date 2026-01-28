@@ -221,6 +221,9 @@ add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                        ${CMAKE_SOURCE_DIR}/Images/ $<TARGET_FILE_DIR:JuniorsToolbox>/Images/)
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
+                       ${CMAKE_SOURCE_DIR}/SceneAssets/ $<TARGET_FILE_DIR:JuniorsToolbox>/SceneAssets/)
+add_custom_command(TARGET JuniorsToolbox PRE_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory
                        ${CMAKE_SOURCE_DIR}/Templates/ $<TARGET_FILE_DIR:JuniorsToolbox>/Templates/)
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
