@@ -107,6 +107,9 @@ namespace Toolbox::Object {
         [[nodiscard]] virtual std::span<u8> getData() const = 0;
         [[nodiscard]] virtual size_t getDataSize() const    = 0;
 
+        [[nodiscard]] virtual const Template &getTemplate() const = 0;
+        [[nodiscard]] virtual const std::string &getWizardName() const = 0;
+
         [[nodiscard]] virtual bool hasMember(const QualifiedName &name) const                   = 0;
         [[nodiscard]] virtual MetaStruct::GetMemberT getMember(const QualifiedName &name) const = 0;
         [[nodiscard]] virtual std::vector<RefPtr<MetaMember>> getMembers() const                = 0;
@@ -189,6 +192,7 @@ namespace Toolbox::Object {
             if (!wizard)
                 return;
 
+            m_template = template_;
             applyWizard(*wizard);
         }
 
@@ -200,6 +204,7 @@ namespace Toolbox::Object {
             if (!wizard)
                 return;
 
+            m_template = template_;
             applyWizard(*wizard);
         }
 
@@ -247,6 +252,9 @@ namespace Toolbox::Object {
 
         std::span<u8> getData() const override;
         size_t getDataSize() const override;
+
+        const Template &getTemplate() const override { return m_template; }
+        const std::string &getWizardName() const override { return m_wizard; }
 
         bool hasMember(const QualifiedName &name) const override;
         MetaStruct::GetMemberT getMember(const QualifiedName &name) const override;
@@ -380,6 +388,8 @@ namespace Toolbox::Object {
         u32 m_game_ptr = 0;
 
         bool m_include_custom = false;
+        Template m_template;
+        std::string m_wizard;
     };
 
     class GroupSceneObject : public VirtualSceneObject {
@@ -517,10 +527,7 @@ namespace Toolbox::Object {
             if (!wizard)
                 return;
 
-            for (auto &member : wizard->m_init_members) {
-                m_members.emplace_back(
-                    std::static_pointer_cast<MetaMember, ISmartResource>(member.clone(true)));
-            }
+            applyWizard(*wizard);
         }
 
         PhysicalSceneObject(const Template &template_, std::string_view wizard_name)
@@ -585,6 +592,9 @@ namespace Toolbox::Object {
 
         std::span<u8> getData() const override;
         size_t getDataSize() const override;
+
+        const Template &getTemplate() const override { return m_template; }
+        const std::string &getWizardName() const override { return m_wizard; }
 
         bool hasMember(const QualifiedName &name) const override;
         MetaStruct::GetMemberT getMember(const QualifiedName &name) const override;
@@ -795,6 +805,8 @@ namespace Toolbox::Object {
         u32 m_game_ptr = 0;
 
         bool m_include_custom = false;
+        Template m_template;
+        std::string m_wizard;
 
         fs_path m_scene_resource_path;
     };

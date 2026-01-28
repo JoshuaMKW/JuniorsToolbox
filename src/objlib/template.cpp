@@ -91,14 +91,6 @@ namespace Toolbox::Object {
                                                  "Template JSON is missing 'Enums' object.", 0);
                 }
 
-                if (j.find("Dependencies") != j.end()) {
-                    auto dep_result = loadDependencies(j["Dependencies"]);
-                    if (!dep_result) {
-                        return Result<void, JSONError>(std::unexpected(dep_result.error()));
-                    }
-                    m_dependencies = dep_result.value();
-                }
-
                 TemplateWizard default_wizard;
 
                 cacheEnums(enum_data);
@@ -144,14 +136,6 @@ namespace Toolbox::Object {
             if (!enum_data.is_object()) {
                 return make_json_error<void>("TEMPLATE", "Template JSON is missing 'Enums' object.",
                                              0);
-            }
-
-            if (j.find("Dependencies") != j.end()) {
-                auto dep_result = loadDependencies(j["Dependencies"]);
-                if (!dep_result) {
-                    return Result<void, JSONError>(std::unexpected(dep_result.error()));
-                }
-                m_dependencies = std::move(dep_result.value());
             }
 
             TemplateWizard default_wizard;
@@ -714,9 +698,34 @@ namespace Toolbox::Object {
         for (const auto &item : wizards.items()) {
             TemplateWizard &default_wizard = m_wizards[0];
             TemplateWizard wizard;
-            wizard.m_name    = item.key();
-            auto wizard_json = item.value();
-            for (auto &member_item : wizard_json.items()) {
+
+            wizard.m_name             = item.key();
+            const json_t &wizard_json = item.value();
+
+            if (wizard_json.contains("Name")) {
+                wizard.m_obj_name = wizard_json["Name"];
+            }
+
+            if (wizard_json.contains("Dependencies")) {
+                auto dep_result = loadDependencies(wizard_json["Dependencies"]);
+                if (!dep_result) {
+                    return Result<void, JSONError>(std::unexpected(dep_result.error()));
+                }
+                wizard.m_dependencies = dep_result.value();
+            }
+
+            if (!wizard_json.contains("Members")) {
+                return make_json_error<void>("TEMPLATE", "Wizard json has no Members attribute!",
+                                             0);
+            }
+
+            const json_t &members_json = wizard_json["Members"];
+            if (!members_json.is_object()) {
+                return make_json_error<void>("TEMPLATE", "Wizard json has malformed Members attribute!",
+                                             0);
+            }
+
+            for (auto &member_item : members_json.items()) {
                 const std::string &member_name = member_item.key();
                 const json_t &member_info      = member_item.value();
 
@@ -732,6 +741,7 @@ namespace Toolbox::Object {
                     wizard.m_init_members.emplace_back(member_result.value());
                 }
             }
+
             if (render_infos.contains(wizard.m_name)) {
                 auto &render_info = render_infos[wizard.m_name];
                 if (render_info.contains("Model")) {
@@ -761,6 +771,7 @@ namespace Toolbox::Object {
                     wizard.m_render_info.m_texture_swap_map = render_info["Textures"];
                 }
             }
+
             m_wizards.push_back(wizard);
         }
 

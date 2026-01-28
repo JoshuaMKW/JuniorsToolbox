@@ -165,6 +165,7 @@ namespace Toolbox::Object {
     }
 
     void VirtualSceneObject::applyWizard(const TemplateWizard &wizard) {
+        m_wizard = wizard.m_name;
         m_nameref.setName(wizard.m_name);
         for (auto &member : wizard.m_init_members) {
             RefPtr<MetaMember> new_member = make_deep_clone<MetaMember>(member);
@@ -252,14 +253,25 @@ namespace Toolbox::Object {
             }
         }
 
-        auto template_ = std::move(template_result.value());
-        auto wizard    = template_->getWizard(name.name());
+        m_template                           = *template_result.value();
+        std::optional<TemplateWizard> wizard = m_template.getWizard(name.name());
         if (!wizard) {
-            wizard = template_->getWizard("Default");
+            const std::vector<TemplateWizard> &wizards = m_template.wizards();
+            for (const TemplateWizard &wz : wizards) {
+                if (wz.m_obj_name == name.name()) {
+                    wizard = wz;
+                    break;
+                }
+            }
             if (!wizard) {
-                wizard = template_->getWizard();
+                wizard = m_template.getWizard("Default");
+                if (!wizard) {
+                    wizard = m_template.getWizard();
+                }
             }
         }
+
+        m_wizard = wizard->m_name;
 
         // Members
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
@@ -596,14 +608,25 @@ namespace Toolbox::Object {
             }
         }
 
-        auto template_ = std::move(template_result.value());
-        auto wizard    = template_->getWizard(obj_name.name());
+        m_template                           = *template_result.value();
+        std::optional<TemplateWizard> wizard = m_template.getWizard(obj_name.name());
         if (!wizard) {
-            wizard = template_->getWizard("Default");
+            const std::vector<TemplateWizard> &wizards = m_template.wizards();
+            for (const TemplateWizard &wz : wizards) {
+                if (wz.m_obj_name == obj_name.name()) {
+                    wizard = wz;
+                    break;
+                }
+            }
             if (!wizard) {
-                wizard = template_->getWizard();
+                wizard = m_template.getWizard("Default");
+                if (!wizard) {
+                    wizard = m_template.getWizard();
+                }
             }
         }
+
+        m_wizard              = wizard->m_name;
 
         // Members
         bool late_group_size = (obj_type.code() == 15406 || obj_type.code() == 9858);
@@ -808,19 +831,19 @@ namespace Toolbox::Object {
             HelperUpdateMonteRender();
         }
 
-            if (!scene_lights.empty()) {
-                m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN], 0);
-                if (scene_lights.size() > 1) {
-                    m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN_SECONDARY], 1);
-                } else {
-                    m_model_instance->SetLight(DEFAULT_LIGHT, 1);
-                }
-                // m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SPECULAR], 2);  //
-                // Specular light
+        if (!scene_lights.empty()) {
+            m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN], 0);
+            if (scene_lights.size() > 1) {
+                m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN_SECONDARY], 1);
             } else {
-                m_model_instance->SetLight(DEFAULT_LIGHT, 0);
                 m_model_instance->SetLight(DEFAULT_LIGHT, 1);
             }
+            // m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SPECULAR], 2);  //
+            // Specular light
+        } else {
+            m_model_instance->SetLight(DEFAULT_LIGHT, 0);
+            m_model_instance->SetLight(DEFAULT_LIGHT, 1);
+        }
 
         if (animate)
             m_model_instance->UpdateAnimations(delta_time);
@@ -845,6 +868,7 @@ namespace Toolbox::Object {
     }
 
     void PhysicalSceneObject::applyWizard(const TemplateWizard &wizard) {
+        m_wizard = wizard.m_name;
         m_nameref.setName(wizard.m_name);
         for (auto &member : wizard.m_init_members) {
             RefPtr<MetaMember> new_member =
@@ -1120,16 +1144,26 @@ namespace Toolbox::Object {
             }
         }
 
-        auto template_ = std::move(template_result.value());
-        auto wizard    = template_->getWizard(name.name());
+        m_template         = *template_result.value();
+        std::optional<TemplateWizard> wizard = m_template.getWizard(name.name());
         if (!wizard) {
-            wizard = template_->getWizard("Default");
+            const std::vector<TemplateWizard> &wizards = m_template.wizards();
+            for (const TemplateWizard &wz : wizards) {
+                if (wz.m_obj_name == name.name()) {
+                    wizard = wz;
+                    break;
+                }
+            }
             if (!wizard) {
-                wizard = template_->getWizard();
+                wizard = m_template.getWizard("Default");
+                if (!wizard) {
+                    wizard = m_template.getWizard();
+                }
             }
         }
 
-        const char *debug_str = template_->type().data();
+        m_wizard              = wizard->m_name;
+        const char *debug_str = m_template.type().data();
 
         // Members
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
@@ -1180,7 +1214,8 @@ namespace Toolbox::Object {
     }
 
     ObjectFactory::create_ret_t ObjectFactory::create(const Template &template_,
-                                                      std::string_view wizard_name, const fs_path &resource_path) {
+                                                      std::string_view wizard_name,
+                                                      const fs_path &resource_path) {
         if (isGroupObject(template_.type())) {
             return make_scoped<GroupSceneObject>(template_, wizard_name);
         } else if (isPhysicalObject(template_.type())) {
@@ -1190,7 +1225,8 @@ namespace Toolbox::Object {
             auto wizard = template_.getWizard(wizard_name);
             if (!wizard) {
                 TOOLBOX_WARN_V("[OBJECT_FACTORY] Failed to fetch wizard for {}, which may cause "
-                               "undefined behavior!", template_.type());
+                               "undefined behavior!",
+                               template_.type());
                 return obj;
             }
 

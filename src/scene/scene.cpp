@@ -642,7 +642,19 @@ namespace Toolbox {
             return *this;
         }
 
-        const TemplateDependencies &dependencies = template_.value()->dependencies();
+        std::optional<TemplateWizard> wizard =
+            template_.value()->getWizard(object->getWizardName());
+        if (!wizard) {
+            wizard = template_.value()->getWizard("Default");
+            if (!wizard) {
+                m_valid = false;
+                m_error_callback(std::format("Failed to load the wizard '{}' for object type '{}'!",
+                                             object->getWizardName(), obj_type));
+                return *this;
+            }
+        }
+
+        const TemplateDependencies &dependencies = wizard->m_dependencies;
         for (const TemplateDependencies::ObjectInfo &manager : dependencies.m_managers) {
             RefPtr<ISceneObject> group_obj =
                 m_scene_instance->getObjHierarchy().findObject(manager.m_ancestry);
@@ -849,7 +861,19 @@ namespace Toolbox {
             return *this;
         }
 
-        const TemplateDependencies &dependencies = template_.value()->dependencies();
+        std::optional<TemplateWizard> wizard =
+            template_.value()->getWizard(object->getWizardName());
+        if (!wizard) {
+            wizard = template_.value()->getWizard("Default");
+            if (!wizard) {
+                m_valid = false;
+                m_error_callback(std::format("Failed to load the wizard '{}' for object type '{}'!",
+                                             object->getWizardName(), obj_type));
+                return *this;
+            }
+        }
+
+        const TemplateDependencies &dependencies = wizard->m_dependencies;
         for (const TemplateDependencies::ObjectInfo &manager : dependencies.m_managers) {
             RefPtr<ISceneObject> group_obj =
                 m_scene_instance->getObjHierarchy().findObject(manager.m_ancestry);
@@ -900,13 +924,24 @@ namespace Toolbox {
 
                 if (dir_entry.is_directory()) {
                     if (!Filesystem::exists(scene_path).value_or(false)) {
-                        Filesystem::create_directories(scene_path);
+                        auto res = Filesystem::create_directories(scene_path);
+                        if (!res) {
+                            m_valid = false;
+                            m_error_callback(
+                                std::format("Failed to create directories for asset path '{}'",
+                                            scene_path.string()));
+                        }
                     }
                     continue;
                 }
 
-                Filesystem::copy_file(dir_entry.path(), scene_path,
-                                      Filesystem::copy_options::overwrite_existing);
+                auto res = Filesystem::copy_file(dir_entry.path(), scene_path,
+                                                 Filesystem::copy_options::overwrite_existing);
+                if (!res) {
+                    m_valid = false;
+                    m_error_callback(std::format("Failed to copy file for asset path '{}'",
+                                                 scene_path.string()));
+                }
             }
         }
 

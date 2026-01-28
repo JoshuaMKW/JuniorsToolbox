@@ -19,29 +19,6 @@
 
 namespace Toolbox::Object {
 
-    struct TemplateRenderInfo {
-        std::optional<std::string> m_file_model;
-        std::optional<std::string> m_file_materials;
-        std::vector<std::string> m_file_animations;
-        std::unordered_map<std::string, std::string> m_texture_swap_map;
-    };
-
-    struct TemplateWizard {
-        std::string m_name = "default_init";
-        std::vector<MetaMember> m_init_members;
-        TemplateRenderInfo m_render_info;
-
-        TemplateWizard &operator=(const TemplateWizard &other) {
-            m_name = other.m_name;
-            m_init_members.clear();
-            for (auto &m : other.m_init_members) {
-                m_init_members.push_back(m);
-            }
-            m_render_info = other.m_render_info;
-            return *this;
-        }
-    };
-
     struct TemplateDependencies {
         struct ObjectInfo {
             std::string m_type;
@@ -52,6 +29,33 @@ namespace Toolbox::Object {
         std::vector<ObjectInfo> m_managers;
         std::vector<std::string> m_asset_paths;
         std::vector<ObjectInfo> m_table_objs;
+    };
+
+    struct TemplateRenderInfo {
+        std::optional<std::string> m_file_model;
+        std::optional<std::string> m_file_materials;
+        std::vector<std::string> m_file_animations;
+        std::unordered_map<std::string, std::string> m_texture_swap_map;
+    };
+
+    struct TemplateWizard {
+        std::string m_name                    = "default_init";
+        std::optional<std::string> m_obj_name = "";
+        std::vector<MetaMember> m_init_members;
+        TemplateDependencies m_dependencies;
+        TemplateRenderInfo m_render_info;
+
+        TemplateWizard &operator=(const TemplateWizard &other) {
+            m_name = other.m_name;
+            m_obj_name = other.m_obj_name;
+            m_init_members.clear();
+            for (auto &m : other.m_init_members) {
+                m_init_members.push_back(m);
+            }
+            m_dependencies = other.m_dependencies;
+            m_render_info  = other.m_render_info;
+            return *this;
+        }
     };
 
     class Template : public ISerializable {
@@ -73,11 +77,7 @@ namespace Toolbox::Object {
     public:
         [[nodiscard]] std::string_view type() const { return m_type; }
 
-        [[nodiscard]] const TemplateDependencies &dependencies() const {
-            return m_dependencies;
-        }
-
-        [[nodiscard]] std::vector<TemplateWizard> wizards() const { return m_wizards; }
+        [[nodiscard]] const std::vector<TemplateWizard> &wizards() const { return m_wizards; }
 
         [[nodiscard]] std::optional<TemplateWizard> getWizard() const { return m_wizards[0]; }
         [[nodiscard]] std::optional<TemplateWizard> getWizard(std::string_view name) const {
@@ -138,8 +138,7 @@ namespace Toolbox::Object {
     private:
         std::string m_type;
 
-        TemplateDependencies m_dependencies;
-        std::vector<TemplateWizard> m_wizards   = {};
+        std::vector<TemplateWizard> m_wizards = {};
 
         std::vector<MetaStruct> m_struct_cache = {};
         std::vector<MetaEnum> m_enum_cache     = {};
