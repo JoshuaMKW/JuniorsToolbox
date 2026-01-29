@@ -67,8 +67,8 @@
                         }
                     },
                     "AssetPaths": [
-                        "hamukuri",
-                        "hamukurianm"
+                        "enemy/enm_hamukuri",
+                        "enemy/enm_hamukuri_shared"
                     ]
                 },
                 "Members": {
