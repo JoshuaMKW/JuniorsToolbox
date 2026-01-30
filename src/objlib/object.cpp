@@ -626,7 +626,7 @@ namespace Toolbox::Object {
             }
         }
 
-        m_wizard              = wizard->m_name;
+        m_wizard = wizard->m_name;
 
         // Members
         bool late_group_size = (obj_type.code() == 15406 || obj_type.code() == 9858);
@@ -1144,7 +1144,7 @@ namespace Toolbox::Object {
             }
         }
 
-        m_template         = *template_result.value();
+        m_template                           = *template_result.value();
         std::optional<TemplateWizard> wizard = m_template.getWizard(name.name());
         if (!wizard) {
             const std::vector<TemplateWizard> &wizards = m_template.wizards();

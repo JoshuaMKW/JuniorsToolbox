@@ -107,7 +107,7 @@ namespace Toolbox::Object {
         [[nodiscard]] virtual std::span<u8> getData() const = 0;
         [[nodiscard]] virtual size_t getDataSize() const    = 0;
 
-        [[nodiscard]] virtual const Template &getTemplate() const = 0;
+        [[nodiscard]] virtual const Template &getTemplate() const      = 0;
         [[nodiscard]] virtual const std::string &getWizardName() const = 0;
 
         [[nodiscard]] virtual bool hasMember(const QualifiedName &name) const                   = 0;
@@ -744,24 +744,6 @@ namespace Toolbox::Object {
             obj->m_transform = m_transform;
 
             obj->m_scene_resource_path = m_scene_resource_path;
-#if 0
-            if (m_model_instance)
-                obj->m_model_instance = make_referable<J3DModelInstance>(*m_model_instance);
-
-            if (m_model_data)
-                obj->m_model_data = make_referable<J3DModelData>(*m_model_data);
-#else
-
-            auto maybe_template = TemplateFactory::create(m_type.name(), true);
-            if (maybe_template.has_value()) {
-                ScopePtr<Template> template_         = std::move(maybe_template.value());
-                std::optional<TemplateWizard> wizard = template_->getWizard("Default");
-                if (wizard) {
-                    obj->loadRenderData(obj->m_scene_resource_path, wizard->m_render_info,
-                                        getResourceCache());
-                }
-            }
-#endif
 
             obj->m_members.reserve(m_members.size());
             if (deep) {
@@ -775,6 +757,23 @@ namespace Toolbox::Object {
                     obj->m_members.push_back(std::move(new_member));
                 }
             }
+#if 0
+            if (m_model_instance)
+                obj->m_model_instance = make_referable<J3DModelInstance>(*m_model_instance);
+
+            if (m_model_data)
+                obj->m_model_data = make_referable<J3DModelData>(*m_model_data);
+#else
+
+            obj->m_template = m_template;
+            obj->m_wizard   = m_wizard;
+
+            std::optional<TemplateWizard> wizard = m_template.getWizard(obj->m_wizard);
+            if (wizard) {
+                obj->loadRenderData(obj->m_scene_resource_path, wizard->m_render_info,
+                                    getResourceCache());
+            }
+#endif
 
             return obj;
         }
