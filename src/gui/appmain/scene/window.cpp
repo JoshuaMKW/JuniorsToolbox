@@ -12,6 +12,8 @@
 #include "core/threaded.hpp"
 #include "core/timing.hpp"
 
+#include "model/objmodel.hpp"
+
 #include "IconsForkAwesome.h"
 #include "gui/appmain/application.hpp"
 #include "gui/appmain/project/events.hpp"
@@ -47,6 +49,7 @@
 #include <glm/gtx/euler_angles.hpp>
 
 using namespace Toolbox;
+using namespace Toolbox::Scene;
 
 namespace Toolbox::UI {
 
@@ -59,15 +62,23 @@ namespace Toolbox::UI {
         return node_name;
     }
 
-    static std::string getNodeUID(RefPtr<Rail::Rail> rail) {
+    static std::string getNodeUID(RailData::rail_ptr_t rail) {
         return std::format("{}###{}", rail->name(), rail->getUUID());
     }
 
-    static std::string getNodeUID(RefPtr<Rail::Rail> rail, size_t node_index) {
+    static std::string getNodeUID(RailData::rail_ptr_t rail, size_t node_index) {
         if (node_index >= rail->nodes().size()) {
             return std::format("(orphan)###{}", node_index);
         }
         return std::format("Node {}###{}", node_index, rail->nodes()[node_index]->getUUID());
+    }
+
+    static bool isSceneObjectFiltered(RefPtr<SceneObjModel> model, const std::string &filter, std::string type, std::string name) {
+        std::transform(type.begin(), type.end(), type.begin(),
+                       [](char c) { return ::tolower(static_cast<int>(c)); });
+        std::transform(name.begin(), name.end(), name.begin(),
+                       [](char c) { return ::tolower(static_cast<int>(c)); });
+        return !type.starts_with(filter) && !name.starts_with(filter);
     }
 
     SceneCreateRailEvent::SceneCreateRailEvent(const UUID64 &target_id, const Rail::Rail &rail)
@@ -79,7 +90,7 @@ namespace Toolbox::UI {
 
     SceneWindow::SceneWindow(const std::string &name) : ImWindow(name) {}
 
-    bool SceneWindow::onLoadData(const std::filesystem::path &path) {
+    bool SceneWindow::onLoadData(const fs_path &path) {
         if (!Toolbox::Filesystem::exists(path)) {
             return false;
         }
@@ -108,7 +119,7 @@ namespace Toolbox::UI {
                     m_resource_cache.m_material.clear();
 
                     // Initialize the rail visibility map
-                    for (RefPtr<Rail::Rail> rail : m_current_scene->getRailData().rails()) {
+                    for (RailData::rail_ptr_t rail : m_current_scene->getRailData()->rails()) {
                         m_rail_visible_map[rail->getUUID()] = true;
                     }
 
@@ -141,8 +152,8 @@ namespace Toolbox::UI {
         return false;
     }
 
-    bool SceneWindow::onSaveData(std::optional<std::filesystem::path> path) {
-        std::filesystem::path root_path;
+    bool SceneWindow::onSaveData(std::optional<fs_path> path) {
+        fs_path root_path;
 
         if (!m_current_scene) {
             TOOLBOX_ERROR("(SCENE) Failed to save the scene due to lack of a scene instance.");
@@ -241,7 +252,7 @@ namespace Toolbox::UI {
     void SceneWindow::onImGuiPostUpdate(TimeStep delta_time) {
         if (m_current_scene) {
             std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
-            for (auto &rail : m_current_scene->getRailData().rails()) {
+            for (auto &rail : m_current_scene->getRailData()->rails()) {
                 if (!m_rail_visible_map[rail->getUUID()])
                     continue;
                 rendered_nodes.insert(rendered_nodes.end(), rail->nodes().begin(),
@@ -272,9 +283,9 @@ namespace Toolbox::UI {
                     // In this circumstance, select the whole rail
                     bool rail_selection_mode = Input::GetKey(KeyCode::KEY_LEFTALT);
                     if (rail_selection_mode) {
-                        RailData &rail_data = m_current_scene->getRailData();
+                        RefPtr<RailData> rail_data = m_current_scene->getRailData();
 
-                        RefPtr<Rail::Rail> rail = rail_data.getRail(node->getRailUUID());
+                        RailData::rail_ptr_t rail = rail_data->getRail(node->getRailUUID());
                         if (!rail) {
                             TOOLBOX_ERROR("Failed to find rail for node.");
                             return;
@@ -341,7 +352,7 @@ namespace Toolbox::UI {
                     i++;
                 }
 
-                m_renderer.updatePaths(m_current_scene->getRailData(), {});
+                m_renderer.updatePaths(*m_current_scene->getRailData(), {});
             }
 
             if (!m_rail_node_list_selected_nodes.empty()) {
@@ -351,7 +362,7 @@ namespace Toolbox::UI {
                     Transform new_transform         = gizmo_total_delta * node_transform;
 
                     UUID64 rail_uuid        = node.m_selected->getRailUUID();
-                    RefPtr<Rail::Rail> rail = m_current_scene->getRailData().getRail(rail_uuid);
+                    RailData::rail_ptr_t rail = m_current_scene->getRailData()->getRail(rail_uuid);
                     if (!rail) {
                         TOOLBOX_ERROR("Failed to find rail for node.");
                         continue;
@@ -361,7 +372,7 @@ namespace Toolbox::UI {
                     i++;
                 }
 
-                m_renderer.updatePaths(m_current_scene->getRailData(), {});
+                m_renderer.updatePaths(*m_current_scene->getRailData(), {});
             }
 
             m_gizmo_maniped = true;
@@ -423,7 +434,7 @@ namespace Toolbox::UI {
             if (event) {
                 if (m_current_scene) {
                     const Rail::Rail &rail = event->getRail();
-                    m_current_scene->getRailData().addRail(rail);
+                    m_current_scene->getRailData()->addRail(rail);
                     m_rail_visible_map[rail.getUUID()] = true;
                     ev->accept();
                 } else {
@@ -563,7 +574,7 @@ namespace Toolbox::UI {
 
             if (m_current_scene) {
                 RefPtr<Object::GroupSceneObject> root =
-                    m_current_scene->getObjHierarchy().getRoot();
+                    m_current_scene->getObjHierarchy()->getRoot();
                 renderTree(0, root);
             }
 
@@ -573,7 +584,7 @@ namespace Toolbox::UI {
 
             if (m_current_scene) {
                 RefPtr<Object::GroupSceneObject> root =
-                    m_current_scene->getTableHierarchy().getRoot();
+                    m_current_scene->getTableHierarchy()->getRoot();
                 renderTree(0, root);
             }
         }
@@ -903,8 +914,8 @@ namespace Toolbox::UI {
         const float label_width = ImGui::CalcTextSize("ConnectionCount").x;
 
         RefPtr<Rail::RailNode> node = window.m_rail_node_list_selected_nodes[0].m_selected;
-        RefPtr<Rail::Rail> rail =
-            window.m_current_scene->getRailData().getRail(node->getRailUUID());
+        RailData::rail_ptr_t rail =
+            window.m_current_scene->getRailData()->getRail(node->getRailUUID());
 
         bool is_updated = false;
 
@@ -1078,7 +1089,7 @@ namespace Toolbox::UI {
         ImGui::EndGroupPanel();
 
         if (is_updated) {
-            window.m_renderer.updatePaths(window.m_current_scene->getRailData(),
+            window.m_renderer.updatePaths(*window.m_current_scene->getRailData(),
                                           window.m_rail_visible_map);
         }
 
@@ -1171,7 +1182,7 @@ namespace Toolbox::UI {
     void SceneWindow::reassignAllActorPtrs(u32 param) {
         Game::TaskCommunicator &task_communicator =
             MainApplication::instance().getTaskCommunicator();
-        RefPtr<ISceneObject> root = m_current_scene->getObjHierarchy().getRoot();
+        RefPtr<ISceneObject> root = m_current_scene->getObjHierarchy()->getRoot();
         std::vector<RefPtr<ISceneObject>> objects;
         recursiveFlattenActorTree(root, objects);
         double timing = Timing::measure(recursiveAssignActorPtrs, task_communicator, objects);
@@ -1206,9 +1217,9 @@ namespace Toolbox::UI {
                 m_focused_window = EditorWindow::RAIL_TREE;
             }
 
-            const RailData &rail_data = m_current_scene->getRailData();
-            for (size_t i = 0; i < rail_data.rails().size(); ++i) {
-                RefPtr<Rail::Rail> rail = rail_data.rails()[i];
+            RefPtr<RailData> rail_data = m_current_scene->getRailData();
+            for (size_t i = 0; i < rail_data->rails().size(); ++i) {
+                RailData::rail_ptr_t rail = rail_data->rails()[i];
 
                 std::string uid_str = getNodeUID(rail);
                 ImGuiID rail_id     = static_cast<ImGuiID>(rail->getUUID());
@@ -1274,7 +1285,7 @@ namespace Toolbox::UI {
 
                 if (rail_visibility != is_rail_visible) {
                     rail_visibility = is_rail_visible;
-                    m_renderer.updatePaths(m_current_scene->getRailData(), m_rail_visible_map);
+                    m_renderer.updatePaths(*m_current_scene->getRailData(), m_rail_visible_map);
                     m_update_render_objs = true;
                 }
 
@@ -1423,7 +1434,7 @@ namespace Toolbox::UI {
         if (m_current_scene) {
             if (m_update_render_objs || !settings.m_is_rendering_simple) {
                 m_renderables.clear();
-                auto perform_result = m_current_scene->getObjHierarchy().getRoot()->performScene(
+                auto perform_result = m_current_scene->getObjHierarchy()->getRoot()->performScene(
                     delta_time, !settings.m_is_rendering_simple, m_renderables, m_resource_cache,
                     lights);
                 if (!perform_result) {
@@ -2152,20 +2163,20 @@ namespace Toolbox::UI {
                 [this](SelectionNodeInfo<Rail::Rail> info) {
                     auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
                     if (nodes.size() > 0) {
-                        RailData &data        = m_current_scene->getRailData();
-                        size_t selected_index = data.getRailCount();
-                        auto result           = data.getRailIndex(info.m_selected->name());
+                        RefPtr<RailData> data        = m_current_scene->getRailData();
+                        size_t selected_index = data->getRailCount();
+                        auto result           = data->getRailIndex(info.m_selected->name());
                         if (result) {
                             selected_index = result.value();
                         }
                         std::vector<std::string> sibling_names;
-                        for (auto &rail : data.rails()) {
+                        for (auto &rail : data->rails()) {
                             sibling_names.push_back(rail->name());
                         }
                         for (auto &node : nodes) {
                             Rail::Rail new_rail = *node.m_selected;
                             new_rail.setName(Util::MakeNameUnique(new_rail.name(), sibling_names));
-                            data.insertRail(selected_index + 1, new_rail);
+                            data->insertRail(selected_index + 1, new_rail);
                             selected_index += 1;
                         }
                     }
@@ -2175,7 +2186,7 @@ namespace Toolbox::UI {
             .addOption("Delete", {KeyCode::KEY_DELETE},
                        [this](SelectionNodeInfo<Rail::Rail> info) {
                            m_rail_visible_map.erase(info.m_node_id);
-                           m_current_scene->getRailData().removeRail(info.m_selected->getUUID());
+                           m_current_scene->getRailData()->removeRail(info.m_selected->getUUID());
                            m_update_render_objs = true;
                            return;
                        })
@@ -2183,13 +2194,13 @@ namespace Toolbox::UI {
             .addOption("Decimate", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_D},
                        [this](SelectionNodeInfo<Rail::Rail> info) {
                            info.m_selected->decimate(1);
-                           m_renderer.updatePaths(m_current_scene->getRailData(), {});
+                           m_renderer.updatePaths(*m_current_scene->getRailData(), {});
                        })
             .addOption("Subdivide",
                        {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_S},
                        [this](SelectionNodeInfo<Rail::Rail> info) {
                            info.m_selected->subdivide(1);
-                           m_renderer.updatePaths(m_current_scene->getRailData(), {});
+                           m_renderer.updatePaths(*m_current_scene->getRailData(), {});
                        });
     }
 
@@ -2210,20 +2221,20 @@ namespace Toolbox::UI {
                 [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
                     auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
                     if (nodes.size() > 0) {
-                        RailData &data        = m_current_scene->getRailData();
-                        size_t selected_index = data.getRailCount();
-                        auto result           = data.getRailIndex(info[0].m_selected->name());
+                        RefPtr<RailData> data        = m_current_scene->getRailData();
+                        size_t selected_index = data->getRailCount();
+                        auto result           = data->getRailIndex(info[0].m_selected->name());
                         if (result) {
                             selected_index = result.value();
                         }
                         std::vector<std::string> sibling_names;
-                        for (auto &rail : data.rails()) {
+                        for (auto &rail : data->rails()) {
                             sibling_names.push_back(rail->name());
                         }
                         for (auto &node : nodes) {
                             Rail::Rail new_rail = *node.m_selected;
                             new_rail.setName(Util::MakeNameUnique(new_rail.name(), sibling_names));
-                            data.insertRail(selected_index + 1, new_rail);
+                            data->insertRail(selected_index + 1, new_rail);
                             selected_index += 1;
                         }
                     }
@@ -2232,7 +2243,7 @@ namespace Toolbox::UI {
                 })
             .addOption("Delete", {KeyCode::KEY_DELETE},
                        [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
-                           RailData &data = m_current_scene->getRailData();
+                           RailData &data = *m_current_scene->getRailData();
                            for (auto &select : info) {
                                m_rail_visible_map.erase(select.m_node_id);
                                data.removeRail(select.m_selected->getUUID());
@@ -2265,8 +2276,8 @@ namespace Toolbox::UI {
             .addOption(
                 "Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
                 [this](SelectionNodeInfo<Rail::RailNode> info) {
-                    RefPtr<Rail::Rail> rail =
-                        m_current_scene->getRailData().getRail(info.m_selected->getRailUUID());
+                    RailData::rail_ptr_t rail =
+                        m_current_scene->getRailData()->getRail(info.m_selected->getRailUUID());
 
                     glm::vec3 translation;
                     m_renderer.getCameraTranslation(translation);
@@ -2276,7 +2287,7 @@ namespace Toolbox::UI {
                         return;
                     }
 
-                    m_renderer.updatePaths(m_current_scene->getRailData(), m_rail_visible_map);
+                    m_renderer.updatePaths(*m_current_scene->getRailData(), m_rail_visible_map);
                     m_update_render_objs = true;
                     return;
                 })
@@ -2289,7 +2300,7 @@ namespace Toolbox::UI {
                        })
             .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
                        [this](SelectionNodeInfo<Rail::RailNode> info) {
-                           RefPtr<Rail::Rail> rail = m_current_scene->getRailData().getRail(
+                           RailData::rail_ptr_t rail = m_current_scene->getRailData()->getRail(
                                info.m_selected->getRailUUID());
                            size_t selected_index = rail->getNodeCount();
                            auto result           = rail->getNodeIndex(info.m_selected);
@@ -2307,8 +2318,8 @@ namespace Toolbox::UI {
                        })
             .addOption(
                 "Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Rail::RailNode> info) {
-                    RefPtr<Rail::Rail> rail =
-                        m_current_scene->getRailData().getRail(info.m_selected->getRailUUID());
+                    RailData::rail_ptr_t rail =
+                        m_current_scene->getRailData()->getRail(info.m_selected->getRailUUID());
                     rail->removeNode(info.m_selected);
                     m_update_render_objs = true;
                     return Result<void>();
@@ -2331,7 +2342,7 @@ namespace Toolbox::UI {
                        })
             .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
                        [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
-                           RefPtr<Rail::Rail> rail = m_current_scene->getRailData().getRail(
+                           RailData::rail_ptr_t rail = m_current_scene->getRailData()->getRail(
                                info[0].m_selected->getRailUUID());
                            size_t selected_index = rail->getNodeCount();
                            auto result           = rail->getNodeIndex(info[0].m_selected);
@@ -2350,7 +2361,7 @@ namespace Toolbox::UI {
             .addOption("Delete", {KeyCode::KEY_DELETE},
                        [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
                            for (auto &select : info) {
-                               RefPtr<Rail::Rail> rail = m_current_scene->getRailData().getRail(
+                               RailData::rail_ptr_t rail = m_current_scene->getRailData()->getRail(
                                    select.m_selected->getRailUUID());
                                rail->removeNode(select.m_selected);
                            }
@@ -2497,9 +2508,9 @@ namespace Toolbox::UI {
                 }
             }
 
-            m_current_scene->getRailData().addRail(new_rail);
+            m_current_scene->getRailData()->addRail(new_rail);
 
-            m_renderer.updatePaths(m_current_scene->getRailData(), m_rail_visible_map);
+            m_renderer.updatePaths(*m_current_scene->getRailData(), m_rail_visible_map);
             m_update_render_objs = true;
         });
     }
@@ -2535,7 +2546,7 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::saveMimeRail(Buffer &buffer, size_t index) {
-        RefPtr<Rail::Rail> rail = m_current_scene->getRailData().getRail(index);
+        RailData::rail_ptr_t rail = m_current_scene->getRailData()->getRail(index);
         if (!rail) {
             LogError(make_error<void>("Scene Hierarchy", "Failed to get rail").error());
             return;
@@ -2549,7 +2560,7 @@ namespace Toolbox::UI {
             });
     }
 
-    void SceneWindow::saveMimeRailNode(Buffer &buffer, size_t index, RefPtr<Rail::Rail> parent) {
+    void SceneWindow::saveMimeRailNode(Buffer &buffer, size_t index, RailData::rail_ptr_t parent) {
         if (index >= parent->nodes().size()) {
             LogError(make_error<void>("Scene Hierarchy", "Failed to get rail node").error());
             return;
@@ -2570,7 +2581,7 @@ namespace Toolbox::UI {
         u16 orig_index          = buffer.get<u16>(1);  // Index
         UUID64 orig_parent_uuid = buffer.get<UUID64>(3);
 
-        RefPtr<ISceneObject> parent = m_current_scene->getObjHierarchy().findObject(parent_id);
+        RefPtr<ISceneObject> parent = m_current_scene->getObjHierarchy()->findObject(parent_id);
         if (!parent) {
             LogError(make_error<void>("Scene Hierarchy", "Failed to get parent object").error());
             return;
@@ -2578,7 +2589,7 @@ namespace Toolbox::UI {
 
         if (is_internal) {
             RefPtr<ISceneObject> orig_parent =
-                m_current_scene->getObjHierarchy().findObject(orig_parent_uuid);
+                m_current_scene->getObjHierarchy()->findObject(orig_parent_uuid);
             if (!orig_parent) {
                 LogError(make_error<void>("Scene Hierarchy", "Failed to get original parent object")
                              .error());
@@ -2619,7 +2630,7 @@ namespace Toolbox::UI {
 
         // if (is_internal) {
         //     RefPtr<ISceneObject> orig_parent =
-        //         m_current_scene->getObjHierarchy().findObject(orig_parent_uuid);
+        //         m_current_scene->getObjHierarchy()->findObject(orig_parent_uuid);
         //     if (orig_parent) {
         //         TRY(orig_parent->removeChild(orig_index)).error([](const ObjectGroupError &err) {
         //             LogError(err);
@@ -2628,7 +2639,7 @@ namespace Toolbox::UI {
         // }
 
         // RefPtr<ISceneObject> orig_parent =
-        //     m_current_scene->getObjHierarchy().findObject(orig_parent_uuid);
+        //     m_current_scene->getObjHierarchy()->findObject(orig_parent_uuid);
         // if (orig_parent) {
         //     TRY(orig_parent->insertChild(index, obj)).error([](const ObjectGroupError &err) {
         //         LogError(err);
@@ -2648,7 +2659,7 @@ namespace Toolbox::UI {
             return;
         }
 
-        m_current_scene->getRailData().insertRail(index, rail);
+        m_current_scene->getRailData()->insertRail(index, rail);
         m_update_render_objs = true;
     }
 
@@ -2721,7 +2732,7 @@ namespace Toolbox::UI {
         TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", node->type(), node->getNameRef().name());
     }
 
-    void Toolbox::UI::SceneWindow::processRailSelection(RefPtr<Rail::Rail> node, bool is_multi) {
+    void Toolbox::UI::SceneWindow::processRailSelection(RailData::rail_ptr_t node, bool is_multi) {
         ImGuiID rail_id = static_cast<ImGuiID>(node->getUUID());
 
         bool is_rail_selected =
@@ -2789,9 +2800,9 @@ namespace Toolbox::UI {
 
         // Debug log
         {
-            RailData &rail_data = m_current_scene->getRailData();
+            RefPtr<RailData> rail_data = m_current_scene->getRailData();
 
-            RefPtr<Rail::Rail> rail = rail_data.getRail(node->getRailUUID());
+            RailData::rail_ptr_t rail = rail_data->getRail(node->getRailUUID());
             if (!rail) {
                 TOOLBOX_ERROR("Failed to find rail for node.");
                 return;
@@ -2854,10 +2865,10 @@ namespace Toolbox::UI {
     void Toolbox::UI::SceneWindow::_moveNode(const Rail::RailNode &node, size_t index,
                                              UUID64 rail_id, size_t orig_index, UUID64 orig_id,
                                              bool is_internal) {
-        RailData &data                        = m_current_scene->getRailData();
-        std::vector<RefPtr<Rail::Rail>> rails = data.rails();
+        RefPtr<RailData> data                        = m_current_scene->getRailData();
+        std::vector<RailData::rail_ptr_t> rails = data->rails();
 
-        auto new_rail_it = std::find_if(rails.begin(), rails.end(), [&](RefPtr<Rail::Rail> rail) {
+        auto new_rail_it = std::find_if(rails.begin(), rails.end(), [&](RailData::rail_ptr_t rail) {
             return rail->getUUID() == rail_id;
         });
 
@@ -2870,7 +2881,7 @@ namespace Toolbox::UI {
         if (is_internal) {
             auto orig_rail_it =
                 std::find_if(rails.begin(), rails.end(),
-                             [&](RefPtr<Rail::Rail> rail) { return rail->getUUID() == orig_id; });
+                             [&](RailData::rail_ptr_t rail) { return rail->getUUID() == orig_id; });
 
             if (orig_rail_it != rails.end()) {
                 // The node is being moved forward in the same rail

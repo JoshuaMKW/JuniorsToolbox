@@ -20,6 +20,8 @@
 
 #define RENDERER_RAIL_NODE_DIAMETER 200.0f
 
+using namespace Toolbox::Scene;
+
 static std::set<std::string> s_skybox_materials = {"_00_spline", "_01_nyudougumo", "_02_usugumo",
                                                    "_03_sky"};
 
@@ -464,7 +466,7 @@ namespace Toolbox::UI {
     }
 
     void Renderer::initializeData(const SceneInstance &scene) {
-        initializePaths(scene.getRailData(), {});
+        initializePaths(*scene.getRailData(), {});
         initializeBillboards();
     }
 

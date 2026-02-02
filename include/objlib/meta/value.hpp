@@ -615,6 +615,8 @@ namespace Toolbox::Object {
             switch (type) {
             case MetaType::STRING:
                 return meta_value->set<std::string>(value);
+            default:
+                return make_meta_error<bool>("Unreachable", "STRING", "STRING");
             }
         } catch (std::exception &e) {
             return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
@@ -628,7 +630,7 @@ namespace Toolbox::Object {
             case MetaType::STRING:
                 return meta_value->set(std::string(value));
             default:
-                return false;
+                return make_meta_error<bool>("Unreachable", "BOOL", "BOOL");
             }
         } catch (std::exception &e) {
             return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));

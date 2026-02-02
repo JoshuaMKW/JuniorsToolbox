@@ -120,6 +120,8 @@ namespace Toolbox::Object {
             TOOLBOX_DEBUG_LOG_V("[META_VALUE] Bad variant setter: {}", e.what());
             return false;
         }
+
+        return false;
     }
 
     Result<void, JSONError> MetaValue::loadJSON(const nlohmann::json &json_value) {

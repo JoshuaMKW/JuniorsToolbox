@@ -28,6 +28,9 @@
 #include "gui/image/imagepainter.hpp"
 #include "gui/window.hpp"
 
+#include "model/objmodel.hpp"
+#include "model/selection.hpp"
+
 #include "raildialog.hpp"
 #include <gui/context_menu.hpp>
 #include <imgui.h>
@@ -35,7 +38,7 @@
 class ToolboxSceneVerifier : public TaskThread<void> {
 public:
     ToolboxSceneVerifier() = delete;
-    ToolboxSceneVerifier(RefPtr<const SceneInstance> scene, bool check_dependencies) : m_scene(scene), m_check_dependencies(check_dependencies) {}
+    ToolboxSceneVerifier(RefPtr<const Scene::SceneInstance> scene, bool check_dependencies) : m_scene(scene), m_check_dependencies(check_dependencies) {}
 
     void tRun(void *param) override;
 
@@ -44,7 +47,7 @@ public:
     std::string getProgressText() const { return m_progress_text; }
 
 private:
-    RefPtr<const SceneInstance> m_scene;
+    RefPtr<const Scene::SceneInstance> m_scene;
     bool m_check_dependencies = true;
 
     std::string m_progress_text;
@@ -55,7 +58,7 @@ private:
 class ToolboxSceneDependencyMender : public TaskThread<void> {
 public:
     ToolboxSceneDependencyMender() = delete;
-    ToolboxSceneDependencyMender(RefPtr<const SceneInstance> scene)
+    ToolboxSceneDependencyMender(RefPtr<const Scene::SceneInstance> scene)
         : m_scene(scene) {}
 
     void tRun(void *param) override;
@@ -66,7 +69,7 @@ public:
     std::string getProgressText() const { return m_progress_text; }
 
 private:
-    RefPtr<const SceneInstance> m_scene;
+    RefPtr<const Scene::SceneInstance> m_scene;
 
     std::string m_progress_text;
     std::vector<std::string> m_changes;
@@ -99,7 +102,7 @@ namespace Toolbox::UI {
 
         void deregisterOverlay(const std::string &layer_name) { m_render_layers.erase(layer_name); }
 
-        void initToBasic() { m_current_scene = SceneInstance::BasicScene(); }
+        void initToBasic() { m_current_scene = Scene::SceneInstance::BasicScene(); }
         void setIOContextPath(const fs_path &path) { m_io_context_path = path; }
 
         void setStageScenario(u8 stage, u8 scenario);
@@ -201,8 +204,8 @@ namespace Toolbox::UI {
             return {"", "arc", "szs"};
         }
 
-        [[nodiscard]] bool onLoadData(const std::filesystem::path &path) override;
-        [[nodiscard]] bool onSaveData(std::optional<std::filesystem::path> path) override;
+        [[nodiscard]] bool onLoadData(const fs_path &path) override;
+        [[nodiscard]] bool onSaveData(std::optional<fs_path> path) override;
 
         void onAttach() override;
         void onDetach() override;
@@ -216,7 +219,7 @@ namespace Toolbox::UI {
 
     private:
         u8 m_stage = 0xFF, m_scenario = 0xFF;
-        RefPtr<Toolbox::SceneInstance> m_current_scene;
+        RefPtr<Scene::SceneInstance> m_current_scene;
 
         fs_path m_io_context_path;
         bool m_repack_io_busy = false;
@@ -224,6 +227,10 @@ namespace Toolbox::UI {
         // Hierarchy view
         ImGuiTextFilter m_hierarchy_filter;
         std::vector<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_selected_nodes = {};
+
+        RefPtr<SceneObjModel> m_scene_object_model;
+        RefPtr<SceneObjModel> m_table_object_model;
+
         ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_virtual_node_menu;
         ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_physical_node_menu;
         ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_group_node_menu;

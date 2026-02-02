@@ -5,6 +5,7 @@
 #include <J3D/Data/J3DModelInstance.hpp>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <unordered_set>
 
 #include "core/time/timestep.hpp"
 #include "core/types.hpp"
@@ -28,7 +29,7 @@ namespace Toolbox::UI {
         Renderer();
         ~Renderer();
 
-        void initializeData(const SceneInstance &scene);
+        void initializeData(const Scene::SceneInstance &scene);
 
         void updatePaths(const RailData &rail_data, std::unordered_map<UUID64, bool> visible_map) {
             initializePaths(rail_data, visible_map);

@@ -4,7 +4,7 @@
 #include "objlib/utf8_to_sjis.hpp"
 #include "scene/scene.hpp"
 
-namespace Toolbox {
+namespace Toolbox::Scene {
 
     class SceneValidator {
     public:
@@ -14,7 +14,8 @@ namespace Toolbox {
     public:
         SceneValidator(RefPtr<const SceneInstance> scene, bool check_dependencies = true)
             : m_scene_instance(scene), m_check_dependencies(check_dependencies), m_valid(true) {
-            m_total_objects = static_cast<double>(scene->getObjHierarchy().getSize());
+            RefPtr<ObjectHierarchy> obj_hierarchy = scene->getObjHierarchy();
+            m_total_objects = obj_hierarchy ? static_cast<double>(obj_hierarchy->getSize()) : 0.0;
         }
 
     public:
@@ -119,15 +120,17 @@ namespace Toolbox {
     }
 
     Result<ScopePtr<SceneInstance>, SerialError>
-    SceneInstance::FromPath(const std::filesystem::path &root, bool include_custom_objs) {
+    SceneInstance::FromPath(const fs_path &root, bool include_custom_objs) {
         ScopePtr<SceneInstance> scene = make_scoped<SceneInstance>();
         scene->m_root_path            = root;
 
-        scene->m_map_objects   = ObjectHierarchy("Map");
-        scene->m_table_objects = ObjectHierarchy("Table");
+        scene->m_map_objects   = make_referable<ObjectHierarchy>("Map");
+        scene->m_table_objects = make_referable<ObjectHierarchy>("Table");
+        scene->m_rail_info     = make_referable<RailData>();
+        scene->m_message_data  = make_referable<BMG::MessageData>();
 
-        scene->m_map_objects.setIncludeCustomObjects(include_custom_objs);
-        scene->m_table_objects.setIncludeCustomObjects(include_custom_objs);
+        scene->m_map_objects->setIncludeCustomObjects(include_custom_objs);
+        scene->m_table_objects->setIncludeCustomObjects(include_custom_objs);
 
         fs_path scene_bin   = root / "map/scene.bin";
         fs_path tables_bin  = root / "map/tables.bin";
@@ -139,7 +142,7 @@ namespace Toolbox {
             std::ifstream file(scene_bin, std::ios::in | std::ios::binary);
             Deserializer in(file.rdbuf(), scene_bin.string());
 
-            Result<void, SerialError> result = scene->m_map_objects.deserialize(in);
+            Result<void, SerialError> result = scene->m_map_objects->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -150,7 +153,7 @@ namespace Toolbox {
             std::ifstream file(tables_bin, std::ios::in | std::ios::binary);
             Deserializer in(file.rdbuf());
 
-            Result<void, SerialError> result = scene->m_table_objects.deserialize(in);
+            Result<void, SerialError> result = scene->m_table_objects->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -161,7 +164,7 @@ namespace Toolbox {
             std::ifstream file(rail_bin, std::ios::in | std::ios::binary);
             Deserializer in(file.rdbuf());
 
-            Result<void, SerialError> result = scene->m_rail_info.deserialize(in);
+            Result<void, SerialError> result = scene->m_rail_info->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -173,7 +176,7 @@ namespace Toolbox {
             if (file.is_open()) {  // scene.bmg is optional
                 Deserializer in(file.rdbuf());
 
-                Result<void, SerialError> result = scene->m_message_data.deserialize(in);
+                Result<void, SerialError> result = scene->m_message_data->deserialize(in);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
@@ -433,7 +436,7 @@ namespace Toolbox {
         return static_cast<bool>(mender);
     }
 
-    Result<void, SerialError> SceneInstance::saveToPath(const std::filesystem::path &root) {
+    Result<void, SerialError> SceneInstance::saveToPath(const fs_path &root) {
         auto scene_bin   = root / "map/scene.bin";
         auto tables_bin  = root / "map/tables.bin";
         auto rail_bin    = root / "map/scene.ral";
@@ -443,7 +446,7 @@ namespace Toolbox {
             std::ofstream file(scene_bin, std::ios::out | std::ios::binary);
             Serializer out(file.rdbuf(), scene_bin.string());
 
-            auto result = m_map_objects.serialize(out);
+            auto result = m_map_objects->serialize(out);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -453,7 +456,7 @@ namespace Toolbox {
             std::ofstream file(tables_bin, std::ios::out | std::ios::binary);
             Serializer out(file.rdbuf(), scene_bin.string());
 
-            auto result = m_table_objects.serialize(out);
+            auto result = m_table_objects->serialize(out);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -463,7 +466,7 @@ namespace Toolbox {
             std::ofstream file(rail_bin, std::ios::out | std::ios::binary);
             Serializer out(file.rdbuf(), scene_bin.string());
 
-            auto result = m_rail_info.serialize(out);
+            auto result = m_rail_info->serialize(out);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -473,7 +476,7 @@ namespace Toolbox {
             std::ofstream file(message_bin, std::ios::out | std::ios::binary);
             Serializer out(file.rdbuf(), scene_bin.string());
 
-            auto result = m_message_data.serialize(out);
+            auto result = m_message_data->serialize(out);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -491,10 +494,10 @@ namespace Toolbox {
             os << indent_str << "SceneInstance (" << m_root_path->parent_path().filename() << ") {"
                << std::endl;
         }
-        m_map_objects.dump(os, indent + 1, indent_size);
-        m_table_objects.dump(os, indent + 1, indent_size);
-        m_rail_info.dump(os, indent + 1, indent_size);
-        m_message_data.dump(os, indent + 1, indent_size);
+        m_map_objects->dump(os, indent + 1, indent_size);
+        m_table_objects->dump(os, indent + 1, indent_size);
+        m_rail_info->dump(os, indent + 1, indent_size);
+        m_message_data->dump(os, indent + 1, indent_size);
         os << indent_str << "}" << std::endl;
     }
 
@@ -503,16 +506,16 @@ namespace Toolbox {
         scene_instance->m_root_path = m_root_path;
 
         if (deep) {
-            scene_instance->m_map_objects   = *make_deep_clone(m_map_objects);
-            scene_instance->m_table_objects = *make_deep_clone(m_table_objects);
-            scene_instance->m_rail_info     = *make_deep_clone(m_rail_info);
+            scene_instance->m_map_objects   = make_deep_clone(m_map_objects);
+            scene_instance->m_table_objects = make_deep_clone(m_table_objects);
+            scene_instance->m_rail_info     = make_deep_clone(m_rail_info);
             scene_instance->m_message_data  = m_message_data;
             return scene_instance;
         }
 
-        scene_instance->m_map_objects   = *make_clone(m_map_objects);
-        scene_instance->m_table_objects = *make_clone(m_table_objects);
-        scene_instance->m_rail_info     = *make_clone(m_rail_info);
+        scene_instance->m_map_objects   = make_clone(m_map_objects);
+        scene_instance->m_table_objects = make_clone(m_table_objects);
+        scene_instance->m_rail_info     = make_clone(m_rail_info);
         scene_instance->m_message_data  = m_message_data;
         return scene_instance;
     }
@@ -532,7 +535,7 @@ namespace Toolbox {
         }
 
         if (m_parent_stack.empty()) {
-            RefPtr<GroupSceneObject> root = m_scene_instance->getObjHierarchy().getRoot();
+            RefPtr<GroupSceneObject> root = m_scene_instance->getObjHierarchy()->getRoot();
             if (!root || root->type() != obj_type || root->getNameRef().name() != obj_name) {
                 m_valid = false;
                 m_error_callback(std::format(
@@ -657,7 +660,7 @@ namespace Toolbox {
         const TemplateDependencies &dependencies = wizard->m_dependencies;
         for (const TemplateDependencies::ObjectInfo &manager : dependencies.m_managers) {
             RefPtr<ISceneObject> group_obj =
-                m_scene_instance->getObjHierarchy().findObject(manager.m_ancestry);
+                m_scene_instance->getObjHierarchy()->findObject(manager.m_ancestry);
             if (!group_obj || !group_obj->isGroupObject()) {
                 m_error_callback(
                     std::format("Provided manager ancestry '{}' is not a group object!",
@@ -700,7 +703,7 @@ namespace Toolbox {
 
         for (const TemplateDependencies::ObjectInfo &obj : dependencies.m_table_objs) {
             RefPtr<ISceneObject> group_obj =
-                m_scene_instance->getObjHierarchy().findObject(obj.m_ancestry);
+                m_scene_instance->getObjHierarchy()->findObject(obj.m_ancestry);
             if (!group_obj || !group_obj->isGroupObject()) {
                 m_error_callback(
                     std::format("Provided tables.bin ancestry '{}' is not a group object!",
@@ -726,7 +729,7 @@ namespace Toolbox {
     }
 
     SceneValidator &SceneValidator::scopeForAll(foreach_fn fn) {
-        forEach(m_parent_stack.empty() ? m_scene_instance->getObjHierarchy().getRoot()
+        forEach(m_parent_stack.empty() ? m_scene_instance->getObjHierarchy()->getRoot()
                                        : m_parent_stack.top(),
                 fn);
         return *this;
@@ -740,7 +743,7 @@ namespace Toolbox {
         }
 
         if (m_parent_stack.empty()) {
-            RefPtr<GroupSceneObject> root = m_scene_instance->getObjHierarchy().getRoot();
+            RefPtr<GroupSceneObject> root = m_scene_instance->getObjHierarchy()->getRoot();
             if (!root || root->type() != obj_type || root->getNameRef().name() != obj_name) {
                 m_valid = false;
                 m_error_callback(std::format(
@@ -876,7 +879,7 @@ namespace Toolbox {
         const TemplateDependencies &dependencies = wizard->m_dependencies;
         for (const TemplateDependencies::ObjectInfo &manager : dependencies.m_managers) {
             RefPtr<ISceneObject> group_obj =
-                m_scene_instance->getObjHierarchy().findObject(manager.m_ancestry);
+                m_scene_instance->getObjHierarchy()->findObject(manager.m_ancestry);
             if (!group_obj || !group_obj->isGroupObject()) {
                 m_valid = false;
                 m_error_callback(
@@ -947,7 +950,7 @@ namespace Toolbox {
 
         for (const TemplateDependencies::ObjectInfo &obj : dependencies.m_table_objs) {
             RefPtr<ISceneObject> group_obj =
-                m_scene_instance->getObjHierarchy().findObject(obj.m_ancestry);
+                m_scene_instance->getObjHierarchy()->findObject(obj.m_ancestry);
             if (!group_obj || !group_obj->isGroupObject()) {
                 m_valid = false;
                 m_error_callback(
@@ -984,7 +987,7 @@ namespace Toolbox {
     }
 
     SceneMender &SceneMender::scopeForAll(foreach_fn fn) {
-        forEachM(m_parent_stack.empty() ? m_scene_instance->getObjHierarchy().getRoot()
+        forEachM(m_parent_stack.empty() ? m_scene_instance->getObjHierarchy()->getRoot()
                                         : m_parent_stack.top(),
                  fn);
         return *this;
