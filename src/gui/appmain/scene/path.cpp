@@ -17,12 +17,10 @@ out vec4 v_color_geo;
 // Pass the view/projection matrices to the GS, or do it here.
 // Doing it here is usually slightly faster if you don't need world-space logic in GS.
 uniform mat4 u_mvp; // Model-View-Projection Matrix
-uniform float u_point_size; // Size of each point
 
 void main() {
     // Transform to Clip Space, but don't divide by w yet
     gl_Position = u_mvp * vec4(position, 1.0);
-    gl_PointSize = min(u_point_size * 1000, u_point_size * 1000 / gl_Position.w);
     v_color_geo = color;
 }
 )";
@@ -64,8 +62,17 @@ void main() {
     vec2 p2_screen = p2_ndc;
     p2_screen.x *= aspectRatio;
 
+    vec2 diff = p2_screen - p1_screen;
+    float len = length(diff);
+
+    // If the line segment is too short on screen (looking down the line),
+    // normal calculation fails. We simply discard this segment.
+    if (len < 0.0001) {
+        return;
+    }
+
     // 4. Calculate Direction and Normal
-    vec2 dir = normalize(p2_screen - p1_screen);
+    vec2 dir = normalize(diff);
     vec2 normal = vec2(-dir.y, dir.x); // Perpendicular vector (-y, x)
 
     // 5. Calculate Offset size in NDC
@@ -109,37 +116,53 @@ void main() {
 
 in vec4 f_color;
 
-uniform sampler2D spriteTexture;
-uniform bool u_point_mode;
 void main()
 {
-    if(u_point_mode){
-        vec2 p = gl_PointCoord * 2.0 - vec2(1.0);
-        float r = sqrt(dot(p,p));
-        if(dot(p,p) > r || dot(p,p) < r*0.75){
-            discard;
-        } else {
-            gl_FragColor = f_color;
-        }
+     gl_FragColor = f_color;
+})";
+
+    const char *s_point_vtx_shader_source = R"(
+#version 330 core
+
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec4 color;
+
+uniform mat4 u_mvp; // Model-View-Projection Matrix
+uniform float u_point_size; // Size of each point
+
+void main()
+{
+    gl_Position = u_mvp * vec4(position, 1.0);
+    gl_PointSize = min(u_point_size * 1000, u_point_size * 1000 / gl_Position.w);
+})";
+
+    const char *s_point_frg_shader_source = R"(
+#version 330 core
+uniform sampler2D spriteTexture;
+in vec4 line_color;
+uniform bool pointMode;
+void main()
+{
+    vec2 p = gl_PointCoord * 2.0 - vec2(1.0);
+    float r = sqrt(dot(p,p));
+    if(dot(p,p) > r || dot(p,p) < r*0.75) {
+        discard;
     } else {
-        gl_FragColor = f_color;
+        gl_FragColor = vec4(1.0,1.0,1.0,1.0);
     }
 })";
 
     bool PathRenderer::initPathRenderer() {
-
-        if (!Render::CompileShader(s_path_vtx_shader_source, s_path_geo_shader_source, s_path_frg_shader_source,
-                                   m_program)) {
+        if (!Render::CompileShader(s_path_vtx_shader_source, s_path_geo_shader_source,
+                                   s_path_frg_shader_source, m_path_program)) {
             // show the user some error message
             return false;
         }
 
-        m_mvp_uniform       = glGetUniformLocation(m_program, "u_mvp");
-        m_resolution_id     = glGetUniformLocation(m_program, "u_resolution");
-        m_point_size_id     = glGetUniformLocation(m_program, "u_point_size");
-        m_line_color_id     = glGetUniformLocation(m_program, "u_line_color");
-        m_line_thickness_id = glGetUniformLocation(m_program, "u_thickness");
-        m_mode_uniform      = glGetUniformLocation(m_program, "u_point_mode");
+        m_path_mvp_uniform_id = glGetUniformLocation(m_path_program, "u_mvp");
+        m_path_resolution_id  = glGetUniformLocation(m_path_program, "u_resolution");
+        m_path_color_id       = glGetUniformLocation(m_path_program, "u_line_color");
+        m_path_thickness_id   = glGetUniformLocation(m_path_program, "u_thickness");
 
         glGenVertexArrays(1, &m_vao);
         glBindVertexArray(m_vao);
@@ -158,10 +181,19 @@ void main()
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
 
+        if (!Render::CompileShader(s_point_vtx_shader_source, nullptr, s_point_frg_shader_source,
+                                   m_point_program)) {
+            // show the user some error message
+            return false;
+        }
+
+        m_point_mvp_uniform_id = glGetUniformLocation(m_point_program, "u_mvp");
+        m_point_size_id        = glGetUniformLocation(m_point_program, "u_point_size");
+
         return true;
     }
 
-    PathRenderer::PathRenderer() : m_resolution() {}
+    PathRenderer::PathRenderer() : m_resolution(), m_vertex_count(0) {}
 
     PathRenderer::~PathRenderer() {
         // This should check
@@ -203,8 +235,7 @@ void main()
 
                 PathConnection p_connection{};
                 p_connection.m_point = {
-                    node->getPosition(),
-                    {node_color.m_r, node_color.m_g, node_color.m_b, 1.0f}
+                    node->getPosition(), {node_color.m_r, node_color.m_g, node_color.m_b, 1.0f}
                 };
 
                 for (Rail::Rail::node_ptr_t connection : rail->getNodeConnections(node)) {
@@ -218,7 +249,12 @@ void main()
         }
 
         std::vector<PathPoint> buffer;
+        m_path_starts.clear();
+        m_path_sizes.clear();
+
         for (auto &connection : m_path_connections) {
+            m_path_starts.push_back(static_cast<GLuint>(buffer.size()));
+            m_path_sizes.push_back(static_cast<GLsizei>(connection.m_connections.size() * 2));
             // For the connecting points, we adjust back the end and add an arrowhead
             for (auto &point : connection.m_connections) {
                 buffer.push_back(connection.m_point);
@@ -226,7 +262,7 @@ void main()
             }
         }
 
-        m_vertex_count = buffer.size();
+        m_vertex_count = static_cast<GLsizei>(buffer.size());
 
         glBufferData(GL_ARRAY_BUFFER, sizeof(PathPoint) * buffer.size(), buffer.data(),
                      GL_DYNAMIC_DRAW);
@@ -243,30 +279,33 @@ void main()
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+        glDisable(GL_CULL_FACE);
         glEnable(GL_PROGRAM_POINT_SIZE);
 
         glm::mat4 mvp = camera->getProjMatrix() * camera->getViewMatrix() * glm::mat4(1.0);
 
-        glUseProgram(m_program);
-
-        glBindVertexArray(m_vao);
-
-        glUniform1f(m_point_size_id, m_point_size);
-        glUniform1f(m_line_thickness_id, m_line_thickness);
-        glUniform2f(m_resolution_id, m_resolution.x, m_resolution.y);
-        glUniformMatrix4fv(m_mvp_uniform, 1, 0, &mvp[0][0]);
-
+        // Render the lines
         {
-            GLint start = 0;
+            glUseProgram(m_path_program);
 
-            glUniform1i(m_mode_uniform, GL_FALSE);
-            glDrawArrays(GL_LINES, 0, m_vertex_count);
+            glBindVertexArray(m_vao);
+
+            glUniform1f(m_path_thickness_id, m_path_thickness);
+            glUniform2f(m_path_resolution_id, m_resolution.x, m_resolution.y);
+            glUniformMatrix4fv(m_path_mvp_uniform_id, 1, 0, &mvp[0][0]);
+
+            for (size_t i = 0; i < m_path_starts.size(); ++i) {
+                glDrawArrays(GL_LINE_STRIP, m_path_starts[i], m_path_sizes[i]);
+            }
         }
 
+        // Render the points
         {
-            GLint start = 0;
+            glUseProgram(m_point_program);
+            glUniform1f(m_point_size_id, m_point_size);
+            glUniformMatrix4fv(m_point_mvp_uniform_id, 1, 0, &mvp[0][0]);
 
-            glUniform1i(m_mode_uniform, GL_TRUE);
+            GLint start = 0;
             for (auto &connection : m_path_connections) {
                 // +1 for self
                 glDrawArrays(GL_POINTS, start, 1);

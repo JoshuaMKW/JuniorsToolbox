@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <gui/appmain/scene/camera.hpp>
 #include <imgui.h>
@@ -34,8 +35,8 @@ namespace Toolbox::UI {
         [[nodiscard]] float getPointSize() const { return m_point_size; }
         void setPointSize(float size) { m_point_size = size; }
 
-        [[nodiscard]] float getLineThickness() const { return m_line_thickness; }
-        void setLineThickness(float thickness) { m_line_thickness = thickness; }
+        [[nodiscard]] float getLineThickness() const { return m_path_thickness; }
+        void setLineThickness(float thickness) { m_path_thickness = thickness; }
 
         void setScreenResolution(float x, float y) { m_resolution = glm::vec2(x, y); }
 
@@ -43,21 +44,25 @@ namespace Toolbox::UI {
         void drawPaths(Camera *camera);
 
     private:
-        uint32_t m_program           = 0;
-        uint32_t m_mvp_uniform       = 0;
-        uint32_t m_resolution_id     = 0;
-        uint32_t m_point_size_id     = 0;
-        uint32_t m_line_color_id     = 0;
-        uint32_t m_line_thickness_id = 0;
-        uint32_t m_mode_uniform      = 0;
+        uint32_t m_path_program        = 0;
+        uint32_t m_path_mvp_uniform_id = 0;
+        uint32_t m_path_resolution_id  = 0;
+        uint32_t m_path_color_id       = 0;
+        uint32_t m_path_thickness_id   = 0;
+
+        uint32_t m_point_program        = 0;
+        uint32_t m_point_mvp_uniform_id = 0;
+        uint32_t m_point_size_id        = 0;
 
         uint32_t m_vao = 0, m_vbo = 0;
 
         glm::vec2 m_resolution;
         float m_point_size     = 25.0f;
-        float m_line_thickness = 5.0f;
+        float m_path_thickness = 5.0f;
         std::vector<PathConnection> m_path_connections;
 
-        size_t m_vertex_count;
+        GLsizei m_vertex_count;
+        std::vector<GLuint> m_path_starts;
+        std::vector<GLsizei> m_path_sizes;
     };
 }  // namespace Toolbox::UI
