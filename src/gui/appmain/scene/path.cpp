@@ -150,7 +150,7 @@ void main()
         return true;
     }
 
-    PathRenderer::PathRenderer() : m_resolution(glm::identity<glm::vec2>()) {}
+    PathRenderer::PathRenderer() : m_resolution() {}
 
     PathRenderer::~PathRenderer() {
         // This should check
