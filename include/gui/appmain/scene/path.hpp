@@ -57,5 +57,7 @@ namespace Toolbox::UI {
         float m_point_size     = 25.0f;
         float m_line_thickness = 5.0f;
         std::vector<PathConnection> m_path_connections;
+
+        size_t m_vertex_count;
     };
 }  // namespace Toolbox::UI

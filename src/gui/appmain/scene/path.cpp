@@ -23,6 +23,7 @@ void main() {
     // Transform to Clip Space, but don't divide by w yet
     gl_Position = u_mvp * vec4(position, 1.0);
     gl_PointSize = min(u_point_size * 1000, u_point_size * 1000 / gl_Position.w);
+    v_color_geo = color;
 }
 )";
 
@@ -31,6 +32,10 @@ void main() {
 
 layout (lines) in;                              // Input type: Lines
 layout (triangle_strip, max_vertices = 4) out;  // Output type: Strip
+
+in vec4 v_color_geo[];
+
+out vec4 f_color;
 
 uniform float u_thickness;    // Desired thickness in pixels
 uniform vec2  u_resolution; // Viewport dimensions (width, height) in pixels
@@ -50,7 +55,7 @@ void main() {
     // In NDC, the screen is a square [-1, 1]. On a wide monitor, this stretches.
     // We convert to "Screen Space" relative units to calculate the correct normal.
     // Aspect Ratio = Width / Height
-    float aspectRatio = u_viewportSize.x / u_viewportSize.y;
+    float aspectRatio = u_resolution.x / u_resolution.y;
     
     // Scale X by aspect ratio to work in a square coordinate system
     vec2 p1_screen = p1_ndc;
@@ -68,10 +73,12 @@ void main() {
     // NDC size is 2.0 (from -1 to 1).
     // So: (Thickness / ViewportHeight) * 2.0
     // We divide by viewport height because Y is our non-stretched reference axis.
-    vec2 offset = normal * (u_thickness / u_viewportSize.y);
+    vec2 offset = normal * (u_thickness / u_resolution.y);
     
     // Undo the aspect ratio adjustment for the X offset so it fits back into NDC
     offset.x /= aspectRatio;
+
+    f_color = v_color_geo[0];
 
     // 6. Emit Vertices
     // We need to output in Clip Space (multiply by w back in)
@@ -82,6 +89,8 @@ void main() {
     // Vertex 2: P1 - Offset
     gl_Position = vec4((p1_ndc - offset) * p1.w, p1.z, p1.w);
     EmitVertex();
+
+    f_color = v_color_geo[1];
 
     // Vertex 3: P2 + Offset
     gl_Position = vec4((p2_ndc + offset) * p2.w, p2.z, p2.w);
@@ -97,8 +106,10 @@ void main() {
 
     const char *s_path_frg_shader_source = R"(
 #version 330 core
+
+in vec4 f_color;
+
 uniform sampler2D spriteTexture;
-uniform vec4 u_line_color;
 uniform bool u_point_mode;
 void main()
 {
@@ -108,16 +119,16 @@ void main()
         if(dot(p,p) > r || dot(p,p) < r*0.75){
             discard;
         } else {
-            gl_FragColor = vec4(1.0,1.0,1.0,1.0);
+            gl_FragColor = f_color;
         }
     } else {
-        gl_FragColor = u_line_color;
+        gl_FragColor = f_color;
     }
 })";
 
     bool PathRenderer::initPathRenderer() {
 
-        if (!Render::CompileShader(s_path_vtx_shader_source, nullptr, s_path_frg_shader_source,
+        if (!Render::CompileShader(s_path_vtx_shader_source, s_path_geo_shader_source, s_path_frg_shader_source,
                                    m_program)) {
             // show the user some error message
             return false;
@@ -215,7 +226,9 @@ void main()
             }
         }
 
-        glBufferData(GL_ARRAY_BUFFER, sizeof(PathPoint) * buffer.size(), &buffer[0],
+        m_vertex_count = buffer.size();
+
+        glBufferData(GL_ARRAY_BUFFER, sizeof(PathPoint) * buffer.size(), buffer.data(),
                      GL_DYNAMIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
@@ -247,50 +260,7 @@ void main()
             GLint start = 0;
 
             glUniform1i(m_mode_uniform, GL_FALSE);
-            for (auto &connection : m_path_connections) {
-                for (size_t i = 0; i < connection.m_connections.size(); ++i) {
-                    const PathPoint &self_point = connection.m_point;
-                    const PathPoint &to_point   = connection.m_connections[i];
-
-                    // Calculate the direction vector of the line segment
-                    glm::vec3 dir = glm::normalize(to_point.m_position - self_point.m_position);
-
-                    // Shorten the line by some factor (e.g., arrowhead size)
-                    glm::vec3 adjusted_end_pos = to_point.m_position - dir * s_arrow_head_size;
-
-                    // Update the buffer with the new end point
-                    PathPoint adjusted_end_point = {adjusted_end_pos, to_point.m_color};
-                    /*glBufferSubData(GL_SHADER_STORAGE_BUFFER, start * sizeof(PathPoint) + (i + 1)
-                       *
-                       sizeof(PathPoint), sizeof(PathPoint), &adjusted_end_point);*/
-
-                    // Draw the shortened line segment
-                    glDrawArrays(GL_LINE_STRIP, start, 2);
-                    start += 2;
-
-                    //// Draw arrowhead here (this could be a separate VAO/VBO setup for drawing a
-                    //// cone or a simple triangle) For a simple triangle arrowhead:
-                    // glm::quat leftRot =
-                    //     glm::rotate(rotQuat, glm::radians(150.0f), glm::vec3(0, 0, 1));
-                    // glm::quat rightRot =
-                    //     glm::rotate(rotQuat, glm::radians(210.0f), glm::vec3(0, 0, 1));
-
-                    // glm::vec3 left  = glm::rotate(leftRot, dir) * s_arrow_head_size;
-                    // glm::vec3 right = glm::rotate(rightRot, dir) * s_arrow_head_size;
-
-                    // PathPoint arrowhead[3] = {
-                    //     PathPoint(newEndPoint, line[i + 1].m_color, line[i + 1].m_point_size),
-                    //     PathPoint(newEndPoint + left, line[i + 1].m_color,
-                    //               line[i + 1].m_point_size),
-                    //     PathPoint(newEndPoint + right, line[i + 1].m_color,
-                    //               line[i + 1].m_point_size)};
-
-                    // glBufferSubData(GL_ARRAY_BUFFER, start * sizeof(PathPoint),
-                    //                 3 * sizeof(PathPoint), arrowhead);
-                    // glDrawArrays(GL_TRIANGLES, start, 3);
-                    // start += 3;
-                }
-            }
+            glDrawArrays(GL_LINES, 0, m_vertex_count);
         }
 
         {

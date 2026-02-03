@@ -251,7 +251,7 @@ namespace Toolbox {
 
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(m_render_window, false);
-        ImGui_ImplOpenGL3_Init("#version 150");
+        ImGui_ImplOpenGL3_Init("#version 460");
 
         ImGuiPlatformIO &platform_io      = ImGui::GetPlatformIO();
         platform_io.Platform_CreateWindow = ImGui_ImplGlfw_CreateWindow_Ex;
