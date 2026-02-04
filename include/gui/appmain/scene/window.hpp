@@ -26,6 +26,7 @@
 #include "gui/appmain/scene/path.hpp"
 #include "gui/appmain/scene/renderer.hpp"
 #include "gui/image/imagepainter.hpp"
+#include "gui/selection.hpp"
 #include "gui/window.hpp"
 
 #include "model/objmodel.hpp"
@@ -113,7 +114,7 @@ namespace Toolbox::UI {
         void onRenderBody(TimeStep delta_time) override;
 
         void renderHierarchy();
-        void renderTree(size_t node_index, RefPtr<Object::ISceneObject> node);
+        void renderObjectTree(const ModelIndex &index);
         void renderRailEditor();
         void renderScene(TimeStep delta_time);
         void renderDolphin(TimeStep delta_time);
@@ -230,6 +231,9 @@ namespace Toolbox::UI {
 
         RefPtr<SceneObjModel> m_scene_object_model;
         RefPtr<SceneObjModel> m_table_object_model;
+
+        ModelSelectionManager m_scene_selection_mgr;
+        ModelSelectionManager m_table_selection_mgr;
 
         ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_virtual_node_menu;
         ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_physical_node_menu;

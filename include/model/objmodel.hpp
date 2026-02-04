@@ -77,6 +77,7 @@ namespace Toolbox {
         void setData(const ModelIndex &index, std::any data, int role) override;
 
     public:
+        [[nodiscard]] ModelIndex getIndex(RefPtr<ISceneObject> object) const;
         [[nodiscard]] ModelIndex getIndex(const UUID64 &uuid) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
@@ -123,6 +124,7 @@ namespace Toolbox {
         [[nodiscard]] std::any getData_(const ModelIndex &index, int role) const;
         void setData_(const ModelIndex &index, std::any data, int role) const;
 
+        [[nodiscard]] ModelIndex getIndex_(RefPtr<ISceneObject> object) const;
         [[nodiscard]] ModelIndex getIndex_(const UUID64 &uuid) const;
         [[nodiscard]] ModelIndex getIndex_(int64_t row, int64_t column,
                                            const ModelIndex &parent = ModelIndex()) const;

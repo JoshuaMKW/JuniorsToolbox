@@ -143,6 +143,15 @@ namespace Toolbox::UI {
 
             if (result) {
                 m_io_context_path = path;
+
+                m_scene_object_model->initialize(*m_current_scene->getObjHierarchy());
+                m_table_object_model->initialize(*m_current_scene->getTableHierarchy());
+
+                m_scene_selection_mgr = ModelSelectionManager(m_scene_object_model);
+                m_table_selection_mgr = ModelSelectionManager(m_table_object_model);
+
+                m_scene_selection_mgr.setDeepSpans(false);
+                m_table_selection_mgr.setDeepSpans(false);
             }
 
             return result;
@@ -191,6 +200,9 @@ namespace Toolbox::UI {
 
     void SceneWindow::onAttach() {
         m_properties_render_handler = renderEmptyProperties;
+
+        m_scene_object_model = make_referable<SceneObjModel>();
+        m_table_object_model = make_referable<SceneObjModel>();
 
         buildContextMenuVirtualObj();
         buildContextMenuGroupObj();
@@ -575,7 +587,7 @@ namespace Toolbox::UI {
             if (m_current_scene) {
                 RefPtr<Object::GroupSceneObject> root =
                     m_current_scene->getObjHierarchy()->getRoot();
-                renderTree(0, root);
+                renderObjectTree(0, root);
             }
 
             ImGui::Spacing();
@@ -585,7 +597,7 @@ namespace Toolbox::UI {
             if (m_current_scene) {
                 RefPtr<Object::GroupSceneObject> root =
                     m_current_scene->getTableHierarchy()->getRoot();
-                renderTree(0, root);
+                renderObjectTree(0, root);
             }
         }
         ImGui::End();
@@ -596,7 +608,7 @@ namespace Toolbox::UI {
         }
     }
 
-    void SceneWindow::renderTree(size_t node_index, RefPtr<Toolbox::Object::ISceneObject> node) {
+    void SceneWindow::renderObjectTree(const ModelIndex &index) {
         constexpr auto dir_flags = ImGuiTreeNodeFlags_OpenOnArrow |
                                    ImGuiTreeNodeFlags_OpenOnDoubleClick |
                                    ImGuiTreeNodeFlags_SpanFullWidth;
@@ -604,6 +616,8 @@ namespace Toolbox::UI {
         constexpr auto file_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth;
 
         constexpr auto node_flags = dir_flags | ImGuiTreeNodeFlags_DefaultOpen;
+
+        RefPtr<ISceneObject> node = m_scene_object_model->getObjectRef(index);
 
         bool multi_select     = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
         bool needs_scene_sync = node->getTransform() ? false : true;
@@ -614,12 +628,7 @@ namespace Toolbox::UI {
         std::string node_uid_str = getNodeUID(node);
         ImGuiID tree_node_id     = static_cast<ImGuiID>(node->getUUID());
 
-        auto node_it =
-            std::find_if(m_hierarchy_selected_nodes.begin(), m_hierarchy_selected_nodes.end(),
-                         [&](const SelectionNodeInfo<Object::ISceneObject> &other) {
-                             return other.m_node_id == tree_node_id;
-                         });
-        bool node_already_clicked = node_it != m_hierarchy_selected_nodes.end();
+        const bool node_selected = m_scene_selection_mgr.getState().isSelected(index);
 
         bool node_visible    = node->getIsPerforming();
         bool node_visibility = node->getCanPerform();
@@ -636,14 +645,15 @@ namespace Toolbox::UI {
 
         if (node->isGroupObject()) {
             if (is_filtered_out) {
-                for (size_t i = 0; i < node->getChildren().size(); ++i) {
-                    renderTree(i, node->getChildren()[i]);
+                for (size_t i = 0; i < m_scene_object_model->getRowCount(index); ++i) {
+                    ModelIndex child_index = m_scene_object_model->getIndex(i, 0, index);
+                    renderObjectTree(child_index);
                 }
             } else {
                 if (node_visibility) {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(),
                                                   node->getParent() ? dir_flags : node_flags,
-                                                  node_already_clicked, &node_visible);
+                                                  node_selected, &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
@@ -651,7 +661,7 @@ namespace Toolbox::UI {
                 } else {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(),
                                                   node->getParent() ? dir_flags : node_flags,
-                                                  node_already_clicked);
+                                                  node_selected);
                 }
 
                 // Drag and drop for OBJECT
@@ -661,12 +671,16 @@ namespace Toolbox::UI {
                     ImVec2 item_pos  = ImGui::GetItemRectMin();
 
                     if (ImGui::BeginDragDropSource()) {
-                        Toolbox::Buffer buffer;
-                        saveMimeObject(buffer, node_index, get_shared_ptr(*node->getParent()));
-                        ImGui::SetDragDropPayload("toolbox/scene/object", buffer.buf(),
-                                                  buffer.size(), ImGuiCond_Once);
-                        ImGui::Text("Object: %s", node->getNameRef().name().data());
-                        ImGui::EndDragDropSource();
+                        ScopePtr<MimeData> mime_data = m_scene_selection_mgr.actionCopySelection();
+                        if (mime_data) {
+                            std::optional<Buffer> buffer = mime_data->get_data("toolbox/scene/object");
+                            if (buffer) {
+                                ImGui::SetDragDropPayload("toolbox/scene/object", buffer->buf(),
+                                                          buffer->size(), ImGuiCond_Once);
+                                ImGui::Text("Object: %s", node->getNameRef().name().data());
+                                ImGui::EndDragDropSource();
+                            }
+                        }
                     }
 
                     ImGuiDropFlags drop_flags = ImGuiDropFlags_None;
@@ -727,15 +741,9 @@ namespace Toolbox::UI {
                     m_rail_list_selected_nodes.clear();
                     m_rail_node_list_selected_nodes.clear();
 
-                    if (multi_select) {
-                        if (node_it == m_hierarchy_selected_nodes.end())
-                            m_hierarchy_selected_nodes.push_back(node_info);
-                    } else {
-                        m_hierarchy_selected_nodes.clear();
-                        m_hierarchy_selected_nodes.push_back(node_info);
-                    }
+                    m_scene_selection_mgr.actionSelectIndex(index);
 
-                    if (m_hierarchy_selected_nodes.size() == 1) {
+                    if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
                         for (auto &member : node->getMembers()) {
                             member->syncArray();
                             auto prop = createProperty(member);
@@ -754,7 +762,7 @@ namespace Toolbox::UI {
 
                 if (node_open) {
                     for (size_t i = 0; i < node->getChildren().size(); ++i) {
-                        renderTree(i, node->getChildren()[i]);
+                        renderObjectTree(i, node->getChildren()[i]);
                     }
                     ImGui::TreePop();
                 }
@@ -763,14 +771,14 @@ namespace Toolbox::UI {
             if (!is_filtered_out) {
                 if (node_visibility) {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags,
-                                                  node_already_clicked, &node_visible);
+                                                  node_selected, &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
                     node_open =
-                        ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_already_clicked);
+                        ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_selected);
                 }
 
                 // Drag and drop for OBJECT
@@ -839,7 +847,7 @@ namespace Toolbox::UI {
                         m_hierarchy_selected_nodes.push_back(node_info);
                     }
 
-                    if (m_hierarchy_selected_nodes.size() == 1) {
+                    if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
                         for (auto &member : node->getMembers()) {
                             member->syncArray();
                             auto prop = createProperty(member);
@@ -2715,7 +2723,7 @@ namespace Toolbox::UI {
             m_hierarchy_selected_nodes.push_back(node_info);
         }
 
-        if (m_hierarchy_selected_nodes.size() == 1) {
+        if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
             for (auto &member : node->getMembers()) {
                 member->syncArray();
                 auto prop = createProperty(member);
