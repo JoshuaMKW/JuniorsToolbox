@@ -230,8 +230,10 @@ void main()
                 float node_lerp       = static_cast<float>(j) / (node_count - 1);
                 float node_saturation = std::lerp(0.5f, 1.0f, node_lerp);
                 float node_brightness = std::lerp(1.0f, 0.5f, node_lerp);
-                auto node_color =
-                    Color::HSVToColor<Color::RGBShader>(node_hue, node_saturation, node_brightness);
+                Color::RGBShader node_color =
+                    m_path_colors ?
+                    Color::HSVToColor<Color::RGBShader>(node_hue, node_saturation, node_brightness) :
+                    Color::RGBShader(0.65f, 0.65f, 0.15f);
 
                 PathConnection p_connection{};
                 p_connection.m_point = {

@@ -265,6 +265,9 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::onImGuiPostUpdate(TimeStep delta_time) {
+        const AppSettings &settings =
+            MainApplication::instance().getSettingsManager().getCurrentProfile();
+
         if (m_current_scene) {
             std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
             for (auto &rail : m_current_scene->getRailData()->rails()) {
@@ -336,6 +339,9 @@ namespace Toolbox::UI {
             m_selection_transforms_needs_update = false;
         }
 
+        bool should_update_paths =
+            m_renderer.isUniqueRailColors() != settings.m_is_unique_rail_color;
+
         if (m_renderer.isGizmoManipulated()) {
             glm::mat4x4 gizmo_total_delta = m_renderer.getGizmoTotalDelta();
 
@@ -367,7 +373,7 @@ namespace Toolbox::UI {
                     i++;
                 }
 
-                m_renderer.updatePaths(*m_current_scene->getRailData(), {});
+                should_update_paths = true;
             }
 
             if (!m_rail_node_list_selected_nodes.empty()) {
@@ -387,10 +393,15 @@ namespace Toolbox::UI {
                     i++;
                 }
 
-                m_renderer.updatePaths(*m_current_scene->getRailData(), {});
+                should_update_paths = true;
             }
 
             m_gizmo_maniped = true;
+        }
+
+        if (should_update_paths) {
+            m_renderer.setUniqueRailColors(settings.m_is_unique_rail_color);
+            m_renderer.updatePaths(*m_current_scene->getRailData(), {});
         }
 
         // Refresh the selection transforms so new gizmo manips don't reset

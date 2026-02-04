@@ -31,6 +31,9 @@ namespace Toolbox::UI {
 
         void initializeData(const Scene::SceneInstance &scene);
 
+        [[nodiscard]] bool isUniqueRailColors() { return m_path_renderer.isUniqueColors(); }
+        void setUniqueRailColors(bool is_colors) { m_path_renderer.setUniqueColors(is_colors); }
+
         void updatePaths(const RailData &rail_data, std::unordered_map<UUID64, bool> visible_map) {
             initializePaths(rail_data, visible_map);
         }

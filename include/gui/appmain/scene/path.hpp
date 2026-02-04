@@ -32,6 +32,9 @@ namespace Toolbox::UI {
     public:
         [[nodiscard]] bool initPathRenderer();
 
+        [[nodiscard]] bool isUniqueColors() { return m_path_colors; }
+        void setUniqueColors(bool is_colors) { m_path_colors = is_colors; }
+
         [[nodiscard]] float getPointSize() const { return m_point_size; }
         void setPointSize(float size) { m_point_size = size; }
 
@@ -59,6 +62,8 @@ namespace Toolbox::UI {
         glm::vec2 m_resolution;
         float m_point_size     = 25.0f;
         float m_path_thickness = 5.0f;
+        bool m_path_colors     = true;
+
         std::vector<PathConnection> m_path_connections;
 
         GLsizei m_vertex_count;
