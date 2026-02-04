@@ -315,12 +315,15 @@ namespace Toolbox::UI {
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
 
         if (!m_path_renderer.initPathRenderer()) {
-            // show some error
+            TOOLBOX_ERROR("[RENDERER] Failed to initialize the path renderer!");
         }
+
+        m_path_renderer.setLineThickness(5.0f);
+        m_path_renderer.setPointSize(128.0f);
 
         // 128x128 billboards, 10 unique images
         if (!m_billboard_renderer.initBillboardRenderer(RENDERER_RAIL_NODE_DIAMETER, 10)) {
-            // show some error
+            TOOLBOX_ERROR("[RENDERER] Failed to initialize the billboard renderer!");
         }
 
         m_billboard_renderer.loadBillboardTexture("res/question.png", 0);
@@ -454,6 +457,7 @@ namespace Toolbox::UI {
                 J3D::Rendering::SortPackets(models, position);
             J3D::Rendering::Render(delta_time, view, projection, packets);
 
+            m_path_renderer.setScreenResolution(m_render_size.x, m_render_size.y);
             m_path_renderer.drawPaths(&m_camera);
             m_billboard_renderer.drawBillboards(&m_camera);
 

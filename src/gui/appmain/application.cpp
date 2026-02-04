@@ -24,13 +24,14 @@
 
 #include "core/core.hpp"
 #include "core/input/input.hpp"
+
 #include "dolphin/hook.hpp"
+
 #include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/font.hpp"
 #include "gui/imgui_ext.hpp"
 #include "gui/logging/errors.hpp"
 #include "gui/logging/window.hpp"
-
 #include "gui/appmain/application.hpp"
 #include "gui/appmain/debugger/window.hpp"
 #include "gui/appmain/pad/window.hpp"
@@ -43,10 +44,13 @@
 #include "gui/appmain/themes.hpp"
 #include "gui/appmain/updater/modal.hpp"
 #include "gui/appmain/window.hpp"
-
 #include "gui/util.hpp"
+
 #include "platform/service.hpp"
+#include "platform/webbrowser.hpp"
+
 #include "scene/layout.hpp"
+
 #include <nfd_glfw3.h>
 
 // void ImGuiSetupTheme(bool, float);
@@ -251,7 +255,7 @@ namespace Toolbox {
 
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(m_render_window, false);
-        ImGui_ImplOpenGL3_Init("#version 150");
+        ImGui_ImplOpenGL3_Init("#version 460");
 
         ImGuiPlatformIO &platform_io      = ImGui::GetPlatformIO();
         platform_io.Platform_CreateWindow = ImGui_ImplGlfw_CreateWindow_Ex;
@@ -844,12 +848,30 @@ namespace Toolbox {
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu(ICON_FA_QUESTION)) {
+        if (ImGui::BeginMenu("Help")) {
+            ImGui::SeparatorText("Documentation");
+
+            if (ImGui::MenuItem("Sunshine Wiki")) {
+                Platform::TryOpenBrowserURL("https://smswiki.shoutwiki.com/wiki/Main_Page");
+            }
+            if (ImGui::MenuItem("Sunshine RAM Map")) {
+                Platform::TryOpenBrowserURL("https://docs.google.com/spreadsheets/d/1ElTW-akaTUF9OC2pIFR9-7aVPwpJ54AdEVJyJ_jvg0E");
+            }
+            if (ImGui::MenuItem("Sunshine Decomp")) {
+                Platform::TryOpenBrowserURL("https://github.com/doldecomp/sms");
+            }
+            if (ImGui::MenuItem("Sunshine C++ Interfaces")) {
+                Platform::TryOpenBrowserURL("https://github.com/DotKuribo/SunshineHeaderInterface/tree/main/include");
+            }
+
+            ImGui::SeparatorText("This Program");
+
             if (ImGui::MenuItem("About")) {
                 showInfoModal(nullptr, "About Junior's Toolbox",
                               "Junior's Toolbox is a really cool program!\n\n- JoshuaMK 2026 "
                               "<joshuamkw2002@gmail.com>");
             }
+
             ImGui::EndMenu();
         }
 

@@ -180,6 +180,20 @@ namespace Toolbox::UI {
             root_path = path.value();
         }
 
+        const AppSettings &settings =
+            MainApplication::instance().getSettingsManager().getCurrentProfile();
+
+        if (settings.m_is_file_backup_allowed) {
+            const fs_path src_path = root_path.parent_path();
+            const fs_path dst_path = fs_path(src_path).replace_extension(".bak");
+            auto result            = Filesystem::copy(src_path, dst_path,
+                                                      Filesystem::copy_options::recursive |
+                                                          Filesystem::copy_options::overwrite_existing);
+            if (!result) {
+                LogError(result.error());
+            }
+        }
+
         auto result = m_current_scene->saveToPath(root_path);
         if (!result) {
             LogError(result.error());
@@ -190,6 +204,7 @@ namespace Toolbox::UI {
             MainApplication::instance().getSettingsManager().getCurrentProfile();
         if (cur_settings.m_repack_scenes_on_save && m_current_scene->rootPath().has_value()) {
             m_repack_io_busy = true;
+
             MainApplication::instance().dispatchEvent<ProjectPackEvent, true>(
                 0, m_current_scene->rootPath().value().parent_path(), true,
                 [&]() { m_repack_io_busy = false; });
@@ -262,6 +277,9 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::onImGuiPostUpdate(TimeStep delta_time) {
+        const AppSettings &settings =
+            MainApplication::instance().getSettingsManager().getCurrentProfile();
+
         if (m_current_scene) {
             std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
             for (auto &rail : m_current_scene->getRailData()->rails()) {
@@ -333,6 +351,9 @@ namespace Toolbox::UI {
             m_selection_transforms_needs_update = false;
         }
 
+        bool should_update_paths =
+            m_renderer.isUniqueRailColors() != settings.m_is_unique_rail_color;
+
         if (m_renderer.isGizmoManipulated()) {
             glm::mat4x4 gizmo_total_delta = m_renderer.getGizmoTotalDelta();
 
@@ -364,7 +385,7 @@ namespace Toolbox::UI {
                     i++;
                 }
 
-                m_renderer.updatePaths(*m_current_scene->getRailData(), {});
+                should_update_paths = true;
             }
 
             if (!m_rail_node_list_selected_nodes.empty()) {
@@ -384,10 +405,15 @@ namespace Toolbox::UI {
                     i++;
                 }
 
-                m_renderer.updatePaths(*m_current_scene->getRailData(), {});
+                should_update_paths = true;
             }
 
             m_gizmo_maniped = true;
+        }
+
+        if (should_update_paths) {
+            m_renderer.setUniqueRailColors(settings.m_is_unique_rail_color);
+            m_renderer.updatePaths(*m_current_scene->getRailData(), {});
         }
 
         // Refresh the selection transforms so new gizmo manips don't reset
