@@ -171,6 +171,20 @@ namespace Toolbox::UI {
             root_path = path.value();
         }
 
+        const AppSettings &settings =
+            MainApplication::instance().getSettingsManager().getCurrentProfile();
+
+        if (settings.m_is_file_backup_allowed) {
+            const fs_path src_path = root_path.parent_path();
+            const fs_path dst_path = fs_path(src_path).replace_extension(".bak");
+            auto result            = Filesystem::copy(src_path, dst_path,
+                                                      Filesystem::copy_options::recursive |
+                                                          Filesystem::copy_options::overwrite_existing);
+            if (!result) {
+                LogError(result.error());
+            }
+        }
+
         auto result = m_current_scene->saveToPath(root_path);
         if (!result) {
             LogError(result.error());
@@ -181,6 +195,7 @@ namespace Toolbox::UI {
             MainApplication::instance().getSettingsManager().getCurrentProfile();
         if (cur_settings.m_repack_scenes_on_save && m_current_scene->rootPath().has_value()) {
             m_repack_io_busy = true;
+
             MainApplication::instance().dispatchEvent<ProjectPackEvent, true>(
                 0, m_current_scene->rootPath().value().parent_path(), true,
                 [&]() { m_repack_io_busy = false; });
