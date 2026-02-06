@@ -31,7 +31,7 @@ namespace Toolbox::UI {
     static std::vector<std::string> s_better_sms_objects = {"GenericRailObj", "ParticleBox",
                                                             "SoundBox"};
 
-    void CreateObjDialog::render(SelectionNodeInfo<Object::ISceneObject> node_info) {
+    void CreateObjDialog::render(RefPtr<SceneObjModel> model, const ModelIndex &index) {
         if (!m_open)
             return;
 
@@ -183,9 +183,9 @@ namespace Toolbox::UI {
             }
 
             if (ImGui::Button("Create")) {
-                m_on_accept(node_info.m_selection_index, proposed_name, *m_templates.at(m_template_index),
+                m_on_accept(proposed_name, *m_templates.at(m_template_index),
                             m_templates.at(m_template_index)->wizards().at(m_wizard_index).m_name,
-                            m_insert_policy, node_info);
+                            m_insert_policy, index);
                 m_open = false;
             }
 
@@ -200,16 +200,18 @@ namespace Toolbox::UI {
             ImGui::SameLine();
 
             if (ImGui::Button("Cancel")) {
-                m_on_reject(node_info);
+                m_on_reject(index);
                 m_open = false;
             }
 
             // Detect duplicate name
             ISceneObject *this_parent;
-            if (node_info.m_selected->isGroupObject()) {
-                this_parent = node_info.m_selected.get();
+
+            RefPtr<ISceneObject> obj = model->getObjectRef(index);
+            if (obj->isGroupObject()) {
+                this_parent = obj.get();
             } else {
-                this_parent = node_info.m_selected->getParent();
+                this_parent = obj->getParent();
             }
 
             std::string name_state_msg = "Name is unique and has no collisions!";
@@ -241,7 +243,7 @@ namespace Toolbox::UI {
 
     void RenameObjDialog::setup() {}
 
-    void RenameObjDialog::render(SelectionNodeInfo<Object::ISceneObject> node_info) {
+    void RenameObjDialog::render(const ModelIndex &index) {
         if (!m_open)
             return;
 
@@ -300,7 +302,7 @@ namespace Toolbox::UI {
             }
 
             if (ImGui::Button("Rename")) {
-                m_on_accept(object_name, node_info);
+                m_on_accept(object_name, index);
                 m_open = false;
             }
 
@@ -315,7 +317,7 @@ namespace Toolbox::UI {
             ImGui::SameLine();
 
             if (ImGui::Button("Cancel")) {
-                m_on_reject(node_info);
+                m_on_reject(index);
                 m_open = false;
             }
 

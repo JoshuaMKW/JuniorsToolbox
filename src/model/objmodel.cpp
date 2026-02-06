@@ -64,7 +64,7 @@ namespace Toolbox {
             hierarchy.getRoot(), 0, nullptr,
             [this](RefPtr<ISceneObject> object, int64_t row, RefPtr<ISceneObject> parent) {
                 ModelIndex parent_index = getIndex(parent);
-                ModelIndex new_index = makeIndex(object, row, parent_index);
+                ModelIndex new_index    = makeIndex(object, row, parent_index);
                 if (!validateIndex(new_index)) {
                     TOOLBOX_ERROR_V("[OBJMODEL] Failed to make index for object {} ({})",
                                     object->type(), object->getNameRef().name());
@@ -88,13 +88,19 @@ namespace Toolbox {
         setData_(index, data, role);
     }
 
+    std::string SceneObjModel::findUniqueName(const ModelIndex &index,
+                                              const std::string &name) const {
+        std::scoped_lock lock(m_mutex);
+        return findUniqueName_(index, name);
+    }
+
     ModelIndex SceneObjModel::getIndex(RefPtr<ISceneObject> object) const {
         if (!object) {
             return ModelIndex();
         }
 
         std::scoped_lock lock(m_mutex);
-        getIndex_(object);
+        return getIndex_(object);
     }
 
     ModelIndex SceneObjModel::getIndex(const UUID64 &uuid) const {
@@ -131,6 +137,28 @@ namespace Toolbox {
         }
 
         return result;
+    }
+
+    ModelIndex SceneObjModel::insertObject(RefPtr<ISceneObject> object, int64_t row,
+                                           const ModelIndex &parent) {
+        ModelIndex new_index = makeIndex(object, row, parent);
+        if (!validateIndex(new_index)) {
+            return ModelIndex();
+        }
+
+        _SceneIndexData *parent_data = validateIndex(parent) ? parent.data<_SceneIndexData>()
+                                                             : nullptr;
+        if (parent_data) {
+            auto result = parent_data->m_object->insertChild(row, object);
+            if (!result) {
+                TOOLBOX_ERROR_V("[OBJMODEL] Failed to create inde with reason: '{}'",
+                                result.error().m_message);
+                (void)removeIndex(new_index);
+                return ModelIndex();
+            }
+        }
+
+        return new_index;
     }
 
     ModelIndex SceneObjModel::getParent(const ModelIndex &index) const {
@@ -302,6 +330,35 @@ namespace Toolbox {
         }
     }
 
+    std::string SceneObjModel::findUniqueName_(const ModelIndex &index,
+                                               const std::string &name) const {
+        if (!validateIndex(index)) {
+            return name;
+        }
+
+        std::string result_name = name;
+        size_t collisions       = 0;
+        std::vector<std::string> child_paths;
+
+        for (size_t i = 0; i < getRowCount_(index); ++i) {
+            ModelIndex child                  = getIndex_(i, 0, index);
+            RefPtr<ISceneObject> child_object = child.data<_SceneIndexData>()->m_object;
+            child_paths.emplace_back(std::move(std::string(child_object->getNameRef().name())));
+        }
+
+        for (size_t i = 0; i < child_paths.size();) {
+            if (child_paths[i] == result_name) {
+                collisions += 1;
+                result_name = std::format("{} ({})", name, collisions);
+                i           = 0;
+                continue;
+            }
+            ++i;
+        }
+
+        return result_name;
+    }
+
     ModelIndex SceneObjModel::getIndex_(RefPtr<ISceneObject> object) const {
         for (const auto &[k, v] : m_index_map) {
             RefPtr<ISceneObject> other = v.data<_SceneIndexData>()->m_object;
@@ -342,6 +399,20 @@ namespace Toolbox {
         if (!validateIndex(index)) {
             return false;
         }
+
+        ModelIndex parent            = getParent_(index);
+        _SceneIndexData *parent_data = validateIndex(parent) ? parent.data<_SceneIndexData>()
+                                                             : nullptr;
+        _SceneIndexData *this_data   = index.data<_SceneIndexData>();
+        if (parent_data) {
+            auto result = parent_data->m_object->removeChild(this_data->m_object);
+            if (!result) {
+                TOOLBOX_ERROR_V("[OBJMODEL] Failed to remove index with reason: '{}'",
+                                result.error().m_message);
+                return false;
+            }
+        }
+
         const UUID64 uuid = index.getUUID();
         m_index_map.erase(uuid);
         return true;

@@ -76,14 +76,17 @@ namespace Toolbox {
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
         void setData(const ModelIndex &index, std::any data, int role) override;
 
+        [[nodiscard]] std::string findUniqueName(const ModelIndex &index,
+                                                 const std::string &name) const;
+
     public:
         [[nodiscard]] ModelIndex getIndex(RefPtr<ISceneObject> object) const;
         [[nodiscard]] ModelIndex getIndex(const UUID64 &uuid) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
 
-        [[nodiscard]] virtual ModelIndex makeIndex(RefPtr<ISceneObject> object, int64_t row,
-                                                   const ModelIndex &parent) const;
+        [[nodiscard]] virtual ModelIndex insertObject(RefPtr<ISceneObject> object, int64_t row,
+                                                      const ModelIndex &parent);
         [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
@@ -120,9 +123,15 @@ namespace Toolbox {
         [[nodiscard]] virtual Signal createSignalForIndex_(const ModelIndex &index,
                                                            ModelEventFlags base_event) const;
 
+        [[nodiscard]] virtual ModelIndex makeIndex(RefPtr<ISceneObject> object, int64_t row,
+                                                   const ModelIndex &parent) const;
+
         // Implementation of public API for mutex locking reasons
         [[nodiscard]] std::any getData_(const ModelIndex &index, int role) const;
         void setData_(const ModelIndex &index, std::any data, int role) const;
+
+        [[nodiscard]] std::string findUniqueName_(const ModelIndex &index,
+                                                  const std::string &name) const;
 
         [[nodiscard]] ModelIndex getIndex_(RefPtr<ISceneObject> object) const;
         [[nodiscard]] ModelIndex getIndex_(const UUID64 &uuid) const;
