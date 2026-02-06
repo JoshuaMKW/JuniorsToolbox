@@ -345,7 +345,7 @@ namespace Toolbox::UI {
                         const IDataModel::index_container &indexes =
                             m_table_selection_mgr.getState().getSelection();
                         std::all_of(indexes.begin(), indexes.end(), [this](const ModelIndex &node) {
-                            RefPtr<ISceneObject> obj = m_scene_object_model->getObjectRef(node);
+                            RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(node);
                             return obj && obj->getTransform().has_value();
                         });
                         return true;
@@ -541,6 +541,13 @@ namespace Toolbox::UI {
         renderScene(deltaTime);
         renderDolphin(deltaTime);
         renderSanitizationSteps();
+
+        m_scene_hierarchy_context_menu.applyDeferredCmds();
+        m_table_hierarchy_context_menu.applyDeferredCmds();
+        m_rail_list_single_node_menu.applyDeferredCmds();
+        m_rail_list_multi_node_menu.applyDeferredCmds();
+        m_rail_node_list_single_node_menu.applyDeferredCmds();
+        m_rail_node_list_multi_node_menu.applyDeferredCmds();
     }
 
     void SceneWindow::renderSanitizationSteps() {
@@ -680,7 +687,7 @@ namespace Toolbox::UI {
         {
             const ModelIndex &last_selected = m_table_selection_mgr.getState().getLastSelected();
             if (m_table_object_model->validateIndex(last_selected)) {
-                m_create_table_obj_dialog.render(m_scene_object_model, last_selected);
+                m_create_table_obj_dialog.render(m_table_object_model, last_selected);
                 m_rename_table_obj_dialog.render(last_selected);
             }
         }
@@ -974,7 +981,7 @@ namespace Toolbox::UI {
         std::string node_uid_str = getNodeUID(node);
         ImGuiID tree_node_id     = static_cast<ImGuiID>(node->getUUID());
 
-        const bool node_selected = m_scene_selection_mgr.getState().isSelected(index);
+        const bool node_selected = m_table_selection_mgr.getState().isSelected(index);
 
         bool node_visible    = node->getIsPerforming();
         bool node_visibility = node->getCanPerform();
@@ -987,7 +994,7 @@ namespace Toolbox::UI {
             if (is_filtered_out) {
                 for (size_t i = 0; i < m_table_object_model->getRowCount(index); ++i) {
                     ModelIndex child_index = m_table_object_model->getIndex(i, 0, index);
-                    renderSceneObjectTree(child_index);
+                    renderTableObjectTree(child_index);
                 }
             } else {
                 if (node_visibility) {
@@ -1011,7 +1018,7 @@ namespace Toolbox::UI {
                     ImVec2 item_pos  = ImGui::GetItemRectMin();
 
                     if (ImGui::BeginDragDropSource()) {
-                        ScopePtr<MimeData> mime_data = m_scene_selection_mgr.actionCopySelection();
+                        ScopePtr<MimeData> mime_data = m_table_selection_mgr.actionCopySelection();
                         if (mime_data) {
                             std::optional<Buffer> buffer =
                                 mime_data->get_data("toolbox/scene/object");
@@ -1105,12 +1112,12 @@ namespace Toolbox::UI {
                     m_properties_render_handler = renderObjectProperties;
                 }
 
-                renderSceneHierarchyContextMenu(node_uid_str, index);
+                renderTableHierarchyContextMenu(node_uid_str, index);
 
                 if (node_open) {
                     for (size_t i = 0; i < m_table_object_model->getRowCount(index); ++i) {
                         ModelIndex child_index = m_table_object_model->getIndex(i, 0, index);
-                        renderSceneObjectTree(child_index);
+                        renderTableObjectTree(child_index);
                     }
                     ImGui::TreePop();
                 }
@@ -1211,7 +1218,7 @@ namespace Toolbox::UI {
                     m_properties_render_handler = renderObjectProperties;
                 }
 
-                renderSceneHierarchyContextMenu(node_uid_str, index);
+                renderTableHierarchyContextMenu(node_uid_str, index);
 
                 if (node_open) {
                     ImGui::TreePop();
@@ -2243,6 +2250,206 @@ namespace Toolbox::UI {
                 });
     }
 
+    void SceneWindow::buildContextMenuTableObj() {
+        m_table_hierarchy_context_menu = ContextMenu<ModelIndex>();
+
+        ContextMenuBuilder(&m_table_hierarchy_context_menu)
+            .addOption(
+                "Add Child Object...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                [this](ModelIndex index) {
+                    if (m_table_selection_mgr.getState().count() != 1) {
+                        return false;
+                    }
+                    RefPtr<ISceneObject> parent_obj = m_table_object_model->getObjectRef(index);
+                    if (!parent_obj) {
+                        return false;
+                    }
+                    return m_table_selection_mgr.getState().count() == 1 &&
+                           parent_obj->isGroupObject();
+                },
+                [this](ModelIndex index) {
+                    m_create_table_obj_dialog.setInsertPolicy(
+                        CreateObjDialog::InsertPolicy::INSERT_CHILD);
+                    m_create_table_obj_dialog.open();
+                    return;
+                })
+            .addOption(
+                "Insert Object Before...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                [this](ModelIndex index) {
+                    if (m_table_selection_mgr.getState().count() != 1) {
+                        return false;
+                    }
+                    return true;
+                },
+                [this](ModelIndex index) {
+                    m_create_table_obj_dialog.setInsertPolicy(
+                        CreateObjDialog::InsertPolicy::INSERT_BEFORE);
+                    m_create_table_obj_dialog.open();
+                })
+            .addOption(
+                "Insert Object After...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                [this](ModelIndex index) {
+                    if (m_table_selection_mgr.getState().count() != 1) {
+                        return false;
+                    }
+                    return true;
+                },
+                [this](ModelIndex index) {
+                    m_create_table_obj_dialog.setInsertPolicy(
+                        CreateObjDialog::InsertPolicy::INSERT_AFTER);
+                    m_create_table_obj_dialog.open();
+                })
+            .addDivider()
+            .addOption("Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
+                       [this](ModelIndex index) {
+                           std::string name = m_table_object_model->getObjectKey(index);
+                           m_rename_table_obj_dialog.open();
+                           m_rename_table_obj_dialog.setOriginalName(name);
+                       })
+            .addDivider()
+            .addOption(
+                "View in Scene", {KeyCode::KEY_LEFTALT, KeyCode::KEY_V},
+                [this](ModelIndex index) {
+                    if (m_table_selection_mgr.getState().count() != 1) {
+                        return false;
+                    }
+                    RefPtr<ISceneObject> this_obj = m_table_object_model->getObjectRef(index);
+                    if (!this_obj) {
+                        return false;
+                    }
+                    return this_obj->getTransform().has_value();
+                },
+                [this](ModelIndex index) {
+                    RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(index);
+                    Transform transform      = obj->getTransform().value();
+
+                    f32 max_scale = std::max(transform.m_scale.x, transform.m_scale.y);
+                    max_scale     = std::max(max_scale, transform.m_scale.z);
+
+                    m_renderer.setCameraOrientation({0, 1, 0}, transform.m_translation,
+                                                    {transform.m_translation.x,
+                                                     transform.m_translation.y,
+                                                     transform.m_translation.z + 1000 * max_scale});
+                    m_update_render_objs = true;
+                    return;
+                })
+            .addOption(
+                "Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
+                [this](ModelIndex index) {
+                    if (m_table_selection_mgr.getState().count() != 1) {
+                        return false;
+                    }
+                    RefPtr<ISceneObject> this_obj = m_table_object_model->getObjectRef(index);
+                    if (!this_obj) {
+                        return false;
+                    }
+                    return this_obj->getTransform().has_value();
+                },
+                [this](ModelIndex index) {
+                    RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(index);
+
+                    Transform transform = obj->getTransform().value();
+                    m_renderer.getCameraTranslation(transform.m_translation);
+                    auto result = obj->setTransform(transform);
+                    if (!result) {
+                        LogError(
+                            make_error<void>("Scene Hierarchy",
+                                             "Failed to set transform of object when moving to "
+                                             "camera")
+                                .error());
+                        return;
+                    }
+
+                    m_update_render_objs = true;
+                    return;
+                })
+            .addDivider()
+            .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
+                       [this](ModelIndex index) {
+                           ScopePtr<MimeData> copy_data =
+                               m_table_selection_mgr.actionCopySelection();
+                           if (!copy_data) {
+                               return;
+                           }
+                           SystemClipboard::instance().setContent(*copy_data);
+                       })
+            .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
+                       [this](ModelIndex index) {
+                           auto result = SystemClipboard::instance().getContent();
+                           if (!result) {
+                               LogError(result.error());
+                               return;
+                           }
+                           m_table_selection_mgr.actionPasteIntoSelection(result.value());
+                       })
+            .addDivider()
+            .addOption("Delete", {KeyCode::KEY_DELETE},
+                       [this](ModelIndex index) { m_table_selection_mgr.actionDeleteSelection(); })
+            .addDivider()
+            .addOption(
+                "Copy Player Transform",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
+                [this](ModelIndex index) {
+                    Game::TaskCommunicator &task_communicator =
+                        MainApplication::instance().getTaskCommunicator();
+
+                    if (m_table_selection_mgr.getState().count() != 1) {
+                        return false;
+                    }
+
+                    RefPtr<ISceneObject> this_obj = m_table_object_model->getObjectRef(index);
+                    if (!this_obj) {
+                        return false;
+                    }
+
+                    return this_obj->getTransform().has_value() &&
+                           task_communicator.isSceneLoaded();
+                },
+                [this](ModelIndex index) {
+                    Game::TaskCommunicator &task_communicator =
+                        MainApplication::instance().getTaskCommunicator();
+
+                    RefPtr<ISceneObject> this_obj = m_table_object_model->getObjectRef(index);
+
+                    task_communicator.setObjectTransformToMario(
+                        ref_cast<PhysicalSceneObject>(this_obj));
+                    m_update_render_objs = true;
+                    return;
+                })
+            .addOption(
+                "Copy Player Position",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_P},
+                [this](ModelIndex index) {
+                    Game::TaskCommunicator &task_communicator =
+                        MainApplication::instance().getTaskCommunicator();
+
+                    if (m_table_selection_mgr.getState().count() != 1) {
+                        return false;
+                    }
+
+                    RefPtr<ISceneObject> this_obj = m_table_object_model->getObjectRef(index);
+                    if (!this_obj) {
+                        return false;
+                    }
+
+                    return this_obj->getTransform().has_value() &&
+                           task_communicator.isSceneLoaded();
+                },
+                [this](ModelIndex index) {
+                    Game::TaskCommunicator &task_communicator =
+                        MainApplication::instance().getTaskCommunicator();
+
+                    RefPtr<ISceneObject> this_obj = m_scene_object_model->getObjectRef(index);
+                    if (!this_obj) {
+                        return false;
+                    }
+
+                    task_communicator.setObjectTranslationToMario(
+                        ref_cast<PhysicalSceneObject>(this_obj));
+                    m_update_render_objs = true;
+                });
+    }
+
     void SceneWindow::buildContextMenuRail() {
         m_rail_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::Rail>>();
 
@@ -2551,6 +2758,74 @@ namespace Toolbox::UI {
             return;
         });
         m_create_scene_obj_dialog.setActionOnReject([](const ModelIndex &) {});
+
+        // ================
+
+        m_create_table_obj_dialog.setExtendedMode(settings.m_is_custom_obj_allowed);
+        m_create_table_obj_dialog.setup();
+        m_create_table_obj_dialog.setActionOnAccept([this](std::string_view name,
+                                                           const Object::Template &template_,
+                                                           std::string_view wizard_name,
+                                                           CreateObjDialog::InsertPolicy policy,
+                                                           const ModelIndex &index) {
+            auto new_object_result = Object::ObjectFactory::create(
+                template_, wizard_name, m_current_scene->rootPath().value_or(""));
+            if (!name.empty()) {
+                new_object_result->setNameRef(name);
+            }
+
+            if (!m_table_object_model->validateIndex(index)) {
+                auto result = make_error<void>("Scene Hierarchy",
+                                               "Failed to get selected node for obj creation");
+                LogError(result.error());
+                return;
+            }
+
+            RefPtr<ISceneObject> insert_obj = m_table_object_model->getObjectRef(index);
+
+            ModelIndex parent_index;
+            size_t insert_index;
+
+            if (insert_obj->isGroupObject() &&
+                policy == CreateObjDialog::InsertPolicy::INSERT_CHILD) {
+                parent_index = index;
+                insert_index = m_table_object_model->getRowCount(index);
+            } else {
+                int64_t sibling_index = m_table_object_model->getRow(index);
+                parent_index          = m_table_object_model->getParent(index);
+                insert_index          = policy == CreateObjDialog::InsertPolicy::INSERT_BEFORE
+                                            ? sibling_index
+                                            : sibling_index + 1;
+            }
+
+            if (!m_table_object_model->validateIndex(parent_index)) {
+                auto result = make_error<void>("Scene Hierarchy",
+                                               "Failed to get parent node for obj creation");
+                LogError(result.error());
+                return;
+            }
+
+            ModelIndex new_object = m_table_object_model->insertObject(std::move(new_object_result),
+                                                                       insert_index, parent_index);
+            if (!m_table_object_model->validateIndex(new_object)) {
+                auto result = make_error<void>("Scene Hierarchy", "Failed to create new object");
+                LogError(result.error());
+                return;
+            }
+
+            RefPtr<ISceneObject> object = m_table_object_model->getObjectRef(new_object);
+            RefPtr<GroupSceneObject> parent_obj =
+                ref_cast<GroupSceneObject>(m_table_object_model->getObjectRef(parent_index));
+
+            Game::TaskCommunicator &task_communicator =
+                MainApplication::instance().getTaskCommunicator();
+            task_communicator.taskAddSceneObject(
+                object, parent_obj, [object](u32 actor_ptr) { object->setGamePtr(actor_ptr); });
+
+            m_update_render_objs = true;
+            return;
+        });
+        m_create_table_obj_dialog.setActionOnReject([](const ModelIndex &) {});
     }
 
     void SceneWindow::buildRenameObjDialog() {
@@ -2590,6 +2865,45 @@ namespace Toolbox::UI {
             }
         });
         m_rename_scene_obj_dialog.setActionOnReject([](const ModelIndex &) {});
+
+        // ================
+
+        m_rename_table_obj_dialog.setup();
+        m_rename_table_obj_dialog.setActionOnAccept([this](std::string_view new_name,
+                                                           const ModelIndex &index) {
+            if (new_name.empty()) {
+                auto result = make_error<void>("SCENE", "Can not rename object to empty string");
+                LogError(result.error());
+                return;
+            }
+            for (const ModelIndex &selected_index :
+                 m_table_selection_mgr.getState().getSelection()) {
+                if (!m_table_object_model->validateIndex(selected_index)) {
+                    auto result =
+                        make_error<void>("Scene Hierarchy", "Failed to get object for renaming");
+                    LogError(result.error());
+                    continue;
+                }
+
+                ModelIndex parent_index = m_table_object_model->getParent(selected_index);
+
+                std::string old_name = m_table_object_model->getObjectKey(selected_index);
+                if (old_name == new_name) {
+                    continue;
+                }
+
+                std::string new_unique_name =
+                    m_table_object_model->findUniqueName(parent_index, std::string(new_name));
+                m_table_object_model->setObjectKey(selected_index, new_unique_name);
+
+                RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(selected_index);
+
+                Game::TaskCommunicator &task_communicator =
+                    MainApplication::instance().getTaskCommunicator();
+                task_communicator.taskRenameSceneObject(obj, old_name, new_unique_name);
+            }
+        });
+        m_rename_table_obj_dialog.setActionOnReject([](const ModelIndex &) {});
     }
 
     void SceneWindow::buildCreateRailDialog() {
@@ -2967,7 +3281,7 @@ namespace Toolbox::UI {
         if (total_selected_objects > 0) {
             m_selection_transforms.reserve(total_selected_objects);
 
-            for (const ModelIndex index : m_scene_selection_mgr.getState().getSelection()) {
+            for (const ModelIndex &index : m_scene_selection_mgr.getState().getSelection()) {
                 RefPtr<ISceneObject> obj               = m_scene_object_model->getObjectRef(index);
                 std::optional<Transform> obj_transform = obj->getTransform();
                 if (!obj_transform) {
@@ -2978,7 +3292,7 @@ namespace Toolbox::UI {
                 combined_transform.m_translation += m_selection_transforms.back().m_translation;
             }
 
-            for (const ModelIndex index : m_table_selection_mgr.getState().getSelection()) {
+            for (const ModelIndex &index : m_table_selection_mgr.getState().getSelection()) {
                 RefPtr<ISceneObject> obj               = m_table_object_model->getObjectRef(index);
                 std::optional<Transform> obj_transform = obj->getTransform();
                 if (!obj_transform) {

@@ -169,6 +169,7 @@ namespace Toolbox {
         mutable std::mutex m_mutex;
         std::unordered_map<UUID64, std::pair<event_listener_t, int>> m_listeners;
 
+        mutable UUID64 m_root_index;
         mutable std::map<UUID64, ModelIndex> m_index_map;
     };
 

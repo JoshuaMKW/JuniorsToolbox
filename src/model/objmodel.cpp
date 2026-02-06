@@ -281,7 +281,7 @@ namespace Toolbox {
             return object->type();
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_KEY: {
-            return object->getNameRef().name();
+            return std::string(object->getNameRef().name());
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_GAME_ADDR: {
             return object->getGamePtr();
@@ -378,21 +378,22 @@ namespace Toolbox {
 
     ModelIndex SceneObjModel::getIndex_(int64_t row, int64_t column,
                                         const ModelIndex &parent) const {
-        if (validateIndex(parent)) {
-            return ModelIndex();
-        }
-
-        if (row < 0 || (size_t)row >= m_index_map.size()) {
-            return ModelIndex();
-        }
-
-        size_t i = 0;
-        for (const auto &[k, v] : m_index_map) {
-            if (row == i++) {
-                return v;
+        if (!validateIndex(parent)) {
+            if (row != 0 || column != 0) {
+                return ModelIndex();
             }
+            return m_index_map[m_root_index];
         }
-        return ModelIndex();
+
+        RefPtr<ISceneObject> parent_obj      = parent.data<_SceneIndexData>()->m_object;
+        std::vector<RefPtr<ISceneObject>> children = parent_obj->getChildren();
+
+        if (row < 0 || row >= static_cast<int64_t>(children.size()) || column != 0) {
+            return ModelIndex();
+        }
+
+        RefPtr<ISceneObject> child_obj = children[row];
+        return getIndex_(child_obj);
     }
 
     bool SceneObjModel::removeIndex_(const ModelIndex &index) {
@@ -418,7 +419,16 @@ namespace Toolbox {
         return true;
     }
 
-    ModelIndex SceneObjModel::getParent_(const ModelIndex &index) const { return ModelIndex(); }
+    ModelIndex SceneObjModel::getParent_(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return ModelIndex();
+        }
+
+        _SceneIndexData *data = index.data<_SceneIndexData>();
+        RefPtr<ISceneObject> parent = get_shared_ptr(*data->m_object->getParent());
+
+        return getIndex_(parent);
+    }
 
     ModelIndex SceneObjModel::getSibling_(int64_t row, int64_t column,
                                           const ModelIndex &index) const {
@@ -426,23 +436,29 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        return getIndex_(row, column, ModelIndex());
+        ModelIndex parent_index = getParent_(index);
+        return getIndex_(row, column, parent_index);
     }
 
     size_t SceneObjModel::getColumnCount_(const ModelIndex &index) const {
-        if (validateIndex(index)) {
-            return 0;
+        if (!validateIndex(index)) {
+            return 1;
         }
 
         return 1;
     }
 
     size_t SceneObjModel::getRowCount_(const ModelIndex &index) const {
-        if (validateIndex(index)) {
+        if (!validateIndex(index)) {
+            return 1;
+        }
+
+        _SceneIndexData *data = index.data<_SceneIndexData>();
+        if (!data) {
             return 0;
         }
 
-        return m_index_map.size();
+        return data->m_object->getChildren().size();
     }
 
     int64_t SceneObjModel::getColumn_(const ModelIndex &index) const {
@@ -454,9 +470,17 @@ namespace Toolbox {
             return -1;
         }
 
+        _SceneIndexData *data = index.data<_SceneIndexData>();
+        if (!data) {
+            return -1;
+        }
+
+        RefPtr<ISceneObject> self = data->m_object;
+        ISceneObject *parent = self->getParent();
+
         int64_t row = 0;
-        for (const auto &[uuid, index] : m_index_map) {
-            if (uuid == index.getUUID()) {
+        for (RefPtr<ISceneObject> child : parent->getChildren()) {
+            if (child->getUUID() == self->getUUID()) {
                 return row;
             }
             ++row;
@@ -496,21 +520,13 @@ namespace Toolbox {
 
         new_index.setData(new_data);
 
-        if (row == m_index_map.size()) {
-            m_index_map.insert(m_index_map.end(), {new_index.getUUID(), new_index});
-            return new_index;
+        m_index_map[new_index.getUUID()] = new_index;
+
+        if (row == 0 && !validateIndex(parent)) {
+            m_root_index = new_index.getUUID();
         }
 
-        int64_t i = 0;
-        for (auto it = m_index_map.begin(); it != m_index_map.end(); it = std::next(it)) {
-            if (i == row) {
-                m_index_map.insert(it, {new_index.getUUID(), new_index});
-                return new_index;
-            }
-        }
-
-        delete new_data;
-        return ModelIndex();
+        return new_index;
     }
 
     void SceneObjModel::signalEventListeners(const ModelIndex &index, int flags) {

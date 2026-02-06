@@ -140,6 +140,7 @@ namespace Toolbox::UI {
         void reassignAllActorPtrs(u32 param);
 
         void buildContextMenuSceneObj();
+        void buildContextMenuTableObj();
 
         void buildContextMenuRail();
         void buildContextMenuMultiRail();
