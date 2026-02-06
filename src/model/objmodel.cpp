@@ -36,46 +36,20 @@ namespace Toolbox {
 
     SceneObjModel::~SceneObjModel() { reset(); }
 
-    using for_each_fn =
-        std::function<void(RefPtr<ISceneObject> object, int64_t row, RefPtr<ISceneObject> parent)>;
-
-    static bool ObjectForEach(RefPtr<ISceneObject> object, int64_t row, RefPtr<ISceneObject> parent,
-                              for_each_fn fn) {
-        if (!object) {
-            return false;
+    static void ObjectForEach(RefPtr<ISceneObject> root,
+                              std::function<void(RefPtr<ISceneObject> object)> fn) {
+        if (!root) {
+            return;
         }
 
-        fn(object, row, parent);
-
-        int64_t i = 0;
-        for (RefPtr<ISceneObject> child : object->getChildren()) {
-            if (!ObjectForEach(child, i++, object, fn)) {
-                return false;  // Early exit
-            }
+        fn(root);
+        for (RefPtr<ISceneObject> child : root->getChildren()) {
+            ObjectForEach(child, fn);
         }
-
-        return true;
     }
 
     void SceneObjModel::initialize(const Scene::ObjectHierarchy &hierarchy) {
         m_index_map.clear();
-
-        bool result = ObjectForEach(
-            hierarchy.getRoot(), 0, nullptr,
-            [this](RefPtr<ISceneObject> object, int64_t row, RefPtr<ISceneObject> parent) {
-                ModelIndex parent_index = getIndex(parent);
-                ModelIndex new_index = makeIndex(object, row, parent_index);
-                if (!validateIndex(new_index)) {
-                    TOOLBOX_ERROR_V("[OBJMODEL] Failed to make index for object {} ({})",
-                                    object->type(), object->getNameRef().name());
-                    return false;
-                }
-                return true;
-            });
-
-        if (!result) {
-            TOOLBOX_ERROR("[OBJMODEL] Failed to initialize model from given ObjectHierarchy!");
-        }
     }
 
     std::any SceneObjModel::getData(const ModelIndex &index, int role) const {
@@ -86,15 +60,6 @@ namespace Toolbox {
     void SceneObjModel::setData(const ModelIndex &index, std::any data, int role) {
         std::scoped_lock lock(m_mutex);
         setData_(index, data, role);
-    }
-
-    ModelIndex SceneObjModel::getIndex(RefPtr<ISceneObject> object) const {
-        if (!object) {
-            return ModelIndex();
-        }
-
-        std::scoped_lock lock(m_mutex);
-        getIndex_(object);
     }
 
     ModelIndex SceneObjModel::getIndex(const UUID64 &uuid) const {
@@ -300,16 +265,6 @@ namespace Toolbox {
         default:
             return;
         }
-    }
-
-    ModelIndex SceneObjModel::getIndex_(RefPtr<ISceneObject> object) const {
-        for (const auto &[k, v] : m_index_map) {
-            RefPtr<ISceneObject> other = v.data<_SceneIndexData>()->m_object;
-            if (other->getUUID() == object->getUUID()) {
-                return v;
-            }
-        }
-        return ModelIndex();
     }
 
     ModelIndex SceneObjModel::getIndex_(const UUID64 &uuid) const {
