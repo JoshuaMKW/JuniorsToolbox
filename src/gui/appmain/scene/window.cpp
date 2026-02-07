@@ -694,13 +694,11 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::renderSceneObjectTree(const ModelIndex &index) {
-        constexpr auto dir_flags = ImGuiTreeNodeFlags_OpenOnArrow |
-                                   ImGuiTreeNodeFlags_OpenOnDoubleClick |
-                                   ImGuiTreeNodeFlags_SpanFullWidth;
+        constexpr auto dir_flags =
+            ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+            ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_DefaultOpen;
 
         constexpr auto file_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth;
-
-        constexpr auto node_flags = dir_flags | ImGuiTreeNodeFlags_DefaultOpen;
 
         RefPtr<ISceneObject> node = m_scene_object_model->getObjectRef(index);
 
@@ -720,6 +718,9 @@ namespace Toolbox::UI {
 
         bool node_open = false;
 
+        ImGuiTreeNodeFlags the_flags = node->isGroupObject() ? dir_flags : file_flags;
+        the_flags |= node_selected ? ImGuiTreeNodeFlags_Framed : 0;
+
         ImGui::PushID(tree_node_id);
 
         if (node->isGroupObject()) {
@@ -729,18 +730,16 @@ namespace Toolbox::UI {
                     renderSceneObjectTree(child_index);
                 }
             } else {
+
                 if (node_visibility) {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(),
-                                                  node->getParent() ? dir_flags : node_flags,
-                                                  node_selected, &node_visible);
+                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected,
+                                                  &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(),
-                                                  node->getParent() ? dir_flags : node_flags,
-                                                  node_selected);
+                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
                 }
 
                 // Drag and drop for OBJECT
@@ -815,31 +814,34 @@ namespace Toolbox::UI {
                     }
                 }
 
-                if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
-                    ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
-                    ImGui::FocusWindow(ImGui::GetCurrentWindow());
+                if (ImGui::IsItemHovered()) {
+                    m_scene_selection_mgr.handleActionsByMouseInput(index, true);
 
-                    m_selected_properties.clear();
-                    m_rail_list_selected_nodes.clear();
-                    m_rail_node_list_selected_nodes.clear();
+                    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) ||
+                        ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+                        ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                    m_scene_selection_mgr.actionSelectIndex(index);
-                    if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
-                        !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
-                        m_table_selection_mgr.getState().clearSelection();
-                    }
+                        m_selected_properties.clear();
+                        m_rail_list_selected_nodes.clear();
+                        m_rail_node_list_selected_nodes.clear();
 
-                    if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
-                        for (auto &member : node->getMembers()) {
-                            member->syncArray();
-                            auto prop = createProperty(member);
-                            if (prop) {
-                                m_selected_properties.push_back(std::move(prop));
+                        if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
+                            !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
+                            m_table_selection_mgr.getState().clearSelection();
+                        }
+
+                        if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
+                            for (auto &member : node->getMembers()) {
+                                member->syncArray();
+                                auto prop = createProperty(member);
+                                if (prop) {
+                                    m_selected_properties.push_back(std::move(prop));
+                                }
                             }
                         }
-                    }
 
-                    m_selection_transforms_needs_update = true;
+                        m_selection_transforms_needs_update = true;
+                    }
 
                     m_properties_render_handler = renderObjectProperties;
                 }
@@ -857,14 +859,14 @@ namespace Toolbox::UI {
         } else {
             if (!is_filtered_out) {
                 if (node_visibility) {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_selected,
+                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected,
                                                   &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_selected);
+                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
                 }
 
                 // Drag and drop for OBJECT
@@ -921,31 +923,34 @@ namespace Toolbox::UI {
                     }
                 }
 
-                if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
-                    ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
-                    ImGui::FocusWindow(ImGui::GetCurrentWindow());
+                if (ImGui::IsItemHovered()) {
+                    m_scene_selection_mgr.handleActionsByMouseInput(index, true);
 
-                    m_selected_properties.clear();
-                    m_rail_list_selected_nodes.clear();
-                    m_rail_node_list_selected_nodes.clear();
+                    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) ||
+                        ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+                        ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                    m_scene_selection_mgr.actionSelectIndex(index);
-                    if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
-                        !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
-                        m_table_selection_mgr.getState().clearSelection();
-                    }
+                        m_selected_properties.clear();
+                        m_rail_list_selected_nodes.clear();
+                        m_rail_node_list_selected_nodes.clear();
 
-                    if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
-                        for (auto &member : node->getMembers()) {
-                            member->syncArray();
-                            auto prop = createProperty(member);
-                            if (prop) {
-                                m_selected_properties.push_back(std::move(prop));
+                        if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
+                            !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
+                            m_table_selection_mgr.getState().clearSelection();
+                        }
+
+                        if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
+                            for (auto &member : node->getMembers()) {
+                                member->syncArray();
+                                auto prop = createProperty(member);
+                                if (prop) {
+                                    m_selected_properties.push_back(std::move(prop));
+                                }
                             }
                         }
-                    }
 
-                    m_selection_transforms_needs_update = true;
+                        m_selection_transforms_needs_update = true;
+                    }
 
                     m_properties_render_handler = renderObjectProperties;
                 }
@@ -988,6 +993,9 @@ namespace Toolbox::UI {
 
         bool node_open = false;
 
+        ImGuiTreeNodeFlags the_flags = node->isGroupObject() ? dir_flags : file_flags;
+        the_flags |= node_selected ? ImGuiTreeNodeFlags_Framed : 0;
+
         ImGui::PushID(tree_node_id);
 
         if (node->isGroupObject()) {
@@ -998,16 +1006,14 @@ namespace Toolbox::UI {
                 }
             } else {
                 if (node_visibility) {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(),
-                                                  node->getParent() ? dir_flags : node_flags,
-                                                  node_selected, &node_visible);
+                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected,
+                                                  &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(),
-                                                  node->getParent() ? dir_flags : node_flags,
+                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags,
                                                   node_selected);
                 }
 
@@ -1083,31 +1089,34 @@ namespace Toolbox::UI {
                     }
                 }
 
-                if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
-                    ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
-                    ImGui::FocusWindow(ImGui::GetCurrentWindow());
+                if (ImGui::IsItemHovered()) {
+                    m_table_selection_mgr.handleActionsByMouseInput(index, true);
 
-                    m_selected_properties.clear();
-                    m_rail_list_selected_nodes.clear();
-                    m_rail_node_list_selected_nodes.clear();
+                    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) ||
+                        ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+                        ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                    m_table_selection_mgr.actionSelectIndex(index);
-                    if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
-                        !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
-                        m_scene_selection_mgr.getState().clearSelection();
-                    }
+                        m_selected_properties.clear();
+                        m_rail_list_selected_nodes.clear();
+                        m_rail_node_list_selected_nodes.clear();
 
-                    if (m_table_selection_mgr.getState().getSelection().size() == 1) {
-                        for (auto &member : node->getMembers()) {
-                            member->syncArray();
-                            auto prop = createProperty(member);
-                            if (prop) {
-                                m_selected_properties.push_back(std::move(prop));
+                        if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
+                            !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
+                            m_scene_selection_mgr.getState().clearSelection();
+                        }
+
+                        if (m_table_selection_mgr.getState().getSelection().size() == 1) {
+                            for (auto &member : node->getMembers()) {
+                                member->syncArray();
+                                auto prop = createProperty(member);
+                                if (prop) {
+                                    m_selected_properties.push_back(std::move(prop));
+                                }
                             }
                         }
-                    }
 
-                    m_selection_transforms_needs_update = true;
+                        m_selection_transforms_needs_update = true;
+                    }
 
                     m_properties_render_handler = renderObjectProperties;
                 }
@@ -1125,14 +1134,14 @@ namespace Toolbox::UI {
         } else {
             if (!is_filtered_out) {
                 if (node_visibility) {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_selected,
+                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected,
                                                   &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), file_flags, node_selected);
+                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
                 }
 
                 // Drag and drop for OBJECT
@@ -1189,31 +1198,34 @@ namespace Toolbox::UI {
                     }
                 }
 
-                if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
-                    ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
-                    ImGui::FocusWindow(ImGui::GetCurrentWindow());
+                if (ImGui::IsItemHovered()) {
+                    m_table_selection_mgr.handleActionsByMouseInput(index, true);
 
-                    m_selected_properties.clear();
-                    m_rail_list_selected_nodes.clear();
-                    m_rail_node_list_selected_nodes.clear();
+                    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) ||
+                        ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+                        ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                    m_table_selection_mgr.actionSelectIndex(index);
-                    if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
-                        !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
-                        m_scene_selection_mgr.getState().clearSelection();
-                    }
+                        m_selected_properties.clear();
+                        m_rail_list_selected_nodes.clear();
+                        m_rail_node_list_selected_nodes.clear();
 
-                    if (m_table_selection_mgr.getState().getSelection().size() == 1) {
-                        for (auto &member : node->getMembers()) {
-                            member->syncArray();
-                            auto prop = createProperty(member);
-                            if (prop) {
-                                m_selected_properties.push_back(std::move(prop));
+                        if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
+                            !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
+                            m_scene_selection_mgr.getState().clearSelection();
+                        }
+
+                        if (m_table_selection_mgr.getState().getSelection().size() == 1) {
+                            for (auto &member : node->getMembers()) {
+                                member->syncArray();
+                                auto prop = createProperty(member);
+                                if (prop) {
+                                    m_selected_properties.push_back(std::move(prop));
+                                }
                             }
                         }
-                    }
 
-                    m_selection_transforms_needs_update = true;
+                        m_selection_transforms_needs_update = true;
+                    }
 
                     m_properties_render_handler = renderObjectProperties;
                 }
@@ -2738,7 +2750,7 @@ namespace Toolbox::UI {
             }
 
             ModelIndex new_object = m_scene_object_model->insertObject(std::move(new_object_result),
-                                                                    insert_index, parent_index);
+                                                                       insert_index, parent_index);
             if (!m_scene_object_model->validateIndex(new_object)) {
                 auto result = make_error<void>("Scene Hierarchy", "Failed to create new object");
                 LogError(result.error());
@@ -3159,7 +3171,7 @@ namespace Toolbox::UI {
         m_rail_list_selected_nodes.clear();
         m_rail_node_list_selected_nodes.clear();
 
-        m_scene_selection_mgr.actionSelectIndex(new_obj_selection);
+        m_scene_selection_mgr.handleActionsByMouseInput(new_obj_selection, true);
         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
             !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
             m_table_selection_mgr.getState().clearSelection();

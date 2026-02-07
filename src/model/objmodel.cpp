@@ -477,6 +477,9 @@ namespace Toolbox {
 
         RefPtr<ISceneObject> self = data->m_object;
         ISceneObject *parent = self->getParent();
+        if (!parent) {
+            return 0;
+        }
 
         int64_t row = 0;
         for (RefPtr<ISceneObject> child : parent->getChildren()) {
