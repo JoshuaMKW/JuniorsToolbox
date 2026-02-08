@@ -26,7 +26,6 @@
 #include "gui/appmain/scene/path.hpp"
 #include "gui/appmain/scene/renderer.hpp"
 #include "gui/image/imagepainter.hpp"
-#include "gui/selection.hpp"
 #include "gui/window.hpp"
 
 #include "model/objmodel.hpp"

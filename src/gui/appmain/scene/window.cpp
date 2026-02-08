@@ -703,8 +703,6 @@ namespace Toolbox::UI {
                                     ImGuiTreeNodeFlags_FramePadding |
                                     ImGuiTreeNodeFlags_DefaultOpen;
 
-        RefPtr<ISceneObject> node = m_scene_object_model->getObjectRef(index);
-
         bool multi_select     = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
         bool needs_scene_sync = node->getTransform() ? false : true;
 
@@ -714,7 +712,12 @@ namespace Toolbox::UI {
         std::string node_uid_str = getNodeUID(node);
         ImGuiID tree_node_id     = static_cast<ImGuiID>(node->getUUID());
 
-        const bool node_selected = m_scene_selection_mgr.getState().isSelected(index);
+        auto node_it =
+            std::find_if(m_hierarchy_selected_nodes.begin(), m_hierarchy_selected_nodes.end(),
+                         [&](const SelectionNodeInfo<Object::ISceneObject> &other) {
+                             return other.m_node_id == tree_node_id;
+                         });
+        bool node_already_clicked = node_it != m_hierarchy_selected_nodes.end();
 
         bool node_visible    = node->getIsPerforming();
         bool node_visibility = node->getCanPerform();
@@ -3238,7 +3241,7 @@ namespace Toolbox::UI {
             m_table_selection_mgr.getState().clearSelection();
         }
 
-        if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
+        if (m_hierarchy_selected_nodes.size() == 1) {
             for (auto &member : node->getMembers()) {
                 member->syncArray();
                 auto prop = createProperty(member);

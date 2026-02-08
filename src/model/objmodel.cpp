@@ -36,25 +36,16 @@ namespace Toolbox {
 
     SceneObjModel::~SceneObjModel() { reset(); }
 
-    using for_each_fn =
-        std::function<void(RefPtr<ISceneObject> object, int64_t row, RefPtr<ISceneObject> parent)>;
-
-    static bool ObjectForEach(RefPtr<ISceneObject> object, int64_t row, RefPtr<ISceneObject> parent,
-                              for_each_fn fn) {
-        if (!object) {
-            return false;
+    static void ObjectForEach(RefPtr<ISceneObject> root,
+                              std::function<void(RefPtr<ISceneObject> object)> fn) {
+        if (!root) {
+            return;
         }
 
-        fn(object, row, parent);
-
-        int64_t i = 0;
-        for (RefPtr<ISceneObject> child : object->getChildren()) {
-            if (!ObjectForEach(child, i++, object, fn)) {
-                return false;  // Early exit
-            }
+        fn(root);
+        for (RefPtr<ISceneObject> child : root->getChildren()) {
+            ObjectForEach(child, fn);
         }
-
-        return true;
     }
 
     void SceneObjModel::initialize(const Scene::ObjectHierarchy &hierarchy) {
