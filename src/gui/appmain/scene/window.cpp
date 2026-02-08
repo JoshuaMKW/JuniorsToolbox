@@ -1288,7 +1288,7 @@ namespace Toolbox::UI {
         ImVec4 col               = ImGui::GetStyleColorVec4(ImGuiCol_Text);
         col.w *= render_alpha;
 
-        if (index == m_scene_selection_mgr.getState().getLastSelected()) {
+        if (index == m_table_selection_mgr.getState().getLastSelected()) {
             ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_Text);
             col.w *= render_alpha;
             ImGui::GetWindowDrawList()->AddRect(node_rect.Min - (style.FramePadding / 2.0f),
