@@ -290,7 +290,7 @@ namespace Toolbox::UI {
                                       rail->nodes().end());
             }
 
-            if (!m_renderer.getGizmoVisible() || !ImGuizmo::IsOver()) {
+            if (m_is_render_window_open && (!m_renderer.getGizmoVisible() || !ImGuizmo::IsOver())) {
                 bool should_reset = false;
                 Renderer::selection_variant_t selection =
                     m_renderer.findSelection(m_renderables, rendered_nodes, should_reset);
@@ -696,9 +696,12 @@ namespace Toolbox::UI {
     void SceneWindow::renderSceneObjectTree(const ModelIndex &index) {
         constexpr auto dir_flags =
             ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
-            ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_DefaultOpen;
+                                   ImGuiTreeNodeFlags_SpanFullWidth |
+                                   ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_DefaultOpen;
 
-        constexpr auto file_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth;
+        constexpr auto file_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth |
+                                    ImGuiTreeNodeFlags_FramePadding |
+                                    ImGuiTreeNodeFlags_DefaultOpen;
 
         RefPtr<ISceneObject> node = m_scene_object_model->getObjectRef(index);
 
@@ -719,9 +722,17 @@ namespace Toolbox::UI {
         bool node_open = false;
 
         ImGuiTreeNodeFlags the_flags = node->isGroupObject() ? dir_flags : file_flags;
-        the_flags |= node_selected ? ImGuiTreeNodeFlags_Framed : 0;
+        //the_flags |= node_selected ? ImGuiTreeNodeFlags_Framed : 0;
+
+        //const bool is_cut = std::find(m_cut_indices.begin(), m_cut_indices.end(), child_index) !=
+        //                    m_cut_indices.end();
+        const bool is_cut = false;
 
         ImGui::PushID(tree_node_id);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4.0f, 4.0f});
+
+        ImRect node_rect;
 
         if (node->isGroupObject()) {
             if (is_filtered_out) {
@@ -741,6 +752,8 @@ namespace Toolbox::UI {
                 } else {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
                 }
+
+                node_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 
                 // Drag and drop for OBJECT
                 {
@@ -869,6 +882,8 @@ namespace Toolbox::UI {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
                 }
 
+                node_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+
                 // Drag and drop for OBJECT
                 {
                     ImVec2 mouse_pos = ImGui::GetMousePos();
@@ -963,17 +978,34 @@ namespace Toolbox::UI {
             }
         }
 
+        const ImGuiStyle &style = ImGui::GetStyle();
+
+        const float render_alpha = is_cut ? 0.5f : 1.0f;
+        ImVec4 col               = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+        col.w *= render_alpha;
+
+        if (index == m_scene_selection_mgr.getState().getLastSelected()) {
+            ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+            col.w *= render_alpha;
+            ImGui::GetWindowDrawList()->AddRect(
+                node_rect.Min - (style.FramePadding / 2.0f), node_rect.Max + (style.FramePadding / 2.0f),
+                ImGui::ColorConvertFloat4ToU32(col), 0.0f, ImDrawFlags_RoundCornersAll, 2.0f);
+        }
+
+        ImGui::PopStyleVar();
+
         ImGui::PopID();
     }
 
     void SceneWindow::renderTableObjectTree(const ModelIndex &index) {
         constexpr auto dir_flags = ImGuiTreeNodeFlags_OpenOnArrow |
                                    ImGuiTreeNodeFlags_OpenOnDoubleClick |
-                                   ImGuiTreeNodeFlags_SpanFullWidth;
+                                   ImGuiTreeNodeFlags_SpanFullWidth |
+                                   ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_DefaultOpen;
 
-        constexpr auto file_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth;
-
-        constexpr auto node_flags = dir_flags | ImGuiTreeNodeFlags_DefaultOpen;
+        constexpr auto file_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth |
+                                    ImGuiTreeNodeFlags_FramePadding |
+                                    ImGuiTreeNodeFlags_DefaultOpen;
 
         RefPtr<ISceneObject> node = m_table_object_model->getObjectRef(index);
 
@@ -994,9 +1026,17 @@ namespace Toolbox::UI {
         bool node_open = false;
 
         ImGuiTreeNodeFlags the_flags = node->isGroupObject() ? dir_flags : file_flags;
-        the_flags |= node_selected ? ImGuiTreeNodeFlags_Framed : 0;
+        //the_flags |= node_selected ? ImGuiTreeNodeFlags_Framed : 0;
+
+        //const bool is_cut = std::find(m_cut_indices.begin(), m_cut_indices.end(), child_index) !=
+        //                    m_cut_indices.end();
+        const bool is_cut = false;
 
         ImGui::PushID(tree_node_id);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4.0f, 4.0f});
+
+        ImRect node_rect;
 
         if (node->isGroupObject()) {
             if (is_filtered_out) {
@@ -1016,6 +1056,8 @@ namespace Toolbox::UI {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags,
                                                   node_selected);
                 }
+
+                node_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 
                 // Drag and drop for OBJECT
                 {
@@ -1144,6 +1186,8 @@ namespace Toolbox::UI {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
                 }
 
+                node_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+
                 // Drag and drop for OBJECT
                 {
                     ImVec2 mouse_pos = ImGui::GetMousePos();
@@ -1237,6 +1281,23 @@ namespace Toolbox::UI {
                 }
             }
         }
+
+        const ImGuiStyle &style = ImGui::GetStyle();
+
+        const float render_alpha = is_cut ? 0.5f : 1.0f;
+        ImVec4 col               = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+        col.w *= render_alpha;
+
+        if (index == m_scene_selection_mgr.getState().getLastSelected()) {
+            ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+            col.w *= render_alpha;
+            ImGui::GetWindowDrawList()->AddRect(node_rect.Min - (style.FramePadding / 2.0f),
+                                                node_rect.Max + (style.FramePadding / 2.0f),
+                                                ImGui::ColorConvertFloat4ToU32(col), 0.0f,
+                                                ImDrawFlags_RoundCornersAll, 2.0f);
+        }
+
+        ImGui::PopStyleVar();
 
         ImGui::PopID();
     }
