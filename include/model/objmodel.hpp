@@ -122,6 +122,8 @@ namespace Toolbox {
         [[nodiscard]] virtual Signal createSignalForIndex_(const ModelIndex &index,
                                                            ModelEventFlags base_event) const;
 
+        [[nodiscard]] virtual ModelIndex insertObject_(RefPtr<ISceneObject> object, int64_t row,
+                                                      const ModelIndex &parent);
         [[nodiscard]] virtual ModelIndex makeIndex(RefPtr<ISceneObject> object, int64_t row,
                                                    const ModelIndex &parent) const;
 
@@ -161,6 +163,8 @@ namespace Toolbox {
         // -- END -- //
 
         void signalEventListeners(const ModelIndex &index, int flags);
+
+        void pruneRedundantIndexes(IDataModel::index_container &indexes) const;
 
     private:
         UUID64 m_uuid;
