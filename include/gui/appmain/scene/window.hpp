@@ -38,7 +38,8 @@
 class ToolboxSceneVerifier : public TaskThread<void> {
 public:
     ToolboxSceneVerifier() = delete;
-    ToolboxSceneVerifier(RefPtr<const Scene::SceneInstance> scene, bool check_dependencies) : m_scene(scene), m_check_dependencies(check_dependencies) {}
+    ToolboxSceneVerifier(RefPtr<const Scene::SceneInstance> scene, bool check_dependencies)
+        : m_scene(scene), m_check_dependencies(check_dependencies) {}
 
     void tRun(void *param) override;
 
@@ -58,8 +59,7 @@ private:
 class ToolboxSceneDependencyMender : public TaskThread<void> {
 public:
     ToolboxSceneDependencyMender() = delete;
-    ToolboxSceneDependencyMender(RefPtr<const Scene::SceneInstance> scene)
-        : m_scene(scene) {}
+    ToolboxSceneDependencyMender(RefPtr<const Scene::SceneInstance> scene) : m_scene(scene) {}
 
     void tRun(void *param) override;
 
@@ -112,15 +112,20 @@ namespace Toolbox::UI {
         void onRenderMenuBar() override;
         void onRenderBody(TimeStep delta_time) override;
 
+        void renderSanitizationSteps();
+
         void renderHierarchy();
-        void renderTree(size_t node_index, RefPtr<Object::ISceneObject> node);
         void renderRailEditor();
         void renderScene(TimeStep delta_time);
         void renderDolphin(TimeStep delta_time);
         void renderPlaybackButtons(TimeStep delta_time);
         void renderScenePeripherals(TimeStep delta_time);
-        void renderHierarchyContextMenu(std::string str_id,
-                                        SelectionNodeInfo<Object::ISceneObject> &info);
+
+        void renderSceneObjectTree(const ModelIndex &index);
+        void renderTableObjectTree(const ModelIndex &index);
+        void renderSceneHierarchyContextMenu(std::string str_id, const ModelIndex &obj_index);
+        void renderTableHierarchyContextMenu(std::string str_id, const ModelIndex &obj_index);
+
         void renderRailContextMenu(std::string str_id, SelectionNodeInfo<Rail::Rail> &info);
         void renderRailNodeContextMenu(std::string str_id, SelectionNodeInfo<Rail::RailNode> &info);
 
@@ -133,10 +138,8 @@ namespace Toolbox::UI {
         void calcDolphinVPMatrix();
         void reassignAllActorPtrs(u32 param);
 
-        void buildContextMenuVirtualObj();
-        void buildContextMenuGroupObj();
-        void buildContextMenuPhysicalObj();
-        void buildContextMenuMultiObj();
+        void buildContextMenuSceneObj();
+        void buildContextMenuTableObj();
 
         void buildContextMenuRail();
         void buildContextMenuMultiRail();
@@ -226,24 +229,26 @@ namespace Toolbox::UI {
 
         // Hierarchy view
         ImGuiTextFilter m_hierarchy_filter;
-        std::vector<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_selected_nodes = {};
 
         RefPtr<SceneObjModel> m_scene_object_model;
         RefPtr<SceneObjModel> m_table_object_model;
 
-        ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_virtual_node_menu;
-        ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_physical_node_menu;
-        ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_group_node_menu;
-        ContextMenu<std::vector<SelectionNodeInfo<Object::ISceneObject>>>
-            m_hierarchy_multi_node_menu;
+        ModelSelectionManager m_scene_selection_mgr;
+        ModelSelectionManager m_table_selection_mgr;
+
+        ContextMenu<ModelIndex> m_scene_hierarchy_context_menu;
+        ContextMenu<ModelIndex> m_table_hierarchy_context_menu;
 
         // Property editor
         std::function<bool(SceneWindow &)> m_properties_render_handler;
         std::vector<ScopePtr<IProperty>> m_selected_properties = {};
 
         // Object modals
-        CreateObjDialog m_create_obj_dialog;
-        RenameObjDialog m_rename_obj_dialog;
+        CreateObjDialog m_create_scene_obj_dialog;
+        RenameObjDialog m_rename_scene_obj_dialog;
+
+        CreateObjDialog m_create_table_obj_dialog;
+        RenameObjDialog m_rename_table_obj_dialog;
 
         // Render view
         bool m_update_render_objs    = false;
@@ -317,6 +322,6 @@ namespace Toolbox::UI {
         ScopePtr<ToolboxSceneVerifier> m_scene_verifier;
         ScopePtr<ToolboxSceneDependencyMender> m_scene_mender;
         bool m_scene_validator_result_opened = false;
-        bool m_scene_mender_result_opened = false;
+        bool m_scene_mender_result_opened    = false;
     };
 }  // namespace Toolbox::UI

@@ -76,13 +76,16 @@ namespace Toolbox {
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
         void setData(const ModelIndex &index, std::any data, int role) override;
 
+        [[nodiscard]] std::string findUniqueName(const ModelIndex &index,
+                                                 const std::string &name) const;
+
     public:
         [[nodiscard]] ModelIndex getIndex(const UUID64 &uuid) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
 
-        [[nodiscard]] virtual ModelIndex makeIndex(RefPtr<ISceneObject> object, int64_t row,
-                                                   const ModelIndex &parent) const;
+        [[nodiscard]] virtual ModelIndex insertObject(RefPtr<ISceneObject> object, int64_t row,
+                                                      const ModelIndex &parent);
         [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
@@ -119,10 +122,19 @@ namespace Toolbox {
         [[nodiscard]] virtual Signal createSignalForIndex_(const ModelIndex &index,
                                                            ModelEventFlags base_event) const;
 
+        [[nodiscard]] virtual ModelIndex insertObject_(RefPtr<ISceneObject> object, int64_t row,
+                                                      const ModelIndex &parent);
+        [[nodiscard]] virtual ModelIndex makeIndex(RefPtr<ISceneObject> object, int64_t row,
+                                                   const ModelIndex &parent) const;
+
         // Implementation of public API for mutex locking reasons
         [[nodiscard]] std::any getData_(const ModelIndex &index, int role) const;
         void setData_(const ModelIndex &index, std::any data, int role) const;
 
+        [[nodiscard]] std::string findUniqueName_(const ModelIndex &index,
+                                                  const std::string &name) const;
+
+        [[nodiscard]] ModelIndex getIndex_(RefPtr<ISceneObject> object) const;
         [[nodiscard]] ModelIndex getIndex_(const UUID64 &uuid) const;
         [[nodiscard]] ModelIndex getIndex_(int64_t row, int64_t column,
                                            const ModelIndex &parent = ModelIndex()) const;
@@ -152,12 +164,15 @@ namespace Toolbox {
 
         void signalEventListeners(const ModelIndex &index, int flags);
 
+        void pruneRedundantIndexes(IDataModel::index_container &indexes) const;
+
     private:
         UUID64 m_uuid;
 
         mutable std::mutex m_mutex;
         std::unordered_map<UUID64, std::pair<event_listener_t, int>> m_listeners;
 
+        mutable UUID64 m_root_index;
         mutable std::map<UUID64, ModelIndex> m_index_map;
     };
 

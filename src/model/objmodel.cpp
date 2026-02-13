@@ -50,6 +50,23 @@ namespace Toolbox {
 
     void SceneObjModel::initialize(const Scene::ObjectHierarchy &hierarchy) {
         m_index_map.clear();
+
+        bool result = ObjectForEach(
+            hierarchy.getRoot(), 0, nullptr,
+            [this](RefPtr<ISceneObject> object, int64_t row, RefPtr<ISceneObject> parent) {
+                ModelIndex parent_index = getIndex(parent);
+                ModelIndex new_index    = makeIndex(object, row, parent_index);
+                if (!validateIndex(new_index)) {
+                    TOOLBOX_ERROR_V("[OBJMODEL] Failed to make index for object {} ({})",
+                                    object->type(), object->getNameRef().name());
+                    return false;
+                }
+                return true;
+            });
+
+        if (!result) {
+            TOOLBOX_ERROR("[OBJMODEL] Failed to initialize model from given ObjectHierarchy!");
+        }
     }
 
     std::any SceneObjModel::getData(const ModelIndex &index, int role) const {
@@ -60,6 +77,21 @@ namespace Toolbox {
     void SceneObjModel::setData(const ModelIndex &index, std::any data, int role) {
         std::scoped_lock lock(m_mutex);
         setData_(index, data, role);
+    }
+
+    std::string SceneObjModel::findUniqueName(const ModelIndex &index,
+                                              const std::string &name) const {
+        std::scoped_lock lock(m_mutex);
+        return findUniqueName_(index, name);
+    }
+
+    ModelIndex SceneObjModel::getIndex(RefPtr<ISceneObject> object) const {
+        if (!object) {
+            return ModelIndex();
+        }
+
+        std::scoped_lock lock(m_mutex);
+        return getIndex_(object);
     }
 
     ModelIndex SceneObjModel::getIndex(const UUID64 &uuid) const {
@@ -96,6 +128,12 @@ namespace Toolbox {
         }
 
         return result;
+    }
+
+    ModelIndex SceneObjModel::insertObject(RefPtr<ISceneObject> object, int64_t row,
+                                           const ModelIndex &parent) {
+        std::unique_lock lock(m_mutex);
+        return insertObject_(object, row, parent);
     }
 
     ModelIndex SceneObjModel::getParent(const ModelIndex &index) const {
@@ -218,7 +256,7 @@ namespace Toolbox {
             return object->type();
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_KEY: {
-            return object->getNameRef().name();
+            return std::string(object->getNameRef().name());
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_GAME_ADDR: {
             return object->getGamePtr();
@@ -267,6 +305,45 @@ namespace Toolbox {
         }
     }
 
+    std::string SceneObjModel::findUniqueName_(const ModelIndex &index,
+                                               const std::string &name) const {
+        if (!validateIndex(index)) {
+            return name;
+        }
+
+        std::string result_name = name;
+        size_t collisions       = 0;
+        std::vector<std::string> child_paths;
+
+        for (size_t i = 0; i < getRowCount_(index); ++i) {
+            ModelIndex child                  = getIndex_(i, 0, index);
+            RefPtr<ISceneObject> child_object = child.data<_SceneIndexData>()->m_object;
+            child_paths.emplace_back(std::move(std::string(child_object->getNameRef().name())));
+        }
+
+        for (size_t i = 0; i < child_paths.size();) {
+            if (child_paths[i] == result_name) {
+                collisions += 1;
+                result_name = std::format("{} ({})", name, collisions);
+                i           = 0;
+                continue;
+            }
+            ++i;
+        }
+
+        return result_name;
+    }
+
+    ModelIndex SceneObjModel::getIndex_(RefPtr<ISceneObject> object) const {
+        for (const auto &[k, v] : m_index_map) {
+            RefPtr<ISceneObject> other = v.data<_SceneIndexData>()->m_object;
+            if (other->getUUID() == object->getUUID()) {
+                return v;
+            }
+        }
+        return ModelIndex();
+    }
+
     ModelIndex SceneObjModel::getIndex_(const UUID64 &uuid) const {
         if (!m_index_map.contains(uuid)) {
             return ModelIndex();
@@ -276,33 +353,57 @@ namespace Toolbox {
 
     ModelIndex SceneObjModel::getIndex_(int64_t row, int64_t column,
                                         const ModelIndex &parent) const {
-        if (validateIndex(parent)) {
-            return ModelIndex();
-        }
-
-        if (row < 0 || (size_t)row >= m_index_map.size()) {
-            return ModelIndex();
-        }
-
-        size_t i = 0;
-        for (const auto &[k, v] : m_index_map) {
-            if (row == i++) {
-                return v;
+        if (!validateIndex(parent)) {
+            if (row != 0 || column != 0) {
+                return ModelIndex();
             }
+            return m_index_map[m_root_index];
         }
-        return ModelIndex();
+
+        RefPtr<ISceneObject> parent_obj      = parent.data<_SceneIndexData>()->m_object;
+        std::vector<RefPtr<ISceneObject>> children = parent_obj->getChildren();
+
+        if (row < 0 || row >= static_cast<int64_t>(children.size()) || column != 0) {
+            return ModelIndex();
+        }
+
+        RefPtr<ISceneObject> child_obj = children[row];
+        return getIndex_(child_obj);
     }
 
     bool SceneObjModel::removeIndex_(const ModelIndex &index) {
         if (!validateIndex(index)) {
             return false;
         }
+
+        ModelIndex parent            = getParent_(index);
+        _SceneIndexData *parent_data = validateIndex(parent) ? parent.data<_SceneIndexData>()
+                                                             : nullptr;
+        _SceneIndexData *this_data   = index.data<_SceneIndexData>();
+        if (parent_data) {
+            auto result = parent_data->m_object->removeChild(this_data->m_object);
+            if (!result) {
+                TOOLBOX_ERROR_V("[OBJMODEL] Failed to remove index with reason: '{}'",
+                                result.error().m_message);
+                return false;
+            }
+        }
+
         const UUID64 uuid = index.getUUID();
         m_index_map.erase(uuid);
         return true;
     }
 
-    ModelIndex SceneObjModel::getParent_(const ModelIndex &index) const { return ModelIndex(); }
+    ModelIndex SceneObjModel::getParent_(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return ModelIndex();
+        }
+
+        _SceneIndexData *data = index.data<_SceneIndexData>();
+        RefPtr<ISceneObject> parent = get_shared_ptr(*data->m_object->getParent());
+
+        return getIndex_(parent);
+    }
 
     ModelIndex SceneObjModel::getSibling_(int64_t row, int64_t column,
                                           const ModelIndex &index) const {
@@ -310,23 +411,29 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        return getIndex_(row, column, ModelIndex());
+        ModelIndex parent_index = getParent_(index);
+        return getIndex_(row, column, parent_index);
     }
 
     size_t SceneObjModel::getColumnCount_(const ModelIndex &index) const {
-        if (validateIndex(index)) {
-            return 0;
+        if (!validateIndex(index)) {
+            return 1;
         }
 
         return 1;
     }
 
     size_t SceneObjModel::getRowCount_(const ModelIndex &index) const {
-        if (validateIndex(index)) {
+        if (!validateIndex(index)) {
+            return 1;
+        }
+
+        _SceneIndexData *data = index.data<_SceneIndexData>();
+        if (!data) {
             return 0;
         }
 
-        return m_index_map.size();
+        return data->m_object->getChildren().size();
     }
 
     int64_t SceneObjModel::getColumn_(const ModelIndex &index) const {
@@ -338,9 +445,20 @@ namespace Toolbox {
             return -1;
         }
 
+        _SceneIndexData *data = index.data<_SceneIndexData>();
+        if (!data) {
+            return -1;
+        }
+
+        RefPtr<ISceneObject> self = data->m_object;
+        ISceneObject *parent = self->getParent();
+        if (!parent) {
+            return 0;
+        }
+
         int64_t row = 0;
-        for (const auto &[uuid, index] : m_index_map) {
-            if (uuid == index.getUUID()) {
+        for (RefPtr<ISceneObject> child : parent->getChildren()) {
+            if (child->getUUID() == self->getUUID()) {
                 return row;
             }
             ++row;
@@ -353,17 +471,154 @@ namespace Toolbox {
 
     ScopePtr<MimeData>
     SceneObjModel::createMimeData_(const IDataModel::index_container &indexes) const {
-        return nullptr;
+        ScopePtr<MimeData> new_data = make_scoped<MimeData>();
+
+        IDataModel::index_container pruned_indexes = indexes;
+        pruneRedundantIndexes(pruned_indexes);
+
+        std::function<Result<void, SerialError>(const ModelIndex &, Serializer &)> serialize_index =
+            [&](const ModelIndex &index, Serializer &out) -> Result<void, SerialError> {
+            out.write(static_cast<u64>(index.getUUID()));
+
+            RefPtr<ISceneObject> object = index.data<_SceneIndexData>()->m_object;
+
+            out.writeString(object->type());
+            out.writeString(object->getNameRef().name());
+            out.writeString(object->getWizardName());
+
+            const std::vector<MetaStruct::MemberT> &members = object->getMembers();
+            out.write<u32>(static_cast<u32>(members.size()));
+
+            for (const auto &member : members) {
+                Result<void, SerialError> result = member->serialize(out);
+                if (!result) {
+                    return result;
+                }
+            }
+
+            size_t child_count = getRowCount_(index);
+            out.write<u32>(static_cast<u32>(child_count));
+
+            for (size_t i = 0; i < child_count; ++i) {
+                ModelIndex child_index = getIndex_(i, 0, index);
+                if (!validateIndex(child_index)) {
+                    return make_serial_error<void>(out, "Failed to get child index for object!");
+                }
+                Result<void, SerialError> result = serialize_index(child_index, out);
+                if (!result) {
+                    return result;
+                }
+            }
+
+            return {};
+        };
+
+        std::stringstream outstr;
+        Serializer out(outstr.rdbuf());
+
+        for (const ModelIndex &index : pruned_indexes) {
+            if (!validateIndex(index)) {
+                TOOLBOX_WARN_V("Tried to create mime data for invalid index {}!", index.getUUID());
+                continue;
+            }
+
+            serialize_index(index, out);
+        }
+
+        std::string_view data_view = outstr.view();
+
+        Buffer mime_data;
+        mime_data.alloc(data_view.size());
+        std::memcpy(mime_data.buf(), data_view.data(), data_view.size());
+
+        new_data->set_data("toolbox/scene/object_model", std::move(mime_data));
+
+        return new_data;
     }
 
     bool SceneObjModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
                                         ModelInsertPolicy policy) {
-        return false;
+        if (!data.has_format("toolbox/scene/object_model")) {
+            return false;
+        }
+
+        Buffer mime_data = data.get_data("toolbox/scene/object_model").value();
+        
+        std::stringstream instr(std::string(mime_data.buf<char>(), mime_data.size()));
+        Deserializer in(instr.rdbuf());
+
+        std::function<Result<void, SerialError>(const ModelIndex &, Deserializer &)> deserialize_index =
+            [&](const ModelIndex &index, Deserializer &in) -> Result<void, SerialError> {
+            const UUID64 uuid = in.read<u64>();
+
+            const std::string obj_type = in.readString();
+            const std::string obj_name = in.readString();
+            const std::string obj_wizard = in.readString();
+
+            TemplateFactory::create_t obj_template = TemplateFactory::create(std::string_view(obj_type), true);
+            if (!obj_template) {
+                return make_serial_error<void>(
+                    in, std::format("Failed to find template for object type '{}'", obj_type));
+            }
+
+            RefPtr<ISceneObject> object =
+                ObjectFactory::create(*obj_template.value(), obj_wizard, ".");
+            if (!object) {
+                return make_serial_error<void>(
+                    in, std::format("Failed to create object of type '{}' with wizard '{}'",
+                                    obj_type, obj_wizard));
+            }
+            object->setNameRef(NameRef(obj_name));
+
+            const u32 member_count = in.read<u32>();
+            std::vector<RefPtr<MetaMember>> members = object->getMembers();
+            for (RefPtr<MetaMember> member : members) {
+                member->updateReferenceToList(members);
+                Result<void, SerialError> result = member->deserialize(in);
+                if (!result) {
+                    return result;
+                }
+            }
+
+            u32 child_count = in.read<u32>();
+
+            for (u32 i = 0; i < child_count; ++i) {
+                ModelIndex child_index = insertObject_(object, i, index);
+                Result<void, SerialError> result = deserialize_index(child_index, in);
+                if (!result) {
+                    return result;
+                }
+            }
+
+            return {};
+        };
     }
 
     bool SceneObjModel::canFetchMore_(const ModelIndex &index) const { return false; }
 
     void SceneObjModel::fetchMore_(const ModelIndex &index) const { return; }
+
+    ModelIndex SceneObjModel::insertObject_(RefPtr<ISceneObject> object, int64_t row,
+                                            const ModelIndex &parent) {
+        ModelIndex new_index = makeIndex(object, row, parent);
+        if (!validateIndex(new_index)) {
+            return ModelIndex();
+        }
+
+        _SceneIndexData *parent_data = validateIndex(parent) ? parent.data<_SceneIndexData>()
+                                                             : nullptr;
+        if (parent_data) {
+            auto result = parent_data->m_object->insertChild(row, object);
+            if (!result) {
+                TOOLBOX_ERROR_V("[OBJMODEL] Failed to create inde with reason: '{}'",
+                                result.error().m_message);
+                (void)removeIndex_(new_index);
+                return ModelIndex();
+            }
+        }
+
+        return new_index;
+    }
 
     ModelIndex SceneObjModel::makeIndex(RefPtr<ISceneObject> object, int64_t row,
                                         const ModelIndex &parent) const {
@@ -380,21 +635,13 @@ namespace Toolbox {
 
         new_index.setData(new_data);
 
-        if (row == m_index_map.size()) {
-            m_index_map.insert(m_index_map.end(), {new_index.getUUID(), new_index});
-            return new_index;
+        m_index_map[new_index.getUUID()] = new_index;
+
+        if (row == 0 && !validateIndex(parent)) {
+            m_root_index = new_index.getUUID();
         }
 
-        int64_t i = 0;
-        for (auto it = m_index_map.begin(); it != m_index_map.end(); it = std::next(it)) {
-            if (i == row) {
-                m_index_map.insert(it, {new_index.getUUID(), new_index});
-                return new_index;
-            }
-        }
-
-        delete new_data;
-        return ModelIndex();
+        return new_index;
     }
 
     void SceneObjModel::signalEventListeners(const ModelIndex &index, int flags) {
@@ -403,6 +650,49 @@ namespace Toolbox {
                 listener.first(index, (listener.second & flags));
             }
         }
+    }
+
+    void SceneObjModel::pruneRedundantIndexes(IDataModel::index_container &indexes) const {  // ---
+        // Step 1: Build a fast-lookup set of all UUIDs in the list.
+        // This is O(N) and has good cache locality (sequential read).
+        // ---
+        std::unordered_set<UUID64> list_uuids;
+        list_uuids.reserve(indexes.size());
+        for (const ModelIndex &index : indexes) {
+            list_uuids.insert(index.getUUID());
+        }
+
+        // ---
+        // Step 2: Use the "erase-remove" idiom.
+        // std::remove_if partitions the vector by "shuffling" all elements
+        // to be KEPT to the front. It returns an iterator to the new logical end.
+        // This is one sequential pass, O(N).
+        // ---
+        auto new_end_it = std::remove_if(indexes.begin(), indexes.end(),
+                                         // This lambda is called once for each index (N times).
+                                         [this, &list_uuids](const ModelIndex &child_idx) {
+                                             ModelIndex parent_idx = getParent_(child_idx);
+
+                                             while (validateIndex(parent_idx)) {
+                                                 // Check if this parent is *also* in our original
+                                                 // list.
+                                                 if (list_uuids.count(parent_idx.getUUID())) {
+                                                     return true;
+                                                 }
+
+                                                 parent_idx = getParent_(parent_idx);
+                                             }
+
+                                             // We reached the root and found no parent in the
+                                             // list. Keep this index.
+                                             return false;
+                                         });
+
+        // ---
+        // Step 3: Erase all the "removed" elements in one single operation.
+        // This is O(K) where K is the number of elements removed.
+        // ---
+        indexes.erase(new_end_it, indexes.end());
     }
 
 }  // namespace Toolbox

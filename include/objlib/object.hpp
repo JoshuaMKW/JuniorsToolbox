@@ -661,6 +661,11 @@ namespace Toolbox::Object {
                 if (!result) {
                     return std::unexpected(result.error());
                 }
+            } else {
+                TOOLBOX_WARN_V("[OBJECT] Setting transform of object {} ({}) without `Transform' "
+                               "field to ({}, {}, {})",
+                               type(), getNameRef().name(), transform.m_translation,
+                               transform.m_rotation, transform.m_scale);
             }
 
             return {};
