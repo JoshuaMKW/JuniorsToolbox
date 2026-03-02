@@ -80,6 +80,7 @@ namespace Toolbox {
                                                  const std::string &name) const;
 
     public:
+        [[nodiscard]] ModelIndex getIndex(RefPtr<ISceneObject> object) const;
         [[nodiscard]] ModelIndex getIndex(const UUID64 &uuid) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;

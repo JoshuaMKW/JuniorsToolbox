@@ -36,24 +36,33 @@ namespace Toolbox {
 
     SceneObjModel::~SceneObjModel() { reset(); }
 
-    static void ObjectForEach(RefPtr<ISceneObject> root,
-                              std::function<void(RefPtr<ISceneObject> object)> fn) {
-        if (!root) {
-            return;
+    using for_each_fn =
+        std::function<void(RefPtr<ISceneObject> object, int64_t row, RefPtr<ISceneObject> parent)>;
+
+    static bool ObjectForEach(RefPtr<ISceneObject> object, int64_t row, RefPtr<ISceneObject> parent,
+                              for_each_fn fn) {
+        if (!object) {
+            return false;
         }
 
-        fn(root);
-        for (RefPtr<ISceneObject> child : root->getChildren()) {
-            ObjectForEach(child, fn);
+        fn(object, row, parent);
+
+        int64_t i = 0;
+        for (RefPtr<ISceneObject> child : object->getChildren()) {
+            if (!ObjectForEach(child, i++, object, fn)) {
+                return false;  // Early exit
+            }
         }
+
+        return true;
     }
 
     void SceneObjModel::initialize(const Scene::ObjectHierarchy &hierarchy) {
         m_index_map.clear();
 
-        bool result = ObjectForEach(
-            hierarchy.getRoot(), 0, nullptr,
-            [this](RefPtr<ISceneObject> object, int64_t row, RefPtr<ISceneObject> parent) {
+        bool result =
+            ObjectForEach(hierarchy.getRoot(), 0, nullptr, [this](RefPtr<ISceneObject> object, int64_t row,
+                                                      RefPtr<ISceneObject> parent) {
                 ModelIndex parent_index = getIndex(parent);
                 ModelIndex new_index    = makeIndex(object, row, parent_index);
                 if (!validateIndex(new_index)) {
@@ -89,7 +98,7 @@ namespace Toolbox {
         if (!object) {
             return ModelIndex();
         }
-
+         
         std::scoped_lock lock(m_mutex);
         return getIndex_(object);
     }
@@ -360,7 +369,7 @@ namespace Toolbox {
             return m_index_map[m_root_index];
         }
 
-        RefPtr<ISceneObject> parent_obj      = parent.data<_SceneIndexData>()->m_object;
+        RefPtr<ISceneObject> parent_obj            = parent.data<_SceneIndexData>()->m_object;
         std::vector<RefPtr<ISceneObject>> children = parent_obj->getChildren();
 
         if (row < 0 || row >= static_cast<int64_t>(children.size()) || column != 0) {
@@ -399,7 +408,7 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        _SceneIndexData *data = index.data<_SceneIndexData>();
+        _SceneIndexData *data       = index.data<_SceneIndexData>();
         RefPtr<ISceneObject> parent = get_shared_ptr(*data->m_object->getParent());
 
         return getIndex_(parent);
@@ -451,7 +460,7 @@ namespace Toolbox {
         }
 
         RefPtr<ISceneObject> self = data->m_object;
-        ISceneObject *parent = self->getParent();
+        ISceneObject *parent      = self->getParent();
         if (!parent) {
             return 0;
         }
@@ -543,19 +552,21 @@ namespace Toolbox {
         }
 
         Buffer mime_data = data.get_data("toolbox/scene/object_model").value();
-        
+
         std::stringstream instr(std::string(mime_data.buf<char>(), mime_data.size()));
         Deserializer in(instr.rdbuf());
 
-        std::function<Result<void, SerialError>(const ModelIndex &, Deserializer &)> deserialize_index =
-            [&](const ModelIndex &index, Deserializer &in) -> Result<void, SerialError> {
+        std::function<Result<void, SerialError>(const ModelIndex &, Deserializer &)>
+            deserialize_index =
+                [&](const ModelIndex &index, Deserializer &in) -> Result<void, SerialError> {
             const UUID64 uuid = in.read<u64>();
 
-            const std::string obj_type = in.readString();
-            const std::string obj_name = in.readString();
+            const std::string obj_type   = in.readString();
+            const std::string obj_name   = in.readString();
             const std::string obj_wizard = in.readString();
 
-            TemplateFactory::create_t obj_template = TemplateFactory::create(std::string_view(obj_type), true);
+            TemplateFactory::create_t obj_template =
+                TemplateFactory::create(std::string_view(obj_type), true);
             if (!obj_template) {
                 return make_serial_error<void>(
                     in, std::format("Failed to find template for object type '{}'", obj_type));
@@ -570,7 +581,7 @@ namespace Toolbox {
             }
             object->setNameRef(NameRef(obj_name));
 
-            const u32 member_count = in.read<u32>();
+            const u32 member_count                  = in.read<u32>();
             std::vector<RefPtr<MetaMember>> members = object->getMembers();
             for (RefPtr<MetaMember> member : members) {
                 member->updateReferenceToList(members);
@@ -583,7 +594,7 @@ namespace Toolbox {
             u32 child_count = in.read<u32>();
 
             for (u32 i = 0; i < child_count; ++i) {
-                ModelIndex child_index = insertObject_(object, i, index);
+                ModelIndex child_index           = insertObject_(object, i, index);
                 Result<void, SerialError> result = deserialize_index(child_index, in);
                 if (!result) {
                     return result;
