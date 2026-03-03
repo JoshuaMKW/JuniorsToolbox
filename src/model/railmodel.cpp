@@ -2,9 +2,9 @@
 #include <compare>
 #include <set>
 
-#include "model/objmodel.hpp"
-#include "objlib/object.hpp"
+#include "model/railmodel.hpp"
 #include "project/config.hpp"
+#include "rail/rail.hpp"
 #include "scene/hierarchy.hpp"
 
 #include <gcm.hpp>
@@ -14,67 +14,58 @@ using namespace std::chrono;
 namespace Toolbox {
 
     struct _RailIndexData {
-        UUID64 m_self_uuid                    = 0;
-        RefPtr<Object::IRailObject> m_object = nullptr;
-        RefPtr<const ImageHandle> m_icon      = nullptr;
+        UUID64 m_self_uuid               = 0;
+        RefPtr<const ImageHandle> m_icon = nullptr;
+
+        bool hasValue() const {
+            return std::holds_alternative<RailData::rail_ptr_t>(m_data) ||
+                   std::holds_alternative<Rail::Rail::node_ptr_t>(m_data);
+        }
+
+        RailData::rail_ptr_t getRail() const {
+            if (std::holds_alternative<RailData::rail_ptr_t>(m_data)) {
+                return std::get<RailData::rail_ptr_t>(m_data);
+            }
+            return nullptr;
+        }
+
+        Rail::Rail::node_ptr_t getNode() const {
+            if (std::holds_alternative<Rail::Rail::node_ptr_t>(m_data)) {
+                return std::get<Rail::Rail::node_ptr_t>(m_data);
+            }
+            return nullptr;
+        }
 
         std::strong_ordering operator<=>(const _RailIndexData &rhs) const {
-            return m_object->getQualifiedName().toString() <=>
-                   rhs.m_object->getQualifiedName().toString();
-        }
-    };
+            if (RailData::rail_ptr_t rail = getRail()) {
+                if (RailData::rail_ptr_t rhs_rail = rhs.getRail()) {
+                    return rail->name() <=> rhs_rail->name();
+                }
+                return std::strong_ordering::greater;
+            }
 
-    static bool _RailIndexDataCompareByName(const _RailIndexData &lhs, const _RailIndexData &rhs,
-                                             ModelSortOrder order) {
-        // Sort by name
-        if (order == ModelSortOrder::SORT_ASCENDING) {
-            return lhs.m_object->getNameRef().name() < rhs.m_object->getNameRef().name();
-        } else {
-            return lhs.m_object->getNameRef().name() > rhs.m_object->getNameRef().name();
+            if (RailData::rail_ptr_t rhs_rail = rhs.getRail()) {
+                return std::strong_ordering::less;
+            }
+            return std::strong_ordering::equivalent;
         }
-    }
+
+    private:
+        std::variant<std::monostate, RailData::rail_ptr_t, Rail::Rail::node_ptr_t> m_data;
+    };
 
     RailObjModel::~RailObjModel() { reset(); }
 
-    using for_each_fn =
-        std::function<void(RefPtr<IRailObject> object, int64_t row, RefPtr<IRailObject> parent)>;
-
-    static bool ObjectForEach(RefPtr<IRailObject> object, int64_t row, RefPtr<IRailObject> parent,
-                              for_each_fn fn) {
-        if (!object) {
-            return false;
-        }
-
-        fn(object, row, parent);
-
-        int64_t i = 0;
-        for (RefPtr<IRailObject> child : object->getChildren()) {
-            if (!ObjectForEach(child, i++, object, fn)) {
-                return false;  // Early exit
-            }
-        }
-
-        return true;
-    }
-
-    void RailObjModel::initialize(const Rail::ObjectHierarchy &hierarchy) {
+    void RailObjModel::initialize(const RailData &data) {
         m_index_map.clear();
 
-        bool result =
-            ObjectForEach(hierarchy.getRoot(), 0, nullptr, [this](RefPtr<IRailObject> object, int64_t row,
-                                                      RefPtr<IRailObject> parent) {
-                ModelIndex parent_index = getIndex(parent);
-                ModelIndex new_index    = makeIndex(object, row, parent_index);
-                if (!validateIndex(new_index)) {
-                    TOOLBOX_ERROR_V("[OBJMODEL] Failed to make index for object {} ({})",
-                                    object->type(), object->getNameRef().name());
-                    return false;
-                }
-                return true;
-            });
-
-        if (!result) {
-            TOOLBOX_ERROR("[OBJMODEL] Failed to initialize model from given ObjectHierarchy!");
+        int64_t row = 0;
+        for (RailData::rail_ptr_t rail : data.rails()) {
+            ModelIndex index = insertRail(rail, row++);
+            int64_t subrow   = 0;
+            for (Rail::Rail::node_ptr_t node : rail->nodes()) {
+                insertRailNode(node, subrow++, index);
+            }
         }
     }
 
@@ -89,18 +80,18 @@ namespace Toolbox {
     }
 
     std::string RailObjModel::findUniqueName(const ModelIndex &index,
-                                              const std::string &name) const {
+                                             const std::string &name) const {
         std::scoped_lock lock(m_mutex);
         return findUniqueName_(index, name);
     }
 
-    ModelIndex RailObjModel::getIndex(RefPtr<IRailObject> object) const {
-        if (!object) {
+    ModelIndex RailObjModel::getIndex(RailData::rail_ptr_t rail) const {
+        if (!rail) {
             return ModelIndex();
         }
-         
+
         std::scoped_lock lock(m_mutex);
-        return getIndex_(object);
+        return getIndex_(rail);
     }
 
     ModelIndex RailObjModel::getIndex(const UUID64 &uuid) const {
@@ -108,8 +99,7 @@ namespace Toolbox {
         return getIndex_(uuid);
     }
 
-    ModelIndex RailObjModel::getIndex(int64_t row, int64_t column,
-                                       const ModelIndex &parent) const {
+    ModelIndex RailObjModel::getIndex(int64_t row, int64_t column, const ModelIndex &parent) const {
         std::scoped_lock lock(m_mutex);
         return getIndex_(row, column, parent);
     }
@@ -139,10 +129,15 @@ namespace Toolbox {
         return result;
     }
 
-    ModelIndex RailObjModel::insertObject(RefPtr<IRailObject> object, int64_t row,
-                                           const ModelIndex &parent) {
+    ModelIndex RailObjModel::insertRail(RailData::rail_ptr_t rail, int64_t row) {
         std::unique_lock lock(m_mutex);
-        return insertObject_(object, row, parent);
+        return insertRail_(rail, row);
+    }
+
+    ModelIndex RailObjModel::insertRailNode(Rail::Rail::node_ptr_t node, int64_t row,
+                                            const ModelIndex &parent) {
+        std::unique_lock lock(m_mutex);
+        return insertRailNode_(node, row, parent);
     }
 
     ModelIndex RailObjModel::getParent(const ModelIndex &index) const {
@@ -151,7 +146,7 @@ namespace Toolbox {
     }
 
     ModelIndex RailObjModel::getSibling(int64_t row, int64_t column,
-                                         const ModelIndex &index) const {
+                                        const ModelIndex &index) const {
         std::scoped_lock lock(m_mutex);
         return getSibling_(row, column, index);
     }
@@ -188,7 +183,7 @@ namespace Toolbox {
     }
 
     bool RailObjModel::insertMimeData(const ModelIndex &index, const MimeData &data,
-                                       ModelInsertPolicy policy) {
+                                      ModelInsertPolicy policy) {
         bool result;
 
         {
@@ -226,8 +221,7 @@ namespace Toolbox {
         m_index_map.clear();
     }
 
-    void RailObjModel::addEventListener(UUID64 uuid, event_listener_t listener,
-                                         int allowed_flags) {
+    void RailObjModel::addEventListener(UUID64 uuid, event_listener_t listener, int allowed_flags) {
         m_listeners[uuid] = {listener, allowed_flags};
     }
 
@@ -239,7 +233,7 @@ namespace Toolbox {
     // }
 
     RailObjModel::Signal RailObjModel::createSignalForIndex_(const ModelIndex &index,
-                                                               ModelEventFlags base_event) const {
+                                                             ModelEventFlags base_event) const {
         return {index, (int)base_event};
     }
 
@@ -248,31 +242,76 @@ namespace Toolbox {
             return {};
         }
 
-        RefPtr<IRailObject> object = index.data<_RailIndexData>()->m_object;
-        if (!object) {
+        _RailIndexData *data = index.data<_RailIndexData>();
+        if (!data->hasValue()) {
             return {};
+        }
+
+        RailData::rail_ptr_t rail = data->getRail();
+        TOOLBOX_CORE_ASSERT(rail && "Rail pointer is null for index");
+
+        if (Rail::Rail::node_ptr_t node = data->getNode()) {
+            TOOLBOX_CORE_ASSERT(node->getRailUUID() == rail->getUUID() &&
+                                "RailNode's parent Rail UUID does not match Rail UUID for index");
+            TOOLBOX_CORE_ASSERT(node && "RailNode pointer is null for index");
+
+            switch (role) {
+            case ModelDataRole::DATA_ROLE_DISPLAY:
+                std::optional<size_t> node_index = rail->getNodeIndex(node);
+                if (!node_index.has_value()) {
+                    return "Invalid Node";
+                }
+                return std::format("Node {}", node_index);
+            case ModelDataRole::DATA_ROLE_TOOLTIP:
+                return "Tooltip unimplemented!";
+            case ModelDataRole::DATA_ROLE_DECORATION: {
+                return data->m_icon;
+            }
+            case RailObjDataRole::RAIL_DATA_ROLE_RAIL_TYPE: {
+                return {};
+            }
+            case RailObjDataRole::RAIL_DATA_ROLE_RAIL_KEY: {
+                std::optional<size_t> node_index = rail->getNodeIndex(node);
+                if (!node_index.has_value()) {
+                    return {};
+                }
+                return std::format("Node {}", node_index);
+            }
+            case RailObjDataRole::RAIL_DATA_ROLE_RAIL_GAME_ADDR: {
+                // TODO: Currently unimplemented
+                return static_cast<u32>(0);
+            }
+            case RailObjDataRole::RAIL_DATA_ROLE_RAIL_REF: {
+                return node;  // We do this since nodes are complex and may require direct
+                              // interaction
+            }
+            default:
+                return {};
+            }
         }
 
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY:
-            return std::format("{} ({})", object->type(), object->getNameRef().name());
+            return rail->name();
         case ModelDataRole::DATA_ROLE_TOOLTIP:
             return "Tooltip unimplemented!";
         case ModelDataRole::DATA_ROLE_DECORATION: {
-            return index.data<_RailIndexData>()->m_icon;
+
+            return data->m_icon;
         }
-        case RailObjDataRole::SCENE_DATA_ROLE_OBJ_TYPE: {
-            return object->type();
+        case RailObjDataRole::RAIL_DATA_ROLE_RAIL_TYPE: {
+            return rail->name().starts_with("S_") ? "Spline Rail" : "Linear Rail";
         }
-        case RailObjDataRole::SCENE_DATA_ROLE_OBJ_KEY: {
-            return std::string(object->getNameRef().name());
+        case RailObjDataRole::RAIL_DATA_ROLE_RAIL_KEY: {
+            return rail->name();
         }
-        case RailObjDataRole::SCENE_DATA_ROLE_OBJ_GAME_ADDR: {
-            return object->getGamePtr();
+        case RailObjDataRole::RAIL_DATA_ROLE_RAIL_GAME_ADDR: {
+            // TODO: Currently unimplemented
+            return static_cast<u32>(0);
         }
-        case RailObjDataRole::SCENE_DATA_ROLE_OBJ_REF: {
-            return object;  // We do this since objects are complex and may require direct
-                            // interaction
+        case RailObjDataRole::RAIL_DATA_ROLE_RAIL_REF: {
+            return rail;  // We do this since rails are complex and may require direct
+                          // interaction
         }
         default:
             return {};
@@ -284,38 +323,50 @@ namespace Toolbox {
             return;
         }
 
-        RefPtr<IRailObject> object = index.data<_RailIndexData>()->m_object;
-        if (!object) {
+        _RailIndexData *idata = index.data<_RailIndexData>();
+        if (!data.has_value()) {
+            return;
+        }
+
+        RailData::rail_ptr_t rail = idata->getRail();
+        TOOLBOX_CORE_ASSERT(rail && "Rail pointer is null for index");
+
+        if (Rail::Rail::node_ptr_t node = idata->getNode()) {
+            TOOLBOX_CORE_ASSERT(node->getRailUUID() == rail->getUUID() &&
+                                "RailNode's parent Rail UUID does not match Rail UUID for index");
+            TOOLBOX_CORE_ASSERT(node && "RailNode pointer is null for index");
             return;
         }
 
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY:
-            break;
+            rail->setName(std::any_cast<std::string>(data));
+        case ModelDataRole::DATA_ROLE_TOOLTIP:
+            return;
         case ModelDataRole::DATA_ROLE_DECORATION: {
-            index.data<_RailIndexData>()->m_icon = std::any_cast<RefPtr<const ImageHandle>>(data);
-            break;
+            return;
         }
-        case RailObjDataRole::SCENE_DATA_ROLE_OBJ_TYPE: {
-            break;
+        case RailObjDataRole::RAIL_DATA_ROLE_RAIL_TYPE: {
+            return;
         }
-        case RailObjDataRole::SCENE_DATA_ROLE_OBJ_KEY: {
-            object->setNameRef(NameRef(std::any_cast<std::string>(data)));
-            break;
+        case RailObjDataRole::RAIL_DATA_ROLE_RAIL_KEY: {
+            rail->setName(std::any_cast<std::string>(data));
         }
-        case RailObjDataRole::SCENE_DATA_ROLE_OBJ_GAME_ADDR: {
-            break;
+        case RailObjDataRole::RAIL_DATA_ROLE_RAIL_GAME_ADDR: {
+            return;
         }
-        case RailObjDataRole::SCENE_DATA_ROLE_OBJ_REF: {
-            break;
+        case RailObjDataRole::RAIL_DATA_ROLE_RAIL_REF: {
+            return;
         }
         default:
             return;
         }
+
+        return;
     }
 
     std::string RailObjModel::findUniqueName_(const ModelIndex &index,
-                                               const std::string &name) const {
+                                              const std::string &name) const {
         if (!validateIndex(index)) {
             return name;
         }
@@ -325,9 +376,11 @@ namespace Toolbox {
         std::vector<std::string> child_paths;
 
         for (size_t i = 0; i < getRowCount_(index); ++i) {
-            ModelIndex child                  = getIndex_(i, 0, index);
-            RefPtr<IRailObject> child_object = child.data<_RailIndexData>()->m_object;
-            child_paths.emplace_back(std::move(std::string(child_object->getNameRef().name())));
+            ModelIndex child = getIndex_(i, 0, index);
+
+            std::string child_name = std::any_cast<std::string>(
+                getData_(getIndex_(i, 0, index), ModelDataRole::DATA_ROLE_DISPLAY));
+            child_paths.emplace_back(std::move(child_name));
         }
 
         for (size_t i = 0; i < child_paths.size();) {
@@ -343,10 +396,41 @@ namespace Toolbox {
         return result_name;
     }
 
-    ModelIndex RailObjModel::getIndex_(RefPtr<IRailObject> object) const {
+    ModelIndex RailObjModel::getIndex_(RailData::rail_ptr_t rail) const {
         for (const auto &[k, v] : m_index_map) {
-            RefPtr<IRailObject> other = v.data<_RailIndexData>()->m_object;
-            if (other->getUUID() == object->getUUID()) {
+            _RailIndexData *data = v.data<_RailIndexData>();
+            if (!data->hasValue()) {
+                continue;
+            }
+
+            // Skip indexes that reference nodes when we're looking for rails, and vice versa
+            Rail::Rail::node_ptr_t node = data->getNode();
+            if (node) {
+                continue;
+            }
+
+            RailData::rail_ptr_t other = data->getRail();
+            if (other->getUUID() == rail->getUUID()) {
+                return v;
+            }
+        }
+        return ModelIndex();
+    }
+
+    ModelIndex RailObjModel::getIndex_(Rail::Rail::node_ptr_t node) const {
+        for (const auto &[k, v] : m_index_map) {
+            _RailIndexData *data = v.data<_RailIndexData>();
+            if (!data->hasValue()) {
+                continue;
+            }
+
+            // Skip indexes that reference rails when we're looking for nodes, and vice versa
+            Rail::Rail::node_ptr_t other = data->getNode();
+            if (!other) {
+                continue;
+            }
+
+            if (other->getUUID() == node->getUUID()) {
                 return v;
             }
         }
@@ -361,7 +445,7 @@ namespace Toolbox {
     }
 
     ModelIndex RailObjModel::getIndex_(int64_t row, int64_t column,
-                                        const ModelIndex &parent) const {
+                                       const ModelIndex &parent) const {
         if (!validateIndex(parent)) {
             if (row != 0 || column != 0) {
                 return ModelIndex();
@@ -369,14 +453,14 @@ namespace Toolbox {
             return m_index_map[m_root_index];
         }
 
-        RefPtr<IRailObject> parent_obj            = parent.data<_RailIndexData>()->m_object;
-        std::vector<RefPtr<IRailObject>> children = parent_obj->getChildren();
+        RailData::rail_ptr_t parent_obj            = parent.data<_RailIndexData>()->m_rail;
+        std::vector<RailData::rail_ptr_t> children = parent_obj->getChildren();
 
         if (row < 0 || row >= static_cast<int64_t>(children.size()) || column != 0) {
             return ModelIndex();
         }
 
-        RefPtr<IRailObject> child_obj = children[row];
+        RailData::rail_ptr_t child_obj = children[row];
         return getIndex_(child_obj);
     }
 
@@ -385,12 +469,12 @@ namespace Toolbox {
             return false;
         }
 
-        ModelIndex parent            = getParent_(index);
+        ModelIndex parent           = getParent_(index);
         _RailIndexData *parent_data = validateIndex(parent) ? parent.data<_RailIndexData>()
-                                                             : nullptr;
+                                                            : nullptr;
         _RailIndexData *this_data   = index.data<_RailIndexData>();
         if (parent_data) {
-            auto result = parent_data->m_object->removeChild(this_data->m_object);
+            auto result = parent_data->m_rail->removeChild(this_data->m_rail);
             if (!result) {
                 TOOLBOX_ERROR_V("[OBJMODEL] Failed to remove index with reason: '{}'",
                                 result.error().m_message);
@@ -408,14 +492,14 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        _RailIndexData *data       = index.data<_RailIndexData>();
-        RefPtr<IRailObject> parent = get_shared_ptr(*data->m_object->getParent());
+        _RailIndexData *data        = index.data<_RailIndexData>();
+        RailData::rail_ptr_t parent = get_shared_ptr(*data->m_rail->getParent());
 
         return getIndex_(parent);
     }
 
     ModelIndex RailObjModel::getSibling_(int64_t row, int64_t column,
-                                          const ModelIndex &index) const {
+                                         const ModelIndex &index) const {
         if (!validateIndex(index)) {
             return ModelIndex();
         }
@@ -442,7 +526,7 @@ namespace Toolbox {
             return 0;
         }
 
-        return data->m_object->getChildren().size();
+        return data->m_rail->getChildren().size();
     }
 
     int64_t RailObjModel::getColumn_(const ModelIndex &index) const {
@@ -459,14 +543,14 @@ namespace Toolbox {
             return -1;
         }
 
-        RefPtr<IRailObject> self = data->m_object;
-        IRailObject *parent      = self->getParent();
+        RailData::rail_ptr_t self = data->m_rail;
+        IRailObject *parent       = self->getParent();
         if (!parent) {
             return 0;
         }
 
         int64_t row = 0;
-        for (RefPtr<IRailObject> child : parent->getChildren()) {
+        for (RailData::rail_ptr_t child : parent->getChildren()) {
             if (child->getUUID() == self->getUUID()) {
                 return row;
             }
@@ -489,13 +573,13 @@ namespace Toolbox {
             [&](const ModelIndex &index, Serializer &out) -> Result<void, SerialError> {
             out.write(static_cast<u64>(index.getUUID()));
 
-            RefPtr<IRailObject> object = index.data<_RailIndexData>()->m_object;
+            RailData::rail_ptr_t rail = index.data<_RailIndexData>()->m_rail;
 
-            out.writeString(object->type());
-            out.writeString(object->getNameRef().name());
-            out.writeString(object->getWizardName());
+            out.writeString(rail->type());
+            out.writeString(rail->getNameRef().name());
+            out.writeString(rail->getWizardName());
 
-            const std::vector<MetaStruct::MemberT> &members = object->getMembers();
+            const std::vector<MetaStruct::MemberT> &members = rail->getMembers();
             out.write<u32>(static_cast<u32>(members.size()));
 
             for (const auto &member : members) {
@@ -511,7 +595,7 @@ namespace Toolbox {
             for (size_t i = 0; i < child_count; ++i) {
                 ModelIndex child_index = getIndex_(i, 0, index);
                 if (!validateIndex(child_index)) {
-                    return make_serial_error<void>(out, "Failed to get child index for object!");
+                    return make_serial_error<void>(out, "Failed to get child index for rail!");
                 }
                 Result<void, SerialError> result = serialize_index(child_index, out);
                 if (!result) {
@@ -540,18 +624,18 @@ namespace Toolbox {
         mime_data.alloc(data_view.size());
         std::memcpy(mime_data.buf(), data_view.data(), data_view.size());
 
-        new_data->set_data("toolbox/scene/object_model", std::move(mime_data));
+        new_data->set_data("toolbox/scene/rail_model", std::move(mime_data));
 
         return new_data;
     }
 
     bool RailObjModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
-                                        ModelInsertPolicy policy) {
-        if (!data.has_format("toolbox/scene/object_model")) {
+                                       ModelInsertPolicy policy) {
+        if (!data.has_format("toolbox/scene/rail_model")) {
             return false;
         }
 
-        Buffer mime_data = data.get_data("toolbox/scene/object_model").value();
+        Buffer mime_data = data.get_data("toolbox/scene/rail_model").value();
 
         std::stringstream instr(std::string(mime_data.buf<char>(), mime_data.size()));
         Deserializer in(instr.rdbuf());
@@ -569,20 +653,20 @@ namespace Toolbox {
                 TemplateFactory::create(std::string_view(obj_type), true);
             if (!obj_template) {
                 return make_serial_error<void>(
-                    in, std::format("Failed to find template for object type '{}'", obj_type));
+                    in, std::format("Failed to find template for rail type '{}'", obj_type));
             }
 
-            RefPtr<IRailObject> object =
+            RailData::rail_ptr_t rail =
                 ObjectFactory::create(*obj_template.value(), obj_wizard, ".");
-            if (!object) {
+            if (!rail) {
                 return make_serial_error<void>(
-                    in, std::format("Failed to create object of type '{}' with wizard '{}'",
-                                    obj_type, obj_wizard));
+                    in, std::format("Failed to create rail of type '{}' with wizard '{}'", obj_type,
+                                    obj_wizard));
             }
-            object->setNameRef(NameRef(obj_name));
+            rail->setNameRef(NameRef(obj_name));
 
             const u32 member_count                  = in.read<u32>();
-            std::vector<RefPtr<MetaMember>> members = object->getMembers();
+            std::vector<RefPtr<MetaMember>> members = rail->getMembers();
             for (RefPtr<MetaMember> member : members) {
                 member->updateReferenceToList(members);
                 Result<void, SerialError> result = member->deserialize(in);
@@ -594,7 +678,7 @@ namespace Toolbox {
             u32 child_count = in.read<u32>();
 
             for (u32 i = 0; i < child_count; ++i) {
-                ModelIndex child_index           = insertObject_(object, i, index);
+                ModelIndex child_index           = insertObject_(rail, i, index);
                 Result<void, SerialError> result = deserialize_index(child_index, in);
                 if (!result) {
                     return result;
@@ -609,17 +693,17 @@ namespace Toolbox {
 
     void RailObjModel::fetchMore_(const ModelIndex &index) const { return; }
 
-    ModelIndex RailObjModel::insertObject_(RefPtr<IRailObject> object, int64_t row,
-                                            const ModelIndex &parent) {
-        ModelIndex new_index = makeIndex(object, row, parent);
+    ModelIndex RailObjModel::insertObject_(RailData::rail_ptr_t rail, int64_t row,
+                                           const ModelIndex &parent) {
+        ModelIndex new_index = makeIndex(rail, row, parent);
         if (!validateIndex(new_index)) {
             return ModelIndex();
         }
 
         _RailIndexData *parent_data = validateIndex(parent) ? parent.data<_RailIndexData>()
-                                                             : nullptr;
+                                                            : nullptr;
         if (parent_data) {
-            auto result = parent_data->m_object->insertChild(row, object);
+            auto result = parent_data->m_rail->insertChild(row, rail);
             if (!result) {
                 TOOLBOX_ERROR_V("[OBJMODEL] Failed to create inde with reason: '{}'",
                                 result.error().m_message);
@@ -631,8 +715,8 @@ namespace Toolbox {
         return new_index;
     }
 
-    ModelIndex RailObjModel::makeIndex(RefPtr<IRailObject> object, int64_t row,
-                                        const ModelIndex &parent) const {
+    ModelIndex RailObjModel::makeIndex(RailData::rail_ptr_t rail, int64_t row,
+                                       const ModelIndex &parent) const {
         if (row < 0 || row > m_index_map.size()) {
             return ModelIndex();
         }
@@ -640,9 +724,9 @@ namespace Toolbox {
         ModelIndex new_index(getUUID());
 
         _RailIndexData *new_data = new _RailIndexData;
-        new_data->m_self_uuid     = new_index.getUUID();
-        new_data->m_object        = object;
-        new_data->m_icon          = nullptr;
+        new_data->m_self_uuid    = new_index.getUUID();
+        new_data->m_rail         = rail;
+        new_data->m_icon         = nullptr;
 
         new_index.setData(new_data);
 

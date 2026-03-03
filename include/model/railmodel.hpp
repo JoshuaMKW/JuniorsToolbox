@@ -26,10 +26,10 @@ using namespace std::chrono;
 namespace Toolbox {
 
     enum RailObjDataRole {
-        RAIL_DATA_ROLE_OBJ_TYPE = ModelDataRole::DATA_ROLE_USER,
-        RAIL_DATA_ROLE_OBJ_KEY,
-        RAIL_DATA_ROLE_OBJ_GAME_ADDR,
-        RAIL_DATA_ROLE_OBJ_REF,
+        RAIL_DATA_ROLE_RAIL_TYPE = ModelDataRole::DATA_ROLE_USER,
+        RAIL_DATA_ROLE_RAIL_KEY,
+        RAIL_DATA_ROLE_RAIL_GAME_ADDR,
+        RAIL_DATA_ROLE_RAIL_REF,
     };
 
     class RailObjModel : public IDataModel {
@@ -50,27 +50,32 @@ namespace Toolbox {
 
         [[nodiscard]] bool isReadOnly() const override { return false; }
 
-        [[nodiscard]] std::string getObjectType(const ModelIndex &index) const {
+        [[nodiscard]] std::string getRailType(const ModelIndex &index) const {
             return std::any_cast<std::string>(
-                getData(index, RailObjDataRole::RAIL_DATA_ROLE_OBJ_TYPE));
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_TYPE));
         }
 
-        [[nodiscard]] std::string getObjectKey(const ModelIndex &index) const {
+        [[nodiscard]] std::string getRailKey(const ModelIndex &index) const {
             return std::any_cast<std::string>(
-                getData(index, RailObjDataRole::RAIL_DATA_ROLE_OBJ_KEY));
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_KEY));
         }
         void setObjectKey(const ModelIndex &index, const std::string &key) {
-            setData(index, key, RailObjDataRole::RAIL_DATA_ROLE_OBJ_KEY);
+            setData(index, key, RailObjDataRole::RAIL_DATA_ROLE_RAIL_KEY);
         }
 
-        [[nodiscard]] u32 getObjectGameAddress(const ModelIndex &index) const {
+        [[nodiscard]] u32 getRailGameAddress(const ModelIndex &index) const {
             return std::any_cast<u32>(
-                getData(index, RailObjDataRole::RAIL_DATA_ROLE_OBJ_GAME_ADDR));
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_GAME_ADDR));
         }
 
-        [[nodiscard]] RailData::rail_ptr_t getObjectRef(const ModelIndex &index) const {
+        [[nodiscard]] RailData::rail_ptr_t getRailRef(const ModelIndex &index) const {
             return std::any_cast<RailData::rail_ptr_t>(
-                getData(index, RailObjDataRole::RAIL_DATA_ROLE_OBJ_REF));
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_REF));
+        }
+
+        [[nodiscard]] Rail::Rail::node_ptr_t getRailNodeRef(const ModelIndex &index) const {
+            return std::any_cast<Rail::Rail::node_ptr_t>(
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_REF));
         }
 
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
@@ -81,6 +86,7 @@ namespace Toolbox {
 
     public:
         [[nodiscard]] ModelIndex getIndex(RailData::rail_ptr_t rail) const;
+        [[nodiscard]] ModelIndex getIndex(Rail::Rail::node_ptr_t node) const;
         [[nodiscard]] ModelIndex getIndex(const UUID64 &uuid) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
@@ -176,8 +182,8 @@ namespace Toolbox {
         mutable std::mutex m_mutex;
         std::unordered_map<UUID64, std::pair<event_listener_t, int>> m_listeners;
 
-        mutable UUID64 m_root_index;
-        mutable std::map<UUID64, ModelIndex> m_index_map;
+        mutable std::vector<ModelIndex> m_rail_indexes;
+        mutable std::unordered_map<UUID64, std::vector<ModelIndex>> m_node_list_map;
     };
 
 }  // namespace Toolbox
