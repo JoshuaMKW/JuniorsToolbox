@@ -14,7 +14,6 @@ using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
 
-    // NOTE: Serialization is for Toolbox UI only. Use RalData for actual game data.
     class Rail : public ISerializable, public ISmartResource, public IUnique {
     public:
         using node_ptr_t = RefPtr<RailNode>;
