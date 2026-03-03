@@ -819,6 +819,7 @@ namespace Toolbox::UI {
             }
         }
 
+        MainApplication::instance().getProjectManager().loadProjectFolder(m_project_root);
         // m_pinned_folders = {m_tree_proxy->getIndex("files/data/scene")};
 
         return true;
