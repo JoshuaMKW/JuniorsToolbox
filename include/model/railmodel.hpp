@@ -184,6 +184,7 @@ namespace Toolbox {
 
         mutable std::vector<ModelIndex> m_rail_indexes;
         mutable std::unordered_map<UUID64, std::vector<ModelIndex>> m_node_list_map;
+        mutable std::unordered_map<UUID64, ModelIndex> m_index_map;
     };
 
 }  // namespace Toolbox

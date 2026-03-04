@@ -17,24 +17,13 @@ namespace Toolbox {
         UUID64 m_self_uuid               = 0;
         RefPtr<const ImageHandle> m_icon = nullptr;
 
-        bool hasValue() const {
-            return std::holds_alternative<RailData::rail_ptr_t>(m_data) ||
-                   std::holds_alternative<Rail::Rail::node_ptr_t>(m_data);
-        }
+        bool hasValue() const { return static_cast<bool>(m_rail); }
 
-        RailData::rail_ptr_t getRail() const {
-            if (std::holds_alternative<RailData::rail_ptr_t>(m_data)) {
-                return std::get<RailData::rail_ptr_t>(m_data);
-            }
-            return nullptr;
-        }
+        RailData::rail_ptr_t getRail() const { return m_rail; }
+        Rail::Rail::node_ptr_t getNode() const { return m_node; }
 
-        Rail::Rail::node_ptr_t getNode() const {
-            if (std::holds_alternative<Rail::Rail::node_ptr_t>(m_data)) {
-                return std::get<Rail::Rail::node_ptr_t>(m_data);
-            }
-            return nullptr;
-        }
+        void setRail(RailData::rail_ptr_t rail) { m_rail = rail; }
+        void setNode(Rail::Rail::node_ptr_t node) { m_node = node; }
 
         std::strong_ordering operator<=>(const _RailIndexData &rhs) const {
             if (RailData::rail_ptr_t rail = getRail()) {
@@ -51,13 +40,15 @@ namespace Toolbox {
         }
 
     private:
-        std::variant<std::monostate, RailData::rail_ptr_t, Rail::Rail::node_ptr_t> m_data;
+        RailData::rail_ptr_t m_rail;
+        Rail::Rail::node_ptr_t m_node;
     };
 
     RailObjModel::~RailObjModel() { reset(); }
 
     void RailObjModel::initialize(const RailData &data) {
-        m_index_map.clear();
+        m_rail_indexes.clear();
+        m_node_list_map.clear();
 
         int64_t row = 0;
         for (RailData::rail_ptr_t rail : data.rails()) {
@@ -92,6 +83,15 @@ namespace Toolbox {
 
         std::scoped_lock lock(m_mutex);
         return getIndex_(rail);
+    }
+
+    ModelIndex RailObjModel::getIndex(Rail::Rail::node_ptr_t node) const {
+        if (!node) {
+            return ModelIndex();
+        }
+
+        std::scoped_lock lock(m_mutex);
+        return getIndex_(node);
     }
 
     ModelIndex RailObjModel::getIndex(const UUID64 &uuid) const {
@@ -211,13 +211,15 @@ namespace Toolbox {
     void RailObjModel::reset() {
         std::scoped_lock lock(m_mutex);
 
-        for (auto &[key, val] : m_index_map) {
-            _RailIndexData *p = val.data<_RailIndexData>();
+        for (auto &[key, index] : m_index_map) {
+            _RailIndexData *p = index.data<_RailIndexData>();
             if (p) {
                 delete p;
             }
         }
 
+        m_rail_indexes.clear();
+        m_node_list_map.clear();
         m_index_map.clear();
     }
 
@@ -226,11 +228,6 @@ namespace Toolbox {
     }
 
     void RailObjModel::removeEventListener(UUID64 uuid) { m_listeners.erase(uuid); }
-
-    // const ImageHandle &RailObjModel::InvalidIcon() {
-    //     static ImageHandle s_invalid_fs_icon = ImageHandle("Images/Icons/fs_invalid.png");
-    //     return s_invalid_fs_icon;
-    // }
 
     RailObjModel::Signal RailObjModel::createSignalForIndex_(const ModelIndex &index,
                                                              ModelEventFlags base_event) const {
@@ -256,12 +253,13 @@ namespace Toolbox {
             TOOLBOX_CORE_ASSERT(node && "RailNode pointer is null for index");
 
             switch (role) {
-            case ModelDataRole::DATA_ROLE_DISPLAY:
+            case ModelDataRole::DATA_ROLE_DISPLAY: {
                 std::optional<size_t> node_index = rail->getNodeIndex(node);
                 if (!node_index.has_value()) {
                     return "Invalid Node";
                 }
-                return std::format("Node {}", node_index);
+                return std::format("Node {}", node_index.value());
+            }
             case ModelDataRole::DATA_ROLE_TOOLTIP:
                 return "Tooltip unimplemented!";
             case ModelDataRole::DATA_ROLE_DECORATION: {
@@ -275,7 +273,7 @@ namespace Toolbox {
                 if (!node_index.has_value()) {
                     return {};
                 }
-                return std::format("Node {}", node_index);
+                return std::format("Node {}", node_index.value());
             }
             case RailObjDataRole::RAIL_DATA_ROLE_RAIL_GAME_ADDR: {
                 // TODO: Currently unimplemented
@@ -397,8 +395,8 @@ namespace Toolbox {
     }
 
     ModelIndex RailObjModel::getIndex_(RailData::rail_ptr_t rail) const {
-        for (const auto &[k, v] : m_index_map) {
-            _RailIndexData *data = v.data<_RailIndexData>();
+        for (ModelIndex index : m_rail_indexes) {
+            _RailIndexData *data = index.data<_RailIndexData>();
             if (!data->hasValue()) {
                 continue;
             }
@@ -411,27 +409,33 @@ namespace Toolbox {
 
             RailData::rail_ptr_t other = data->getRail();
             if (other->getUUID() == rail->getUUID()) {
-                return v;
+                return index;
             }
         }
         return ModelIndex();
     }
 
     ModelIndex RailObjModel::getIndex_(Rail::Rail::node_ptr_t node) const {
-        for (const auto &[k, v] : m_index_map) {
-            _RailIndexData *data = v.data<_RailIndexData>();
-            if (!data->hasValue()) {
+        for (const auto &[k, node_list] : m_node_list_map) {
+            if (k != node->getRailUUID()) {
                 continue;
             }
 
-            // Skip indexes that reference rails when we're looking for nodes, and vice versa
-            Rail::Rail::node_ptr_t other = data->getNode();
-            if (!other) {
-                continue;
-            }
+            for (ModelIndex node_index : node_list) {
+                _RailIndexData *data = node_index.data<_RailIndexData>();
+                if (!data->hasValue()) {
+                    continue;
+                }
 
-            if (other->getUUID() == node->getUUID()) {
-                return v;
+                // Skip indexes that reference rails when we're looking for nodes, and vice versa
+                Rail::Rail::node_ptr_t other = data->getNode();
+                if (!other) {
+                    continue;
+                }
+
+                if (other->getUUID() == node->getUUID()) {
+                    return node_index;
+                }
             }
         }
         return ModelIndex();
@@ -447,21 +451,25 @@ namespace Toolbox {
     ModelIndex RailObjModel::getIndex_(int64_t row, int64_t column,
                                        const ModelIndex &parent) const {
         if (!validateIndex(parent)) {
-            if (row != 0 || column != 0) {
+            if (row >= m_rail_indexes.size() || row < 0 || column != 0) {
                 return ModelIndex();
             }
-            return m_index_map[m_root_index];
+            return m_rail_indexes[row];
         }
 
-        RailData::rail_ptr_t parent_obj            = parent.data<_RailIndexData>()->m_rail;
-        std::vector<RailData::rail_ptr_t> children = parent_obj->getChildren();
-
-        if (row < 0 || row >= static_cast<int64_t>(children.size()) || column != 0) {
+        _RailIndexData *parent_data = parent.data<_RailIndexData>();
+        if (!parent_data->hasValue()) {
             return ModelIndex();
         }
 
-        RailData::rail_ptr_t child_obj = children[row];
-        return getIndex_(child_obj);
+        RailData::rail_ptr_t parent_rail          = parent_data->getRail();
+        const std::vector<ModelIndex> &rail_nodes = m_node_list_map[parent_rail->getUUID()];
+
+        if (row >= rail_nodes.size() || row < 0 || column != 0) {
+            return ModelIndex();
+        }
+
+        return rail_nodes[row];
     }
 
     bool RailObjModel::removeIndex_(const ModelIndex &index) {
@@ -469,17 +477,33 @@ namespace Toolbox {
             return false;
         }
 
+        _RailIndexData *this_data = index.data<_RailIndexData>();
+        if (!this_data->hasValue()) {
+            return false;
+        }
+
         ModelIndex parent           = getParent_(index);
         _RailIndexData *parent_data = validateIndex(parent) ? parent.data<_RailIndexData>()
                                                             : nullptr;
-        _RailIndexData *this_data   = index.data<_RailIndexData>();
+
         if (parent_data) {
-            auto result = parent_data->m_rail->removeChild(this_data->m_rail);
+            RailData::rail_ptr_t parent_rail = parent_data->getRail();
+            bool result                      = parent_rail->removeNode(this_data->getNode());
             if (!result) {
-                TOOLBOX_ERROR_V("[OBJMODEL] Failed to remove index with reason: '{}'",
-                                result.error().m_message);
+                TOOLBOX_ERROR_V("[RAILMODEL] Failed to remove node index from rail \"{}\"!",
+                                parent_rail->name());
                 return false;
             }
+
+            // Remove the index from the node list map
+            std::vector<ModelIndex> &node_list = m_node_list_map[parent_rail->getUUID()];
+            node_list.erase(std::remove(node_list.begin(), node_list.end(), index),
+                            node_list.end());
+        } else {
+            RailData::rail_ptr_t this_rail = this_data->getRail();
+            m_node_list_map.erase(this_rail->getUUID());
+            m_rail_indexes.erase(std::remove(m_rail_indexes.begin(), m_rail_indexes.end(), index),
+                                 m_rail_indexes.end());
         }
 
         const UUID64 uuid = index.getUUID();
@@ -492,10 +516,19 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        _RailIndexData *data        = index.data<_RailIndexData>();
-        RailData::rail_ptr_t parent = get_shared_ptr(*data->m_rail->getParent());
+        _RailIndexData *data = index.data<_RailIndexData>();
+        if (!data->hasValue()) {
+            return ModelIndex();
+        }
 
-        return getIndex_(parent);
+        RailData::rail_ptr_t rail   = data->getRail();
+        Rail::Rail::node_ptr_t node = data->getNode();
+
+        if (node) {
+            return getIndex_(rail);
+        }
+
+        return ModelIndex();
     }
 
     ModelIndex RailObjModel::getSibling_(int64_t row, int64_t column,
@@ -518,15 +551,15 @@ namespace Toolbox {
 
     size_t RailObjModel::getRowCount_(const ModelIndex &index) const {
         if (!validateIndex(index)) {
-            return 1;
+            return m_rail_indexes.size();
         }
 
         _RailIndexData *data = index.data<_RailIndexData>();
-        if (!data) {
+        if (!data->hasValue()) {
             return 0;
         }
 
-        return data->m_rail->getChildren().size();
+        return m_node_list_map[data->getRail()->getUUID()].size();
     }
 
     int64_t RailObjModel::getColumn_(const ModelIndex &index) const {
@@ -539,25 +572,31 @@ namespace Toolbox {
         }
 
         _RailIndexData *data = index.data<_RailIndexData>();
-        if (!data) {
+        if (!data->hasValue()) {
             return -1;
         }
 
-        RailData::rail_ptr_t self = data->m_rail;
-        IRailObject *parent       = self->getParent();
-        if (!parent) {
-            return 0;
-        }
+        RailData::rail_ptr_t rail   = data->getRail();
+        Rail::Rail::node_ptr_t node = data->getNode();
 
-        int64_t row = 0;
-        for (RailData::rail_ptr_t child : parent->getChildren()) {
-            if (child->getUUID() == self->getUUID()) {
-                return row;
+        if (node) {
+            const std::vector<ModelIndex> &rail_nodes = m_node_list_map[rail->getUUID()];
+            auto it =
+                std::find_if(rail_nodes.begin(), rail_nodes.end(),
+                             [&](const ModelIndex &node_index) { return node_index == index; });
+            if (it == rail_nodes.end()) {
+                return -1;
             }
-            ++row;
+            return std::distance(rail_nodes.begin(), it);
         }
 
-        return -1;
+        auto it = std::find_if(m_rail_indexes.begin(), m_rail_indexes.end(),
+                               [&](const ModelIndex &rail_index) { return rail_index == index; });
+        if (it == m_rail_indexes.end()) {
+            return -1;
+        }
+
+        return std::distance(m_rail_indexes.begin(), it);
     }
 
     bool RailObjModel::hasChildren_(const ModelIndex &parent) const { return false; }
@@ -566,6 +605,8 @@ namespace Toolbox {
     RailObjModel::createMimeData_(const IDataModel::index_container &indexes) const {
         ScopePtr<MimeData> new_data = make_scoped<MimeData>();
 
+        // Strips and validates indexes, ensuring either all nodes or all rails are included, and
+        // that there are no duplicates or invalid indexes.
         IDataModel::index_container pruned_indexes = indexes;
         pruneRedundantIndexes(pruned_indexes);
 
@@ -573,34 +614,20 @@ namespace Toolbox {
             [&](const ModelIndex &index, Serializer &out) -> Result<void, SerialError> {
             out.write(static_cast<u64>(index.getUUID()));
 
-            RailData::rail_ptr_t rail = index.data<_RailIndexData>()->m_rail;
+            _RailIndexData *data        = index.data<_RailIndexData>();
+            RailData::rail_ptr_t rail   = data->getRail();
+            Rail::Rail::node_ptr_t node = data->getNode();
 
-            out.writeString(rail->type());
-            out.writeString(rail->getNameRef().name());
-            out.writeString(rail->getWizardName());
+            const bool is_node = node != nullptr;
 
-            const std::vector<MetaStruct::MemberT> &members = rail->getMembers();
-            out.write<u32>(static_cast<u32>(members.size()));
+            out.write<bool>(is_node);
+            out.write<u64>(rail->getUUID());
 
-            for (const auto &member : members) {
-                Result<void, SerialError> result = member->serialize(out);
-                if (!result) {
-                    return result;
-                }
-            }
-
-            size_t child_count = getRowCount_(index);
-            out.write<u32>(static_cast<u32>(child_count));
-
-            for (size_t i = 0; i < child_count; ++i) {
-                ModelIndex child_index = getIndex_(i, 0, index);
-                if (!validateIndex(child_index)) {
-                    return make_serial_error<void>(out, "Failed to get child index for rail!");
-                }
-                Result<void, SerialError> result = serialize_index(child_index, out);
-                if (!result) {
-                    return result;
-                }
+            if (is_node) {
+                out.write<u64>(node->getUUID());
+                node->serialize(out);
+            } else {
+                rail->serialize(out);
             }
 
             return {};
@@ -608,6 +635,8 @@ namespace Toolbox {
 
         std::stringstream outstr;
         Serializer out(outstr.rdbuf());
+
+        out.write<u32>(static_cast<u32>(pruned_indexes.size()));
 
         for (const ModelIndex &index : pruned_indexes) {
             if (!validateIndex(index)) {
@@ -640,62 +669,75 @@ namespace Toolbox {
         std::stringstream instr(std::string(mime_data.buf<char>(), mime_data.size()));
         Deserializer in(instr.rdbuf());
 
-        std::function<Result<void, SerialError>(const ModelIndex &, Deserializer &)>
-            deserialize_index =
-                [&](const ModelIndex &index, Deserializer &in) -> Result<void, SerialError> {
-            const UUID64 uuid = in.read<u64>();
+        auto deserialize_index = [&](int64_t row, const ModelIndex &parent,
+                                     Deserializer &in) -> Result<void, SerialError> {
+            const bool is_node = in.read<bool>();
+            UUID64 rail_uuid   = in.read<u64>();
 
-            const std::string obj_type   = in.readString();
-            const std::string obj_name   = in.readString();
-            const std::string obj_wizard = in.readString();
-
-            TemplateFactory::create_t obj_template =
-                TemplateFactory::create(std::string_view(obj_type), true);
-            if (!obj_template) {
-                return make_serial_error<void>(
-                    in, std::format("Failed to find template for rail type '{}'", obj_type));
-            }
-
-            RailData::rail_ptr_t rail =
-                ObjectFactory::create(*obj_template.value(), obj_wizard, ".");
-            if (!rail) {
-                return make_serial_error<void>(
-                    in, std::format("Failed to create rail of type '{}' with wizard '{}'", obj_type,
-                                    obj_wizard));
-            }
-            rail->setNameRef(NameRef(obj_name));
-
-            const u32 member_count                  = in.read<u32>();
-            std::vector<RefPtr<MetaMember>> members = rail->getMembers();
-            for (RefPtr<MetaMember> member : members) {
-                member->updateReferenceToList(members);
-                Result<void, SerialError> result = member->deserialize(in);
+            if (is_node) {
+                UUID64 node_uuid            = in.read<u64>();
+                Rail::Rail::node_ptr_t node = make_referable<Rail::RailNode>();
+                auto result                 = node->deserialize(in);
                 if (!result) {
                     return result;
                 }
-            }
+                insertRailNode(node, row, parent);
+            } else {
+                if (validateIndex(parent)) {
+                    return make_serial_error<void>(
+                        in, "Cannot insert rail as child of another rail!");
+                }
 
-            u32 child_count = in.read<u32>();
-
-            for (u32 i = 0; i < child_count; ++i) {
-                ModelIndex child_index           = insertObject_(rail, i, index);
-                Result<void, SerialError> result = deserialize_index(child_index, in);
+                RailData::rail_ptr_t rail = make_referable<Rail::Rail>("_dummy_name");
+                auto result               = rail->deserialize(in);
                 if (!result) {
                     return result;
                 }
+                insertRail(rail, row);
             }
 
             return {};
         };
+
+        u32 node_count = in.read<u32>();
+
+        for (u32 i = 0; i < node_count; ++i) {
+            auto result = deserialize_index(i, index, in);
+            if (!result) {
+                TOOLBOX_ERROR_V("Failed to deserialize index from mime data: {}",
+                                result.error().m_message);
+                return false;
+            }
+        }
+
+        return true;
     }
 
     bool RailObjModel::canFetchMore_(const ModelIndex &index) const { return false; }
 
     void RailObjModel::fetchMore_(const ModelIndex &index) const { return; }
 
-    ModelIndex RailObjModel::insertObject_(RailData::rail_ptr_t rail, int64_t row,
-                                           const ModelIndex &parent) {
-        ModelIndex new_index = makeIndex(rail, row, parent);
+    ModelIndex RailObjModel::insertRail_(RailData::rail_ptr_t rail, int64_t row) {
+        ModelIndex ret = makeIndex(rail, row);
+        if (!validateIndex(ret)) {
+            return ModelIndex();
+        }
+
+        int64_t subrow = 0;
+        for (Rail::Rail::node_ptr_t rail_node : rail->nodes()) {
+            ModelIndex node = makeIndex(rail_node, subrow++, ret);
+            if (!validateIndex(node)) {
+                TOOLBOX_ERROR_V("[RAILMODEL] Failed to insert node into model for rail \"{}\"!",
+                                rail->name());
+                (void)removeIndex_(ret);
+                return ModelIndex();
+            }
+        }
+    }
+
+    ModelIndex RailObjModel::insertRailNode_(Rail::Rail::node_ptr_t node, int64_t row,
+                                             const ModelIndex &parent) {
+        ModelIndex new_index = makeIndex(node, row, parent);
         if (!validateIndex(new_index)) {
             return ModelIndex();
         }
@@ -703,10 +745,10 @@ namespace Toolbox {
         _RailIndexData *parent_data = validateIndex(parent) ? parent.data<_RailIndexData>()
                                                             : nullptr;
         if (parent_data) {
-            auto result = parent_data->m_rail->insertChild(row, rail);
+            RailData::rail_ptr_t rail = parent_data->getRail();
+            auto result               = rail->insertNode(row, node);
             if (!result) {
-                TOOLBOX_ERROR_V("[OBJMODEL] Failed to create inde with reason: '{}'",
-                                result.error().m_message);
+                TOOLBOX_ERROR_V("[RAILMODEL] Failed to create index");
                 (void)removeIndex_(new_index);
                 return ModelIndex();
             }
@@ -715,8 +757,7 @@ namespace Toolbox {
         return new_index;
     }
 
-    ModelIndex RailObjModel::makeIndex(RailData::rail_ptr_t rail, int64_t row,
-                                       const ModelIndex &parent) const {
+    ModelIndex RailObjModel::makeIndex(RailData::rail_ptr_t rail, int64_t row) const {
         if (row < 0 || row > m_index_map.size()) {
             return ModelIndex();
         }
@@ -725,16 +766,39 @@ namespace Toolbox {
 
         _RailIndexData *new_data = new _RailIndexData;
         new_data->m_self_uuid    = new_index.getUUID();
-        new_data->m_rail         = rail;
         new_data->m_icon         = nullptr;
+        new_data->setRail(rail);
 
         new_index.setData(new_data);
 
         m_index_map[new_index.getUUID()] = new_index;
+        m_rail_indexes.push_back(new_index);
 
-        if (row == 0 && !validateIndex(parent)) {
-            m_root_index = new_index.getUUID();
+        return new_index;
+    }
+
+    ModelIndex RailObjModel::makeIndex(Rail::Rail::node_ptr_t node, int64_t row,
+                                       const ModelIndex &parent) const {
+        _RailIndexData *parent_data = validateIndex(parent) ? parent.data<_RailIndexData>()
+                                                            : nullptr;
+        if (!parent_data || !parent_data->hasValue()) {
+            return ModelIndex();
         }
+
+        RailData::rail_ptr_t rail          = parent_data->getRail();
+        std::vector<ModelIndex> &node_list = m_node_list_map[rail->getUUID()];
+
+        ModelIndex new_index(getUUID());
+
+        _RailIndexData *new_data = new _RailIndexData;
+        new_data->m_self_uuid    = new_index.getUUID();
+        new_data->m_icon         = nullptr;
+        new_data->setNode(node);
+
+        new_index.setData(new_data);
+
+        m_index_map[new_index.getUUID()] = new_index;
+        m_node_list_map[rail->getUUID()].push_back(new_index);
 
         return new_index;
     }
