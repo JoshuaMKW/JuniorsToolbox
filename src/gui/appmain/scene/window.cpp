@@ -109,12 +109,9 @@ namespace Toolbox::UI {
                 return false;
             }
 
-            bool result = true;
-
             SceneInstance::FromPath(path, include_custom_objs)
                 .and_then([&](ScopePtr<SceneInstance> &&scene) {
                     m_current_scene = std::move(scene);
-                    m_renderer.initializeData(*m_current_scene);
 
                     m_resource_cache.m_model.clear();
                     m_resource_cache.m_material.clear();
@@ -136,29 +133,35 @@ namespace Toolbox::UI {
 
                     return Result<void, SerialError>();
                 })
-                .or_else([&result](const SerialError &error) {
+                .or_else([](const SerialError &error) {
                     LogError(error);
-                    result = false;
                     return Result<void, SerialError>();
                 });
 
-            if (result) {
+            if (m_current_scene) {
                 m_io_context_path = path;
 
                 m_scene_object_model = make_referable<SceneObjModel>();
                 m_table_object_model = make_referable<SceneObjModel>();
+                m_rail_model         = make_referable<RailObjModel>();
 
                 m_scene_object_model->initialize(*m_current_scene->getObjHierarchy());
                 m_table_object_model->initialize(*m_current_scene->getTableHierarchy());
+                m_rail_model->initialize(*m_current_scene->getRailData());
 
                 m_scene_selection_mgr = ModelSelectionManager(m_scene_object_model);
                 m_table_selection_mgr = ModelSelectionManager(m_table_object_model);
+                m_rail_selection_mgr  = ModelSelectionManager(m_rail_model);
 
                 m_scene_selection_mgr.setDeepSpans(false);
                 m_table_selection_mgr.setDeepSpans(false);
+                m_rail_selection_mgr.setDeepSpans(false);
+
+                m_renderer.initializeData(m_rail_model);
+                return true;
             }
 
-            return result;
+            return false;
         }
 
         // TODO: Implement opening from archives.
@@ -221,14 +224,10 @@ namespace Toolbox::UI {
         m_properties_render_handler = renderEmptyProperties;
 
         buildContextMenuSceneObj();
+        buildContextMenuRail();
 
         buildCreateObjDialog();
         buildRenameObjDialog();
-
-        buildContextMenuRail();
-        buildContextMenuMultiRail();
-        buildContextMenuRailNode();
-        buildContextMenuMultiRailNode();
 
         buildCreateRailDialog();
         buildRenameRailDialog();
@@ -243,6 +242,7 @@ namespace Toolbox::UI {
 
         m_scene_selection_mgr.getState().clearSelection();
         m_table_selection_mgr.getState().clearSelection();
+        m_rail_selection_mgr.getState().clearSelection();
 
         m_selected_properties.clear();
         m_properties_render_handler = renderEmptyProperties;
@@ -251,8 +251,6 @@ namespace Toolbox::UI {
         m_resource_cache = {};
 
         m_rail_visible_map.clear();
-        m_rail_list_selected_nodes.clear();
-        m_rail_node_list_selected_nodes.clear();
 
         m_drop_target_buffer.free();
         m_current_scene.reset();
@@ -300,9 +298,8 @@ namespace Toolbox::UI {
                 if (should_reset && !multi_select) {
                     m_scene_selection_mgr.getState().clearSelection();
                     m_table_selection_mgr.getState().clearSelection();
+                    m_rail_selection_mgr.getState().clearSelection();
 
-                    m_rail_list_selected_nodes.clear();
-                    m_rail_node_list_selected_nodes.clear();
                     m_selected_properties.clear();
                     m_properties_render_handler = renderEmptyProperties;
                 }
@@ -353,12 +350,12 @@ namespace Toolbox::UI {
                     return false;
                 }();
 
-                if (!any_valid_object_selected && m_rail_list_selected_nodes.empty() &&
-                    m_rail_node_list_selected_nodes.empty()) {
-                    m_renderer.setGizmoVisible(false);
-                } else {
-                    m_renderer.setGizmoVisible(true);
-                }
+                const bool any_valid_rail_or_node_selected = [this]() {
+                    return m_rail_selection_mgr.getState().count() > 0;
+                }();
+
+                m_renderer.setGizmoVisible(any_valid_object_selected ||
+                                           any_valid_rail_or_node_selected);
             }
         }
 
@@ -412,35 +409,30 @@ namespace Toolbox::UI {
                 }
             }
 
-            if (!m_rail_list_selected_nodes.empty()) {
+            {
+                const IDataModel::index_container &rail_indexes =
+                    m_rail_selection_mgr.getState().getSelection();
+
                 glm::mat4x4 gizmo_delta   = m_renderer.getGizmoFrameDelta();
                 Transform delta_transform = Transform::FromMat4x4(gizmo_delta);
 
                 size_t i = 0;
-                for (SelectionNodeInfo<Rail::Rail> &node : m_rail_list_selected_nodes) {
-                    const Transform &rail_transform = m_selection_transforms[i];
+                for (const ModelIndex &index : rail_indexes) {
+                    RailData::rail_ptr_t rail = m_rail_model->getRailRef(index);
 
-                    node.m_selected->transform(gizmo_delta);
-                    i++;
-                }
+                    const bool is_node = m_rail_model->isIndexRailNode(index);
+                    if (is_node) {
+                        Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
 
-                should_update_paths = true;
-            }
+                        const Transform &node_transform = m_selection_transforms[i];
+                        Transform new_transform         = gizmo_total_delta * node_transform;
 
-            if (!m_rail_node_list_selected_nodes.empty()) {
-                size_t i = 0;
-                for (SelectionNodeInfo<Rail::RailNode> &node : m_rail_node_list_selected_nodes) {
-                    const Transform &node_transform = m_selection_transforms[i];
-                    Transform new_transform         = gizmo_total_delta * node_transform;
-
-                    UUID64 rail_uuid          = node.m_selected->getRailUUID();
-                    RailData::rail_ptr_t rail = m_current_scene->getRailData()->getRail(rail_uuid);
-                    if (!rail) {
-                        TOOLBOX_ERROR("Failed to find rail for node.");
-                        continue;
+                        rail->setNodePosition(node, new_transform.m_translation);
+                    } else {
+                        const Transform &rail_transform = m_selection_transforms[i];
+                        rail->transform(gizmo_delta);
                     }
 
-                    rail->setNodePosition(node.m_selected, new_transform.m_translation);
                     i++;
                 }
 
@@ -452,7 +444,7 @@ namespace Toolbox::UI {
 
         if (should_update_paths) {
             m_renderer.setUniqueRailColors(settings.m_is_unique_rail_color);
-            m_renderer.updatePaths(*m_current_scene->getRailData(), {});
+            m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
         }
 
         // Refresh the selection transforms so new gizmo manips don't reset
@@ -544,10 +536,7 @@ namespace Toolbox::UI {
 
         m_scene_hierarchy_context_menu.applyDeferredCmds();
         m_table_hierarchy_context_menu.applyDeferredCmds();
-        m_rail_list_single_node_menu.applyDeferredCmds();
-        m_rail_list_multi_node_menu.applyDeferredCmds();
-        m_rail_node_list_single_node_menu.applyDeferredCmds();
-        m_rail_node_list_multi_node_menu.applyDeferredCmds();
+        m_rail_list_context_menu.applyDeferredCmds();
     }
 
     void SceneWindow::renderSanitizationSteps() {
@@ -694,8 +683,8 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::renderSceneObjectTree(const ModelIndex &index) {
-        constexpr auto dir_flags =
-            ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+        constexpr auto dir_flags = ImGuiTreeNodeFlags_OpenOnArrow |
+                                   ImGuiTreeNodeFlags_OpenOnDoubleClick |
                                    ImGuiTreeNodeFlags_SpanFullWidth |
                                    ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_DefaultOpen;
 
@@ -722,10 +711,10 @@ namespace Toolbox::UI {
         bool node_open = false;
 
         ImGuiTreeNodeFlags the_flags = node->isGroupObject() ? dir_flags : file_flags;
-        //the_flags |= node_selected ? ImGuiTreeNodeFlags_Framed : 0;
+        // the_flags |= node_selected ? ImGuiTreeNodeFlags_Framed : 0;
 
-        //const bool is_cut = std::find(m_cut_indices.begin(), m_cut_indices.end(), child_index) !=
-        //                    m_cut_indices.end();
+        // const bool is_cut = std::find(m_cut_indices.begin(), m_cut_indices.end(), child_index) !=
+        //                     m_cut_indices.end();
         const bool is_cut = false;
 
         ImGui::PushID(tree_node_id);
@@ -835,8 +824,7 @@ namespace Toolbox::UI {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
                         m_selected_properties.clear();
-                        m_rail_list_selected_nodes.clear();
-                        m_rail_node_list_selected_nodes.clear();
+                        m_rail_selection_mgr.getState().clearSelection();
 
                         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
                             !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
@@ -946,8 +934,7 @@ namespace Toolbox::UI {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
                         m_selected_properties.clear();
-                        m_rail_list_selected_nodes.clear();
-                        m_rail_node_list_selected_nodes.clear();
+                        m_rail_selection_mgr.getState().clearSelection();
 
                         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
                             !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
@@ -987,9 +974,10 @@ namespace Toolbox::UI {
         if (index == m_scene_selection_mgr.getState().getLastSelected()) {
             ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_Text);
             col.w *= render_alpha;
-            ImGui::GetWindowDrawList()->AddRect(
-                node_rect.Min - (style.FramePadding / 2.0f), node_rect.Max + (style.FramePadding / 2.0f),
-                ImGui::ColorConvertFloat4ToU32(col), 0.0f, ImDrawFlags_RoundCornersAll, 2.0f);
+            ImGui::GetWindowDrawList()->AddRect(node_rect.Min - (style.FramePadding / 2.0f),
+                                                node_rect.Max + (style.FramePadding / 2.0f),
+                                                ImGui::ColorConvertFloat4ToU32(col), 0.0f,
+                                                ImDrawFlags_RoundCornersAll, 2.0f);
         }
 
         ImGui::PopStyleVar();
@@ -1026,10 +1014,10 @@ namespace Toolbox::UI {
         bool node_open = false;
 
         ImGuiTreeNodeFlags the_flags = node->isGroupObject() ? dir_flags : file_flags;
-        //the_flags |= node_selected ? ImGuiTreeNodeFlags_Framed : 0;
+        // the_flags |= node_selected ? ImGuiTreeNodeFlags_Framed : 0;
 
-        //const bool is_cut = std::find(m_cut_indices.begin(), m_cut_indices.end(), child_index) !=
-        //                    m_cut_indices.end();
+        // const bool is_cut = std::find(m_cut_indices.begin(), m_cut_indices.end(), child_index) !=
+        //                     m_cut_indices.end();
         const bool is_cut = false;
 
         ImGui::PushID(tree_node_id);
@@ -1053,8 +1041,7 @@ namespace Toolbox::UI {
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags,
-                                                  node_selected);
+                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
                 }
 
                 node_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
@@ -1139,8 +1126,7 @@ namespace Toolbox::UI {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
                         m_selected_properties.clear();
-                        m_rail_list_selected_nodes.clear();
-                        m_rail_node_list_selected_nodes.clear();
+                        m_rail_selection_mgr.getState().clearSelection();
 
                         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
                             !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
@@ -1250,8 +1236,7 @@ namespace Toolbox::UI {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
                         m_selected_properties.clear();
-                        m_rail_list_selected_nodes.clear();
-                        m_rail_node_list_selected_nodes.clear();
+                        m_rail_selection_mgr.getState().clearSelection();
 
                         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
                             !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
@@ -1350,9 +1335,14 @@ namespace Toolbox::UI {
 
         const float label_width = ImGui::CalcTextSize("ConnectionCount").x;
 
-        RefPtr<Rail::RailNode> node = window.m_rail_node_list_selected_nodes[0].m_selected;
-        RailData::rail_ptr_t rail =
-            window.m_current_scene->getRailData()->getRail(node->getRailUUID());
+        ModelIndex last_selected = window.m_rail_selection_mgr.getState().getLastSelected();
+        if (!window.m_rail_model->isIndexRailNode(last_selected)) {
+            ImGui::Text("Select a rail node to edit its properties.");
+            return false;
+        }
+
+        RailData::rail_ptr_t rail   = window.m_rail_model->getRailRef(last_selected);
+        Rail::Rail::node_ptr_t node = window.m_rail_model->getRailNodeRef(last_selected);
 
         bool is_updated = false;
 
@@ -1526,8 +1516,7 @@ namespace Toolbox::UI {
         ImGui::EndGroupPanel();
 
         if (is_updated) {
-            window.m_renderer.updatePaths(*window.m_current_scene->getRailData(),
-                                          window.m_rail_visible_map);
+            window.m_renderer.updatePaths(window.m_rail_model, window.m_rail_visible_map);
         }
 
         return is_updated;
@@ -1633,10 +1622,15 @@ namespace Toolbox::UI {
 
         const std::string rail_editor_str = ImWindowComponentTitle(*this, "Rail Editor");
 
-        const ImGuiTreeNodeFlags rail_flags = ImGuiTreeNodeFlags_OpenOnArrow |
-                                              ImGuiTreeNodeFlags_OpenOnDoubleClick |
-                                              ImGuiTreeNodeFlags_SpanAvailWidth;
-        const ImGuiTreeNodeFlags node_flags = rail_flags | ImGuiTreeNodeFlags_Leaf;
+        constexpr auto rail_flags =
+            ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+            ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_FramePadding |
+            ImGuiTreeNodeFlags_DefaultOpen;
+
+        constexpr auto node_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth |
+                                    ImGuiTreeNodeFlags_FramePadding |
+                                    ImGuiTreeNodeFlags_DefaultOpen;
+
         ImGuiWindowClass hierarchyOverride;
         hierarchyOverride.ClassId          = static_cast<ImGuiID>(getUUID());
         hierarchyOverride.ParentViewportId = ImGui::GetCurrentWindow()->ViewportId;
@@ -1654,36 +1648,42 @@ namespace Toolbox::UI {
                 m_focused_window = EditorWindow::RAIL_TREE;
             }
 
-            RefPtr<RailData> rail_data = m_current_scene->getRailData();
-            for (size_t i = 0; i < rail_data->rails().size(); ++i) {
-                RailData::rail_ptr_t rail = rail_data->rails()[i];
+            const bool is_cut = false;
 
-                std::string uid_str = getNodeUID(rail);
-                ImGuiID rail_id     = static_cast<ImGuiID>(rail->getUUID());
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4.0f, 4.0f});
 
-                bool is_rail_selected = std::any_of(
-                    m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
-                    [&](auto &info) { return info.m_node_id == rail_id; });
+            ImRect rail_rect;
 
-                SelectionNodeInfo<Rail::Rail> rail_info = {.m_selected      = rail,
-                                                           .m_node_id       = rail_id,
-                                                           .m_parent_synced = true,
-                                                           .m_scene_synced  = false};
-
-                auto node_it = std::find_if(m_rail_list_selected_nodes.begin(),
-                                            m_rail_list_selected_nodes.end(),
-                                            [&](const SelectionNodeInfo<Rail::Rail> &other) {
-                                                return other.m_node_id == rail_id;
-                                            });
-
-                if (!m_rail_visible_map.contains(rail_id)) {
-                    m_rail_visible_map[rail_id] = true;
+            const size_t rail_count = m_rail_model->getRowCount(ModelIndex());
+            for (size_t i = 0; i < rail_count; ++i) {
+                ModelIndex rail_index = m_rail_model->getIndex(i, 0, ModelIndex());
+                if (!m_rail_model->isIndexRail(rail_index)) {
+                    TOOLBOX_ERROR_V(
+                        "[SceneWindow] Expected rail index, got a node index. Skipping index {}",
+                        i);
+                    continue;
                 }
-                bool &rail_visibility = m_rail_visible_map[rail_id];
-                bool is_rail_visible  = rail_visibility;
+
+                RailData::rail_ptr_t rail = m_rail_model->getRailRef(rail_index);
+
+                const std::string uid_str = getNodeUID(rail);
+                const ImGuiID rail_id     = static_cast<ImGuiID>(rail->getUUID());
+                const UUID64 rail_uuid    = rail->getUUID();
+
+                ImGui::PushID(rail_id);
+
+                const bool is_rail_selected =
+                    m_rail_selection_mgr.getState().isSelected(rail_index);
+
+                if (!m_rail_visible_map.contains(rail_uuid)) {
+                    m_rail_visible_map[rail_uuid] = true;
+                }
+                bool is_rail_visible = m_rail_visible_map[rail_uuid];
 
                 bool is_rail_open = ImGui::TreeNodeEx(uid_str.data(), rail_flags, is_rail_selected,
                                                       &is_rail_visible);
+
+                rail_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 
                 // Drag and drop for RAIL
                 {
@@ -1720,58 +1720,55 @@ namespace Toolbox::UI {
                     }
                 }
 
-                if (rail_visibility != is_rail_visible) {
-                    rail_visibility = is_rail_visible;
-                    m_renderer.updatePaths(*m_current_scene->getRailData(), m_rail_visible_map);
+                if (m_rail_visible_map[rail_uuid] != is_rail_visible) {
+                    m_rail_visible_map[rail_uuid] = is_rail_visible;
+                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                     m_update_render_objs = true;
                 }
 
-                if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
-                    ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
-                    ImGui::FocusWindow(ImGui::GetCurrentWindow());
+                if (ImGui::IsItemHovered()) {
+                    m_rail_selection_mgr.handleActionsByMouseInput(rail_index, true);
+                    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) ||
+                        ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+                        ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                    m_scene_selection_mgr.getState().clearSelection();
-                    m_table_selection_mgr.getState().clearSelection();
+                        m_scene_selection_mgr.getState().clearSelection();
+                        m_table_selection_mgr.getState().clearSelection();
 
-                    m_rail_node_list_selected_nodes.clear();
+                        m_selection_transforms_needs_update = true;
 
-                    if (multi_select) {
-                        m_selected_properties.clear();
-                        if (!is_rail_selected)
-                            m_rail_list_selected_nodes.push_back(rail_info);
-                    } else {
-                        m_rail_list_selected_nodes.clear();
-                        m_rail_list_selected_nodes.push_back(rail_info);
+                        m_properties_render_handler = renderRailProperties;
                     }
-
-                    // Since a rail is selected, we should clear the rail nodes
-                    m_rail_node_list_selected_nodes.clear();
-
-                    m_selection_transforms_needs_update = true;
-
-                    m_properties_render_handler = renderRailProperties;
                 }
 
-                renderRailContextMenu(rail->name(), rail_info);
+                renderRailContextMenu(rail->name(), rail_index);
 
                 if (is_rail_open) {
-                    for (size_t j = 0; j < rail->nodes().size(); ++j) {
-                        RefPtr<Rail::RailNode> node = rail->nodes()[j];
+                    ImRect node_rect;
+
+                    const size_t node_count = m_rail_model->getRowCount(rail_index);
+                    for (size_t j = 0; j < node_count; ++j) {
+                        ModelIndex node_index = m_rail_model->getIndex(j, 0, rail_index);
+                        if (!m_rail_model->isIndexRailNode(node_index)) {
+                            TOOLBOX_ERROR_V("[SceneWindow] Expected rail node index, got a rail "
+                                            "index. Skipping index {} of rail {}",
+                                            j, i);
+                            continue;
+                        }
+
+                        RefPtr<Rail::RailNode> node = m_rail_model->getRailNodeRef(node_index);
                         std::string node_uid_str    = getNodeUID(rail, j);
                         ImGuiID node_id             = static_cast<ImGuiID>(node->getUUID());
 
-                        bool is_rail_node_selected =
-                            std::any_of(m_rail_node_list_selected_nodes.begin(),
-                                        m_rail_node_list_selected_nodes.end(),
-                                        [&](auto &info) { return info.m_node_id == node_id; });
+                        ImGui::PushID(node_id);
 
-                        SelectionNodeInfo<Rail::RailNode> node_info = {.m_selected      = node,
-                                                                       .m_node_id       = node_id,
-                                                                       .m_parent_synced = true,
-                                                                       .m_scene_synced  = false};
+                        bool is_rail_node_selected =
+                            m_rail_selection_mgr.getState().isSelected(node_index);
 
                         bool is_node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), node_flags,
                                                               is_rail_node_selected);
+
+                        node_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 
                         // Drag and drop for RAIL NODE
                         {
@@ -1821,45 +1818,74 @@ namespace Toolbox::UI {
                             }
                         }
 
-                        if (ImGui::IsItemClicked(ImGuiMouseButton_Left) ||
-                            ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
-                            ImGui::FocusWindow(ImGui::GetCurrentWindow());
+                        if (ImGui::IsItemHovered()) {
+                            m_rail_selection_mgr.handleActionsByMouseInput(node_index, true);
+                            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) ||
+                                ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+                                ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                            m_scene_selection_mgr.getState().clearSelection();
-                            m_table_selection_mgr.getState().clearSelection();
+                                m_scene_selection_mgr.getState().clearSelection();
+                                m_table_selection_mgr.getState().clearSelection();
 
-                            if (multi_select) {
-                                m_selected_properties.clear();
-                                if (!is_rail_node_selected)
-                                    m_rail_node_list_selected_nodes.push_back(node_info);
-                            } else {
-                                m_rail_node_list_selected_nodes.clear();
-                                m_rail_node_list_selected_nodes.push_back(node_info);
+                                m_selection_transforms_needs_update = true;
+
+                                m_properties_render_handler = renderRailNodeProperties;
                             }
-
-                            // Since a rail node is selected, we should clear the rails
-                            m_rail_list_selected_nodes.clear();
-
-                            m_selection_transforms_needs_update = true;
-
-                            m_properties_render_handler = renderRailNodeProperties;
                         }
 
-                        renderRailNodeContextMenu(node_uid_str, node_info);
+                        renderRailContextMenu(node_uid_str, node_index);
 
                         if (is_node_open) {
                             ImGui::TreePop();
                         }
+
+                        const ImGuiStyle &style = ImGui::GetStyle();
+
+                        const float render_alpha = is_cut ? 0.5f : 1.0f;
+                        ImVec4 col               = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+                        col.w *= render_alpha;
+
+                        if (node_index == m_rail_selection_mgr.getState().getLastSelected()) {
+                            ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+                            col.w *= render_alpha;
+                            ImGui::GetWindowDrawList()->AddRect(
+                                node_rect.Min - (style.FramePadding / 2.0f),
+                                node_rect.Max + (style.FramePadding / 2.0f),
+                                ImGui::ColorConvertFloat4ToU32(col), 0.0f,
+                                ImDrawFlags_RoundCornersAll, 2.0f);
+                        }
+
+                        ImGui::PopID();
                     }
                     ImGui::TreePop();
                 }
+
+                const ImGuiStyle &style = ImGui::GetStyle();
+
+                const float render_alpha = is_cut ? 0.5f : 1.0f;
+                ImVec4 col               = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+                col.w *= render_alpha;
+
+                if (rail_index == m_rail_selection_mgr.getState().getLastSelected()) {
+                    ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+                    col.w *= render_alpha;
+                    ImGui::GetWindowDrawList()->AddRect(rail_rect.Min - (style.FramePadding / 2.0f),
+                                                        rail_rect.Max + (style.FramePadding / 2.0f),
+                                                        ImGui::ColorConvertFloat4ToU32(col), 0.0f,
+                                                        ImDrawFlags_RoundCornersAll, 2.0f);
+                }
+
+                ImGui::PopID();
             }
+
+            ImGui::PopStyleVar();
         }
         ImGui::End();
 
-        if (m_rail_list_selected_nodes.size() > 0) {
-            m_create_rail_dialog.render(m_rail_list_selected_nodes.back());
-            m_rename_rail_dialog.render(m_rail_list_selected_nodes.back());
+        ModelIndex last_selected = m_rail_selection_mgr.getState().getLastSelected();
+        if (m_rail_model->isIndexRail(last_selected)) {
+            m_create_rail_dialog.render(last_selected);
+            m_rename_rail_dialog.render(last_selected);
         }
     }
 
@@ -2095,32 +2121,13 @@ namespace Toolbox::UI {
         m_table_hierarchy_context_menu.renderForItem(str_id, selected_index);
     }
 
-    void SceneWindow::renderRailContextMenu(std::string str_id,
-                                            SelectionNodeInfo<Rail::Rail> &info) {
-        if (m_rail_list_selected_nodes.size() > 0) {
-            SelectionNodeInfo<Rail::Rail> &info = m_rail_list_selected_nodes.back();
-            if (m_rail_list_selected_nodes.size() > 1) {
-                m_rail_list_multi_node_menu.renderForItem({}, m_rail_list_selected_nodes);
-                m_rail_list_multi_node_menu.applyDeferredCmds();
-            } else {
-                m_rail_list_single_node_menu.renderForItem(str_id, info);
-                m_rail_list_single_node_menu.applyDeferredCmds();
-            }
+    void SceneWindow::renderRailContextMenu(std::string str_id, const ModelIndex &index) {
+        const ModelIndex &selected_index = m_rail_selection_mgr.getState().getLastSelected();
+        if (!m_rail_model->validateIndex(selected_index)) {
+            return;
         }
-    }
 
-    void SceneWindow::renderRailNodeContextMenu(std::string str_id,
-                                                SelectionNodeInfo<Rail::RailNode> &info) {
-        if (m_rail_node_list_selected_nodes.size() > 0) {
-            SelectionNodeInfo<Rail::RailNode> &info = m_rail_node_list_selected_nodes.back();
-            if (m_rail_node_list_selected_nodes.size() > 1) {
-                m_rail_node_list_multi_node_menu.renderForItem({}, m_rail_node_list_selected_nodes);
-                m_rail_node_list_multi_node_menu.applyDeferredCmds();
-            } else {
-                m_rail_node_list_single_node_menu.renderForItem(str_id, info);
-                m_rail_node_list_single_node_menu.applyDeferredCmds();
-            }
-        }
+        m_rail_list_context_menu.renderForItem(str_id, selected_index);
     }
 
     void SceneWindow::buildContextMenuSceneObj() {
@@ -2254,6 +2261,7 @@ namespace Toolbox::UI {
                                return;
                            }
                            m_scene_selection_mgr.actionPasteIntoSelection(result.value());
+                           m_update_render_objs = true;
                        })
             .addDivider()
             .addOption("Delete", {KeyCode::KEY_DELETE},
@@ -2314,7 +2322,9 @@ namespace Toolbox::UI {
 
                     RefPtr<ISceneObject> this_obj = m_scene_object_model->getObjectRef(index);
                     if (!this_obj) {
-                        return false;
+                        TOOLBOX_ERROR("[Scene Hierarchy] Failed to get object reference when "
+                                      "copying player position");
+                        return;
                     }
 
                     task_communicator.setObjectTranslationToMario(
@@ -2454,6 +2464,7 @@ namespace Toolbox::UI {
                                return;
                            }
                            m_table_selection_mgr.actionPasteIntoSelection(result.value());
+                           m_update_render_objs = true;
                        })
             .addDivider()
             .addOption("Delete", {KeyCode::KEY_DELETE},
@@ -2524,242 +2535,198 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::buildContextMenuRail() {
-        m_rail_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::Rail>>();
+        m_rail_list_context_menu = ContextMenu<ModelIndex>();
 
-        // m_rail_list_single_node_menu.addDivider();
-        //
-        // TODO: Add rail manipulators here.
-
-        ContextMenuBuilder(&m_rail_list_single_node_menu)
-            .addOption("Insert Rail Here...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
-                       [this](SelectionNodeInfo<Rail::Rail> info) {
-                           m_create_rail_dialog.open();
-                           return;
-                       })
-            .addDivider()
-            .addOption("Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
-                       [this](SelectionNodeInfo<Rail::Rail> info) {
-                           m_rename_rail_dialog.open();
-                           m_rename_rail_dialog.setOriginalName(info.m_selected->name());
-                           return;
-                       })
-            .addDivider()
-            .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-                       [this](SelectionNodeInfo<Rail::Rail> info) {
-                           info.m_selected = make_deep_clone<Rail::Rail>(info.m_selected);
-                           MainApplication::instance().getSceneRailClipboard().setData(info);
-                           return;
-                       })
+        ContextMenuBuilder(&m_rail_list_context_menu)
             .addOption(
-                "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
-                [this](SelectionNodeInfo<Rail::Rail> info) {
-                    auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
-                    if (nodes.size() > 0) {
-                        RefPtr<RailData> data = m_current_scene->getRailData();
-                        size_t selected_index = data->getRailCount();
-                        auto result           = data->getRailIndex(info.m_selected->name());
-                        if (result) {
-                            selected_index = result.value();
-                        }
-                        std::vector<std::string> sibling_names;
-                        for (auto &rail : data->rails()) {
-                            sibling_names.push_back(rail->name());
-                        }
-                        for (auto &node : nodes) {
-                            Rail::Rail new_rail = *node.m_selected;
-                            new_rail.setName(Util::MakeNameUnique(new_rail.name(), sibling_names));
-                            data->insertRail(selected_index + 1, new_rail);
-                            selected_index += 1;
-                        }
-                    }
-                    m_update_render_objs = true;
+                "Insert Rail...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                [this](ModelIndex index) -> bool {
+                    return m_rail_selection_mgr.getState().count() == 1 &&
+                           m_rail_model->isIndexRail(index);
+                },
+                [this](ModelIndex index) {
+                    m_create_rail_dialog.open();
                     return;
                 })
-            .addOption("Delete", {KeyCode::KEY_DELETE},
-                       [this](SelectionNodeInfo<Rail::Rail> info) {
-                           m_rail_visible_map.erase(info.m_node_id);
-                           m_current_scene->getRailData()->removeRail(info.m_selected->getUUID());
-                           m_update_render_objs = true;
-                           return;
-                       })
-            .addDivider()
-            .addOption("Decimate", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_D},
-                       [this](SelectionNodeInfo<Rail::Rail> info) {
-                           info.m_selected->decimate(1);
-                           m_renderer.updatePaths(*m_current_scene->getRailData(), {});
-                       })
-            .addOption("Subdivide",
-                       {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_S},
-                       [this](SelectionNodeInfo<Rail::Rail> info) {
-                           info.m_selected->subdivide(1);
-                           m_renderer.updatePaths(*m_current_scene->getRailData(), {});
-                       });
-    }
-
-    void SceneWindow::buildContextMenuMultiRail() {
-        m_rail_list_multi_node_menu = ContextMenu<std::vector<SelectionNodeInfo<Rail::Rail>>>();
-
-        ContextMenuBuilder(&m_rail_list_multi_node_menu)
-            .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-                       [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
-                           for (auto &select : info) {
-                               select.m_selected = make_deep_clone<Rail::Rail>(select.m_selected);
-                           }
-                           MainApplication::instance().getSceneRailClipboard().setData(info);
-                           return;
-                       })
             .addOption(
-                "Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
-                [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
-                    auto nodes = MainApplication::instance().getSceneRailClipboard().getData();
-                    if (nodes.size() > 0) {
-                        RefPtr<RailData> data = m_current_scene->getRailData();
-                        size_t selected_index = data->getRailCount();
-                        auto result           = data->getRailIndex(info[0].m_selected->name());
-                        if (result) {
-                            selected_index = result.value();
-                        }
-                        std::vector<std::string> sibling_names;
-                        for (auto &rail : data->rails()) {
-                            sibling_names.push_back(rail->name());
-                        }
-                        for (auto &node : nodes) {
-                            Rail::Rail new_rail = *node.m_selected;
-                            new_rail.setName(Util::MakeNameUnique(new_rail.name(), sibling_names));
-                            data->insertRail(selected_index + 1, new_rail);
-                            selected_index += 1;
-                        }
+                "Insert Node", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                [this](ModelIndex index) -> bool {
+                    return m_rail_selection_mgr.getState().count() == 1;
+                },
+                [this](ModelIndex index) {
+                    ModelIndex parent_index = m_rail_model->getParent(index);
+                    int64_t sibling_index   = m_rail_model->getRow(index);
+                    int64_t sibling_count   = m_rail_model->getRowCount(parent_index);
+
+                    Rail::Rail::node_ptr_t new_node = std::make_shared<Rail::RailNode>();
+
+                    ModelIndex result;
+                    if (m_rail_model->validateIndex(parent_index)) {
+                        // This means a node is selected
+                        result =
+                            m_rail_model->insertRailNode(new_node, sibling_index, parent_index);
+                    } else {
+                        // This means a rail is selected, so we insert at the end of the rail
+                        result = m_rail_model->insertRailNode(new_node, sibling_count, index);
                     }
-                    m_update_render_objs = true;
-                    return;
+
+                    if (!m_rail_model->isIndexRailNode(result)) {
+                        LogError(make_error<void>("Rail List Context Menu",
+                                                  "Failed to insert new rail node into model")
+                                     .error());
+                    }
                 })
-            .addOption("Delete", {KeyCode::KEY_DELETE},
-                       [this](std::vector<SelectionNodeInfo<Rail::Rail>> info) {
-                           RailData &data = *m_current_scene->getRailData();
-                           for (auto &select : info) {
-                               m_rail_visible_map.erase(select.m_node_id);
-                               data.removeRail(select.m_selected->getUUID());
-                           }
-                           m_update_render_objs = true;
-                           return;
-                       });
-    }
-
-    void SceneWindow::buildContextMenuRailNode() {
-        m_rail_node_list_single_node_menu = ContextMenu<SelectionNodeInfo<Rail::RailNode>>();
-
-        ContextMenuBuilder(&m_rail_node_list_single_node_menu)
-            .addOption("Insert Node Here...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
-                       [this](SelectionNodeInfo<Rail::RailNode> info) {
-                           m_create_rail_dialog.open();
-                           return Result<void>();
-                       })
-            .addDivider()
-            .addOption("View in Scene", {KeyCode::KEY_LEFTALT, KeyCode::KEY_V},
-                       [this](SelectionNodeInfo<Rail::RailNode> info) {
-                           glm::vec3 translation = info.m_selected->getPosition();
-
-                           m_renderer.setCameraOrientation(
-                               {0, 1, 0}, translation,
-                               {translation.x, translation.y, translation.z + 1000});
-                           m_update_render_objs = true;
-                           return Result<void>();
-                       })
             .addOption(
-                "Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
-                [this](SelectionNodeInfo<Rail::RailNode> info) {
-                    RailData::rail_ptr_t rail =
-                        m_current_scene->getRailData()->getRail(info.m_selected->getRailUUID());
+                "Insert Node At Camera", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                [this](ModelIndex index) -> bool {
+                    return m_rail_selection_mgr.getState().count() == 1;
+                },
+                [this](ModelIndex index) {
+                    ModelIndex parent_index = m_rail_model->getParent(index);
+                    int64_t sibling_index   = m_rail_model->getRow(index);
+                    int64_t sibling_count   = m_rail_model->getRowCount(parent_index);
 
                     glm::vec3 translation;
                     m_renderer.getCameraTranslation(translation);
-                    auto result = rail->setNodePosition(info.m_selected, translation);
+                    Rail::Rail::node_ptr_t new_node = std::make_shared<Rail::RailNode>(translation);
+
+                    if (m_rail_model->validateIndex(parent_index)) {
+                        // This means a node is selected
+                        m_rail_model->insertRailNode(new_node, sibling_index, parent_index);
+                    } else {
+                        // This means a rail is selected, so we insert at the end of the rail
+                        m_rail_model->insertRailNode(new_node, sibling_count, index);
+                    }
+                })
+            .addDivider()
+            .addOption(
+                "Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
+                [this](ModelIndex index) -> bool {
+                    return m_rail_selection_mgr.getState().count() == 1 &&
+                           m_rail_model->isIndexRail(index);
+                },
+                [this](ModelIndex index) {
+                    m_rename_rail_dialog.open();
+                    m_rename_rail_dialog.setOriginalName(m_rail_model->getRailKey(index));
+                    return;
+                })
+            .addDivider()
+            .addOption(
+                "View in Scene", {KeyCode::KEY_LEFTALT, KeyCode::KEY_V},
+                [this](ModelIndex index) -> bool {
+                    return m_rail_selection_mgr.getState().count() == 1;
+                },
+                [this](ModelIndex index) {
+                    if (!m_rail_model->isIndexRailNode(index)) {
+                        return;
+                    }
+
+                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+                    glm::vec3 translation       = node->getPosition();
+
+                    m_renderer.setCameraOrientation(
+                        {0, 1, 0}, translation,
+                        {translation.x, translation.y, translation.z + 1000});
+                    m_update_render_objs = true;
+                })
+            .addOption(
+                "Move to Camera", {KeyCode::KEY_LEFTALT, KeyCode::KEY_C},
+                [this](ModelIndex index) -> bool {
+                    return m_rail_selection_mgr.getState().count() == 1;
+                },
+                [this](ModelIndex index) {
+                    if (!m_rail_model->isIndexRailNode(index)) {
+                        return;
+                    }
+
+                    ModelIndex rail_index = m_rail_model->getParent(index);
+                    if (!m_rail_model->isIndexRail(rail_index)) {
+                        return;
+                    }
+
+                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(rail_index);
+                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+
+                    glm::vec3 translation;
+                    m_renderer.getCameraTranslation(translation);
+                    auto result = rail->setNodePosition(node, translation);
                     if (!result) {
                         LogError(result.error());
                         return;
                     }
 
-                    m_renderer.updatePaths(*m_current_scene->getRailData(), m_rail_visible_map);
+                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                     m_update_render_objs = true;
                     return;
                 })
             .addDivider()
             .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-                       [this](SelectionNodeInfo<Rail::RailNode> info) {
-                           info.m_selected = make_deep_clone<Rail::RailNode>(info.m_selected);
-                           MainApplication::instance().getSceneRailNodeClipboard().setData(info);
-                           return Result<void>();
+                       [this](ModelIndex index) {
+                           ScopePtr<MimeData> copy_data =
+                               m_rail_selection_mgr.actionCopySelection();
+                           if (!copy_data) {
+                               return;
+                           }
+                           SystemClipboard::instance().setContent(*copy_data);
                        })
             .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
-                       [this](SelectionNodeInfo<Rail::RailNode> info) {
-                           RailData::rail_ptr_t rail = m_current_scene->getRailData()->getRail(
-                               info.m_selected->getRailUUID());
-                           size_t selected_index = rail->getNodeCount();
-                           auto result           = rail->getNodeIndex(info.m_selected);
-                           if (result) {
-                               selected_index = result.value();
+                       [this](ModelIndex index) {
+                           auto result = SystemClipboard::instance().getContent();
+                           if (!result) {
+                               LogError(result.error());
+                               return;
                            }
-                           auto nodes =
-                               MainApplication::instance().getSceneRailNodeClipboard().getData();
-                           for (auto &node : nodes) {
-                               rail->insertNode(selected_index + 1, node.m_selected);
-                               selected_index += 1;
-                           }
+                           m_rail_selection_mgr.actionPasteIntoSelection(result.value());
                            m_update_render_objs = true;
-                           return Result<void>();
-                       })
-            .addOption(
-                "Delete", {KeyCode::KEY_DELETE}, [this](SelectionNodeInfo<Rail::RailNode> info) {
-                    RailData::rail_ptr_t rail =
-                        m_current_scene->getRailData()->getRail(info.m_selected->getRailUUID());
-                    rail->removeNode(info.m_selected);
-                    m_update_render_objs = true;
-                    return Result<void>();
-                });
-    }
-
-    void SceneWindow::buildContextMenuMultiRailNode() {
-        m_rail_node_list_multi_node_menu =
-            ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>>();
-
-        ContextMenuBuilder(&m_rail_node_list_multi_node_menu)
-            .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
-                       [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
-                           for (auto &select : info) {
-                               select.m_selected =
-                                   make_deep_clone<Rail::RailNode>(select.m_selected);
-                           }
-                           MainApplication::instance().getSceneRailNodeClipboard().setData(info);
-                           return Result<void>();
-                       })
-            .addOption("Paste", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_V},
-                       [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
-                           RailData::rail_ptr_t rail = m_current_scene->getRailData()->getRail(
-                               info[0].m_selected->getRailUUID());
-                           size_t selected_index = rail->getNodeCount();
-                           auto result           = rail->getNodeIndex(info[0].m_selected);
-                           if (result) {
-                               selected_index = result.value();
-                           }
-                           auto nodes =
-                               MainApplication::instance().getSceneRailNodeClipboard().getData();
-                           for (auto &node : nodes) {
-                               rail->insertNode(selected_index + 1, node.m_selected);
-                               selected_index += 1;
-                           }
-                           m_update_render_objs = true;
-                           return Result<void>();
                        })
             .addOption("Delete", {KeyCode::KEY_DELETE},
-                       [this](std::vector<SelectionNodeInfo<Rail::RailNode>> info) {
-                           for (auto &select : info) {
-                               RailData::rail_ptr_t rail = m_current_scene->getRailData()->getRail(
-                                   select.m_selected->getRailUUID());
-                               rail->removeNode(select.m_selected);
-                           }
+                       [this](ModelIndex index) {
+                           m_rail_selection_mgr.actionDeleteSelection();
                            m_update_render_objs = true;
-                           return Result<void>();
-                       });
+                       })
+            .addDivider()
+            .addOption(
+                "Decimate", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_D},
+                [this](ModelIndex index) -> bool {
+                    const std::vector<ModelIndex> &selected_indices =
+                        m_rail_selection_mgr.getState().getSelection();
+                    return std::all_of(
+                        selected_indices.begin(), selected_indices.end(),
+                        [this](ModelIndex index) { return m_rail_model->isIndexRail(index); });
+                },
+                [this](ModelIndex index) {
+                    const std::vector<ModelIndex> &selected_indices =
+                        m_rail_selection_mgr.getState().getSelection();
+                    for (const ModelIndex &index : selected_indices) {
+                        if (!m_rail_model->isIndexRail(index)) {
+                            return;
+                        }
+                        RailData::rail_ptr_t rail = m_rail_model->getRailRef(index);
+                        rail->decimate(1);
+                    }
+                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                })
+            .addOption(
+                "Subdivide", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_S},
+                [this](ModelIndex index) -> bool {
+                    const std::vector<ModelIndex> &selected_indices =
+                        m_rail_selection_mgr.getState().getSelection();
+                    return std::all_of(
+                        selected_indices.begin(), selected_indices.end(),
+                        [this](ModelIndex index) { return m_rail_model->isIndexRail(index); });
+                },
+                [this](ModelIndex index) {
+                    const std::vector<ModelIndex> &selected_indices =
+                        m_rail_selection_mgr.getState().getSelection();
+                    for (const ModelIndex &index : selected_indices) {
+                        if (!m_rail_model->isIndexRail(index)) {
+                            return;
+                        }
+                        RailData::rail_ptr_t rail = m_rail_model->getRailRef(index);
+                        rail->subdivide(1);
+                    }
+                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                });
     }
 
     void SceneWindow::buildCreateObjDialog() {
@@ -2928,7 +2895,7 @@ namespace Toolbox::UI {
 
                 std::string new_unique_name =
                     m_scene_object_model->findUniqueName(parent_index, std::string(new_name));
-                m_scene_object_model->setObjectKey(selected_index, new_unique_name);
+                m_scene_object_model->setRailKey(selected_index, new_unique_name);
 
                 RefPtr<ISceneObject> obj = m_scene_object_model->getObjectRef(selected_index);
 
@@ -2967,7 +2934,7 @@ namespace Toolbox::UI {
 
                 std::string new_unique_name =
                     m_table_object_model->findUniqueName(parent_index, std::string(new_name));
-                m_table_object_model->setObjectKey(selected_index, new_unique_name);
+                m_table_object_model->setRailKey(selected_index, new_unique_name);
 
                 RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(selected_index);
 
@@ -2981,85 +2948,93 @@ namespace Toolbox::UI {
 
     void SceneWindow::buildCreateRailDialog() {
         m_create_rail_dialog.setup();
-        m_create_rail_dialog.setActionOnAccept(
-            [this](std::string_view name, u16 node_count, s16 node_distance, bool loop) {
-                if (name.empty()) {
-                    auto result = make_error<void>("SCENE", "Can not name rail as empty string");
+        m_create_rail_dialog.setActionOnAccept([this](std::string_view name, u16 node_count,
+                                                      s16 node_distance, bool loop) {
+            if (name.empty()) {
+                auto result = make_error<void>("SCENE", "Can not name rail as empty string");
+                LogError(result.error());
+                return;
+            }
+
+            f64 angle      = 0;
+            f64 angle_step = node_count == 0 ? 0 : (M_PI * 2) / node_count;
+
+            std::vector<Rail::Rail::node_ptr_t> new_nodes;
+            for (u16 i = 0; i < node_count; ++i) {
+                s16 x = 0;
+                s16 y = 0;
+                s16 z = 0;
+                if (loop) {
+                    x = static_cast<s16>(std::cos(angle) * node_distance);
+                    y = 0;
+                    z = static_cast<s16>(std::sin(angle) * node_distance);
+                } else {
+                    x = 0;
+                    y = 0;
+                    z = i * node_distance;
+                }
+
+                auto node = make_referable<Rail::RailNode>(x, y, z, 0);
+                new_nodes.push_back(node);
+
+                angle += angle_step;
+            }
+
+            RailData::rail_ptr_t new_rail = make_referable<Rail::Rail>(name, new_nodes);
+
+            for (u16 i = 0; i < node_count; ++i) {
+                auto result = new_rail->connectNodeToNeighbors(i, true);
+                if (!result) {
                     LogError(result.error());
-                    return;
                 }
+            }
 
-                f64 angle      = 0;
-                f64 angle_step = node_count == 0 ? 0 : (M_PI * 2) / node_count;
-
-                std::vector<Rail::Rail::node_ptr_t> new_nodes;
-                for (u16 i = 0; i < node_count; ++i) {
-                    s16 x = 0;
-                    s16 y = 0;
-                    s16 z = 0;
-                    if (loop) {
-                        x = static_cast<s16>(std::cos(angle) * node_distance);
-                        y = 0;
-                        z = static_cast<s16>(std::sin(angle) * node_distance);
-                    } else {
-                        x = 0;
-                        y = 0;
-                        z = i * node_distance;
-                    }
-
-                    auto node = make_referable<Rail::RailNode>(x, y, z, 0);
-                    new_nodes.push_back(node);
-
-                    angle += angle_step;
-                }
-
-                Rail::Rail new_rail(name, new_nodes);
-
-                for (u16 i = 0; i < node_count; ++i) {
-                    auto result = new_rail.connectNodeToNeighbors(i, true);
+            if (!loop) {
+                // First
+                {
+                    auto result = new_rail->removeConnection(0, 1);
                     if (!result) {
                         LogError(result.error());
                     }
                 }
 
-                if (!loop) {
-                    // First
-                    {
-                        auto result = new_rail.removeConnection(0, 1);
-                        if (!result) {
-                            LogError(result.error());
-                        }
-                    }
-
-                    // Last
-                    {
-                        auto result = new_rail.removeConnection(node_count - 1, 1);
-                        if (!result) {
-                            LogError(result.error());
-                        }
+                // Last
+                {
+                    auto result = new_rail->removeConnection(node_count - 1, 1);
+                    if (!result) {
+                        LogError(result.error());
                     }
                 }
+            }
 
-                m_current_scene->getRailData()->addRail(new_rail);
+            m_rail_model->insertRail(std::move(new_rail), m_rail_model->getRowCount(ModelIndex()));
 
-                m_renderer.updatePaths(*m_current_scene->getRailData(), m_rail_visible_map);
-                m_update_render_objs = true;
-            });
+            m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+            m_update_render_objs = true;
+        });
     }
 
     void SceneWindow::buildRenameRailDialog() {
         m_rename_rail_dialog.setup();
         m_rename_rail_dialog.setActionOnAccept(
-            [this](std::string_view new_name, SelectionNodeInfo<Rail::Rail> info) {
+            [this](std::string_view new_name, const ModelIndex &index) {
                 if (new_name.empty()) {
                     auto result =
                         make_error<void>("Scene Hierarchy", "Can not rename rail to empty string");
                     LogError(result.error());
                     return;
                 }
-                info.m_selected->setName(new_name);
+
+                if (!m_rail_model->isIndexRail(index)) {
+                    auto result =
+                        make_error<void>("Scene Hierarchy", "Failed to get rail for renaming");
+                    LogError(result.error());
+                    return;
+                }
+
+                m_rail_model->setRailKey(index, std::string(new_name));
             });
-        m_rename_rail_dialog.setActionOnReject([](SelectionNodeInfo<Rail::Rail>) {});
+        m_rename_rail_dialog.setActionOnReject([](const ModelIndex &index) {});
     }
 
     void SceneWindow::saveMimeObject(Buffer &buffer, size_t index, RefPtr<ISceneObject> parent) {
@@ -3164,7 +3139,8 @@ namespace Toolbox::UI {
         //     RefPtr<ISceneObject> orig_parent =
         //         m_current_scene->getObjHierarchy()->findObject(orig_parent_uuid);
         //     if (orig_parent) {
-        //         TRY(orig_parent->removeChild(orig_index)).error([](const ObjectGroupError &err) {
+        //         TRY(orig_parent->removeChild(orig_index)).error([](const ObjectGroupError
+        //         &err) {
         //             LogError(err);
         //         });
         //     }
@@ -3229,10 +3205,9 @@ namespace Toolbox::UI {
         // const bool is_object_selected =
         //     std::any_of(selection.begin(), selection.end(), new_obj_selection);
 
-        m_rail_list_selected_nodes.clear();
-        m_rail_node_list_selected_nodes.clear();
+        m_rail_selection_mgr.getState().clearSelection();
 
-        m_scene_selection_mgr.handleActionsByMouseInput(new_obj_selection, true);
+        m_scene_selection_mgr.actionSelectIndex(new_obj_selection, true, false, true);
         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
             !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
             m_table_selection_mgr.getState().clearSelection();
@@ -3258,31 +3233,12 @@ namespace Toolbox::UI {
     void Toolbox::UI::SceneWindow::processRailSelection(RailData::rail_ptr_t node, bool is_multi) {
         ImGuiID rail_id = static_cast<ImGuiID>(node->getUUID());
 
-        bool is_rail_selected =
-            std::any_of(m_rail_list_selected_nodes.begin(), m_rail_list_selected_nodes.end(),
-                        [&](auto &info) { return info.m_node_id == rail_id; });
-
-        SelectionNodeInfo<Rail::Rail> rail_info = {.m_selected      = node,
-                                                   .m_node_id       = rail_id,
-                                                   .m_parent_synced = true,
-                                                   .m_scene_synced  = false};
+        ModelIndex new_rail_selection = m_rail_model->getIndex(node);
 
         m_scene_selection_mgr.getState().clearSelection();
         m_table_selection_mgr.getState().clearSelection();
 
-        m_rail_node_list_selected_nodes.clear();
-
-        if (is_multi) {
-            m_selected_properties.clear();
-            if (!is_rail_selected)
-                m_rail_list_selected_nodes.push_back(rail_info);
-        } else {
-            m_rail_list_selected_nodes.clear();
-            m_rail_list_selected_nodes.push_back(rail_info);
-        }
-
-        // Since a rail is selected, we should clear the rail nodes
-        m_rail_node_list_selected_nodes.clear();
+        m_rail_selection_mgr.actionSelectIndex(new_rail_selection, true, false, true);
 
         m_selection_transforms_needs_update = true;
 
@@ -3293,33 +3249,14 @@ namespace Toolbox::UI {
 
     void Toolbox::UI::SceneWindow::processRailNodeSelection(RefPtr<Rail::RailNode> node,
                                                             bool is_multi) {
-        ImGuiID node_id = static_cast<ImGuiID>(node->getUUID());
+        ImGuiID rail_id = static_cast<ImGuiID>(node->getUUID());
 
-        bool is_rail_node_selected = std::any_of(
-            m_rail_node_list_selected_nodes.begin(), m_rail_node_list_selected_nodes.end(),
-            [&](auto &info) { return info.m_node_id == node_id; });
-
-        SelectionNodeInfo<Rail::RailNode> node_info = {.m_selected      = node,
-                                                       .m_node_id       = node_id,
-                                                       .m_parent_synced = true,
-                                                       .m_scene_synced  = false};
+        ModelIndex new_rail_selection = m_rail_model->getIndex(node);
 
         m_scene_selection_mgr.getState().clearSelection();
         m_table_selection_mgr.getState().clearSelection();
 
-        m_rail_list_selected_nodes.clear();
-
-        if (is_multi) {
-            m_selected_properties.clear();
-            if (!is_rail_node_selected)
-                m_rail_node_list_selected_nodes.push_back(node_info);
-        } else {
-            m_rail_node_list_selected_nodes.clear();
-            m_rail_node_list_selected_nodes.push_back(node_info);
-        }
-
-        // Since a rail node is selected, we should clear the rails
-        m_rail_list_selected_nodes.clear();
+        m_rail_selection_mgr.actionSelectIndex(new_rail_selection, true, false, true);
 
         m_selection_transforms_needs_update = true;
 
@@ -3348,6 +3285,8 @@ namespace Toolbox::UI {
 
         const size_t total_selected_objects =
             m_scene_selection_mgr.getState().count() + m_table_selection_mgr.getState().count();
+
+        const size_t total_selected_rails_and_nodes = m_rail_selection_mgr.getState().count();
 
         m_selection_transforms.clear();
 
@@ -3378,29 +3317,24 @@ namespace Toolbox::UI {
 
             combined_transform.m_translation /= total_selected_objects;
             m_renderer.setGizmoTransform(combined_transform);
-        } else if (!m_rail_list_selected_nodes.empty()) {
-            m_selection_transforms.reserve(m_rail_list_selected_nodes.size());
+        } else if (total_selected_rails_and_nodes > 0) {
+            m_selection_transforms.reserve(total_selected_rails_and_nodes);
 
-            for (SelectionNodeInfo<Rail::Rail> node : m_rail_list_selected_nodes) {
-                glm::vec3 center = node.m_selected->getCenteroid();
-                m_selection_transforms.emplace_back(
+            for (const ModelIndex &index : m_scene_selection_mgr.getState().getSelection()) {
+                glm::vec3 center;
+                if (m_rail_model->isIndexRail(index)) {
+                    RailData::rail_ptr_t rail = m_rail_model->getRailRef(index);
+                    center                    = rail->getCenteroid();
+                } else {
+                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+                    center                      = node->getPosition();
+                }
+                m_selection_transforms.push_back(
                     Transform(center, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}));
                 combined_transform.m_translation += center;
             }
 
-            combined_transform.m_translation /= m_rail_list_selected_nodes.size();
-            m_renderer.setGizmoTransform(combined_transform);
-        } else if (!m_rail_node_list_selected_nodes.empty()) {
-            m_selection_transforms.reserve(m_rail_node_list_selected_nodes.size());
-
-            for (SelectionNodeInfo<Rail::RailNode> node : m_rail_node_list_selected_nodes) {
-                glm::vec3 center = node.m_selected->getPosition();
-                m_selection_transforms.emplace_back(
-                    Transform(center, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}));
-                combined_transform.m_translation += center;
-            }
-
-            combined_transform.m_translation /= m_rail_node_list_selected_nodes.size();
+            combined_transform.m_translation /= total_selected_rails_and_nodes;
             m_renderer.setGizmoTransform(combined_transform);
         }
     }

@@ -6,6 +6,7 @@
 
 #include "core/error.hpp"
 #include "gui/appmain/scene/nodeinfo.hpp"
+#include "model/model.hpp"
 #include "rail/rail.hpp"
 #include <imgui.h>
 
@@ -16,7 +17,7 @@ namespace Toolbox::UI {
         enum class InitialShape { NONE, CIRCLE };
 
         using action_t = std::function<void(std::string_view, u16, s16, bool)>;
-        using cancel_t = std::function<void(SelectionNodeInfo<Rail::Rail>)>;
+        using cancel_t = std::function<void(const ModelIndex &)>;
 
         CreateRailDialog()  = default;
         ~CreateRailDialog() = default;
@@ -30,7 +31,7 @@ namespace Toolbox::UI {
             m_open    = true;
             m_opening = true;
         }
-        void render(SelectionNodeInfo<Rail::Rail> node_info);
+        void render(const ModelIndex & node_info);
 
     private:
         bool m_open    = false;
@@ -48,8 +49,8 @@ namespace Toolbox::UI {
 
     class RenameRailDialog {
     public:
-        using action_t = std::function<void(std::string_view, SelectionNodeInfo<Rail::Rail>)>;
-        using cancel_t = std::function<void(SelectionNodeInfo<Rail::Rail>)>;
+        using action_t = std::function<void(std::string_view, const ModelIndex &)>;
+        using cancel_t = std::function<void(const ModelIndex &)>;
 
         RenameRailDialog()  = default;
         ~RenameRailDialog() = default;
@@ -72,7 +73,7 @@ namespace Toolbox::UI {
             m_open    = true;
             m_opening = true;
         }
-        void render(SelectionNodeInfo<Rail::Rail> node_info);
+        void render(const ModelIndex & node_info);
 
     private:
         bool m_open    = false;

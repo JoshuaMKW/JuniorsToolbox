@@ -60,6 +60,22 @@ namespace Toolbox {
         }
     }
 
+    bool RailObjModel::isIndexRailNode(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return false;
+        }
+        _RailIndexData *data = index.data<_RailIndexData>();
+        return data->getNode() != nullptr;
+    }
+
+    bool RailObjModel::isIndexRail(const ModelIndex &index) const {
+        if (!validateIndex(index)) {
+            return false;
+        }
+        _RailIndexData *data = index.data<_RailIndexData>();
+        return data->getRail() != nullptr && data->getNode() == nullptr;
+    }
+
     std::any RailObjModel::getData(const ModelIndex &index, int role) const {
         std::scoped_lock lock(m_mutex);
         return getData_(index, role);
@@ -280,6 +296,10 @@ namespace Toolbox {
                 return static_cast<u32>(0);
             }
             case RailObjDataRole::RAIL_DATA_ROLE_RAIL_REF: {
+                return rail;  // We do this since nodes are complex and may require direct
+                              // interaction
+            }
+            case RailObjDataRole::RAIL_DATA_ROLE_RAIL_NODE_REF: {
                 return node;  // We do this since nodes are complex and may require direct
                               // interaction
             }
@@ -793,6 +813,7 @@ namespace Toolbox {
         _RailIndexData *new_data = new _RailIndexData;
         new_data->m_self_uuid    = new_index.getUUID();
         new_data->m_icon         = nullptr;
+        new_data->setRail(rail);
         new_data->setNode(node);
 
         new_index.setData(new_data);

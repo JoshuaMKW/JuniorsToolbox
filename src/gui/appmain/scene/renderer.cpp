@@ -469,14 +469,14 @@ namespace Toolbox::UI {
         viewportEnd();
     }
 
-    void Renderer::initializeData(const SceneInstance &scene) {
-        initializePaths(*scene.getRailData(), {});
+    void Renderer::initializeData(RefPtr<RailObjModel> rail_model) {
+        initializePaths(rail_model, {});
         initializeBillboards();
     }
 
-    void Renderer::initializePaths(const RailData &rail_data,
-                                   std::unordered_map<UUID64, bool> visible_map) {
-        m_path_renderer.updateGeometry(rail_data, visible_map);
+    void Renderer::initializePaths(RefPtr<RailObjModel> model,
+                                   const std::unordered_map<UUID64, bool> &visible_map) {
+        m_path_renderer.updateGeometry(model, visible_map);
     }
 
     void Renderer::initializeBillboards() {

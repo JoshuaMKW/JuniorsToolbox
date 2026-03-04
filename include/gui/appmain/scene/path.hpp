@@ -4,11 +4,13 @@
 #include <filesystem>
 #include <glad/glad.h>
 #include <glm/glm.hpp>
-#include <gui/appmain/scene/camera.hpp>
 #include <imgui.h>
 #include <scene/raildata.hpp>
 #include <unordered_map>
 #include <vector>
+
+#include "gui/appmain/scene/camera.hpp"
+#include "model/railmodel.hpp"
 
 using namespace Toolbox;
 
@@ -43,7 +45,8 @@ namespace Toolbox::UI {
 
         void setScreenResolution(float x, float y) { m_resolution = glm::vec2(x, y); }
 
-        void updateGeometry(const RailData &data, std::unordered_map<UUID64, bool> visible_map);
+        void updateGeometry(RefPtr<RailObjModel> model,
+                            const std::unordered_map<UUID64, bool> &visible_map);
         void drawPaths(Camera *camera);
 
     private:

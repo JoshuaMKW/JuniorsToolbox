@@ -30,6 +30,7 @@
 #include "gui/window.hpp"
 
 #include "model/objmodel.hpp"
+#include "model/railmodel.hpp"
 #include "model/selection.hpp"
 
 #include "raildialog.hpp"
@@ -126,9 +127,7 @@ namespace Toolbox::UI {
         void renderTableObjectTree(const ModelIndex &index);
         void renderSceneHierarchyContextMenu(std::string str_id, const ModelIndex &obj_index);
         void renderTableHierarchyContextMenu(std::string str_id, const ModelIndex &obj_index);
-
-        void renderRailContextMenu(std::string str_id, SelectionNodeInfo<Rail::Rail> &info);
-        void renderRailNodeContextMenu(std::string str_id, SelectionNodeInfo<Rail::RailNode> &info);
+        void renderRailContextMenu(std::string str_id, const ModelIndex &rail_index);
 
         void renderProperties();
         static bool renderEmptyProperties(SceneWindow &window) { return false; }
@@ -143,9 +142,6 @@ namespace Toolbox::UI {
         void buildContextMenuTableObj();
 
         void buildContextMenuRail();
-        void buildContextMenuMultiRail();
-        void buildContextMenuRailNode();
-        void buildContextMenuMultiRailNode();
 
         void buildCreateObjDialog();
         void buildRenameObjDialog();
@@ -233,12 +229,15 @@ namespace Toolbox::UI {
 
         RefPtr<SceneObjModel> m_scene_object_model;
         RefPtr<SceneObjModel> m_table_object_model;
+        RefPtr<RailObjModel> m_rail_model;
 
         ModelSelectionManager m_scene_selection_mgr;
         ModelSelectionManager m_table_selection_mgr;
+        ModelSelectionManager m_rail_selection_mgr;
 
         ContextMenu<ModelIndex> m_scene_hierarchy_context_menu;
         ContextMenu<ModelIndex> m_table_hierarchy_context_menu;
+        ContextMenu<ModelIndex> m_rail_list_context_menu;
 
         // Property editor
         std::function<bool(SceneWindow &)> m_properties_render_handler;
@@ -250,6 +249,14 @@ namespace Toolbox::UI {
 
         CreateObjDialog m_create_table_obj_dialog;
         RenameObjDialog m_rename_table_obj_dialog;
+
+        // Rail modals
+        CreateRailDialog m_create_rail_dialog;
+        RenameRailDialog m_rename_rail_dialog;
+
+        // Rail editor
+        std::unordered_map<UUID64, bool> m_rail_visible_map = {};
+        bool m_connections_open                             = true;
 
         // Render view
         bool m_update_render_objs    = false;
@@ -267,23 +274,6 @@ namespace Toolbox::UI {
         ImGuiID m_dock_node_up_left_id   = 0;
         ImGuiID m_dock_node_left_id      = 0;
         ImGuiID m_dock_node_down_left_id = 0;
-
-        // Rail editor
-        std::unordered_map<UUID64, bool> m_rail_visible_map = {};
-        bool m_connections_open                             = true;
-
-        std::vector<SelectionNodeInfo<Rail::Rail>> m_rail_list_selected_nodes = {};
-        ContextMenu<SelectionNodeInfo<Rail::Rail>> m_rail_list_single_node_menu;
-        ContextMenu<std::vector<SelectionNodeInfo<Rail::Rail>>> m_rail_list_multi_node_menu;
-
-        std::vector<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_selected_nodes = {};
-        ContextMenu<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_single_node_menu;
-        ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>>
-            m_rail_node_list_multi_node_menu;
-
-        // Rail modals
-        CreateRailDialog m_create_rail_dialog;
-        RenameRailDialog m_rename_rail_dialog;
 
         EditorWindow m_focused_window = EditorWindow::NONE;
 

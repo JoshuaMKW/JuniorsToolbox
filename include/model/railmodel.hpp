@@ -30,6 +30,7 @@ namespace Toolbox {
         RAIL_DATA_ROLE_RAIL_KEY,
         RAIL_DATA_ROLE_RAIL_GAME_ADDR,
         RAIL_DATA_ROLE_RAIL_REF,
+        RAIL_DATA_ROLE_RAIL_NODE_REF,
     };
 
     class RailObjModel : public IDataModel {
@@ -50,6 +51,9 @@ namespace Toolbox {
 
         [[nodiscard]] bool isReadOnly() const override { return false; }
 
+        [[nodiscard]] bool isIndexRailNode(const ModelIndex &index) const;
+        [[nodiscard]] bool isIndexRail(const ModelIndex &index) const;
+
         [[nodiscard]] std::string getRailType(const ModelIndex &index) const {
             return std::any_cast<std::string>(
                 getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_TYPE));
@@ -59,7 +63,7 @@ namespace Toolbox {
             return std::any_cast<std::string>(
                 getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_KEY));
         }
-        void setObjectKey(const ModelIndex &index, const std::string &key) {
+        void setRailKey(const ModelIndex &index, const std::string &key) {
             setData(index, key, RailObjDataRole::RAIL_DATA_ROLE_RAIL_KEY);
         }
 
@@ -75,7 +79,7 @@ namespace Toolbox {
 
         [[nodiscard]] Rail::Rail::node_ptr_t getRailNodeRef(const ModelIndex &index) const {
             return std::any_cast<Rail::Rail::node_ptr_t>(
-                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_REF));
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_NODE_REF));
         }
 
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;

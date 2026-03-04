@@ -202,12 +202,12 @@ void main()
         glDeleteVertexArrays(1, &m_vao);
     }
 
-    void PathRenderer::updateGeometry(const RailData &data,
-                                      std::unordered_map<UUID64, bool> visible_map) {
-        size_t rail_count = data.getRailCount();
-
-        if (rail_count == 0)
+    void PathRenderer::updateGeometry(RefPtr<RailObjModel> model,
+                                      const std::unordered_map<UUID64, bool> &visible_map) {
+        const size_t rail_count = model->getRowCount(ModelIndex());
+        if (rail_count == 0) {
             return;
+        }
 
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 
@@ -216,8 +216,13 @@ void main()
         m_path_connections.reserve(rail_count * 16);  // Estimate upper bound
 
         for (size_t i = 0; i < rail_count; ++i) {
-            auto rail = data.getRail(i);
-            if (visible_map.contains(rail->getUUID()) && visible_map[rail->getUUID()] == false) {
+            ModelIndex rail_index     = model->getIndex(i, 0, ModelIndex());
+            if (!model->isIndexRail(rail_index)) {
+                continue;
+            }
+
+            RailData::rail_ptr_t rail = model->getRailRef(rail_index);
+            if (visible_map.contains(rail->getUUID()) && visible_map.at(rail->getUUID()) == false) {
                 continue;
             }
 
@@ -231,9 +236,9 @@ void main()
                 float node_saturation = std::lerp(0.5f, 1.0f, node_lerp);
                 float node_brightness = std::lerp(1.0f, 0.5f, node_lerp);
                 Color::RGBShader node_color =
-                    m_path_colors ?
-                    Color::HSVToColor<Color::RGBShader>(node_hue, node_saturation, node_brightness) :
-                    Color::RGBShader(0.65f, 0.65f, 0.15f);
+                    m_path_colors ? Color::HSVToColor<Color::RGBShader>(node_hue, node_saturation,
+                                                                        node_brightness)
+                                  : Color::RGBShader(0.65f, 0.65f, 0.15f);
 
                 PathConnection p_connection{};
                 p_connection.m_point = {
