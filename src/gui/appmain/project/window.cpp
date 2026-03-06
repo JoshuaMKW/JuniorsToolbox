@@ -1,8 +1,9 @@
 #include "gui/appmain/project/window.hpp"
 #include "gui/appmain/application.hpp"
-#include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/appmain/new_item/window.hpp"
 #include "gui/appmain/project/events.hpp"
+#include "gui/dragdrop/dragdropmanager.hpp"
+#include "gui/logging/errors.hpp"
 #include "model/fsmodel.hpp"
 
 #include <cctype>
@@ -1628,18 +1629,22 @@ namespace Toolbox::UI {
             return;
         }
 
-        bool success = false;
-
         if (selection.size() > 0) {
-            success |= m_folder_selection_mgr.actionPasteIntoSelection(maybe_data.value());
+            auto result = m_folder_selection_mgr.actionPasteIntoSelection(maybe_data.value());
+            if (!result) {
+                LogError(result.error());
+            }
         } else {
             if (m_view_proxy->isReadOnly()) {
                 return;
             }
 
             ModelInsertPolicy policy = ModelInsertPolicy::INSERT_CHILD;
-            success |= m_view_proxy->insertMimeData(m_view_proxy->toProxyIndex(m_view_index),
+            auto result = m_view_proxy->insertMimeData(m_view_proxy->toProxyIndex(m_view_index),
                                                     maybe_data.value(), policy);
+            if (!result) {
+                LogError(result.error());
+            }
         }
 
         for (const ModelIndex &index : m_cut_indices) {

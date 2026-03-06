@@ -212,7 +212,7 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData(const IDataModel::index_container &indexes) const override;
-        [[nodiscard]] bool
+        [[nodiscard]] Result<IDataModel::index_container>
         insertMimeData(const ModelIndex &index, const MimeData &data,
                        ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
@@ -238,6 +238,12 @@ namespace Toolbox {
         void signalEventListeners(const ModelIndex &index, int flags);
 
     protected:
+        using Signal      = std::pair<ModelIndex, int>;
+        using SignalQueue = std::vector<Signal>;
+
+        [[nodiscard]] virtual Signal createSignalForIndex_(const ModelIndex &index,
+                                                           ModelEventFlags base_event) const;
+
         // Implementation of public API for mutex locking reasons
         [[nodiscard]] bool isIndexGroup_(const ModelIndex &index) const;
 
@@ -266,7 +272,7 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData_(const IDataModel::index_container &indexes) const;
-        [[nodiscard]] IDataModel::index_container
+        [[nodiscard]] Result<IDataModel::index_container>
         insertMimeData_(const ModelIndex &index, const MimeData &data,
                         ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER);
 
@@ -422,7 +428,7 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData(const IDataModel::index_container &indexes) const override;
-        [[nodiscard]] bool
+        [[nodiscard]] Result<IDataModel::index_container>
         insertMimeData(const ModelIndex &index, const MimeData &data,
                        ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;

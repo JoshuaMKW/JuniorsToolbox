@@ -496,10 +496,10 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    Result<std::vector<ModelIndex>, BaseError>
+    Result<IDataModel::index_container>
     FileSystemModel::insertMimeData(const ModelIndex &index, const MimeData &data,
                                          ModelInsertPolicy policy) {
-        Result<std::vector<ModelIndex>, BaseError> result;
+        Result<IDataModel::index_container> result;
 
         {
             std::scoped_lock lock(m_mutex);
@@ -1403,7 +1403,7 @@ namespace Toolbox {
         return data;
     }
 
-    Result<std::vector<ModelIndex>, BaseError>
+    Result<IDataModel::index_container>
     FileSystemModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
                                      ModelInsertPolicy policy) {
         if (!data.has_urls()) {
@@ -2245,7 +2245,7 @@ namespace Toolbox {
         return m_source_model->createMimeData(indexes_copy);
     }
 
-    Result<std::vector<ModelIndex>, BaseError>
+    Result<IDataModel::index_container>
     FileSystemModelSortFilterProxy::insertMimeData(const ModelIndex &index,
                                                         const MimeData &data,
                                                         ModelInsertPolicy policy) {

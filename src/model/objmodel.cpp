@@ -60,9 +60,9 @@ namespace Toolbox {
     void SceneObjModel::initialize(const Scene::ObjectHierarchy &hierarchy) {
         m_index_map.clear();
 
-        bool result =
-            ObjectForEach(hierarchy.getRoot(), 0, nullptr, [this](RefPtr<ISceneObject> object, int64_t row,
-                                                      RefPtr<ISceneObject> parent) {
+        bool result = ObjectForEach(
+            hierarchy.getRoot(), 0, nullptr,
+            [this](RefPtr<ISceneObject> object, int64_t row, RefPtr<ISceneObject> parent) {
                 ModelIndex parent_index = getIndex(parent);
                 ModelIndex new_index    = makeIndex(object, row, parent_index);
                 if (!validateIndex(new_index)) {
@@ -98,7 +98,7 @@ namespace Toolbox {
         if (!object) {
             return ModelIndex();
         }
-         
+
         std::scoped_lock lock(m_mutex);
         return getIndex_(object);
     }
@@ -187,9 +187,10 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    bool SceneObjModel::insertMimeData(const ModelIndex &index, const MimeData &data,
-                                       ModelInsertPolicy policy) {
-        bool result;
+    Result<IDataModel::index_container>
+    SceneObjModel::insertMimeData(const ModelIndex &index, const MimeData &data,
+                                  ModelInsertPolicy policy) {
+        Result<IDataModel::index_container> result;
 
         {
             std::scoped_lock lock(m_mutex);
@@ -545,10 +546,12 @@ namespace Toolbox {
         return new_data;
     }
 
-    bool SceneObjModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
-                                        ModelInsertPolicy policy) {
+    Result<IDataModel::index_container>
+    SceneObjModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
+                                   ModelInsertPolicy policy) {
         if (!data.has_format("toolbox/scene/object_model")) {
-            return false;
+            return make_error<std::vector<ModelIndex>>(
+                "SceneObjModel", "Provided MIME data has no SceneObjModel data!");
         }
 
         Buffer mime_data = data.get_data("toolbox/scene/object_model").value();
@@ -556,9 +559,11 @@ namespace Toolbox {
         std::stringstream instr(std::string(mime_data.buf<char>(), mime_data.size()));
         Deserializer in(instr.rdbuf());
 
-        std::function<Result<void, SerialError>(const ModelIndex &, Deserializer &)>
-            deserialize_index =
-                [&](const ModelIndex &index, Deserializer &in) -> Result<void, SerialError> {
+        std::vector<ModelIndex> new_indexes;
+
+        std::function<Result<void, SerialError>(int64_t, const ModelIndex &, Deserializer &)>
+            deserialize_index = [&](int64_t row, const ModelIndex &index,
+                                    Deserializer &in) -> Result<void, SerialError> {
             const UUID64 uuid = in.read<u64>();
 
             const std::string obj_type   = in.readString();
@@ -594,15 +599,59 @@ namespace Toolbox {
             u32 child_count = in.read<u32>();
 
             for (u32 i = 0; i < child_count; ++i) {
-                ModelIndex child_index           = insertObject_(object, i, index);
-                Result<void, SerialError> result = deserialize_index(child_index, in);
+                ModelIndex child_index = insertObject_(object, row + i, index);
+                if (!validateIndex(child_index)) {
+                    return make_serial_error<void>(in, "Failed to insert child object into model!");
+                }
+
+                new_indexes.push_back(child_index);
+
+                Result<void, SerialError> result = deserialize_index(i, child_index, in);
                 if (!result) {
                     return result;
                 }
             }
-
-            return {};
         };
+
+        if (policy == ModelInsertPolicy::INSERT_CHILD) {
+            if (!getObjectRef(index)->isGroupObject()) {
+                // Inserting as a child of a node is not allowed, so we treat this as an "after"
+                // insertion
+                policy = ModelInsertPolicy::INSERT_AFTER;
+            }
+        }
+
+        int64_t insert_row;
+        switch (policy) {
+        case ModelInsertPolicy::INSERT_BEFORE:
+            insert_row = getRow_(index);
+            if (insert_row == -1) {
+                return make_error<std::vector<ModelIndex>>(
+                    "SceneObjModel", "Failed to retrieve the row for the insert index");
+            }
+            break;
+        case ModelInsertPolicy::INSERT_AFTER:
+            insert_row = getRow_(index);
+            if (insert_row == -1) {
+                return make_error<std::vector<ModelIndex>>(
+                    "SceneObjModel",
+                                        "Failed to retrieve the row for the insert index");
+            }
+            insert_row += 1;
+            break;
+        case ModelInsertPolicy::INSERT_CHILD:
+            insert_row = getRowCount_(index);
+            break;
+        }
+
+        auto result = deserialize_index(insert_row, index, in);
+        if (!result) {
+            TOOLBOX_ERROR_V("Failed to deserialize index from mime data: {}",
+                            result.error().m_message);
+            return make_error<std::vector<ModelIndex>>("SceneObjModel", result.error().m_message);
+        }
+
+        return new_indexes;
     }
 
     bool SceneObjModel::canFetchMore_(const ModelIndex &index) const { return false; }

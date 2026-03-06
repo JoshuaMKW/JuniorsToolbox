@@ -198,9 +198,10 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    bool RailObjModel::insertMimeData(const ModelIndex &index, const MimeData &data,
+    Result<IDataModel::index_container>
+    RailObjModel::insertMimeData(const ModelIndex &index, const MimeData &data,
                                       ModelInsertPolicy policy) {
-        bool result;
+        Result<IDataModel::index_container> result;
 
         const Signal pre_signal = createSignalForIndex_(index, ModelEventFlags::EVENT_INSERT);
 
@@ -212,6 +213,13 @@ namespace Toolbox {
         }
 
         if (result) {
+            for (const ModelIndex &new_index : result.value()) {
+                Signal index_signal =
+                    createSignalForIndex_(new_index, ModelEventFlags::EVENT_INDEX_ADDED);
+                signalEventListeners(index_signal.first, index_signal.second |
+                                                             ModelEventFlags::EVENT_POST |
+                                                             ModelEventFlags::EVENT_SUCCESS);
+            }
             signalEventListeners(pre_signal.first, pre_signal.second |
                                                         ModelEventFlags::EVENT_POST |
                                                         ModelEventFlags::EVENT_SUCCESS);
@@ -520,6 +528,8 @@ namespace Toolbox {
                                                             : nullptr;
 
         if (parent_data) {
+            int64_t row = getRow_(index);
+
             RailData::rail_ptr_t parent_rail = parent_data->getRail();
             bool result                      = parent_rail->removeNode(this_data->getNode());
             if (!result) {
@@ -532,6 +542,37 @@ namespace Toolbox {
             std::vector<ModelIndex> &node_list = m_node_list_map[parent_rail->getUUID()];
             node_list.erase(std::remove(node_list.begin(), node_list.end(), index),
                             node_list.end());
+
+            // Finally adjust connections
+            for (int64_t i = 0; i < getRowCount_(parent); ++i) {
+                ModelIndex node_index             = getIndex_(i, 0, parent);
+                Rail::Rail::node_ptr_t other_node = node_index.data<_RailIndexData>()->getNode();
+                for (u16 j = 0; j < other_node->getConnectionCount();) {
+                    auto val_result = other_node->getConnectionValue(j);
+                    if (!val_result) {
+                        TOOLBOX_ERROR_V(
+                            "[RAILMODEL] Failed to get connection value for node \"{}\"!",
+                            other_node->getUUID());
+                        ++j;
+                        continue;
+                    }
+
+                    u16 connection_value = val_result.value();
+                    if (connection_value == row) {
+                        parent_rail->removeConnection(i, j);
+                        continue;
+                    }
+
+                    if (connection_value > row) {
+                        parent_rail->replaceConnection(i, j,
+                                                       static_cast<size_t>(connection_value - 1));
+                        ++j;
+                        continue;
+                    }
+
+                    ++j;
+                }
+            }
         } else {
             RailData::rail_ptr_t this_rail = this_data->getRail();
             m_node_list_map.erase(this_rail->getUUID());
@@ -691,16 +732,19 @@ namespace Toolbox {
         return new_data;
     }
 
-    bool RailObjModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
+    Result<IDataModel::index_container>
+    RailObjModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
                                        ModelInsertPolicy policy) {
         if (!data.has_format("toolbox/scene/rail_model")) {
-            return false;
+            return make_error<std::vector<ModelIndex>>("RailObjModel", "Provided MIME data does not have RailObjModel data!");
         }
 
         Buffer mime_data = data.get_data("toolbox/scene/rail_model").value();
 
         std::stringstream instr(std::string(mime_data.buf<char>(), mime_data.size()));
         Deserializer in(instr.rdbuf());
+
+        std::vector<ModelIndex> inserted_indexes;
 
         auto deserialize_index = [&](int64_t row, const ModelIndex &parent,
                                      Deserializer &in) -> Result<void, SerialError> {
@@ -716,9 +760,14 @@ namespace Toolbox {
                 if (!result) {
                     return result;
                 }
-                insertRailNode_(node, row, parent);
+                ModelIndex node_index = insertRailNode_(node, row, parent);
+                if (!isIndexRailNode(node_index)) {
+                    return make_serial_error<void>(in, "Failed to insert rail node into model!");
+                }
+
+                inserted_indexes.push_back(node_index);
             } else {
-                if (validateIndex(parent)) {
+                if (isIndexRail(parent)) {
                     return make_serial_error<void>(in,
                                                    "Cannot insert rail as child of another rail!");
                 }
@@ -728,7 +777,12 @@ namespace Toolbox {
                 if (!result) {
                     return result;
                 }
-                insertRail_(rail, row);
+                ModelIndex rail_index = insertRail_(rail, row);
+                if (!isIndexRail(rail_index)) {
+                    return make_serial_error<void>(in, "Failed to insert rail into model!");
+                }
+
+                inserted_indexes.push_back(rail_index);
             }
 
             return {};
@@ -742,38 +796,44 @@ namespace Toolbox {
             }
         }
 
+        ModelIndex insert_index;
         int64_t insert_row;
         switch (policy) {
         case ModelInsertPolicy::INSERT_BEFORE:
             insert_row = getRow_(index);
             if (insert_row == -1) {
-                return false;
+                return make_error<std::vector<ModelIndex>>(
+                    "RailObjModel", "Failed to retrieve the row for the insert index");
             }
+            insert_index = getParent_(index);
             break;
         case ModelInsertPolicy::INSERT_AFTER:
             insert_row = getRow_(index);
             if (insert_row == -1) {
-                return false;
+                return make_error<std::vector<ModelIndex>>(
+                    "RailObjModel", "Failed to retrieve the row for the insert index");
             }
             insert_row += 1;
+            insert_index = getParent_(index);
             break;
         case ModelInsertPolicy::INSERT_CHILD:
-            insert_row = getRowCount_(index);
+            insert_row   = getRowCount_(index);
+            insert_index = index;
             break;
         }
 
         u32 node_count = in.read<u32>();
 
         for (u32 i = 0; i < node_count; ++i) {
-            auto result = deserialize_index(insert_row + i, index, in);
+            auto result = deserialize_index(insert_row + i, insert_index, in);
             if (!result) {
                 TOOLBOX_ERROR_V("Failed to deserialize index from mime data: {}",
                                 result.error().m_message);
-                return false;
+                return make_error<std::vector<ModelIndex>>("RailObjModel", result.error().m_message);
             }
         }
 
-        return true;
+        return inserted_indexes;
     }
 
     bool RailObjModel::canFetchMore_(const ModelIndex &index) const { return false; }
@@ -814,6 +874,25 @@ namespace Toolbox {
                 TOOLBOX_ERROR_V("[RAILMODEL] Failed to create index");
                 (void)removeIndex_(new_index);
                 return ModelIndex();
+            }
+
+            for (int64_t i = 0; i < getRowCount_(parent); ++i) {
+                ModelIndex node_index = getIndex_(i, 0, parent);
+                Rail::Rail::node_ptr_t other_node = node_index.data<_RailIndexData>()->getNode();
+                for (u16 j = 0; j < other_node->getConnectionCount(); ++j) {
+                    auto val_result = other_node->getConnectionValue(j);
+                    if (!val_result) {
+                        TOOLBOX_ERROR_V(
+                            "[RAILMODEL] Failed to get connection value for node \"{}\"!",
+                            other_node->getUUID());
+                        continue;
+                    }
+
+                    u16 connection_value = val_result.value();
+                    if (connection_value >= row) {
+                        rail->replaceConnection(i, j, static_cast<size_t>(connection_value + 1));
+                    }
+                }
             }
         }
 

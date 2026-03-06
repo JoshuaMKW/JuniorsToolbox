@@ -7,8 +7,8 @@ namespace Toolbox {
 
     ModelSelectionManager::ModelSelectionManager(RefPtr<IDataModel> model) {
         m_selection.setModel(model);
-        model->addEventListener(getUUID(), TOOLBOX_BIND_EVENT_FN(updateSelectionOnInsert),
-                                ModelEventFlags::EVENT_INSERT);
+        model->addEventListener(getUUID(), TOOLBOX_BIND_EVENT_FN(updateSelection),
+                                ModelEventFlags::EVENT_ANY);
     }
 
     ModelSelectionManager::~ModelSelectionManager() {
@@ -16,6 +16,19 @@ namespace Toolbox {
         if (model) {
             model->removeEventListener(getUUID());
         }
+    }
+
+    ModelSelectionManager &ModelSelectionManager::operator=(ModelSelectionManager &&other) noexcept {
+        RefPtr<IDataModel> model = other.m_selection.getModel();
+        if (model) {
+            // Update the event so memory references update to the new instance
+            model->removeEventListener(other.m_uuid);
+            model->addEventListener(other.m_uuid, TOOLBOX_BIND_EVENT_FN(updateSelection),
+                                    ModelEventFlags::EVENT_ANY);
+        }
+        m_uuid      = std::move(other.m_uuid);
+        m_selection = std::move(other.m_selection);
+        return *this;
     }
 
     bool ModelSelectionManager::processDragState() {
@@ -98,14 +111,14 @@ namespace Toolbox {
         return result;
     }
 
-    bool ModelSelectionManager::actionPasteIntoSelection(const MimeData &data) {
+    Result<void, BaseError> ModelSelectionManager::actionPasteIntoSelection(const MimeData &data) {
         RefPtr<IDataModel> model = m_selection.getModel();
         if (!model) {
-            return false;
+            return make_error<void>("ModelSelectionManager", "Model is null!");
         }
 
         if (model->isReadOnly()) {
-            return false;
+            return make_error<void>("ModelSelectionManager", "Model is read-only!");
         }
 
         ModelInsertPolicy policy = ModelInsertPolicy::INSERT_CHILD;
@@ -115,10 +128,15 @@ namespace Toolbox {
             policy = ModelInsertPolicy::INSERT_CHILD;
         }*/
 
-        // We do this since we update the selection to the pasted items by event
-        m_selection.clearSelection();
+        //// We do this since we update the selection to the pasted items by event
+        //m_selection.clearSelection();
 
-        return model->insertMimeData(last_selected, data, policy);
+        auto result = model->insertMimeData(last_selected, data, policy);
+        if (!result) {
+            return std::unexpected(result.error());
+        }
+
+        return {};
     }
 
     ScopePtr<MimeData> ModelSelectionManager::actionCutSelection() {
@@ -283,23 +301,35 @@ namespace Toolbox {
         return false;
     }
 
-    void ModelSelectionManager::updateSelectionOnInsert(const ModelIndex &index, int flags) {
-        if ((flags & ModelEventFlags::EVENT_INSERT) == ModelEventFlags::EVENT_NONE) {
+    void ModelSelectionManager::updateSelection(const ModelIndex &index, int flags) {
+        if ((flags & ModelEventFlags::EVENT_INSERT) == ModelEventFlags::EVENT_INSERT) {
+            if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
+                // Clear the selection in preparation for the insert since
+                // those will be selected instead.
+                m_selection.clearSelection();
+                m_insertion_state = true;
+            }
+
+            if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+                m_insertion_state = false;
+            }
+
             return;
         }
 
-        if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
-            // Clear the selection in preparation for the insert since
-            // those will be selected instead.
-            m_selection.clearSelection();
-        }
+        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) == ModelEventFlags::EVENT_INDEX_ADDED) {
+            if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+                if ((flags & ModelEventFlags::EVENT_SUCCESS) == ModelEventFlags::EVENT_NONE) {
+                    return;
+                }
 
-        if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
-            if ((flags & ModelEventFlags::EVENT_SUCCESS) == ModelEventFlags::EVENT_NONE) {
-                return;
+                if (m_insertion_state) {
+                    m_selection.selectSingle(index, true);
+                    m_selection.setLastSelected(index);
+                }
             }
 
-            m_selection.selectSingle(index, true);
+            return;
         }
     }
 
