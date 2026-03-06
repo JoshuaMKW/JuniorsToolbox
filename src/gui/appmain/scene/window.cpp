@@ -2611,6 +2611,228 @@ namespace Toolbox::UI {
                     m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addDivider()
+            .beginGroup("Node Connections")
+            .addOption(
+                "Connect This to Selection",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_S},
+                [this](ModelIndex index) -> bool {
+                    if (!m_rail_model->isIndexRailNode(index)) {
+                        return false;
+                    }
+                    const UUID64 rail_uuid = m_rail_model->getRailNodeRef(index)->getRailUUID();
+                    const std::vector<ModelIndex> &selection =
+                        m_rail_selection_mgr.getState().getSelection();
+                    return selection.size() > 1 && std::all_of(
+                        selection.begin(), selection.end(),
+                        [this, &rail_uuid](const ModelIndex &sel_index) -> bool {
+                            const bool is_valid_node = m_rail_model->isIndexRailNode(sel_index);
+                            const bool is_same_rail =
+                                m_rail_model->getRailNodeRef(sel_index)->getRailUUID() == rail_uuid;
+                            return is_valid_node && is_same_rail;
+                        });
+                },
+                [this](ModelIndex index) {
+                    std::vector<ModelIndex> selection_cpy =
+                        m_rail_selection_mgr.getState().getSelection();
+                    std::erase(selection_cpy, index);
+
+                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(index);
+                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+
+                    rail->clearConnections(node);
+
+                    for (const ModelIndex &sel_index : selection_cpy) {
+                        Rail::Rail::node_ptr_t sel_node = m_rail_model->getRailNodeRef(sel_index);
+                        auto result                     = rail->addConnection(node, sel_node);
+                        if (!result) {
+                            LogError(result.error());
+                        }
+                    }
+
+                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                })
+            .addDivider()
+            .addOption(
+                "Connect to Nearest",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_N},
+                [this](ModelIndex index) -> bool {
+                    if (!m_rail_model->isIndexRailNode(index)) {
+                        return false;
+                    }
+                    const UUID64 rail_uuid = m_rail_model->getRailNodeRef(index)->getRailUUID();
+                    const std::vector<ModelIndex> &selection =
+                        m_rail_selection_mgr.getState().getSelection();
+                    return std::all_of(
+                        selection.begin(), selection.end(),
+                        [this, &rail_uuid](const ModelIndex &sel_index) -> bool {
+                            const bool is_valid_node = m_rail_model->isIndexRailNode(sel_index);
+                            const bool is_same_rail =
+                                m_rail_model->getRailNodeRef(sel_index)->getRailUUID() == rail_uuid;
+                            return is_valid_node && is_same_rail;
+                        });
+                },
+                [this](ModelIndex index) {
+                    const std::vector<ModelIndex> &selection =
+                        m_rail_selection_mgr.getState().getSelection();
+
+                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(index);
+                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+
+                    for (const ModelIndex &sel_index : selection) {
+                        Rail::Rail::node_ptr_t sel_node = m_rail_model->getRailNodeRef(sel_index);
+                        auto result                     = rail->connectNodeToNearest(sel_node, 1);
+                        if (!result) {
+                            LogError(result.error());
+                        }
+                    }
+
+                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                })
+            .addOption(
+                "Connect to Neighbors",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_B},
+                [this](ModelIndex index) -> bool {
+                    if (!m_rail_model->isIndexRailNode(index)) {
+                        return false;
+                    }
+                    const UUID64 rail_uuid = m_rail_model->getRailNodeRef(index)->getRailUUID();
+                    const std::vector<ModelIndex> &selection =
+                        m_rail_selection_mgr.getState().getSelection();
+                    return std::all_of(
+                        selection.begin(), selection.end(),
+                        [this, &rail_uuid](const ModelIndex &sel_index) -> bool {
+                            const bool is_valid_node = m_rail_model->isIndexRailNode(sel_index);
+                            const bool is_same_rail =
+                                m_rail_model->getRailNodeRef(sel_index)->getRailUUID() == rail_uuid;
+                            return is_valid_node && is_same_rail;
+                        });
+                },
+                [this](ModelIndex index) {
+                    const std::vector<ModelIndex> &selection =
+                        m_rail_selection_mgr.getState().getSelection();
+
+                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(index);
+                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+
+                    for (const ModelIndex &sel_index : selection) {
+                        Rail::Rail::node_ptr_t sel_node = m_rail_model->getRailNodeRef(sel_index);
+                        auto result = rail->connectNodeToNeighbors(sel_node, false);
+                        if (!result) {
+                            LogError(result.error());
+                        }
+                    }
+
+                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                })
+            .addOption(
+                "Connect to Next",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_N},
+                [this](ModelIndex index) -> bool {
+                    if (!m_rail_model->isIndexRailNode(index)) {
+                        return false;
+                    }
+                    const UUID64 rail_uuid = m_rail_model->getRailNodeRef(index)->getRailUUID();
+                    const std::vector<ModelIndex> &selection =
+                        m_rail_selection_mgr.getState().getSelection();
+                    return std::all_of(
+                        selection.begin(), selection.end(),
+                        [this, &rail_uuid](const ModelIndex &sel_index) -> bool {
+                            const bool is_valid_node = m_rail_model->isIndexRailNode(sel_index);
+                            const bool is_same_rail =
+                                m_rail_model->getRailNodeRef(sel_index)->getRailUUID() == rail_uuid;
+                            return is_valid_node && is_same_rail;
+                        });
+                },
+                [this](ModelIndex index) {
+                    const std::vector<ModelIndex> &selection =
+                        m_rail_selection_mgr.getState().getSelection();
+
+                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(index);
+                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+
+                    for (const ModelIndex &sel_index : selection) {
+                        Rail::Rail::node_ptr_t sel_node = m_rail_model->getRailNodeRef(sel_index);
+                        auto result = rail->connectNodeToNext(sel_node);
+                        if (!result) {
+                            LogError(result.error());
+                        }
+                    }
+
+                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                })
+            .addOption(
+                "Connect to Prev",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_P},
+                [this](ModelIndex index) -> bool {
+                    if (!m_rail_model->isIndexRailNode(index)) {
+                        return false;
+                    }
+                    const UUID64 rail_uuid = m_rail_model->getRailNodeRef(index)->getRailUUID();
+                    const std::vector<ModelIndex> &selection =
+                        m_rail_selection_mgr.getState().getSelection();
+                    return std::all_of(
+                        selection.begin(), selection.end(),
+                        [this, &rail_uuid](const ModelIndex &sel_index) -> bool {
+                            const bool is_valid_node = m_rail_model->isIndexRailNode(sel_index);
+                            const bool is_same_rail =
+                                m_rail_model->getRailNodeRef(sel_index)->getRailUUID() == rail_uuid;
+                            return is_valid_node && is_same_rail;
+                        });
+                },
+                [this](ModelIndex index) {
+                    const std::vector<ModelIndex> &selection =
+                        m_rail_selection_mgr.getState().getSelection();
+
+                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(index);
+                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+
+                    for (const ModelIndex &sel_index : selection) {
+                        Rail::Rail::node_ptr_t sel_node = m_rail_model->getRailNodeRef(sel_index);
+                        auto result                     = rail->connectNodeToPrev(sel_node);
+                        if (!result) {
+                            LogError(result.error());
+                        }
+                    }
+
+                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                })
+            .addOption(
+                "Connect to References",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_P},
+                [this](ModelIndex index) -> bool {
+                    if (!m_rail_model->isIndexRailNode(index)) {
+                        return false;
+                    }
+                    const UUID64 rail_uuid = m_rail_model->getRailNodeRef(index)->getRailUUID();
+                    const std::vector<ModelIndex> &selection =
+                        m_rail_selection_mgr.getState().getSelection();
+                    return std::all_of(
+                        selection.begin(), selection.end(),
+                        [this, &rail_uuid](const ModelIndex &sel_index) -> bool {
+                            const bool is_valid_node = m_rail_model->isIndexRailNode(sel_index);
+                            const bool is_same_rail =
+                                m_rail_model->getRailNodeRef(sel_index)->getRailUUID() == rail_uuid;
+                            return is_valid_node && is_same_rail;
+                        });
+                },
+                [this](ModelIndex index) {
+                    const std::vector<ModelIndex> &selection =
+                        m_rail_selection_mgr.getState().getSelection();
+
+                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(index);
+                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+
+                    for (const ModelIndex &sel_index : selection) {
+                        Rail::Rail::node_ptr_t sel_node = m_rail_model->getRailNodeRef(sel_index);
+                        auto result                     = rail->connectNodeToReferrers(sel_node);
+                        if (!result) {
+                            LogError(result.error());
+                        }
+                    }
+
+                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                })
+            .endGroup()
             .addOption(
                 "Rename...", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_R},
                 [this](ModelIndex index) -> bool {

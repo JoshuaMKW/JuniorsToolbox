@@ -121,6 +121,9 @@ namespace Toolbox::Rail {
         Result<void, MetaError> replaceConnection(node_ptr_t node, size_t index,
                                                          node_ptr_t to);
 
+        Result<void, MetaError> clearConnections(size_t node);
+        Result<void, MetaError> clearConnections(node_ptr_t node);
+
         // Destructive connection algorithms
 
         Result<void, MetaError> connectNodeToNearest(size_t node, size_t count);

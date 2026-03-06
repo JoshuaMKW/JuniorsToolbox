@@ -18,6 +18,8 @@
 #include "core/keybind/keybind.hpp"
 #include "gui/font.hpp"
 
+#define TOOLBOX_DISABLD_CTX_MENU_ITEMS 0
+
 using namespace Toolbox;
 
 namespace Toolbox::UI {
@@ -506,7 +508,11 @@ namespace Toolbox::UI {
         const bool is_valid_state = option.m_condition(ctx);
 
         if (!is_valid_state) {
+#if TOOLBOX_DISABLED_CTX_MENU_ITEMS
             ImGui::BeginDisabled();
+#else
+            return false;
+#endif
         }
 
         std::string keybind_name = option.m_keybind.toString();
@@ -522,7 +528,9 @@ namespace Toolbox::UI {
         }
 
         if (!is_valid_state) {
+#if TOOLBOX_DISABLED_CTX_MENU_ITEMS
             ImGui::EndDisabled();
+#endif
         }
 
         return clicked;
@@ -606,7 +614,9 @@ namespace Toolbox::UI {
         ContextMenuBuilder(menu_t *menu) : m_menu(menu) {}
 
         ContextMenuBuilder &beginGroup(std::string_view group_name) {
-            m_group_stack.emplace_back(m_menu->addGroup(group_name));
+            typename menu_t::group_t *parent_group = m_group_stack.empty() ? nullptr
+                                                                           : m_group_stack.back();
+            m_group_stack.emplace_back(m_menu->addGroup(parent_group, group_name));
             return *this;
         }
         ContextMenuBuilder &endGroup() {
