@@ -241,9 +241,10 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    bool ProjectModel::insertMimeData(const ModelIndex &index, const MimeData &data,
+    Result<std::vector<ModelIndex>, BaseError>
+    ProjectModel::insertMimeData(const ModelIndex &index, const MimeData &data,
                                       ModelInsertPolicy policy) {
-        bool result;
+        Result<std::vector<ModelIndex>, BaseError> result;
 
         {
             std::scoped_lock lock(m_mutex);
@@ -464,9 +465,10 @@ namespace Toolbox {
         return nullptr;
     }
 
-    bool ProjectModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
+    Result<std::vector<ModelIndex>, BaseError>
+    ProjectModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
                                        ModelInsertPolicy policy) {
-        return false;
+        return make_error<std::vector<ModelIndex>>("PROJECT_MODEL", "insertMimeData is unimplemented!");
     }
 
     bool ProjectModel::canFetchMore_(const ModelIndex &index) const { return false; }
@@ -683,7 +685,8 @@ namespace Toolbox {
         return m_source_model->createMimeData(indexes_copy);
     }
 
-    bool ProjectModelSortFilterProxy::insertMimeData(const ModelIndex &index, const MimeData &data,
+    Result<std::vector<ModelIndex>, BaseError>
+    ProjectModelSortFilterProxy::insertMimeData(const ModelIndex &index, const MimeData &data,
                                                      ModelInsertPolicy policy) {
         ModelIndex &&source_index = toSourceIndex(index);
         return m_source_model->insertMimeData(std::move(source_index), data, policy);

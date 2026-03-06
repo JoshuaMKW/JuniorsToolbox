@@ -161,7 +161,8 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData(const IDataModel::index_container &indexes) const override;
-        [[nodiscard]] bool insertMimeData(const ModelIndex &index, const MimeData &data,
+        [[nodiscard]] Result<std::vector<ModelIndex>, BaseError>
+        insertMimeData(const ModelIndex &index, const MimeData &data,
                                           ModelInsertPolicy policy) override;
         [[nodiscard]] std::vector<std::string> getSupportedMimeTypes() const override;
 
@@ -252,7 +253,8 @@ namespace Toolbox {
 
         [[nodiscard]] ScopePtr<MimeData>
         createMimeData_(const IDataModel::index_container &indexes) const;
-        [[nodiscard]] bool insertMimeData_(const ModelIndex &index, const MimeData &data,
+        [[nodiscard]] Result<std::vector<ModelIndex>, BaseError>
+        insertMimeData_(const ModelIndex &index, const MimeData &data,
                                            ModelInsertPolicy policy);
 
         [[nodiscard]] bool canFetchMore_(const ModelIndex &index);

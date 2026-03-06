@@ -288,7 +288,19 @@ namespace Toolbox {
             return;
         }
 
-        m_selection.selectSingle(index, true);
+        if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
+            // Clear the selection in preparation for the insert since
+            // those will be selected instead.
+            m_selection.clearSelection();
+        }
+
+        if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+            if ((flags & ModelEventFlags::EVENT_SUCCESS) == ModelEventFlags::EVENT_NONE) {
+                return;
+            }
+
+            m_selection.selectSingle(index, true);
+        }
     }
 
 }  // namespace Toolbox

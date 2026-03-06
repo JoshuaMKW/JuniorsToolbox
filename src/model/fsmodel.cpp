@@ -496,9 +496,10 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    bool FileSystemModel::insertMimeData(const ModelIndex &index, const MimeData &data,
+    Result<std::vector<ModelIndex>, BaseError>
+    FileSystemModel::insertMimeData(const ModelIndex &index, const MimeData &data,
                                          ModelInsertPolicy policy) {
-        bool result;
+        Result<std::vector<ModelIndex>, BaseError> result;
 
         {
             std::scoped_lock lock(m_mutex);
@@ -1402,15 +1403,20 @@ namespace Toolbox {
         return data;
     }
 
-    bool FileSystemModel::insertMimeData_(const ModelIndex &index, const MimeData &data, ModelInsertPolicy policy) {
+    Result<std::vector<ModelIndex>, BaseError>
+    FileSystemModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
+                                     ModelInsertPolicy policy) {
         if (!data.has_urls()) {
-            return false;
+            return make_error<std::vector<ModelIndex>>("FileSystemModel", "Provided MIME data has no URLs");
         }
 
         auto result = data.get_urls();
         if (!result) {
-            return false;
+            return make_error<std::vector<ModelIndex>>("FileSystemModel",
+                                                       "Provided MIME data failed to get URLs");
         }
+
+        std::vector<ModelIndex> inserted_indexes;
 
         const std::vector<std::string> &paths = result.value();
         for (const std::string &src_path : paths) {
@@ -1426,10 +1432,13 @@ namespace Toolbox {
             }
 
             fs_path fs_src_path = std::move(san_path);
-            copy_(fs_src_path, index, fs_src_path.filename().string());
+            ModelIndex copied_index = copy_(fs_src_path, index, fs_src_path.filename().string());
+            if (validateIndex(copied_index)) {
+                inserted_indexes.push_back(copied_index);
+            }
         }
 
-        return true;
+        return inserted_indexes;
     }
 
     bool FileSystemModel::canFetchMore_(const ModelIndex &index) const {
@@ -2236,7 +2245,8 @@ namespace Toolbox {
         return m_source_model->createMimeData(indexes_copy);
     }
 
-    bool FileSystemModelSortFilterProxy::insertMimeData(const ModelIndex &index,
+    Result<std::vector<ModelIndex>, BaseError>
+    FileSystemModelSortFilterProxy::insertMimeData(const ModelIndex &index,
                                                         const MimeData &data,
                                                         ModelInsertPolicy policy) {
         ModelIndex &&source_index = toSourceIndex(index);

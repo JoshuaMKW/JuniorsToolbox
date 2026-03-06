@@ -169,7 +169,7 @@ namespace Toolbox {
 
         [[nodiscard]] virtual ScopePtr<MimeData>
         createMimeData(const index_container &indexes) const = 0;
-        [[nodiscard]] virtual bool
+        [[nodiscard]] virtual Result<std::vector<ModelIndex>, BaseError>
         insertMimeData(const ModelIndex &index, const MimeData &data,
                        ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER)   = 0;
         [[nodiscard]] virtual std::vector<std::string> getSupportedMimeTypes() const = 0;

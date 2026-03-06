@@ -202,9 +202,22 @@ namespace Toolbox {
                                       ModelInsertPolicy policy) {
         bool result;
 
+        const Signal pre_signal = createSignalForIndex_(index, ModelEventFlags::EVENT_INSERT);
+
+        signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_PRE);
+
         {
             std::scoped_lock lock(m_mutex);
             result = insertMimeData_(index, data, policy);
+        }
+
+        if (result) {
+            signalEventListeners(pre_signal.first, pre_signal.second |
+                                                        ModelEventFlags::EVENT_POST |
+                                                        ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(pre_signal.first,
+                                 pre_signal.second | ModelEventFlags::EVENT_POST);
         }
 
         return result;
@@ -691,6 +704,8 @@ namespace Toolbox {
 
         auto deserialize_index = [&](int64_t row, const ModelIndex &parent,
                                      Deserializer &in) -> Result<void, SerialError> {
+            UUID64 index_uuid = in.read<u64>();
+
             const bool is_node = in.read<bool>();
             UUID64 rail_uuid   = in.read<u64>();
 
@@ -701,11 +716,11 @@ namespace Toolbox {
                 if (!result) {
                     return result;
                 }
-                insertRailNode(node, row, parent);
+                insertRailNode_(node, row, parent);
             } else {
                 if (validateIndex(parent)) {
-                    return make_serial_error<void>(
-                        in, "Cannot insert rail as child of another rail!");
+                    return make_serial_error<void>(in,
+                                                   "Cannot insert rail as child of another rail!");
                 }
 
                 RailData::rail_ptr_t rail = make_referable<Rail::Rail>("_dummy_name");
@@ -713,16 +728,44 @@ namespace Toolbox {
                 if (!result) {
                     return result;
                 }
-                insertRail(rail, row);
+                insertRail_(rail, row);
             }
 
             return {};
         };
 
+        if (policy == ModelInsertPolicy::INSERT_CHILD) {
+            if (isIndexRailNode(index)) {
+                // Inserting as a child of a node is not allowed, so we treat this as an "after"
+                // insertion
+                policy = ModelInsertPolicy::INSERT_AFTER;
+            }
+        }
+
+        int64_t insert_row;
+        switch (policy) {
+        case ModelInsertPolicy::INSERT_BEFORE:
+            insert_row = getRow_(index);
+            if (insert_row == -1) {
+                return false;
+            }
+            break;
+        case ModelInsertPolicy::INSERT_AFTER:
+            insert_row = getRow_(index);
+            if (insert_row == -1) {
+                return false;
+            }
+            insert_row += 1;
+            break;
+        case ModelInsertPolicy::INSERT_CHILD:
+            insert_row = getRowCount_(index);
+            break;
+        }
+
         u32 node_count = in.read<u32>();
 
         for (u32 i = 0; i < node_count; ++i) {
-            auto result = deserialize_index(i, index, in);
+            auto result = deserialize_index(insert_row + i, index, in);
             if (!result) {
                 TOOLBOX_ERROR_V("Failed to deserialize index from mime data: {}",
                                 result.error().m_message);
@@ -819,7 +862,7 @@ namespace Toolbox {
         new_index.setData(new_data);
 
         m_index_map[new_index.getUUID()] = new_index;
-        m_node_list_map[rail->getUUID()].push_back(new_index);
+        m_node_list_map[rail->getUUID()].insert(node_list.begin() + row, new_index);
 
         return new_index;
     }

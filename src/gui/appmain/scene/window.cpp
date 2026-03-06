@@ -2574,7 +2574,9 @@ namespace Toolbox::UI {
                         LogError(make_error<void>("Rail List Context Menu",
                                                   "Failed to insert new rail node into model")
                                      .error());
+                        return;
                     }
+                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addOption(
                 "Insert Node At Camera", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
@@ -2590,13 +2592,23 @@ namespace Toolbox::UI {
                     m_renderer.getCameraTranslation(translation);
                     Rail::Rail::node_ptr_t new_node = std::make_shared<Rail::RailNode>(translation);
 
+                    ModelIndex result;
                     if (m_rail_model->validateIndex(parent_index)) {
                         // This means a node is selected
-                        m_rail_model->insertRailNode(new_node, sibling_index, parent_index);
+                        result =
+                            m_rail_model->insertRailNode(new_node, sibling_index, parent_index);
                     } else {
                         // This means a rail is selected, so we insert at the end of the rail
-                        m_rail_model->insertRailNode(new_node, sibling_count, index);
+                        result = m_rail_model->insertRailNode(new_node, sibling_count, index);
                     }
+
+                    if (!m_rail_model->isIndexRailNode(result)) {
+                        LogError(make_error<void>("Rail List Context Menu",
+                                                  "Failed to insert new rail node into model")
+                                     .error());
+                        return;
+                    }
+                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addDivider()
             .addOption(
@@ -2677,11 +2689,13 @@ namespace Toolbox::UI {
                                return;
                            }
                            m_rail_selection_mgr.actionPasteIntoSelection(result.value());
+                           m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                            m_update_render_objs = true;
                        })
             .addOption("Delete", {KeyCode::KEY_DELETE},
                        [this](ModelIndex index) {
                            m_rail_selection_mgr.actionDeleteSelection();
+                           m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                            m_update_render_objs = true;
                        })
             .addDivider()
@@ -3320,7 +3334,7 @@ namespace Toolbox::UI {
         } else if (total_selected_rails_and_nodes > 0) {
             m_selection_transforms.reserve(total_selected_rails_and_nodes);
 
-            for (const ModelIndex &index : m_scene_selection_mgr.getState().getSelection()) {
+            for (const ModelIndex &index : m_rail_selection_mgr.getState().getSelection()) {
                 glm::vec3 center;
                 if (m_rail_model->isIndexRail(index)) {
                     RailData::rail_ptr_t rail = m_rail_model->getRailRef(index);

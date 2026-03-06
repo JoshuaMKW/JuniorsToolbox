@@ -453,7 +453,8 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    bool MemScanModel::insertMimeData(const ModelIndex &index, const MimeData &data,
+    Result<std::vector<ModelIndex>, BaseError>
+    MemScanModel::insertMimeData(const ModelIndex &index, const MimeData &data,
                                       ModelInsertPolicy policy) {
         std::scoped_lock lock(m_mutex);
         return insertMimeData_(index, data, policy);
@@ -887,9 +888,10 @@ namespace Toolbox {
         return ScopePtr<MimeData>();
     }
 
-    bool MemScanModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
+    Result<std::vector<ModelIndex>, BaseError>
+    MemScanModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
                                        ModelInsertPolicy policy) {
-        return false;
+        return make_error<std::vector<ModelIndex>>("MemScanModel", "insertMimeData is unimplemented!");
     }
 
     bool MemScanModel::canFetchMore_(const ModelIndex &index) { return false; }
