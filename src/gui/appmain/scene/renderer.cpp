@@ -810,23 +810,24 @@ namespace Toolbox::UI {
                                      int selection_x, int selection_y, float &intersection_z,
                                      const std::unordered_set<std::string> &exclude_set) {
         TOOLBOX_DEBUG_LOG_V("Selection pt (x: {}, y: {})", selection_x, selection_y);
-        if (J3D::Picking::IsPickingEnabled()) {
-            J3D::Picking::ModelMaterialIdPair query_pair =
-                J3D::Picking::Query(selection_x / 4.0f, (m_render_size.y - selection_y) / 4.0f);
-            for (const ISceneObject::RenderInfo &info : renderables) {
-                if (exclude_set.contains(info.m_object->type())) {
-                    continue;
-                }
-                if (info.m_model->GetModelId() == std::get<0>(query_pair)) {
-                    glm::vec3 selection_origin;
-                    m_camera.getPos(selection_origin);
 
-                    intersection_z = glm::length(selection_origin - info.m_transform.m_translation);
-                    return info.m_object;
-                }
+        J3D::Picking::ModelMaterialIdPair query_pair =
+            J3D::Picking::Query(selection_x / 4.0f, (m_render_size.y - selection_y) / 4.0f);
+
+        for (const ISceneObject::RenderInfo &info : renderables) {
+            if (exclude_set.contains(info.m_object->type())) {
+                continue;
+            }
+            if (info.m_model->GetModelId() == std::get<0>(query_pair)) {
+                glm::vec3 selection_origin;
+                m_camera.getPos(selection_origin);
+
+                intersection_z = glm::length(selection_origin - info.m_transform.m_translation);
+                return info.m_object;
             }
         }
-        return RefPtr<ISceneObject>();
+
+        return nullptr;
     }
 
     RefPtr<ISceneObject>
