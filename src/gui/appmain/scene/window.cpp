@@ -3443,7 +3443,7 @@ namespace Toolbox::UI {
 
         m_rail_selection_mgr.getState().clearSelection();
 
-        m_scene_selection_mgr.actionSelectIndex(new_obj_selection, true, false, true);
+        m_scene_selection_mgr.actionSelectIndex(new_obj_selection, !is_multi, false, true);
         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
             !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
             m_table_selection_mgr.getState().clearSelection();
@@ -3474,7 +3474,7 @@ namespace Toolbox::UI {
         m_scene_selection_mgr.getState().clearSelection();
         m_table_selection_mgr.getState().clearSelection();
 
-        m_rail_selection_mgr.actionSelectIndex(new_rail_selection, true, false, true);
+        m_rail_selection_mgr.actionSelectIndex(new_rail_selection, !is_multi, false, true);
 
         m_selection_transforms_needs_update = true;
 
@@ -3492,7 +3492,7 @@ namespace Toolbox::UI {
         m_scene_selection_mgr.getState().clearSelection();
         m_table_selection_mgr.getState().clearSelection();
 
-        m_rail_selection_mgr.actionSelectIndex(new_rail_selection, true, false, true);
+        m_rail_selection_mgr.actionSelectIndex(new_rail_selection, !is_multi, false, true);
 
         m_selection_transforms_needs_update = true;
 
