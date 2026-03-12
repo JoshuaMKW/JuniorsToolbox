@@ -410,9 +410,11 @@ namespace Toolbox {
         }
 
         _SceneIndexData *data       = index.data<_SceneIndexData>();
-        RefPtr<ISceneObject> parent = get_shared_ptr(*data->m_object->getParent());
+        if (ISceneObject *parent = data->m_object->getParent()) {
+            return getIndex_(get_shared_ptr(*parent));
+        }
 
-        return getIndex_(parent);
+        return ModelIndex();
     }
 
     ModelIndex SceneObjModel::getSibling_(int64_t row, int64_t column,
