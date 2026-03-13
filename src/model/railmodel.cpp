@@ -53,10 +53,6 @@ namespace Toolbox {
         int64_t row = 0;
         for (RailData::rail_ptr_t rail : data.rails()) {
             ModelIndex index = insertRail(rail, row++);
-            int64_t subrow   = 0;
-            for (Rail::Rail::node_ptr_t node : rail->nodes()) {
-                insertRailNode(node, subrow++, index);
-            }
         }
     }
 
@@ -406,10 +402,6 @@ namespace Toolbox {
 
     std::string RailObjModel::findUniqueName_(const ModelIndex &index,
                                               const std::string &name) const {
-        if (!validateIndex(index)) {
-            return name;
-        }
-
         std::string result_name = name;
         size_t collisions       = 0;
         std::vector<std::string> child_paths;
@@ -745,6 +737,7 @@ namespace Toolbox {
         Deserializer in(instr.rdbuf());
 
         std::vector<ModelIndex> inserted_indexes;
+        int64_t spill_row = -1;
 
         auto deserialize_index = [&](int64_t row, const ModelIndex &parent,
                                      Deserializer &in) -> Result<void, SerialError> {
@@ -767,16 +760,27 @@ namespace Toolbox {
 
                 inserted_indexes.push_back(node_index);
             } else {
+                #if 0
                 if (isIndexRail(parent)) {
                     return make_serial_error<void>(in,
                                                    "Cannot insert rail as child of another rail!");
                 }
+                #else
+                if (isIndexRail(parent)) {
+                    row = spill_row++;
+                }
+                #endif
 
                 RailData::rail_ptr_t rail = make_referable<Rail::Rail>("_dummy_name");
                 auto result               = rail->deserialize(in);
                 if (!result) {
                     return result;
                 }
+
+                // Get a unique name
+                std::string new_name = findUniqueName_(ModelIndex(), rail->name());
+                rail->setName(new_name);
+
                 ModelIndex rail_index = insertRail_(rail, row);
                 if (!isIndexRail(rail_index)) {
                     return make_serial_error<void>(in, "Failed to insert rail into model!");
@@ -806,6 +810,7 @@ namespace Toolbox {
                     "RailObjModel", "Failed to retrieve the row for the insert index");
             }
             insert_index = getParent_(index);
+            spill_row    = getRow_(insert_index);
             break;
         case ModelInsertPolicy::INSERT_AFTER:
             insert_row = getRow_(index);
@@ -815,10 +820,12 @@ namespace Toolbox {
             }
             insert_row += 1;
             insert_index = getParent_(index);
+            spill_row    = getRow_(insert_index) + 1;
             break;
         case ModelInsertPolicy::INSERT_CHILD:
             insert_row   = getRowCount_(index);
             insert_index = index;
+            spill_row    = getRow_(index) + 1;
             break;
         }
 
@@ -856,6 +863,8 @@ namespace Toolbox {
                 return ModelIndex();
             }
         }
+
+        return ret;
     }
 
     ModelIndex RailObjModel::insertRailNode_(Rail::Rail::node_ptr_t node, int64_t row,
@@ -914,7 +923,7 @@ namespace Toolbox {
         new_index.setData(new_data);
 
         m_index_map[new_index.getUUID()] = new_index;
-        m_rail_indexes.push_back(new_index);
+        m_rail_indexes.insert(m_rail_indexes.begin() + row, new_index);
 
         return new_index;
     }
@@ -941,7 +950,7 @@ namespace Toolbox {
         new_index.setData(new_data);
 
         m_index_map[new_index.getUUID()] = new_index;
-        m_node_list_map[rail->getUUID()].insert(node_list.begin() + row, new_index);
+        node_list.insert(node_list.begin() + row, new_index);
 
         return new_index;
     }
