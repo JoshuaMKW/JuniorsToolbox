@@ -598,7 +598,7 @@ namespace Toolbox {
                 }
             }
 
-            fs_path asset_path = m_scene_path.parent_path();
+            fs_path asset_path = m_scene_path;
             auto load_result   = object->loadDependencies(asset_path);
             if (!load_result) {
                 return make_serial_error<void>(
@@ -631,6 +631,7 @@ namespace Toolbox {
             }
         }
 
+        ModelIndex insert_index;
         int64_t insert_row;
         switch (policy) {
         case ModelInsertPolicy::INSERT_BEFORE:
@@ -639,6 +640,7 @@ namespace Toolbox {
                 return make_error<std::vector<ModelIndex>>(
                     "SceneObjModel", "Failed to retrieve the row for the insert index");
             }
+            insert_index = getParent_(index);
             break;
         case ModelInsertPolicy::INSERT_AFTER:
             insert_row = getRow_(index);
@@ -647,13 +649,15 @@ namespace Toolbox {
                     "SceneObjModel", "Failed to retrieve the row for the insert index");
             }
             insert_row += 1;
+            insert_index = getParent_(index);
             break;
         case ModelInsertPolicy::INSERT_CHILD:
             insert_row = getRowCount_(index);
+            insert_index = index;
             break;
         }
 
-        auto result = deserialize_index(insert_row, index, in);
+        auto result = deserialize_index(insert_row, insert_index, in);
         if (!result) {
             TOOLBOX_ERROR_V("Failed to deserialize index from mime data: {}",
                             result.error().m_message);

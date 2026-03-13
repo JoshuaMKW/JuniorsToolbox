@@ -188,6 +188,7 @@ namespace Toolbox::Object {
         VirtualSceneObject() = default;
 
         VirtualSceneObject(const Template &template_) : ISceneObject(), m_nameref() {
+            m_template = template_;
             m_type = template_.type();
 
             auto wizard = template_.getWizard();
@@ -200,6 +201,7 @@ namespace Toolbox::Object {
 
         VirtualSceneObject(const Template &template_, std::string_view wizard_name)
             : ISceneObject(), m_nameref() {
+            m_template = template_;
             m_type = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);
@@ -526,6 +528,7 @@ namespace Toolbox::Object {
 
         PhysicalSceneObject(const Template &template_)
             : ISceneObject(), m_nameref(), m_transform() {
+            m_template = template_;
             m_type = template_.type();
 
             auto wizard = template_.getWizard();
@@ -537,6 +540,7 @@ namespace Toolbox::Object {
 
         PhysicalSceneObject(const Template &template_, std::string_view wizard_name)
             : ISceneObject(), m_nameref(), m_transform() {
+            m_template = template_;
             m_type = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);

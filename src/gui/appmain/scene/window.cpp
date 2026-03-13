@@ -149,6 +149,9 @@ namespace Toolbox::UI {
                 m_table_object_model->initialize(*m_current_scene->getTableHierarchy());
                 m_rail_model->initialize(*m_current_scene->getRailData());
 
+                m_scene_object_model->setScenePath(*m_current_scene->rootPath());
+                m_table_object_model->setScenePath(*m_current_scene->rootPath());
+
                 m_scene_selection_mgr = ModelSelectionManager(m_scene_object_model);
                 m_table_selection_mgr = ModelSelectionManager(m_table_object_model);
                 m_rail_selection_mgr  = ModelSelectionManager(m_rail_model);
