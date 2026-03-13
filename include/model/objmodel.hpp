@@ -43,6 +43,8 @@ namespace Toolbox {
         void initialize(const Scene::ObjectHierarchy &obj_tree);
         void setScenePath(fs_path &&path) { m_scene_path = std::move(path); }
 
+        [[nodiscard]] ScopePtr<Scene::ObjectHierarchy> bakeToHierarchy(std::string_view name) const;
+
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
         [[nodiscard]] bool validateIndex(const ModelIndex &index) const override {

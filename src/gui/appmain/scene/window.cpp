@@ -204,6 +204,20 @@ namespace Toolbox::UI {
             }
         }
 
+        // --
+        // Here we bake the changes to our scene data
+        // --
+        RefPtr<Scene::ObjectHierarchy> objects_to_save =
+            m_scene_object_model->bakeToHierarchy("Map");
+        RefPtr<Scene::ObjectHierarchy> tables_to_save =
+            m_table_object_model->bakeToHierarchy("Table");
+        RefPtr<RailData> rails_to_save = m_rail_model->bakeToRailData();
+
+        m_current_scene->setObjHierarchy(objects_to_save);
+        m_current_scene->setTableHierarchy(objects_to_save);
+        m_current_scene->setRailData(rails_to_save);
+        // --
+
         auto result = m_current_scene->saveToPath(root_path);
         if (!result) {
             LogError(result.error());
@@ -666,21 +680,25 @@ namespace Toolbox::UI {
         }
         ImGui::End();
 
-        // Scene dialogs
-        {
-            const ModelIndex &last_selected = m_scene_selection_mgr.getState().getLastSelected();
-            if (m_scene_object_model->validateIndex(last_selected)) {
-                m_create_scene_obj_dialog.render(m_scene_object_model, last_selected);
-                m_rename_scene_obj_dialog.render(last_selected);
+        if (m_current_scene) {
+            // Scene dialogs
+            {
+                const ModelIndex &last_selected =
+                    m_scene_selection_mgr.getState().getLastSelected();
+                if (m_scene_object_model->validateIndex(last_selected)) {
+                    m_create_scene_obj_dialog.render(m_scene_object_model, last_selected);
+                    m_rename_scene_obj_dialog.render(last_selected);
+                }
             }
-        }
 
-        // Table dialogs
-        {
-            const ModelIndex &last_selected = m_table_selection_mgr.getState().getLastSelected();
-            if (m_table_object_model->validateIndex(last_selected)) {
-                m_create_table_obj_dialog.render(m_table_object_model, last_selected);
-                m_rename_table_obj_dialog.render(last_selected);
+            // Table dialogs
+            {
+                const ModelIndex &last_selected =
+                    m_table_selection_mgr.getState().getLastSelected();
+                if (m_table_object_model->validateIndex(last_selected)) {
+                    m_create_table_obj_dialog.render(m_table_object_model, last_selected);
+                    m_rename_table_obj_dialog.render(last_selected);
+                }
             }
         }
     }

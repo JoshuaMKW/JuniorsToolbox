@@ -42,6 +42,7 @@ namespace Toolbox {
         ~RailObjModel();
 
         void initialize(const RailData &info_path);
+        [[nodiscard]] ScopePtr<RailData> bakeToRailData() const;
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 

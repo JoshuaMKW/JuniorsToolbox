@@ -56,6 +56,18 @@ namespace Toolbox {
         }
     }
 
+    ScopePtr<RailData> RailObjModel::bakeToRailData() const {
+        ScopePtr<RailData> output = make_scoped<RailData>();
+        
+        const size_t rail_count = getRowCount(ModelIndex());
+        for (size_t i = 0; i < rail_count; ++i) {
+            ModelIndex rail_index = getIndex(i, 0);
+            output->addRail(*getRailRef(rail_index));
+        }
+
+        return output;
+    }
+
     bool RailObjModel::isIndexRailNode(const ModelIndex &index) const {
         if (!validateIndex(index)) {
             return false;

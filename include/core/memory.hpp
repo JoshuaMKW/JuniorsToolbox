@@ -24,8 +24,9 @@ namespace Toolbox {
     }
 
     template <typename T, typename F> RefPtr<T> ref_cast(ScopePtr<F> &&ptr) {
-        static_assert(std::is_convertible_v<F *, T *>);
-        return RefPtr<T>(static_cast<T *>(ptr.release()), [](T *p) { delete p; });
+        static_assert(std::is_base_of_v<F, T>, "T must derive from F");
+        RefPtr<F> ref_base = std::move(ptr);
+        return RefPtr<T>(ref_base, static_cast<T *>(ref_base.get()));
     }
 
     template <typename T, typename... Args> ScopePtr<T> make_scoped(Args &&...args) {
@@ -181,7 +182,7 @@ namespace Toolbox {
 
             free();
             m_buf.m_ext = (byte_t *)buf;
-            m_owns_buf  =  false;
+            m_owns_buf  = false;
             m_size      = size;
         }
 
@@ -279,7 +280,7 @@ namespace Toolbox {
             byte_t *m_ext;
             uint64_t m_inline;
         } m_buf;
-        uint32_t m_size   = 0;
+        uint32_t m_size = 0;
         bool m_owns_buf = false;
     };
 

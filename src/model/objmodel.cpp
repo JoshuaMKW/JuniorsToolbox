@@ -78,6 +78,20 @@ namespace Toolbox {
         }
     }
 
+    ScopePtr<Scene::ObjectHierarchy> SceneObjModel::bakeToHierarchy(std::string_view name) const {
+        ModelIndex root_index = getIndex(m_root_index);
+        if (!validateIndex(root_index)) {
+            return nullptr;
+        }
+
+        RefPtr<ISceneObject> root_obj = getObjectRef(root_index);
+        if (!root_obj->isGroupObject()) {
+            return nullptr;
+        }
+
+        return make_scoped<Scene::ObjectHierarchy>(name, ref_cast<GroupSceneObject>(root_obj));
+    }
+
     std::any SceneObjModel::getData(const ModelIndex &index, int role) const {
         std::scoped_lock lock(m_mutex);
         return getData_(index, role);
@@ -659,7 +673,7 @@ namespace Toolbox {
             insert_index = getParent_(index);
             break;
         case ModelInsertPolicy::INSERT_CHILD:
-            insert_row = getRowCount_(index);
+            insert_row   = getRowCount_(index);
             insert_index = index;
             break;
         }

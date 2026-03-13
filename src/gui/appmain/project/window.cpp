@@ -1703,6 +1703,8 @@ namespace Toolbox::UI {
                                         const std::vector<ModelIndex> &selected_indices) const {
         TOOLBOX_ASSERT(selected_indices.size() == 1, "Can't rename more than one file!");
 
+        // TODO: fix invalid index happening here, presumably
+        // from deleting an index first which results in dangling references?
         ModelIndex parent = m_view_proxy->getParent(selected_indices[0]);
         for (size_t i = 0; i < m_view_proxy->getRowCount(parent); ++i) {
             ModelIndex child_index = m_view_proxy->getIndex(i, 0, parent);
