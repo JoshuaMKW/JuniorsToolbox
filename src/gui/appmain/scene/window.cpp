@@ -3134,7 +3134,7 @@ namespace Toolbox::UI {
 
                 std::string new_unique_name =
                     m_scene_object_model->findUniqueName(parent_index, std::string(new_name));
-                m_scene_object_model->setRailKey(selected_index, new_unique_name);
+                m_scene_object_model->setObjectKey(selected_index, new_unique_name);
 
                 RefPtr<ISceneObject> obj = m_scene_object_model->getObjectRef(selected_index);
 
@@ -3173,7 +3173,7 @@ namespace Toolbox::UI {
 
                 std::string new_unique_name =
                     m_table_object_model->findUniqueName(parent_index, std::string(new_name));
-                m_table_object_model->setRailKey(selected_index, new_unique_name);
+                m_table_object_model->setObjectKey(selected_index, new_unique_name);
 
                 RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(selected_index);
 
@@ -3271,7 +3271,7 @@ namespace Toolbox::UI {
                     return;
                 }
 
-                m_rail_model->setRailKey(index, std::string(new_name));
+                m_rail_model->setObjectKey(index, std::string(new_name));
             });
         m_rename_rail_dialog.setActionOnReject([](const ModelIndex &index) {});
     }

@@ -63,7 +63,7 @@ namespace Toolbox {
             return std::any_cast<std::string>(
                 getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_KEY));
         }
-        void setRailKey(const ModelIndex &index, const std::string &key) {
+        void setObjectKey(const ModelIndex &index, const std::string &key) {
             setData(index, key, RailObjDataRole::RAIL_DATA_ROLE_RAIL_KEY);
         }
 

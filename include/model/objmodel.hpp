@@ -60,7 +60,7 @@ namespace Toolbox {
             return std::any_cast<std::string>(
                 getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_KEY));
         }
-        void setRailKey(const ModelIndex &index, const std::string &key) {
+        void setObjectKey(const ModelIndex &index, const std::string &key) {
             setData(index, key, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_KEY);
         }
 

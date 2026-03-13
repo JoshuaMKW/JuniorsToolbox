@@ -528,6 +528,8 @@ namespace Toolbox {
         std::stringstream outstr;
         Serializer out(outstr.rdbuf());
 
+        out.write<u32>(pruned_indexes.size());
+
         for (const ModelIndex &index : pruned_indexes) {
             if (!validateIndex(index)) {
                 TOOLBOX_WARN_V("Tried to create mime data for invalid index {}!", index.getUUID());
@@ -606,6 +608,9 @@ namespace Toolbox {
                                     obj_name));
             }
 
+            std::string new_name = findUniqueName_(index, std::string(object->getNameRef().name()));
+            object->setNameRef(NameRef(new_name));
+
             ModelIndex new_index = insertObject_(object, row, index);
             if (!validateIndex(new_index)) {
                 return make_serial_error<void>(in, "Failed to insert mimedata object into model!");
@@ -619,6 +624,8 @@ namespace Toolbox {
                     return result;
                 }
             }
+
+            return {};
         };
 
         if (policy == ModelInsertPolicy::INSERT_CHILD) {
@@ -657,11 +664,14 @@ namespace Toolbox {
             break;
         }
 
-        auto result = deserialize_index(insert_row, insert_index, in);
-        if (!result) {
-            TOOLBOX_ERROR_V("Failed to deserialize index from mime data: {}",
-                            result.error().m_message);
-            return make_error<std::vector<ModelIndex>>("SceneObjModel", result.error().m_message);
+        const u32 obj_count = in.read<u32>();
+
+        for (u32 i = 0; i < obj_count; ++i) {
+            auto result = deserialize_index(insert_row, insert_index, in);
+            if (!result) {
+                return make_error<std::vector<ModelIndex>>("SceneObjModel",
+                                                           result.error().m_message);
+            }
         }
 
         return new_indexes;
