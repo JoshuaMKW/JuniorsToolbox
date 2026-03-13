@@ -135,6 +135,8 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual std::optional<BoundingBox> getBoundingBox() const = 0;
 
+        [[nodiscard]] virtual Result<void, BaseError> loadDependencies(const fs_path &dependencies_path) = 0;
+
         [[nodiscard]] virtual std::optional<std::filesystem::path> getAnimationsPath() const = 0;
         [[nodiscard]] virtual std::optional<std::string_view>
         getAnimationName(AnimationType type) const                                = 0;
@@ -309,6 +311,9 @@ namespace Toolbox::Object {
         Result<void, MetaError> setTransform(const Transform &transform) override { return {}; }
 
         [[nodiscard]] std::optional<BoundingBox> getBoundingBox() const override { return {}; }
+
+        [[nodiscard]] Result<void, BaseError>
+        loadDependencies(const fs_path &dependencies_path) override;
 
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
             return {};
@@ -697,6 +702,9 @@ namespace Toolbox::Object {
 
             return BoundingBox(center, size, glm::quat(transform->m_rotation));
         }
+
+        [[nodiscard]] Result<void, BaseError>
+        loadDependencies(const fs_path &dependencies_path) override;
 
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
             return "./scene/mapobj/";

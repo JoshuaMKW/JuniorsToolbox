@@ -40,7 +40,8 @@ namespace Toolbox {
         SceneObjModel() = default;
         ~SceneObjModel();
 
-        void initialize(const Scene::ObjectHierarchy &info_path);
+        void initialize(const Scene::ObjectHierarchy &obj_tree);
+        void setScenePath(fs_path &&path) { m_scene_path = std::move(path); }
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
@@ -175,6 +176,8 @@ namespace Toolbox {
 
         mutable UUID64 m_root_index;
         mutable std::map<UUID64, ModelIndex> m_index_map;
+
+        fs_path m_scene_path;
     };
 
 }  // namespace Toolbox

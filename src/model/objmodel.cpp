@@ -187,9 +187,9 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    Result<IDataModel::index_container>
-    SceneObjModel::insertMimeData(const ModelIndex &index, const MimeData &data,
-                                  ModelInsertPolicy policy) {
+    Result<IDataModel::index_container> SceneObjModel::insertMimeData(const ModelIndex &index,
+                                                                      const MimeData &data,
+                                                                      ModelInsertPolicy policy) {
         Result<IDataModel::index_container> result;
 
         {
@@ -409,7 +409,7 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        _SceneIndexData *data       = index.data<_SceneIndexData>();
+        _SceneIndexData *data = index.data<_SceneIndexData>();
         if (ISceneObject *parent = data->m_object->getParent()) {
             return getIndex_(get_shared_ptr(*parent));
         }
@@ -548,9 +548,9 @@ namespace Toolbox {
         return new_data;
     }
 
-    Result<IDataModel::index_container>
-    SceneObjModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
-                                   ModelInsertPolicy policy) {
+    Result<IDataModel::index_container> SceneObjModel::insertMimeData_(const ModelIndex &index,
+                                                                       const MimeData &data,
+                                                                       ModelInsertPolicy policy) {
         if (!data.has_format("toolbox/scene/object_model")) {
             return make_error<std::vector<ModelIndex>>(
                 "SceneObjModel", "Provided MIME data has no SceneObjModel data!");
@@ -598,17 +598,23 @@ namespace Toolbox {
                 }
             }
 
+            fs_path asset_path = m_scene_path.parent_path();
+            auto load_result   = object->loadDependencies(asset_path);
+            if (!load_result) {
+                return make_serial_error<void>(
+                    in, std::format("Failed to load render data for object {} ({})", obj_type,
+                                    obj_name));
+            }
+
+            ModelIndex new_index = insertObject_(object, row, index);
+            if (!validateIndex(new_index)) {
+                return make_serial_error<void>(in, "Failed to insert mimedata object into model!");
+            }
+            new_indexes.push_back(new_index);
+
             u32 child_count = in.read<u32>();
-
             for (u32 i = 0; i < child_count; ++i) {
-                ModelIndex child_index = insertObject_(object, row + i, index);
-                if (!validateIndex(child_index)) {
-                    return make_serial_error<void>(in, "Failed to insert child object into model!");
-                }
-
-                new_indexes.push_back(child_index);
-
-                Result<void, SerialError> result = deserialize_index(i, child_index, in);
+                Result<void, SerialError> result = deserialize_index(i, new_index, in);
                 if (!result) {
                     return result;
                 }
@@ -616,7 +622,9 @@ namespace Toolbox {
         };
 
         if (policy == ModelInsertPolicy::INSERT_CHILD) {
-            if (!getObjectRef(index)->isGroupObject()) {
+            RefPtr<ISceneObject> object = std::any_cast<RefPtr<ISceneObject>>(
+                getData_(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_REF));
+            if (!object->isGroupObject()) {
                 // Inserting as a child of a node is not allowed, so we treat this as an "after"
                 // insertion
                 policy = ModelInsertPolicy::INSERT_AFTER;
@@ -636,8 +644,7 @@ namespace Toolbox {
             insert_row = getRow_(index);
             if (insert_row == -1) {
                 return make_error<std::vector<ModelIndex>>(
-                    "SceneObjModel",
-                                        "Failed to retrieve the row for the insert index");
+                    "SceneObjModel", "Failed to retrieve the row for the insert index");
             }
             insert_row += 1;
             break;
