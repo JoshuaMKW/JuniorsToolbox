@@ -60,7 +60,6 @@ namespace Toolbox::UI {
         template <typename _DataT> struct ContextGroup {
             std::string m_name;
             std::vector<ContextEntry<_DataT>> m_ops;
-            std::set<size_t> m_dividers;
         };
 
     }  // namespace
@@ -458,8 +457,39 @@ namespace Toolbox::UI {
         bool last_was_sep = false;
         int64_t last_item = -1;
 
+        std::vector<size_t> valid_items = {};
+        valid_items.reserve(group.m_ops.size());
+
+        int64_t sep_idx = -1;
+        bool sep_is_waiting = false;
+
+        // Precalculate which dividers are valid to process
+        for (size_t i = 0; i < group.m_ops.size(); ++i) {
+            const context_t &entry = group.m_ops.at(i);
+            if (entry.m_type == context_t::TYPE_GROUP) {
+                valid_items.push_back(i);
+                continue;
+            }
+            
+            if (entry.m_type == context_t::TYPE_OP) {
+                if (entry.m_op->m_condition(ctx)) {
+                    if (sep_is_waiting) {
+                        valid_items.push_back(sep_idx);
+                        sep_is_waiting = false;
+                    }
+                    valid_items.push_back(i);
+                }
+                continue;
+            }
+
+            if (!valid_items.empty() && !sep_is_waiting) {
+                sep_idx = i;
+                sep_is_waiting = true;
+            }
+        }
+
         if (is_root) {
-            for (size_t i = 0; i < group.m_ops.size(); ++i) {
+            for (size_t i : valid_items) {
                 const context_t &entry = group.m_ops.at(i);
                 if (entry.m_type == context_t::TYPE_GROUP) {
                     if (renderGroup(*entry.m_group, ctx, false)) {
@@ -482,21 +512,23 @@ namespace Toolbox::UI {
         }
 
         if (ImGui::BeginMenu(group.m_name.c_str(), true)) {
-            for (size_t i = 0; i < group.m_ops.size(); ++i) {
+            for (size_t i : valid_items) {
                 const context_t &entry = group.m_ops.at(i);
                 if (entry.m_type == context_t::TYPE_GROUP) {
                     if (renderGroup(*entry.m_group, ctx, false)) {
+                        ImGui::EndMenu();
                         return true;
                     }
                     last_item    = i;
                     last_was_sep = false;
                 } else if (entry.m_type == context_t::TYPE_OP) {
                     if (renderOption(*entry.m_op, ctx)) {
+                        ImGui::EndMenu();
                         return true;
                     }
                     last_item    = i;
                     last_was_sep = false;
-                } else if (!last_was_sep && 0 <= last_item && i < group.m_ops.size() - 1) {
+                } else {
                     ImGui::Separator();
                     last_was_sep = true;
                 }
@@ -510,14 +542,6 @@ namespace Toolbox::UI {
     inline bool ContextMenu<_DataT>::renderOption(const option_t &option, const _DataT &ctx) {
         const bool is_valid_state = option.m_condition(ctx);
 
-        if (!is_valid_state) {
-#if TOOLBOX_DISABLED_CTX_MENU_ITEMS
-            ImGui::BeginDisabled();
-#else
-            return false;
-#endif
-        }
-
         std::string keybind_name = option.m_keybind.toString();
 
         std::string display_name = keybind_name.empty()
@@ -528,12 +552,6 @@ namespace Toolbox::UI {
         if (ImGui::MenuItem(display_name.c_str())) {
             m_deferred_cmds.emplace_back(option.m_op);
             clicked = true;
-        }
-
-        if (!is_valid_state) {
-#if TOOLBOX_DISABLED_CTX_MENU_ITEMS
-            ImGui::EndDisabled();
-#endif
         }
 
         return clicked;
