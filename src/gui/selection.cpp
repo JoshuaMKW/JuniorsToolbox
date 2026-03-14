@@ -205,7 +205,8 @@ namespace Toolbox {
         return true;
     }
 
-    bool ModelSelectionManager::actionSelectIndexIfNew(const ModelIndex &index) {
+    bool ModelSelectionManager::actionSelectIndexIfNew(const ModelIndex &index,
+                                                       bool no_span_selections) {
         RefPtr<IDataModel> model = m_selection.getModel();
         if (!model) {
             return false;
@@ -223,15 +224,18 @@ namespace Toolbox {
             return true;
         }
 
-        if (Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT) ||
-            Input::GetKey(Input::KeyCode::KEY_RIGHTSHIFT)) {
-            if (model->validateIndex(m_selection.getLastSelected())) {
-                m_selection.selectSpan(m_selection.getLastSelected(), index, false, m_deep_spans);
-            } else {
-                m_selection.selectSingle(index);
-                m_selection.setLastSelected(index);
+        if (!no_span_selections) {
+            if (Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT) ||
+                Input::GetKey(Input::KeyCode::KEY_RIGHTSHIFT)) {
+                if (model->validateIndex(m_selection.getLastSelected())) {
+                    m_selection.selectSpan(m_selection.getLastSelected(), index, false,
+                                           m_deep_spans);
+                } else {
+                    m_selection.selectSingle(index);
+                    m_selection.setLastSelected(index);
+                }
+                return true;
             }
-            return true;
         }
 
         m_selection.selectSingle(index);

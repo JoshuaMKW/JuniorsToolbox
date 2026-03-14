@@ -748,12 +748,12 @@ namespace Toolbox::UI {
         const bool left_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
         const bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
         if (!left_click && !right_click) {
-            return std::nullopt;
+            return std::monostate{};
         }
 
         should_reset = false;
         if (!m_is_window_hovered && !m_is_window_focused) {
-            return std::nullopt;
+            return std::monostate{};
         }
 
         // Mouse pos is absolute
@@ -776,17 +776,22 @@ namespace Toolbox::UI {
 
         float nearest_intersection = std::numeric_limits<float>::max();
 
-        selection_variant_t selected_item;
+        selection_variant_t selected_item = std::monostate{};
         if (J3D::Picking::IsPickingEnabled()) {
-            selected_item = findObjectByJ3DPicking(
+            RefPtr<ISceneObject> object = findObjectByJ3DPicking(
                 renderables, static_cast<int>(selection_point.x),
                                                    static_cast<int>(selection_point.y),
                                                    nearest_intersection, s_selection_blacklist);
-
+            if (object) {
+                selected_item = object;
+            }
         } else {
-            selected_item = findObjectByOBBIntersection(
+            RefPtr<ISceneObject> object = findObjectByOBBIntersection(
                 renderables, static_cast<int>(selection_point.x),
                 static_cast<int>(selection_point.y), nearest_intersection, s_selection_blacklist);
+            if (object) {
+                selected_item = object;
+            }
         }
 
         for (auto &node : rail_nodes) {

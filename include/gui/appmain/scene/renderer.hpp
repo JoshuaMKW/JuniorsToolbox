@@ -93,7 +93,7 @@ namespace Toolbox::UI {
         bool inputUpdate(TimeStep delta_time);
 
         using selection_variant_t =
-            std::variant<RefPtr<ISceneObject>, RefPtr<Rail::RailNode>, std::nullopt_t>;
+            std::variant<std::monostate, RefPtr<ISceneObject>, RefPtr<Rail::RailNode>>;
 
         selection_variant_t findSelection(std::vector<ISceneObject::RenderInfo> renderables,
                                           std::vector<RefPtr<Rail::RailNode>> rail_nodes,

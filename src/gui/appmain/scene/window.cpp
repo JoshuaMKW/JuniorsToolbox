@@ -319,16 +319,14 @@ namespace Toolbox::UI {
 
                 bool multi_select = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
 
-                if (should_reset && !multi_select) {
+                if (should_reset && std::holds_alternative<std::monostate>(selection)) {
                     m_scene_selection_mgr.getState().clearSelection();
                     m_table_selection_mgr.getState().clearSelection();
                     m_rail_selection_mgr.getState().clearSelection();
 
                     m_selected_properties.clear();
                     m_properties_render_handler = renderEmptyProperties;
-                }
-
-                if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
+                } else if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
                     RefPtr<ISceneObject> obj = std::get<RefPtr<ISceneObject>>(selection);
                     processObjectSelection(obj, multi_select);
                 } else if (std::holds_alternative<RefPtr<Rail::RailNode>>(selection)) {
@@ -3499,7 +3497,14 @@ namespace Toolbox::UI {
 
         m_rail_selection_mgr.getState().clearSelection();
 
-        m_scene_selection_mgr.actionSelectIndex(new_obj_selection, !is_multi, false, true);
+        if (Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT)) {
+            m_scene_selection_mgr.actionSelectIndex(new_obj_selection, !is_multi, false, true);
+        }
+
+        if (Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT)) {
+            m_scene_selection_mgr.actionSelectIndexIfNew(new_obj_selection, true);
+        }
+
         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
             !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
             m_table_selection_mgr.getState().clearSelection();
@@ -3532,7 +3537,13 @@ namespace Toolbox::UI {
         m_scene_selection_mgr.getState().clearSelection();
         m_table_selection_mgr.getState().clearSelection();
 
-        m_rail_selection_mgr.actionSelectIndex(new_rail_selection, !is_multi, false, true);
+        if (Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT)) {
+            m_rail_selection_mgr.actionSelectIndex(new_rail_selection, !is_multi, false, true);
+        }
+
+        if (Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT)) {
+            m_rail_selection_mgr.actionSelectIndexIfNew(new_rail_selection, true);
+        }
 
         m_wants_rail_context_menu = true;
 
@@ -3552,7 +3563,13 @@ namespace Toolbox::UI {
         m_scene_selection_mgr.getState().clearSelection();
         m_table_selection_mgr.getState().clearSelection();
 
-        m_rail_selection_mgr.actionSelectIndex(new_rail_selection, !is_multi, false, true);
+        if (Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT)) {
+            m_rail_selection_mgr.actionSelectIndex(new_rail_selection, !is_multi, false, true);
+        }
+
+        if (Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT)) {
+            m_rail_selection_mgr.actionSelectIndexIfNew(new_rail_selection, true);
+        }
 
         m_wants_rail_context_menu = true;
 
