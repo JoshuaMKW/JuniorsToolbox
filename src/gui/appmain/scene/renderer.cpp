@@ -743,7 +743,11 @@ namespace Toolbox::UI {
     Renderer::selection_variant_t
     Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables,
                             std::vector<RefPtr<Rail::RailNode>> rail_nodes, bool &should_reset) {
-        const bool left_click  = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
+        const bool left_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
+        const bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
+        if (!left_click && !right_click) {
+            return std::nullopt;
+        }
 
         should_reset = false;
         if (!m_is_window_hovered && !m_is_window_focused) {
@@ -758,10 +762,6 @@ namespace Toolbox::UI {
         // Get point on render window
         glm::vec3 selection_point = {mouse_pos.x - m_render_rect.Min.x,
                                      mouse_pos.y - m_render_rect.Min.y, 0};
-
-        if (!left_click) {
-            return std::nullopt;
-        }
 
         should_reset = true;
 

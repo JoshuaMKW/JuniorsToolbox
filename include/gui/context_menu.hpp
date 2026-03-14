@@ -93,7 +93,7 @@ namespace Toolbox::UI {
 
         void setCanOpen(bool can_open) { m_can_open = can_open; }
 
-        void tryOpen(ImGuiID item_id,
+        bool tryOpen(ImGuiID item_id,
                      ImGuiPopupFlags popup_flags = ImGuiPopupFlags_MouseButtonRight);
         void tryRender(const _DataT &ctx,
                        ImGuiHoveredFlags hover_flags = ImGuiHoveredFlags_AllowWhenBlockedByPopup);
@@ -202,9 +202,9 @@ namespace Toolbox::UI {
     }
 
     template <typename _DataT>
-    inline void ContextMenu<_DataT>::tryOpen(ImGuiID item_id, ImGuiPopupFlags popup_flags) {
+    inline bool ContextMenu<_DataT>::tryOpen(ImGuiID item_id, ImGuiPopupFlags popup_flags) {
         if (!m_can_open || m_was_open) {
-            return;
+            return false;
         }
 
         ImGuiWindow *window = ImGui::GetCurrentWindow();
@@ -230,7 +230,10 @@ namespace Toolbox::UI {
         if (ImGui::IsMouseReleased(mouse_button)) {
             ImGui::OpenPopupEx(id, popup_flags);
             m_id = id;
+            return true;
         }
+
+        return false;
     }
 
     template <typename _DataT>

@@ -1951,6 +1951,29 @@ namespace Toolbox::UI {
 
             renderScenePeripherals(delta_time);
             renderPlaybackButtons(delta_time);
+
+            if (m_wants_scene_context_menu) {
+                if (m_scene_hierarchy_context_menu.tryOpen(0)) {
+                    m_wants_scene_context_menu = false;
+                }
+            }
+
+            if (m_wants_rail_context_menu) {
+                if (m_rail_list_context_menu.tryOpen(0)) {
+                    m_wants_rail_context_menu = false;
+                }
+            }
+
+            if (m_scene_selection_mgr.getState().count() > 0) {
+                m_scene_hierarchy_context_menu.tryRender(
+                    m_scene_selection_mgr.getState().getLastSelected());
+            } else if (m_table_selection_mgr.getState().count() > 0) {
+                m_table_hierarchy_context_menu.tryRender(
+                    m_table_selection_mgr.getState().getLastSelected());
+            } else if (m_rail_selection_mgr.getState().count() > 0) {
+                m_rail_list_context_menu.tryRender(
+                    m_rail_selection_mgr.getState().getLastSelected());
+            }
         }
         ImGui::End();
     }
@@ -3470,6 +3493,8 @@ namespace Toolbox::UI {
             m_table_selection_mgr.getState().clearSelection();
         }
 
+        m_wants_scene_context_menu = true;  // Tells the program to check for context menu on potential right click
+
         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
             for (auto &member : node->getMembers()) {
                 member->syncArray();
@@ -3497,6 +3522,8 @@ namespace Toolbox::UI {
 
         m_rail_selection_mgr.actionSelectIndex(new_rail_selection, !is_multi, false, true);
 
+        m_wants_rail_context_menu = true;
+
         m_selection_transforms_needs_update = true;
 
         m_properties_render_handler = renderRailProperties;
@@ -3514,6 +3541,8 @@ namespace Toolbox::UI {
         m_table_selection_mgr.getState().clearSelection();
 
         m_rail_selection_mgr.actionSelectIndex(new_rail_selection, !is_multi, false, true);
+
+        m_wants_rail_context_menu = true;
 
         m_selection_transforms_needs_update = true;
 

@@ -239,6 +239,9 @@ namespace Toolbox::UI {
         ContextMenu<ModelIndex> m_table_hierarchy_context_menu;
         ContextMenu<ModelIndex> m_rail_list_context_menu;
 
+        bool m_wants_scene_context_menu;
+        bool m_wants_rail_context_menu;
+
         // Property editor
         std::function<bool(SceneWindow &)> m_properties_render_handler;
         std::vector<ScopePtr<IProperty>> m_selected_properties = {};
