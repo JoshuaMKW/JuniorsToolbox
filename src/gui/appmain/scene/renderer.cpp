@@ -369,21 +369,23 @@ namespace Toolbox::UI {
         m_is_window_hovered = ImGui::IsWindowHovered();
         m_is_window_focused = ImGui::IsWindowFocused();
 
-        bool right_click      = Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT);
-        bool right_click_down = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
+        bool middle_click      = Input::GetMouseButton(Input::MouseButton::BUTTON_MIDDLE);
+        bool middle_click_down = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_MIDDLE);
 
-        if (m_render_rect.Contains(mouse_pos)) {
-            if (right_click) {
-                m_is_view_manipulating = true;
-            }
-            if (right_click_down) {
-                m_is_window_focused = true;
-                ImGui::SetWindowFocus();
+        if (ImGui::IsWindowHovered()) {
+            if (m_render_rect.Contains(mouse_pos)) {
+                if (middle_click) {
+                    m_is_view_manipulating = true;
+                }
+                if (middle_click_down) {
+                    m_is_window_focused = true;
+                    ImGui::SetWindowFocus();
+                }
             }
         }
 
         if (m_is_window_focused && m_is_view_manipulating &&
-            Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {  // Mouse wrap
+            Input::GetMouseButton(Input::MouseButton::BUTTON_MIDDLE)) {  // Mouse wrap
             bool wrapped = false;
 
             if (mouse_pos.x < m_render_rect.Min.x) {
@@ -665,7 +667,7 @@ namespace Toolbox::UI {
         const AppSettings &settings =
             MainApplication::instance().getSettingsManager().getCurrentProfile();
 
-        if (m_is_view_manipulating && Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {
+        if (m_is_view_manipulating && Input::GetMouseButton(Input::MouseButton::BUTTON_MIDDLE)) {
             double delta_x, delta_y;
             Input::GetMouseDelta(delta_x, delta_y);
 
