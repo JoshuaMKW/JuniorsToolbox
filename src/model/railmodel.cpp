@@ -862,6 +862,7 @@ namespace Toolbox {
     ModelIndex RailObjModel::insertRail_(RailData::rail_ptr_t rail, int64_t row) {
         ModelIndex ret = makeIndex(rail, row);
         if (!validateIndex(ret)) {
+            TOOLBOX_ERROR_V("[RAILMODEL] Failed to create index for rail \"{}\"!", rail->name());
             return ModelIndex();
         }
 

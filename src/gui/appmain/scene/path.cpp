@@ -222,15 +222,16 @@ void main()
             }
 
             RailData::rail_ptr_t rail = model->getRailRef(rail_index);
-            if (visible_map.contains(rail->getUUID()) && visible_map.at(rail->getUUID()) == false) {
+            if (visible_map.contains(rail_index.getUUID()) && visible_map.at(rail_index.getUUID()) == false) {
                 continue;
             }
 
             float node_hue = (static_cast<float>(i) / (rail_count - 1)) * 360.0f;
 
-            size_t node_count = rail->getNodeCount();
-            for (size_t j = 0; j < node_count; ++j) {
-                Rail::Rail::node_ptr_t node = rail->nodes()[j];
+            const int64_t node_count = model->getRowCount(rail_index);
+            for (int64_t j = 0; j < node_count; ++j) {
+                ModelIndex node_index       = model->getIndex(j, 0, rail_index);
+                Rail::Rail::node_ptr_t node = model->getRailNodeRef(node_index);
 
                 float node_lerp       = static_cast<float>(j) / (node_count - 1);
                 float node_saturation = std::lerp(0.5f, 1.0f, node_lerp);

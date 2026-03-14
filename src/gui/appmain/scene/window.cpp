@@ -116,11 +116,6 @@ namespace Toolbox::UI {
                     m_resource_cache.m_model.clear();
                     m_resource_cache.m_material.clear();
 
-                    // Initialize the rail visibility map
-                    for (RailData::rail_ptr_t rail : m_current_scene->getRailData()->rails()) {
-                        m_rail_visible_map[rail->getUUID()] = true;
-                    }
-
                     if (task_communicator.isSceneLoaded(m_stage, m_scenario)) {
                         reassignAllActorPtrs(0);
                     } else if (task_communicator.isSceneLoaded()) {
@@ -159,6 +154,13 @@ namespace Toolbox::UI {
                 m_scene_selection_mgr.setDeepSpans(false);
                 m_table_selection_mgr.setDeepSpans(false);
                 m_rail_selection_mgr.setDeepSpans(false);
+
+                // Initialize the rail visibility map
+                const int64_t rail_count = m_rail_model->getRowCount(ModelIndex());
+                for (int64_t i = 0; i < rail_count; ++i) {
+                    ModelIndex rail_index               = m_rail_model->getIndex(i, 0);
+                    m_rail_visible_map[rail_index.getUUID()] = true;
+                }
 
                 m_renderer.initializeData(m_rail_model);
                 return true;
@@ -214,7 +216,7 @@ namespace Toolbox::UI {
         RefPtr<RailData> rails_to_save = m_rail_model->bakeToRailData();
 
         m_current_scene->setObjHierarchy(objects_to_save);
-        m_current_scene->setTableHierarchy(objects_to_save);
+        m_current_scene->setTableHierarchy(tables_to_save);
         m_current_scene->setRailData(rails_to_save);
         // --
 
@@ -298,11 +300,16 @@ namespace Toolbox::UI {
 
         if (m_current_scene) {
             std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
-            for (auto &rail : m_current_scene->getRailData()->rails()) {
-                if (!m_rail_visible_map[rail->getUUID()])
+            const int64_t rail_count = m_rail_model->getRowCount(ModelIndex());
+            for (int64_t row = 0; row < rail_count; ++row) {
+                ModelIndex rail_index = m_rail_model->getIndex(row, 0);
+                if (!m_rail_visible_map[rail_index.getUUID()])
                     continue;
-                rendered_nodes.insert(rendered_nodes.end(), rail->nodes().begin(),
-                                      rail->nodes().end());
+                const int64_t node_count = m_rail_model->getRowCount(rail_index);
+                for (int64_t node_row = 0; node_row < node_count; ++node_row) {
+                    ModelIndex node_index = m_rail_model->getIndex(node_row, 0, rail_index);
+                    rendered_nodes.push_back(m_rail_model->getRailNodeRef(node_index));
+                }
             }
 
             if (m_is_render_window_open && (!m_renderer.getGizmoVisible() || !ImGuizmo::IsOver())) {
@@ -519,9 +526,12 @@ namespace Toolbox::UI {
             auto event = std::static_pointer_cast<SceneCreateRailEvent>(ev);
             if (event) {
                 if (m_current_scene) {
-                    const Rail::Rail &rail = event->getRail();
-                    m_current_scene->getRailData()->addRail(rail);
-                    m_rail_visible_map[rail.getUUID()] = true;
+                    RailData::rail_ptr_t new_rail = ref_cast<Rail::Rail>(event->getRail().clone(true));
+                    int64_t insert_row = m_rail_model->getRowCount(ModelIndex());
+                    ModelIndex new_rail_index = m_rail_model->insertRail(new_rail, insert_row);
+                    if (m_rail_model->validateIndex(new_rail_index)) {
+                        m_rail_visible_map[new_rail_index.getUUID()] = true;
+                    }
                     ev->accept();
                 } else {
                     TOOLBOX_ERROR("Failed to create rail due to lack of a scene instance.");
@@ -1689,7 +1699,7 @@ namespace Toolbox::UI {
 
                 const std::string uid_str = getNodeUID(rail);
                 const ImGuiID rail_id     = static_cast<ImGuiID>(rail->getUUID());
-                const UUID64 rail_uuid    = rail->getUUID();
+                const UUID64 rail_uuid    = rail_index.getUUID();
 
                 ImGui::PushID(rail_id);
 
@@ -3287,10 +3297,12 @@ namespace Toolbox::UI {
                 }
             }
 
-            m_rail_model->insertRail(std::move(new_rail), m_rail_model->getRowCount(ModelIndex()));
-
-            m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
-            m_update_render_objs = true;
+            ModelIndex new_rail_index = m_rail_model->insertRail(std::move(new_rail), m_rail_model->getRowCount(ModelIndex()));
+            if (m_rail_model->validateIndex(new_rail_index)) {
+                m_rail_visible_map[new_rail_index.getUUID()] = true;
+                m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                m_update_render_objs = true;
+            }
         });
     }
 
