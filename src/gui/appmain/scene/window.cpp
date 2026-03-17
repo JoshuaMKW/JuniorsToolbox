@@ -51,6 +51,8 @@
 using namespace Toolbox;
 using namespace Toolbox::Scene;
 
+constexpr float TreeNodeFramePaddingY = 4.0f;
+
 namespace Toolbox::UI {
 
     static std::unordered_set<std::string> s_game_blacklist = {"Map", "Sky"};
@@ -677,6 +679,11 @@ namespace Toolbox::UI {
             // Render Objects
 
             if (m_current_scene) {
+                if (m_requested_object_scroll_y.has_value()) {
+                    ImGui::SetScrollY(m_requested_object_scroll_y.value());
+                    m_requested_object_scroll_y = std::nullopt;
+                }
+
                 ModelIndex root_index = m_scene_object_model->getIndex(0, 0, ModelIndex());
                 renderSceneObjectTree(root_index);
             }
@@ -752,10 +759,13 @@ namespace Toolbox::UI {
 
         ImGui::PushID(tree_node_id);
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4.0f, 4.0f});
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4.0f, TreeNodeFramePaddingY});
 
-        const bool this_node_is_view_ancestry = !m_scene_selection_ancestry_for_view.empty() &&
-                                                m_scene_selection_ancestry_for_view.back() == index;
+        const bool this_node_is_view_ancestry =
+            !m_scene_selection_ancestry_for_view.empty() &&
+            std::any_of(m_scene_selection_ancestry_for_view.begin(),
+                        m_scene_selection_ancestry_for_view.end(),
+                        [index](const ModelIndex &other) { return other == index; });
 
         if (this_node_is_view_ancestry) {
             if (is_filtered_out) {
@@ -787,6 +797,8 @@ namespace Toolbox::UI {
                 } else {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
                 }
+
+                m_tree_node_open_map[index] = node_open;
 
                 node_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 
@@ -921,6 +933,8 @@ namespace Toolbox::UI {
                 } else {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
                 }
+
+                m_tree_node_open_map[index] = node_open;
 
                 node_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 
@@ -1080,7 +1094,7 @@ namespace Toolbox::UI {
 
         ImGui::PushID(tree_node_id);
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4.0f, 4.0f});
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4.0f, TreeNodeFramePaddingY});
 
         ImRect node_rect;
 
@@ -1101,6 +1115,8 @@ namespace Toolbox::UI {
                 } else {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
                 }
+
+                m_tree_node_open_map[index] = node_open;
 
                 node_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 
@@ -1229,6 +1245,8 @@ namespace Toolbox::UI {
                 } else {
                     node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
                 }
+
+                m_tree_node_open_map[index] = node_open;
 
                 node_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 
@@ -1708,7 +1726,7 @@ namespace Toolbox::UI {
 
             const bool is_cut = false;
 
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4.0f, 4.0f});
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4.0f, TreeNodeFramePaddingY});
 
             ImRect rail_rect;
 
@@ -3552,6 +3570,8 @@ namespace Toolbox::UI {
             }
         }
 
+        m_requested_object_scroll_y = calculateFocusScrollForSceneObjectSelection();
+
         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
             !Input::GetKey(Input::KeyCode::KEY_RIGHTCONTROL)) {
             m_table_selection_mgr.getState().clearSelection();
@@ -3609,6 +3629,8 @@ namespace Toolbox::UI {
             }
         }
 
+        m_requested_rail_scroll_y = calculateFocusScrollForSceneRailSelection();
+
         m_wants_rail_context_menu = true;
 
         m_selection_transforms_needs_update = true;
@@ -3648,6 +3670,8 @@ namespace Toolbox::UI {
                 tmp = m_rail_model->getParent(tmp);
             }
         }
+
+        m_requested_rail_scroll_y = calculateFocusScrollForSceneRailSelection();
 
         m_wants_rail_context_menu = true;
 
@@ -3731,6 +3755,82 @@ namespace Toolbox::UI {
             combined_transform.m_translation /= total_selected_rails_and_nodes;
             m_renderer.setGizmoTransform(combined_transform);
         }
+    }
+
+    std::optional<float> SceneWindow::calculateFocusScrollForSceneObjectSelection() {
+        if (m_scene_selection_ancestry_for_view.empty()) {
+            return std::nullopt;
+        }
+
+        float desired_scroll = 0.0f;
+
+        const float row_height = ImGui::GetFontSize() + TreeNodeFramePaddingY * 2.0f;
+        const ImGuiStyle &style = ImGui::GetStyle();
+
+        std::function<void(ModelIndex)> recursive_calc = [&](ModelIndex root) {
+            desired_scroll += row_height + style.ItemSpacing.y;
+
+            const bool is_node_open = m_tree_node_open_map.contains(root) ? m_tree_node_open_map[root] : true;
+            if (!is_node_open) {
+                return;
+            }
+
+            const int64_t row_count = m_scene_object_model->getRowCount(root);
+            for (int64_t i = 0; i < row_count; ++i) {
+                ModelIndex child_index = m_scene_object_model->getIndex(i, 0, root);
+                recursive_calc(child_index);
+            }
+        };
+
+        for (const ModelIndex &ancestor : m_scene_selection_ancestry_for_view) {
+            const int64_t row_of_group = m_scene_object_model->getRow(ancestor);
+            ModelIndex group_index     = m_scene_object_model->getParent(ancestor);
+
+            for (int64_t i = 0; i < row_of_group; ++i) {
+                ModelIndex sibling_index = m_scene_object_model->getIndex(i, 0, group_index);
+                recursive_calc(sibling_index);
+            }
+        }
+
+        return desired_scroll;
+    }
+
+    std::optional<float> SceneWindow::calculateFocusScrollForSceneRailSelection() {
+        if (m_rail_selection_ancestry_for_view.empty()) {
+            return std::nullopt;
+        }
+
+        float desired_scroll = 0.0f;
+
+        const float row_height = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
+
+        std::function<void(ModelIndex)> recursive_calc = [&](ModelIndex root) {
+            desired_scroll += row_height;
+
+            const bool is_node_open =
+                m_tree_node_open_map.contains(root) ? m_tree_node_open_map[root] : true;
+            if (!is_node_open) {
+                return;
+            }
+
+            const int64_t row_count = m_rail_model->getRowCount(root);
+            for (int64_t i = 0; i < row_count; ++i) {
+                ModelIndex child_index = m_rail_model->getIndex(i, 0, root);
+                recursive_calc(child_index);
+            }
+        };
+
+        for (const ModelIndex &ancestor : m_scene_selection_ancestry_for_view) {
+            const int64_t row_of_group = m_rail_model->getRow(ancestor);
+            ModelIndex group_index     = m_rail_model->getParent(ancestor);
+
+            for (int64_t i = 0; i < row_of_group; ++i) {
+                ModelIndex sibling_index = m_rail_model->getIndex(i, 0, group_index);
+                recursive_calc(sibling_index);
+            }
+        }
+
+        return desired_scroll;
     }
 
     void SceneWindow::_moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id,

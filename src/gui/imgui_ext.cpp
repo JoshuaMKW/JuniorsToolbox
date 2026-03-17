@@ -1014,12 +1014,6 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
                     window->DC.CursorPos.y + text_offset_y);
     ItemSize(ImVec2(text_width, frame_height), padding.y);
 
-    ImRect eye_interact_bb = frame_bb;
-    eye_interact_bb.Max.x  = frame_bb.Min.x + eye_size.x + style.ItemSpacing.x;
-
-    ImGuiID eye_interact_id = GetID("eye_button##internal");
-    ItemAdd(eye_interact_bb, eye_interact_id);
-
     // For regular tree nodes, we arbitrary allow to click past 2 worth of ItemSpacing
     ImRect interact_bb = frame_bb;
     if ((flags & (ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth |
@@ -1033,6 +1027,13 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char *l
                              ? g.NextItemData.StorageId
                              : id;
     bool is_open       = TreeNodeUpdateNextOpen(storage_id, flags);
+
+    // Placed after is_open so NextItemData isn't cleared prematurely by ItemAdd
+    ImRect eye_interact_bb = frame_bb;
+    eye_interact_bb.Max.x  = frame_bb.Min.x + eye_size.x + style.ItemSpacing.x;
+
+    ImGuiID eye_interact_id = GetID("eye_button##internal");
+    ItemAdd(eye_interact_bb, eye_interact_id);
 
     bool is_visible;
     if (span_all_columns) {

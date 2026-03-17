@@ -162,6 +162,9 @@ namespace Toolbox::UI {
 
         void calcNewGizmoMatrixFromSelection();
 
+        std::optional<float> calculateFocusScrollForSceneObjectSelection();
+        std::optional<float> calculateFocusScrollForSceneRailSelection();
+
     private:
         void _moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id, size_t orig_index,
                        UUID64 orig_id, bool is_internal);
@@ -244,6 +247,9 @@ namespace Toolbox::UI {
 
         std::vector<ModelIndex> m_scene_selection_ancestry_for_view;
         std::vector<ModelIndex> m_rail_selection_ancestry_for_view;
+        std::unordered_map<ModelIndex, bool> m_tree_node_open_map;
+        std::optional<float> m_requested_object_scroll_y;
+        std::optional<float> m_requested_rail_scroll_y;
 
         // Property editor
         std::function<bool(SceneWindow &)> m_properties_render_handler;
