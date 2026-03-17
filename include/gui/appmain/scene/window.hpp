@@ -242,6 +242,9 @@ namespace Toolbox::UI {
         bool m_wants_scene_context_menu;
         bool m_wants_rail_context_menu;
 
+        std::vector<ModelIndex> m_scene_selection_ancestry_for_view;
+        std::vector<ModelIndex> m_rail_selection_ancestry_for_view;
+
         // Property editor
         std::function<bool(SceneWindow &)> m_properties_render_handler;
         std::vector<ScopePtr<IProperty>> m_selected_properties = {};
