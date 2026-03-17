@@ -745,8 +745,8 @@ namespace Toolbox::UI {
     Renderer::selection_variant_t
     Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables,
                             std::vector<RefPtr<Rail::RailNode>> rail_nodes, bool &should_reset) {
-        const bool left_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
-        const bool right_click = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
+        const bool left_click = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT);
+        const bool right_click = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT);
         if (!left_click && !right_click) {
             return std::monostate{};
         }
