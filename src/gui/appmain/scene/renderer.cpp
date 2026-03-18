@@ -345,7 +345,7 @@ namespace Toolbox::UI {
         J3D::Picking::DestroyFramebuffer();
     }
 
-    void Renderer::render(std::vector<ISceneObject::RenderInfo> renderables, TimeStep delta_time) {
+    void Renderer::render(const std::vector<ISceneObject::RenderInfo> &renderables, TimeStep delta_time) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         ImVec2 window_pos = ImGui::GetWindowPos();

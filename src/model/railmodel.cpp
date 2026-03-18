@@ -507,6 +507,11 @@ namespace Toolbox {
             return ModelIndex();
         }
 
+        // Nodes are leaves
+        if (parent_data->getNode()) {
+            return ModelIndex();
+        }
+
         RailData::rail_ptr_t parent_rail          = parent_data->getRail();
         const std::vector<ModelIndex> &rail_nodes = m_node_list_map[parent_rail->getUUID()];
 

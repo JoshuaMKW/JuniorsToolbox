@@ -206,7 +206,8 @@ namespace std {
 
     template <> struct hash<Toolbox::ModelIndex> {
         Toolbox::u64 operator()(const Toolbox::ModelIndex &index) const {
-            return hash<Toolbox::UUID64>()(index.getUUID());
+            Toolbox::UUID64 uuid = index.getUUID();
+            return hash<Toolbox::UUID64>()(uuid);
         }
     };
 

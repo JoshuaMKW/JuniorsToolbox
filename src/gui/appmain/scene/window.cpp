@@ -680,7 +680,13 @@ namespace Toolbox::UI {
 
             if (m_current_scene) {
                 if (m_requested_object_scroll_y.has_value()) {
-                    ImGui::SetScrollY(m_requested_object_scroll_y.value());
+                    const float window_height   = ImGui::GetWindowHeight();
+                    const float window_scroll_y = ImGui::GetScrollY();
+
+                    if (fabsf(window_scroll_y - m_requested_object_scroll_y.value()) >
+                        window_height / 2.0f) {
+                        ImGui::SetScrollY(m_requested_object_scroll_y.value());
+                    }
                     m_requested_object_scroll_y = std::nullopt;
                 }
 
@@ -801,12 +807,6 @@ namespace Toolbox::UI {
                 m_tree_node_open_map[index] = node_open;
 
                 node_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
-
-                if (this_node_is_view_ancestry) {
-                    if (m_scene_selection_ancestry_for_view.size() == 1) {
-                        ImGui::ScrollToItem();
-                    }
-                }
 
                 // Drag and drop for OBJECT
                 {
@@ -937,12 +937,6 @@ namespace Toolbox::UI {
                 m_tree_node_open_map[index] = node_open;
 
                 node_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
-
-                if (this_node_is_view_ancestry) {
-                    if (m_scene_selection_ancestry_for_view.size() == 1) {
-                        ImGui::ScrollToItem();
-                    }
-                }
 
                 // Drag and drop for OBJECT
                 {
@@ -1724,6 +1718,17 @@ namespace Toolbox::UI {
                 m_focused_window = EditorWindow::RAIL_TREE;
             }
 
+            if (m_requested_rail_scroll_y.has_value()) {
+                const float window_height = ImGui::GetWindowHeight();
+                const float window_scroll_y = ImGui::GetScrollY();
+
+                if (fabsf(window_scroll_y - m_requested_rail_scroll_y.value()) >
+                    window_height / 2.0f) {
+                    ImGui::SetScrollY(m_requested_rail_scroll_y.value());
+                }
+                m_requested_rail_scroll_y = std::nullopt;
+            }
+
             const bool is_cut = false;
 
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4.0f, TreeNodeFramePaddingY});
@@ -1738,6 +1743,17 @@ namespace Toolbox::UI {
                         "[SceneWindow] Expected rail index, got a node index. Skipping index {}",
                         i);
                     continue;
+                }
+
+                const bool this_node_is_view_ancestry =
+                    !m_rail_selection_ancestry_for_view.empty() &&
+                    std::any_of(m_rail_selection_ancestry_for_view.begin(),
+                                m_rail_selection_ancestry_for_view.end(),
+                        [rail_index](const ModelIndex &other) { return other == rail_index; });
+
+                if (this_node_is_view_ancestry) {
+                    ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+                    TOOLBOX_DEBUG_LOG("Forcing ancestor of scene view selection to be open!");
                 }
 
                 RailData::rail_ptr_t rail = m_rail_model->getRailRef(rail_index);
@@ -1985,6 +2001,14 @@ namespace Toolbox::UI {
                 m_update_render_objs = false;
                 m_renderer.markDirty();
             }
+
+            //for (const ISceneObject::RenderInfo &render_info : m_renderables) {
+            //    ModelIndex obj_index = m_scene_object_model->getIndex(render_info.m_object);
+            //    const bool is_selected = m_scene_selection_mgr.getState().isSelected(obj_index);
+            //    for (RefPtr<J3DMaterial> material : render_info.m_model->GetMaterials()) {
+            //        material->SetSelected(is_selected);
+            //    }
+            //}
         }
 
         std::string scene_view_str = ImWindowComponentTitle(*this, "Scene View");
@@ -3778,6 +3802,9 @@ namespace Toolbox::UI {
             const int64_t row_count = m_scene_object_model->getRowCount(root);
             for (int64_t i = 0; i < row_count; ++i) {
                 ModelIndex child_index = m_scene_object_model->getIndex(i, 0, root);
+                if (!m_scene_object_model->validateIndex(child_index)) {
+                    return;
+                }
                 recursive_calc(child_index);
             }
         };
@@ -3788,6 +3815,9 @@ namespace Toolbox::UI {
 
             for (int64_t i = 0; i < row_of_group; ++i) {
                 ModelIndex sibling_index = m_scene_object_model->getIndex(i, 0, group_index);
+                if (!m_scene_object_model->validateIndex(sibling_index)) {
+                    return desired_scroll;
+                }
                 recursive_calc(sibling_index);
             }
         }
@@ -3802,10 +3832,11 @@ namespace Toolbox::UI {
 
         float desired_scroll = 0.0f;
 
-        const float row_height = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
+        const float row_height  = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
+        const ImGuiStyle &style = ImGui::GetStyle();
 
         std::function<void(ModelIndex)> recursive_calc = [&](ModelIndex root) {
-            desired_scroll += row_height;
+            desired_scroll += row_height + style.ItemSpacing.y;
 
             const bool is_node_open =
                 m_tree_node_open_map.contains(root) ? m_tree_node_open_map[root] : true;
@@ -3816,16 +3847,22 @@ namespace Toolbox::UI {
             const int64_t row_count = m_rail_model->getRowCount(root);
             for (int64_t i = 0; i < row_count; ++i) {
                 ModelIndex child_index = m_rail_model->getIndex(i, 0, root);
+                if (!m_rail_model->validateIndex(child_index)) {
+                    return;
+                }
                 recursive_calc(child_index);
             }
         };
 
-        for (const ModelIndex &ancestor : m_scene_selection_ancestry_for_view) {
+        for (const ModelIndex &ancestor : m_rail_selection_ancestry_for_view) {
             const int64_t row_of_group = m_rail_model->getRow(ancestor);
             ModelIndex group_index     = m_rail_model->getParent(ancestor);
 
             for (int64_t i = 0; i < row_of_group; ++i) {
                 ModelIndex sibling_index = m_rail_model->getIndex(i, 0, group_index);
+                if (!m_rail_model->validateIndex(sibling_index)) {
+                    return desired_scroll;
+                }
                 recursive_calc(sibling_index);
             }
         }
