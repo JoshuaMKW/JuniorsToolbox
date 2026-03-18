@@ -1250,52 +1250,52 @@ namespace Toolbox::UI {
                     ImVec2 item_size = ImGui::GetItemRectSize();
                     ImVec2 item_pos  = ImGui::GetItemRectMin();
 
-                    if (ImGui::BeginDragDropSource()) {
-                        int64_t node_index = m_table_object_model->getRow(index);
+                    //if (ImGui::BeginDragDropSource()) {
+                    //    int64_t node_index = m_table_object_model->getRow(index);
 
-                        Toolbox::Buffer buffer;
-                        saveMimeObject(buffer, node_index, get_shared_ptr(*node->getParent()));
-                        ImGui::SetDragDropPayload("toolbox/scene/object", buffer.buf(),
-                                                  buffer.size(), ImGuiCond_Once);
-                        ImGui::Text("Object: %s", node->getNameRef().name().data());
-                        ImGui::EndDragDropSource();
-                    }
+                    //    Toolbox::Buffer buffer;
+                    //    saveMimeObject(buffer, node_index, get_shared_ptr(*node->getParent()));
+                    //    ImGui::SetDragDropPayload("toolbox/scene/object", buffer.buf(),
+                    //                              buffer.size(), ImGuiCond_Once);
+                    //    ImGui::Text("Object: %s", node->getNameRef().name().data());
+                    //    ImGui::EndDragDropSource();
+                    //}
 
-                    ImGuiDropFlags drop_flags = ImGuiDropFlags_None;
-                    if (mouse_pos.y < item_pos.y + (item_size.y / 2)) {
-                        drop_flags = ImGuiDropFlags_InsertBefore;
-                    } else {
-                        drop_flags = ImGuiDropFlags_InsertAfter;
-                    }
+                    //ImGuiDropFlags drop_flags = ImGuiDropFlags_None;
+                    //if (mouse_pos.y < item_pos.y + (item_size.y / 2)) {
+                    //    drop_flags = ImGuiDropFlags_InsertBefore;
+                    //} else {
+                    //    drop_flags = ImGuiDropFlags_InsertAfter;
+                    //}
 
-                    if (ImGui::BeginDragDropTarget()) {
-                        if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
-                                "toolbox/scene/object",
-                                ImGuiDragDropFlags_AcceptBeforeDelivery |
-                                    ImGuiDragDropFlags_AcceptNoDrawDefaultRect |
-                                    ImGuiDragDropFlags_SourceNoHoldToOpenOthers)) {
+                    //if (ImGui::BeginDragDropTarget()) {
+                    //    if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
+                    //            "toolbox/scene/object",
+                    //            ImGuiDragDropFlags_AcceptBeforeDelivery |
+                    //                ImGuiDragDropFlags_AcceptNoDrawDefaultRect |
+                    //                ImGuiDragDropFlags_SourceNoHoldToOpenOthers)) {
 
-                            ImGui::RenderDragDropTargetRect(
-                                ImGui::GetCurrentContext()->DragDropTargetRect,
-                                ImGui::GetCurrentContext()->DragDropTargetClipRect, drop_flags);
+                    //        ImGui::RenderDragDropTargetRect(
+                    //            ImGui::GetCurrentContext()->DragDropTargetRect,
+                    //            ImGui::GetCurrentContext()->DragDropTargetClipRect, drop_flags);
 
-                            if (payload->IsDelivery()) {
-                                Toolbox::Buffer buffer;
-                                buffer.setBuf(payload->Data, payload->DataSize);
-                                buffer.copyTo(m_drop_target_buffer);
+                    //        if (payload->IsDelivery()) {
+                    //            Toolbox::Buffer buffer;
+                    //            buffer.setBuf(payload->Data, payload->DataSize);
+                    //            buffer.copyTo(m_drop_target_buffer);
 
-                                int64_t node_index = m_table_object_model->getRow(index);
+                    //            int64_t node_index = m_table_object_model->getRow(index);
 
-                                // Calculate index based on position relative to center
-                                m_object_drop_target = node_index;
-                                if (drop_flags == ImGuiDropFlags_InsertAfter) {
-                                    m_object_drop_target++;
-                                }
-                                m_object_parent_uuid = node->getParent()->getUUID();
-                            }
-                        }
-                        ImGui::EndDragDropTarget();
-                    }
+                    //            // Calculate index based on position relative to center
+                    //            m_object_drop_target = node_index;
+                    //            if (drop_flags == ImGuiDropFlags_InsertAfter) {
+                    //                m_object_drop_target++;
+                    //            }
+                    //            m_object_parent_uuid = node->getParent()->getUUID();
+                    //        }
+                    //    }
+                    //    ImGui::EndDragDropTarget();
+                    //}
                 }
 
                 if (ImGui::IsItemHovered()) {
@@ -1783,33 +1783,33 @@ namespace Toolbox::UI {
                     ImVec2 item_size = ImGui::GetItemRectSize();
                     ImVec2 item_pos  = ImGui::GetItemRectMin();
 
-                    if (ImGui::BeginDragDropSource()) {
-                        Toolbox::Buffer buffer;
-                        saveMimeRail(buffer, i);
-                        ImGui::SetDragDropPayload("toolbox/scene/rail", buffer.buf(), buffer.size(),
-                                                  ImGuiCond_Once);
-                        ImGui::Text("Rail: %s", rail->name().c_str());
-                        ImGui::EndDragDropSource();
-                    }
+                    //if (ImGui::BeginDragDropSource()) {
+                    //    Toolbox::Buffer buffer;
+                    //    saveMimeRail(buffer, i);
+                    //    ImGui::SetDragDropPayload("toolbox/scene/rail", buffer.buf(), buffer.size(),
+                    //                              ImGuiCond_Once);
+                    //    ImGui::Text("Rail: %s", rail->name().c_str());
+                    //    ImGui::EndDragDropSource();
+                    //}
 
-                    if (ImGui::BeginDragDropTarget()) {
-                        if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
-                                "toolbox/scene/rail",
-                                ImGuiDragDropFlags_AcceptBeforeDelivery |
-                                    ImGuiDragDropFlags_SourceNoHoldToOpenOthers);
-                            payload && payload->IsDelivery()) {
-                            Toolbox::Buffer buffer;
-                            buffer.setBuf(payload->Data, payload->DataSize);
-                            buffer.copyTo(m_drop_target_buffer);
+                    //if (ImGui::BeginDragDropTarget()) {
+                    //    if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
+                    //            "toolbox/scene/rail",
+                    //            ImGuiDragDropFlags_AcceptBeforeDelivery |
+                    //                ImGuiDragDropFlags_SourceNoHoldToOpenOthers);
+                    //        payload && payload->IsDelivery()) {
+                    //        Toolbox::Buffer buffer;
+                    //        buffer.setBuf(payload->Data, payload->DataSize);
+                    //        buffer.copyTo(m_drop_target_buffer);
 
-                            // Calculate index based on position relative to center
-                            m_rail_drop_target = i;
-                            if (mouse_pos.y > item_pos.y + (item_size.y / 2)) {
-                                m_rail_drop_target++;
-                            }
-                        }
-                        ImGui::EndDragDropTarget();
-                    }
+                    //        // Calculate index based on position relative to center
+                    //        m_rail_drop_target = i;
+                    //        if (mouse_pos.y > item_pos.y + (item_size.y / 2)) {
+                    //            m_rail_drop_target++;
+                    //        }
+                    //    }
+                    //    ImGui::EndDragDropTarget();
+                    //}
                 }
 
                 if (m_rail_visible_map[rail_uuid] != is_rail_visible) {
