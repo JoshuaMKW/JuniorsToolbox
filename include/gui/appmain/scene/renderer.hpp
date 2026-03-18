@@ -12,8 +12,8 @@
 #include "gui/appmain/scene/ImGuizmo.h"
 #include "gui/appmain/scene/billboard.hpp"
 #include "gui/appmain/scene/camera.hpp"
+#include "model/railmodel.hpp"
 #include "path.hpp"
-#include "scene/raildata.hpp"
 #include "scene/scene.hpp"
 
 using namespace Toolbox;
@@ -29,13 +29,13 @@ namespace Toolbox::UI {
         Renderer();
         ~Renderer();
 
-        void initializeData(const Scene::SceneInstance &scene);
+        void initializeData(RefPtr<RailObjModel> rail_model);
 
         [[nodiscard]] bool isUniqueRailColors() { return m_path_renderer.isUniqueColors(); }
         void setUniqueRailColors(bool is_colors) { m_path_renderer.setUniqueColors(is_colors); }
 
-        void updatePaths(const RailData &rail_data, std::unordered_map<UUID64, bool> visible_map) {
-            initializePaths(rail_data, visible_map);
+        void updatePaths(RefPtr<RailObjModel> model, const std::unordered_map<UUID64, bool> &visible_map) {
+            initializePaths(model, visible_map);
         }
 
         void markDirty() { m_is_view_dirty = true; }
@@ -93,17 +93,17 @@ namespace Toolbox::UI {
         bool inputUpdate(TimeStep delta_time);
 
         using selection_variant_t =
-            std::variant<RefPtr<ISceneObject>, RefPtr<Rail::RailNode>, std::nullopt_t>;
+            std::variant<std::monostate, RefPtr<ISceneObject>, RefPtr<Rail::RailNode>>;
 
         selection_variant_t findSelection(std::vector<ISceneObject::RenderInfo> renderables,
                                           std::vector<RefPtr<Rail::RailNode>> rail_nodes,
                                           bool &should_reset);
 
-        void render(std::vector<ISceneObject::RenderInfo> renderables, TimeStep delta_time);
+        void render(const std::vector<ISceneObject::RenderInfo> &renderables, TimeStep delta_time);
 
     protected:
-        void initializePaths(const RailData &rail_data,
-                             std::unordered_map<UUID64, bool> visible_map);
+        void initializePaths(RefPtr<RailObjModel> model,
+                             const std::unordered_map<UUID64, bool> &visible_map);
         void initializeBillboards();
 
         void viewportBegin();

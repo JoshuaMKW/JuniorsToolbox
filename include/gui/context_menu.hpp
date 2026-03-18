@@ -18,6 +18,8 @@
 #include "core/keybind/keybind.hpp"
 #include "gui/font.hpp"
 
+#define TOOLBOX_DISABLD_CTX_MENU_ITEMS 0
+
 using namespace Toolbox;
 
 namespace Toolbox::UI {
@@ -58,7 +60,6 @@ namespace Toolbox::UI {
         template <typename _DataT> struct ContextGroup {
             std::string m_name;
             std::vector<ContextEntry<_DataT>> m_ops;
-            std::set<size_t> m_dividers;
         };
 
     }  // namespace
@@ -91,7 +92,7 @@ namespace Toolbox::UI {
 
         void setCanOpen(bool can_open) { m_can_open = can_open; }
 
-        void tryOpen(ImGuiID item_id,
+        bool tryOpen(ImGuiID item_id,
                      ImGuiPopupFlags popup_flags = ImGuiPopupFlags_MouseButtonRight);
         void tryRender(const _DataT &ctx,
                        ImGuiHoveredFlags hover_flags = ImGuiHoveredFlags_AllowWhenBlockedByPopup);
@@ -200,9 +201,9 @@ namespace Toolbox::UI {
     }
 
     template <typename _DataT>
-    inline void ContextMenu<_DataT>::tryOpen(ImGuiID item_id, ImGuiPopupFlags popup_flags) {
+    inline bool ContextMenu<_DataT>::tryOpen(ImGuiID item_id, ImGuiPopupFlags popup_flags) {
         if (!m_can_open || m_was_open) {
-            return;
+            return false;
         }
 
         ImGuiWindow *window = ImGui::GetCurrentWindow();
@@ -228,7 +229,10 @@ namespace Toolbox::UI {
         if (ImGui::IsMouseReleased(mouse_button)) {
             ImGui::OpenPopupEx(id, popup_flags);
             m_id = id;
+            return true;
         }
+
+        return false;
     }
 
     template <typename _DataT>
@@ -453,8 +457,39 @@ namespace Toolbox::UI {
         bool last_was_sep = false;
         int64_t last_item = -1;
 
+        std::vector<size_t> valid_items = {};
+        valid_items.reserve(group.m_ops.size());
+
+        int64_t sep_idx = -1;
+        bool sep_is_waiting = false;
+
+        // Precalculate which dividers are valid to process
+        for (size_t i = 0; i < group.m_ops.size(); ++i) {
+            const context_t &entry = group.m_ops.at(i);
+            if (entry.m_type == context_t::TYPE_GROUP) {
+                valid_items.push_back(i);
+                continue;
+            }
+            
+            if (entry.m_type == context_t::TYPE_OP) {
+                if (entry.m_op->m_condition(ctx)) {
+                    if (sep_is_waiting) {
+                        valid_items.push_back(sep_idx);
+                        sep_is_waiting = false;
+                    }
+                    valid_items.push_back(i);
+                }
+                continue;
+            }
+
+            if (!valid_items.empty() && !sep_is_waiting) {
+                sep_idx = i;
+                sep_is_waiting = true;
+            }
+        }
+
         if (is_root) {
-            for (size_t i = 0; i < group.m_ops.size(); ++i) {
+            for (size_t i : valid_items) {
                 const context_t &entry = group.m_ops.at(i);
                 if (entry.m_type == context_t::TYPE_GROUP) {
                     if (renderGroup(*entry.m_group, ctx, false)) {
@@ -477,21 +512,23 @@ namespace Toolbox::UI {
         }
 
         if (ImGui::BeginMenu(group.m_name.c_str(), true)) {
-            for (size_t i = 0; i < group.m_ops.size(); ++i) {
+            for (size_t i : valid_items) {
                 const context_t &entry = group.m_ops.at(i);
                 if (entry.m_type == context_t::TYPE_GROUP) {
                     if (renderGroup(*entry.m_group, ctx, false)) {
+                        ImGui::EndMenu();
                         return true;
                     }
                     last_item    = i;
                     last_was_sep = false;
                 } else if (entry.m_type == context_t::TYPE_OP) {
                     if (renderOption(*entry.m_op, ctx)) {
+                        ImGui::EndMenu();
                         return true;
                     }
                     last_item    = i;
                     last_was_sep = false;
-                } else if (!last_was_sep && 0 <= last_item && i < group.m_ops.size() - 1) {
+                } else {
                     ImGui::Separator();
                     last_was_sep = true;
                 }
@@ -505,10 +542,6 @@ namespace Toolbox::UI {
     inline bool ContextMenu<_DataT>::renderOption(const option_t &option, const _DataT &ctx) {
         const bool is_valid_state = option.m_condition(ctx);
 
-        if (!is_valid_state) {
-            ImGui::BeginDisabled();
-        }
-
         std::string keybind_name = option.m_keybind.toString();
 
         std::string display_name = keybind_name.empty()
@@ -519,10 +552,6 @@ namespace Toolbox::UI {
         if (ImGui::MenuItem(display_name.c_str())) {
             m_deferred_cmds.emplace_back(option.m_op);
             clicked = true;
-        }
-
-        if (!is_valid_state) {
-            ImGui::EndDisabled();
         }
 
         return clicked;
@@ -606,7 +635,9 @@ namespace Toolbox::UI {
         ContextMenuBuilder(menu_t *menu) : m_menu(menu) {}
 
         ContextMenuBuilder &beginGroup(std::string_view group_name) {
-            m_group_stack.emplace_back(m_menu->addGroup(group_name));
+            typename menu_t::group_t *parent_group = m_group_stack.empty() ? nullptr
+                                                                           : m_group_stack.back();
+            m_group_stack.emplace_back(m_menu->addGroup(parent_group, group_name));
             return *this;
         }
         ContextMenuBuilder &endGroup() {

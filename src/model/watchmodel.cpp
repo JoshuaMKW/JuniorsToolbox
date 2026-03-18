@@ -370,20 +370,35 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    bool WatchDataModel::insertMimeData(const ModelIndex &index, const MimeData &data,
-                                        ModelInsertPolicy policy) {
-        IDataModel::index_container indexes;
+    Result<IDataModel::index_container> WatchDataModel::insertMimeData(const ModelIndex &index,
+                                                                       const MimeData &data,
+                                                                       ModelInsertPolicy policy) {
+        Result<IDataModel::index_container> result;
+
+        const Signal pre_signal = createSignalForIndex_(index, ModelEventFlags::EVENT_INSERT);
+
+        signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_PRE);
 
         {
             std::scoped_lock lock(m_mutex);
-            indexes = insertMimeData_(index, data, policy);
+            result = insertMimeData_(index, data, policy);
         }
 
-        for (const ModelIndex &index : indexes) {
-            signalEventListeners(index, ModelEventFlags::EVENT_INSERT |
-                                            ModelEventFlags::EVENT_INDEX_ADDED);
+        if (result) {
+            for (const ModelIndex &new_index : result.value()) {
+                Signal index_signal =
+                    createSignalForIndex_(new_index, ModelEventFlags::EVENT_INDEX_ADDED);
+                signalEventListeners(index_signal.first, index_signal.second |
+                                                             ModelEventFlags::EVENT_POST |
+                                                             ModelEventFlags::EVENT_SUCCESS);
+            }
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST |
+                                                       ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST);
         }
-        return !indexes.empty();
+
+        return result;
     }
 
     std::vector<std::string> WatchDataModel::getSupportedMimeTypes() const {
@@ -572,6 +587,11 @@ namespace Toolbox {
 
         signalEventListeners(ModelIndex(), ModelEventFlags::EVENT_INDEX_ADDED);
         return Result<void, SerialError>();
+    }
+
+    WatchDataModel::Signal WatchDataModel::createSignalForIndex_(const ModelIndex &index,
+                                                                 ModelEventFlags base_event) const {
+        return {index, (int)base_event};
     }
 
     bool WatchDataModel::isIndexGroup_(const ModelIndex &index) const {
@@ -1060,12 +1080,13 @@ namespace Toolbox {
         return new_data;
     }
 
-    IDataModel::index_container WatchDataModel::insertMimeData_(const ModelIndex &index,
-                                                                const MimeData &data,
-                                                                ModelInsertPolicy policy) {
+    Result<IDataModel::index_container> WatchDataModel::insertMimeData_(const ModelIndex &index,
+                                                                        const MimeData &data,
+                                                                        ModelInsertPolicy policy) {
         auto maybe_text = data.get_text();
         if (!maybe_text.has_value()) {
-            return {};
+            return make_error<IDataModel::index_container>(
+                "WatchDataModel", "Provided MIME data has no WatchDataModel data!");
         }
 
         const std::string &text_data = maybe_text.value();
@@ -1074,19 +1095,19 @@ namespace Toolbox {
         try {
             j = json_t::parse(text_data);
         } catch (json_t::parse_error &e) {
-            TOOLBOX_WARN_V("Failed to parse MimeData JSON: {}", e.what());
-            return {};
+            return make_error<IDataModel::index_container>(
+                "WatchDataModel", std::format("Failed to parse MimeData JSON: {}", e.what()));
         }
 
         if (!j.contains("watchList") || !j.at("watchList").is_array()) {
-            TOOLBOX_WARN("MimeData is invalid or missing 'watchList' array.");
-            return {};
+            return make_error<IDataModel::index_container>(
+                "WatchDataModel", "MimeData is invalid or missing 'watchList' array.");
         }
 
         const json_t &root_json = j.at("watchList");
         if (!root_json.is_array()) {
-            TOOLBOX_WARN("MimeData is invalid or missing 'watchList' array.");
-            return {};
+            return make_error<IDataModel::index_container>(
+                "WatchDataModel", "MimeData is invalid or missing 'watchList' array.");
         }
 
         std::function<ModelIndex(const json_t &, int64_t, const ModelIndex &)> insertJSONAtIndex =
@@ -1552,9 +1573,9 @@ namespace Toolbox {
         return m_source_model->createMimeData(indexes_copy);
     }
 
-    bool WatchDataModelSortFilterProxy::insertMimeData(const ModelIndex &index,
-                                                       const MimeData &data,
-                                                       ModelInsertPolicy policy) {
+    Result<IDataModel::index_container>
+    WatchDataModelSortFilterProxy::insertMimeData(const ModelIndex &index, const MimeData &data,
+                                                  ModelInsertPolicy policy) {
         ModelIndex &&source_index = toSourceIndex(index);
         return m_source_model->insertMimeData(std::move(source_index), data, policy);
     }

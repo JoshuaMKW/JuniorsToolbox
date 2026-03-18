@@ -25,25 +25,24 @@ using namespace std::chrono;
 
 namespace Toolbox {
 
-    enum SceneObjDataRole {
-        SCENE_DATA_ROLE_OBJ_TYPE = ModelDataRole::DATA_ROLE_USER,
-        SCENE_DATA_ROLE_OBJ_KEY,
-        SCENE_DATA_ROLE_OBJ_GAME_ADDR,
-        SCENE_DATA_ROLE_OBJ_REF,
+    enum RailObjDataRole {
+        RAIL_DATA_ROLE_RAIL_TYPE = ModelDataRole::DATA_ROLE_USER,
+        RAIL_DATA_ROLE_RAIL_KEY,
+        RAIL_DATA_ROLE_RAIL_GAME_ADDR,
+        RAIL_DATA_ROLE_RAIL_REF,
+        RAIL_DATA_ROLE_RAIL_NODE_REF,
     };
 
-    class SceneObjModel : public IDataModel {
+    class RailObjModel : public IDataModel {
     public:
         using json_t = nlohmann::ordered_json;
 
     public:
-        SceneObjModel() = default;
-        ~SceneObjModel();
+        RailObjModel() = default;
+        ~RailObjModel();
 
-        void initialize(const Scene::ObjectHierarchy &obj_tree);
-        void setScenePath(fs_path &&path) { m_scene_path = std::move(path); }
-
-        [[nodiscard]] ScopePtr<Scene::ObjectHierarchy> bakeToHierarchy(std::string_view name) const;
+        void initialize(const RailData &info_path);
+        [[nodiscard]] ScopePtr<RailData> bakeToRailData() const;
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
@@ -53,27 +52,35 @@ namespace Toolbox {
 
         [[nodiscard]] bool isReadOnly() const override { return false; }
 
-        [[nodiscard]] std::string getObjectType(const ModelIndex &index) const {
+        [[nodiscard]] bool isIndexRailNode(const ModelIndex &index) const;
+        [[nodiscard]] bool isIndexRail(const ModelIndex &index) const;
+
+        [[nodiscard]] std::string getRailType(const ModelIndex &index) const {
             return std::any_cast<std::string>(
-                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_TYPE));
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_TYPE));
         }
 
-        [[nodiscard]] std::string getObjectKey(const ModelIndex &index) const {
+        [[nodiscard]] std::string getRailKey(const ModelIndex &index) const {
             return std::any_cast<std::string>(
-                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_KEY));
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_KEY));
         }
         void setObjectKey(const ModelIndex &index, const std::string &key) {
-            setData(index, key, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_KEY);
+            setData(index, key, RailObjDataRole::RAIL_DATA_ROLE_RAIL_KEY);
         }
 
-        [[nodiscard]] u32 getObjectGameAddress(const ModelIndex &index) const {
+        [[nodiscard]] u32 getRailGameAddress(const ModelIndex &index) const {
             return std::any_cast<u32>(
-                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_GAME_ADDR));
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_GAME_ADDR));
         }
 
-        [[nodiscard]] RefPtr<ISceneObject> getObjectRef(const ModelIndex &index) const {
-            return std::any_cast<RefPtr<ISceneObject>>(
-                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_REF));
+        [[nodiscard]] RailData::rail_ptr_t getRailRef(const ModelIndex &index) const {
+            return std::any_cast<RailData::rail_ptr_t>(
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_REF));
+        }
+
+        [[nodiscard]] Rail::Rail::node_ptr_t getRailNodeRef(const ModelIndex &index) const {
+            return std::any_cast<Rail::Rail::node_ptr_t>(
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_NODE_REF));
         }
 
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
@@ -83,13 +90,14 @@ namespace Toolbox {
                                                  const std::string &name) const;
 
     public:
-        [[nodiscard]] ModelIndex getIndex(RefPtr<ISceneObject> object) const;
+        [[nodiscard]] ModelIndex getIndex(RailData::rail_ptr_t rail) const;
+        [[nodiscard]] ModelIndex getIndex(Rail::Rail::node_ptr_t node) const;
         [[nodiscard]] ModelIndex getIndex(const UUID64 &uuid) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
 
-        [[nodiscard]] virtual ModelIndex insertObject(RefPtr<ISceneObject> object, int64_t row,
-                                                      const ModelIndex &parent);
+        [[nodiscard]] virtual ModelIndex insertRail(RailData::rail_ptr_t rail, int64_t row);
+        [[nodiscard]] virtual ModelIndex insertRailNode(Rail::Rail::node_ptr_t rail, int64_t row, const ModelIndex &index);
         [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
@@ -126,9 +134,11 @@ namespace Toolbox {
         [[nodiscard]] virtual Signal createSignalForIndex_(const ModelIndex &index,
                                                            ModelEventFlags base_event) const;
 
-        [[nodiscard]] virtual ModelIndex insertObject_(RefPtr<ISceneObject> object, int64_t row,
-                                                      const ModelIndex &parent);
-        [[nodiscard]] virtual ModelIndex makeIndex(RefPtr<ISceneObject> object, int64_t row,
+        [[nodiscard]] virtual ModelIndex insertRail_(RailData::rail_ptr_t rail, int64_t row);
+        [[nodiscard]] virtual ModelIndex insertRailNode_(Rail::Rail::node_ptr_t node, int64_t row,
+                                                         const ModelIndex &parent);
+        [[nodiscard]] virtual ModelIndex makeIndex(RailData::rail_ptr_t rail, int64_t row) const;
+        [[nodiscard]] virtual ModelIndex makeIndex(Rail::Rail::node_ptr_t node, int64_t row,
                                                    const ModelIndex &parent) const;
 
         // Implementation of public API for mutex locking reasons
@@ -138,7 +148,8 @@ namespace Toolbox {
         [[nodiscard]] std::string findUniqueName_(const ModelIndex &index,
                                                   const std::string &name) const;
 
-        [[nodiscard]] ModelIndex getIndex_(RefPtr<ISceneObject> object) const;
+        [[nodiscard]] ModelIndex getIndex_(RailData::rail_ptr_t rail) const;
+        [[nodiscard]] ModelIndex getIndex_(Rail::Rail::node_ptr_t rail) const;
         [[nodiscard]] ModelIndex getIndex_(const UUID64 &uuid) const;
         [[nodiscard]] ModelIndex getIndex_(int64_t row, int64_t column,
                                            const ModelIndex &parent = ModelIndex()) const;
@@ -176,10 +187,9 @@ namespace Toolbox {
         mutable std::mutex m_mutex;
         std::unordered_map<UUID64, std::pair<event_listener_t, int>> m_listeners;
 
-        mutable UUID64 m_root_index;
-        mutable std::map<UUID64, ModelIndex> m_index_map;
-
-        fs_path m_scene_path;
+        mutable std::vector<ModelIndex> m_rail_indexes;
+        mutable std::unordered_map<UUID64, std::vector<ModelIndex>> m_node_list_map;
+        mutable std::unordered_map<UUID64, ModelIndex> m_index_map;
     };
 
 }  // namespace Toolbox

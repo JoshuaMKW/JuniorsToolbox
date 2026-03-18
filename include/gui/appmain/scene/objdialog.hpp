@@ -9,6 +9,8 @@
 #include "core/memory.hpp"
 #include "gui/appmain/scene/nodeinfo.hpp"
 #include "objlib/template.hpp"
+#include "model/model.hpp"
+#include "model/objmodel.hpp"
 
 namespace Toolbox::UI {
 
@@ -21,9 +23,9 @@ namespace Toolbox::UI {
         };
 
         using action_t =
-            std::function<void(size_t, std::string_view, const Object::Template &, std::string_view,
-                               InsertPolicy, SelectionNodeInfo<Object::ISceneObject>)>;
-        using cancel_t = std::function<void(SelectionNodeInfo<Object::ISceneObject>)>;
+            std::function<void(std::string_view obj_name, const Object::Template &, std::string_view wizard_name,
+                               InsertPolicy, const ModelIndex &index)>;
+        using cancel_t = std::function<void(const ModelIndex &index)>;
 
         CreateObjDialog()  = default;
         ~CreateObjDialog() = default;
@@ -39,7 +41,7 @@ namespace Toolbox::UI {
             m_open    = true;
             m_opening = true;
         }
-        void render(SelectionNodeInfo<Object::ISceneObject> node_info);
+        void render(RefPtr<SceneObjModel> model, const ModelIndex &index);
 
     private:
         bool m_open    = false;
@@ -66,8 +68,8 @@ namespace Toolbox::UI {
     class RenameObjDialog {
     public:
         using action_t =
-            std::function<void(std::string_view, SelectionNodeInfo<Object::ISceneObject>)>;
-        using cancel_t = std::function<void(SelectionNodeInfo<Object::ISceneObject>)>;
+            std::function<void(std::string_view, const ModelIndex &)>;
+        using cancel_t = std::function<void(const ModelIndex &)>;
 
         RenameObjDialog()  = default;
         ~RenameObjDialog() = default;
@@ -90,7 +92,7 @@ namespace Toolbox::UI {
             m_open    = true;
             m_opening = true;
         }
-        void render(SelectionNodeInfo<Object::ISceneObject> node_info);
+        void render(const ModelIndex & node_info);
 
     private:
         bool m_open    = false;

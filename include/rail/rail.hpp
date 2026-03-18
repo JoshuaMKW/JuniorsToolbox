@@ -14,7 +14,6 @@ using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
 
-    // NOTE: Serialization is for Toolbox UI only. Use RalData for actual game data.
     class Rail : public ISerializable, public ISmartResource, public IUnique {
     public:
         using node_ptr_t = RefPtr<RailNode>;
@@ -121,6 +120,9 @@ namespace Toolbox::Rail {
         Result<void, MetaError> replaceConnection(size_t node, size_t index, size_t to);
         Result<void, MetaError> replaceConnection(node_ptr_t node, size_t index,
                                                          node_ptr_t to);
+
+        Result<void, MetaError> clearConnections(size_t node);
+        Result<void, MetaError> clearConnections(node_ptr_t node);
 
         // Destructive connection algorithms
 

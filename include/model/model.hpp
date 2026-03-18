@@ -169,7 +169,7 @@ namespace Toolbox {
 
         [[nodiscard]] virtual ScopePtr<MimeData>
         createMimeData(const index_container &indexes) const = 0;
-        [[nodiscard]] virtual bool
+        [[nodiscard]] virtual Result<IDataModel::index_container>
         insertMimeData(const ModelIndex &index, const MimeData &data,
                        ModelInsertPolicy policy = ModelInsertPolicy::INSERT_AFTER)   = 0;
         [[nodiscard]] virtual std::vector<std::string> getSupportedMimeTypes() const = 0;
@@ -206,7 +206,8 @@ namespace std {
 
     template <> struct hash<Toolbox::ModelIndex> {
         Toolbox::u64 operator()(const Toolbox::ModelIndex &index) const {
-            return hash<Toolbox::UUID64>()(index.getUUID());
+            Toolbox::UUID64 uuid = index.getUUID();
+            return hash<Toolbox::UUID64>()(uuid);
         }
     };
 

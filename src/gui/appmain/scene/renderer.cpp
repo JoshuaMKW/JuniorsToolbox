@@ -345,7 +345,7 @@ namespace Toolbox::UI {
         J3D::Picking::DestroyFramebuffer();
     }
 
-    void Renderer::render(std::vector<ISceneObject::RenderInfo> renderables, TimeStep delta_time) {
+    void Renderer::render(const std::vector<ISceneObject::RenderInfo> &renderables, TimeStep delta_time) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         ImVec2 window_pos = ImGui::GetWindowPos();
@@ -369,21 +369,23 @@ namespace Toolbox::UI {
         m_is_window_hovered = ImGui::IsWindowHovered();
         m_is_window_focused = ImGui::IsWindowFocused();
 
-        bool right_click      = Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT);
-        bool right_click_down = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_RIGHT);
+        bool middle_click      = Input::GetMouseButton(Input::MouseButton::BUTTON_MIDDLE);
+        bool middle_click_down = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_MIDDLE);
 
-        if (m_render_rect.Contains(mouse_pos)) {
-            if (right_click) {
-                m_is_view_manipulating = true;
-            }
-            if (right_click_down) {
-                m_is_window_focused = true;
-                ImGui::SetWindowFocus();
+        if (ImGui::IsWindowHovered()) {
+            if (m_render_rect.Contains(mouse_pos)) {
+                if (middle_click) {
+                    m_is_view_manipulating = true;
+                }
+                if (middle_click_down) {
+                    m_is_window_focused = true;
+                    ImGui::SetWindowFocus();
+                }
             }
         }
 
         if (m_is_window_focused && m_is_view_manipulating &&
-            Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {  // Mouse wrap
+            Input::GetMouseButton(Input::MouseButton::BUTTON_MIDDLE)) {  // Mouse wrap
             bool wrapped = false;
 
             if (mouse_pos.x < m_render_rect.Min.x) {
@@ -469,14 +471,14 @@ namespace Toolbox::UI {
         viewportEnd();
     }
 
-    void Renderer::initializeData(const SceneInstance &scene) {
-        initializePaths(*scene.getRailData(), {});
+    void Renderer::initializeData(RefPtr<RailObjModel> rail_model) {
+        initializePaths(rail_model, {});
         initializeBillboards();
     }
 
-    void Renderer::initializePaths(const RailData &rail_data,
-                                   std::unordered_map<UUID64, bool> visible_map) {
-        m_path_renderer.updateGeometry(rail_data, visible_map);
+    void Renderer::initializePaths(RefPtr<RailObjModel> model,
+                                   const std::unordered_map<UUID64, bool> &visible_map) {
+        m_path_renderer.updateGeometry(model, visible_map);
     }
 
     void Renderer::initializeBillboards() {
@@ -665,7 +667,7 @@ namespace Toolbox::UI {
         const AppSettings &settings =
             MainApplication::instance().getSettingsManager().getCurrentProfile();
 
-        if (m_is_view_manipulating && Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT)) {
+        if (m_is_view_manipulating && Input::GetMouseButton(Input::MouseButton::BUTTON_MIDDLE)) {
             double delta_x, delta_y;
             Input::GetMouseDelta(delta_x, delta_y);
 
@@ -743,11 +745,15 @@ namespace Toolbox::UI {
     Renderer::selection_variant_t
     Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables,
                             std::vector<RefPtr<Rail::RailNode>> rail_nodes, bool &should_reset) {
-        const bool left_click  = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
+        const bool left_click = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT);
+        const bool right_click = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT);
+        if (!left_click && !right_click) {
+            return std::monostate{};
+        }
 
         should_reset = false;
         if (!m_is_window_hovered && !m_is_window_focused) {
-            return std::nullopt;
+            return std::monostate{};
         }
 
         // Mouse pos is absolute
@@ -758,10 +764,6 @@ namespace Toolbox::UI {
         // Get point on render window
         glm::vec3 selection_point = {mouse_pos.x - m_render_rect.Min.x,
                                      mouse_pos.y - m_render_rect.Min.y, 0};
-
-        if (!left_click) {
-            return std::nullopt;
-        }
 
         should_reset = true;
 
@@ -774,17 +776,22 @@ namespace Toolbox::UI {
 
         float nearest_intersection = std::numeric_limits<float>::max();
 
-        selection_variant_t selected_item;
+        selection_variant_t selected_item = std::monostate{};
         if (J3D::Picking::IsPickingEnabled()) {
-            selected_item = findObjectByJ3DPicking(
+            RefPtr<ISceneObject> object = findObjectByJ3DPicking(
                 renderables, static_cast<int>(selection_point.x),
                                                    static_cast<int>(selection_point.y),
                                                    nearest_intersection, s_selection_blacklist);
-
+            if (object) {
+                selected_item = object;
+            }
         } else {
-            selected_item = findObjectByOBBIntersection(
+            RefPtr<ISceneObject> object = findObjectByOBBIntersection(
                 renderables, static_cast<int>(selection_point.x),
                 static_cast<int>(selection_point.y), nearest_intersection, s_selection_blacklist);
+            if (object) {
+                selected_item = object;
+            }
         }
 
         for (auto &node : rail_nodes) {
@@ -810,23 +817,24 @@ namespace Toolbox::UI {
                                      int selection_x, int selection_y, float &intersection_z,
                                      const std::unordered_set<std::string> &exclude_set) {
         TOOLBOX_DEBUG_LOG_V("Selection pt (x: {}, y: {})", selection_x, selection_y);
-        if (J3D::Picking::IsPickingEnabled()) {
-            J3D::Picking::ModelMaterialIdPair query_pair =
-                J3D::Picking::Query(selection_x / 4.0f, (m_render_size.y - selection_y) / 4.0f);
-            for (const ISceneObject::RenderInfo &info : renderables) {
-                if (exclude_set.contains(info.m_object->type())) {
-                    continue;
-                }
-                if (info.m_model->GetModelId() == std::get<0>(query_pair)) {
-                    glm::vec3 selection_origin;
-                    m_camera.getPos(selection_origin);
 
-                    intersection_z = glm::length(selection_origin - info.m_transform.m_translation);
-                    return info.m_object;
-                }
+        J3D::Picking::ModelMaterialIdPair query_pair =
+            J3D::Picking::Query(selection_x / 4.0f, (m_render_size.y - selection_y) / 4.0f);
+
+        for (const ISceneObject::RenderInfo &info : renderables) {
+            if (exclude_set.contains(info.m_object->type())) {
+                continue;
+            }
+            if (info.m_model->GetModelId() == std::get<0>(query_pair)) {
+                glm::vec3 selection_origin;
+                m_camera.getPos(selection_origin);
+
+                intersection_z = glm::length(selection_origin - info.m_transform.m_translation);
+                return info.m_object;
             }
         }
-        return RefPtr<ISceneObject>();
+
+        return nullptr;
     }
 
     RefPtr<ISceneObject>

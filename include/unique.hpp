@@ -1,8 +1,8 @@
 #pragma once
 
 #include "core/types.hpp"
-#include <random>
 #include <format>
+#include <random>
 
 namespace Toolbox {
 
@@ -35,7 +35,7 @@ namespace std {
 
     template <> struct hash<Toolbox::UUID64> {
         Toolbox::u64 operator()(const Toolbox::UUID64 &UUID64) const {
-            return hash<Toolbox::u64>()((Toolbox::u64)UUID64);
+            return static_cast<Toolbox::u64>(UUID64);
         }
     };
 

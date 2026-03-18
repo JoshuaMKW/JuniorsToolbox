@@ -28,11 +28,11 @@ namespace Toolbox::Object {
         if (!std::holds_alternative<ReferenceInfo>(m_arraysize))
             return;
 
-        auto reference    = std::get<ReferenceInfo>(m_arraysize);
-        auto reference_it = std::find_if(list.begin(), list.end(),
-                                         [&reference](const RefPtr<MetaMember> &m) {
-                                             return m->name() == reference.m_name;
-                                         });
+        ReferenceInfo reference = std::get<ReferenceInfo>(m_arraysize);
+        auto reference_it =
+            std::find_if(list.begin(), list.end(), [&reference](const RefPtr<MetaMember> &m) {
+                return m->name() == reference.m_name;
+            });
         if (reference_it != list.end()) {
             reference.m_ref = (*reference_it)->value<MetaValue>(0).value();
             m_arraysize     = reference;
@@ -65,27 +65,25 @@ namespace Toolbox::Object {
         }
 
         if (isTypeStruct()) {
-            out << self_indent << std::get<RefPtr<MetaStruct>>(m_values[0])->name() << " "
-                << m_name << " = [\n";
+            out << self_indent << std::get<RefPtr<MetaStruct>>(m_values[0])->name() << " " << m_name
+                << " = [\n";
             for (const auto &v : m_values) {
                 auto _struct = std::get<RefPtr<MetaStruct>>(v);
                 std::cout << value_indent;
-                std::get<RefPtr<MetaStruct>>(v)->dump(out, indention + 1, indention_width,
-                                                               true);
+                std::get<RefPtr<MetaStruct>>(v)->dump(out, indention + 1, indention_width, true);
                 std::cout << ",\n";
             }
             out << self_indent << "];\n";
         } else if (isTypeEnum()) {
-            out << self_indent << std::get<RefPtr<MetaEnum>>(m_values[0])->name() << " "
-                << m_name << " = [\n";
+            out << self_indent << std::get<RefPtr<MetaEnum>>(m_values[0])->name() << " " << m_name
+                << " = [\n";
             for (const auto &v : m_values) {
                 auto _enum = std::get<RefPtr<MetaEnum>>(v);
                 out << _enum->value()->toString() << ",\n";
             }
             out << self_indent << "];\n";
         } else if (isTypeValue()) {
-            out << self_indent
-                << meta_type_name(std::get<RefPtr<MetaValue>>(m_values[0])->type())
+            out << self_indent << meta_type_name(std::get<RefPtr<MetaValue>>(m_values[0])->type())
                 << m_name << " = [\n";
             for (const auto &v : m_values) {
                 auto _value = std::get<RefPtr<MetaValue>>(v);
@@ -171,8 +169,7 @@ namespace Toolbox::Object {
                     member.m_values.push_back(
                         make_deep_clone<MetaEnum>(std::get<RefPtr<MetaEnum>>(value)));
                 } else {
-                    auto _copy =
-                        make_referable<MetaValue>(*std::get<RefPtr<MetaValue>>(value));
+                    auto _copy = make_referable<MetaValue>(*std::get<RefPtr<MetaValue>>(value));
                     member.m_values.push_back(_copy);
                 }
             }
@@ -185,8 +182,7 @@ namespace Toolbox::Object {
                     member.m_values.push_back(
                         make_clone<MetaEnum>(std::get<RefPtr<MetaEnum>>(value)));
                 } else {
-                    auto _copy =
-                        make_referable<MetaValue>(*std::get<RefPtr<MetaValue>>(value));
+                    auto _copy = make_referable<MetaValue>(*std::get<RefPtr<MetaValue>>(value));
                     member.m_values.push_back(_copy);
                 }
             }

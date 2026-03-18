@@ -1,7 +1,9 @@
-#include "gui/appmain/scene/raildialog.hpp"
-#include "objlib/template.hpp"
-#include <gui/imgui_ext.hpp>
 #include <imgui.h>
+
+#include "gui/appmain/scene/raildialog.hpp"
+#include "gui/imgui_ext.hpp"
+#include "model/railmodel.hpp"
+#include "objlib/template.hpp"
 
 namespace Toolbox::UI {
 
@@ -10,7 +12,7 @@ namespace Toolbox::UI {
         m_node_count = 0;
     }
 
-    void CreateRailDialog::render(SelectionNodeInfo<Rail::Rail> node_info) {
+    void CreateRailDialog::render(const ModelIndex &index) {
         if (!m_open)
             return;
 
@@ -124,7 +126,7 @@ namespace Toolbox::UI {
             ImGui::SameLine();
 
             if (ImGui::Button("Cancel")) {
-                m_on_reject(node_info);
+                m_on_reject(index);
                 m_open = false;
             }
             ImGui::EndPopup();
@@ -133,7 +135,7 @@ namespace Toolbox::UI {
 
     void RenameRailDialog::setup() {}
 
-    void RenameRailDialog::render(SelectionNodeInfo<Rail::Rail> node_info) {
+    void RenameRailDialog::render(const ModelIndex &index) {
         if (!m_open)
             return;
 
@@ -192,7 +194,7 @@ namespace Toolbox::UI {
             }
 
             if (ImGui::Button("Rename")) {
-                m_on_accept(object_name, node_info);
+                m_on_accept(object_name, index);
                 m_open = false;
             }
 
@@ -207,7 +209,7 @@ namespace Toolbox::UI {
             ImGui::SameLine();
 
             if (ImGui::Button("Cancel")) {
-                m_on_reject(node_info);
+                m_on_reject(index);
                 m_open = false;
             }
 

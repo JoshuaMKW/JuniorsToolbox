@@ -431,6 +431,24 @@ namespace Toolbox::Rail {
         return node->setConnectionDistance(index, distance);
     }
 
+    Result<void, MetaError> Rail::clearConnections(size_t node) {
+        if (node >= m_nodes.size()) {
+            return make_meta_error<void>("Error clearing connections (from)", node, m_nodes.size());
+        }
+        return clearConnections(m_nodes[node]);
+    }
+
+    Result<void, MetaError> Rail::clearConnections(node_ptr_t node) {
+        u16 connection_count = node->getConnectionCount();
+        for (u16 i = 0; i < connection_count; ++i) {
+            auto result = removeConnection(node, static_cast<size_t>(connection_count - i - i));
+            if (!result) {
+                return result;
+            }
+        }
+        return {};
+    }
+
     Result<void, MetaError> Rail::connectNodeToNearest(size_t node, size_t count) {
         if (node >= m_nodes.size()) {
             return make_meta_error<void>("Error connecting node to nearest", node, m_nodes.size());

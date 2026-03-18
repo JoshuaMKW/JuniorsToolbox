@@ -145,7 +145,16 @@ namespace Toolbox {
             return mime_data;
         }
 
-        return make_clipboard_error<MimeData>("Unimplemented MIME type!");
+        DWORD size = GlobalSize(data_handle);
+
+        Buffer raw_data;
+        raw_data.alloc(size);
+        std::memcpy(raw_data.buf(), data_handle, size);
+
+        MimeData mime_data;
+        mime_data.set_data(type, std::move(raw_data));
+        return mime_data;
+        //return make_clipboard_error<MimeData>("Unimplemented MIME type!");
     }
     Result<std::string, ClipboardError> SystemClipboard::getText() const {
         if (!OpenClipboard(nullptr)) {
@@ -253,7 +262,8 @@ namespace Toolbox {
             if (!data) {
                 return std::unexpected<ClipboardError>(data.error());
             }
-            result.set_data(target, std::move(data.value().get_data(target).value()));
+            // result.set_data(target, std::move(data.value().get_data(target).value()));
+            result = std::move(data.value());
         }
         return result;
     }

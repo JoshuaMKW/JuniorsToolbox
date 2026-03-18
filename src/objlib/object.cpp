@@ -144,6 +144,10 @@ namespace Toolbox::Object {
         return size;
     }
 
+    Result<void, BaseError> VirtualSceneObject::loadDependencies(const fs_path &dependencies_path) {
+        return Result<void, BaseError>();
+    }
+
     Result<void, ObjectError> VirtualSceneObject::performScene(float, bool,
                                                                std::vector<RenderInfo> &,
                                                                ResourceCache &,
@@ -768,6 +772,30 @@ namespace Toolbox::Object {
     size_t PhysicalSceneObject::getMemberSize(const QualifiedName &name, int index) const {
         size_t size = 0;
         return size;
+    }
+
+    Result<void, BaseError>
+    PhysicalSceneObject::loadDependencies(const fs_path &dependencies_path) {
+        if (dependencies_path.empty()) {
+            return {};
+        }
+
+        TemplateWizard wiz;
+        {
+            auto result = m_template.getWizard(m_wizard);
+            if (!result) {
+                return make_error<void>("ObjModel",
+                    std::format("Wizard '{}' not found for object '{}'", m_wizard, m_type.name()));
+            }
+            wiz = *result;
+        }
+
+        auto result = loadRenderData(dependencies_path, wiz.m_render_info, getResourceCache());
+        if (!result) {
+            return std::unexpected(result.error());
+        }
+
+        return {};
     }
 
     Result<void, ObjectError> PhysicalSceneObject::performScene(

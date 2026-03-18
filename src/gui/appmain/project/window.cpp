@@ -1,8 +1,9 @@
 #include "gui/appmain/project/window.hpp"
 #include "gui/appmain/application.hpp"
-#include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/appmain/new_item/window.hpp"
 #include "gui/appmain/project/events.hpp"
+#include "gui/dragdrop/dragdropmanager.hpp"
+#include "gui/logging/errors.hpp"
 #include "model/fsmodel.hpp"
 
 #include <cctype>
@@ -819,6 +820,7 @@ namespace Toolbox::UI {
             }
         }
 
+        MainApplication::instance().getProjectManager().loadProjectFolder(m_project_root);
         // m_pinned_folders = {m_tree_proxy->getIndex("files/data/scene")};
 
         return true;
@@ -1627,18 +1629,22 @@ namespace Toolbox::UI {
             return;
         }
 
-        bool success = false;
-
         if (selection.size() > 0) {
-            success |= m_folder_selection_mgr.actionPasteIntoSelection(maybe_data.value());
+            auto result = m_folder_selection_mgr.actionPasteIntoSelection(maybe_data.value());
+            if (!result) {
+                LogError(result.error());
+            }
         } else {
             if (m_view_proxy->isReadOnly()) {
                 return;
             }
 
             ModelInsertPolicy policy = ModelInsertPolicy::INSERT_CHILD;
-            success |= m_view_proxy->insertMimeData(m_view_proxy->toProxyIndex(m_view_index),
+            auto result = m_view_proxy->insertMimeData(m_view_proxy->toProxyIndex(m_view_index),
                                                     maybe_data.value(), policy);
+            if (!result) {
+                LogError(result.error());
+            }
         }
 
         for (const ModelIndex &index : m_cut_indices) {
@@ -1697,6 +1703,8 @@ namespace Toolbox::UI {
                                         const std::vector<ModelIndex> &selected_indices) const {
         TOOLBOX_ASSERT(selected_indices.size() == 1, "Can't rename more than one file!");
 
+        // TODO: fix invalid index happening here, presumably
+        // from deleting an index first which results in dangling references?
         ModelIndex parent = m_view_proxy->getParent(selected_indices[0]);
         for (size_t i = 0; i < m_view_proxy->getRowCount(parent); ++i) {
             ModelIndex child_index = m_view_proxy->getIndex(i, 0, parent);

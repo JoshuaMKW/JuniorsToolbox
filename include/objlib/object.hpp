@@ -135,6 +135,8 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual std::optional<BoundingBox> getBoundingBox() const = 0;
 
+        [[nodiscard]] virtual Result<void, BaseError> loadDependencies(const fs_path &dependencies_path) = 0;
+
         [[nodiscard]] virtual std::optional<std::filesystem::path> getAnimationsPath() const = 0;
         [[nodiscard]] virtual std::optional<std::string_view>
         getAnimationName(AnimationType type) const                                = 0;
@@ -186,6 +188,7 @@ namespace Toolbox::Object {
         VirtualSceneObject() = default;
 
         VirtualSceneObject(const Template &template_) : ISceneObject(), m_nameref() {
+            m_template = template_;
             m_type = template_.type();
 
             auto wizard = template_.getWizard();
@@ -198,6 +201,7 @@ namespace Toolbox::Object {
 
         VirtualSceneObject(const Template &template_, std::string_view wizard_name)
             : ISceneObject(), m_nameref() {
+            m_template = template_;
             m_type = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);
@@ -309,6 +313,9 @@ namespace Toolbox::Object {
         Result<void, MetaError> setTransform(const Transform &transform) override { return {}; }
 
         [[nodiscard]] std::optional<BoundingBox> getBoundingBox() const override { return {}; }
+
+        [[nodiscard]] Result<void, BaseError>
+        loadDependencies(const fs_path &dependencies_path) override;
 
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
             return {};
@@ -521,6 +528,7 @@ namespace Toolbox::Object {
 
         PhysicalSceneObject(const Template &template_)
             : ISceneObject(), m_nameref(), m_transform() {
+            m_template = template_;
             m_type = template_.type();
 
             auto wizard = template_.getWizard();
@@ -532,6 +540,7 @@ namespace Toolbox::Object {
 
         PhysicalSceneObject(const Template &template_, std::string_view wizard_name)
             : ISceneObject(), m_nameref(), m_transform() {
+            m_template = template_;
             m_type = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);
@@ -661,6 +670,11 @@ namespace Toolbox::Object {
                 if (!result) {
                     return std::unexpected(result.error());
                 }
+            } else {
+                TOOLBOX_WARN_V("[OBJECT] Setting transform of object {} ({}) without `Transform' "
+                               "field to ({}, {}, {})",
+                               type(), getNameRef().name(), transform.m_translation,
+                               transform.m_rotation, transform.m_scale);
             }
 
             return {};
@@ -692,6 +706,9 @@ namespace Toolbox::Object {
 
             return BoundingBox(center, size, glm::quat(transform->m_rotation));
         }
+
+        [[nodiscard]] Result<void, BaseError>
+        loadDependencies(const fs_path &dependencies_path) override;
 
         [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
             return "./scene/mapobj/";

@@ -6,8 +6,7 @@
 namespace Toolbox {
 
     void ModelSelectionState::setLastSelected(const ModelIndex &index) {
-        u64 mu          = index.getModelUUID();
-      m_last_selected = index;
+        m_last_selected = index;
     }
 
     bool ModelSelectionState::deselect(const ModelIndex &index) {

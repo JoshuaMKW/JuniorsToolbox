@@ -26,9 +26,11 @@
 #include "gui/appmain/scene/path.hpp"
 #include "gui/appmain/scene/renderer.hpp"
 #include "gui/image/imagepainter.hpp"
+#include "gui/selection.hpp"
 #include "gui/window.hpp"
 
 #include "model/objmodel.hpp"
+#include "model/railmodel.hpp"
 #include "model/selection.hpp"
 
 #include "raildialog.hpp"
@@ -38,7 +40,8 @@
 class ToolboxSceneVerifier : public TaskThread<void> {
 public:
     ToolboxSceneVerifier() = delete;
-    ToolboxSceneVerifier(RefPtr<const Scene::SceneInstance> scene, bool check_dependencies) : m_scene(scene), m_check_dependencies(check_dependencies) {}
+    ToolboxSceneVerifier(RefPtr<const Scene::SceneInstance> scene, bool check_dependencies)
+        : m_scene(scene), m_check_dependencies(check_dependencies) {}
 
     void tRun(void *param) override;
 
@@ -58,8 +61,7 @@ private:
 class ToolboxSceneDependencyMender : public TaskThread<void> {
 public:
     ToolboxSceneDependencyMender() = delete;
-    ToolboxSceneDependencyMender(RefPtr<const Scene::SceneInstance> scene)
-        : m_scene(scene) {}
+    ToolboxSceneDependencyMender(RefPtr<const Scene::SceneInstance> scene) : m_scene(scene) {}
 
     void tRun(void *param) override;
 
@@ -112,17 +114,20 @@ namespace Toolbox::UI {
         void onRenderMenuBar() override;
         void onRenderBody(TimeStep delta_time) override;
 
+        void renderSanitizationSteps();
+
         void renderHierarchy();
-        void renderTree(size_t node_index, RefPtr<Object::ISceneObject> node);
         void renderRailEditor();
         void renderScene(TimeStep delta_time);
         void renderDolphin(TimeStep delta_time);
         void renderPlaybackButtons(TimeStep delta_time);
         void renderScenePeripherals(TimeStep delta_time);
-        void renderHierarchyContextMenu(std::string str_id,
-                                        SelectionNodeInfo<Object::ISceneObject> &info);
-        void renderRailContextMenu(std::string str_id, SelectionNodeInfo<Rail::Rail> &info);
-        void renderRailNodeContextMenu(std::string str_id, SelectionNodeInfo<Rail::RailNode> &info);
+
+        void renderSceneObjectTree(const ModelIndex &index);
+        void renderTableObjectTree(const ModelIndex &index);
+        void renderSceneHierarchyContextMenu(std::string str_id, const ModelIndex &obj_index);
+        void renderTableHierarchyContextMenu(std::string str_id, const ModelIndex &obj_index);
+        void renderRailContextMenu(std::string str_id, const ModelIndex &rail_index);
 
         void renderProperties();
         static bool renderEmptyProperties(SceneWindow &window) { return false; }
@@ -133,15 +138,10 @@ namespace Toolbox::UI {
         void calcDolphinVPMatrix();
         void reassignAllActorPtrs(u32 param);
 
-        void buildContextMenuVirtualObj();
-        void buildContextMenuGroupObj();
-        void buildContextMenuPhysicalObj();
-        void buildContextMenuMultiObj();
+        void buildContextMenuSceneObj();
+        void buildContextMenuTableObj();
 
         void buildContextMenuRail();
-        void buildContextMenuMultiRail();
-        void buildContextMenuRailNode();
-        void buildContextMenuMultiRailNode();
 
         void buildCreateObjDialog();
         void buildRenameObjDialog();
@@ -161,6 +161,9 @@ namespace Toolbox::UI {
         void processRailNodeSelection(RefPtr<Rail::RailNode> node, bool is_multi);
 
         void calcNewGizmoMatrixFromSelection();
+
+        std::optional<float> calculateFocusScrollForSceneObjectSelection();
+        std::optional<float> calculateFocusScrollForSceneRailSelection();
 
     private:
         void _moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id, size_t orig_index,
@@ -226,24 +229,46 @@ namespace Toolbox::UI {
 
         // Hierarchy view
         ImGuiTextFilter m_hierarchy_filter;
-        std::vector<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_selected_nodes = {};
 
         RefPtr<SceneObjModel> m_scene_object_model;
         RefPtr<SceneObjModel> m_table_object_model;
+        RefPtr<RailObjModel> m_rail_model;
 
-        ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_virtual_node_menu;
-        ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_physical_node_menu;
-        ContextMenu<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_group_node_menu;
-        ContextMenu<std::vector<SelectionNodeInfo<Object::ISceneObject>>>
-            m_hierarchy_multi_node_menu;
+        ModelSelectionManager m_scene_selection_mgr;
+        ModelSelectionManager m_table_selection_mgr;
+        ModelSelectionManager m_rail_selection_mgr;
+
+        ContextMenu<ModelIndex> m_scene_hierarchy_context_menu;
+        ContextMenu<ModelIndex> m_table_hierarchy_context_menu;
+        ContextMenu<ModelIndex> m_rail_list_context_menu;
+
+        bool m_wants_scene_context_menu;
+        bool m_wants_rail_context_menu;
+
+        std::vector<ModelIndex> m_scene_selection_ancestry_for_view;
+        std::vector<ModelIndex> m_rail_selection_ancestry_for_view;
+        std::unordered_map<ModelIndex, bool> m_tree_node_open_map;
+        std::optional<float> m_requested_object_scroll_y;
+        std::optional<float> m_requested_rail_scroll_y;
 
         // Property editor
         std::function<bool(SceneWindow &)> m_properties_render_handler;
         std::vector<ScopePtr<IProperty>> m_selected_properties = {};
 
         // Object modals
-        CreateObjDialog m_create_obj_dialog;
-        RenameObjDialog m_rename_obj_dialog;
+        CreateObjDialog m_create_scene_obj_dialog;
+        RenameObjDialog m_rename_scene_obj_dialog;
+
+        CreateObjDialog m_create_table_obj_dialog;
+        RenameObjDialog m_rename_table_obj_dialog;
+
+        // Rail modals
+        CreateRailDialog m_create_rail_dialog;
+        RenameRailDialog m_rename_rail_dialog;
+
+        // Rail editor
+        std::unordered_map<UUID64, bool> m_rail_visible_map = {};
+        bool m_connections_open                             = true;
 
         // Render view
         bool m_update_render_objs    = false;
@@ -261,23 +286,6 @@ namespace Toolbox::UI {
         ImGuiID m_dock_node_up_left_id   = 0;
         ImGuiID m_dock_node_left_id      = 0;
         ImGuiID m_dock_node_down_left_id = 0;
-
-        // Rail editor
-        std::unordered_map<UUID64, bool> m_rail_visible_map = {};
-        bool m_connections_open                             = true;
-
-        std::vector<SelectionNodeInfo<Rail::Rail>> m_rail_list_selected_nodes = {};
-        ContextMenu<SelectionNodeInfo<Rail::Rail>> m_rail_list_single_node_menu;
-        ContextMenu<std::vector<SelectionNodeInfo<Rail::Rail>>> m_rail_list_multi_node_menu;
-
-        std::vector<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_selected_nodes = {};
-        ContextMenu<SelectionNodeInfo<Rail::RailNode>> m_rail_node_list_single_node_menu;
-        ContextMenu<std::vector<SelectionNodeInfo<Rail::RailNode>>>
-            m_rail_node_list_multi_node_menu;
-
-        // Rail modals
-        CreateRailDialog m_create_rail_dialog;
-        RenameRailDialog m_rename_rail_dialog;
 
         EditorWindow m_focused_window = EditorWindow::NONE;
 
@@ -317,6 +325,6 @@ namespace Toolbox::UI {
         ScopePtr<ToolboxSceneVerifier> m_scene_verifier;
         ScopePtr<ToolboxSceneDependencyMender> m_scene_mender;
         bool m_scene_validator_result_opened = false;
-        bool m_scene_mender_result_opened = false;
+        bool m_scene_mender_result_opened    = false;
     };
 }  // namespace Toolbox::UI
