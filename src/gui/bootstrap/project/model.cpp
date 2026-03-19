@@ -102,9 +102,11 @@ namespace Toolbox {
                         std::span<u8> icon_span(icon_data.data(), icon_data.size());
                         icon_handle = make_referable<const ImageHandle>(icon_span, 4, icon_width,
                                                                         icon_height);
-                    } else {
-                        icon_handle = nullptr;
                     }
+                }
+
+                if (!icon_handle) {
+                    icon_handle = make_referable<const ImageHandle>(ProjectModel::InvalidIcon());
                 }
 
                 ModelIndex new_index = makeIndex(project_path, index_row, ModelIndex());
@@ -327,7 +329,7 @@ namespace Toolbox {
 
     void ProjectModel::setData_(const ModelIndex &index, std::any data, int role) const {
         if (!validateIndex(index)) {
-            return;
+            return;         
         }
 
         switch (role) {
@@ -529,6 +531,11 @@ namespace Toolbox {
                 listener.first(index, (listener.second & flags));
             }
         }
+    }
+
+    const ImageHandle &ProjectModel::InvalidIcon() {
+        static ImageHandle s_invalid_fs_icon = ImageHandle("Images/Icons/invalid_project.png");
+        return s_invalid_fs_icon;
     }
 
     RefPtr<ProjectModel> ProjectModelSortFilterProxy::getSourceModel() const {

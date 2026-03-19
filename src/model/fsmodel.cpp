@@ -547,10 +547,10 @@ namespace Toolbox {
     void FileSystemModel::removeEventListener(UUID64 uuid) { m_listeners.erase(uuid); }
 
     const ImageHandle &FileSystemModel::InvalidIcon() {
-        static ImageHandle s_invalid_fs_icon = ImageHandle("Images/Icons/fs_invalid.png");
+        static ImageHandle s_invalid_fs_icon = ImageHandle("Images/Icons/Filesystem/fs_invalid.png");
         return s_invalid_fs_icon;
     }
-
+        
     const std::unordered_map<std::string, FileSystemModel::FSTypeInfo> &FileSystemModel::TypeMap() {
         // clang-format off
         static std::unordered_map<std::string, FileSystemModel::FSTypeInfo> s_type_map = {

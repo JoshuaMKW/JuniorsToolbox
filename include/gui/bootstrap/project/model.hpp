@@ -151,6 +151,8 @@ namespace Toolbox {
 
         void signalEventListeners(const ModelIndex &index, int flags);
 
+        static const ImageHandle &InvalidIcon();
+
     private:
         UUID64 m_uuid;
 
