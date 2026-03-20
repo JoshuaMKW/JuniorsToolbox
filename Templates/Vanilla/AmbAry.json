@@ -1,0 +1,18 @@
+﻿{
+    "Ambient Color Array": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {},
+        "Wizard": {
+            "Default": {
+                "Name": "Ambient Group",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            }
+        }
+    }
+}

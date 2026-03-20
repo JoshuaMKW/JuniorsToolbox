@@ -1,0 +1,327 @@
+﻿{
+    "Item": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Object": {
+                "Type": "STRING",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Small Water Bottle": {
+                "Name": "ペットボトル（小）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_bottle"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ペットボトル（小） キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "bottle_short"
+                }
+            },
+            "Large Water Bottle": {
+                "Name": "ペットボトル（大）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_bottle"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ペットボトル（大） キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "bottle_large"
+                }
+            },
+            "Mario's Cap": {
+                "Name": "マリオ帽子",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_mariocap"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "マリオ帽子 キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "mario_cap"
+                }
+            },
+            "Hover Nozzle": {
+                "Name": "ホバーノズル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_nozzle_item"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ホバーノズル キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "normal_nozzle_item"
+                }
+            },
+            "Turbo Nozzle": {
+                "Name": "ターボノズル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_nozzle_item"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ターボノズル キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "back_nozzle_item"
+                }
+            },
+            "Rocket Nozzle": {
+                "Name": "ロケットノズル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_nozzle_item"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ロケットノズル キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "rocket_nozzle_item"
+                }
+            },
+            "yoshi_whistle_item": {
+                "Name": "yoshi_whistle_item",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "yoshi_whistle_item キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "yoshi_whistle_item"
+                }
+            },
+            "FLUDD Item": {
+                "Name": "ウォーターガン",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_watergun_item"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "木箱（本物） キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "watergun_item"
+                }
+            }
+        }
+    }
+}

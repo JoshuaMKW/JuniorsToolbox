@@ -1,0 +1,199 @@
+﻿{
+    "Graffiti": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Object": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "SpawnID": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SpawnVelH": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            },
+            "SpawnVelV": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            },
+            "SpawnTimer": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Color": {
+                "Type": "RGB32",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "M Graffiti": {
+                "Name": "クッパＪｒサイン（Ｍ）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_coin_hit",
+                        "object/mapobj_koopajrsignm"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "クッパＪｒサイン（Ｍ） キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "KoopaJrSignM",
+                    "SpawnID": -1,
+                    "SpawnVelH": 100,
+                    "SpawnVelV": -1,
+                    "SpawnTimer": 120,
+                    "Color": [
+                        255,
+                        0,
+                        0
+                    ]
+                }
+            },
+            "Shine Sprite Outline Graffiti": {
+                "Name": "スターの絵",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_coin_hit",
+                        "object/mapobj_starsign"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スターの絵 キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "star_sign",
+                    "SpawnID": -1,
+                    "SpawnVelH": 100,
+                    "SpawnVelV": -1,
+                    "SpawnTimer": 120,
+                    "Color": [
+                        0,
+                        0,
+                        255
+                    ]
+                }
+            },
+            "Shine Sprite Painting": {
+                "Name": "シャインの絵",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_chipshine",
+                        "object/mapobj_cmn_coin_hit"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "シャインの絵 キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "ChipShine",
+                    "SpawnID": -1,
+                    "SpawnVelH": 100,
+                    "SpawnVelV": -1,
+                    "SpawnTimer": 120,
+                    "Color": [
+                        255,
+                        255,
+                        255
+                    ]
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,35 @@
+﻿{
+    "Enemy Pollution Generation Info": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "GeneManager": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "GenerateSwitch": {
+                "Type": "BOOL",
+                "ArraySize": 1
+            },
+            "GenerateRate": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "敵情報",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "GeneManager": "なし",
+                    "GenerateSwitch": false,
+                    "GenerateRate": 100
+                }
+            }
+        }
+    }
+}

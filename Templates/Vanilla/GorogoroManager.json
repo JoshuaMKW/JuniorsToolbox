@@ -1,0 +1,45 @@
+﻿{
+    "Piranhabon Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SharedSetNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "ゴロゴロマネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "StageEnemyInfo": {
+                            "Name": "",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "敵出現テーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "enemy/enm_gorogoro"
+                    ]
+                },
+                "Members": {
+                    "Character": "ゴロゴロマネージャー キャラ",
+                    "MaxNum": 5,
+                    "SharedSetNum": 0
+                }
+            }
+        }
+    }
+}

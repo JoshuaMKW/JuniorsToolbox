@@ -47,7 +47,7 @@ namespace Toolbox::Object {
             }
         }
 
-        fs_path f_path = "./Templates/" + std::string(type) + ".json";
+        fs_path f_path = "./Templates/Vanilla/" + std::string(type) + ".json";
         std::ifstream file(f_path, std::ios::in);
         if (!file.is_open()) {
             throw std::runtime_error("Failed to open template file: " + std::string(type));
@@ -75,15 +75,13 @@ namespace Toolbox::Object {
                 const json_t &enum_data   = metadata["Enums"];
 
                 if (!member_data.is_object()) {
-                    return make_json_error<void>(
-                        "TEMPLATE", "Template JSON is missing 'Members' object.",
-                                                 0);
+                    return make_json_error<void>("TEMPLATE",
+                                                 "Template JSON is missing 'Members' object.", 0);
                 }
 
                 if (!struct_data.is_object()) {
-                    return make_json_error<void>(
-                        "TEMPLATE", "Template JSON is missing 'Structs' object.",
-                                                 0);
+                    return make_json_error<void>("TEMPLATE",
+                                                 "Template JSON is missing 'Structs' object.", 0);
                 }
 
                 if (!enum_data.is_object()) {
@@ -637,7 +635,7 @@ namespace Toolbox::Object {
                         return make_json_error<MetaMember>(
                             "TEMPLATE", "Wizard does not contain struct member: " + mbr->name(), 0);
                     }
-                    const Template::json_t &mbr_json = member_json[mbr->name()];
+                    const Template::json_t &mbr_json            = member_json[mbr->name()];
                     Result<MetaMember, JSONError> member_result = loadWizardMember(mbr_json, *mbr);
                     if (!member_result) {
                         return std::unexpected(member_result.error());
@@ -721,8 +719,8 @@ namespace Toolbox::Object {
 
             const json_t &members_json = wizard_json["Members"];
             if (!members_json.is_object()) {
-                return make_json_error<void>("TEMPLATE", "Wizard json has malformed Members attribute!",
-                                             0);
+                return make_json_error<void>("TEMPLATE",
+                                             "Wizard json has malformed Members attribute!", 0);
             }
 
             for (auto &member_item : members_json.items()) {
@@ -734,7 +732,8 @@ namespace Toolbox::Object {
                     [&](const auto &e) { return e.name() == member_name; });
 
                 if (member_it != default_wizard.m_init_members.end()) {
-                    Result<MetaMember, JSONError> member_result = loadWizardMember(member_info, *member_it);
+                    Result<MetaMember, JSONError> member_result =
+                        loadWizardMember(member_info, *member_it);
                     if (!member_result) {
                         return std::unexpected(member_result.error());
                     }
@@ -779,9 +778,11 @@ namespace Toolbox::Object {
     }
 
     static std::mutex s_templates_mutex;
+    static fs_path s_cache_path = "./Templates/.cache/";
+
     std::unordered_map<std::string, Template> g_template_cache_base;
     std::unordered_map<std::string, Template> g_template_cache_custom;
-    static fs_path s_cache_path = "./Templates/.cache/";
+    std::unordered_map<std::string, TemplateRenderInfo> g_object_render_infos;
 
     void Template::threadLoadTemplate(const std::string &type, bool is_custom) {
         Template template_;
@@ -835,12 +836,12 @@ namespace Toolbox::Object {
             templates_preloaded |= loadFromCacheBlob(true).has_value();
         }
 
+        const fs_path cwd              = cwd_result.value();
+        const fs_path load_base_path   = cwd / "Templates/Vanilla";
+        const fs_path load_custom_path = cwd / "Templates/Custom";
+
         if (!templates_preloaded) {
             std::vector<std::thread> threads;
-
-            auto &cwd                = cwd_result.value();
-            fs_path load_base_path   = cwd / "Templates";
-            fs_path load_custom_path = cwd / "Templates/Custom";
 
             for (auto &subpath : std::filesystem::directory_iterator{load_base_path}) {
                 if (!std::filesystem::is_regular_file(subpath)) {
@@ -876,6 +877,62 @@ namespace Toolbox::Object {
                 }
             }
         }
+
+        const fs_path obj_render_infos_path = cwd / "Templates/object_info_map.json";
+        auto exists = Filesystem::is_regular_file(obj_render_infos_path);
+        if (!exists) {
+            return std::unexpected(exists.error());
+        }
+
+        if (!exists.value()) {
+            return make_fs_error<void>(std::error_code(), {"Object render info map doesn't exist!"});
+        }
+
+        std::ifstream info_in             = std::ifstream(obj_render_infos_path, std::ios::in);
+        Template::json_t render_info_json;
+        info_in >> render_info_json;
+
+        
+        auto result = tryJSON(render_info_json, [&](const Template::json_t &j) -> Result<void, JSONError> {
+            for (const auto &[key, val] : j.items()) {
+                TemplateRenderInfo info;
+                if (val.contains("Textures")) {
+                    const Template::json_t &textures_json = val.at("Textures");
+                    if (!textures_json.is_object()) {
+                        return make_json_error<void>(
+                            "TemplateFactory",
+                            std::format("Textures field of object kind {} is not a dictionary",
+                                        key),
+                            0);
+                    }
+                    info.m_texture_swap_map = textures_json;
+                }
+                if (val.contains("Animations")) {
+                    const Template::json_t &animations_json = val.at("Animations");
+                    if (!animations_json.is_array()) {
+                        return make_json_error<void>(
+                            "TemplateFactory",
+                            std::format("Animations field of object kind {} is not a list",
+                                        key),
+                            0);
+                    }
+                    info.m_file_animations = animations_json;
+                }
+                if (val.contains("Model")) {
+                    const Template::json_t &model_json = val.at("Model");
+                    if (!model_json.is_string()) {
+                        return make_json_error<void>(
+                            "TemplateFactory",
+                            std::format("Model field of object kind {} is not a list", key),
+                            0);
+                    }
+                    info.m_file_model = model_json;
+                }
+                g_object_render_infos[key] = std::move(info);
+            }
+
+            return {};
+        });
 
         return {};
     }
@@ -922,7 +979,7 @@ namespace Toolbox::Object {
             std::vector<std::thread> threads;
 
             auto &cwd              = cwd_result.value();
-            fs_path load_from_path = cwd / (is_custom ? "Templates/Custom" : "Templates");
+            fs_path load_from_path = cwd / (is_custom ? "Templates/Custom" : "Templates/Vanilla");
 
             for (auto &subpath : std::filesystem::directory_iterator{load_from_path}) {
                 auto type_str = subpath.path().stem().string();
@@ -1050,6 +1107,13 @@ namespace Toolbox::Object {
             }
         }
         return ret;
+    }
+
+    ScopePtr<TemplateRenderInfo> TemplateFactory::findRenderInfo(const std::string &obj_field) {
+        if (g_object_render_infos.contains(obj_field)) {
+            return make_scoped<TemplateRenderInfo>(g_object_render_infos[obj_field]);
+        }
+        return nullptr;
     }
 
 }  // namespace Toolbox::Object

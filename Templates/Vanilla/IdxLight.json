@@ -1,0 +1,44 @@
+﻿{
+    "Index Light": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Position": {
+                "Type": "VEC3F",
+                "ArraySize": 1
+            },
+            "Color": {
+                "Type": "RGBA",
+                "ArraySize": 1
+            },
+            "Unknown1": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "IdxLight",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Color": [
+                        255,
+                        255,
+                        255,
+                        255
+                    ],
+                    "Unknown1": 0
+                }
+            }
+        }
+    }
+}

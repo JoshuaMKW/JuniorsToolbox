@@ -1,0 +1,978 @@
+﻿{
+    "Shine Sprite": {
+        "Enums": {
+            "WinDemoCamera": {
+                "Type": "INT",
+                "Flags": {
+                    "Outside": "-1",
+                    "Inside": "0"
+                },
+                "Multi": false
+            }
+        },
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Object": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Type": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "ID": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "WinDemo": {
+                "Type": "WinDemoCamera",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "シャイン",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "normal",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "100 Coin": {
+                "Name": "シャイン（１００枚コイン用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "シャイン（１００枚コイン用）カメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Red Coin": {
+                "Name": "シャイン（赤コイン用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "赤コインシャインカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Object Spawn": {
+                "Name": "シャイン（obj_name）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "シャイン（obj_name）カメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Boss": {
+                "Name": "シャイン（ボス用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "ボスシャインカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Gold Bird": {
+                "Name": "シャイン（鳥用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "鳥シャインカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Enemy Mario Event": {
+                "Name": "モンテマン用シャイン",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "モンテマンシャインカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Airstrip Runway Sink Event": {
+                "Name": "シャイン（落書き用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "落書きシャインカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "TV Station Bell": {
+                "Name": "シャイン（ドルピック鐘テレビ局用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "ドルピック鐘テレビ局カメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Police Station Bell": {
+                "Name": "シャイン（ドルピック鐘警察署用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "ドルピック鐘警察署カメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Shine Sprite Monument": {
+                "Name": "シャイン（モニュメントシャイン用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "モニュメントシャインカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Box Minigame 1": {
+                "Name": "木箱ゲーム用シャイン１",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "木箱ゲーム用シャインカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Box Minigame 2": {
+                "Name": "木箱ゲーム用シャイン２",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "木箱ゲーム用シャインカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Blue Coin Trading": {
+                "Name": "シャイン（マニ屋用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Road to the Big Windmill Sink Event": {
+                "Name": "シャイン（坂上げ用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Watermelon Event": {
+                "Name": "シャイン（お化けスイカ用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "スイカシャインカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "normal",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Sudden Appearance": {
+                "Name": "シャイン（いきなり出現）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "シャイン（いきなり出現）カメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "quickly",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Sunflowers Event": {
+                "Name": "ひまわり用シャイン",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "ひまわりシャインカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Runaway Ferris Wheel": {
+                "Name": "シャイン（観覧車シャイン用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "観覧車シャインカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            },
+            "Hotel Delfino Sink Event": {
+                "Name": "シャイン（ホテル上げ用）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "ホテル上げシャインカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "object/mapobj_cmn_shine"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "スター キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "shine",
+                    "Type": "demo",
+                    "ID": -1,
+                    "WinDemo": -1
+                }
+            }
+        }
+    }
+}

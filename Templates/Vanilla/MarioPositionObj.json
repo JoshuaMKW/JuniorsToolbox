@@ -1,0 +1,55 @@
+﻿{
+    "Mario Return Point Position Object": {
+        "Enums": {},
+        "Structs": {
+            "Warp": {
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                },
+                "Transform": {
+                    "Type": "TRANSFORM",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "WarpPointArray": {
+                "Type": "Warp",
+                "ArraySize": 8
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "マリオセット位置",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "WarpPointArray": {
+                        "Name": "マリオ（帰還点）",
+                        "Transform": [
+                            [
+                                0,
+                                0,
+                                0
+                            ],
+                            [
+                                0,
+                                0,
+                                0
+                            ],
+                            [
+                                1,
+                                1,
+                                1
+                            ]
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,18 @@
+﻿{
+    "Question Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {},
+        "Wizard": {
+            "Default": {
+                "Name": "クエッションマネージャ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            }
+        }
+    }
+}

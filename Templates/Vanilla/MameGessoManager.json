@@ -1,0 +1,45 @@
+﻿{
+    "Bloopad Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SharedSetNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "まめゲッソーマネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "StageEnemyInfo": {
+                            "Name": "",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "敵出現テーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "enemy/enm_mamegesso"
+                    ]
+                },
+                "Members": {
+                    "Character": "まめゲッソーマネージャー キャラ",
+                    "MaxNum": 20,
+                    "SharedSetNum": 3
+                }
+            }
+        }
+    }
+}

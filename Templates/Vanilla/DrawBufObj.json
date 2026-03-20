@@ -1,0 +1,30 @@
+﻿{
+    "Draw Buffer Object": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Unknown1": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Unknown2": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "DrawBuf Sky Opa": {
+                "Name": "DrawBuf Sky Opa",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Unknown1": 3,
+                    "Unknown2": 1
+                }
+            }
+        }
+    }
+}

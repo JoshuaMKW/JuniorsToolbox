@@ -1,0 +1,332 @@
+﻿{
+    "Tilting Mirror": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Object": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "TiltWeight": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            },
+            "Warp": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "WarpTransform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Small Tilting Mirror": {
+                "Name": "mirrorS",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_leanmirror"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "mirrorS キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "mirrorS",
+                    "TiltWeight": 20
+                }
+            },
+            "Medium Tilting Mirror": {
+                "Name": "mirrorM",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_leanmirror"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "mirrorM キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "mirrorM",
+                    "TiltWeight": 25
+                }
+            },
+            "Large Tilting Mirror": {
+                "Name": "mirrorL",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_leanmirror"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "mirrorL キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "mirrorL",
+                    "TiltWeight": 30
+                }
+            },
+            "Small Tilting Mirror - Episode 2": {
+                "Name": "mirrorS",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "camera/cam_leanmirror_event",
+                        "object/mapobj_leanmirror"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "mirrorS キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "mirrorS",
+                    "TiltWeight": 20,
+                    "Warp": "マリオ（ぐらぐら鏡Ｓ）",
+                    "WarpTransform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ]
+                }
+            },
+            "Medium Tilting Mirror - Episode 2": {
+                "Name": "mirrorM",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "camera/cam_leanmirror_event",
+                        "object/mapobj_leanmirror"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "mirrorM キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "mirrorM",
+                    "TiltWeight": 25,
+                    "Warp": "マリオ（ぐらぐら鏡Ｍ）",
+                    "WarpTransform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ]
+                }
+            },
+            "Large Tilting Mirror - Episode 2": {
+                "Name": "mirrorL",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "camera/cam_leanmirror_event",
+                        "object/mapobj_leanmirror"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "mirrorL キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "mirrorL",
+                    "TiltWeight": 30,
+                    "Warp": "マリオ（ぐらぐら鏡Ｌ）",
+                    "WarpTransform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ]
+                }
+            }
+        }
+    }
+}

@@ -443,7 +443,7 @@ namespace Toolbox::Object {
                 continue;
             }
             if (child->type() == type) {
-                if (name.has_value()) {
+                if (name.has_value() && !name->empty()) {
                     if (child->getNameRef().name() == name.value()) {
                         return child;
                     }
@@ -780,17 +780,7 @@ namespace Toolbox::Object {
             return {};
         }
 
-        TemplateWizard wiz;
-        {
-            auto result = m_template.getWizard(m_wizard);
-            if (!result) {
-                return make_error<void>("ObjModel",
-                    std::format("Wizard '{}' not found for object '{}'", m_wizard, m_type.name()));
-            }
-            wiz = *result;
-        }
-
-        auto result = loadRenderData(dependencies_path, wiz.m_render_info, getResourceCache());
+        auto result = loadRenderData(dependencies_path, getResourceCache());
         if (!result) {
             return std::unexpected(result.error());
         }
@@ -810,12 +800,12 @@ namespace Toolbox::Object {
             glm::vec3 position_value = getMetaValue<glm::vec3>(position_value_ptr).value();
 
             auto color_value_ptr      = getMember("Color").value();
-            Color::RGBA32 color_value = getMetaValue<Color::RGBA32>(color_value_ptr).value();
+            Color::RGBA8 color_value = getMetaValue<Color::RGBA8>(color_value_ptr).value();
 
             f32 r, g, b, a;
             color_value.getColor(r, g, b, a);
 
-            auto intensity_value_ptr = getMember("Intensity").value();
+            auto intensity_value_ptr = getMember("Unknown1").value();  // Intensity (?)
             f32 intensity_value      = getMetaValue<f32>(intensity_value_ptr).value();
 
             J3DLight light  = DEFAULT_LIGHT;
@@ -907,9 +897,12 @@ namespace Toolbox::Object {
     }
 
     Result<void, FSError>
-    PhysicalSceneObject::loadRenderData(const std::filesystem::path &asset_path,
-                                        const TemplateRenderInfo &info,
-                                        ResourceCache &resource_cache) {
+    PhysicalSceneObject::loadRenderData(const std::filesystem::path &asset_path, ResourceCache &resource_cache) {
+        if (m_template.type().empty() || m_wizard.empty()) {
+            return make_fs_error<void>(std::error_code(),
+                                       {"[Object] Object has no template and wizard data!"});
+        }
+
         J3DModelLoader bmdLoader;
         J3DMaterialTableLoader bmtLoader;
         J3DTextureLoader btiLoader;
@@ -918,11 +911,18 @@ namespace Toolbox::Object {
         RefPtr<J3DMaterialTable> mat_table;
         RefPtr<J3DAnimationInstance> anim_data;
 
+        ScopePtr<TemplateRenderInfo> render_info;
+
         std::optional<std::string> model_file;
-        std::optional<std::string> mat_file = info.m_file_materials;
+        std::optional<std::string> mat_file;
 
         m_scene_resource_path = asset_path;
 
+        //if (type() == "Shine") {
+        //    __debugbreak();
+        //}
+
+        #if 0
         // Get model variable that exists in some objects
         auto model_member_result = getMember("Model");
         if (model_member_result) {
@@ -934,9 +934,29 @@ namespace Toolbox::Object {
         } else {
             return make_fs_error<void>(std::error_code(), model_member_result.error().m_message);
         }
+        #else
+        auto object_member_result = getMember("Object");
+        if (object_member_result.value_or(nullptr)) {
+            const std::string object_field =
+                getMetaValue<std::string>(object_member_result.value()).value();
+            render_info = TemplateFactory::findRenderInfo(object_field);
+        }
+        #endif
 
-        if (info.m_file_model) {
-            model_file = info.m_file_model;
+        if (!render_info) {
+            std::optional<TemplateWizard> wizard = m_template.getWizard(m_wizard);
+            if (!wizard) {
+                return make_fs_error<void>(std::error_code(), {std::format("[PhysicalObject] Failed to load render data for object {}",
+                               m_type.name())});
+            }
+
+            render_info = make_scoped<TemplateRenderInfo>(wizard->m_render_info);
+        }
+
+        mat_file = render_info->m_file_materials;
+
+        if (render_info->m_file_model) {
+            model_file = render_info->m_file_model;
         }
 
         // Early return since no model to animate etc.
@@ -1039,7 +1059,7 @@ namespace Toolbox::Object {
             m_model_instance->SetInstanceMaterialTable(mat_table);
         }
 
-        for (auto &[tex_name, new_tex_path] : info.m_texture_swap_map) {
+        for (auto &[tex_name, new_tex_path] : render_info->m_texture_swap_map) {
             std::filesystem::path tex_path = asset_path / new_tex_path;
             std::string tex_name_lower     = tex_name;
             std::transform(tex_name_lower.begin(), tex_name_lower.end(), tex_name_lower.begin(),
@@ -1053,7 +1073,7 @@ namespace Toolbox::Object {
             }
         }
 
-        for (auto &anim_file : info.m_file_animations) {
+        for (auto &anim_file : render_info->m_file_animations) {
             std::filesystem::path anim_path = asset_path / anim_file;
             std::string anim_name           = anim_path.stem().string();
 
@@ -1062,6 +1082,12 @@ namespace Toolbox::Object {
                 J3DAnimationLoader anmLoader;
                 bStream::CFileStream anim_stream(anim_path.string(), bStream::Endianess::Big,
                                                  bStream::OpenMode::In);
+
+                if (anim_file.ends_with(".bck")) {
+                    m_model_instance->SetJointAnimation(
+                        std::reinterpret_pointer_cast<J3DJointAnimationInstance>(
+                            anmLoader.LoadAnimation(anim_stream)));
+                }
 
                 if (anim_file.ends_with(".brk")) {
                     m_model_instance->SetRegisterColorAnimation(
@@ -1211,7 +1237,7 @@ namespace Toolbox::Object {
         in.seek(endpos, std::ios::beg);
 
         std::filesystem::path asset_path = scene_path.parent_path();
-        auto load_result = loadRenderData(asset_path, wizard->m_render_info, getResourceCache());
+        auto load_result = loadRenderData(asset_path, getResourceCache());
         if (!load_result) {
             return make_serial_error<void>(
                 in, std::format("Failed to load render data for object {} ({})!", m_type.name(),
@@ -1219,6 +1245,35 @@ namespace Toolbox::Object {
         }
 
         return {};
+    }
+
+    ScopePtr<ISmartResource> PhysicalSceneObject::clone(bool deep) const {
+        auto obj         = make_scoped<PhysicalSceneObject>();
+        obj->m_type      = m_type;
+        obj->m_nameref   = m_nameref;
+        obj->m_parent    = nullptr;
+        obj->m_transform = m_transform;
+
+        obj->m_scene_resource_path = m_scene_resource_path;
+
+        obj->m_members.reserve(m_members.size());
+        if (deep) {
+            for (const auto &member : m_members) {
+                auto new_member = make_deep_clone<MetaMember>(member);
+                obj->m_members.push_back(std::move(new_member));
+            }
+        } else {
+            for (const auto &member : m_members) {
+                auto new_member = make_clone<MetaMember>(member);
+                obj->m_members.push_back(std::move(new_member));
+            }
+        }
+
+        auto result = obj->loadRenderData(obj->m_scene_resource_path, getResourceCache());
+        if (!result) {
+            TOOLBOX_ERROR_V("[PhysicalObject] {}", result.error().m_message);
+        }
+        return obj;
     }
 
     ObjectFactory::create_t ObjectFactory::create(Deserializer &in, bool include_custom) {
@@ -1250,15 +1305,7 @@ namespace Toolbox::Object {
             ScopePtr<PhysicalSceneObject> obj =
                 make_scoped<PhysicalSceneObject>(template_, wizard_name);
 
-            auto wizard = template_.getWizard(wizard_name);
-            if (!wizard) {
-                TOOLBOX_WARN_V("[OBJECT_FACTORY] Failed to fetch wizard for {}, which may cause "
-                               "undefined behavior!",
-                               template_.type());
-                return obj;
-            }
-
-            obj->loadRenderData(resource_path, wizard->m_render_info, getResourceCache());
+            obj->loadRenderData(resource_path, getResourceCache());
             return obj;
         } else {
             return make_scoped<VirtualSceneObject>(template_, wizard_name);

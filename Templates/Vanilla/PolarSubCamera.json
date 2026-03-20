@@ -1,0 +1,18 @@
+﻿{
+    "Camera": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {},
+        "Wizard": {
+            "Default": {
+                "Name": "camera 1",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            }
+        }
+    }
+}

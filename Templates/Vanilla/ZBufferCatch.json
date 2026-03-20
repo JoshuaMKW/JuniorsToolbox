@@ -1,0 +1,18 @@
+﻿{
+    "ZBufferCatch": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {},
+        "Wizard": {
+            "Default": {
+                "Name": "ZBufferCatch",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            }
+        }
+    }
+}

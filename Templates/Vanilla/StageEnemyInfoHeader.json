@@ -1,0 +1,18 @@
+﻿{
+    "Enemy Appearance Info Table": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {},
+        "Wizard": {
+            "Default": {
+                "Name": "敵出現テーブル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            }
+        }
+    }
+}

@@ -1,0 +1,39 @@
+﻿{
+    "Female Jellyfish Noki Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SharedSetNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "クラゲマレー女マネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "npc/npc_mare_shared",
+                        "npc/npc_marew",
+                        "npc/npc_marewa"
+                    ]
+                },
+                "Members": {
+                    "Character": "クラゲマレー女マネージャー キャラ",
+                    "MaxNum": 100,
+                    "SharedSetNum": 0
+                }
+            }
+        }
+    }
+}

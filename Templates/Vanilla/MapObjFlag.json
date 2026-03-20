@@ -1,0 +1,293 @@
+﻿{
+    "Flag": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Object": {
+                "Type": "STRING",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "White Flag": {
+                "Name": "flagWhite",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/flag_white"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            8,
+                            2
+                        ]
+                    ],
+                    "Character": "flagWhite キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "flagWhite"
+                }
+            },
+            "Red Sun Flag": {
+                "Name": "flagRedsun",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/flag_redsun"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            4.3,
+                            7
+                        ]
+                    ],
+                    "Character": "flagRedsun キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "flagRedsun"
+                }
+            },
+            "Pianta Banner": {
+                "Name": "flagMonte",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/flag_monte"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            8,
+                            2
+                        ]
+                    ],
+                    "Character": "flagMonte キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "flagMonte"
+                }
+            },
+            "Bianco Hills Flag": {
+                "Name": "flagBianco",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/flag_bianco"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            8,
+                            8,
+                            8
+                        ]
+                    ],
+                    "Character": "flagBianco キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "flagBianco"
+                }
+            },
+            "Ricco Harbor Buoy Flag": {
+                "Name": "flagRiccoBuoy",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/flag_riccobuoy"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            4.5,
+                            4,
+                            4.5
+                        ]
+                    ],
+                    "Character": "flagRiccoBuoy キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "flagRiccoBuoy"
+                }
+            },
+            "Gelato Beach Yacht Flag": {
+                "Name": "MammaYacht00",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/flag_mammayacht00"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            2.5,
+                            3.8
+                        ]
+                    ],
+                    "Character": "MammaYacht00 キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "MammaYacht00"
+                }
+            },
+            "Noki Bay Flag": {
+                "Name": "flagMare",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/flag_mare"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            6.5,
+                            6.5,
+                            26
+                        ]
+                    ],
+                    "Character": "flagMare キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "flagMare"
+                }
+            }
+        }
+    }
+}

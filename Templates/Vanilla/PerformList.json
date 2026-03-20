@@ -1,0 +1,30 @@
+﻿{
+    "Perform List": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Name": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Flags": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "PerformList",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Name": "",
+                    "Flags": 0
+                }
+            }
+        }
+    }
+}

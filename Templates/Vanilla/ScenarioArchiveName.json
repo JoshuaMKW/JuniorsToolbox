@@ -1,0 +1,25 @@
+﻿{
+    "Scenario Archive Name": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Name": {
+                "Type": "STRING",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "予約",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Name": "none.arc"
+                }
+            }
+        }
+    }
+}

@@ -411,15 +411,15 @@ namespace Toolbox {
                 break;
             }
             case MetaType::RGB: {
-                Color::RGB24 new_color;
+                Color::RGB8 new_color;
                 Deserializer::BytesToObject(value_buf, new_color);
-                new_meta_value.set<Color::RGB24>(new_color);
+                new_meta_value.set<Color::RGB8>(new_color);
                 break;
             }
             case MetaType::RGBA: {
-                Color::RGBA32 new_color;
+                Color::RGBA8 new_color;
                 Deserializer::BytesToObject(value_buf, new_color);
-                new_meta_value.set<Color::RGBA32>(new_color);
+                new_meta_value.set<Color::RGBA8>(new_color);
                 break;
             }
             case MetaType::UNKNOWN: {

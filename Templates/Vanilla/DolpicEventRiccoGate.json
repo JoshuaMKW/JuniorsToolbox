@@ -1,0 +1,56 @@
+﻿{
+    "Boathouse Sink Event": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Warp": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "イベント（リコゲート）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "マニ屋上げデモカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "event/mapev_dolpic_ricco"
+                    ]
+                },
+                "Members": {
+                    "Warp": "マリオ（マニ屋）",
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ]
+                }
+            }
+        }
+    }
+}

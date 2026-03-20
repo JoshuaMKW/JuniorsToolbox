@@ -1,0 +1,168 @@
+﻿{
+    "Sunflower Kid": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Manager": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Rail": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "BodyColor": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ClothesColor": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "PollutionValue": {
+                "Type": "INT",
+                "Min": 0,
+                "Max": 255,
+                "ArraySize": 1
+            },
+            "Acc1Color": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Acc2Color": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Acc3Color": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Accessory": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Action": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ThrowFlag": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ThrowVelH": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ThrowVelV": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "RewardID": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "ひまわり0",
+                "Dependencies": {
+                    "Managers": {
+                        "SunflowerSManager": {
+                            "Name": "小ひまわりマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "小ひまわりマネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "小ひまわりマネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 255,
+                    "ClothesColor": 255,
+                    "PollutionValue": 255,
+                    "Acc1Color": 255,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": -1,
+                    "Action": 120,
+                    "ThrowFlag": 100,
+                    "ThrowVelH": -1,
+                    "ThrowVelV": -1,
+                    "RewardID": -1
+                }
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [
+                    "sunflowers/sunflower_s_down.bck",
+                    "sunflowers/sunflower_s_down.btp",
+                    "sunflowers/sunflower_s_stand.bck",
+                    "sunflowers/sunflower_s_stand.brk",
+                    "sunflowers/sunflower_s_stand.btp",
+                    "sunflowers/sunflower_s_wait.bck",
+                    "sunflowers/sunflower_s_wet.bck",
+                    "sunflowers/sunflower_s_wet.btp",
+                    "sunflowers/sunflower_s_wet_b.bck",
+                    "sunflowers/sunflower_s_wet_b.btp",
+                    "sunflowers/sunflower_s_wink.btp"
+                ],
+                "Model": "sunflowers/sunflower_s.bmd"
+            }
+        }
+    }
+}

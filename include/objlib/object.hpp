@@ -742,7 +742,6 @@ namespace Toolbox::Object {
         void applyWizard(const TemplateWizard &wizard);
 
         Result<void, FSError> loadRenderData(const std::filesystem::path &asset_path,
-                                             const TemplateRenderInfo &info,
                                              ResourceCache &resource_cache);
 
     public:
@@ -753,47 +752,7 @@ namespace Toolbox::Object {
         Result<void, SerialError> gameSerialize(Serializer &out) const override;
         Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
-        ScopePtr<ISmartResource> clone(bool deep) const override {
-            auto obj         = make_scoped<PhysicalSceneObject>();
-            obj->m_type      = m_type;
-            obj->m_nameref   = m_nameref;
-            obj->m_parent    = nullptr;
-            obj->m_transform = m_transform;
-
-            obj->m_scene_resource_path = m_scene_resource_path;
-
-            obj->m_members.reserve(m_members.size());
-            if (deep) {
-                for (const auto &member : m_members) {
-                    auto new_member = make_deep_clone<MetaMember>(member);
-                    obj->m_members.push_back(std::move(new_member));
-                }
-            } else {
-                for (const auto &member : m_members) {
-                    auto new_member = make_clone<MetaMember>(member);
-                    obj->m_members.push_back(std::move(new_member));
-                }
-            }
-#if 0
-            if (m_model_instance)
-                obj->m_model_instance = make_referable<J3DModelInstance>(*m_model_instance);
-
-            if (m_model_data)
-                obj->m_model_data = make_referable<J3DModelData>(*m_model_data);
-#else
-
-            obj->m_template = m_template;
-            obj->m_wizard   = m_wizard;
-
-            std::optional<TemplateWizard> wizard = m_template.getWizard(obj->m_wizard);
-            if (wizard) {
-                obj->loadRenderData(obj->m_scene_resource_path, wizard->m_render_info,
-                                    getResourceCache());
-            }
-#endif
-
-            return obj;
-        }
+        ScopePtr<ISmartResource> clone(bool deep) const override;
 
     protected:
         void HelperUpdateKinojiRender();

@@ -1,0 +1,127 @@
+{
+    "ArrowBoardLR": {
+        "Textures": {},
+        "Animations": [ "mapobj/arrowboard.bmt" ],
+        "Model": "mapobj/arrowboardlr.bmd"
+    },
+    "ArrowBoardUp": {
+        "Textures": {},
+        "Animations": [ "mapobj/arrowboard.bmt" ],
+        "Model": "mapobj/arrowboardup.bmd"
+    },
+    "ArrowBoardDown": {
+        "Textures": {},
+        "Animations": [ "mapobj/arrowboard.bmt" ],
+        "Model": "mapobj/arrowboarddown.bmd"
+    },
+    "back_nozzle_item": {
+        "Textures": { "H_watergun_main_dummy": "mapobj/nozzleitem.bmt" },
+        "Animations": [],
+        "Model": "mapobj/back_nozzle_item.bmd"
+    },
+    "bottle_short": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/bottle_short.bmd"
+    },
+    "bottle_large": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/bottle_large.bmd"
+    },
+    "flagBianco": {
+        "Textures": { "flag": "mapobj/flagbianco.bti" },
+        "Animations": [],
+        "Model": ""
+    },
+    "flagMare": {
+        "Textures": { "flag": "mapobj/flagmare.bti" },
+        "Animations": [],
+        "Model": ""
+    },
+    "flagMonte": {
+        "Textures": { "flag": "mapobj/flagmonte.bti" },
+        "Animations": [],
+        "Model": ""
+    },
+    "flagRedsun": {
+        "Textures": { "flag": "mapobj/flagredsun.bti" },
+        "Animations": [],
+        "Model": ""
+    },
+    "flagRiccoBuoy": {
+        "Textures": { "flag": "mapobj/flagriccobuoy.bti" },
+        "Animations": [],
+        "Model": ""
+    },
+    "flagWhite": {
+        "Textures": { "flag": "mapobj/flagwhite.bti" },
+        "Animations": [],
+        "Model": ""
+    },
+    "MammaYacht00": {
+        "Textures": { "flag": "mapobj/mammayacht00.bti" },
+        "Animations": [],
+        "Model": ""
+    },
+    "mario_cap": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/mariocap.bmd"
+    },
+    "normal_nozzle_item": {
+        "Textures": { "H_watergun_main_dummy": "mapobj/nozzleitem.bmt" },
+        "Animations": [],
+        "Model": "mapobj/normal_nozzle_item.bmd"
+    },
+    "nozzleDoor": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/nozzledoor.bmd"
+    },
+    "palmNormal": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/palmnormal.bmd"
+    },
+    "palmLeaf": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/palmleaf.bmd"
+    },
+    "palmNatume": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/palmnatume.bmd"
+    },
+    "palmOugi": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/palmogui.bmd"
+    },
+    "palmSago": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/palmsago.bmd"
+    },
+    "rocket_nozzle_item": {
+        "Textures": { "H_watergun_main_dummy": "mapobj/nozzleitem.bmt" },
+        "Animations": [],
+        "Model": "mapobj/rocket_nozzle_item.bmd"
+    },
+    "shine": {
+        "Textures": {},
+        "Animations": [ "mapobj/shine_float.bck" ],
+        "Model": "mapobj/shine.bmd"
+    },
+    "watergun_item": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/watergun_item.bmd"
+    },
+    "yoshi_whistle_item": {
+        "Textures": {},
+        "Animations": [],
+        "Model": ""
+    }
+}

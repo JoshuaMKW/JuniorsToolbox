@@ -1,0 +1,169 @@
+﻿{
+    "Map": {
+        "Enums": {},
+        "Structs": {
+            "WarpPoint": {
+                "WarpPoint": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                },
+                "Transform": {
+                    "Type": "TRANSFORM",
+                    "ArraySize": 1
+                }
+            },
+            "Warp": {
+                "PointArray": {
+                    "Type": "WarpPoint",
+                    "ArraySize": 2
+                }
+            },
+            "JointRender": {
+                "JointArray": {
+                    "Type": "INT",
+                    "ArraySize": 2
+                }
+            },
+            "XluJointInfo": {
+                "Unknown1": {
+                    "Type": "UNKNOWN",
+                    "ArraySize": 1
+                },
+                "Unknown2": {
+                    "Type": "UNKNOWN",
+                    "ArraySize": 1
+                },
+                "Unknown3": {
+                    "Type": "UNKNOWN",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "XluJointNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "XluJointArray": {
+                "Type": "XluJointInfo",
+                "ArraySize": "XluJointNum"
+            },
+            "ColGridX": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ColGridZ": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "BGCheckDataCount": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "BGCheckListCount": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "BGCheckListWarpCount": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "WarpNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "InitWarpIdx": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "JointRenderArray": {
+                "Type": "JointRender",
+                "ArraySize": "WarpNum"
+            },
+            "WarpArray": {
+                "Type": "Warp",
+                "ArraySize": "WarpNum"
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "マップ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "XluJointNum": 0,
+                    "XluJointArray": {
+                        "Unknown1": 0,
+                        "Unknown2": 0,
+                        "Unknown3": 0
+                    },
+                    "ColGridX": 40,
+                    "ColGridZ": 40,
+                    "BGCheckDataCount": 12000,
+                    "BGCheckListCount": 25000,
+                    "BGCheckListWarpCount": 2000,
+                    "WarpNum": 0
+                }
+            },
+            "Map (1 Warp)": {
+                "Name": "マップ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "XluJointNum": 0,
+                    "XluJointArray": {
+                        "Unknown1": 0,
+                        "Unknown2": 0,
+                        "Unknown3": 0
+                    },
+                    "ColGridX": 40,
+                    "ColGridZ": 40,
+                    "BGCheckDataCount": 12000,
+                    "BGCheckListCount": 25000,
+                    "BGCheckListWarpCount": 2000,
+                    "WarpNum": 1,
+                    "InitWarpIdx": 0,
+                    "JointRenderArray": {
+                        "JointArray": 0
+                    },
+                    "WarpArray": {
+                        "PointArray": {
+                            "Name": "WarpX",
+                            "Transform": [
+                                [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                [
+                                    1,
+                                    1,
+                                    1
+                                ]
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "map/map/map.bmd"
+            },
+            "マップ": {
+                "Model": "map/map/map.bmd"
+            }
+        }
+    }
+}

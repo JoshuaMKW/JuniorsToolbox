@@ -1,0 +1,213 @@
+﻿{
+    "Male Noki": {
+        "Enums": {
+            "Accessories": {
+                "Type": "INT",
+                "Flags": {
+                    "Scallop": "0x1",
+                    "Sundial": "0x2",
+                    "NULL": "0x4",
+                    "Babylon": "0x8",
+                    "Shell A": "0x10",
+                    "Shell B": "0x20",
+                    "Glasses": "0x40",
+                    "Bivalve Shell": "0x80"
+                },
+                "Multi": true
+            }
+        },
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Manager": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Rail": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "BodyColor": {
+                "Type": "INT",
+                "Min": 0,
+                "Max": 5,
+                "ArraySize": 1
+            },
+            "ClothesColor": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "PollutionValue": {
+                "Type": "INT",
+                "Min": 0,
+                "Max": 255,
+                "ArraySize": 1
+            },
+            "Acc1Color": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Acc2Color": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Acc3Color": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Accessory": {
+                "Type": "Accessories",
+                "ArraySize": 1
+            },
+            "Action": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ThrowFlag": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ThrowVelH": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ThrowVelV": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "RewardID": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "マレー族男",
+                "Dependencies": {
+                    "Managers": {
+                        "MareMManager": {
+                            "Name": "マレー族男マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "マレー族男マネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "マレー族男マネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 1,
+                    "ClothesColor": 255,
+                    "PollutionValue": 0,
+                    "Acc1Color": 0,
+                    "Acc2Color": 0,
+                    "Acc3Color": 0,
+                    "Accessory": 34,
+                    "Action": 120,
+                    "ThrowFlag": 100,
+                    "ThrowVelH": -1,
+                    "ThrowVelV": -1,
+                    "RewardID": -1
+                }
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Textures": {
+                    "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti"
+                },
+                "Animations": [
+                    "marem/marem_appear.bck",
+                    "marem/marem_cry.btp",
+                    "marem/marem_dance.bck",
+                    "marem/marem_fall.bck",
+                    "marem/marem_happy.bck",
+                    "marem/marem_jump.bck",
+                    "marem/marem_jump.btp",
+                    "marem/marem_recover.bck",
+                    "marem/marem_recover.btp",
+                    "marem/marem_run.bck",
+                    "marem/marem_sad.btp",
+                    "marem/marem_sit.bck",
+                    "marem/marem_sittalk.bck",
+                    "marem/marem_sleep.btp",
+                    "marem/marem_sleep_a.btp",
+                    "marem/marem_smile.btp",
+                    "marem/marem_stand.bck",
+                    "marem/marem_stand.btp",
+                    "marem/marem_stand_a.bck",
+                    "marem/marem_stand_a.btp",
+                    "marem/marem_step.bck",
+                    "marem/marem_talk.bck",
+                    "marem/marem_talk.btp",
+                    "marem/marem_wait.bck",
+                    "marem/marem_wait_a.bck",
+                    "marem/marem_wait_fall.bck",
+                    "marem/marem_wait_yogure.bck",
+                    "marem/marem_walk.bck",
+                    "marem/marem_wash.bck",
+                    "marem/marem_wash.btp",
+                    "marem/marem_wet.bck",
+                    "marem/marem_wet.btp",
+                    "marem/marem_wet_a.bck",
+                    "marem/marem_wet_a.btp",
+                    "marem/marem_wink.btp",
+                    "marem/marem_wink_a.btp"
+                ],
+                "Model": "marem/marem.bmd"
+            }
+        }
+    }
+}

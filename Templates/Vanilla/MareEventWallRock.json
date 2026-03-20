@@ -1,0 +1,20 @@
+﻿{
+    "Noki Bay Cliffs Sink Event": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {},
+        "Wizard": {
+            "Default": {
+                "Name": "イベント（マーレ壁岩）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "event/mapev_mare"
+                    ]
+                },
+                "Members": {}
+            }
+        }
+    }
+}

@@ -538,7 +538,7 @@ namespace Toolbox::UI {
         m_colors.resize(m_member->arraysize());
         m_array_open.resize(m_member->arraysize(), true);
         for (size_t i = 0; i < m_colors.size(); ++i) {
-            auto color = Object::getMetaValue<Color::RGBA32>(m_member, i).value();
+            auto color = Object::getMetaValue<Color::RGBA8>(m_member, i).value();
             f32 r, g, b, a;
             color.getColor(r, g, b, a);
             m_colors.at(i) = Color::RGBAShader(r, g, b, a);
@@ -581,16 +581,16 @@ namespace Toolbox::UI {
 
                     if (use_alpha) {
                         if (ImGui::ColorEdit4(name.c_str(), &color.m_r)) {
-                            if (Object::setMetaValue<Color::RGBA32>(
+                            if (Object::setMetaValue<Color::RGBA8>(
                                     m_member, i,
-                                    Color::RGBA32(color.m_r, color.m_g, color.m_b, color.m_a))) {
+                                    Color::RGBA8(color.m_r, color.m_g, color.m_b, color.m_a))) {
                                 any_changed = true;
                             }
                         }
                     } else {
                         if (ImGui::ColorEdit3(name.c_str(), &color.m_r)) {
-                            if (Object::setMetaValue<Color::RGB24>(
-                                    m_member, i, Color::RGB24(color.m_r, color.m_g, color.m_b))) {
+                            if (Object::setMetaValue<Color::RGB8>(
+                                    m_member, i, Color::RGB8(color.m_r, color.m_g, color.m_b))) {
                                 any_changed = true;
                             }
                         }
@@ -614,15 +614,15 @@ namespace Toolbox::UI {
 
         if (use_alpha) {
             if (ImGui::ColorEdit4(m_member->name().c_str(), &color.m_r)) {
-                if (Object::setMetaValue<Color::RGBA32>(
-                        m_member, 0, Color::RGBA32(color.m_r, color.m_g, color.m_b, color.m_a))) {
+                if (Object::setMetaValue<Color::RGBA8>(
+                        m_member, 0, Color::RGBA8(color.m_r, color.m_g, color.m_b, color.m_a))) {
                     any_changed = true;
                 }
             }
         } else {
             if (ImGui::ColorEdit3(m_member->name().c_str(), &color.m_r)) {
-                if (Object::setMetaValue<Color::RGB24>(
-                        m_member, 0, Color::RGB24(color.m_r, color.m_g, color.m_b))) {
+                if (Object::setMetaValue<Color::RGB8>(
+                        m_member, 0, Color::RGB8(color.m_r, color.m_g, color.m_b))) {
                     any_changed = true;
                 }
             }
@@ -1099,7 +1099,8 @@ namespace Toolbox::UI {
             return make_scoped<EnumProperty>(m_member);
         } else if (meta_type == Object::MetaType::STRING) {
             return make_scoped<StringProperty>(m_member);
-        } else if (meta_type == Object::MetaType::RGB || meta_type == Object::MetaType::RGBA) {
+        } else if (meta_type == Object::MetaType::RGB || meta_type == Object::MetaType::RGBA ||
+                   meta_type == Object::MetaType::RGB32 || meta_type == Object::MetaType::RGBA32) {
             return make_scoped<ColorProperty>(m_member);
         } else if (meta_type == Object::MetaType::VEC3) {
             return make_scoped<VectorProperty>(m_member);

@@ -1,0 +1,78 @@
+﻿{
+    "Road to the Big Windmill Sink Event": {
+        "Enums": {},
+        "Structs": {
+            "BuildingInfo": {
+                "Region": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "PollutionLayerIdx": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "BuildingNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "BuildingIdxInit": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "BuildingArray": {
+                "Type": "BuildingInfo",
+                "ArraySize": "BuildingNum"
+            },
+            "Warp": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "イベント（地形沈むビアンコ）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "camera/cam_mapevent_bianco",
+                        "event/mapev_bianco"
+                    ]
+                },
+                "Members": {
+                    "BuildingNum": 0,
+                    "BuildingIdxInit": 1,
+                    "BuildingArray": {
+                        "Region": 0,
+                        "PollutionLayerIdx": 1
+                    },
+                    "Warp": "マリオ（ビアンコ坂上げ）",
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ]
+                }
+            }
+        }
+    }
+}

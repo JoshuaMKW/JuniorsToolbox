@@ -1,0 +1,30 @@
+﻿{
+    "LiveActor Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "ライブアクターマネージャ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "null キャラ",
+                    "MaxNum": 100
+                }
+            }
+        }
+    }
+}

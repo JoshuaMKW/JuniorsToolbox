@@ -1,0 +1,30 @@
+﻿{
+    "Flag Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "旗マネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "旗マネージャー キャラ",
+                    "MaxNum": 20
+                }
+            }
+        }
+    }
+}

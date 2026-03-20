@@ -1,0 +1,88 @@
+﻿{
+    "Hinokuri2": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Manager": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Rail": {
+                "Type": "STRING",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "ヒノクリ２",
+                "Dependencies": {
+                    "Managers": {
+                        "HinoKuri2Manager": {
+                            "Name": "ヒノクリ２マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ヒノクリ２マネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "ヒノクリ２マネージャー",
+                    "Rail": "hinokuri"
+                }
+            }
+        }
+    }
+}

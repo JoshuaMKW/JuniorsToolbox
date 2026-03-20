@@ -36,6 +36,10 @@ namespace Toolbox::Object {
             return 3;  // RGB is 3 bytes
         case MetaType::RGBA:
             return 4;  // RGBA is 4 bytes
+        case MetaType::RGB32:
+            return 12;  // RGB32 is 12 bytes
+        case MetaType::RGBA32:
+            return 16;  // RGBA32 is 16 bytes
         default:
             /*TOOLBOX_WARN("[MetaValue] Unknown type for size computation: {}",
                          magic_enum::enum_name(m_type));*/
@@ -110,8 +114,12 @@ namespace Toolbox::Object {
             case MetaType::MTX34:
                 return set<glm::mat3x4>(std::any_cast<glm::mat3x4>(variant));
             case MetaType::RGB:
-                return set<Color::RGB24>(std::any_cast<Color::RGB24>(variant));
+                return set<Color::RGB8>(std::any_cast<Color::RGB8>(variant));
             case MetaType::RGBA:
+                return set<Color::RGBA8>(std::any_cast<Color::RGBA8>(variant));
+            case MetaType::RGB32:
+                return set<Color::RGB32>(std::any_cast<Color::RGB32>(variant));
+            case MetaType::RGBA32:
                 return set<Color::RGBA32>(std::any_cast<Color::RGBA32>(variant));
             case MetaType::UNKNOWN:
                 return set<Buffer>(std::any_cast<Buffer>(variant));
@@ -181,13 +189,24 @@ namespace Toolbox::Object {
                 break;
             }
             case MetaType::RGB: {
-                Color::RGB24 new_value(j[0].get<u8>(), j[1].get<u8>(), j[2].get<u8>());
+                Color::RGB8 new_value(j[0].get<u8>(), j[1].get<u8>(), j[2].get<u8>());
                 set(new_value);
                 break;
             }
             case MetaType::RGBA: {
-                Color::RGBA32 new_value(j[0].get<u8>(), j[1].get<u8>(), j[2].get<u8>(),
+                Color::RGBA8 new_value(j[0].get<u8>(), j[1].get<u8>(), j[2].get<u8>(),
                                         j[3].get<u8>());
+                set(new_value);
+                break;
+            }
+            case MetaType::RGB32: {
+                Color::RGB32 new_value(j[0].get<u32>(), j[1].get<u32>(), j[2].get<u32>());
+                set(new_value);
+                break;
+            }
+            case MetaType::RGBA32: {
+                Color::RGBA32 new_value(j[0].get<u32>(), j[1].get<u32>(), j[2].get<u32>(),
+                                       j[3].get<u32>());
                 set(new_value);
                 break;
             }
@@ -272,8 +291,12 @@ namespace Toolbox::Object {
         case MetaType::TRANSFORM:
             return std::format("{}", get<Transform>().value());
         case MetaType::RGB:
-            return std::format("{}", get<Color::RGB24>().value());
+            return std::format("{}", get<Color::RGB8>().value());
         case MetaType::RGBA:
+            return std::format("{}", get<Color::RGBA8>().value());
+        case MetaType::RGB32:
+            return std::format("{}", get<Color::RGB32>().value());
+        case MetaType::RGBA32:
             return std::format("{}", get<Color::RGBA32>().value());
         case MetaType::UNKNOWN: {
             const char *byte_buf = buf().buf<char>();
@@ -379,11 +402,21 @@ namespace Toolbox::Object {
                 break;
             }
             case MetaType::RGB: {
-                auto rgb = get<Color::RGB24>().value();
+                auto rgb = get<Color::RGB8>().value();
                 rgb.serialize(out);
                 break;
             }
             case MetaType::RGBA: {
+                auto rgba = get<Color::RGBA8>().value();
+                rgba.serialize(out);
+                break;
+            }
+            case MetaType::RGB32: {
+                auto rgb = get<Color::RGB32>().value();
+                rgb.serialize(out);
+                break;
+            }
+            case MetaType::RGBA32: {
                 auto rgba = get<Color::RGBA32>().value();
                 rgba.serialize(out);
                 break;
@@ -457,12 +490,24 @@ namespace Toolbox::Object {
                 break;
             }
             case MetaType::RGB: {
-                Color::RGB24 rgb;
+                Color::RGB8 rgb;
                 rgb.deserialize(in);
                 set(rgb);
                 break;
             }
             case MetaType::RGBA: {
+                Color::RGBA8 rgba;
+                rgba.deserialize(in);
+                set(rgba);
+                break;
+            }
+            case MetaType::RGB32: {
+                Color::RGB32 rgb;
+                rgb.deserialize(in);
+                set(rgb);
+                break;
+            }
+            case MetaType::RGBA32: {
                 Color::RGBA32 rgba;
                 rgba.deserialize(in);
                 set(rgba);

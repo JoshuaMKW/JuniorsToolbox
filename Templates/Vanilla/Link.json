@@ -1,0 +1,35 @@
+﻿{
+    "Shadow Mario Node Link": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Link1": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Link2": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Link3": {
+                "Type": "STRING",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "Node",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Link1": "*",
+                    "Link2": "*",
+                    "Link3": "*"
+                }
+            }
+        }
+    }
+}

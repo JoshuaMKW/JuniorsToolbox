@@ -1,0 +1,57 @@
+﻿{
+    "Airstrip Runway Sink Event": {
+        "Enums": {},
+        "Structs": {
+            "BuildingInfo": {
+                "Region": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "PollutionLayerIdx": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "BuildingNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "BuildingIdxInit": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "BuildingArray": {
+                "Type": "BuildingInfo",
+                "ArraySize": "BuildingNum"
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "イベント（地形沈む空港）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "CameraMapInfo": {
+                            "Name": "空港坂上げカメラ",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "マップツールカメラテーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "BuildingNum": 0,
+                    "BuildingIdxInit": 1,
+                    "BuildingArray": {
+                        "Region": 0,
+                        "PollutionLayerIdx": 1
+                    }
+                }
+            }
+        }
+    }
+}

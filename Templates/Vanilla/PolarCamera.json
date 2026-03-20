@@ -1,0 +1,39 @@
+﻿{
+    "PolarCamera": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Position": {
+                "Type": "VEC3F",
+                "ArraySize": 1
+            },
+            "Pitch": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            },
+            "Roll": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "PolarCamera",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Pitch": 0,
+                    "Roll": 0
+                }
+            }
+        }
+    }
+}

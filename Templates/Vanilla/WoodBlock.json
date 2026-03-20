@@ -1,0 +1,354 @@
+﻿{
+    "Wood Block": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Object": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Rail": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "BounceVel": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            },
+            "Color": {
+                "Type": "RGB32",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Wood Triangle Block": {
+                "Name": "WoodBlockTriangle",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_woodblocktriangle"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "WoodBlockTriangle キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "WoodBlockTriangle",
+                    "Rail": "(null)",
+                    "BounceVel": -1,
+                    "Color": [
+                        255,
+                        255,
+                        255
+                    ]
+                }
+            },
+            "Long Wood Block": {
+                "Name": "WoodBlockLong",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_woodblocklong"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "WoodBlockLong キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "WoodBlockLong",
+                    "Rail": "(null)",
+                    "BounceVel": -1,
+                    "Color": [
+                        255,
+                        255,
+                        255
+                    ]
+                }
+            },
+            "Large Wood Block": {
+                "Name": "WoodBlockLarge",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_woodblocklarge"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "WoodBlockLarge キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "WoodBlockLarge",
+                    "Rail": "(null)",
+                    "BounceVel": -1,
+                    "Color": [
+                        255,
+                        255,
+                        255
+                    ]
+                }
+            },
+            "Wood L Block": {
+                "Name": "WoodBlockL",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_woodblockl"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "WoodBlockL キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "WoodBlockL",
+                    "Rail": "(null)",
+                    "BounceVel": -1,
+                    "Color": [
+                        255,
+                        255,
+                        255
+                    ]
+                }
+            },
+            "Wood Bridge Block": {
+                "Name": "WoodBlockBridge",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_woodblockbridge"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "WoodBlockBridge キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "WoodBlockBridge",
+                    "Rail": "(null)",
+                    "BounceVel": -1,
+                    "Color": [
+                        255,
+                        255,
+                        255
+                    ]
+                }
+            },
+            "Wood Cone Block": {
+                "Name": "WoodBlockCone",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_woodblockcone"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "WoodBlockCone キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "WoodBlockCone",
+                    "Rail": "(null)",
+                    "BounceVel": -1,
+                    "Color": [
+                        255,
+                        255,
+                        255
+                    ]
+                }
+            },
+            "Wood Cube Block": {
+                "Name": "WoodBlockCube",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_woodblockcube"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "WoodBlockCube キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "WoodBlockCube",
+                    "Rail": "(null)",
+                    "BounceVel": -1,
+                    "Color": [
+                        255,
+                        255,
+                        255
+                    ]
+                }
+            }
+        }
+    }
+}

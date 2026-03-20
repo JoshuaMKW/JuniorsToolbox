@@ -1,0 +1,99 @@
+﻿{
+    "General Cube Table": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {},
+        "Wizard": {
+            "Camera Cube Table": {
+                "Name": "カメラキューブテーブル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            },
+            "Mirror Cube Table": {
+                "Name": "鏡キューブテーブル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            },
+            "Wire Cube Table": {
+                "Name": "ワイヤーキューブテーブル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            },
+            "Shadow Cube Table": {
+                "Name": "影キューブテーブル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            },
+            "Area Cube Table": {
+                "Name": "影キューブテーブル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            },
+            "Fast Cube A Table": {
+                "Name": "高速Ａキューブテーブル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            },
+            "Fast Cube B Table": {
+                "Name": "高速Ｂキューブテーブル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            },
+            "Fast Cube C Table": {
+                "Name": "高速Ｃキューブテーブル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            },
+            "Sound Change Cube Table": {
+                "Name": "サウンド切り替えキューブテーブル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            },
+            "Sound Effect Cube Table": {
+                "Name": "サウンドエフェクトキューブテーブル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {}
+            }
+        }
+    }
+}

@@ -1,0 +1,413 @@
+﻿{
+    "Enemy Mario": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Manager": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Rail": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Behavior": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Path0Node": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Path1Node": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Path2Node": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Path3Node": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Path4Node": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Shadow Mario": {
+                "Name": "マリオモドキ_0",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "enemy/enm_emario_kagemario"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "マリオモドキ キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "マリオモドキマネージャー",
+                    "Rail": "mariomodoki",
+                    "Behavior": 0,
+                    "Path0Node": 0,
+                    "Path1Node": 255,
+                    "Path2Node": 255,
+                    "Path3Node": 255,
+                    "Path4Node": 255
+                }
+            },
+            "Shadow Mario - Instance 2": {
+                "Name": "マリオモドキ_1",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "enemy/enm_emario_kagemario"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "マリオモドキ キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "マリオモドキマネージャー",
+                    "Rail": "mariomodoki",
+                    "Behavior": 0,
+                    "Path0Node": 0,
+                    "Path1Node": 255,
+                    "Path2Node": 255,
+                    "Path3Node": 255,
+                    "Path4Node": 255
+                }
+            },
+            "Shadow Mario - Instance 3": {
+                "Name": "マリオモドキ_2",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "enemy/enm_emario_kagemario"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "マリオモドキ キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "マリオモドキマネージャー",
+                    "Rail": "mariomodoki",
+                    "Behavior": 0,
+                    "Path0Node": 0,
+                    "Path1Node": 255,
+                    "Path2Node": 255,
+                    "Path3Node": 255,
+                    "Path4Node": 255
+                }
+            },
+            "Shadow Mario - Instance 4": {
+                "Name": "マリオモドキ_3",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "enemy/enm_emario_kagemario"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "マリオモドキ キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "マリオモドキマネージャー",
+                    "Rail": "mariomodoki",
+                    "Behavior": 0,
+                    "Path0Node": 0,
+                    "Path1Node": 255,
+                    "Path2Node": 255,
+                    "Path3Node": 255,
+                    "Path4Node": 255
+                }
+            },
+            "Il Piantissimo": {
+                "Name": "モンテマン",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "enemy/enm_emario_monteman"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "モンテマン キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "マリオモドキマネージャー",
+                    "Rail": "mariomodoki",
+                    "Behavior": 3,
+                    "Path0Node": 0,
+                    "Path1Node": 255,
+                    "Path2Node": 255,
+                    "Path3Node": 255,
+                    "Path4Node": 255
+                }
+            },
+            "Shadow Mario (Player 2)": {
+                "Name": "マリオ２Ｐ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "enemy/enm_emario_kagemario"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "モンテマン キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "マリオモドキマネージャー",
+                    "Rail": "mariomodoki",
+                    "Behavior": 255,
+                    "Path0Node": 255,
+                    "Path1Node": 255,
+                    "Path2Node": 255,
+                    "Path3Node": 255,
+                    "Path4Node": 255
+                }
+            },
+            "Shadow Mario (Player 3)": {
+                "Name": "マリオ３Ｐ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "enemy/enm_emario_kagemario"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "モンテマン キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "マリオモドキマネージャー",
+                    "Rail": "mariomodoki",
+                    "Behavior": 255,
+                    "Path0Node": 255,
+                    "Path1Node": 255,
+                    "Path2Node": 255,
+                    "Path3Node": 255,
+                    "Path4Node": 255
+                }
+            },
+            "Shadow Mario (Player 4)": {
+                "Name": "マリオ４Ｐ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "enemy/enm_emario_kagemario"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "モンテマン キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "マリオモドキマネージャー",
+                    "Rail": "mariomodoki",
+                    "Behavior": 255,
+                    "Path0Node": 255,
+                    "Path1Node": 255,
+                    "Path2Node": 255,
+                    "Path3Node": 255,
+                    "Path4Node": 255
+                }
+            }
+        }
+    }
+}

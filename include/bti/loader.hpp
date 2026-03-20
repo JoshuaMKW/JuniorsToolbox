@@ -13,7 +13,7 @@ namespace Toolbox::Texture {
         IA8,
         RGB565,
         RGB5A3,
-        RGBA32,
+        RGBA8,
         C4 = 8,
         C8,
         C14X2,
@@ -60,7 +60,7 @@ namespace Toolbox::Texture {
             break;
         case Toolbox::Texture::EncodingFormat::RGB5A3:
             break;
-        case Toolbox::Texture::EncodingFormat::RGBA32:
+        case Toolbox::Texture::EncodingFormat::RGBA8:
             break;
         case Toolbox::Texture::EncodingFormat::C4:
             break;

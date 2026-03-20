@@ -1,0 +1,45 @@
+﻿{
+    "Windmill Petey Piranha Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SharedSetNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "軽ボスパックンマネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {
+                        "StageEnemyInfo": {
+                            "Name": "",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "敵出現テーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "enemy/enm_kbosspakkun"
+                    ]
+                },
+                "Members": {
+                    "Character": "軽ボスパックンマネージャー キャラ",
+                    "MaxNum": 1,
+                    "SharedSetNum": 0
+                }
+            }
+        }
+    }
+}

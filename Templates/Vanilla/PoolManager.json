@@ -1,0 +1,40 @@
+﻿{
+    "Pool Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ClipRadius": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            },
+            "FarClip": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "水場マネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "アイテムマネージャー キャラ",
+                    "MaxNum": 10,
+                    "ClipRadius": 290000,
+                    "FarClip": 5000
+                }
+            }
+        }
+    }
+}

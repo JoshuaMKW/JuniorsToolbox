@@ -738,7 +738,7 @@ namespace Toolbox::UI {
         }
 
         u32 value = communicator.read<u32>(true_address).value_or(0);
-        Color::RGB24 rgba_color((u8)((value >> 24) & 0xFF), (u8)((value >> 16) & 0xFF),
+        Color::RGB8 rgba_color((u8)((value >> 24) & 0xFF), (u8)((value >> 16) & 0xFF),
                                 (u8)((value >> 8) & 0xFF));
         f32 r, g, b, a;
         rgba_color.getColor(r, g, b, a);
@@ -762,7 +762,7 @@ namespace Toolbox::UI {
         }
 
         u32 value = communicator.read<u32>(true_address).value_or(0);
-        Color::RGBA32 rgba_color((u8)((value >> 24) & 0xFF), (u8)((value >> 16) & 0xFF),
+        Color::RGBA8 rgba_color((u8)((value >> 24) & 0xFF), (u8)((value >> 16) & 0xFF),
                                  (u8)((value >> 8) & 0xFF), (u8)(value & 0xFF));
         f32 r, g, b, a;
         rgba_color.getColor(r, g, b, a);

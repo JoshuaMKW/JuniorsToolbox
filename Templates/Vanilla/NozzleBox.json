@@ -1,0 +1,262 @@
+﻿{
+    "Nozzle Box": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Object": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Nozzle": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Type": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LaunchVelH": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            },
+            "LaunchVelV": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Hover Nozzle Box": {
+                "Name": "権利ノズルボックス（ホバー）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_nozzle_item",
+                        "object/mapobj_nozzlebox"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ノズルボックス（通常） キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "NozzleBox",
+                    "Nozzle": "normal_nozzle_item",
+                    "Type": "valid",
+                    "LaunchVelH": 100,
+                    "LaunchVelV": -1
+                }
+            },
+            "Turbo Nozzle Box": {
+                "Name": "権利ノズルボックス（背面）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_nozzle_item",
+                        "object/mapobj_nozzlebox"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ノズルボックス（通常） キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "NozzleBox",
+                    "Nozzle": "back_nozzle_item",
+                    "Type": "valid",
+                    "LaunchVelH": 100,
+                    "LaunchVelV": -1
+                }
+            },
+            "Rocket Nozzle Box": {
+                "Name": "権利ノズルボックス（ロケット）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_nozzle_item",
+                        "object/mapobj_nozzlebox"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ノズルボックス（通常） キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "NozzleBox",
+                    "Nozzle": "rocket_nozzle_item",
+                    "Type": "valid",
+                    "LaunchVelH": 100,
+                    "LaunchVelV": -1
+                }
+            },
+            "Turbo Nozzle Box Hologram": {
+                "Name": "ノズルボックス（背面）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_nozzle_item",
+                        "object/mapobj_nozzlebox"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ノズルボックス（通常） キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "NozzleBox",
+                    "Nozzle": "back_nozzle_item",
+                    "Type": "invalid",
+                    "LaunchVelH": 100,
+                    "LaunchVelV": -1
+                }
+            },
+            "Rocket Nozzle Box Hologram": {
+                "Name": "ノズルボックス（ロケット）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_nozzle_item",
+                        "object/mapobj_nozzlebox"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ノズルボックス（通常） キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "NozzleBox",
+                    "Nozzle": "rocket_nozzle_item",
+                    "Type": "invalid",
+                    "LaunchVelH": 100,
+                    "LaunchVelV": -1
+                }
+            }
+        }
+    }
+}

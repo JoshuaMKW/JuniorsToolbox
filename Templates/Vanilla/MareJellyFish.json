@@ -1,0 +1,37 @@
+﻿{
+    "Noki Jellyfish Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SharedSetNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "マーレクラゲマネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "npc/npc_marejellyfish"
+                    ]
+                },
+                "Members": {
+                    "Character": "マーレクラゲマネージャー キャラ",
+                    "MaxNum": 64,
+                    "SharedSetNum": 0
+                }
+            }
+        }
+    }
+}

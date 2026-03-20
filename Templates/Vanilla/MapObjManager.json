@@ -1,0 +1,40 @@
+﻿{
+    "Map Object Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ClipRadius": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            },
+            "FarClip": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Terrain Object Manager": {
+                "Name": "地形オブジェマネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "アイテムマネージャー キャラ",
+                    "MaxNum": 300,
+                    "ClipRadius": 5000,
+                    "FarClip": 500
+                }
+            }
+        }
+    }
+}

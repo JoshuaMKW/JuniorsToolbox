@@ -662,6 +662,8 @@ namespace Toolbox::Scene {
             RefPtr<ISceneObject> group_obj =
                 m_scene_instance->getObjHierarchy()->findObject(manager.m_ancestry);
             if (!group_obj || !group_obj->isGroupObject()) {
+                //group_obj = m_scene_instance->getObjHierarchy()->findObject(manager.m_ancestry);
+                m_valid = false;
                 m_error_callback(
                     std::format("Provided manager ancestry '{}' is not a group object!",
                                 manager.m_ancestry.toString()));
@@ -681,6 +683,15 @@ namespace Toolbox::Scene {
             const fs_path abs_asset_path =
                 (Filesystem::current_path().value_or(".") / "SceneAssets" / asset_path)
                     .lexically_normal();
+
+            if (!Filesystem::is_directory(abs_asset_path).value_or(false)) {
+                m_valid = false;
+                m_error_callback(
+                    std::format("Object of type {} has invalid asset path {} (does not exist)!",
+                                obj_type, asset_path));
+                continue;
+            }
+
             for (const Filesystem::directory_entry dir_entry :
                  Filesystem::recursive_directory_iterator(abs_asset_path)) {
                 if (dir_entry.is_directory()) {
@@ -703,8 +714,9 @@ namespace Toolbox::Scene {
 
         for (const TemplateDependencies::ObjectInfo &obj : dependencies.m_table_objs) {
             RefPtr<ISceneObject> group_obj =
-                m_scene_instance->getObjHierarchy()->findObject(obj.m_ancestry);
+                m_scene_instance->getTableHierarchy()->findObject(obj.m_ancestry);
             if (!group_obj || !group_obj->isGroupObject()) {
+                m_valid = false;
                 m_error_callback(
                     std::format("Provided tables.bin ancestry '{}' is not a group object!",
                                 obj.m_ancestry.toString()));

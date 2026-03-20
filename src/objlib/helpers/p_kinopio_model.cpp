@@ -48,7 +48,7 @@ static void HelperSetKinopioMaterialColors(Toolbox::RefPtr<J3DModelData> model_d
 void PhysicalSceneObject::HelperUpdateKinopioRender() {
     RefPtr<Object::MetaMember> body_color_member    = getMember("BodyColor").value_or(nullptr);
     RefPtr<Object::MetaMember> clothes_color_member    = getMember("ClothesColor").value_or(nullptr);
-    RefPtr<Object::MetaMember> pollute_state_member = getMember("PolluteState").value_or(nullptr);
+    RefPtr<Object::MetaMember> pollute_state_member = getMember("PollutionValue").value_or(nullptr);
     if (!body_color_member || !clothes_color_member || !pollute_state_member) {
         TOOLBOX_DEBUG_LOG("Failed to get parameter for NPCKinopio!");
     } else {

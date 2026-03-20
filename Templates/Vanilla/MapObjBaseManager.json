@@ -1,0 +1,96 @@
+﻿{
+    "Map Object Base Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ClipRadius": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            },
+            "FarClip": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Shine Manager": {
+                "Name": "シャインマネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "アイテムマネージャー キャラ",
+                    "MaxNum": 32,
+                    "ClipRadius": 290000,
+                    "FarClip": 500
+                }
+            },
+            "Tree Manager": {
+                "Name": "木マネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "アイテムマネージャー キャラ",
+                    "MaxNum": 100,
+                    "ClipRadius": 290000,
+                    "FarClip": 1500
+                }
+            },
+            "Large Terrain Object Manager": {
+                "Name": "大型地形オブジェマネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "アイテムマネージャー キャラ",
+                    "MaxNum": 100,
+                    "ClipRadius": 290000,
+                    "FarClip": 10000
+                }
+            },
+            "Far Clip Terrain Object Manager": {
+                "Name": "ファークリップ地形オブジェマネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "アイテムマネージャー キャラ",
+                    "MaxNum": 100,
+                    "ClipRadius": 5000,
+                    "FarClip": 500
+                }
+            },
+            "Vehicle Manager": {
+                "Name": "乗り物マネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "アイテムマネージャー キャラ",
+                    "MaxNum": 100,
+                    "ClipRadius": 290000,
+                    "FarClip": 1500
+                }
+            }
+        }
+    }
+}

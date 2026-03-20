@@ -1,0 +1,238 @@
+﻿{
+    "Male Pianta (Round Collar Shirt)": {
+        "Enums": {
+            "Accessories": {
+                "Type": "INT",
+                "Flags": {
+                    "Hat": "0x1",
+                    "Mustache": "0x2",
+                    "Sunglasses": "0x4",
+                    "Glasses": "0x8",
+                    "Straw Hat": "0x10",
+                    "Sailor Cap": "0x20",
+                    "Shine Cap": "0x40",
+                    "Bell-boy Cap": "0x80",
+                    "Backwards Cap": "0x100",
+                    "Neckerchief": "0x200",
+                    "Bowtie": "0x400",
+                    "Luggage": "0x800"
+                },
+                "Multi": true
+            }
+        },
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Manager": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Rail": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "BodyColor": {
+                "Type": "INT",
+                "Min": 0,
+                "Max": 10,
+                "ArraySize": 1
+            },
+            "ClothesColor": {
+                "Type": "INT",
+                "Min": 0,
+                "Max": 10,
+                "ArraySize": 1
+            },
+            "PollutionValue": {
+                "Type": "INT",
+                "Min": 0,
+                "Max": 255,
+                "ArraySize": 1
+            },
+            "Acc1Color": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Acc2Color": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Acc3Color": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Accessory": {
+                "Type": "Accessories",
+                "ArraySize": 1
+            },
+            "Action": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ThrowFlag": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ThrowVelH": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ThrowVelV": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "RewardID": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "モンテ族男",
+                "Dependencies": {
+                    "Managers": {
+                        "MonteMCManager": {
+                            "Name": "丸襟モンテ男マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "丸襟モンテ男マネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "丸襟モンテ男マネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 0,
+                    "ClothesColor": 0,
+                    "PollutionValue": 0,
+                    "Acc1Color": 255,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": -1,
+                    "Action": 120,
+                    "ThrowFlag": 100,
+                    "ThrowVelH": -1,
+                    "ThrowVelV": -1,
+                    "RewardID": -1
+                }
+            },
+            "Airstrip Sink Guy": {
+                "Name": "空港沈みモンテ",
+                "Dependencies": {
+                    "Managers": {
+                        "MonteMCManager": {
+                            "Name": "丸襟モンテ男マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "丸襟モンテ男マネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "丸襟モンテ男マネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 0,
+                    "ClothesColor": 0,
+                    "PollutionValue": 0,
+                    "Acc1Color": 0,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": 256,
+                    "Action": 0,
+                    "ThrowFlag": 100,
+                    "ThrowVelH": -1,
+                    "ThrowVelV": -1,
+                    "RewardID": -1
+                }
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Textures": {
+                    "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti",
+                    "I_mom_mino_dummyI4": "montemcommon/i_mom_mino_rgba.bti"
+                },
+                "Animations": [],
+                "Model": "montemc/momc_model.bmd"
+            }
+        }
+    }
+}

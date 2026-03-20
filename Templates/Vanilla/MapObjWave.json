@@ -1,0 +1,27 @@
+﻿{
+    "Sea Wave Effect": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "波",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_wave"
+                    ]
+                },
+                "Members": {
+                    "Character": "波 キャラ"
+                }
+            }
+        }
+    }
+}

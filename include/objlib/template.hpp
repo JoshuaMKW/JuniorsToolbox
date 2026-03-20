@@ -155,6 +155,8 @@ namespace Toolbox::Object {
         static create_t create(std::string_view type, bool include_custom);
         static std::vector<create_ret_t> createAll(bool include_custom);
 
+        static ScopePtr<TemplateRenderInfo> findRenderInfo(const std::string &obj_field);
+
         static Result<void, FSError> loadFromCacheBlob(bool is_custom);
         static Result<void, FSError> saveToCacheBlob(bool is_custom);
 

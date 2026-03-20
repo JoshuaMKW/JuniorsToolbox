@@ -1,0 +1,396 @@
+﻿{
+    "Dune Bud Sand Formation": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Object": {
+                "Type": "STRING",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Mushroom": {
+                "Name": "SandBombBaseMushroom",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_sandbomb",
+                        "object/mapobj_sandbombbase",
+                        "object/mapobj_sandbombbase_shared"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "SandBombBaseMushroom キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "SandBombBaseMushroom"
+                }
+            },
+            "Pyramid": {
+                "Name": "SandBombBasePyramid",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_sandbomb",
+                        "object/mapobj_sandbombbase",
+                        "object/mapobj_sandbombbase_shared"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "SandBombBaseMushroom キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "SandBombBasePyramid"
+                }
+            },
+            "Dung": {
+                "Name": "SandBombBaseShit",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_sandbomb",
+                        "object/mapobj_sandbombbase",
+                        "object/mapobj_sandbombbase_shared"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "SandBombBaseMushroom キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "SandBombBaseShit"
+                }
+            },
+            "Star": {
+                "Name": "SandBombBaseStar",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_sandbomb",
+                        "object/mapobj_sandbombbase",
+                        "object/mapobj_sandbombbase_shared"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "SandBombBaseMushroom キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "SandBombBaseStar"
+                }
+            },
+            "Turtle": {
+                "Name": "SandBombBaseTurtle",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_sandbomb",
+                        "object/mapobj_sandbombbase",
+                        "object/mapobj_sandbombbase_shared"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "SandBombBaseMushroom キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "SandBombBaseTurtle"
+                }
+            },
+            "Footprint": {
+                "Name": "SandBombBaseFoot",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_sandbomb",
+                        "object/mapobj_sandbombbase",
+                        "object/mapobj_sandbombbase_shared"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "SandBombBaseMushroom キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "SandBombBaseFoot"
+                }
+            },
+            "Handprint": {
+                "Name": "SandBombBaseHand",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_sandbomb",
+                        "object/mapobj_sandbombbase",
+                        "object/mapobj_sandbombbase_shared"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "SandBombBaseMushroom キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "SandBombBaseHand"
+                }
+            },
+            "Staircase": {
+                "Name": "SandBombBaseStairs",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_sandbomb",
+                        "object/mapobj_sandbombbase",
+                        "object/mapobj_sandbombbase_shared"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "SandBombBaseMushroom キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "SandBombBaseStairs"
+                }
+            }
+        },
+        "Rendering": {
+            "SandBombBaseMushroom": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            },
+            "SandBombBasePyramid": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            },
+            "SandBombBaseShit": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            },
+            "SandBombBaseStar": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            },
+            "SandBombBaseTurtle": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            },
+            "SandBombBaseFoot": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            },
+            "SandBombBaseStairs": {
+                "Materials": "mapobj/sandbombbase.bmt",
+                "Animations": [
+                    "mapobj/sandbombbase_water.bck",
+                    "mapobj/sandbombbase_up.bck"
+                ]
+            }
+        }
+    }
+}
