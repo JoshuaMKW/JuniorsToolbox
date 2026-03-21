@@ -29,6 +29,11 @@
         "Animations": [],
         "Model": "mapobj/bottle_large.bmd"
     },
+    "ChipSign": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/chip_sign_model1.bmd"
+    },
     "flagBianco": {
         "Textures": { "flag": "mapobj/flagbianco.bti" },
         "Animations": [],
@@ -58,6 +63,11 @@
         "Textures": { "flag": "mapobj/flagwhite.bti" },
         "Animations": [],
         "Model": ""
+    },
+    "KoopaJrSignM": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/koopa_jr_sign.bmd"
     },
     "MammaYacht00": {
         "Textures": { "flag": "mapobj/mammayacht00.bti" },
@@ -114,10 +124,20 @@
         "Animations": [ "mapobj/shine_float.bck" ],
         "Model": "mapobj/shine.bmd"
     },
+    "star_sign": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/star_sign.bmd"
+    },
     "watergun_item": {
         "Textures": {},
         "Animations": [],
         "Model": "mapobj/watergun_item.bmd"
+    },
+    "WoodBox": {
+        "Textures": { "J_kibako_dammy": "mapobj/kibako.bmt" },
+        "Animations": [],
+        "Model": "mapobj/kibako.bmd"
     },
     "yoshi_whistle_item": {
         "Textures": {},
