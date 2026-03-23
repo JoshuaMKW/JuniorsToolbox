@@ -137,11 +137,6 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual Result<void, BaseError> loadDependencies(const fs_path &dependencies_path) = 0;
 
-        [[nodiscard]] virtual std::optional<std::filesystem::path> getAnimationsPath() const = 0;
-        [[nodiscard]] virtual std::optional<std::string_view>
-        getAnimationName(AnimationType type) const                                = 0;
-        virtual bool loadAnimationData(std::string_view name, AnimationType type) = 0;
-
         [[nodiscard]] virtual J3DLight getLightData(int index) = 0;
 
         [[nodiscard]] virtual bool getCanPerform() const   = 0;
@@ -166,13 +161,6 @@ namespace Toolbox::Object {
         [[nodiscard]] RefPtr<ISceneObject> getChild(const std::string &name) {
             return getChild(QualifiedName(name));
         }
-
-        [[nodiscard]] size_t getAnimationFrames(AnimationType type) const;
-        [[nodiscard]] float getAnimationFrame(AnimationType type) const;
-        void setAnimationFrame(size_t frame, AnimationType type);
-
-        bool startAnimation(AnimationType type);
-        bool stopAnimation(AnimationType type);
 
         virtual u32 getGamePtr() const   = 0;
         virtual void setGamePtr(u32 ptr) = 0;
@@ -316,15 +304,6 @@ namespace Toolbox::Object {
 
         [[nodiscard]] Result<void, BaseError>
         loadDependencies(const fs_path &dependencies_path) override;
-
-        [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
-            return {};
-        }
-        [[nodiscard]] std::optional<std::string_view>
-        getAnimationName(AnimationType type) const override {
-            return {};
-        }
-        bool loadAnimationData(std::string_view name, AnimationType type) override { return false; }
 
         [[nodiscard]] J3DLight getLightData(int index) override { return {}; }
 
@@ -707,16 +686,16 @@ namespace Toolbox::Object {
             return BoundingBox(center, size, glm::quat(transform->m_rotation));
         }
 
+        [[nodiscard]] size_t getAnimationFrames(AnimationType type) const;
+        [[nodiscard]] float getAnimationFrame(AnimationType type) const;
+        void setAnimationFrame(size_t frame, AnimationType type);
+
+        bool startAnimation(AnimationType type, int anim_idx);
+        bool startAnimation(AnimationType type, const std::string &anim_name);
+        bool stopAnimation(AnimationType type);
+
         [[nodiscard]] Result<void, BaseError>
         loadDependencies(const fs_path &dependencies_path) override;
-
-        [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
-            return "./scene/mapobj/";
-        }
-        std::optional<std::string_view> getAnimationName(AnimationType type) const override {
-            return {};
-        }
-        bool loadAnimationData(std::string_view name, AnimationType type) override { return false; }
 
         J3DLight getLightData(int index) override { return m_model_instance->GetLight(index); }
 
@@ -736,7 +715,24 @@ namespace Toolbox::Object {
 
     protected:
         std::weak_ptr<J3DAnimationInstance> getAnimationControl(AnimationType type) const override {
-            return {};
+            if (m_active_animation_map.contains(type)) {
+                const int animation_id = m_active_animation_map.at(type);
+                switch (type) {
+                case AnimationType::BCK:
+                    return m_animations_bck[animation_id];
+                case AnimationType::BLK:
+                    return m_animations_blk[animation_id];
+                case AnimationType::BPK:
+                    return m_animations_bpk[animation_id];
+                case AnimationType::BRK:
+                    return m_animations_brk[animation_id];
+                case AnimationType::BTK:
+                    return m_animations_btk[animation_id];
+                case AnimationType::BTP:
+                    return m_animations_btp[animation_id];
+                }
+            }
+            return std::weak_ptr<J3DAnimationInstance>();
         }
 
         void applyWizard(const TemplateWizard &wizard);
@@ -782,6 +778,14 @@ namespace Toolbox::Object {
         bool m_include_custom = false;
         Template m_template;
         std::string m_wizard;
+
+        std::unordered_map<AnimationType, int> m_active_animation_map;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_bck;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_blk;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_bpk;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_brk;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_btp;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_btk;
 
         fs_path m_scene_resource_path;
     };

@@ -207,6 +207,28 @@
                     }
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Textures": {},
+                "Animations": [ "map/map/gate/05_gate01.bpk", "map/map/gate/05_gate01.brk", "map/map/gate/05_gate01.btk" ],
+                "Model": "map/map/gate/05_gate01.bmd"
+            },
+            "Bianco Hills Portal": {
+                "Textures": {},
+                "Animations": [ "map/map/gate/05_gate01.bpk", "map/map/gate/05_gate01.brk", "map/map/gate/05_gate01.btk" ],
+                "Model": "map/map/gate/05_gate01.bmd"
+            },
+            "Ricco Harbor Portal": {
+                "Textures": {},
+                "Animations": [ "map/map/gate/05_gate02rico.bpk", "map/map/gate/05_gate02rico.brk", "map/map/gate/05_gate02rico.btk" ],
+                "Model": "map/map/gate/05_gate02rico.bmd"
+            },
+            "Gelato Beach Portal": {
+                "Textures": {},
+                "Animations": [ "map/map/gate/05_gate03manma.bpk", "map/map/gate/05_gate03manma.brk", "map/map/gate/05_gate03manma.btk" ],
+                "Model": "map/map/gate/05_gate03manma.bmd"
+            }
         }
     }
 }

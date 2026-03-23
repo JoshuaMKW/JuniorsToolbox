@@ -35,43 +35,6 @@ namespace Toolbox::Object {
         return QualifiedName(getNameRef().name());
     }
 
-    size_t ISceneObject::getAnimationFrames(AnimationType type) const {
-        auto ctrl = getAnimationControl(type);
-        if (ctrl.expired())
-            return 0;
-        return ctrl.lock()->GetLength();
-    }
-
-    float ISceneObject::getAnimationFrame(AnimationType type) const {
-        auto ctrl = getAnimationControl(type);
-        if (ctrl.expired())
-            return 0;
-        return ctrl.lock()->GetFrame();
-    }
-
-    void ISceneObject::setAnimationFrame(size_t frame, AnimationType type) {
-        auto ctrl = getAnimationControl(type);
-        if (ctrl.expired())
-            return;
-        ctrl.lock()->SetFrame(static_cast<u16>(frame));
-    }
-
-    bool ISceneObject::startAnimation(AnimationType type) {
-        auto ctrl = getAnimationControl(type);
-        if (ctrl.expired())
-            return false;
-        ctrl.lock()->SetPaused(false);
-        return true;
-    }
-
-    bool ISceneObject::stopAnimation(AnimationType type) {
-        auto ctrl = getAnimationControl(type);
-        if (ctrl.expired())
-            return false;
-        ctrl.lock()->SetPaused(true);
-        return true;
-    }
-
     /* VIRTUAL SCENE OBJECT */
 
     std::span<u8> VirtualSceneObject::getData() const {
@@ -774,6 +737,98 @@ namespace Toolbox::Object {
         return size;
     }
 
+    size_t PhysicalSceneObject::getAnimationFrames(AnimationType type) const {
+        auto ctrl = getAnimationControl(type);
+        if (ctrl.expired())
+            return 0;
+        return ctrl.lock()->GetLength();
+    }
+
+    float PhysicalSceneObject::getAnimationFrame(AnimationType type) const {
+        auto ctrl = getAnimationControl(type);
+        if (ctrl.expired())
+            return 0;
+        return ctrl.lock()->GetFrame();
+    }
+
+    void PhysicalSceneObject::setAnimationFrame(size_t frame, AnimationType type) {
+        auto ctrl = getAnimationControl(type);
+        if (ctrl.expired())
+            return;
+        ctrl.lock()->SetFrame(static_cast<u16>(frame));
+    }
+
+    bool PhysicalSceneObject::startAnimation(AnimationType type, int anim_idx) {
+        if (!m_model_instance) {
+            return false;
+        }
+
+        RefPtr<J3DAnimationInstance> animation, last_animation;
+        const int last_anim_id = m_active_animation_map[type];
+
+        switch (type) {
+        case AnimationType::BCK:
+            animation = anim_idx < m_animations_bck.size() ? m_animations_bck[anim_idx] : nullptr;
+            if (!animation) {
+                return false;
+            }
+            last_animation = m_animations_bck[last_anim_id];
+            last_animation->SetFrame(0, true);
+            animation->SetPaused(false);
+            m_model_instance->SetJointAnimation(ref_cast<J3DJointAnimationInstance>(animation));
+            break;
+        case AnimationType::BLK:
+            return false;
+        case AnimationType::BPK:
+            return false;
+        case AnimationType::BRK:
+            animation = anim_idx < m_animations_brk.size() ? m_animations_brk[anim_idx] : nullptr;
+            if (!animation) {
+                return false;
+            }
+            last_animation = m_animations_brk[last_anim_id];
+            last_animation->SetFrame(0, true);
+            animation->SetPaused(false);
+            m_model_instance->SetRegisterColorAnimation(ref_cast<J3DColorAnimationInstance>(animation));
+            break;
+        case AnimationType::BTK:
+            animation = anim_idx < m_animations_btk.size() ? m_animations_btk[anim_idx] : nullptr;
+            if (!animation) {
+                return false;
+            }
+            last_animation = m_animations_btk[last_anim_id];
+            last_animation->SetFrame(0, true);
+            animation->SetPaused(false);
+            m_model_instance->SetTexMatrixAnimation(ref_cast<J3DTexMatrixAnimationInstance>(animation));
+            break;
+        case AnimationType::BTP:
+            animation = anim_idx < m_animations_btp.size() ? m_animations_btp[anim_idx] : nullptr;
+            if (!animation) {
+                return false;
+            }
+            last_animation = m_animations_btp[last_anim_id];
+            last_animation->SetFrame(0, true);
+            animation->SetPaused(false);
+            m_model_instance->SetTexIndexAnimation(ref_cast<J3DTexIndexAnimationInstance>(animation));
+            break;
+        }
+
+        m_active_animation_map[type] = anim_idx;
+        return true;
+    }
+
+    bool PhysicalSceneObject::startAnimation(AnimationType type, const std::string &anim_name) {
+        return false;
+    }
+
+    bool PhysicalSceneObject::stopAnimation(AnimationType type) {
+        auto ctrl = getAnimationControl(type);
+        if (ctrl.expired())
+            return false;
+        ctrl.lock()->SetPaused(true);
+        return true;
+    }
+
     Result<void, BaseError>
     PhysicalSceneObject::loadDependencies(const fs_path &dependencies_path) {
         if (dependencies_path.empty()) {
@@ -799,7 +854,7 @@ namespace Toolbox::Object {
             auto position_value_ptr  = getMember("Position").value();
             glm::vec3 position_value = getMetaValue<glm::vec3>(position_value_ptr).value();
 
-            auto color_value_ptr      = getMember("Color").value();
+            auto color_value_ptr     = getMember("Color").value();
             Color::RGBA8 color_value = getMetaValue<Color::RGBA8>(color_value_ptr).value();
 
             f32 r, g, b, a;
@@ -897,7 +952,8 @@ namespace Toolbox::Object {
     }
 
     Result<void, FSError>
-    PhysicalSceneObject::loadRenderData(const std::filesystem::path &asset_path, ResourceCache &resource_cache) {
+    PhysicalSceneObject::loadRenderData(const std::filesystem::path &asset_path,
+                                        ResourceCache &resource_cache) {
         if (m_template.type().empty() || m_wizard.empty()) {
             return make_fs_error<void>(std::error_code(),
                                        {"[Object] Object has no template and wizard data!"});
@@ -918,11 +974,11 @@ namespace Toolbox::Object {
 
         m_scene_resource_path = asset_path;
 
-        //if (type() == "Shine") {
-        //    __debugbreak();
-        //}
+        // if (type() == "Shine") {
+        //     __debugbreak();
+        // }
 
-        #if 0
+#if 0
         // Get model variable that exists in some objects
         auto model_member_result = getMember("Model");
         if (model_member_result) {
@@ -934,20 +990,22 @@ namespace Toolbox::Object {
         } else {
             return make_fs_error<void>(std::error_code(), model_member_result.error().m_message);
         }
-        #else
+#else
         auto object_member_result = getMember("Object");
         if (object_member_result.value_or(nullptr)) {
             const std::string object_field =
                 getMetaValue<std::string>(object_member_result.value()).value();
             render_info = TemplateFactory::findRenderInfo(object_field);
         }
-        #endif
+#endif
 
         if (!render_info) {
             std::optional<TemplateWizard> wizard = m_template.getWizard(m_wizard);
             if (!wizard) {
-                return make_fs_error<void>(std::error_code(), {std::format("[PhysicalObject] Failed to load render data for object {}",
-                               m_type.name())});
+                return make_fs_error<void>(
+                    std::error_code(),
+                    {std::format("[PhysicalObject] Failed to load render data for object {}",
+                                 m_type.name())});
             }
 
             render_info = make_scoped<TemplateRenderInfo>(wizard->m_render_info);
@@ -1005,7 +1063,7 @@ namespace Toolbox::Object {
             mat_table = bmtLoader.Load(&mat_stream, model_data);
             if (mat_name == "nozzlebox") {
                 RefPtr<J3DMaterial> nozzle_mat = mat_table->GetMaterial("_mat1");
-                auto nozzle_type_member        = getMember("Spawn").value();
+                auto nozzle_type_member        = getMember("Nozzle").value();
                 std::string nozzle_type = getMetaValue<std::string>(nozzle_type_member).value();
                 if (nozzle_type == "normal_nozzle_item") {
                     nozzle_mat->TevBlock->mTevColors[1] = {0, 0, 255, 255};
@@ -1040,8 +1098,9 @@ namespace Toolbox::Object {
             HelperUpdateKinopioRender();
         }
 
-        if (std::any_of(s_monte_types.begin(), s_monte_types.end(),
-                        [&](u16 code) { return code == m_type.code(); })) {
+        const bool is_obj_monte = std::any_of(s_monte_types.begin(), s_monte_types.end(),
+                                              [&](u16 code) { return code == m_type.code(); });
+        if (is_obj_monte) {
             HelperUpdateMonteRender();
         }
 
@@ -1082,32 +1141,46 @@ namespace Toolbox::Object {
                 J3DAnimationLoader anmLoader;
                 bStream::CFileStream anim_stream(anim_path.string(), bStream::Endianess::Big,
                                                  bStream::OpenMode::In);
+                RefPtr<J3DAnimationInstance> animation = anmLoader.LoadAnimation(anim_stream);
 
                 if (anim_file.ends_with(".bck")) {
                     m_model_instance->SetJointAnimation(
-                        std::reinterpret_pointer_cast<J3DJointAnimationInstance>(
-                            anmLoader.LoadAnimation(anim_stream)));
+                        std::reinterpret_pointer_cast<J3DJointAnimationInstance>(animation
+                            ));
+                    m_animations_bck.push_back(animation);
                 }
 
                 if (anim_file.ends_with(".brk")) {
                     m_model_instance->SetRegisterColorAnimation(
-                        std::reinterpret_pointer_cast<J3DColorAnimationInstance>(
-                            anmLoader.LoadAnimation(anim_stream)));
+                        std::reinterpret_pointer_cast<J3DColorAnimationInstance>(animation));
+                    m_animations_brk.push_back(animation);
                 }
 
                 if (anim_file.ends_with(".btp")) {
                     m_model_instance->SetTexIndexAnimation(
-                        std::reinterpret_pointer_cast<J3DTexIndexAnimationInstance>(
-                            anmLoader.LoadAnimation(anim_stream)));
+                        std::reinterpret_pointer_cast<J3DTexIndexAnimationInstance>(animation));
+                    m_animations_btp.push_back(animation);
                 }
 
                 if (anim_file.ends_with(".btk")) {
                     m_model_instance->SetTexMatrixAnimation(
-                        std::reinterpret_pointer_cast<J3DTexMatrixAnimationInstance>(
-                            anmLoader.LoadAnimation(anim_stream)));
+                        std::reinterpret_pointer_cast<J3DTexMatrixAnimationInstance>(animation));
+                    m_animations_btk.push_back(animation);
                 }
             }
         }
+
+        if (is_obj_monte) {
+            startAnimation(AnimationType::BCK, 15);  // Wait anim
+        } else {
+            startAnimation(AnimationType::BCK, 0);
+        }
+
+        startAnimation(AnimationType::BLK, 0);
+        startAnimation(AnimationType::BPK, 0);
+        startAnimation(AnimationType::BRK, 0);
+        startAnimation(AnimationType::BTK, 0);
+        startAnimation(AnimationType::BTP, 0);
 
         return {};
     }
@@ -1237,7 +1310,7 @@ namespace Toolbox::Object {
         in.seek(endpos, std::ios::beg);
 
         std::filesystem::path asset_path = scene_path.parent_path();
-        auto load_result = loadRenderData(asset_path, getResourceCache());
+        auto load_result                 = loadRenderData(asset_path, getResourceCache());
         if (!load_result) {
             return make_serial_error<void>(
                 in, std::format("Failed to load render data for object {} ({})!", m_type.name(),

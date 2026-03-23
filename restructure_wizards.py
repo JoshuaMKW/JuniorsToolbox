@@ -27,7 +27,7 @@ def restructure_wizard(data):
 
 # Run the function
 
-root = Path("./Templates")
+root = Path("./Templates/Vanilla")
 file_list = [f for f in root.rglob("**/*") if f.is_file() and f.suffix.endswith("json")]
 for file in file_list:
     print(file)

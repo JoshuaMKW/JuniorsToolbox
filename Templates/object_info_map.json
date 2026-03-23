@@ -1,98 +1,1340 @@
-{
-    "ArrowBoardLR": {
-        "Textures": {},
-        "Animations": [ "mapobj/arrowboard.bmt" ],
-        "Model": "mapobj/arrowboardlr.bmd"
-    },
-    "ArrowBoardUp": {
-        "Textures": {},
-        "Animations": [ "mapobj/arrowboard.bmt" ],
-        "Model": "mapobj/arrowboardup.bmd"
+﻿{
+    "AirportPole": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
     },
     "ArrowBoardDown": {
-        "Textures": {},
-        "Animations": [ "mapobj/arrowboard.bmt" ],
-        "Model": "mapobj/arrowboarddown.bmd"
-    },
-    "back_nozzle_item": {
-        "Textures": { "H_watergun_main_dummy": "mapobj/nozzleitem.bmt" },
         "Animations": [],
-        "Model": "mapobj/back_nozzle_item.bmd"
+        "Materials": "mapobj/arrowboard.bmt",
+        "Model": "mapobj/arrowboarddown.bmd",
+        "Textures": {}
     },
-    "bottle_short": {
-        "Textures": {},
+    "ArrowBoardLR": {
         "Animations": [],
-        "Model": "mapobj/bottle_short.bmd"
+        "Materials": "mapobj/arrowboard.bmt",
+        "Model": "mapobj/arrowboardlr.bmd",
+        "Textures": {}
     },
-    "bottle_large": {
-        "Textures": {},
+    "ArrowBoardUp": {
         "Animations": [],
-        "Model": "mapobj/bottle_large.bmd"
+        "Materials": "mapobj/arrowboard.bmt",
+        "Model": "mapobj/arrowboardup.bmd",
+        "Textures": {}
+    },
+    "BananaTree": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BasketReverse": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BiaBell": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BiaBridge": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BiaDoor": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BiaTurnBridge": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BiaWaterPollution": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BiaWatermill00": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BiaWatermill01": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BiaWatermillVertical": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BiancoAirWall": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BiancoBossEffectLight": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BiancoRiver": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "BrickBlock": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "Buoy": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "ChangeStage": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "ChestRevolve": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "ChipShine": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
     },
     "ChipSign": {
         "Textures": {},
         "Animations": [],
         "Model": "mapobj/chip_sign_model1.bmd"
     },
-    "flagBianco": {
-        "Textures": { "flag": "mapobj/flagbianco.bti" },
+    "Closet": {
         "Animations": [],
-        "Model": ""
+        "Model": "",
+        "Textures": {}
     },
-    "flagMare": {
-        "Textures": { "flag": "mapobj/flagmare.bti" },
+    "Coaster": {
         "Animations": [],
-        "Model": ""
+        "Model": "",
+        "Textures": {}
     },
-    "flagMonte": {
-        "Textures": { "flag": "mapobj/flagmonte.bti" },
+    "CoinFish": {
         "Animations": [],
-        "Model": ""
+        "Model": "",
+        "Textures": {}
     },
-    "flagRedsun": {
-        "Textures": { "flag": "mapobj/flagredsun.bti" },
-        "Animations": [],
-        "Model": ""
+    "DokanGate": {
+        "Animations": [ "mapobj/efdokangate.btk" ],
+        "Model": "mapobj/efdokangate.bmd",
+        "Textures": {}
     },
-    "flagRiccoBuoy": {
-        "Textures": { "flag": "mapobj/flagriccobuoy.bti" },
+    "Donchou": {
         "Animations": [],
-        "Model": ""
+        "Model": "",
+        "Textures": {}
     },
-    "flagWhite": {
-        "Textures": { "flag": "mapobj/flagwhite.bti" },
+    "ElasticCode": {
         "Animations": [],
-        "Model": ""
+        "Model": "",
+        "Textures": {}
+    },
+    "FenceWaterH": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "FenceWaterV": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "FerrisLOD": {
+        "Animations": [ "mapobj/ferrislod.bck" ],
+        "Model": "mapobj/ferrislod.bmd",
+        "Textures": {}
+    },
+    "FerrisWheel": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "FileLoadBlockA": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "FileLoadBlockB": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "FileLoadBlockC": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "FluffManager": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "FruitBanana": {
+        "Animations": [],
+        "Model": "mapobj/fruitbanana.bmd",
+        "Textures": {}
+    },
+    "FruitBasket": {
+        "Animations": [
+            "mapobj/basket.bck"
+        ],
+        "Model": "mapobj/basket.bmd",
+        "Textures": {}
+    },
+    "FruitCoconut": {
+        "Animations": [],
+        "Model": "mapobj/fruitcoconut.bmd",
+        "Textures": {}
+    },
+    "FruitCoverPine": {
+        "Animations": [],
+        "Model": "mapobj/fruitpine.bmd",
+        "Textures": {}
+    },
+    "FruitDurian": {
+        "Animations": [],
+        "Model": "mapobj/fruitdurian.bmd",
+        "Textures": {}
+    },
+    "FruitHitHideObj": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "FruitPapaya": {
+        "Animations": [],
+        "Model": "mapobj/fruitpapaya.bmd",
+        "Textures": {}
+    },
+    "FruitPine": {
+        "Animations": [],
+        "Model": "mapobj/fruitpine.bmd",
+        "Textures": {}
+    },
+    "GateManta": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "Gateshell": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "GesoSurfBoard": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "GesoSurfBoardStatic": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "GlassBreak": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "GoalWatermelon": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "HangingBridge": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "HatoPop": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "HideObj": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "HipDropHideObj": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "IceBlock": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "IndirectObj": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "JuiceBlock": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "JumpMushroom": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
     },
     "KoopaJrSignM": {
         "Textures": {},
         "Animations": [],
         "Model": "mapobj/koopa_jr_sign.bmd"
     },
+    "KoopaJrSubmarine": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "LampSeesaw": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "LeafBoat": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "LeafBoatRotten": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MammaBlockRotate": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MammaSurfboard00": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MammaSurfboard01": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MammaSurfboard02": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MammaSurfboard03": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MammaSurfboardStand": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
     "MammaYacht00": {
-        "Textures": { "flag": "mapobj/mammayacht00.bti" },
+        "Textures": {
+            "flag": "mapobj/mammayacht00.bti"
+        },
         "Animations": [],
         "Model": ""
+    },
+    "MapObjNail": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MapObjPachinkoNail": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MapSmoke": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "Mare5ExGate": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MareCork": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MareEventBumpyWall": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MareFalls": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MiniWindmillL": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MonteGoalFlag": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MonteRiver": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MonteRoot": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MoveCoin": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "Moyasi": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "MuddyBoat": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "NormalBlock": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "NozzleBox": {
+        "Animations": [],
+        "Materials": "mapobj/nozzlebox.bmt",
+        "Model": "mapobj/nozzlebox.bmd",
+        "Textures": {}
+    },
+    "ObjSwitch": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "PanelBreak": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "PanelRevolve": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "PictureTeresa": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "Pile": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "PinnaDoor": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "PinnaDoorOpen": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "PinnaSunFlower": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "PoleNormal": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "PolluterPakkun": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "PosterTeresa": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "Puncher": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "RailFence": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "RandomFruit": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "RedCoinSwitch": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "RedPepper": {
+        "Animations": [],
+        "Model": "model/redpepper.bmd",
+        "Textures": {}
+    },
+    "ReflectParts": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "ReflectSky": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SakuCasino": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandBird": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandBomb": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandBombBaseFoot": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandBombBaseHand": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandBombBaseMushroom": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandBombBasePyramid": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandBombBaseShit": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandBombBaseStairs": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandBombBaseStar": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandBombBaseTurtle": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandCastle": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandEggBroken": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandEggNormal": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandEggrepair": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SandLeafBase00": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SeaIndirect": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "ShellCup": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "ShimmerHi": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "ShimmerHiFar": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "ShimmerLow": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "ShimmerLowFar": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "ShiningStone": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SignCircle": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/maru_sign.bmd"
+    },
+    "SignCross": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/batu_sign.bmd"
+    },
+    "SignTriangle": {
+        "Textures": {},
+        "Animations": [
+            "mapobj/3kaku_sign_erase.brk"
+        ],
+        "Model": "mapobj/3kaku_sign.bmd"
+    },
+    "SimiHotel": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SirenaCasinoRoof": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SirenaGate": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SirenaShop": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SirenabossWall": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SkyIsland": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SoundObjRiver": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SoundObjWaterIntoWater": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "StartDemo": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SuperHipDropBlock": {
+        "Animations": [],
+        "Model": "mapobj/super_rock.bmd",
+        "Textures": {}
+    },
+    "SurfGesoGreen": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SurfGesoRed": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SurfGesoYellow": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "SwingBoard": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "TargetArrow": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "TeethOfJuicer": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "TelesaBlock": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "TopOfCorona": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WaterHitHideObj": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WaterMelonBlock": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WaterRecoverObj": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WaterSprayCylinder": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WatermelonStatic": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WindmillRoof": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WireBellPurple": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WoodBlockBridge": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WoodBlockCone": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WoodBlockCube": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WoodBlockL": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WoodBlockLarge": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WoodBlockLong": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WoodBlockTriangle": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "WoodBox": {
+        "Animations": [],
+        "Materials": "mapobj/kibako.bmt",
+        "Model": "mapobj/kibako.bmd",
+        "Textures": {}
+    },
+    "amiking": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "back_nozzle_item": {
+        "Animations": [],
+        "Materials": "mapobj/nozzleitem.bmt",
+        "Model": "mapobj/back_nozzle_item.bmd",
+        "Textures": {}
+    },
+    "balloonKoopaJr": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "baloonball": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "bambooFence_revolve_inner": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "bambooFence_revolve_outer": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "bambooRailFence": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "bath": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "belldolpic": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/belldolpic.bmd"
+    },
+    "bigWindmill": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "billboard_sun": {
+        "Textures": {},
+        "Animations": [
+            "mapobj/billboardrot.bck"
+        ],
+        "Model": "mapobj/billboardsun.bmd"
+    },
+    "bottle_large": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/bottle_large.bmd"
+    },
+    "bottle_short": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/bottle_short.bmd"
+    },
+    "breakable_block": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "casinorulet": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "castella": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "cloud": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "coconut_ball": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "cogwheel": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "coin": {
+        "Animations": [],
+        "Model": "mapobj/coin.bmd",
+        "Textures": {}
+    },
+    "coin_blue": {
+        "Animations": [],
+        "Model": "mapobj/coin_blue.bmd",
+        "Textures": {}
+    },
+    "coin_red": {
+        "Animations": [],
+        "Model": "mapobj/coin_red.bmd",
+        "Textures": {}
+    },
+    "container": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "coral00": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "crane180Scene1": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "crane90": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "crane90Scene2": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "craneUpDown": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "demoCannon": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/democannon.bmd"
+    },
+    "door": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "doorHotel": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "dptCannon": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "dptCoronaFence": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/dptcoronafence.bmd"
+    },
+    "dptMonteFence": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/dptmontefence.bmd"
+    },
+    "dptWeathercock": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/dptweathercock.bmd"
+    },
+    "drum_can": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "eggYoshi": {
+        "Animations": [
+            "mapobj/eggyoshi_fukidashi_wait.bck",
+            "mapobj/eggyoshi_fukidashi.btp"
+        ],
+        "Model": "mapobj/eggyoshi_normal.bmd",
+        "Textures": {}
+    },
+    "eggYoshiEvent": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "exBottle": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "exkickboard": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "exrollcube": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "falls": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "fence3x3": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "fenceInnerGreen": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "fence_normal": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "fence_revolve": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "fence_revolve_inner": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "flagBianco": {
+        "Textures": {
+            "flag": "mapobj/flagbianco.bti"
+        },
+        "Animations": [],
+        "Model": ""
+    },
+    "flagMare": {
+        "Textures": {
+            "flag": "mapobj/flagmare.bti"
+        },
+        "Animations": [],
+        "Model": ""
+    },
+    "flagMonte": {
+        "Textures": {
+            "flag": "mapobj/flagmonte.bti"
+        },
+        "Animations": [],
+        "Model": ""
+    },
+    "flagRedsun": {
+        "Textures": {
+            "flag": "mapobj/flagredsun.bti"
+        },
+        "Animations": [],
+        "Model": ""
+    },
+    "flagRiccoBuoy": {
+        "Textures": {
+            "flag": "mapobj/flagriccobuoy.bti"
+        },
+        "Animations": [],
+        "Model": ""
+    },
+    "flagWhite": {
+        "Textures": {
+            "flag": "mapobj/flagwhite.bti"
+        },
+        "Animations": [],
+        "Model": ""
+    },
+    "flowerOrange": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "flowerPink": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "flowerPurple": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "flowerRed": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "flowerSunflower": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "flowerYellow": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "football": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "football_goal": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "fountain": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "fruitTree": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "getag": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "getao": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "hikidashi": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "ice_car": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "invisible_coin": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "jumpbase": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "kamaboko": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "lampBianco": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "lamptrapiron": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "lamptrapspike": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "manhole": {
+        "Textures": {},
+        "Animations": [
+            "mapobj/manhole.bck"
+        ],
+        "Model": "mapobj/manhole.bmd"
+    },
+    "mareFall": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "mareSeaPollutionS0": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "mareSeaPollutionS12": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "mareSeaPollutionS34567": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "mareWaterJump": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "maregate": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/maregate.bmd"
     },
     "mario_cap": {
         "Textures": {},
         "Animations": [],
         "Model": "mapobj/mariocap.bmd"
     },
-    "normal_nozzle_item": {
-        "Textures": { "H_watergun_main_dummy": "mapobj/nozzleitem.bmt" },
+    "merry": {
         "Animations": [],
-        "Model": "mapobj/normal_nozzle_item.bmd"
+        "Model": "",
+        "Textures": {}
+    },
+    "mirrorL": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "mirrorM": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "mirrorS": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "monte_chair": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "monumentshine": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/monumentshine.bmd"
+    },
+    "mushroom1up": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "mushroom1upR": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "mushroom1upX": {
+        "Animations": [],
+        "Model": "mapobj/mushroom1up.bmd",
+        "Textures": {}
+    },
+    "no_data": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "normal_nozzle_item": {
+        "Animations": [],
+        "Materials": "mapobj/nozzleitem.bmt",
+        "Model": "mapobj/normal_nozzle_item.bmd",
+        "Textures": {}
+    },
+    "normallift": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "normalvariant0": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "normalvariant2": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "normalvariant3": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
     },
     "nozzleDoor": {
         "Textures": {},
         "Animations": [],
         "Model": "mapobj/nozzledoor.bmd"
-    },
-    "palmNormal": {
-        "Textures": {},
-        "Animations": [],
-        "Model": "mapobj/palmnormal.bmd"
     },
     "palmLeaf": {
         "Textures": {},
@@ -104,6 +1346,11 @@
         "Animations": [],
         "Model": "mapobj/palmnatume.bmd"
     },
+    "palmNormal": {
+        "Textures": {},
+        "Animations": [],
+        "Model": "mapobj/palmnormal.bmd"
+    },
     "palmOugi": {
         "Textures": {},
         "Animations": [],
@@ -114,34 +1361,317 @@
         "Animations": [],
         "Model": "mapobj/palmsago.bmd"
     },
-    "rocket_nozzle_item": {
-        "Textures": { "H_watergun_main_dummy": "mapobj/nozzleitem.bmt" },
+    "pazul": {
         "Animations": [],
-        "Model": "mapobj/rocket_nozzle_item.bmd"
+        "Model": "",
+        "Textures": {}
+    },
+    "railblockb": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "railblockr": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "railblocky": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "railvariant1": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoArrow": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoBasket": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoBoatL": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoBoatS": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoFenceMaze": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoGangway": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoGrille": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoHericopter": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoLog": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoPole": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoSea": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoSeaPollutionS0": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoSeaPollutionS1": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoSeaPollutionS2": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoSeaPollutionS3": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoSeaPollutionS4": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoShip": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoShipDol": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoShipFish": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoShipGeso": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoShipLog": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoStand": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoStreetStall": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoSwitch": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoSwitchShine": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoWatermill": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoYachtL": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "riccoYachtS": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "rocket_nozzle_item": {
+        "Animations": [],
+        "Materials": "mapobj/nozzleitem.bmt",
+        "Model": "mapobj/rocket_nozzle_item.bmd",
+        "Textures": {}
+    },
+    "rollblockb": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "rollblockr": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "rollblocky": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "rollvariant0": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "rollvariant1": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "rootPaku": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "rulet00": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "rulet01": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "rulet02": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "sand_block": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "sea": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
     },
     "shine": {
         "Textures": {},
-        "Animations": [ "mapobj/shine_float.bck" ],
+        "Animations": [
+            "mapobj/shine_float.bck"
+        ],
         "Model": "mapobj/shine.bmd"
+    },
+    "srotRulet": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "srotdram": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
     },
     "star_sign": {
         "Textures": {},
         "Animations": [],
         "Model": "mapobj/star_sign.bmd"
     },
+    "submarine": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "sun_mirror": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "uirou": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "ukisima": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "umaibou": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "viking": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "water_roll_block": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
     "watergun_item": {
         "Textures": {},
         "Animations": [],
         "Model": "mapobj/watergun_item.bmd"
     },
-    "WoodBox": {
-        "Textures": { "J_kibako_dammy": "mapobj/kibako.bmt" },
+    "watermelon": {
         "Animations": [],
-        "Model": "mapobj/kibako.bmd"
+        "Model": "",
+        "Textures": {}
+    },
+    "wood_barrel": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
+    },
+    "wood_barrel_once": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
     },
     "yoshi_whistle_item": {
         "Textures": {},
         "Animations": [],
         "Model": ""
+    },
+    "yoshiblock": {
+        "Animations": [],
+        "Model": "",
+        "Textures": {}
     }
 }
