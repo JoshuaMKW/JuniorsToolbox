@@ -394,7 +394,7 @@ namespace Toolbox::UI {
         bool should_update_paths =
             m_renderer.isUniqueRailColors() != settings.m_is_unique_rail_color;
 
-        if (m_renderer.isGizmoManipulated()) {
+        if (m_renderer.isGizmoManipulated() && Input::GetMouseButton(Input::MouseButton::BUTTON_LEFT)) {
             glm::mat4x4 gizmo_total_delta = m_renderer.getGizmoTotalDelta();
 
             // Scene object transform manipulation
@@ -2002,7 +2002,7 @@ namespace Toolbox::UI {
                 m_focused_window = EditorWindow::RENDER_VIEW;
             }
 
-            m_renderer.render(m_renderables, delta_time);
+            m_renderer.render(m_renderables, delta_time, !settings.m_is_rendering_simple);
 
             renderScenePeripherals(delta_time);
             renderPlaybackButtons(delta_time);

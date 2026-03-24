@@ -345,7 +345,7 @@ namespace Toolbox::UI {
         J3D::Picking::DestroyFramebuffer();
     }
 
-    void Renderer::render(const std::vector<ISceneObject::RenderInfo> &renderables, TimeStep delta_time) {
+    void Renderer::render(const std::vector<ISceneObject::RenderInfo> &renderables, TimeStep delta_time, bool calc_animations) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         ImVec2 window_pos = ImGui::GetWindowPos();
@@ -457,7 +457,8 @@ namespace Toolbox::UI {
 
             J3D::Rendering::RenderPacketVector packets =
                 J3D::Rendering::SortPackets(models, position);
-            J3D::Rendering::Render(delta_time * 2.0f, view, projection, packets);
+            J3D::Rendering::Update(delta_time / 2.0f, view, projection, packets, calc_animations);
+            J3D::Rendering::Render(packets);
 
             m_path_renderer.setScreenResolution(m_render_size.x, m_render_size.y);
             m_path_renderer.drawPaths(&m_camera);

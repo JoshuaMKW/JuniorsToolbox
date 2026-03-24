@@ -752,6 +752,17 @@ namespace Toolbox::Object {
     }
 
     void PhysicalSceneObject::refreshRenderState() {
+        RefPtr<J3DModelInstance> selected_model = m_render_controller->getRenderModel();
+        if (!selected_model) {
+            return;
+        }
+
+        if (m_transform.has_value()) {
+            selected_model->SetTranslation(m_transform.value().m_translation);
+            selected_model->SetRotation(m_transform.value().m_rotation);
+            selected_model->SetScale(m_transform.value().m_scale);
+        }
+
         if (m_type == "NPCKinopio") {
             HelperUpdateKinopioRender();
             return;
@@ -802,14 +813,8 @@ namespace Toolbox::Object {
             {1, 1, 1}
         };
 
-        auto transform_value_ptr = getMember("Transform").value();
-        if (transform_value_ptr) {
-            Transform transform = getMetaValue<Transform>(transform_value_ptr).value();
-            selected_model->SetTranslation(transform.m_translation);
-            selected_model->SetRotation(transform.m_rotation);
-            selected_model->SetScale(transform.m_scale);
-            m_transform      = transform;
-            render_transform = transform;
+        if (m_transform.has_value()) {
+            render_transform = m_transform.value();
         }
 
         if (m_type == "SunModel") {
@@ -829,9 +834,6 @@ namespace Toolbox::Object {
             selected_model->SetLight(DEFAULT_LIGHT, 0);
             selected_model->SetLight(DEFAULT_LIGHT, 1);
         }
-
-        if (animate)
-            selected_model->UpdateAnimations(delta_time * 2.0f);
 
         renderables.emplace_back(get_shared_ptr<PhysicalSceneObject>(*this), selected_model,
                                  render_transform);
@@ -1008,15 +1010,6 @@ namespace Toolbox::Object {
             }
         }
 
-        if (type() == "NPCKinopio") {
-            HelperUpdateKinopioRender();
-        }
-
-        const bool is_obj_monte = Object::IsObjectMonte(this);
-        if (is_obj_monte) {
-            HelperUpdateMonteRender();
-        }
-
         // TODO: Load texture data
 
         RefPtr<J3DModelInstance> render_model = model_data->CreateInstance();
@@ -1083,6 +1076,8 @@ namespace Toolbox::Object {
         m_render_controller->startAnimation(AnimationType::BTK, 0);
         m_render_controller->startAnimation(AnimationType::BTP, 0);
 
+        // Initialize the render state
+        refreshRenderState();
         return {};
     }
 
@@ -1209,6 +1204,11 @@ namespace Toolbox::Object {
 
         // Skip padding/unknown data
         in.seek(endpos, std::ios::beg);
+
+        auto transform_value_ptr = getMember("Transform").value();
+        if (transform_value_ptr) {
+            m_transform = getMetaValue<Transform>(transform_value_ptr).value();
+        }
 
         std::filesystem::path asset_path = scene_path.parent_path();
         auto load_result                 = loadRenderData(asset_path, getResourceCache());

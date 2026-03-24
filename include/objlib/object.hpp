@@ -678,7 +678,6 @@ namespace Toolbox::Object {
 
         [[nodiscard]] std::optional<Transform> getTransform() const override { return m_transform; }
         Result<void, MetaError> setTransform(const Transform &transform) override {
-            // TODO: Set the properties transform too
             m_transform = transform;
 
             RefPtr<J3DModelInstance> selected_model = m_render_controller->getRenderModel();
