@@ -312,10 +312,11 @@ namespace Toolbox {
 
         size_t dest_buf_size = data_buf.size();
         if (format == CF_HDROP) {
-            dest_buf_size *= 2;
+            dest_buf_size *= sizeof(wchar_t);
             dest_buf_size += sizeof(DROPFILES) + sizeof(wchar_t);
         } else if (format == CF_TEXT) {
-            dest_buf_size *= 1;
+            dest_buf_size *= sizeof(char);
+            dest_buf_size += sizeof(char);
         }
 
         HANDLE data_handle = GlobalAlloc(GMEM_DDESHARE | GMEM_ZEROINIT, dest_buf_size);

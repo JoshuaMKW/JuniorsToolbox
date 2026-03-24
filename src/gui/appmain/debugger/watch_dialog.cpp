@@ -73,9 +73,10 @@ namespace Toolbox::UI {
                 ImGui::TextAndWidth(label_width, "Type: ");
                 ImGui::SameLine();
 
-                const char *watch_type_items[] = {
-                    "BOOL", "S8",     "U8",   "S16",       "U16",   "S32", "U32",  "F32",
-                    "F64",  "STRING", "VEC3", "TRANSFORM", "MTX34", "RGB", "RGBA", "BYTES"};
+                const char *watch_type_items[] = {"BOOL",  "S8",        "U8",    "S16", "U16",
+                                                  "S32",   "U32",       "F32",   "F64", "STRING",
+                                                  "VEC3",  "TRANSFORM", "MTX34", "RGB", "RGBA",
+                                                  "RGB32", "RGBA32",    "BYTES"};
                 const char *current_watch_type = watch_type_items[static_cast<int>(m_watch_type)];
 
                 // ImGui::SetNextItemWidth(150.0f);
@@ -739,7 +740,7 @@ namespace Toolbox::UI {
 
         u32 value = communicator.read<u32>(true_address).value_or(0);
         Color::RGB8 rgba_color((u8)((value >> 24) & 0xFF), (u8)((value >> 16) & 0xFF),
-                                (u8)((value >> 8) & 0xFF));
+                               (u8)((value >> 8) & 0xFF));
         f32 r, g, b, a;
         rgba_color.getColor(r, g, b, a);
 
@@ -763,7 +764,7 @@ namespace Toolbox::UI {
 
         u32 value = communicator.read<u32>(true_address).value_or(0);
         Color::RGBA8 rgba_color((u8)((value >> 24) & 0xFF), (u8)((value >> 16) & 0xFF),
-                                 (u8)((value >> 8) & 0xFF), (u8)(value & 0xFF));
+                                (u8)((value >> 8) & 0xFF), (u8)(value & 0xFF));
         f32 r, g, b, a;
         rgba_color.getColor(r, g, b, a);
 

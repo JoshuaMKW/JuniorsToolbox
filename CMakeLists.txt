@@ -5,15 +5,26 @@ cmake_minimum_required (VERSION 3.25)
 
 project(JuniorsToolbox VERSION 0.3.0)
 
+# Do this early in your root CMakeLists.txt
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    if (MSVC)
+        # Apply ASan and debug symbols to ALL targets and submodules
+        add_compile_options(/fsanitize=address /Zi)
+    
+        # Apply ASan linking and disable incremental linking for ALL targets
+        add_link_options(/fsanitize=address /INCREMENTAL:NO)
+    endif()
+endif()
+
 # Require C++23 for stacktrace etc
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Enable Hot Reload for MSVC compilers if supported.
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
-endif()
+# if (POLICY CMP0141)
+#   cmake_policy(SET CMP0141 NEW)
+#   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+# endif()
 
 file(GLOB TOOLBOX_SRC
     "lib/*.hpp"
@@ -155,8 +166,7 @@ target_link_libraries(JuniorsToolbox PRIVATE netpp)
 if(MSVC)
     # target_compile_options(j3dultra PRIVATE /w)
     target_compile_options(JuniorsToolbox PRIVATE /FS /MP /permissive- /volatile:iso /Zc:preprocessor /EHsc /Zc:__cplusplus /Zc:externConstexpr /Zc:throwingNew)
-    target_compile_options(JuniorsToolbox PUBLIC /ZI)
-    target_link_options(JuniorsToolbox PUBLIC /INCREMENTAL)
+    # target_link_options(JuniorsToolbox PUBLIC /INCREMENTAL)
 else()
     # target_compile_options(j3dultra PRIVATE -w)
 endif()

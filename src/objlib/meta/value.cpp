@@ -299,19 +299,27 @@ namespace Toolbox::Object {
         case MetaType::RGBA32:
             return std::format("{}", get<Color::RGBA32>().value());
         case MetaType::UNKNOWN: {
-            const char *byte_buf = buf().buf<char>();
+            const uint8_t *byte_buf = buf().buf<uint8_t>();
             size_t byte_len      = computeSize();
 
             std::string out_str;
-            out_str.reserve(byte_len * 4);
+            out_str.resize(byte_len * 3);
 
-            size_t i = 0;
-            for (i = 0; i < byte_len; ++i) {
-                uint8_t ch = ((uint8_t *)byte_buf)[i];
-                out_str.append(std::format("{:02X} ", ch));
+            char *dest = out_str.data();
+
+            constexpr char hex_map[] = "0123456789ABCDEF";
+
+            for (size_t i = 0; i < byte_len; ++i) {
+                uint8_t ch = byte_buf[i];
+                // High nibble
+                *dest++ = hex_map[ch >> 4];
+                // Low nibble
+                *dest++ = hex_map[ch & 0x0F];
+                // Trailing space
+                *dest++ = ' ';
             }
 
-            if (i > 0) {
+            if (byte_len > 0) {
                 out_str.pop_back();
             }
             return out_str;
