@@ -211,7 +211,9 @@
                     "montemcommon/mom_wet_a.btp",
                     "montemcommon/mom_wet_yogore.bck",
                     "montemcommon/mom_wet_yogore.btp",
-                    "montemcommon/mom_wink.btp"
+                    "montemg/momg_wink.btp",
+                    "montemg/momg_wait_cleanup.bck",
+                    "montemg/momg_walk_cleanup.bck"
                 ],
                 "Model": "montemg/momg_model.bmd"
             }

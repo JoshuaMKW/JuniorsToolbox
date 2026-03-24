@@ -471,4 +471,14 @@ namespace Toolbox::Object {
         return enum_result->enums();
     }
 
+    [[nodiscard]] inline Result<bool, MetaError>
+    getMetaEnumBitmasked(RefPtr<MetaMember> member) {
+        if (!member->isTypeEnum()) {
+            return make_meta_error<bool>(
+                "Can't get bitmasked flag of non-enum", "!enum", "MetaEnum");
+        }
+        auto enum_result = std::get<RefPtr<MetaEnum>>(member->defaultValue());
+        return enum_result->isBitMasked();
+    }
+
 }  // namespace Toolbox::Object

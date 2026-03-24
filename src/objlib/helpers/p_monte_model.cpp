@@ -239,6 +239,193 @@ static std::unordered_map<Toolbox::u16, std::vector<int>> s_clothes_tev_color_id
     {NameRef::calcKeyCode("NPCMonteWC"), std::vector<int>{}    },
 };
 
+// clang-format off
+static constexpr std::array s_action_to_anim_montem = {
+    14, // Standing
+    8,  // Sitting
+    15, // Looking up
+    16, // Looking down
+    12, // Talking
+    9,  // Sitting and talking
+    11, // Walking
+    7,  // Running
+    5,  // Angry
+    -1, // Playing Ukelele
+    -1, // Hula Dance
+    1,  // Dancing
+    -1, // Swimming
+    11, // Walking and stopping
+    11, // Walking and stopping to look up
+    11, // Walking and stopping to look down
+    11, // Walking and stopping to talk
+    7,  // Running and stopping
+    7,  // Running and stopping to look up
+    7,  // Running and stopping to look down
+    7,  // Running and stopping to talk
+    -1, // Walking and playing Ukelele
+    -1, // Mopping
+    -1, // Holding sign
+    7,  // Caught on fire
+};
+
+static constexpr std::array s_action_to_anim_montemf = {
+    14, // Standing
+    8,  // Sitting
+    15, // Looking up
+    16, // Looking down
+    12, // Talking
+    9,  // Sitting and talking
+    11, // Walking
+    7,  // Running
+    5,  // Angry
+    -1, // Playing Ukelele
+    -1, // Hula Dance
+    1,  // Dancing
+    23, // Swimming
+    11, // Walking and stopping
+    11, // Walking and stopping to look up
+    11, // Walking and stopping to look down
+    11, // Walking and stopping to talk
+    7,  // Running and stopping
+    7,  // Running and stopping to look up
+    7,  // Running and stopping to look down
+    7,  // Running and stopping to talk
+    -1, // Walking and playing Ukelele
+    -1, // Mopping
+    -1, // Holding sign
+    7,  // Caught on fire
+};
+
+static constexpr std::array s_action_to_anim_montemg = {
+    14, // Standing
+    8,  // Sitting
+    15, // Looking up
+    16, // Looking down
+    12, // Talking
+    9,  // Sitting and talking
+    11, // Walking
+    7,  // Running
+    5,  // Angry
+    -1, // Playing Ukelele
+    -1, // Hula Dance
+    1,  // Dancing
+    -1, // Swimming
+    11, // Walking and stopping
+    11, // Walking and stopping to look up
+    11, // Walking and stopping to look down
+    11, // Walking and stopping to talk
+    7,  // Running and stopping
+    7,  // Running and stopping to look up
+    7,  // Running and stopping to look down
+    7,  // Running and stopping to talk
+    -1, // Walking and playing Ukelele
+    23, // Mopping
+    -1, // Holding sign
+    7,  // Caught on fire
+};
+
+static constexpr std::array s_action_to_anim_montemh = {
+    14, // Standing
+    8,  // Sitting
+    15, // Looking up
+    16, // Looking down
+    12, // Talking
+    9,  // Sitting and talking
+    11, // Walking
+    7,  // Running
+    5,  // Angry
+    23, // Playing Ukelele
+    -1, // Hula Dance
+    1,  // Dancing
+    -1, // Swimming
+    11, // Walking and stopping
+    11, // Walking and stopping to look up
+    11, // Walking and stopping to look down
+    11, // Walking and stopping to talk
+    7,  // Running and stopping
+    7,  // Running and stopping to look up
+    7,  // Running and stopping to look down
+    7,  // Running and stopping to talk
+    25, // Walking and playing Ukelele
+    -1, // Mopping
+    -1, // Holding sign
+    7,  // Caught on fire
+};
+
+static constexpr std::array s_action_to_anim_montew = {
+    14, // Standing
+    8,  // Sitting
+    15, // Looking up
+    16, // Looking down
+    12, // Talking
+    9,  // Sitting and talking
+    11, // Walking
+    7,  // Running
+    5,  // Angry
+    -1, // Playing Ukelele
+    -1, // Hula Dance
+    1,  // Dancing
+    -1, // Swimming
+    11, // Walking and stopping
+    11, // Walking and stopping to look up
+    11, // Walking and stopping to look down
+    11, // Walking and stopping to talk
+    7,  // Running and stopping
+    7,  // Running and stopping to look up
+    7,  // Running and stopping to look down
+    7,  // Running and stopping to talk
+    -1, // Walking and playing Ukelele
+    -1, // Mopping
+    16, // Holding sign
+    -1,  // Caught on fire
+};
+
+static constexpr std::array s_action_to_anim_montewc = {
+    14, // Standing
+    8,  // Sitting
+    15, // Looking up
+    16, // Looking down
+    12, // Talking
+    9,  // Sitting and talking
+    11, // Walking
+    7,  // Running
+    5,  // Angry
+    -1, // Playing Ukelele
+    23, // Hula Dance
+    1,  // Dancing
+    -1, // Swimming
+    11, // Walking and stopping
+    11, // Walking and stopping to look up
+    11, // Walking and stopping to look down
+    11, // Walking and stopping to talk
+    7,  // Running and stopping
+    7,  // Running and stopping to look up
+    7,  // Running and stopping to look down
+    7,  // Running and stopping to talk
+    -1, // Walking and playing Ukelele
+    -1, // Mopping
+    16, // Holding sign
+    -1,  // Caught on fire
+};
+// clang-format on
+
+static std::unordered_map<Toolbox::u16, decltype(&s_action_to_anim_montem)>
+    s_action_to_anim_monte_map = {
+        {NameRef::calcKeyCode("NPCMonteM"),  &s_action_to_anim_montem },
+        {NameRef::calcKeyCode("NPCMonteMA"), &s_action_to_anim_montem },
+        {NameRef::calcKeyCode("NPCMonteMB"), &s_action_to_anim_montem },
+        {NameRef::calcKeyCode("NPCMonteMC"), &s_action_to_anim_montem },
+        {NameRef::calcKeyCode("NPCMonteMD"), &s_action_to_anim_montem },
+        {NameRef::calcKeyCode("NPCMonteME"), &s_action_to_anim_montem },
+        {NameRef::calcKeyCode("NPCMonteMF"), &s_action_to_anim_montemf},
+        {NameRef::calcKeyCode("NPCMonteMG"), &s_action_to_anim_montemg},
+        {NameRef::calcKeyCode("NPCMonteMH"), &s_action_to_anim_montemh},
+        {NameRef::calcKeyCode("NPCMonteW"),  &s_action_to_anim_montew },
+        {NameRef::calcKeyCode("NPCMonteWA"), &s_action_to_anim_montew },
+        {NameRef::calcKeyCode("NPCMonteWB"), &s_action_to_anim_montew },
+        {NameRef::calcKeyCode("NPCMonteWC"), &s_action_to_anim_montewc},
+};
+
 static glm::vec4 SelectBodyColorByTypeAndColorIdx(const NameRef &obj_type, int body_color_idx) {
     if (s_body_colors_monte_map.find(obj_type.code()) == s_body_colors_monte_map.end()) {
         return glm::vec4(255.0f, 255.0f, 255.0f, 255.0f);
@@ -328,18 +515,28 @@ static void HelperSetMonteMaterialColors(Toolbox::RefPtr<J3DModelData> model_dat
 }
 
 void PhysicalSceneObject::HelperUpdateMonteRender() {
+    RefPtr<Object::MetaMember> action_member = getMember("Action").value_or(nullptr);
     RefPtr<Object::MetaMember> body_color_member    = getMember("BodyColor").value_or(nullptr);
     RefPtr<Object::MetaMember> clothes_color_member = getMember("ClothesColor").value_or(nullptr);
     RefPtr<Object::MetaMember> pollute_state_member = getMember("PollutionValue").value_or(nullptr);
-    if (!body_color_member || !pollute_state_member) {
+    if (!body_color_member || !pollute_state_member || !clothes_color_member || !action_member) {
         TOOLBOX_DEBUG_LOG("Failed to get parameter for NPCKinopio!");
     } else {
+        int action_idx        = getMetaValue<int>(action_member, 0).value();
         int body_color_idx    = getMetaValue<int>(body_color_member, 0).value();
         int pollute_strength  = getMetaValue<int>(pollute_state_member, 0).value();
         int clothes_color_idx = getMetaValue<int>(clothes_color_member, 0).value();
         HelperSetMonteMaterialColors(m_model_data, m_type, body_color_idx, clothes_color_idx,
                                      pollute_strength);
-    }
 
+        m_render_controller->selectRenderModel(0);
+        
+        const auto &obj_map = s_action_to_anim_monte_map.at(m_type.code());
+        if (action_idx >= 0 && action_idx < obj_map->size()) {
+            m_render_controller->startAnimation(AnimationType::BCK, obj_map->at(action_idx));
+        } else {
+            m_render_controller->stopAnimation(AnimationType::BCK);
+        }
+    }
     // TODO: Figure out good solution for optional clothing models
 }

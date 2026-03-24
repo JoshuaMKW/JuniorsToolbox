@@ -743,10 +743,9 @@ namespace Toolbox::UI {
         bool multi_select     = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
         bool needs_scene_sync = node->getTransform() ? false : true;
 
-        std::string display_name = std::format("{} ({})", node->type(), node->getNameRef().name());
+        std::string display_name = m_scene_object_model->getDisplayText(index);
         bool is_filtered_out     = !m_hierarchy_filter.PassFilter(display_name.c_str());
 
-        std::string node_uid_str = getNodeUID(node);
         ImGuiID tree_node_id     = static_cast<ImGuiID>(node->getUUID());
 
         const bool node_selected = m_scene_selection_mgr.getState().isSelected(index);
@@ -794,14 +793,14 @@ namespace Toolbox::UI {
             } else {
 
                 if (node_visibility) {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected,
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected,
                                                   &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected);
                 }
 
                 m_tree_node_open_map[index] = node_open;
@@ -896,13 +895,7 @@ namespace Toolbox::UI {
                         }
 
                         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
-                            for (auto &member : node->getMembers()) {
-                                member->syncArray();
-                                auto prop = createProperty(member);
-                                if (prop) {
-                                    m_selected_properties.push_back(std::move(prop));
-                                }
-                            }
+                            regeneratePropertiesForObject(node);
                         }
 
                         m_selection_transforms_needs_update = true;
@@ -911,7 +904,7 @@ namespace Toolbox::UI {
                     m_properties_render_handler = renderObjectProperties;
                 }
 
-                renderSceneHierarchyContextMenu(node_uid_str, index);
+                renderSceneHierarchyContextMenu(display_name, index);
 
                 if (node_open) {
                     for (size_t i = 0; i < m_scene_object_model->getRowCount(index); ++i) {
@@ -924,14 +917,14 @@ namespace Toolbox::UI {
         } else {
             if (!is_filtered_out) {
                 if (node_visibility) {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected,
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected,
                                                   &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected);
                 }
 
                 m_tree_node_open_map[index] = node_open;
@@ -1008,13 +1001,7 @@ namespace Toolbox::UI {
                         }
 
                         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
-                            for (auto &member : node->getMembers()) {
-                                member->syncArray();
-                                auto prop = createProperty(member);
-                                if (prop) {
-                                    m_selected_properties.push_back(std::move(prop));
-                                }
-                            }
+                            regeneratePropertiesForObject(node);
                         }
 
                         m_selection_transforms_needs_update = true;
@@ -1023,7 +1010,7 @@ namespace Toolbox::UI {
                     m_properties_render_handler = renderObjectProperties;
                 }
 
-                renderSceneHierarchyContextMenu(node_uid_str, index);
+                renderSceneHierarchyContextMenu(display_name, index);
 
                 if (node_open) {
                     ImGui::TreePop();
@@ -1066,11 +1053,10 @@ namespace Toolbox::UI {
         bool multi_select     = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
         bool needs_scene_sync = node->getTransform() ? false : true;
 
-        std::string display_name = std::format("{} ({})", node->type(), node->getNameRef().name());
+        std::string display_name = m_table_object_model->getDisplayText(index);
         bool is_filtered_out     = !m_hierarchy_filter.PassFilter(display_name.c_str());
 
-        std::string node_uid_str = getNodeUID(node);
-        ImGuiID tree_node_id     = static_cast<ImGuiID>(node->getUUID());
+        ImGuiID tree_node_id = static_cast<ImGuiID>(node->getUUID());
 
         const bool node_selected = m_table_selection_mgr.getState().isSelected(index);
 
@@ -1100,14 +1086,14 @@ namespace Toolbox::UI {
                 }
             } else {
                 if (node_visibility) {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected,
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected,
                                                   &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected);
                 }
 
                 m_tree_node_open_map[index] = node_open;
@@ -1202,13 +1188,7 @@ namespace Toolbox::UI {
                         }
 
                         if (m_table_selection_mgr.getState().getSelection().size() == 1) {
-                            for (auto &member : node->getMembers()) {
-                                member->syncArray();
-                                auto prop = createProperty(member);
-                                if (prop) {
-                                    m_selected_properties.push_back(std::move(prop));
-                                }
-                            }
+                            regeneratePropertiesForObject(node);
                         }
 
                         m_selection_transforms_needs_update = true;
@@ -1217,7 +1197,7 @@ namespace Toolbox::UI {
                     m_properties_render_handler = renderObjectProperties;
                 }
 
-                renderTableHierarchyContextMenu(node_uid_str, index);
+                renderTableHierarchyContextMenu(display_name, index);
 
                 if (node_open) {
                     for (size_t i = 0; i < m_table_object_model->getRowCount(index); ++i) {
@@ -1230,14 +1210,14 @@ namespace Toolbox::UI {
         } else {
             if (!is_filtered_out) {
                 if (node_visibility) {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected,
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected,
                                                   &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected);
                 }
 
                 m_tree_node_open_map[index] = node_open;
@@ -1250,8 +1230,8 @@ namespace Toolbox::UI {
                     ImVec2 item_size = ImGui::GetItemRectSize();
                     ImVec2 item_pos  = ImGui::GetItemRectMin();
 
-                    //if (ImGui::BeginDragDropSource()) {
-                    //    int64_t node_index = m_table_object_model->getRow(index);
+                    // if (ImGui::BeginDragDropSource()) {
+                    //     int64_t node_index = m_table_object_model->getRow(index);
 
                     //    Toolbox::Buffer buffer;
                     //    saveMimeObject(buffer, node_index, get_shared_ptr(*node->getParent()));
@@ -1261,19 +1241,19 @@ namespace Toolbox::UI {
                     //    ImGui::EndDragDropSource();
                     //}
 
-                    //ImGuiDropFlags drop_flags = ImGuiDropFlags_None;
-                    //if (mouse_pos.y < item_pos.y + (item_size.y / 2)) {
-                    //    drop_flags = ImGuiDropFlags_InsertBefore;
-                    //} else {
-                    //    drop_flags = ImGuiDropFlags_InsertAfter;
-                    //}
+                    // ImGuiDropFlags drop_flags = ImGuiDropFlags_None;
+                    // if (mouse_pos.y < item_pos.y + (item_size.y / 2)) {
+                    //     drop_flags = ImGuiDropFlags_InsertBefore;
+                    // } else {
+                    //     drop_flags = ImGuiDropFlags_InsertAfter;
+                    // }
 
-                    //if (ImGui::BeginDragDropTarget()) {
-                    //    if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
-                    //            "toolbox/scene/object",
-                    //            ImGuiDragDropFlags_AcceptBeforeDelivery |
-                    //                ImGuiDragDropFlags_AcceptNoDrawDefaultRect |
-                    //                ImGuiDragDropFlags_SourceNoHoldToOpenOthers)) {
+                    // if (ImGui::BeginDragDropTarget()) {
+                    //     if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
+                    //             "toolbox/scene/object",
+                    //             ImGuiDragDropFlags_AcceptBeforeDelivery |
+                    //                 ImGuiDragDropFlags_AcceptNoDrawDefaultRect |
+                    //                 ImGuiDragDropFlags_SourceNoHoldToOpenOthers)) {
 
                     //        ImGui::RenderDragDropTargetRect(
                     //            ImGui::GetCurrentContext()->DragDropTargetRect,
@@ -1314,13 +1294,7 @@ namespace Toolbox::UI {
                         }
 
                         if (m_table_selection_mgr.getState().getSelection().size() == 1) {
-                            for (auto &member : node->getMembers()) {
-                                member->syncArray();
-                                auto prop = createProperty(member);
-                                if (prop) {
-                                    m_selected_properties.push_back(std::move(prop));
-                                }
-                            }
+                            regeneratePropertiesForObject(node);
                         }
 
                         m_selection_transforms_needs_update = true;
@@ -1329,7 +1303,7 @@ namespace Toolbox::UI {
                     m_properties_render_handler = renderObjectProperties;
                 }
 
-                renderTableHierarchyContextMenu(node_uid_str, index);
+                renderTableHierarchyContextMenu(display_name, index);
 
                 if (node_open) {
                     ImGui::TreePop();
@@ -1719,7 +1693,7 @@ namespace Toolbox::UI {
             }
 
             if (m_requested_rail_scroll_y.has_value()) {
-                const float window_height = ImGui::GetWindowHeight();
+                const float window_height   = ImGui::GetWindowHeight();
                 const float window_scroll_y = ImGui::GetScrollY();
 
                 if (fabsf(window_scroll_y - m_requested_rail_scroll_y.value()) >
@@ -1747,8 +1721,9 @@ namespace Toolbox::UI {
 
                 const bool this_node_is_view_ancestry =
                     !m_rail_selection_ancestry_for_view.empty() &&
-                    std::any_of(m_rail_selection_ancestry_for_view.begin(),
-                                m_rail_selection_ancestry_for_view.end(),
+                    std::any_of(
+                        m_rail_selection_ancestry_for_view.begin(),
+                        m_rail_selection_ancestry_for_view.end(),
                         [rail_index](const ModelIndex &other) { return other == rail_index; });
 
                 if (this_node_is_view_ancestry) {
@@ -1783,24 +1758,25 @@ namespace Toolbox::UI {
                     ImVec2 item_size = ImGui::GetItemRectSize();
                     ImVec2 item_pos  = ImGui::GetItemRectMin();
 
-                    //if (ImGui::BeginDragDropSource()) {
-                    //    Toolbox::Buffer buffer;
-                    //    saveMimeRail(buffer, i);
-                    //    ImGui::SetDragDropPayload("toolbox/scene/rail", buffer.buf(), buffer.size(),
-                    //                              ImGuiCond_Once);
-                    //    ImGui::Text("Rail: %s", rail->name().c_str());
-                    //    ImGui::EndDragDropSource();
-                    //}
+                    // if (ImGui::BeginDragDropSource()) {
+                    //     Toolbox::Buffer buffer;
+                    //     saveMimeRail(buffer, i);
+                    //     ImGui::SetDragDropPayload("toolbox/scene/rail", buffer.buf(),
+                    //     buffer.size(),
+                    //                               ImGuiCond_Once);
+                    //     ImGui::Text("Rail: %s", rail->name().c_str());
+                    //     ImGui::EndDragDropSource();
+                    // }
 
-                    //if (ImGui::BeginDragDropTarget()) {
-                    //    if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
-                    //            "toolbox/scene/rail",
-                    //            ImGuiDragDropFlags_AcceptBeforeDelivery |
-                    //                ImGuiDragDropFlags_SourceNoHoldToOpenOthers);
-                    //        payload && payload->IsDelivery()) {
-                    //        Toolbox::Buffer buffer;
-                    //        buffer.setBuf(payload->Data, payload->DataSize);
-                    //        buffer.copyTo(m_drop_target_buffer);
+                    // if (ImGui::BeginDragDropTarget()) {
+                    //     if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
+                    //             "toolbox/scene/rail",
+                    //             ImGuiDragDropFlags_AcceptBeforeDelivery |
+                    //                 ImGuiDragDropFlags_SourceNoHoldToOpenOthers);
+                    //         payload && payload->IsDelivery()) {
+                    //         Toolbox::Buffer buffer;
+                    //         buffer.setBuf(payload->Data, payload->DataSize);
+                    //         buffer.copyTo(m_drop_target_buffer);
 
                     //        // Calculate index based on position relative to center
                     //        m_rail_drop_target = i;
@@ -2002,13 +1978,13 @@ namespace Toolbox::UI {
                 m_renderer.markDirty();
             }
 
-            //for (const ISceneObject::RenderInfo &render_info : m_renderables) {
-            //    ModelIndex obj_index = m_scene_object_model->getIndex(render_info.m_object);
-            //    const bool is_selected = m_scene_selection_mgr.getState().isSelected(obj_index);
-            //    for (RefPtr<J3DMaterial> material : render_info.m_model->GetMaterials()) {
-            //        material->SetSelected(is_selected);
-            //    }
-            //}
+            // for (const ISceneObject::RenderInfo &render_info : m_renderables) {
+            //     ModelIndex obj_index = m_scene_object_model->getIndex(render_info.m_object);
+            //     const bool is_selected = m_scene_selection_mgr.getState().isSelected(obj_index);
+            //     for (RefPtr<J3DMaterial> material : render_info.m_model->GetMaterials()) {
+            //         material->SetSelected(is_selected);
+            //     }
+            // }
         }
 
         std::string scene_view_str = ImWindowComponentTitle(*this, "Scene View");
@@ -3607,13 +3583,7 @@ namespace Toolbox::UI {
         m_selected_properties.clear();
 
         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
-            for (auto &member : node->getMembers()) {
-                member->syncArray();
-                auto prop = createProperty(member);
-                if (prop) {
-                    m_selected_properties.push_back(std::move(prop));
-                }
-            }
+            regeneratePropertiesForObject(node);
         }
 
         m_selection_transforms_needs_update = true;
@@ -3788,13 +3758,14 @@ namespace Toolbox::UI {
 
         float desired_scroll = 0.0f;
 
-        const float row_height = ImGui::GetFontSize() + TreeNodeFramePaddingY * 2.0f;
+        const float row_height  = ImGui::GetFontSize() + TreeNodeFramePaddingY * 2.0f;
         const ImGuiStyle &style = ImGui::GetStyle();
 
         std::function<void(ModelIndex)> recursive_calc = [&](ModelIndex root) {
             desired_scroll += row_height + style.ItemSpacing.y;
 
-            const bool is_node_open = m_tree_node_open_map.contains(root) ? m_tree_node_open_map[root] : true;
+            const bool is_node_open =
+                m_tree_node_open_map.contains(root) ? m_tree_node_open_map[root] : true;
             if (!is_node_open) {
                 return;
             }
@@ -3868,6 +3839,19 @@ namespace Toolbox::UI {
         }
 
         return desired_scroll;
+    }
+
+    void SceneWindow::regeneratePropertiesForObject(RefPtr<ISceneObject> object) {
+        for (auto &member : object->getMembers()) {
+            member->syncArray();
+            auto prop = createProperty(member);
+            if (prop) {
+                prop->onValueChanged([object](RefPtr<MetaMember> member) {
+                    object->refreshRenderState();
+                });
+                m_selected_properties.push_back(std::move(prop));
+            }
+        }
     }
 
     void SceneWindow::_moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id,

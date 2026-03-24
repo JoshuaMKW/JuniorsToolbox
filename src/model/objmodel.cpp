@@ -18,6 +18,8 @@ namespace Toolbox {
         RefPtr<Object::ISceneObject> m_object = nullptr;
         RefPtr<const ImageHandle> m_icon      = nullptr;
 
+        std::string m_display_text_cache = "";
+
         std::strong_ordering operator<=>(const _SceneIndexData &rhs) const {
             return m_object->getQualifiedName().toString() <=>
                    rhs.m_object->getQualifiedName().toString();
@@ -270,7 +272,7 @@ namespace Toolbox {
 
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY:
-            return std::format("{} ({})", object->type(), object->getNameRef().name());
+            return index.data<_SceneIndexData>()->m_display_text_cache;
         case ModelDataRole::DATA_ROLE_TOOLTIP:
             return "Tooltip unimplemented!";
         case ModelDataRole::DATA_ROLE_DECORATION: {
@@ -316,6 +318,8 @@ namespace Toolbox {
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_KEY: {
             object->setNameRef(NameRef(std::any_cast<std::string>(data)));
+            index.data<_SceneIndexData>()->m_display_text_cache =
+                std::format("{} ({})", object->type(), object->getNameRef().name());
             break;
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_GAME_ADDR: {
@@ -359,13 +363,11 @@ namespace Toolbox {
     }
 
     ModelIndex SceneObjModel::getIndex_(RefPtr<ISceneObject> object) const {
-        for (const auto &[k, v] : m_index_map) {
-            RefPtr<ISceneObject> other = v.data<_SceneIndexData>()->m_object;
-            if (other->getUUID() == object->getUUID()) {
-                return v;
-            }
+        const UUID64 obj_uuid = object->getUUID();
+        if (!m_obj_to_index_map.contains(obj_uuid)) {
+            return ModelIndex();
         }
-        return ModelIndex();
+        return m_obj_to_index_map.at(obj_uuid);
     }
 
     ModelIndex SceneObjModel::getIndex_(const UUID64 &uuid) const {
@@ -384,8 +386,8 @@ namespace Toolbox {
             return m_index_map[m_root_index];
         }
 
-        RefPtr<ISceneObject> parent_obj            = parent.data<_SceneIndexData>()->m_object;
-        std::vector<RefPtr<ISceneObject>> children = parent_obj->getChildren();
+        RefPtr<ISceneObject> parent_obj = parent.data<_SceneIndexData>()->m_object;
+        const std::vector<RefPtr<ISceneObject>> &children = parent_obj->getChildren();
 
         if (row < 0 || row >= static_cast<int64_t>(children.size()) || column != 0) {
             return ModelIndex();
@@ -414,7 +416,10 @@ namespace Toolbox {
         }
 
         const UUID64 uuid = index.getUUID();
+        m_obj_to_index_map.erase(this_data->m_object->getUUID());
         m_index_map.erase(uuid);
+
+        delete this_data;
         return true;
     }
 
@@ -729,10 +734,13 @@ namespace Toolbox {
         new_data->m_self_uuid     = new_index.getUUID();
         new_data->m_object        = object;
         new_data->m_icon          = nullptr;
+        new_data->m_display_text_cache =
+            std::format("{} ({})", object->type(), object->getNameRef().name());
 
         new_index.setData(new_data);
 
-        m_index_map[new_index.getUUID()] = new_index;
+        m_index_map[new_index.getUUID()]      = new_index;
+        m_obj_to_index_map[object->getUUID()] = new_index;
 
         if (row == 0 && !validateIndex(parent)) {
             m_root_index = new_index.getUUID();

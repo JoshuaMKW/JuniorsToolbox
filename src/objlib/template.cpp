@@ -315,8 +315,8 @@ namespace Toolbox::Object {
     }
 
     static void setMinMaxForValue(MetaValue &value,
-                                  const std::variant<s64, u64, float, double> &var_min,
-                                  const std::variant<s64, u64, float, double> &var_max) {
+                                  const std::variant<std::monostate, s64, u64, float, double> &var_min,
+                                  const std::variant<std::monostate, s64, u64, float, double> &var_max) {
         switch (value.type()) {
         case MetaType::S8:
             if (std::holds_alternative<s64>(var_min)) {
@@ -390,8 +390,8 @@ namespace Toolbox::Object {
     std::optional<MetaMember>
     Template::loadMemberPrimitive(std::string_view name, std::string_view type,
                                   MetaMember::size_type array_size,
-                                  const std::variant<s64, u64, float, double> &var_min,
-                                  const std::variant<s64, u64, float, double> &var_max) {
+                                  const std::variant<std::monostate, s64, u64, float, double> &var_min,
+                                  const std::variant<std::monostate, s64, u64, float, double> &var_max) {
         auto vtype = magic_enum::enum_cast<MetaType>(type);
         if (!vtype)
             return {};
@@ -562,8 +562,8 @@ namespace Toolbox::Object {
                     }
                 }
             } else {
-                std::variant<s64, u64, float, double> var_min;
-                std::variant<s64, u64, float, double> var_max;
+                std::variant<std::monostate, s64, u64, float, double> var_min;
+                std::variant<std::monostate, s64, u64, float, double> var_max;
 
                 if (member_info.contains("Min")) {
                     switch (member_type_enum.value()) {

@@ -211,7 +211,12 @@
                     "montemcommon/mom_wet_a.btp",
                     "montemcommon/mom_wet_yogore.bck",
                     "montemcommon/mom_wet_yogore.btp",
-                    "montemcommon/mom_wink.btp"
+                    "montemh/momh_wink.btp",
+                    "montemh/momh_play.bck",
+                    "montemh/momh_step_play.bck",
+                    "montemh/momh_walk_play.bck",
+                    "montemh/momh_wet_play.bck",
+                    "montemh/momh_wet_play.btp"
                 ],
                 "Model": "montemh/momh_model.bmd"
             }

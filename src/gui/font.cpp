@@ -62,6 +62,7 @@ namespace Toolbox::UI {
     void FontManager::teardown() {
         m_current_font_family.clear();
         m_current_font_size = 0.0f;
+        m_current_font      = nullptr;
         m_loaded_fonts.clear();
         m_font_directory.clear();
     }
@@ -161,9 +162,13 @@ namespace Toolbox::UI {
     void FontManager::setCurrentFont(std::string_view name, float size) {
         m_current_font_family = name;
         m_current_font_size   = size;
+        m_current_font        = getFont(name);
     }
 
-    void FontManager::setCurrentFontFamily(std::string_view name) { m_current_font_family = name; }
+    void FontManager::setCurrentFontFamily(std::string_view name) {
+        m_current_font_family = name;
+        m_current_font        = getFont(name);
+    }
 
     void FontManager::setCurrentFontSize(float size) { m_current_font_size = size; }
 #endif

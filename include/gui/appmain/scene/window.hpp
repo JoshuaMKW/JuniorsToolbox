@@ -165,6 +165,8 @@ namespace Toolbox::UI {
         std::optional<float> calculateFocusScrollForSceneObjectSelection();
         std::optional<float> calculateFocusScrollForSceneRailSelection();
 
+        void regeneratePropertiesForObject(RefPtr<ISceneObject> object);
+
     private:
         void _moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id, size_t orig_index,
                        UUID64 orig_id, bool is_internal);

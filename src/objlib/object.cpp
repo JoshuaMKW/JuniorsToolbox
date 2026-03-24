@@ -369,7 +369,7 @@ namespace Toolbox::Object {
         return {};
     }
 
-    std::vector<RefPtr<ISceneObject>> GroupSceneObject::getChildren() { return m_children; }
+    const std::vector<RefPtr<ISceneObject>> &GroupSceneObject::getChildren() { return m_children; }
 
     RefPtr<ISceneObject> GroupSceneObject::getChild(const QualifiedName &name) {
         auto scope = name[0];
@@ -737,98 +737,6 @@ namespace Toolbox::Object {
         return size;
     }
 
-    size_t PhysicalSceneObject::getAnimationFrames(AnimationType type) const {
-        auto ctrl = getAnimationControl(type);
-        if (ctrl.expired())
-            return 0;
-        return ctrl.lock()->GetLength();
-    }
-
-    float PhysicalSceneObject::getAnimationFrame(AnimationType type) const {
-        auto ctrl = getAnimationControl(type);
-        if (ctrl.expired())
-            return 0;
-        return ctrl.lock()->GetFrame();
-    }
-
-    void PhysicalSceneObject::setAnimationFrame(size_t frame, AnimationType type) {
-        auto ctrl = getAnimationControl(type);
-        if (ctrl.expired())
-            return;
-        ctrl.lock()->SetFrame(static_cast<u16>(frame));
-    }
-
-    bool PhysicalSceneObject::startAnimation(AnimationType type, int anim_idx) {
-        if (!m_model_instance) {
-            return false;
-        }
-
-        RefPtr<J3DAnimationInstance> animation, last_animation;
-        const int last_anim_id = m_active_animation_map[type];
-
-        switch (type) {
-        case AnimationType::BCK:
-            animation = anim_idx < m_animations_bck.size() ? m_animations_bck[anim_idx] : nullptr;
-            if (!animation) {
-                return false;
-            }
-            last_animation = m_animations_bck[last_anim_id];
-            last_animation->SetFrame(0, true);
-            animation->SetPaused(false);
-            m_model_instance->SetJointAnimation(ref_cast<J3DJointAnimationInstance>(animation));
-            break;
-        case AnimationType::BLK:
-            return false;
-        case AnimationType::BPK:
-            return false;
-        case AnimationType::BRK:
-            animation = anim_idx < m_animations_brk.size() ? m_animations_brk[anim_idx] : nullptr;
-            if (!animation) {
-                return false;
-            }
-            last_animation = m_animations_brk[last_anim_id];
-            last_animation->SetFrame(0, true);
-            animation->SetPaused(false);
-            m_model_instance->SetRegisterColorAnimation(ref_cast<J3DColorAnimationInstance>(animation));
-            break;
-        case AnimationType::BTK:
-            animation = anim_idx < m_animations_btk.size() ? m_animations_btk[anim_idx] : nullptr;
-            if (!animation) {
-                return false;
-            }
-            last_animation = m_animations_btk[last_anim_id];
-            last_animation->SetFrame(0, true);
-            animation->SetPaused(false);
-            m_model_instance->SetTexMatrixAnimation(ref_cast<J3DTexMatrixAnimationInstance>(animation));
-            break;
-        case AnimationType::BTP:
-            animation = anim_idx < m_animations_btp.size() ? m_animations_btp[anim_idx] : nullptr;
-            if (!animation) {
-                return false;
-            }
-            last_animation = m_animations_btp[last_anim_id];
-            last_animation->SetFrame(0, true);
-            animation->SetPaused(false);
-            m_model_instance->SetTexIndexAnimation(ref_cast<J3DTexIndexAnimationInstance>(animation));
-            break;
-        }
-
-        m_active_animation_map[type] = anim_idx;
-        return true;
-    }
-
-    bool PhysicalSceneObject::startAnimation(AnimationType type, const std::string &anim_name) {
-        return false;
-    }
-
-    bool PhysicalSceneObject::stopAnimation(AnimationType type) {
-        auto ctrl = getAnimationControl(type);
-        if (ctrl.expired())
-            return false;
-        ctrl.lock()->SetPaused(true);
-        return true;
-    }
-
     Result<void, BaseError>
     PhysicalSceneObject::loadDependencies(const fs_path &dependencies_path) {
         if (dependencies_path.empty()) {
@@ -841,6 +749,18 @@ namespace Toolbox::Object {
         }
 
         return {};
+    }
+
+    void PhysicalSceneObject::refreshRenderState() {
+        if (m_type == "NPCKinopio") {
+            HelperUpdateKinopioRender();
+            return;
+        }
+
+        if (Object::IsObjectMonte(this)) {
+            HelperUpdateMonteRender();
+            return;
+        }
     }
 
     Result<void, ObjectError> PhysicalSceneObject::performScene(
@@ -871,7 +791,8 @@ namespace Toolbox::Object {
             scene_lights.push_back(light);
         }
 
-        if (!m_model_instance) {
+        RefPtr<J3DModelInstance> selected_model = m_render_controller->getRenderModel();
+        if (!selected_model) {
             return {};
         }
 
@@ -884,44 +805,35 @@ namespace Toolbox::Object {
         auto transform_value_ptr = getMember("Transform").value();
         if (transform_value_ptr) {
             Transform transform = getMetaValue<Transform>(transform_value_ptr).value();
-            m_model_instance->SetTranslation(transform.m_translation);
-            m_model_instance->SetRotation(transform.m_rotation);
-            m_model_instance->SetScale(transform.m_scale);
+            selected_model->SetTranslation(transform.m_translation);
+            selected_model->SetRotation(transform.m_rotation);
+            selected_model->SetScale(transform.m_scale);
             m_transform      = transform;
             render_transform = transform;
         }
 
         if (m_type == "SunModel") {
-            m_model_instance->SetScale({1, 1, 1});
-        }
-
-        if (m_type == "NPCKinopio") {
-            HelperUpdateKinopioRender();
-        }
-
-        if (std::any_of(s_monte_types.begin(), s_monte_types.end(),
-                        [&](u16 code) { return code == m_type.code(); })) {
-            HelperUpdateMonteRender();
+            selected_model->SetScale({1, 1, 1});
         }
 
         if (!scene_lights.empty()) {
-            m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN], 0);
+            selected_model->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN], 0);
             if (scene_lights.size() > 1) {
-                m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN_SECONDARY], 1);
+                selected_model->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SUN_SECONDARY], 1);
             } else {
-                m_model_instance->SetLight(DEFAULT_LIGHT, 1);
+                selected_model->SetLight(DEFAULT_LIGHT, 1);
             }
-            // m_model_instance->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SPECULAR], 2);  //
+            // selected_model->SetLight(scene_lights[SCENE_LIGHT_OBJECT_SPECULAR], 2);  //
             // Specular light
         } else {
-            m_model_instance->SetLight(DEFAULT_LIGHT, 0);
-            m_model_instance->SetLight(DEFAULT_LIGHT, 1);
+            selected_model->SetLight(DEFAULT_LIGHT, 0);
+            selected_model->SetLight(DEFAULT_LIGHT, 1);
         }
 
         if (animate)
-            m_model_instance->UpdateAnimations(delta_time);
+            selected_model->UpdateAnimations(delta_time * 2.0f);
 
-        renderables.emplace_back(get_shared_ptr<PhysicalSceneObject>(*this), m_model_instance,
+        renderables.emplace_back(get_shared_ptr<PhysicalSceneObject>(*this), selected_model,
                                  render_transform);
 
         return {};
@@ -954,6 +866,8 @@ namespace Toolbox::Object {
     Result<void, FSError>
     PhysicalSceneObject::loadRenderData(const std::filesystem::path &asset_path,
                                         ResourceCache &resource_cache) {
+        m_render_controller = make_referable<ObjectRenderController>();
+
         if (m_template.type().empty() || m_wizard.empty()) {
             return make_fs_error<void>(std::error_code(),
                                        {"[Object] Object has no template and wizard data!"});
@@ -1098,24 +1012,23 @@ namespace Toolbox::Object {
             HelperUpdateKinopioRender();
         }
 
-        const bool is_obj_monte = std::any_of(s_monte_types.begin(), s_monte_types.end(),
-                                              [&](u16 code) { return code == m_type.code(); });
+        const bool is_obj_monte = Object::IsObjectMonte(this);
         if (is_obj_monte) {
             HelperUpdateMonteRender();
         }
 
         // TODO: Load texture data
 
-        m_model_instance = model_data->CreateInstance();
+        RefPtr<J3DModelInstance> render_model = model_data->CreateInstance();
         if (mat_table) {
-            m_model_instance->SetInstanceMaterialTable(mat_table);
-            m_model_instance->SetUseInstanceMaterialTable(true);
+            render_model->SetInstanceMaterialTable(mat_table);
+            render_model->SetUseInstanceMaterialTable(true);
         }
 
         if (type() == "Sky") {
             // Force render behind everything
-            m_model_instance->SetSortBias(255);
-            m_model_instance->SetInstanceMaterialTable(mat_table);
+            render_model->SetSortBias(255);
+            render_model->SetInstanceMaterialTable(mat_table);
         }
 
         for (auto &[tex_name, new_tex_path] : render_info->m_texture_swap_map) {
@@ -1144,43 +1057,31 @@ namespace Toolbox::Object {
                 RefPtr<J3DAnimationInstance> animation = anmLoader.LoadAnimation(anim_stream);
 
                 if (anim_file.ends_with(".bck")) {
-                    m_model_instance->SetJointAnimation(
-                        std::reinterpret_pointer_cast<J3DJointAnimationInstance>(animation
-                            ));
-                    m_animations_bck.push_back(animation);
+                    m_render_controller->addAnimation(AnimationType::BCK, animation);
                 }
 
                 if (anim_file.ends_with(".brk")) {
-                    m_model_instance->SetRegisterColorAnimation(
-                        std::reinterpret_pointer_cast<J3DColorAnimationInstance>(animation));
-                    m_animations_brk.push_back(animation);
+                    m_render_controller->addAnimation(AnimationType::BRK, animation);
                 }
 
                 if (anim_file.ends_with(".btp")) {
-                    m_model_instance->SetTexIndexAnimation(
-                        std::reinterpret_pointer_cast<J3DTexIndexAnimationInstance>(animation));
-                    m_animations_btp.push_back(animation);
+                    m_render_controller->addAnimation(AnimationType::BTP, animation);
                 }
 
                 if (anim_file.ends_with(".btk")) {
-                    m_model_instance->SetTexMatrixAnimation(
-                        std::reinterpret_pointer_cast<J3DTexMatrixAnimationInstance>(animation));
-                    m_animations_btk.push_back(animation);
+                    m_render_controller->addAnimation(AnimationType::BTK, animation);
                 }
             }
         }
 
-        if (is_obj_monte) {
-            startAnimation(AnimationType::BCK, 15);  // Wait anim
-        } else {
-            startAnimation(AnimationType::BCK, 0);
-        }
+        m_render_controller->addRenderModel(render_model);
 
-        startAnimation(AnimationType::BLK, 0);
-        startAnimation(AnimationType::BPK, 0);
-        startAnimation(AnimationType::BRK, 0);
-        startAnimation(AnimationType::BTK, 0);
-        startAnimation(AnimationType::BTP, 0);
+        m_render_controller->startAnimation(AnimationType::BCK, 0);
+        m_render_controller->startAnimation(AnimationType::BLK, 0);
+        m_render_controller->startAnimation(AnimationType::BPK, 0);
+        m_render_controller->startAnimation(AnimationType::BRK, 0);
+        m_render_controller->startAnimation(AnimationType::BTK, 0);
+        m_render_controller->startAnimation(AnimationType::BTP, 0);
 
         return {};
     }
@@ -1406,5 +1307,190 @@ namespace Toolbox::Object {
     bool ObjectFactory::isPhysicalObject(std::string_view type) { return !isGroupObject(type); }
 
     bool ObjectFactory::isPhysicalObject(Deserializer &in) { return !isGroupObject(in); }
+
+    RefPtr<J3DAnimationInstance>
+    ObjectRenderController::getAnimationControl(AnimationType type) const {
+        if (m_active_animation_map.contains(type)) {
+            const int animation_id = m_active_animation_map.at(type);
+            switch (type) {
+            case AnimationType::BCK:
+                return m_animations_bck[animation_id];
+            case AnimationType::BLK:
+                return m_animations_blk[animation_id];
+            case AnimationType::BPK:
+                return m_animations_bpk[animation_id];
+            case AnimationType::BRK:
+                return m_animations_brk[animation_id];
+            case AnimationType::BTK:
+                return m_animations_btk[animation_id];
+            case AnimationType::BTP:
+                return m_animations_btp[animation_id];
+            }
+        }
+        return nullptr;
+    }
+
+    ObjectRenderController &ObjectRenderController::addRenderModel(RefPtr<J3DModelInstance> model) {
+        m_model_instances.emplace_back(std::move(model));
+        if (m_selected_model_idx == -1) {
+            m_selected_model_idx = m_model_instances.size() - 1;
+        }
+        return *this;
+    }
+
+    ObjectRenderController &
+    ObjectRenderController::addAnimation(AnimationType type,
+                                         RefPtr<J3DAnimationInstance> animation) {
+        switch (type) {
+        case AnimationType::BCK:
+            m_animations_bck.emplace_back(std::move(animation));
+            return *this;
+        case AnimationType::BLK:
+            return *this;
+        case AnimationType::BPK:
+            return *this;
+        case AnimationType::BRK:
+            m_animations_brk.emplace_back(std::move(animation));
+            return *this;
+        case AnimationType::BTK:
+            m_animations_btk.emplace_back(std::move(animation));
+            return *this;
+        case AnimationType::BTP:
+            m_animations_btp.emplace_back(std::move(animation));
+            return *this;
+        }
+        return *this;
+    }
+
+    ObjectRenderController &ObjectRenderController::selectRenderModel(int model_idx) {
+        m_selected_model_idx = model_idx;
+        return *this;
+    }
+
+    J3DLight ObjectRenderController::getLightData(int index) {
+        return getRenderModel()->GetLight(index);
+    }
+
+    RefPtr<J3DModelInstance> ObjectRenderController::getRenderModel() const {
+        return getRenderModel(m_selected_model_idx);
+    }
+
+    RefPtr<J3DModelInstance> ObjectRenderController::getRenderModel(int model_index) const {
+        return model_index < 0 || m_model_instances.empty() ? nullptr
+                                                            : m_model_instances[model_index];
+    }
+
+    size_t ObjectRenderController::getAnimationFrames(AnimationType type) const {
+        RefPtr<J3DAnimationInstance> animation = getAnimationControl(type);
+        return animation->GetLength();
+    }
+
+    float ObjectRenderController::getAnimationFrame(AnimationType type) const {
+        RefPtr<J3DAnimationInstance> animation = getAnimationControl(type);
+        return animation->GetFrame();
+    }
+
+    void ObjectRenderController::setAnimationFrame(size_t frame, AnimationType type) {
+        RefPtr<J3DAnimationInstance> animation = getAnimationControl(type);
+        animation->SetFrame(static_cast<u16>(frame));
+    }
+
+    bool ObjectRenderController::startAnimation(AnimationType type, int anim_idx) {
+        RefPtr<J3DModelInstance> selected_model = getRenderModel();
+        if (!selected_model) {
+            return false;
+        }
+
+        RefPtr<J3DAnimationInstance> animation, last_animation;
+        const int last_anim_id =
+            m_active_animation_map.contains(type) ? m_active_animation_map[type] : -1;
+
+        if (anim_idx == last_anim_id) {
+            return true;
+        }
+
+        switch (type) {
+        case AnimationType::BCK:
+            animation = anim_idx < m_animations_bck.size() ? m_animations_bck[anim_idx] : nullptr;
+            if (!animation) {
+                return false;
+            }
+            last_animation = last_anim_id < m_animations_bck.size() ? m_animations_bck[last_anim_id]
+                                                                    : nullptr;
+            if (last_animation) {
+                last_animation->SetFrame(0, true);
+            }
+            animation->SetFrame(0, false);
+            selected_model->SetJointAnimation(ref_cast<J3DJointAnimationInstance>(animation));
+            break;
+        case AnimationType::BLK:
+            return false;
+        case AnimationType::BPK:
+            return false;
+        case AnimationType::BRK:
+            animation = anim_idx < m_animations_brk.size() ? m_animations_brk[anim_idx] : nullptr;
+            if (!animation) {
+                return false;
+            }
+            last_animation = last_anim_id < m_animations_brk.size() ? m_animations_brk[last_anim_id]
+                                                                    : nullptr;
+            if (last_animation) {
+                last_animation->SetFrame(0, true);
+            }
+            animation->SetFrame(0, false);
+            selected_model->SetRegisterColorAnimation(
+                ref_cast<J3DColorAnimationInstance>(animation));
+            break;
+        case AnimationType::BTK:
+            animation = anim_idx < m_animations_btk.size() ? m_animations_btk[anim_idx] : nullptr;
+            if (!animation) {
+                return false;
+            }
+            last_animation = last_anim_id < m_animations_btk.size() ? m_animations_btk[last_anim_id]
+                                                                    : nullptr;
+            if (last_animation) {
+                last_animation->SetFrame(0, true);
+            }
+            animation->SetFrame(0, false);
+            selected_model->SetTexMatrixAnimation(
+                ref_cast<J3DTexMatrixAnimationInstance>(animation));
+            break;
+        case AnimationType::BTP:
+            animation = anim_idx < m_animations_btp.size() ? m_animations_btp[anim_idx] : nullptr;
+            if (!animation) {
+                return false;
+            }
+            last_animation = last_anim_id < m_animations_btp.size() ? m_animations_btp[last_anim_id]
+                                                                    : nullptr;
+            if (last_animation) {
+                last_animation->SetFrame(0, true);
+            }
+            animation->SetFrame(0, false);
+            selected_model->SetTexIndexAnimation(ref_cast<J3DTexIndexAnimationInstance>(animation));
+            break;
+        }
+
+        m_active_animation_map[type] = anim_idx;
+        return true;
+    }
+
+    bool ObjectRenderController::startAnimation(AnimationType type, const std::string &anim_name) {
+        return false;
+    }
+
+    bool ObjectRenderController::stopAnimation(AnimationType type) {
+        RefPtr<J3DAnimationInstance> animation = getAnimationControl(type);
+        if (!animation) {
+            return false;
+        }
+        animation->SetPaused(true);
+        return true;
+    }
+
+    bool IsObjectMonte(ISceneObject* object) {
+        const u16 type_code = NameRef(object->type()).code();
+        return std::any_of(s_monte_types.begin(), s_monte_types.end(),
+                           [&](u16 code) { return code == type_code; });
+    }
 
 }  // namespace Toolbox::Object

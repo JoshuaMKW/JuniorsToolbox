@@ -36,6 +36,9 @@ namespace Toolbox {
     }
 
     bool KeyBind::isInputMatching() const {
+        if (m_key_combo.empty()) {
+            return false;
+        }
         return std::all_of(m_key_combo.begin(), m_key_combo.end(),
                            [](Input::KeyCode keybind) { return Input::GetKey(keybind); });
     }

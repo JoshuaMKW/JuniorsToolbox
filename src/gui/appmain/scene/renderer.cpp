@@ -457,7 +457,7 @@ namespace Toolbox::UI {
 
             J3D::Rendering::RenderPacketVector packets =
                 J3D::Rendering::SortPackets(models, position);
-            J3D::Rendering::Render(delta_time, view, projection, packets);
+            J3D::Rendering::Render(delta_time * 2.0f, view, projection, packets);
 
             m_path_renderer.setScreenResolution(m_render_size.x, m_render_size.y);
             m_path_renderer.drawPaths(&m_camera);

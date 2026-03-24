@@ -74,6 +74,51 @@ namespace Toolbox::Object {
     inline ResourceCache &getResourceCache() { return s_resource_cache; }
     inline void clearResourceCache() { s_resource_cache = ResourceCache(); }
 
+    bool IsObjectMonte(ISceneObject *object);
+
+    class ObjectRenderController {
+    public:
+        ObjectRenderController()                                   = default;
+        ObjectRenderController(const ObjectRenderController &)     = default;
+        ObjectRenderController(ObjectRenderController &&) noexcept = default;
+
+        ~ObjectRenderController() = default;
+
+        ObjectRenderController &addRenderModel(RefPtr<J3DModelInstance> model);
+        ObjectRenderController &addAnimation(AnimationType type,
+                                             RefPtr<J3DAnimationInstance> animation);
+        ObjectRenderController &selectRenderModel(int model_idx);
+
+        J3DLight getLightData(int index);
+
+        [[nodiscard]] size_t getRenderModelCount() const { return m_model_instances.size(); }
+        [[nodiscard]] RefPtr<J3DModelInstance> getRenderModel() const;
+        [[nodiscard]] RefPtr<J3DModelInstance> getRenderModel(int model_index) const;
+
+        [[nodiscard]] size_t getAnimationFrames(AnimationType type) const;
+        [[nodiscard]] float getAnimationFrame(AnimationType type) const;
+        void setAnimationFrame(size_t frame, AnimationType type);
+
+        bool startAnimation(AnimationType type, int anim_idx);
+        bool startAnimation(AnimationType type, const std::string &anim_name);
+        bool stopAnimation(AnimationType type);
+
+        RefPtr<J3DAnimationInstance> getAnimationControl(AnimationType type) const;
+
+    private:
+        int m_selected_model_idx = -1;
+
+        std::vector<RefPtr<J3DModelInstance>> m_model_instances;
+
+        std::unordered_map<AnimationType, int> m_active_animation_map;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_bck;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_blk;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_bpk;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_brk;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_btp;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_btk;
+    };
+
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
     class ISceneObject : public IGameSerializable, public ISmartResource, public IUnique {
@@ -123,7 +168,7 @@ namespace Toolbox::Object {
         virtual Result<void, ObjectGroupError> removeChild(RefPtr<ISceneObject> object) = 0;
         virtual Result<void, ObjectGroupError> removeChild(const QualifiedName &name)   = 0;
         virtual Result<void, ObjectGroupError> removeChild(size_t index)                = 0;
-        [[nodiscard]] virtual std::vector<RefPtr<ISceneObject>> getChildren()           = 0;
+        [[nodiscard]] virtual const std::vector<RefPtr<ISceneObject>> &getChildren()    = 0;
         [[nodiscard]] virtual RefPtr<ISceneObject> getChild(const QualifiedName &name)  = 0;
         [[nodiscard]] virtual RefPtr<ISceneObject> getChild(UUID64 id)                  = 0;
         [[nodiscard]] virtual RefPtr<ISceneObject>
@@ -135,13 +180,14 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual std::optional<BoundingBox> getBoundingBox() const = 0;
 
-        [[nodiscard]] virtual Result<void, BaseError> loadDependencies(const fs_path &dependencies_path) = 0;
-
-        [[nodiscard]] virtual J3DLight getLightData(int index) = 0;
+        [[nodiscard]] virtual Result<void, BaseError>
+        loadDependencies(const fs_path &dependencies_path) = 0;
 
         [[nodiscard]] virtual bool getCanPerform() const   = 0;
         [[nodiscard]] virtual bool getIsPerforming() const = 0;
         virtual void setIsPerforming(bool performing)      = 0;
+
+        virtual void refreshRenderState() = 0;
 
         virtual Result<void, ObjectError> performScene(float delta_time, bool animate,
                                                        std::vector<RenderInfo> &renderables,
@@ -150,13 +196,10 @@ namespace Toolbox::Object {
 
         virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
 
-    protected:
-        /* PROTECTED ABSTRACT INTERFACE */
-        [[nodiscard]] virtual std::weak_ptr<J3DAnimationInstance>
-        getAnimationControl(AnimationType type) const = 0;
-
     public:
         [[nodiscard]] QualifiedName getQualifiedName() const;
+
+        [[nodiscard]] virtual RefPtr<ObjectRenderController> getRenderController() const = 0;
 
         [[nodiscard]] RefPtr<ISceneObject> getChild(const std::string &name) {
             return getChild(QualifiedName(name));
@@ -177,7 +220,7 @@ namespace Toolbox::Object {
 
         VirtualSceneObject(const Template &template_) : ISceneObject(), m_nameref() {
             m_template = template_;
-            m_type = template_.type();
+            m_type     = template_.type();
 
             auto wizard = template_.getWizard();
             if (!wizard)
@@ -190,7 +233,7 @@ namespace Toolbox::Object {
         VirtualSceneObject(const Template &template_, std::string_view wizard_name)
             : ISceneObject(), m_nameref() {
             m_template = template_;
-            m_type = template_.type();
+            m_type     = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);
             if (!wizard)
@@ -285,7 +328,11 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override { return {}; }
+        [[nodiscard]] const std::vector<RefPtr<ISceneObject>> &getChildren() override {
+            static std::vector<RefPtr<ISceneObject>> s_null = {};
+            return s_null;
+        }
+
         [[nodiscard]] RefPtr<ISceneObject> getChild(const QualifiedName &name) override {
             return nullptr;
         }
@@ -305,11 +352,15 @@ namespace Toolbox::Object {
         [[nodiscard]] Result<void, BaseError>
         loadDependencies(const fs_path &dependencies_path) override;
 
-        [[nodiscard]] J3DLight getLightData(int index) override { return {}; }
+        [[nodiscard]] RefPtr<ObjectRenderController> getRenderController() const override {
+            return nullptr;
+        }
 
         [[nodiscard]] bool getCanPerform() const { return false; }
         [[nodiscard]] bool getIsPerforming() const { return false; }
         void setIsPerforming(bool performing) {}
+
+        void refreshRenderState() override {}
 
         Result<void, ObjectError> performScene(float delta_time, bool animate,
                                                std::vector<RenderInfo> &renderables,
@@ -322,11 +373,6 @@ namespace Toolbox::Object {
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
     protected:
-        [[nodiscard]] std::weak_ptr<J3DAnimationInstance>
-        getAnimationControl(AnimationType type) const override {
-            return {};
-        }
-
         void applyWizard(const TemplateWizard &wizard);
 
     public:
@@ -430,7 +476,7 @@ namespace Toolbox::Object {
         Result<void, ObjectGroupError> removeChild(RefPtr<ISceneObject> child) override;
         Result<void, ObjectGroupError> removeChild(const QualifiedName &name) override;
         Result<void, ObjectGroupError> removeChild(size_t index) override;
-        [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override;
+        [[nodiscard]] const std::vector<RefPtr<ISceneObject>> &getChildren() override;
         [[nodiscard]] RefPtr<ISceneObject> getChild(const QualifiedName &name) override;
         [[nodiscard]] RefPtr<ISceneObject> getChild(UUID64 id) override;
         [[nodiscard]] RefPtr<ISceneObject>
@@ -508,7 +554,7 @@ namespace Toolbox::Object {
         PhysicalSceneObject(const Template &template_)
             : ISceneObject(), m_nameref(), m_transform() {
             m_template = template_;
-            m_type = template_.type();
+            m_type     = template_.type();
 
             auto wizard = template_.getWizard();
             if (!wizard)
@@ -520,7 +566,7 @@ namespace Toolbox::Object {
         PhysicalSceneObject(const Template &template_, std::string_view wizard_name)
             : ISceneObject(), m_nameref(), m_transform() {
             m_template = template_;
-            m_type = template_.type();
+            m_type     = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);
             if (!wizard)
@@ -552,14 +598,7 @@ namespace Toolbox::Object {
         PhysicalSceneObject(PhysicalSceneObject &&)      = default;
 
     public:
-        ~PhysicalSceneObject() override {
-            m_data.clear();
-            try {
-                m_model_instance.reset();
-            } catch (...) {
-                return;
-            }
-        }
+        ~PhysicalSceneObject() override { m_data.clear(); }
 
         [[nodiscard]] bool isGroupObject() const override { return false; }
 
@@ -621,7 +660,11 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override { return {}; }
+        [[nodiscard]] const std::vector<RefPtr<ISceneObject>> &getChildren() override {
+            static std::vector<RefPtr<ISceneObject>> s_null = {};
+            return s_null;
+        }
+
         [[nodiscard]] RefPtr<ISceneObject> getChild(const QualifiedName &name) override {
             return {};
         }
@@ -637,10 +680,12 @@ namespace Toolbox::Object {
         Result<void, MetaError> setTransform(const Transform &transform) override {
             // TODO: Set the properties transform too
             m_transform = transform;
-            if (m_model_instance) {
-                m_model_instance->SetTranslation(transform.m_translation);
-                m_model_instance->SetRotation(transform.m_rotation);
-                m_model_instance->SetScale(transform.m_scale);
+
+            RefPtr<J3DModelInstance> selected_model = m_render_controller->getRenderModel();
+            if (selected_model) {
+                selected_model->SetTranslation(transform.m_translation);
+                selected_model->SetRotation(transform.m_rotation);
+                selected_model->SetScale(transform.m_scale);
             }
 
             auto transform_value_ptr = getMember("Transform").value();
@@ -660,7 +705,8 @@ namespace Toolbox::Object {
         }
 
         [[nodiscard]] std::optional<BoundingBox> getBoundingBox() const override {
-            if (!m_model_instance)
+            RefPtr<J3DModelInstance> selected_model = m_render_controller->getRenderModel();
+            if (!selected_model)
                 return {};
 
             std::optional<Transform> transform = getTransform();
@@ -670,7 +716,7 @@ namespace Toolbox::Object {
             glm::vec3 center, size;
 
             glm::vec3 min, max;
-            m_model_instance->GetBoundingBox(min, max);
+            selected_model->GetBoundingBox(min, max);
 
             max.x *= transform->m_scale.x;
             max.y *= transform->m_scale.y;
@@ -686,22 +732,18 @@ namespace Toolbox::Object {
             return BoundingBox(center, size, glm::quat(transform->m_rotation));
         }
 
-        [[nodiscard]] size_t getAnimationFrames(AnimationType type) const;
-        [[nodiscard]] float getAnimationFrame(AnimationType type) const;
-        void setAnimationFrame(size_t frame, AnimationType type);
-
-        bool startAnimation(AnimationType type, int anim_idx);
-        bool startAnimation(AnimationType type, const std::string &anim_name);
-        bool stopAnimation(AnimationType type);
-
         [[nodiscard]] Result<void, BaseError>
         loadDependencies(const fs_path &dependencies_path) override;
 
-        J3DLight getLightData(int index) override { return m_model_instance->GetLight(index); }
+        [[nodiscard]] RefPtr<ObjectRenderController> getRenderController() const override {
+            return m_render_controller;
+        }
 
         [[nodiscard]] bool getCanPerform() const { return true; }
         [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
         void setIsPerforming(bool performing) { m_is_performing = performing; }
+
+        void refreshRenderState() override;
 
         Result<void, ObjectError> performScene(float delta_time, bool animate,
                                                std::vector<RenderInfo> &renderables,
@@ -714,27 +756,6 @@ namespace Toolbox::Object {
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
     protected:
-        std::weak_ptr<J3DAnimationInstance> getAnimationControl(AnimationType type) const override {
-            if (m_active_animation_map.contains(type)) {
-                const int animation_id = m_active_animation_map.at(type);
-                switch (type) {
-                case AnimationType::BCK:
-                    return m_animations_bck[animation_id];
-                case AnimationType::BLK:
-                    return m_animations_blk[animation_id];
-                case AnimationType::BPK:
-                    return m_animations_bpk[animation_id];
-                case AnimationType::BRK:
-                    return m_animations_brk[animation_id];
-                case AnimationType::BTK:
-                    return m_animations_btk[animation_id];
-                case AnimationType::BTP:
-                    return m_animations_btp[animation_id];
-                }
-            }
-            return std::weak_ptr<J3DAnimationInstance>();
-        }
-
         void applyWizard(const TemplateWizard &wizard);
 
         Result<void, FSError> loadRenderData(const std::filesystem::path &asset_path,
@@ -768,7 +789,6 @@ namespace Toolbox::Object {
         mutable MetaStruct::CacheMemberT m_member_cache;
 
         std::optional<Transform> m_transform;
-        RefPtr<J3DModelInstance> m_model_instance;
         RefPtr<J3DModelData> m_model_data;
 
         bool m_is_performing = true;
@@ -779,13 +799,7 @@ namespace Toolbox::Object {
         Template m_template;
         std::string m_wizard;
 
-        std::unordered_map<AnimationType, int> m_active_animation_map;
-        std::vector<RefPtr<J3DAnimationInstance>> m_animations_bck;
-        std::vector<RefPtr<J3DAnimationInstance>> m_animations_blk;
-        std::vector<RefPtr<J3DAnimationInstance>> m_animations_bpk;
-        std::vector<RefPtr<J3DAnimationInstance>> m_animations_brk;
-        std::vector<RefPtr<J3DAnimationInstance>> m_animations_btp;
-        std::vector<RefPtr<J3DAnimationInstance>> m_animations_btk;
+        RefPtr<ObjectRenderController> m_render_controller;
 
         fs_path m_scene_resource_path;
     };

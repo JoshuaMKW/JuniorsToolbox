@@ -94,6 +94,9 @@ namespace Toolbox::UI {
             }
             ImGui::EndGroupPanel();
 
+            if (any_changed && m_value_changed) {
+                m_value_changed(m_member);
+            }
             return any_changed;
         }
 
@@ -107,6 +110,9 @@ namespace Toolbox::UI {
         std::string id_str = std::format("##{}", m_member->name().c_str());
         any_changed |= ImGui::Checkbox(id_str.c_str(), reinterpret_cast<bool *>(m_bools.data()));
 
+        if (any_changed && m_value_changed) {
+            m_value_changed(m_member);
+        }
         return any_changed;
     }
 
@@ -243,6 +249,9 @@ namespace Toolbox::UI {
             }
             ImGui::EndGroupPanel();
 
+            if (any_changed && m_value_changed) {
+                m_value_changed(m_member);
+            }
             return any_changed;
         }
 
@@ -265,6 +274,9 @@ namespace Toolbox::UI {
             }
         }
 
+        if (any_changed && m_value_changed) {
+            m_value_changed(m_member);
+        }
         return any_changed;
     }
 
@@ -337,6 +349,9 @@ namespace Toolbox::UI {
             }
             ImGui::EndGroupPanel();
 
+            if (any_changed && m_value_changed) {
+                m_value_changed(m_member);
+            }
             return any_changed;
         }
 
@@ -359,6 +374,9 @@ namespace Toolbox::UI {
             }
         }
 
+        if (any_changed && m_value_changed) {
+            m_value_changed(m_member);
+        }
         return any_changed;
     }
 
@@ -433,6 +451,9 @@ namespace Toolbox::UI {
             }
             ImGui::EndGroupPanel();
 
+            if (any_changed && m_value_changed) {
+                m_value_changed(m_member);
+            }
             return any_changed;
         }
 
@@ -455,6 +476,9 @@ namespace Toolbox::UI {
             }
         }
 
+        if (any_changed && m_value_changed) {
+            m_value_changed(m_member);
+        }
         return any_changed;
     }
 
@@ -511,6 +535,9 @@ namespace Toolbox::UI {
             }
             ImGui::EndGroupPanel();
 
+            if (any_changed && m_value_changed) {
+                m_value_changed(m_member);
+            }
             return any_changed;
         }
 
@@ -530,6 +557,9 @@ namespace Toolbox::UI {
             }
         }
 
+        if (any_changed && m_value_changed) {
+            m_value_changed(m_member);
+        }
         return any_changed;
     }
 
@@ -599,6 +629,9 @@ namespace Toolbox::UI {
             }
             ImGui::EndGroupPanel();
 
+            if (any_changed && m_value_changed) {
+                m_value_changed(m_member);
+            }
             return any_changed;
         }
 
@@ -628,6 +661,9 @@ namespace Toolbox::UI {
             }
         }
 
+        if (any_changed && m_value_changed) {
+            m_value_changed(m_member);
+        }
         return any_changed;
     }
 
@@ -720,6 +756,9 @@ namespace Toolbox::UI {
         }
         ImGui::ItemSize({0, 4});
 
+        if (any_changed && m_value_changed) {
+            m_value_changed(m_member);
+        }
         return any_changed;
     }
 
@@ -894,6 +933,9 @@ namespace Toolbox::UI {
         }
         ImGui::ItemSize({0, 4});
 
+        if (any_changed && m_value_changed) {
+            m_value_changed(m_member);
+        }
         return any_changed;
     }
 
@@ -912,8 +954,9 @@ namespace Toolbox::UI {
 
         bool any_changed = false;
 
-        auto enum_values = Object::getMetaEnumValues(m_member).value();
-        auto enum_type   = Object::getMetaType(m_member).value();
+        auto enum_values    = Object::getMetaEnumValues(m_member).value();
+        auto enum_type      = Object::getMetaType(m_member).value();
+        bool enum_bitmasked = Object::getMetaEnumBitmasked(m_member).value();
 
         if (m_numbers.size() != m_member->arraysize()) {
             init();
@@ -923,8 +966,14 @@ namespace Toolbox::UI {
                 auto &state = m_checked_state.at(i);
                 m_checked_state.at(i).resize(enum_values.size());
                 for (size_t j = 0; j < enum_values.size(); ++j) {
-                    if ((value & getEnumFlagValue(enum_values.at(j), enum_type)) != 0) {
-                        state.at(j) = true;
+                    if (enum_bitmasked) {
+                        if ((value & getEnumFlagValue(enum_values.at(j), enum_type)) != 0) {
+                            state.at(j) = true;
+                        }
+                    } else {
+                        if (value == getEnumFlagValue(enum_values.at(j), enum_type)) {
+                            state.at(j) = true;
+                        }
                     }
                 }
             }
@@ -947,9 +996,19 @@ namespace Toolbox::UI {
                                     reinterpret_cast<bool *>(m_checked_state.at(i).data() + j))) {
                                 bool checked = m_checked_state.at(i).at(j);
                                 if (checked) {
-                                    number |= getEnumFlagValue(enum_values.at(j), enum_type);
+                                    if (enum_bitmasked) {
+                                        number |= getEnumFlagValue(enum_values.at(j), enum_type);
+                                    } else {
+                                        number = getEnumFlagValue(enum_values.at(j), enum_type);
+                                        for (size_t k = 0; k < m_checked_state.at(0).size(); ++k) {
+                                            m_checked_state.at(0).at(k) = false;
+                                        }
+                                        m_checked_state.at(0).at(j) = true;
+                                    }
                                 } else {
-                                    number &= ~getEnumFlagValue(enum_values.at(j), enum_type);
+                                    if (enum_bitmasked) {
+                                        number &= ~getEnumFlagValue(enum_values.at(j), enum_type);
+                                    }
                                 }
                             }
                         }
@@ -962,6 +1021,9 @@ namespace Toolbox::UI {
             }
             ImGui::EndGroupPanel();
 
+            if (any_changed && m_value_changed) {
+                m_value_changed(m_member);
+            }
             return any_changed;
         }
 
@@ -972,9 +1034,19 @@ namespace Toolbox::UI {
                                     reinterpret_cast<bool *>(m_checked_state.at(0).data() + j))) {
                     bool checked = m_checked_state.at(0).at(j);
                     if (checked) {
-                        number |= getEnumFlagValue(enum_values.at(j), enum_type);
+                        if (enum_bitmasked) {
+                            number |= getEnumFlagValue(enum_values.at(j), enum_type);
+                        } else {
+                            number = getEnumFlagValue(enum_values.at(j), enum_type);
+                            for (size_t k = 0; k < m_checked_state.at(0).size(); ++k) {
+                                m_checked_state.at(0).at(k) = false;
+                            }
+                            m_checked_state.at(0).at(j) = true;
+                        }
                     } else {
-                        number &= ~getEnumFlagValue(enum_values.at(j), enum_type);
+                        if (enum_bitmasked) {
+                            number &= ~getEnumFlagValue(enum_values.at(j), enum_type);
+                        }
                     }
                 }
             }
@@ -984,6 +1056,9 @@ namespace Toolbox::UI {
         }
         ImGui::EndGroupPanel();
 
+        if (any_changed && m_value_changed) {
+            m_value_changed(m_member);
+        }
         return any_changed;
     }
 
@@ -1088,6 +1163,9 @@ namespace Toolbox::UI {
         }
         ImGui::ItemSize({0, 4});
 
+        if (any_changed && m_value_changed) {
+            m_value_changed(m_member);
+        }
         return any_changed;
     }
 

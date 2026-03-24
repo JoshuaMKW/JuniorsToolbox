@@ -182,7 +182,7 @@
                     "montemcommon/mom_happy.bck",
                     "montemcommon/mom_happy.btp",
                     "montemcommon/mom_mad.bck",
-                    "montemcommon/mom_mad.btp",
+                    "montemf/momf_mad.btp",
                     "montemcommon/mom_madloop.bck",
                     "montemcommon/mom_madloop.btp",
                     "montemcommon/mom_recover.bck",
@@ -209,7 +209,10 @@
                     "montemcommon/mom_wet_a.btp",
                     "montemcommon/mom_wet_yogore.bck",
                     "montemcommon/mom_wet_yogore.btp",
-                    "montemcommon/mom_wink.btp"
+                    "montemf/momf_wink.btp",
+                    "montemf/momf_swim.bck",
+                    "montemf/momf_swimmad.bck",
+                    "montemf/momf_swimtalk.bck"
                 ],
                 "Model": "montemf/momf_model.bmd"
             }

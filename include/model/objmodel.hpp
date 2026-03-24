@@ -178,6 +178,7 @@ namespace Toolbox {
 
         mutable UUID64 m_root_index;
         mutable std::map<UUID64, ModelIndex> m_index_map;
+        mutable std::map<UUID64, ModelIndex> m_obj_to_index_map;
 
         fs_path m_scene_path;
     };

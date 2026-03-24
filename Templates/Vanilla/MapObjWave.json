@@ -22,6 +22,22 @@
                     "Character": "波 キャラ"
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "map/map/sea.bmd",
+                "Animations": [
+                    "map/map/sea.brk",
+                    "map/map/sea.btk"
+                ]
+            },
+            "波": {
+                "Model": "map/map/sea.bmd",
+                "Animations": [
+                    "map/map/sea.brk",
+                    "map/map/sea.btk"
+                ]
+            }
         }
     }
 }

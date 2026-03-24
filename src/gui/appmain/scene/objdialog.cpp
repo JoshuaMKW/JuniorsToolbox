@@ -218,7 +218,7 @@ namespace Toolbox::UI {
             ImVec4 name_state_color    = {0.2f, 0.8f, 0.2f, 1.0f};
 
             if (this_parent) {
-                auto children = std::move(this_parent->getChildren());
+                const std::vector<RefPtr<ISceneObject>> &children = this_parent->getChildren();
                 auto sibling_it =
                     std::find_if(children.begin(), children.end(), [&](const auto &child) {
                         return child->getNameRef().name() == proposed_name;

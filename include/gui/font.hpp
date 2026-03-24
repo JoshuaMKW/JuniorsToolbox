@@ -24,6 +24,8 @@ namespace Toolbox::UI {
         std::multimap<std::string, ImFont *> m_loaded_fonts;
         fs_path m_font_directory;
 
+        ImFont *m_current_font;
+
     public:
         static FontManager &instance() {
             static FontManager s_instance;
@@ -65,7 +67,7 @@ namespace Toolbox::UI {
 #else
         ImFont *getFont(std::string_view name) const;
 
-        ImFont *getCurrentFont() const { return getFont(m_current_font_family); }
+        ImFont *getCurrentFont() const { return m_current_font; }
 #endif
 
         std::string getCurrentFontFamily() const { return m_current_font_family; }

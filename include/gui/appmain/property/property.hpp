@@ -12,6 +12,8 @@ namespace Toolbox::UI {
 
     class IProperty {
     public:
+        using changed_cb = std::function<void(RefPtr<Object::MetaMember>)>;
+
         IProperty(RefPtr<Object::MetaMember> prop) : m_member(prop) {}
         virtual ~IProperty() = default;
 
@@ -21,9 +23,12 @@ namespace Toolbox::UI {
 
         ImVec2 labelSize();
 
+        void onValueChanged(changed_cb cb) { m_value_changed = cb; }
+
     protected:
         RefPtr<Object::MetaMember> m_member;
         std::vector<char> m_array_open = {};
+        changed_cb m_value_changed;
     };
 
     class BoolProperty : public IProperty {

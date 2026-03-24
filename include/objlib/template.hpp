@@ -124,8 +124,8 @@ namespace Toolbox::Object {
         std::optional<MetaMember>
         loadMemberPrimitive(std::string_view name, std::string_view type,
                             MetaMember::size_type array_size,
-                            const std::variant<s64, u64, float, double> &var_min,
-                            const std::variant<s64, u64, float, double> &var_max);
+                            const std::variant<std::monostate, s64, u64, float, double> &var_min,
+                            const std::variant<std::monostate, s64, u64, float, double> &var_max);
 
         Result<TemplateDependencies, JSONError> loadDependencies(const json_t &dependencies);
         Result<void, JSONError> loadMembers(const json_t &members, std::vector<MetaMember> &out);
