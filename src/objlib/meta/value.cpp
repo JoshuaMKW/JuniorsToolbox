@@ -311,11 +311,8 @@ namespace Toolbox::Object {
 
             for (size_t i = 0; i < byte_len; ++i) {
                 uint8_t ch = byte_buf[i];
-                // High nibble
                 *dest++ = hex_map[ch >> 4];
-                // Low nibble
                 *dest++ = hex_map[ch & 0x0F];
-                // Trailing space
                 *dest++ = ' ';
             }
 
