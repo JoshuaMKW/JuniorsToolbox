@@ -2029,6 +2029,9 @@ namespace Toolbox::UI {
                 m_rail_list_context_menu.tryRender(
                     m_rail_selection_mgr.getState().getLastSelected());
             }
+
+            // Stupid ImGui keeps crashing when SetCursorPos goes past the window
+            ImGui::Dummy({0.0f, 0.0f});
         }
         ImGui::End();
     }

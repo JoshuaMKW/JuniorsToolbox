@@ -6,7 +6,7 @@ cmake_minimum_required (VERSION 3.25)
 project(JuniorsToolbox VERSION 0.3.0)
 
 # Do this early in your root CMakeLists.txt
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+if(CMAKE_WANTS_ASAN)
     if (MSVC)
         # Apply ASan and debug symbols to ALL targets and submodules
         add_compile_options(/fsanitize=address /Zi)

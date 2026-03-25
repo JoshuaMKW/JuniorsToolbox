@@ -34,6 +34,8 @@ namespace Toolbox {
         size_t m_size = 0;
         Filesystem::file_time_type m_date;
 
+        int m_dirty_counter = 0;
+
         RefPtr<const ImageHandle> m_icon = nullptr;
 
         bool hasChild(UUID64 uuid) const {
@@ -268,12 +270,14 @@ namespace Toolbox {
         }
 
         if (validateIndex(result)) {
-            const Signal post_signal = createSignalForIndex_(result, ModelEventFlags::EVENT_INDEX_ADDED);
+            const Signal post_signal =
+                createSignalForIndex_(result, ModelEventFlags::EVENT_INDEX_ADDED);
             signalEventListeners(post_signal.first, post_signal.second |
                                                         ModelEventFlags::EVENT_POST |
                                                         ModelEventFlags::EVENT_SUCCESS);
 
-            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST | ModelEventFlags::EVENT_SUCCESS);
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST |
+                                                       ModelEventFlags::EVENT_SUCCESS);
         } else {
             signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST);
         }
@@ -322,8 +326,9 @@ namespace Toolbox {
         }
 
         if (result) {
-            signalEventListeners(remove_signal.first,
-                                 remove_signal.second | ModelEventFlags::EVENT_POST | ModelEventFlags::EVENT_SUCCESS);
+            signalEventListeners(remove_signal.first, remove_signal.second |
+                                                          ModelEventFlags::EVENT_POST |
+                                                          ModelEventFlags::EVENT_SUCCESS);
         } else {
             signalEventListeners(remove_signal.first,
                                  remove_signal.second | ModelEventFlags::EVENT_POST);
@@ -335,7 +340,8 @@ namespace Toolbox {
     ModelIndex FileSystemModel::rename(const ModelIndex &file, const std::string &new_name) {
         ModelIndex result;
 
-        const Signal pre_signal = createSignalForIndex_(file, ModelEventFlags::EVENT_INDEX_MODIFIED);
+        const Signal pre_signal =
+            createSignalForIndex_(file, ModelEventFlags::EVENT_INDEX_MODIFIED);
 
         signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_PRE);
 
@@ -496,9 +502,9 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    Result<IDataModel::index_container>
-    FileSystemModel::insertMimeData(const ModelIndex &index, const MimeData &data,
-                                         ModelInsertPolicy policy) {
+    Result<IDataModel::index_container> FileSystemModel::insertMimeData(const ModelIndex &index,
+                                                                        const MimeData &data,
+                                                                        ModelInsertPolicy policy) {
         Result<IDataModel::index_container> result;
 
         {
@@ -547,10 +553,11 @@ namespace Toolbox {
     void FileSystemModel::removeEventListener(UUID64 uuid) { m_listeners.erase(uuid); }
 
     const ImageHandle &FileSystemModel::InvalidIcon() {
-        static ImageHandle s_invalid_fs_icon = ImageHandle("Images/Icons/Filesystem/fs_invalid.png");
+        static ImageHandle s_invalid_fs_icon =
+            ImageHandle("Images/Icons/Filesystem/fs_invalid.png");
         return s_invalid_fs_icon;
     }
-        
+
     const std::unordered_map<std::string, FileSystemModel::FSTypeInfo> &FileSystemModel::TypeMap() {
         // clang-format off
         static std::unordered_map<std::string, FileSystemModel::FSTypeInfo> s_type_map = {
@@ -1121,23 +1128,23 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        //int event_flags = ModelEventFlags::EVENT_INDEX_ADDED;
+        // int event_flags = ModelEventFlags::EVENT_INDEX_ADDED;
         //{
-        //    ModelIndex src_index = getIndex_(file);
-        //    if (validateIndex(src_index)) {
-        //        if (isFile_(src_index)) {
-        //            event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
-        //        }
-        //        if (isDirectory_(src_index)) {
-        //            event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
-        //        }
-        //        if (isArchive_(src_index)) {
-        //            event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
-        //        }
-        //    } else {
-        //        if (Filesystem::is_regular_file(file).value_or(false)) {
-        //            event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
-        //        }
+        //     ModelIndex src_index = getIndex_(file);
+        //     if (validateIndex(src_index)) {
+        //         if (isFile_(src_index)) {
+        //             event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
+        //         }
+        //         if (isDirectory_(src_index)) {
+        //             event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
+        //         }
+        //         if (isArchive_(src_index)) {
+        //             event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
+        //         }
+        //     } else {
+        //         if (Filesystem::is_regular_file(file).value_or(false)) {
+        //             event_flags |= FileSystemModelEventFlags::EVENT_IS_FILE;
+        //         }
 
         //        if (Filesystem::is_directory(file).value_or(false)) {
         //            event_flags |= FileSystemModelEventFlags::EVENT_IS_DIRECTORY;
@@ -1323,7 +1330,8 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        TOOLBOX_CORE_ASSERT(m_index_map.contains(id) && "Cached parent ID was non-zero, yet didn't exist in the index map!");
+        TOOLBOX_CORE_ASSERT(m_index_map.contains(id) &&
+                            "Cached parent ID was non-zero, yet didn't exist in the index map!");
         return m_index_map.at(id);
     }
 
@@ -1403,11 +1411,12 @@ namespace Toolbox {
         return data;
     }
 
-    Result<IDataModel::index_container>
-    FileSystemModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
-                                     ModelInsertPolicy policy) {
+    Result<IDataModel::index_container> FileSystemModel::insertMimeData_(const ModelIndex &index,
+                                                                         const MimeData &data,
+                                                                         ModelInsertPolicy policy) {
         if (!data.has_urls()) {
-            return make_error<std::vector<ModelIndex>>("FileSystemModel", "Provided MIME data has no URLs");
+            return make_error<std::vector<ModelIndex>>("FileSystemModel",
+                                                       "Provided MIME data has no URLs");
         }
 
         auto result = data.get_urls();
@@ -1431,7 +1440,7 @@ namespace Toolbox {
                 san_path = src_path;
             }
 
-            fs_path fs_src_path = std::move(san_path);
+            fs_path fs_src_path     = std::move(san_path);
             ModelIndex copied_index = copy_(fs_src_path, index, fs_src_path.filename().string());
             if (validateIndex(copied_index)) {
                 inserted_indexes.push_back(copied_index);
@@ -1446,15 +1455,31 @@ namespace Toolbox {
             return false;
         }
 
-        if (!isDirectory_(index) && !isArchive_(index)) {
+        _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
+        if (data->m_type != _FileSystemIndexData::Type::DIRECTORY &&
+            data->m_type != _FileSystemIndexData::Type::ARCHIVE) {
             return false;
         }
 
-        _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
-        size_t cached_size         = data->m_children.size();
-        size_t real_size           = 0;
-        for (const auto &entry : Filesystem::directory_iterator(m_root_path / data->m_path)) {
-            if (entry.is_regular_file() || entry.is_directory()) {
+        size_t cached_size = data->m_children.size();
+        size_t real_size   = 0;
+        std::error_code ec;
+
+        for (const auto &entry : Filesystem::directory_iterator(m_root_path / data->m_path, ec)) {
+            if (ec) {
+                ec.clear();
+                continue;
+            }
+
+            Filesystem::file_status status = entry.symlink_status(ec);
+            if (ec) {
+                ec.clear();
+                continue;
+            }
+
+            std::filesystem::file_type type = status.type();
+            if (type == std::filesystem::file_type::regular ||
+                type == std::filesystem::file_type::directory) {
                 real_size += 1;
             }
         }
@@ -1680,8 +1705,8 @@ namespace Toolbox {
             const Signal folder_signal =
                 createSignalForIndex_(new_index, ModelEventFlags::EVENT_INDEX_ADDED);
             signalEventListeners(folder_signal.first, folder_signal.second |
-                                                        ModelEventFlags::EVENT_POST |
-                                                        ModelEventFlags::EVENT_SUCCESS);
+                                                          ModelEventFlags::EVENT_POST |
+                                                          ModelEventFlags::EVENT_SUCCESS);
             signalEventListeners(event_signal.first, event_signal.second |
                                                          ModelEventFlags::EVENT_POST |
                                                          ModelEventFlags::EVENT_SUCCESS);
@@ -1749,7 +1774,7 @@ namespace Toolbox {
 
         const Signal event_signal = createSignalForIndex_(parent, ModelEventFlags::EVENT_INSERT);
         signalEventListeners(event_signal.first, event_signal.second | ModelEventFlags::EVENT_PRE);
-        
+
         {
             std::scoped_lock lock(m_mutex);
 
@@ -1762,12 +1787,12 @@ namespace Toolbox {
             signalEventListeners(file_signal.first, file_signal.second |
                                                         ModelEventFlags::EVENT_POST |
                                                         ModelEventFlags::EVENT_SUCCESS);
-            signalEventListeners(event_signal.first,
-                                 event_signal.second | ModelEventFlags::EVENT_POST | ModelEventFlags::EVENT_SUCCESS);
+            signalEventListeners(event_signal.first, event_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
         } else {
             signalEventListeners(event_signal.first,
                                  event_signal.second | ModelEventFlags::EVENT_POST);
-
         }
     }
 
@@ -1850,8 +1875,9 @@ namespace Toolbox {
                 }
             }
 
-            signalEventListeners(event_signal.first,
-                                 event_signal.second | ModelEventFlags::EVENT_POST | ModelEventFlags::EVENT_SUCCESS);
+            signalEventListeners(event_signal.first, event_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
         }
     }
 
@@ -1887,8 +1913,8 @@ namespace Toolbox {
             // Reparent index if necessary
             ModelIndex parent = getParent_(index);
             if (!validateIndex(parent)) {
-                signalEventListeners(event_signal.first, event_signal.second |
-                                                             ModelEventFlags::EVENT_POST);
+                signalEventListeners(event_signal.first,
+                                     event_signal.second | ModelEventFlags::EVENT_POST);
                 return;
             }
 
@@ -1902,8 +1928,8 @@ namespace Toolbox {
 
                 ModelIndex new_parent = getIndex_(new_path.parent_path());
                 if (!validateIndex(new_parent)) {
-                    signalEventListeners(event_signal.first, event_signal.second |
-                                                                 ModelEventFlags::EVENT_POST);
+                    signalEventListeners(event_signal.first,
+                                         event_signal.second | ModelEventFlags::EVENT_POST);
                     return;
                 }
 
@@ -1938,7 +1964,8 @@ namespace Toolbox {
             }
         }
 
-        const Signal event_signal = createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_REMOVED);
+        const Signal event_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_REMOVED);
 
         // Signal before removal takes place
         signalEventListeners(event_signal.first, event_signal.second | ModelEventFlags::EVENT_PRE);
@@ -1974,7 +2001,8 @@ namespace Toolbox {
             m_index_map.erase(index.getUUID());
         }
 
-        signalEventListeners(event_signal.first, event_signal.second | ModelEventFlags::EVENT_POST | ModelEventFlags::EVENT_SUCCESS);
+        signalEventListeners(event_signal.first, event_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
     }
 
     void FileSystemModel::signalEventListeners(const ModelIndex &index, int flags) {
@@ -2246,9 +2274,8 @@ namespace Toolbox {
     }
 
     Result<IDataModel::index_container>
-    FileSystemModelSortFilterProxy::insertMimeData(const ModelIndex &index,
-                                                        const MimeData &data,
-                                                        ModelInsertPolicy policy) {
+    FileSystemModelSortFilterProxy::insertMimeData(const ModelIndex &index, const MimeData &data,
+                                                   ModelInsertPolicy policy) {
         ModelIndex &&source_index = toSourceIndex(index);
         return m_source_model->insertMimeData(std::move(source_index), data, policy);
     }
@@ -2325,6 +2352,16 @@ namespace Toolbox {
     }
 
     bool FileSystemModelSortFilterProxy::isSrcFiltered_(const UUID64 &src_uuid) const {
+        if (m_filter_map.contains(src_uuid)) {
+            return m_filter_map.at(src_uuid);
+        }
+
+        const bool result = calcSrcFiltered_(src_uuid);
+        m_filter_map[src_uuid] = result;
+        return result;
+    }
+
+    bool FileSystemModelSortFilterProxy::calcSrcFiltered_(const UUID64 &src_uuid) const {
         ModelIndex child_index = m_source_model->getIndex(src_uuid);
         if (!m_source_model->validateIndex(child_index)) {
             return false;
@@ -2492,6 +2529,10 @@ namespace Toolbox {
 
             ModelIndex parent = m_source_model->getParent(path);
             m_row_map.erase(parent.getUUID());
+
+            if ((flags & ModelEventFlags::EVENT_INDEX_MODIFIED)) {
+                m_filter_map[path.getUUID()] = calcSrcFiltered_(path.getUUID());
+            }
         }
     }
 

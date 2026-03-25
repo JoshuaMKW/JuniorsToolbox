@@ -34,9 +34,9 @@ template <typename _T> constexpr static _T OverwriteNibble(_T value, u8 nibble_i
 
     nibble_val &= 0b1111;
 
-    _T nibble_idx_big = ((nibble_width - 1) - nibble_idx);
-    _T nibble_mask    = static_cast<_T>(0b1111) << (nibble_idx_big * 4);
-    _T new_value = (value & ~nibble_mask) | (static_cast<_T>(nibble_val) << (nibble_idx_big * 4));
+    const _T nibble_idx_big = ((nibble_width - 1) - nibble_idx);
+    const _T nibble_mask    = static_cast<_T>(0b1111) << (nibble_idx_big * 4);
+    const _T new_value = (value & ~nibble_mask) | (static_cast<_T>(nibble_val) << (nibble_idx_big * 4));
 
     return new_value;
 }
@@ -52,11 +52,31 @@ template <typename _T> constexpr static _T OverwriteByte(_T value, u8 byte_idx, 
 
     byte_val &= 0b11111111;
 
-    _T byte_idx_big = ((byte_width - 1) - byte_idx);
-    _T byte_mask    = static_cast<_T>(0b11111111) << (byte_idx_big * 8);
-    _T new_value    = (value & ~byte_mask) | (static_cast<_T>(byte_val) << (byte_idx_big * 8));
+    const _T byte_idx_big = ((byte_width - 1) - byte_idx);
+    const _T byte_mask    = static_cast<_T>(0b11111111) << (byte_idx_big * 8);
+    const _T new_value    = (value & ~byte_mask) | (static_cast<_T>(byte_val) << (byte_idx_big * 8));
 
     return new_value;
+}
+
+template <typename _T>
+constexpr static void ConvertIntToHexString(char *out, size_t out_size, _T value, _T mask,
+                                            int nibble_width) {
+    static_assert(std::is_integral_v<_T>, "_T must be a basic integral type");
+    constexpr int total_bits = sizeof(_T) * 8;
+    
+    const int bit_width = nibble_width << 2;
+    const int bit_shift  = std::max<int>(total_bits - bit_width, 0);
+
+    _T v                     = static_cast<_T>((value & mask) >> bit_shift);
+    constexpr char hex_map[] = "0123456789ABCDEF";
+
+    // Write backwards from the end of our dynamic length
+    out[nibble_width] = '\0';
+    for (int i = nibble_width - 1; i >= 0; --i) {
+        out[i] = hex_map[v & 0xF];  // Get the lowest 4 bits
+        v >>= 4;                    // Shift to the next nibble
+    }
 }
 
 namespace Toolbox::UI {
@@ -378,12 +398,21 @@ namespace Toolbox::UI {
 
         // Render the address
         // ---
-        ImGui::Text("0x%08X", base_address);
+        {
+            char addr_buf[32];
+            addr_buf[0] = '0';
+            addr_buf[1] = 'x';
+
+            ConvertIntToHexString(addr_buf + 2, 30, base_address, 0xFFFF'FFFF, 8);
+
+            ImGui::TextEx(addr_buf, addr_buf + 10);
+        }
+
         ImGui::SameLine();
 
-        const int16_t nibble_width = byte_width * 2;
-
         byte_width              = std::min<u8>(byte_width, 4);
+
+        const int16_t nibble_width = byte_width * 2;
         const char formatter[8] = {'%', '0', '0' + nibble_width, 'X', '\0'};
 
         u64 value = 0;
@@ -504,7 +533,11 @@ namespace Toolbox::UI {
 
                 // Calulate the rect of the text for interaction purposes.
                 char text_buf[64];
+                #if 0
                 snprintf(text_buf, sizeof(text_buf), formatter, (value & mask) >> (64 - bit_width));
+                #else
+                ConvertIntToHexString(text_buf, 64, value, mask, nibble_width);
+                #endif
 
                 ImRect text_rect = {};
                 text_rect.Min =
@@ -631,7 +664,7 @@ namespace Toolbox::UI {
                     m_byte_view_context_menu.tryRender(span);
                 }
 
-                ImGui::Text(text_buf);
+                ImGui::TextEx(text_buf, text_buf + nibble_width);
 
                 if (!m_selection_was_ascii && m_address_cursor == cur_address) {
                     m_cursor_anim_timer += m_delta_time;
@@ -902,7 +935,7 @@ namespace Toolbox::UI {
                 size_t results = m_scan_model->getRowCount(ModelIndex());
                 if (m_scan_active) {
                     if (results == 1) {
-                        ImGui::Text("1 result found");
+                        ImGui::TextEx("1 result found");
                     } else {
                         ImGui::Text("%d results found", results);
                     }
@@ -1053,15 +1086,15 @@ namespace Toolbox::UI {
 
                                 ImGui::TableNextColumn();
 
-                                ImGui::Text("%s", addr_str.c_str());
+                                ImGui::TextEx(addr_str.c_str());
 
                                 ImGui::TableNextColumn();
 
-                                ImGui::Text("%s", scanned_str.c_str());
+                                ImGui::TextEx(scanned_str.c_str());
 
                                 ImGui::TableNextColumn();
 
-                                ImGui::Text("%s", current_str.c_str());
+                                ImGui::TextEx(current_str.c_str());
                             }
                         }
                     }
@@ -1476,7 +1509,7 @@ namespace Toolbox::UI {
                     ImGui::BeginDisabled();
                 }
 
-                ImGui::Text("Base To Use:");
+                ImGui::TextEx("Base To Use:");
 
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {10.0f, 10.0f});
                 ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 2.0f);
@@ -1542,7 +1575,7 @@ namespace Toolbox::UI {
             ImVec2 window_size = ImGui::GetWindowSize();
             ImGuiStyle &style  = ImGui::GetStyle();
 
-            ImGui::Text("Address: ");
+            ImGui::TextEx("Address: ");
             ImGui::SameLine();
 
             const char **history_strs = new const char *[m_address_search_history.size()];
@@ -1592,7 +1625,7 @@ namespace Toolbox::UI {
             // This is where the column width selector will be rendered
             // ---
             {
-                ImGui::Text("Bytes Per Row: ");
+                ImGui::TextEx("Bytes Per Row: ");
                 ImGui::SameLine();
 
                 static const char *column_width_presets[] = {"Auto", "1",  "2",  "4",
@@ -1621,7 +1654,7 @@ namespace Toolbox::UI {
             // This is where the byte width selector will be rendered
             // ---
             {
-                ImGui::Text("Byte Width: ");
+                ImGui::TextEx("Byte Width: ");
                 ImGui::SameLine();
 
                 static const char *byte_width_presets[] = {"1", "2", "4"};
@@ -1718,7 +1751,7 @@ namespace Toolbox::UI {
             DolphinHookManager &manager = DolphinHookManager::instance();
             void *memory_buffer         = manager.getMemoryView();
             if (!memory_buffer) {
-                ImGui::Text("Failed to get memory view.");
+                ImGui::TextEx("Failed to get memory view.");
                 ImGui::PopStyleVar(5);
 
                 if (mono_font) {
@@ -2101,7 +2134,7 @@ namespace Toolbox::UI {
         if (ImGui::TableNextColumn()) {
             ImGui::Dummy({style.ItemSpacing.x * depth * 2, style.ItemSpacing.y * 2});
             ImGui::SameLine();
-            ImGui::Text(name.c_str());
+            ImGui::TextEx(name.c_str());
         }
 
         // ImGui::PopStyleColor(3);
@@ -2114,12 +2147,18 @@ namespace Toolbox::UI {
                 ImGui::Text("%s [%lu]", meta_name.c_str(), size);
             } else {
                 std::string meta_name = std::string(meta_type_name(meta_value.type()));
-                ImGui::Text(meta_name.c_str());
+                ImGui::TextEx(meta_name.c_str());
             }
         }
 
         if (ImGui::TableNextColumn()) {
-            ImGui::Text("0x%X", address);
+            char addr_buf[32];
+            addr_buf[0] = '0';
+            addr_buf[1] = 'x';
+
+            ConvertIntToHexString(addr_buf + 2, 30, address, 0xFFFF'FFFF, 8);
+
+            ImGui::TextEx(addr_buf, addr_buf + 10);
         }
 
         ModelIndex source_group_idx = m_watch_proxy_model->toSourceIndex(watch_idx);
@@ -2138,9 +2177,9 @@ namespace Toolbox::UI {
             const u32 end_addr   = start_addr | static_cast<u32>(mem_size);
 
             if (mem_size == 0) {
-                ImGui::Text("Dolphin Not Found");
+                ImGui::TextEx("Dolphin Not Found");
             } else if (address < start_addr || address + size >= end_addr) {
-                ImGui::Text("Invalid Watch");
+                ImGui::TextEx("Invalid Watch");
             } else {
                 f32 column_width = ImGui::GetContentRegionAvail().x;
                 renderPreview(column_width, meta_value, value_base);
@@ -2319,7 +2358,7 @@ namespace Toolbox::UI {
 
             ImGui::SameLine();
 
-            ImGui::Text(name.c_str());
+            ImGui::TextEx(name.c_str());
 #endif
         }
 
