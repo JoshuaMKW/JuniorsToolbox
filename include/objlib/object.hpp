@@ -82,7 +82,9 @@ namespace Toolbox::Object {
         ObjectRenderController(const ObjectRenderController &)     = default;
         ObjectRenderController(ObjectRenderController &&) noexcept = default;
 
-        ~ObjectRenderController() = default;
+        ~ObjectRenderController() { clear(); }
+
+        ObjectRenderController &clear();
 
         ObjectRenderController &addRenderModel(RefPtr<J3DModelInstance> model);
         ObjectRenderController &addAnimation(AnimationType type,
@@ -210,6 +212,9 @@ namespace Toolbox::Object {
 
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
+
+    protected:
+        virtual bool reassignWizardBasedOnFields() = 0;
     };
 
     class VirtualSceneObject : public ISceneObject {
@@ -236,8 +241,12 @@ namespace Toolbox::Object {
             m_type     = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);
-            if (!wizard)
-                return;
+            if (!wizard) {
+                wizard = template_.getWizard();
+                if (!wizard) {
+                    return;
+                }
+            }
 
             m_template = template_;
             applyWizard(*wizard);
@@ -374,6 +383,7 @@ namespace Toolbox::Object {
 
     protected:
         void applyWizard(const TemplateWizard &wizard);
+        bool reassignWizardBasedOnFields() override { return false; }
 
     public:
         // Inherited via IGameSerializable
@@ -569,8 +579,12 @@ namespace Toolbox::Object {
             m_type     = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);
-            if (!wizard)
-                return;
+            if (!wizard) {
+                wizard = template_.getWizard();
+                if (!wizard) {
+                    return;
+                }
+            }
 
             applyWizard(*wizard);
         }
@@ -756,9 +770,12 @@ namespace Toolbox::Object {
 
     protected:
         void applyWizard(const TemplateWizard &wizard);
+        bool reassignWizardBasedOnFields() override;
 
         Result<void, FSError> loadRenderData(const std::filesystem::path &asset_path,
                                              ResourceCache &resource_cache);
+
+        void bareRefreshRenderState_();
 
     public:
         // Inherited via IGameSerializable

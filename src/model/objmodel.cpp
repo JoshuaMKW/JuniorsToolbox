@@ -1,4 +1,4 @@
-#include <algorithm>
+﻿#include <algorithm>
 #include <compare>
 #include <set>
 
@@ -128,6 +128,19 @@ namespace Toolbox {
                                        const ModelIndex &parent) const {
         std::scoped_lock lock(m_mutex);
         return getIndex_(row, column, parent);
+    }
+
+    ModelIndex SceneObjModel::getIndex(const QualifiedName &qual_name,
+                                       const ModelIndex &parent) const {
+        std::scoped_lock lock(m_mutex);
+        return getIndex_(qual_name, parent);
+    }
+
+    ModelIndex SceneObjModel::getIndex(const std::string &obj_type,
+                                       std::optional<std::string> obj_name,
+                                       const ModelIndex &parent) const {
+        std::scoped_lock lock(m_mutex);
+        return getIndex_(obj_type, obj_name, parent);
     }
 
     bool SceneObjModel::removeIndex(const ModelIndex &index) {
@@ -383,7 +396,7 @@ namespace Toolbox {
             if (row != 0 || column != 0) {
                 return ModelIndex();
             }
-            return m_index_map[m_root_index];
+            return m_index_map.at(m_root_index);
         }
 
         RefPtr<ISceneObject> parent_obj = parent.data<_SceneIndexData>()->m_object;
@@ -394,6 +407,80 @@ namespace Toolbox {
         }
 
         RefPtr<ISceneObject> child_obj = children[row];
+        return getIndex_(child_obj);
+    }
+
+    ModelIndex SceneObjModel::getIndex_(const QualifiedName &qual_name,
+                                        const ModelIndex &parent) const {
+        if (!validateIndex(parent)) {
+            ModelIndex root_index         = m_index_map.at(m_root_index);
+
+            RefPtr<ISceneObject> root_obj = root_index.data<_SceneIndexData>()->m_object;
+
+            std::string root_name = std::string(root_obj->getNameRef().name());
+            if (root_name == qual_name[0]) {
+                if (qual_name.depth() == 1) {
+                    return root_index;
+                }
+                
+                RefPtr<ISceneObject> child_obj =
+                    root_obj->getChild(QualifiedName(qual_name.begin() + 1, qual_name.end()));
+                if (!child_obj) {
+                    return ModelIndex();
+                }
+
+                return getIndex_(child_obj);
+            }
+            return ModelIndex();
+        }
+
+        RefPtr<ISceneObject> parent_obj = parent.data<_SceneIndexData>()->m_object;
+        RefPtr<ISceneObject> child_obj  = parent_obj->getChild(qual_name);
+        if (!child_obj) {
+            return ModelIndex();
+        }
+
+        return getIndex_(child_obj);
+    }
+
+    ModelIndex SceneObjModel::getIndex_(const std::string &obj_type,
+                                        std::optional<std::string> obj_name,
+                                        const ModelIndex &parent) const {
+        if (!validateIndex(parent)) {
+            ModelIndex root_index = m_index_map.at(m_root_index);
+
+            RefPtr<ISceneObject> root_obj = root_index.data<_SceneIndexData>()->m_object;
+            std::string root_type = std::string(root_obj->type());
+            if (root_type != obj_type) {
+                RefPtr<ISceneObject> child_obj = root_obj->getChildByType(obj_type, obj_name);
+                if (!child_obj) {
+                    return ModelIndex();
+                }
+
+                return getIndex_(child_obj);
+            }
+
+            if (obj_name.has_value()) {
+                std::string root_name = std::string(root_obj->getNameRef().name());
+                if (root_name != obj_name.value()) {
+                    RefPtr<ISceneObject> child_obj = root_obj->getChildByType(obj_type, obj_name);
+                    if (!child_obj) {
+                        return ModelIndex();
+                    }
+
+                    return getIndex_(child_obj);
+                }
+            }
+
+            return root_index;
+        }
+
+        RefPtr<ISceneObject> parent_obj = parent.data<_SceneIndexData>()->m_object;
+        RefPtr<ISceneObject> child_obj  = parent_obj->getChildByType(obj_type, obj_name);
+        if (!child_obj) {
+            return ModelIndex();
+        }
+
         return getIndex_(child_obj);
     }
 

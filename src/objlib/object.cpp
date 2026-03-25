@@ -752,26 +752,13 @@ namespace Toolbox::Object {
     }
 
     void PhysicalSceneObject::refreshRenderState() {
-        RefPtr<J3DModelInstance> selected_model = m_render_controller->getRenderModel();
-        if (!selected_model) {
-            return;
+        // If this executes, the wizard has been reassigned
+        if (reassignWizardBasedOnFields()) {
+            m_render_controller->clear();
+            loadRenderData(m_scene_resource_path, getResourceCache());
         }
 
-        if (m_transform.has_value()) {
-            selected_model->SetTranslation(m_transform.value().m_translation);
-            selected_model->SetRotation(m_transform.value().m_rotation);
-            selected_model->SetScale(m_transform.value().m_scale);
-        }
-
-        if (m_type == "NPCKinopio") {
-            HelperUpdateKinopioRender();
-            return;
-        }
-
-        if (Object::IsObjectMonte(this)) {
-            HelperUpdateMonteRender();
-            return;
-        }
+        bareRefreshRenderState_();
     }
 
     Result<void, ObjectError> PhysicalSceneObject::performScene(
@@ -863,6 +850,55 @@ namespace Toolbox::Object {
             new_member->updateReferenceToList(m_members);
             m_members.emplace_back(new_member);
         }
+    }
+
+    bool PhysicalSceneObject::reassignWizardBasedOnFields() {
+        const std::vector<TemplateWizard> &wizards = m_template.wizards();
+        if (wizards.empty()) {
+            return false;
+        }
+
+        auto object_member_result = getMember("Object");
+        if (!object_member_result) {
+            return false;
+        }
+
+        RefPtr<MetaMember> object_member = object_member_result.value();
+        if (!object_member) {
+            return false;
+        }
+
+        std::string object_str = getMetaValue<std::string>(object_member, 0).value();
+
+        for (const TemplateWizard &wizard : wizards) {
+            for (const MetaMember &member : wizard.m_init_members) {
+                if (member.name() == "Object") {
+                    auto value_result = member.value<MetaValue>(0);
+                    if (!value_result) {
+                        return false;
+                    }
+
+                    auto v_result = value_result.value()->get<std::string>();
+                    if (!v_result) {
+                        return false;
+                    }
+                    
+                    if (v_result.value() == object_str) {
+                        bool updated = m_wizard != wizard.m_name;
+                        if (updated) {
+                            m_wizard = wizard.m_name;
+                        }
+                        return updated;
+                    }
+                }
+            }
+        }
+
+        bool updated = m_wizard != "default_init";
+        if (updated) {
+            m_wizard = "default_init";
+        }
+        return updated;
     }
 
     Result<void, FSError>
@@ -1077,8 +1113,31 @@ namespace Toolbox::Object {
         m_render_controller->startAnimation(AnimationType::BTP, 0);
 
         // Initialize the render state
-        refreshRenderState();
+        bareRefreshRenderState_();
         return {};
+    }
+
+    void PhysicalSceneObject::bareRefreshRenderState_() {
+        RefPtr<J3DModelInstance> selected_model = m_render_controller->getRenderModel();
+        if (!selected_model) {
+            return;
+        }
+
+        if (m_transform.has_value()) {
+            selected_model->SetTranslation(m_transform.value().m_translation);
+            selected_model->SetRotation(m_transform.value().m_rotation);
+            selected_model->SetScale(m_transform.value().m_scale);
+        }
+
+        if (m_type == "NPCKinopio") {
+            HelperUpdateKinopioRender();
+            return;
+        }
+
+        if (Object::IsObjectMonte(this)) {
+            HelperUpdateMonteRender();
+            return;
+        }
     }
 
     Result<void, SerialError> PhysicalSceneObject::serialize(Serializer &out) const {
@@ -1205,6 +1264,8 @@ namespace Toolbox::Object {
         // Skip padding/unknown data
         in.seek(endpos, std::ios::beg);
 
+        const bool wizard_reassigned = reassignWizardBasedOnFields();
+
         auto transform_value_ptr = getMember("Transform").value();
         if (transform_value_ptr) {
             m_transform = getMetaValue<Transform>(transform_value_ptr).value();
@@ -1328,6 +1389,19 @@ namespace Toolbox::Object {
             }
         }
         return nullptr;
+    }
+
+    ObjectRenderController &ObjectRenderController::clear() {
+        m_model_instances.clear();
+        m_animations_bck.clear();
+        m_animations_blk.clear();
+        m_animations_bpk.clear();
+        m_animations_brk.clear();
+        m_animations_btp.clear();
+        m_animations_btk.clear();
+        m_active_animation_map.clear();
+        m_selected_model_idx = -1;
+        return *this;
     }
 
     ObjectRenderController &ObjectRenderController::addRenderModel(RefPtr<J3DModelInstance> model) {

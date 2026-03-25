@@ -41,11 +41,15 @@ namespace Toolbox {
         ~SceneObjModel();
 
         void initialize(const Scene::ObjectHierarchy &obj_tree);
+
+        const fs_path &getScenePath() const { return m_scene_path; }
         void setScenePath(fs_path &&path) { m_scene_path = std::move(path); }
 
         [[nodiscard]] ScopePtr<Scene::ObjectHierarchy> bakeToHierarchy(std::string_view name) const;
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
+
+        [[nodiscard]] size_t getObjectCount() const { return m_index_map.size(); }
 
         [[nodiscard]] bool validateIndex(const ModelIndex &index) const override {
             return IDataModel::validateIndex(index) && m_index_map.contains(index.getUUID());
@@ -87,6 +91,11 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex(const UUID64 &uuid) const override;
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
+        [[nodiscard]] ModelIndex getIndex(const QualifiedName &qual_name,
+                                          const ModelIndex &parent = ModelIndex()) const;
+        [[nodiscard]] ModelIndex getIndex(const std::string &obj_type,
+                                          std::optional<std::string> obj_name,
+                                          const ModelIndex &parent = ModelIndex()) const;
 
         [[nodiscard]] virtual ModelIndex insertObject(RefPtr<ISceneObject> object, int64_t row,
                                                       const ModelIndex &parent);
@@ -127,7 +136,7 @@ namespace Toolbox {
                                                            ModelEventFlags base_event) const;
 
         [[nodiscard]] virtual ModelIndex insertObject_(RefPtr<ISceneObject> object, int64_t row,
-                                                      const ModelIndex &parent);
+                                                       const ModelIndex &parent);
         [[nodiscard]] virtual ModelIndex makeIndex(RefPtr<ISceneObject> object, int64_t row,
                                                    const ModelIndex &parent) const;
 
@@ -141,6 +150,11 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex_(RefPtr<ISceneObject> object) const;
         [[nodiscard]] ModelIndex getIndex_(const UUID64 &uuid) const;
         [[nodiscard]] ModelIndex getIndex_(int64_t row, int64_t column,
+                                           const ModelIndex &parent = ModelIndex()) const;
+        [[nodiscard]] ModelIndex getIndex_(const QualifiedName &qual_name,
+                                           const ModelIndex &parent = ModelIndex()) const;
+        [[nodiscard]] ModelIndex getIndex_(const std::string &obj_type,
+                                           std::optional<std::string> obj_name,
                                            const ModelIndex &parent = ModelIndex()) const;
         [[nodiscard]] bool removeIndex_(const ModelIndex &index);
 

@@ -33,15 +33,24 @@
 #include "model/railmodel.hpp"
 #include "model/selection.hpp"
 
+#include "objlib/utf8_to_sjis.hpp"
+
 #include "raildialog.hpp"
 #include <gui/context_menu.hpp>
 #include <imgui.h>
 
 class ToolboxSceneVerifier : public TaskThread<void> {
 public:
+    using validate_progress_cb =
+        std::function<void(double progress, const std::string &progress_text)>;
+    using validate_error_cb = std::function<void(const std::string &reason)>;
+
+public:
     ToolboxSceneVerifier() = delete;
-    ToolboxSceneVerifier(RefPtr<const Scene::SceneInstance> scene, bool check_dependencies)
-        : m_scene(scene), m_check_dependencies(check_dependencies) {}
+    ToolboxSceneVerifier(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
+                         bool check_dependencies)
+        : m_object_model(object_model), m_table_model(table_model),
+          m_check_dependencies(check_dependencies) {}
 
     void tRun(void *param) override;
 
@@ -49,8 +58,16 @@ public:
     std::vector<std::string> getErrors() const { return m_errors; }
     std::string getProgressText() const { return m_progress_text; }
 
+protected:
+    // WARNING: This method is exhaustive and may take awhile to complete!
+    [[nodiscard]] static bool ValidateScene(RefPtr<SceneObjModel> object_model,
+                                            RefPtr<SceneObjModel> table_model,
+                                            bool check_dependencies, validate_progress_cb,
+                                            validate_error_cb);
+
 private:
-    RefPtr<const Scene::SceneInstance> m_scene;
+    RefPtr<SceneObjModel> m_object_model;
+    RefPtr<SceneObjModel> m_table_model;
     bool m_check_dependencies = true;
 
     std::string m_progress_text;
@@ -60,8 +77,15 @@ private:
 
 class ToolboxSceneDependencyMender : public TaskThread<void> {
 public:
+    using repair_progress_cb = std::function<void(const std::string &progress_text)>;
+    using repair_change_cb   = std::function<void(const std::string &change_text)>;
+    using repair_error_cb    = std::function<void(const std::string &reason)>;
+
+public:
     ToolboxSceneDependencyMender() = delete;
-    ToolboxSceneDependencyMender(RefPtr<const Scene::SceneInstance> scene) : m_scene(scene) {}
+    ToolboxSceneDependencyMender(RefPtr<SceneObjModel> object_model,
+                                 RefPtr<SceneObjModel> table_model)
+        : m_object_model(object_model), m_table_model(table_model) {}
 
     void tRun(void *param) override;
 
@@ -70,8 +94,16 @@ public:
     std::vector<std::string> getErrors() const { return m_errors; }
     std::string getProgressText() const { return m_progress_text; }
 
+protected:
+    // WARNING: This method is exhaustive and may take awhile to complete!
+    [[nodiscard]] static bool RepairScene(RefPtr<SceneObjModel> object_model,
+                                          RefPtr<SceneObjModel> table_model,
+                                          bool check_dependencies, repair_progress_cb,
+                                          repair_change_cb, repair_error_cb);
+
 private:
-    RefPtr<const Scene::SceneInstance> m_scene;
+    RefPtr<SceneObjModel> m_object_model;
+    RefPtr<SceneObjModel> m_table_model;
 
     std::string m_progress_text;
     std::vector<std::string> m_changes;

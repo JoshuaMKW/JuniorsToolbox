@@ -157,7 +157,7 @@ namespace Toolbox::Object {
         MetaMember() = default;
 
     public:
-        [[nodiscard]] constexpr std::string name() const { return m_name; }
+        [[nodiscard]] constexpr const std::string &name() const { return m_name; }
         [[nodiscard]] constexpr MetaStruct *parent() const { return m_parent; }
 
         [[nodiscard]] QualifiedName qualifiedName() const;

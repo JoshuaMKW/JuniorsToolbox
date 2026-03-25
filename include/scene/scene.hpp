@@ -18,15 +18,6 @@ namespace Toolbox::Scene {
 
     class SceneInstance : public ISmartResource {
     public:
-        using validate_progress_cb =
-            std::function<void(double progress, const std::string &progress_text)>;
-        using validate_error_cb = std::function<void(const std::string &reason)>;
-
-        using repair_progress_cb = std::function<void(const std::string &progress_text)>;
-        using repair_change_cb   = std::function<void(const std::string &change_text)>;
-        using repair_error_cb    = std::function<void(const std::string &reason)>;
-
-    public:
         SceneInstance();
         SceneInstance(const SceneInstance &);
 
@@ -41,14 +32,6 @@ namespace Toolbox::Scene {
             return make_scoped<SceneInstance>(std::move(scene));
         }
         [[nodiscard]] static ScopePtr<SceneInstance> BasicScene();
-
-        // WARNING: This method is exhaustive and may take awhile to complete!
-        [[nodiscard]] bool validate(bool check_dependencies, validate_progress_cb,
-                                    validate_error_cb) const;
-
-        // WARNING: This method is exhaustive and may take awhile to complete!
-        [[nodiscard]] bool repair(bool check_dependencies, repair_progress_cb, repair_change_cb,
-                                  repair_error_cb) const;
 
         [[nodiscard]] std::optional<fs_path> rootPath() const { return m_root_path; }
 
