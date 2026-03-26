@@ -1,3 +1,4 @@
+#include <execution>
 #include <expected>
 #include <fstream>
 #include <mutex>
@@ -20,19 +21,27 @@
 
 namespace Toolbox::Object {
 
-    static const std::unordered_map<std::string, std::string> s_alias_map = {
-        {"BYTE",   "S8"  },
-        {"SHORT",  "S16" },
-        {"INT",    "S32" },
-        {"LONG",   "S64" },
-        {"UBYTE",  "U8"  },
-        {"USHORT", "U16" },
-        {"UINT",   "U32" },
-        {"ULONG",  "U64" },
-        {"FLOAT",  "F32" },
-        {"DOUBLE", "F64" },
-        {"VEC3F",  "VEC3"},
-    };
+    static std::string ResolveMetaTypeAlias(const std::string &alias) {
+        static const std::unordered_map<std::string, std::string> s_alias_map = {
+            {"BYTE",   "S8"  },
+            {"SHORT",  "S16" },
+            {"INT",    "S32" },
+            {"LONG",   "S64" },
+            {"UBYTE",  "U8"  },
+            {"USHORT", "U16" },
+            {"UINT",   "U32" },
+            {"ULONG",  "U64" },
+            {"FLOAT",  "F32" },
+            {"DOUBLE", "F64" },
+            {"VEC3F",  "VEC3"},
+        };
+
+        if (s_alias_map.contains(alias)) {
+            return s_alias_map.at(alias);
+        }
+
+        return alias;
+    }
 
     Template::Template(std::string_view type, bool include_custom) : m_type(type) {
         if (include_custom) {
@@ -166,7 +175,8 @@ namespace Toolbox::Object {
                     0);
             }
 
-            if (!e["Type"].is_string()) {
+            const json_t &enum_type_json = e["Type"];
+            if (!enum_type_json.is_string()) {
                 return make_json_error<void>(
                     "TEMPLATE", "Enum 'Type' field is not a string for enum: " + item.key(), 0);
             }
@@ -177,7 +187,8 @@ namespace Toolbox::Object {
                     0);
             }
 
-            if (!e["Flags"].is_object()) {
+            const json_t &enum_flags_json = e["Flags"];
+            if (!enum_flags_json.is_object()) {
                 return make_json_error<void>(
                     "TEMPLATE", "Enum 'Flags' field is not an object for enum: " + item.key(), 0);
             }
@@ -188,25 +199,25 @@ namespace Toolbox::Object {
                     0);
             }
 
-            if (!e["Multi"].is_boolean()) {
+            const json_t &enum_multi_json = e["Multi"];
+            if (!enum_multi_json.is_boolean()) {
                 return make_json_error<void>(
                     "TEMPLATE", "Enum 'Multi' field is not a boolean for enum: " + item.key(), 0);
             }
 
-            std::string member_type = e["Type"].get<std::string>();
-
-            if (s_alias_map.contains(member_type)) {
-                member_type = s_alias_map.at(member_type);
-            }
+            std::string member_type = ResolveMetaTypeAlias(enum_type_json.get<std::string>());
 
             auto enum_type = magic_enum::enum_cast<MetaType>(member_type);
             if (!enum_type.has_value()) {
                 continue;
             }
 
-            bool enum_bitmask = e["Multi"].get<bool>();
+            const bool enum_bitmask = enum_multi_json.get<bool>();
+
             std::vector<MetaEnum::enum_type> values;
-            for (auto &value : e["Flags"].items()) {
+            values.reserve(enum_flags_json.size());
+
+            for (auto &value : enum_flags_json.items()) {
                 std::string value_str = value.value().get<std::string>();
                 MetaValue meta_value(enum_type.value());
                 switch (enum_type.value()) {
@@ -230,18 +241,16 @@ namespace Toolbox::Object {
                     break;
                 }
                 MetaEnum::enum_type enumv = {value.key(), meta_value};
-                values.push_back(enumv);
+                values.emplace_back(value.key(), meta_value);
             }
-            MetaEnum menum(item.key(), enum_type.value(), values, enum_bitmask);
-            m_enum_cache.emplace_back(menum);
+            m_enum_cache.emplace_back(item.key(), enum_type.value(), values, enum_bitmask);
         }
         return {};
     }
 
     Result<void, JSONError> Template::cacheStructs(const json_t &structs) {
-        std::vector<std::string> visited;
         for (const auto &item : structs.items()) {
-            const std::string name     = item.key();
+            const std::string &name    = item.key();
             const json_t &json_members = item.value();
 
             std::vector<MetaMember> members;
@@ -250,8 +259,7 @@ namespace Toolbox::Object {
                 return result;
             }
 
-            MetaStruct mstruct(item.key(), members);
-            m_struct_cache.emplace_back(mstruct);
+            m_struct_cache.emplace_back(item.key(), members);
         }
         return {};
     }
@@ -263,6 +271,7 @@ namespace Toolbox::Object {
         if (enum_ == m_enum_cache.end()) {
             return {};
         }
+
         std::vector<MetaEnum> enums;
 
         size_t asize = 1;
@@ -277,10 +286,12 @@ namespace Toolbox::Object {
         for (size_t i = 0; i < asize; ++i) {
             enums.emplace_back(*enum_);
         }
+
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
             return MetaMember(name, enums, std::get<MetaMember::ReferenceInfo>(array_size),
                               make_referable<MetaEnum>(*enum_));
         }
+
         return MetaMember(name, enums, make_referable<MetaEnum>(*enum_));
     }
 
@@ -303,20 +314,22 @@ namespace Toolbox::Object {
         }
 
         structs.reserve(asize);
-
         for (size_t i = 0; i < asize; ++i) {
             structs.emplace_back(*struct_);
         }
+
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
             return MetaMember(name, structs, std::get<MetaMember::ReferenceInfo>(array_size),
                               make_referable<MetaStruct>(*struct_));
         }
+
         return MetaMember(name, structs, make_referable<MetaStruct>(*struct_));
     }
 
-    static void setMinMaxForValue(MetaValue &value,
-                                  const std::variant<std::monostate, s64, u64, float, double> &var_min,
-                                  const std::variant<std::monostate, s64, u64, float, double> &var_max) {
+    static void
+    setMinMaxForValue(MetaValue &value,
+                      const std::variant<std::monostate, s64, u64, float, double> &var_min,
+                      const std::variant<std::monostate, s64, u64, float, double> &var_max) {
         switch (value.type()) {
         case MetaType::S8:
             if (std::holds_alternative<s64>(var_min)) {
@@ -387,11 +400,10 @@ namespace Toolbox::Object {
         }
     }
 
-    std::optional<MetaMember>
-    Template::loadMemberPrimitive(std::string_view name, std::string_view type,
-                                  MetaMember::size_type array_size,
-                                  const std::variant<std::monostate, s64, u64, float, double> &var_min,
-                                  const std::variant<std::monostate, s64, u64, float, double> &var_max) {
+    std::optional<MetaMember> Template::loadMemberPrimitive(
+        std::string_view name, std::string_view type, MetaMember::size_type array_size,
+        const std::variant<std::monostate, s64, u64, float, double> &var_min,
+        const std::variant<std::monostate, s64, u64, float, double> &var_max) {
         auto vtype = magic_enum::enum_cast<MetaType>(type);
         if (!vtype)
             return {};
@@ -414,6 +426,7 @@ namespace Toolbox::Object {
             values.emplace_back(vtype.value());
             setMinMaxForValue(values.back(), var_min, var_max);
         }
+
         if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
             return MetaMember(name, values, std::get<MetaMember::ReferenceInfo>(array_size),
                               default_val);
@@ -426,20 +439,43 @@ namespace Toolbox::Object {
         TemplateDependencies deps;
 
         if (dependencies.contains("Managers")) {
-            const json_t managers = dependencies["Managers"];
+            const json_t &managers = dependencies["Managers"];
             if (!managers.is_object()) {
                 return make_json_error<TemplateDependencies>(
                     "TEMPLATE", "'Managers' dependency is not an object.", 0);
             }
 
             for (const auto &item : managers.items()) {
+                const json_t &item_json = item.value();
+                if (!item_json.contains("Name")) {
+                    return make_json_error<TemplateDependencies>(
+                        "TEMPLATE", "'Managers' dependency is missing field 'Name'.", 0);
+                }
+
+                const json_t &name_json = item_json["Name"];
+                if (!name_json.is_string()) {
+                    return make_json_error<TemplateDependencies>(
+                        "TEMPLATE", "'Managers' dependency has malformed 'Name' field.", 0);
+                }
+
+                if (!item_json.contains("Ancestry")) {
+                    return make_json_error<TemplateDependencies>(
+                        "TEMPLATE", "'Managers' dependency is missing field 'Name'.", 0);
+                }
+
+                const json_t &ancestry_json = item_json["Ancestry"];
+                if (!ancestry_json.is_array()) {
+                    return make_json_error<TemplateDependencies>(
+                        "TEMPLATE", "'Managers' dependency has malformed 'Ancestry' field.", 0);
+                }
+
                 TemplateDependencies::ObjectInfo manager_info;
                 manager_info.m_type = item.key();
-                manager_info.m_name = item.value()["Name"].get<std::string>();
+                manager_info.m_name = name_json.get<std::string>();
                 manager_info.m_ancestry =
-                    QualifiedName(item.value()["Ancestry"].get<std::vector<std::string>>());
+                    QualifiedName(ancestry_json.get<std::vector<std::string>>());
 
-                deps.m_managers.push_back(manager_info);
+                deps.m_managers.emplace_back(std::move(manager_info));
             }
         }
 
@@ -451,7 +487,12 @@ namespace Toolbox::Object {
             }
 
             for (const auto &item : asset_paths.items()) {
-                deps.m_asset_paths.push_back(item.value().get<std::string>());
+                const json_t &asset_path_json = item.value();
+                if (!asset_path_json.is_string()) {
+                    return make_json_error<TemplateDependencies>(
+                        "TEMPLATE", "'AssetPaths' dependency encountered a non-string.", 0);
+                }
+                deps.m_asset_paths.emplace_back(std::move(asset_path_json.get<std::string>()));
             }
         }
 
@@ -463,13 +504,36 @@ namespace Toolbox::Object {
             }
 
             for (const auto &item : table_objs.items()) {
+                const json_t &item_json = item.value();
+                if (!item_json.contains("Name")) {
+                    return make_json_error<TemplateDependencies>(
+                        "TEMPLATE", "'TablesBin' dependency is missing field 'Name'.", 0);
+                }
+
+                const json_t &name_json = item_json["Name"];
+                if (!name_json.is_string()) {
+                    return make_json_error<TemplateDependencies>(
+                        "TEMPLATE", "'TablesBin' dependency has malformed 'Name' field.", 0);
+                }
+
+                if (!item_json.contains("Ancestry")) {
+                    return make_json_error<TemplateDependencies>(
+                        "TEMPLATE", "'TablesBin' dependency is missing field 'Name'.", 0);
+                }
+
+                const json_t &ancestry_json = item_json["Ancestry"];
+                if (!ancestry_json.is_array()) {
+                    return make_json_error<TemplateDependencies>(
+                        "TEMPLATE", "'TablesBin' dependency has malformed 'Ancestry' field.", 0);
+                }
+
                 TemplateDependencies::ObjectInfo table_obj_info;
                 table_obj_info.m_type = item.key();
-                table_obj_info.m_name = item.value()["Name"].get<std::string>();
+                table_obj_info.m_name = name_json.get<std::string>();
                 table_obj_info.m_ancestry =
-                    QualifiedName(item.value()["Ancestry"].get<std::vector<std::string>>());
+                    QualifiedName(ancestry_json.get<std::vector<std::string>>());
 
-                deps.m_table_objs.push_back(table_obj_info);
+                deps.m_table_objs.emplace_back(std::move(table_obj_info));
             }
         }
 
@@ -488,7 +552,8 @@ namespace Toolbox::Object {
                     "Member definition is missing 'Type' field for member: " + member_name, 0);
             }
 
-            if (!member_info["Type"].is_string()) {
+            const json_t &member_type_json = member_info["Type"];
+            if (!member_type_json.is_string()) {
                 return make_json_error<void>(
                     "TEMPLATE", "Member 'Type' field is not a string for member: " + member_name,
                     0);
@@ -500,19 +565,16 @@ namespace Toolbox::Object {
                     "Member definition is missing 'ArraySize' field for member: " + member_name, 0);
             }
 
-            if (!member_info["ArraySize"].is_number() && !member_info["ArraySize"].is_string()) {
+            const json_t &member_array_size_json = member_info["ArraySize"];
+            if (!member_array_size_json.is_number() && !member_array_size_json.is_string()) {
                 return make_json_error<void>(
                     "TEMPLATE",
                     "Member 'ArraySize' field is not a number or string for member: " + member_name,
                     0);
             }
 
-            std::string member_type = member_info["Type"].get<std::string>();
-            if (s_alias_map.contains(member_type)) {
-                member_type = s_alias_map.at(member_type);
-            }
-
-            // TODO: Fetch min/max if they exist in JSON and correctly translate to metavalues.
+            const std::string member_type =
+                ResolveMetaTypeAlias(member_type_json.get<std::string>());
 
             MetaMember::size_type member_size;
 
@@ -540,9 +602,10 @@ namespace Toolbox::Object {
                         std::find_if(m_enum_cache.begin(), m_enum_cache.end(),
                                      [&](const auto &e) { return e.name() == member_type; });
                     if (enum_it != m_enum_cache.end()) {
-                        auto member = loadMemberEnum(member_name, member_type, member_size);
+                        std::optional<MetaMember> member =
+                            loadMemberEnum(member_name, member_type, member_size);
                         if (member) {
-                            out.push_back(member.value());
+                            out.emplace_back(std::move(member.value()));
                         }
                         continue;
                     }
@@ -562,8 +625,7 @@ namespace Toolbox::Object {
                     }
                 }
             } else {
-                std::variant<std::monostate, s64, u64, float, double> var_min;
-                std::variant<std::monostate, s64, u64, float, double> var_max;
+                std::variant<std::monostate, s64, u64, float, double> var_min, var_max;
 
                 if (member_info.contains("Min")) {
                     switch (member_type_enum.value()) {
@@ -611,10 +673,10 @@ namespace Toolbox::Object {
                     }
                 }
 
-                auto member =
+                std::optional<MetaMember> member =
                     loadMemberPrimitive(member_name, member_type, member_size, var_min, var_max);
                 if (member) {
-                    out.push_back(member.value());
+                    out.emplace_back(std::move(member.value()));
                 }
             }
         }
@@ -625,12 +687,20 @@ namespace Toolbox::Object {
                                                           MetaMember default_member) {
         default_member.syncArray();
 
+        const size_t array_size = default_member.arraysize();
+
         if (default_member.isTypeStruct()) {
             std::vector<MetaStruct> inst_structs;
-            for (size_t i = 0; i < default_member.arraysize(); ++i) {
-                std::vector<MetaMember> inst_struct_members;
+            inst_structs.reserve(array_size);
+
+            for (size_t i = 0; i < array_size; ++i) {
                 RefPtr<MetaStruct> struct_ = default_member.value<MetaStruct>(i).value();
-                for (auto &mbr : struct_->members()) {
+                const std::vector<MetaStruct::MemberT> &struct_members = struct_->members();
+
+                std::vector<MetaMember> inst_struct_members;
+                inst_struct_members.reserve(struct_members.size());
+
+                for (MetaStruct::MemberT mbr : struct_members) {
                     if (!member_json.contains(mbr->name())) {
                         return make_json_error<MetaMember>(
                             "TEMPLATE", "Wizard does not contain struct member: " + mbr->name(), 0);
@@ -640,50 +710,60 @@ namespace Toolbox::Object {
                     if (!member_result) {
                         return std::unexpected(member_result.error());
                     }
-                    inst_struct_members.emplace_back(member_result.value());
+                    inst_struct_members.emplace_back(std::move(member_result.value()));
                 }
                 inst_structs.emplace_back(struct_->name(), inst_struct_members);
             }
-            MetaMember::size_type array_size = default_member.arraysize_();
-            if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
+
+            MetaMember::size_type var_array_size = default_member.arraysize_();
+            if (std::holds_alternative<MetaMember::ReferenceInfo>(var_array_size)) {
                 return MetaMember(default_member.name(), inst_structs,
-                                  std::get<MetaMember::ReferenceInfo>(array_size),
+                                  std::get<MetaMember::ReferenceInfo>(var_array_size),
                                   default_member.defaultValue());
             }
+
             return MetaMember(default_member.name(), inst_structs, default_member.defaultValue());
         }
 
         if (default_member.isTypeEnum()) {
             std::vector<MetaEnum> inst_enums;
-            for (size_t i = 0; i < default_member.arraysize(); ++i) {
+            inst_enums.reserve(array_size);
+
+            for (size_t i = 0; i < array_size; ++i) {
                 MetaEnum value = MetaEnum(*default_member.value<MetaEnum>(i).value());
                 Result<void, JSONError> result = value.loadJSON(member_json);
                 if (!result) {
                     return std::unexpected(result.error());
                 }
-                inst_enums.push_back(value);
+                inst_enums.emplace_back(std::move(value));
             }
-            MetaMember::size_type array_size = default_member.arraysize_();
-            if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
+
+            MetaMember::size_type var_array_size = default_member.arraysize_();
+            if (std::holds_alternative<MetaMember::ReferenceInfo>(var_array_size)) {
                 return MetaMember(default_member.name(), inst_enums,
-                                  std::get<MetaMember::ReferenceInfo>(array_size),
+                                  std::get<MetaMember::ReferenceInfo>(var_array_size),
                                   default_member.defaultValue());
             }
+
             return MetaMember(default_member.name(), inst_enums, default_member.defaultValue());
         }
 
         std::vector<MetaValue> inst_values;
-        for (size_t i = 0; i < default_member.arraysize(); ++i) {
-            auto value = MetaValue(*default_member.value<MetaValue>(i).value());
+        inst_values.reserve(array_size);
+
+        for (size_t i = 0; i < array_size; ++i) {
+            MetaValue value = MetaValue(*default_member.value<MetaValue>(i).value());
             value.loadJSON(member_json);
-            inst_values.push_back(value);
+            inst_values.emplace_back(std::move(value));
         }
-        MetaMember::size_type array_size = default_member.arraysize_();
-        if (std::holds_alternative<MetaMember::ReferenceInfo>(array_size)) {
+
+        MetaMember::size_type var_array_size = default_member.arraysize_();
+        if (std::holds_alternative<MetaMember::ReferenceInfo>(var_array_size)) {
             return MetaMember(default_member.name(), inst_values,
-                              std::get<MetaMember::ReferenceInfo>(array_size),
+                              std::get<MetaMember::ReferenceInfo>(var_array_size),
                               default_member.defaultValue());
         }
+
         return MetaMember(default_member.name(), inst_values, default_member.defaultValue());
     }
 
@@ -737,7 +817,7 @@ namespace Toolbox::Object {
                     if (!member_result) {
                         return std::unexpected(member_result.error());
                     }
-                    wizard.m_init_members.emplace_back(member_result.value());
+                    wizard.m_init_members.emplace_back(std::move(member_result.value()));
                 }
             }
 
@@ -771,7 +851,7 @@ namespace Toolbox::Object {
                 }
             }
 
-            m_wizards.push_back(wizard);
+            m_wizards.emplace_back(std::move(wizard));
         }
 
         return {};
@@ -822,6 +902,11 @@ namespace Toolbox::Object {
         return;
     }
 
+    struct TemplateLoadInfo {
+        std::string m_type;
+        bool m_is_custom;
+    };
+
     Result<void, FSError> TemplateFactory::initialize(const fs_path &cache_path) {
         s_cache_path = cache_path;
 
@@ -841,7 +926,8 @@ namespace Toolbox::Object {
         const fs_path load_custom_path = cwd / "Templates/Custom";
 
         if (!templates_preloaded) {
-            std::vector<std::thread> threads;
+            std::vector<TemplateLoadInfo> template_infos;
+            template_infos.reserve(1024);
 
             for (auto &subpath : std::filesystem::directory_iterator{load_base_path}) {
                 if (!std::filesystem::is_regular_file(subpath)) {
@@ -849,7 +935,7 @@ namespace Toolbox::Object {
                 }
 
                 auto type_str = subpath.path().stem().string();
-                threads.emplace_back(std::thread(Template::threadLoadTemplate, type_str, false));
+                template_infos.emplace_back(type_str, false);
             }
 
             for (auto &subpath : std::filesystem::directory_iterator{load_custom_path}) {
@@ -858,20 +944,21 @@ namespace Toolbox::Object {
                 }
 
                 auto type_str = subpath.path().stem().string();
-                threads.emplace_back(std::thread(Template::threadLoadTemplate, type_str, true));
+                template_infos.emplace_back(type_str, true);
             }
 
-            for (auto &th : threads) {
-                th.join();
-            }
+            std::for_each(std::execution::par_unseq, template_infos.begin(), template_infos.end(),
+                          [](const TemplateLoadInfo &info) {
+                              Template::threadLoadTemplate(info.m_type, info.m_is_custom);
+                          });
 
             if (isCacheMode()) {
-                auto res = saveToCacheBlob(false);
+                auto res = saveToCacheBlob(false);  // Base templates
                 if (!res) {
                     return std::unexpected(res.error());
                 }
 
-                res = saveToCacheBlob(true);
+                res = saveToCacheBlob(true);  // Custom templates
                 if (!res) {
                     return std::unexpected(res.error());
                 }
@@ -879,60 +966,60 @@ namespace Toolbox::Object {
         }
 
         const fs_path obj_render_infos_path = cwd / "Templates/object_info_map.json";
-        auto exists = Filesystem::is_regular_file(obj_render_infos_path);
+        auto exists                         = Filesystem::is_regular_file(obj_render_infos_path);
         if (!exists) {
             return std::unexpected(exists.error());
         }
 
         if (!exists.value()) {
-            return make_fs_error<void>(std::error_code(), {"Object render info map doesn't exist!"});
+            return make_fs_error<void>(std::error_code(),
+                                       {"Object render info map doesn't exist!"});
         }
 
-        std::ifstream info_in             = std::ifstream(obj_render_infos_path, std::ios::in);
+        std::ifstream info_in = std::ifstream(obj_render_infos_path, std::ios::in);
         Template::json_t render_info_json;
         info_in >> render_info_json;
 
-        
-        auto result = tryJSON(render_info_json, [&](const Template::json_t &j) -> Result<void, JSONError> {
-            for (const auto &[key, val] : j.items()) {
-                TemplateRenderInfo info;
-                if (val.contains("Textures")) {
-                    const Template::json_t &textures_json = val.at("Textures");
-                    if (!textures_json.is_object()) {
-                        return make_json_error<void>(
-                            "TemplateFactory",
-                            std::format("Textures field of object kind {} is not a dictionary",
-                                        key),
-                            0);
+        auto result =
+            tryJSON(render_info_json, [&](const Template::json_t &j) -> Result<void, JSONError> {
+                for (const auto &[key, val] : j.items()) {
+                    TemplateRenderInfo info;
+                    if (val.contains("Textures")) {
+                        const Template::json_t &textures_json = val.at("Textures");
+                        if (!textures_json.is_object()) {
+                            return make_json_error<void>(
+                                "TemplateFactory",
+                                std::format("Textures field of object kind {} is not a dictionary",
+                                            key),
+                                0);
+                        }
+                        info.m_texture_swap_map = textures_json;
                     }
-                    info.m_texture_swap_map = textures_json;
-                }
-                if (val.contains("Animations")) {
-                    const Template::json_t &animations_json = val.at("Animations");
-                    if (!animations_json.is_array()) {
-                        return make_json_error<void>(
-                            "TemplateFactory",
-                            std::format("Animations field of object kind {} is not a list",
-                                        key),
-                            0);
+                    if (val.contains("Animations")) {
+                        const Template::json_t &animations_json = val.at("Animations");
+                        if (!animations_json.is_array()) {
+                            return make_json_error<void>(
+                                "TemplateFactory",
+                                std::format("Animations field of object kind {} is not a list",
+                                            key),
+                                0);
+                        }
+                        info.m_file_animations = animations_json;
                     }
-                    info.m_file_animations = animations_json;
-                }
-                if (val.contains("Model")) {
-                    const Template::json_t &model_json = val.at("Model");
-                    if (!model_json.is_string()) {
-                        return make_json_error<void>(
-                            "TemplateFactory",
-                            std::format("Model field of object kind {} is not a list", key),
-                            0);
+                    if (val.contains("Model")) {
+                        const Template::json_t &model_json = val.at("Model");
+                        if (!model_json.is_string()) {
+                            return make_json_error<void>(
+                                "TemplateFactory",
+                                std::format("Model field of object kind {} is not a list", key), 0);
+                        }
+                        info.m_file_model = model_json;
                     }
-                    info.m_file_model = model_json;
+                    g_object_render_infos[key] = std::move(info);
                 }
-                g_object_render_infos[key] = std::move(info);
-            }
 
-            return {};
-        });
+                return {};
+            });
 
         return {};
     }

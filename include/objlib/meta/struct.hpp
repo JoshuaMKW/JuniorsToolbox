@@ -24,7 +24,7 @@ namespace Toolbox::Object {
         using CacheMemberT = std::unordered_map<std::string, MemberT>;
 
         MetaStruct(std::string_view name) : m_name(name) {}
-        MetaStruct(std::string_view name, std::vector<MetaMember> members);
+        MetaStruct(std::string_view name, const std::vector<MetaMember> &members);
         MetaStruct(const MetaStruct &other) = default;
         MetaStruct(MetaStruct &&other)      = default;
         ~MetaStruct()                       = default;
@@ -35,7 +35,7 @@ namespace Toolbox::Object {
     public:
         [[nodiscard]] constexpr std::string_view name() const { return m_name; }
 
-        [[nodiscard]] constexpr std::vector<MemberT> members() const { return m_members; }
+        [[nodiscard]] constexpr const std::vector<MemberT> &members() const { return m_members; }
 
         [[nodiscard]] GetMemberT getMember(std::string_view name) const;
         [[nodiscard]] GetMemberT getMember(const QualifiedName &name) const;

@@ -274,7 +274,7 @@ namespace Toolbox::Object {
         void updateReferenceToList(const std::vector<RefPtr<MetaMember>> &list);
 
         void syncArray() {
-            size_t asize = arraysize();
+            const size_t asize = arraysize();
             if (m_values.size() == asize)
                 return;
 
