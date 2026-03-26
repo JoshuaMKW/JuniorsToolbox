@@ -871,8 +871,11 @@ namespace Toolbox::Object {
         std::string object_str = getMetaValue<std::string>(object_member, 0).value();
 
         for (const TemplateWizard &wizard : wizards) {
+            bool has_object_field = false;
             for (const MetaMember &member : wizard.m_init_members) {
                 if (member.name() == "Object") {
+                    has_object_field = true;
+
                     auto value_result = member.value<MetaValue>(0);
                     if (!value_result) {
                         return false;
@@ -890,6 +893,16 @@ namespace Toolbox::Object {
                         }
                         return updated;
                     }
+                }
+            }
+
+            if (!has_object_field) {
+                if (wizard.m_obj_name == m_nameref.name()) {
+                    bool updated = m_wizard != wizard.m_name;
+                    if (updated) {
+                        m_wizard = wizard.m_name;
+                    }
+                    return updated;
                 }
             }
         }
@@ -1156,6 +1169,10 @@ namespace Toolbox::Object {
             // Write the size marker for now
             out.write<u32>(0);
 
+            if (m_type == "MapObjManager") {
+                __debugbreak();
+            }
+
             NameRef type_ref(m_type);
             type_ref.serialize(out);
 
@@ -1252,6 +1269,7 @@ namespace Toolbox::Object {
             auto &m                        = wizard->m_init_members[i];
             RefPtr<MetaMember> this_member = ref_cast<MetaMember>(make_deep_clone<MetaMember>(m));
             this_member->updateReferenceToList(m_members);
+
             if (in.tell() < endpos) {
                 auto result = this_member->gameDeserialize(in);
                 if (!result) {

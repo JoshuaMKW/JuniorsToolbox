@@ -54,6 +54,20 @@
                                 "全体シーン",
                                 "コンダクター初期化用"
                             ]
+                        },
+                        "EffectBombColumWaterManager": {
+                            "Name": "エフェクト爆発水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        },
+                        "EffectColumSandManager": {
+                            "Name": "エフェクト砂柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
                         }
                     },
                     "TablesBin": {},

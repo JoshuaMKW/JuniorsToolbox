@@ -105,7 +105,33 @@
                     "BGCheckDataCount": 12000,
                     "BGCheckListCount": 25000,
                     "BGCheckListWarpCount": 2000,
-                    "WarpNum": 0
+                    "WarpNum": 0,
+                    "InitWarpIdx": 0,
+                    "JointRenderArray": {
+                        "JointArray": 0
+                    },
+                    "WarpArray": {
+                        "PointArray": {
+                            "Name": "WarpX",
+                            "Transform": [
+                                [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                [
+                                    1,
+                                    1,
+                                    1
+                                ]
+                            ]
+                        }
+                    }
                 }
             },
             "Map (1 Warp)": {

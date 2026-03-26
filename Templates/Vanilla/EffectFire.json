@@ -35,7 +35,15 @@
             "Default": {
                 "Name": "炎",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectObjManager": {
+                            "Name": "エフェクト炎マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": []
                 },

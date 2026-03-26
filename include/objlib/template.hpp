@@ -89,6 +89,16 @@ namespace Toolbox::Object {
             return {};
         }
 
+        [[nodiscard]] std::optional<TemplateWizard>
+        getWizardByObjName(std::string_view obj_name) const {
+            for (const auto &wizard : m_wizards) {
+                if (wizard.m_obj_name == obj_name) {
+                    return wizard;
+                }
+            }
+            return {};
+        }
+
         Template &operator=(const Template &other) {
             m_type    = other.m_type;
             m_wizards = other.m_wizards;

@@ -253,6 +253,13 @@ namespace Toolbox::Object {
             return isTypeValue() &&
                    std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::RGBA;
         }
+        [[nodiscard]] bool isTypeRGB32() const {
+            return isTypeValue() && std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::RGB32;
+        }
+        [[nodiscard]] bool isTypeRGBA32() const {
+            return isTypeValue() &&
+                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::RGBA32;
+        }
         [[nodiscard]] bool isTypeUnknown() const {
             return isTypeValue() &&
                    std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::UNKNOWN;

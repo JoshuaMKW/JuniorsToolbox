@@ -123,7 +123,8 @@ public:
 public:
     SceneMender(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
                 bool check_dependencies = true)
-        : m_object_model(object_model), m_table_model(table_model), m_check_dependencies(check_dependencies), m_valid(true) {}
+        : m_object_model(object_model), m_table_model(table_model),
+          m_check_dependencies(check_dependencies), m_valid(true) {}
 
 public:
     SceneMender()                        = delete;
@@ -148,7 +149,12 @@ public:
     SceneMender &scopeEnter();
     SceneMender &scopeEscape();
 
-    SceneMender &scopeFulfillDependencies(RefPtr<SceneObjModel> model, const ModelIndex &index);
+    SceneMender &scopeFulfillManagerDependencies(RefPtr<SceneObjModel> model,
+                                                 const ModelIndex &index);
+    SceneMender &scopeFulfillTableBinDependencies(RefPtr<SceneObjModel> model,
+                                                  const ModelIndex &index);
+    SceneMender &scopeFulfillAssetDependencies(RefPtr<SceneObjModel> model,
+                                               const ModelIndex &index);
     SceneMender &scopeForAll(RefPtr<SceneObjModel> model, foreach_fn);
 
     explicit operator bool() const { return m_valid; }
@@ -473,18 +479,20 @@ namespace Toolbox::UI {
                     if (m_scene_selection_mgr.getState().count() > 0) {
                         const IDataModel::index_container &indexes =
                             m_scene_selection_mgr.getState().getSelection();
-                        return std::all_of(indexes.begin(), indexes.end(), [this](const ModelIndex &node) {
-                            RefPtr<ISceneObject> obj = m_scene_object_model->getObjectRef(node);
-                            return obj && obj->getTransform().has_value();
-                        });
+                        return std::all_of(
+                            indexes.begin(), indexes.end(), [this](const ModelIndex &node) {
+                                RefPtr<ISceneObject> obj = m_scene_object_model->getObjectRef(node);
+                                return obj && obj->getTransform().has_value();
+                            });
                     }
                     if (m_table_selection_mgr.getState().count() > 0) {
                         const IDataModel::index_container &indexes =
                             m_table_selection_mgr.getState().getSelection();
-                        return std::all_of(indexes.begin(), indexes.end(), [this](const ModelIndex &node) {
-                            RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(node);
-                            return obj && obj->getTransform().has_value();
-                        });
+                        return std::all_of(
+                            indexes.begin(), indexes.end(), [this](const ModelIndex &node) {
+                                RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(node);
+                                return obj && obj->getTransform().has_value();
+                            });
                     }
                     return false;
                 }();
@@ -4325,6 +4333,7 @@ bool ToolboxSceneDependencyMender::RepairScene(
                     .scopeTryCreateObjectDefault("MapObjBaseManager", to_str(u8"ファークリップ地形オブジェマネージャー"))
                     .scopeTryCreateObjectDefault("MapObjBaseManager", to_str(u8"乗り物マネージャー"))
                     .scopeTryCreateObjectDefault("ItemManager", to_str(u8"アイテムマネージャー"))
+                    .scopeTryCreateObjectDefault("PoolManager", to_str(u8"水場マネージャー"))
                 .scopeEscape()
                 .scopeTryCreateObjectDefault("GroupObj", to_str(u8"鏡シーン"))
                 .scopeEnter()
@@ -4413,8 +4422,20 @@ bool ToolboxSceneDependencyMender::RepairScene(
     // clang-format on
 
     // Now we check for dependencies on ALL objects
+
+    // We perform up to 3 resolutions (adding one dependency might need a chained dependency)
+    for (size_t i = 0; i < 3; ++i) {
+        mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
+            mender.scopeFulfillManagerDependencies(model, index);
+        });
+
+        mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
+            mender.scopeFulfillTableBinDependencies(model, index);
+        });
+    }
+
     mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
-        mender.scopeFulfillDependencies(model, index);
+        mender.scopeFulfillAssetDependencies(model, index);
     });
 
     return static_cast<bool>(mender);
@@ -4587,16 +4608,19 @@ SceneValidator &SceneValidator::scopeValidateDependencies(RefPtr<SceneObjModel> 
         if (!m_object_model->validateIndex(group_index)) {
             // group_obj = m_scene_instance->getObjHierarchy()->findObject(manager.m_ancestry);
             m_valid = false;
-            m_error_callback(std::format("Object '{} ({})': Failed to find required ancestor '{}' of manager dependency '{} ({})'!",
-                                         obj_type, obj_key, manager.m_ancestry.toString(), manager.m_type, manager.m_name));
+            m_error_callback(std::format("Object '{} ({})': Failed to find required ancestor '{}' "
+                                         "of manager dependency '{} ({})'!",
+                                         obj_type, obj_key, manager.m_ancestry.toString(),
+                                         manager.m_type, manager.m_name));
             continue;
         }
         ModelIndex manager_index =
             m_object_model->getIndex(manager.m_type, manager.m_name, group_index);
         if (!m_object_model->validateIndex(manager_index)) {
             m_valid = false;
-            m_error_callback(std::format("Object '{} ({})': Failed to find required manager object '{} ({})'!",
-                                         obj_type, obj_key, manager.m_type, manager.m_name));
+            m_error_callback(
+                std::format("Object '{} ({})': Failed to find required manager object '{} ({})'!",
+                            obj_type, obj_key, manager.m_type, manager.m_name));
         }
     }
 
@@ -4609,8 +4633,8 @@ SceneValidator &SceneValidator::scopeValidateDependencies(RefPtr<SceneObjModel> 
         if (!Filesystem::is_directory(abs_asset_path).value_or(false)) {
             m_valid = false;
             m_error_callback(
-                std::format("Object '{} ({})': Invalid asset path '{}' (does not exist)!",
-                            obj_type, obj_key, asset_path));
+                std::format("Object '{} ({})': Invalid asset path '{}' (does not exist)!", obj_type,
+                            obj_key, asset_path));
             continue;
         }
 
@@ -4640,7 +4664,8 @@ SceneValidator &SceneValidator::scopeValidateDependencies(RefPtr<SceneObjModel> 
         if (!m_table_model->validateIndex(group_index)) {
             // group_obj = m_scene_instance->getObjHierarchy()->findObject(manager.m_ancestry);
             m_valid = false;
-            m_error_callback(std::format("Object '{} ({})': Failed to find required ancestor '{}' of tables.bin dependency '{} ({})'!",
+            m_error_callback(std::format("Object '{} ({})': Failed to find required ancestor '{}' "
+                                         "of tables.bin dependency '{} ({})'!",
                                          obj_type, obj_key, obj.m_ancestry.toString(), obj.m_type,
                                          obj.m_name));
             continue;
@@ -4648,8 +4673,9 @@ SceneValidator &SceneValidator::scopeValidateDependencies(RefPtr<SceneObjModel> 
         ModelIndex table_index = m_table_model->getIndex(obj.m_type, obj.m_name, group_index);
         if (!m_table_model->validateIndex(table_index)) {
             m_valid = false;
-            m_error_callback(
-                std::format("Object '{} ({})': Failed to find required tables.bin object '{} ({})'!", obj_type, obj_key, obj.m_type, obj.m_name));
+            m_error_callback(std::format(
+                "Object '{} ({})': Failed to find required tables.bin object '{} ({})'!", obj_type,
+                obj_key, obj.m_type, obj.m_name));
         }
     }
 
@@ -4711,8 +4737,17 @@ SceneMender &SceneMender::scopeTryCreateObjectDefault(const std::string &obj_typ
             return *this;
         }
 
-        RefPtr<ISceneObject> new_obj =
-            ObjectFactory::create(*template_.value(), "Default", m_object_model->getScenePath());
+        RefPtr<ISceneObject> new_obj;
+
+        std::optional<TemplateWizard> specialized_wizard =
+            template_.value()->getWizardByObjName(obj_name);
+        if (specialized_wizard) {
+            new_obj = ObjectFactory::create(*template_.value(), specialized_wizard.value().m_name,
+                                            m_object_model->getScenePath());
+        } else {
+            new_obj = ObjectFactory::create(*template_.value(), "Default",
+                                            m_object_model->getScenePath());
+        }
 
         if (!new_obj) {
             m_valid = false;
@@ -4795,8 +4830,8 @@ static void forEachM(RefPtr<SceneObjModel> model, ModelIndex parent, SceneMender
     }
 }
 
-SceneMender &SceneMender::scopeFulfillDependencies(RefPtr<SceneObjModel> model,
-                                                   const ModelIndex &index) {
+SceneMender &SceneMender::scopeFulfillManagerDependencies(RefPtr<SceneObjModel> model,
+                                                          const ModelIndex &index) {
     if (!m_check_dependencies) {
         return *this;
     }
@@ -4874,48 +4909,37 @@ SceneMender &SceneMender::scopeFulfillDependencies(RefPtr<SceneObjModel> model,
         }
     }
 
-    for (const std::string &asset_path : dependencies.m_asset_paths) {
-        // Assets for an object are found in the subdirectory at SceneAssets/{asset_path}/...
-        const fs_path abs_asset_path =
-            (Filesystem::current_path().value_or(".") / "SceneAssets" / asset_path)
-                .lexically_normal();
-        for (const Filesystem::directory_entry dir_entry :
-             Filesystem::recursive_directory_iterator(abs_asset_path)) {
-            const fs_path relative_path =
-                Filesystem::relative(dir_entry.path(), abs_asset_path).value_or(dir_entry.path());
-            const fs_path scene_path = m_object_model->getScenePath() / relative_path;
+    return *this;
+}
 
-            if (dir_entry.is_directory()) {
-                if (!Filesystem::exists(scene_path).value_or(false)) {
-                    auto res = Filesystem::create_directories(scene_path);
-                    if (!res) {
-                        m_valid = false;
-                        m_error_callback(
-                            std::format("Failed to create directories for asset path '{}'",
-                                        scene_path.string()));
-                    }
-                }
-                continue;
-            }
+SceneMender &SceneMender::scopeFulfillTableBinDependencies(RefPtr<SceneObjModel> model,
+                                                           const ModelIndex &index) {
+    if (!m_check_dependencies) {
+        return *this;
+    }
 
-            if (Filesystem::is_regular_file(scene_path).value_or(false)) {
-                continue;
-            }
+    RefPtr<ISceneObject> object = model->getObjectRef(index);
+    const std::string &obj_type = object->type();
 
-            auto res = Filesystem::copy_file(dir_entry.path(), scene_path,
-                                             Filesystem::copy_options::overwrite_existing);
-            if (!res) {
-                m_valid = false;
-                m_error_callback(
-                    std::format("Failed to copy file for asset path '{}'", scene_path.string()));
-            }
+    auto template_ = TemplateFactory::create(obj_type, true);
+    if (!template_) {
+        m_valid = false;
+        m_error_callback(std::format("Failed to load template for object type '{}'!", obj_type));
+        return *this;
+    }
 
-            std::string change_text =
-                std::format("Added asset path {} for object [{} ({})]", relative_path.string(),
-                            object->type(), object->getNameRef().name());
-            m_change_callback(change_text);
+    std::optional<TemplateWizard> wizard = template_.value()->getWizard(object->getWizardName());
+    if (!wizard) {
+        wizard = template_.value()->getWizard("Default");
+        if (!wizard) {
+            m_valid = false;
+            m_error_callback(std::format("Failed to load the wizard '{}' for object type '{}'!",
+                                         object->getWizardName(), obj_type));
+            return *this;
         }
     }
+
+    const TemplateDependencies &dependencies = wizard->m_dependencies;
 
     for (const TemplateDependencies::ObjectInfo &obj : dependencies.m_table_objs) {
         ModelIndex group_index = m_table_model->getIndex(obj.m_ancestry);
@@ -4962,6 +4986,81 @@ SceneMender &SceneMender::scopeFulfillDependencies(RefPtr<SceneObjModel> model,
 
             std::string change_text = std::format("Added tables.bin [{} ({})] to [{} ({})]",
                                                   obj.m_type, obj.m_name, group_type, group_key);
+            m_change_callback(change_text);
+        }
+    }
+
+    return *this;
+}
+
+SceneMender &SceneMender::scopeFulfillAssetDependencies(RefPtr<SceneObjModel> model,
+                                                        const ModelIndex &index) {
+    if (!m_check_dependencies) {
+        return *this;
+    }
+
+    RefPtr<ISceneObject> object = model->getObjectRef(index);
+    const std::string &obj_type = object->type();
+
+    auto template_ = TemplateFactory::create(obj_type, true);
+    if (!template_) {
+        m_valid = false;
+        m_error_callback(std::format("Failed to load template for object type '{}'!", obj_type));
+        return *this;
+    }
+
+    std::optional<TemplateWizard> wizard = template_.value()->getWizard(object->getWizardName());
+    if (!wizard) {
+        wizard = template_.value()->getWizard("Default");
+        if (!wizard) {
+            m_valid = false;
+            m_error_callback(std::format("Failed to load the wizard '{}' for object type '{}'!",
+                                         object->getWizardName(), obj_type));
+            return *this;
+        }
+    }
+
+    const TemplateDependencies &dependencies = wizard->m_dependencies;
+
+    for (const std::string &asset_path : dependencies.m_asset_paths) {
+        // Assets for an object are found in the subdirectory at SceneAssets/{asset_path}/...
+        const fs_path abs_asset_path =
+            (Filesystem::current_path().value_or(".") / "SceneAssets" / asset_path)
+                .lexically_normal();
+        for (const Filesystem::directory_entry dir_entry :
+             Filesystem::recursive_directory_iterator(abs_asset_path)) {
+            const fs_path relative_path =
+                Filesystem::relative(dir_entry.path(), abs_asset_path).value_or(dir_entry.path());
+            const fs_path scene_path = m_object_model->getScenePath() / relative_path;
+
+            if (dir_entry.is_directory()) {
+                if (!Filesystem::exists(scene_path).value_or(false)) {
+                    auto res = Filesystem::create_directories(scene_path);
+                    if (!res) {
+                        m_valid = false;
+                        m_error_callback(
+                            std::format("Failed to create directories for asset path '{}'",
+                                        scene_path.string()));
+                    }
+                }
+                continue;
+            }
+
+            if (Filesystem::is_regular_file(scene_path).value_or(false)) {
+                continue;
+            }
+
+            auto res = Filesystem::copy_file(dir_entry.path(), scene_path,
+                                             Filesystem::copy_options::overwrite_existing);
+            if (!res) {
+                m_valid = false;
+                m_error_callback(
+                    std::format("Failed to copy file for asset path '{}'", scene_path.string()));
+            }
+
+            std::string change_text =
+                std::format("Added asset path {} for object [{} ({})]", relative_path.string(),
+                            object->type(), object->getNameRef().name());
             m_change_callback(change_text);
         }
     }

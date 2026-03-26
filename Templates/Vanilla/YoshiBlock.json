@@ -51,7 +51,15 @@
             "Default": {
                 "Name": "ヨッシーブロック",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "MapObjManager": {
+                            "Name": "地形オブジェマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_yoshiblock"

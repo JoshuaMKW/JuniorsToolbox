@@ -39,7 +39,15 @@
             "Small Water Bottle": {
                 "Name": "ペットボトル（小）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "ItemManager": {
+                            "Name": "アイテムマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_cmn_bottle"

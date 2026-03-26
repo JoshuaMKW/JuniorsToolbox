@@ -43,7 +43,15 @@
             "Airstrip Pole": {
                 "Name": "AirportPole",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": []
                 },
@@ -78,7 +86,15 @@
             "Arrow Sign": {
                 "Name": "矢印看板（左右）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_arrowboard"
@@ -114,7 +130,15 @@
             "Up Arrow Sign": {
                 "Name": "矢印看板（上）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_arrowboard"
@@ -150,7 +174,15 @@
             "Down Arrow Sign": {
                 "Name": "矢印看板（下）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_arrowboard"
@@ -186,7 +218,15 @@
             "LOD Ferris Wheel": {
                 "Name": "観覧車（遠景）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_ferrislod"
@@ -222,7 +262,15 @@
             "Orange Flower": {
                 "Name": "花（オレンジ）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_flower"
@@ -258,7 +306,15 @@
             "Pink Flower": {
                 "Name": "花（ピンク）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_flower"
@@ -294,7 +350,15 @@
             "Purple Flower": {
                 "Name": "花（紫）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_flower"
@@ -330,7 +394,15 @@
             "Red Flower": {
                 "Name": "花（赤）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_flower"
@@ -366,7 +438,15 @@
             "Yellow Flower": {
                 "Name": "花（黄）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_flower"
@@ -402,7 +482,15 @@
             "Sunflower": {
                 "Name": "花（ひまわり）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_flower"
@@ -438,7 +526,15 @@
             "Pianta Chair": {
                 "Name": "イス（モンテ）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_montechair"
@@ -474,7 +570,15 @@
             "Pole Object": {
                 "Name": "ポール",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": []
                 },
@@ -509,7 +613,15 @@
             "Dummy Cannon": {
                 "Name": "dptCannon",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_dptcannon"
@@ -545,7 +657,15 @@
             "Pipe Portal": {
                 "Name": "efDokanGate",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_dokangate"
@@ -581,7 +701,15 @@
             "Corona Mountain Fence": {
                 "Name": "dptCoronaFence",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_dptcoronafence"
@@ -617,7 +745,15 @@
             "Koopa Submarine": {
                 "Name": "クッパＪｒ潜水艦",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_koopajrsubmarine"
@@ -653,7 +789,15 @@
             "Pile": {
                 "Name": "くい",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_pile"
@@ -689,7 +833,15 @@
             "Bianco Hills Wall Door": {
                 "Name": "BiaDoor",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_bianco_biadoor",
@@ -726,7 +878,15 @@
             "Bianco Hills Bridge": {
                 "Name": "BiaBridge",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_bianco_biabridge",
@@ -763,7 +923,15 @@
             "Metal Arrow Sign": {
                 "Name": "矢印看板",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_riccoarrow"
@@ -799,7 +967,15 @@
             "Blooper Boats": {
                 "Name": "riccoShipGeso",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_riccoshipgeso"
@@ -835,7 +1011,15 @@
             "Fish Boats": {
                 "Name": "riccoShipFish",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_riccoshipfish"
@@ -871,7 +1055,15 @@
             "Submarine": {
                 "Name": "submarine",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_submarine"
@@ -907,7 +1099,15 @@
             "Ricco Harbor Pole": {
                 "Name": "riccoPole",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": []
                 },
@@ -942,7 +1142,15 @@
             "Gangway": {
                 "Name": "riccoGangway",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_riccogangway"
@@ -978,7 +1186,15 @@
             "Ricco Harbor Fence Maze": {
                 "Name": "riccoFenceMaze",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_riccofencemaze"
@@ -1014,7 +1230,15 @@
             "Ricco Harbor Construction Basket": {
                 "Name": "riccoBasket",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_riccobasket"
@@ -1050,7 +1274,15 @@
             "Grille": {
                 "Name": "下水柵",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_riccogrille"
@@ -1086,7 +1318,15 @@
             "Helicopter": {
                 "Name": "riccoHericopter",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_riccohericopter"
@@ -1122,7 +1362,15 @@
             "Wooden Stand": {
                 "Name": "イカ台",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_riccostand"
@@ -1158,7 +1406,15 @@
             "Market Stalls": {
                 "Name": "riccoStreetStall",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_riccostreetstall"
@@ -1194,7 +1450,15 @@
             "Coral Reef": {
                 "Name": "coral00",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_coral00"
@@ -1230,7 +1494,15 @@
             "Surfboard Stand": {
                 "Name": "サーフボードスタンド",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_mammasurfboardstand"
@@ -1266,7 +1538,15 @@
             "Juicer Teeth": {
                 "Name": "TeethOfJuicer",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_teethofjuicer"
@@ -1302,7 +1582,15 @@
             "Static Watermelon": {
                 "Name": "スイカ（固定）",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_watermelon"
@@ -1338,7 +1626,15 @@
             "Gate Manta": {
                 "Name": "GateManta",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_gatemanta"
@@ -1374,7 +1670,15 @@
             "Pinna Beach Sunflowers": {
                 "Name": "PinnaSunFlower",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_pinnasunflower"
@@ -1410,7 +1714,15 @@
             "Sirena Beach Bars": {
                 "Name": "シレナショップ",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_sirenashop"
@@ -1446,7 +1758,15 @@
             "Restroom Leak": {
                 "Name": "水漏れオブジェ",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_stainhotel"
@@ -1482,7 +1802,15 @@
             "Red Coin Bottle": {
                 "Name": "ＥＸビン",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_exbottle"
@@ -1518,7 +1846,15 @@
             "Course Start Platform": {
                 "Name": "空島",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_skyisland"
@@ -1554,7 +1890,15 @@
             "Pachinko Nail": {
                 "Name": "パチンコ釘",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_pachinkonail"

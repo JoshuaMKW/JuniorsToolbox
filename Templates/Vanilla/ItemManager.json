@@ -26,7 +26,11 @@
                 "Dependencies": {
                     "Managers": {},
                     "TablesBin": {},
-                    "AssetPaths": []
+                    "AssetPaths": [
+                        "object/mapobj_cmn_bottle",
+                        "object/mapobj_cmn_coin",
+                        "object/mapobj_cmn_coin_hit"
+                    ]
                 },
                 "Members": {
                     "Character": "アイテムマネージャー キャラ",

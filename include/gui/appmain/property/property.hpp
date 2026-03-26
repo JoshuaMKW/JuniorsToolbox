@@ -123,6 +123,10 @@ namespace Toolbox::UI {
         void init() override;
         bool render(float label_width) override;
 
+    protected:
+        Color::RGBAShader getColor(int array_index);
+        bool setColor(int array_index, const Color::RGBAShader &color);
+
     private:
         std::vector<Color::RGBAShader> m_colors;
         bool m_open     = false;

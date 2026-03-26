@@ -567,11 +567,14 @@ namespace Toolbox::UI {
         m_member->syncArray();
         m_colors.resize(m_member->arraysize());
         m_array_open.resize(m_member->arraysize(), true);
+
+        const bool isRGB    = m_member->isTypeRGB();
+        const bool isRGBA   = m_member->isTypeRGBA();
+        const bool isRGB32  = m_member->isTypeRGB32();
+        const bool isRGBA32 = m_member->isTypeRGBA32();
+
         for (size_t i = 0; i < m_colors.size(); ++i) {
-            auto color = Object::getMetaValue<Color::RGBA8>(m_member, i).value();
-            f32 r, g, b, a;
-            color.getColor(r, g, b, a);
-            m_colors.at(i) = Color::RGBAShader(r, g, b, a);
+            m_colors.at(i) = getColor(i);
         }
     }
 
@@ -588,11 +591,16 @@ namespace Toolbox::UI {
                             m_member->qualifiedName().toString());
         }
 
-        bool any_changed = false;
-
-        const bool use_alpha = Object::getMetaType(m_member).value() == Object::MetaType::RGBA;
-
         const bool is_array = m_member->isArray();
+
+        const bool isRGB    = m_member->isTypeRGB();
+        const bool isRGBA   = m_member->isTypeRGBA();
+        const bool isRGB32  = m_member->isTypeRGB32();
+        const bool isRGBA32 = m_member->isTypeRGBA32();
+
+        const bool use_alpha = isRGBA || isRGBA32;
+
+        bool any_changed = false;
 
         ImVec2 window_size        = ImGui::GetWindowSize();
         const bool collapse_lines = window_size.x < 350;
@@ -611,16 +619,13 @@ namespace Toolbox::UI {
 
                     if (use_alpha) {
                         if (ImGui::ColorEdit4(name.c_str(), &color.m_r)) {
-                            if (Object::setMetaValue<Color::RGBA8>(
-                                    m_member, i,
-                                    Color::RGBA8(color.m_r, color.m_g, color.m_b, color.m_a))) {
+                            if (setColor(i, color)) {
                                 any_changed = true;
                             }
                         }
                     } else {
                         if (ImGui::ColorEdit3(name.c_str(), &color.m_r)) {
-                            if (Object::setMetaValue<Color::RGB8>(
-                                    m_member, i, Color::RGB8(color.m_r, color.m_g, color.m_b))) {
+                            if (setColor(i, color)) {
                                 any_changed = true;
                             }
                         }
@@ -647,15 +652,13 @@ namespace Toolbox::UI {
 
         if (use_alpha) {
             if (ImGui::ColorEdit4(m_member->name().c_str(), &color.m_r)) {
-                if (Object::setMetaValue<Color::RGBA8>(
-                        m_member, 0, Color::RGBA8(color.m_r, color.m_g, color.m_b, color.m_a))) {
+                if (setColor(0, color)) {
                     any_changed = true;
                 }
             }
         } else {
             if (ImGui::ColorEdit3(m_member->name().c_str(), &color.m_r)) {
-                if (Object::setMetaValue<Color::RGB8>(
-                        m_member, 0, Color::RGB8(color.m_r, color.m_g, color.m_b))) {
+                if (setColor(0, color)) {
                     any_changed = true;
                 }
             }
@@ -665,6 +668,84 @@ namespace Toolbox::UI {
             m_value_changed(m_member);
         }
         return any_changed;
+    }
+
+    Color::RGBAShader ColorProperty::getColor(int array_index) {
+        Color::RGBAShader out_color;
+
+        const bool isRGB    = m_member->isTypeRGB();
+        const bool isRGBA   = m_member->isTypeRGBA();
+        const bool isRGB32  = m_member->isTypeRGB32();
+        const bool isRGBA32 = m_member->isTypeRGBA32();
+
+        if (isRGB) {
+            Color::RGB8 tmp_color = Object::getMetaValue<Color::RGB8>(m_member, array_index)
+                                          .value_or(Color::RGB8());
+            f32 r, g, b, a;
+            tmp_color.getColor(r, g, b, a);
+            out_color.setColor(r, g, b, a);
+        }
+
+        if (isRGBA) {
+            Color::RGBA8 tmp_color = Object::getMetaValue<Color::RGBA8>(m_member, array_index)
+                                          .value_or(Color::RGBA8());
+            f32 r, g, b, a;
+            tmp_color.getColor(r, g, b, a);
+            out_color.setColor(r, g, b, a);
+        }
+
+        if (isRGB32) {
+            Color::RGB32 tmp_color = Object::getMetaValue<Color::RGB32>(m_member, array_index)
+                                          .value_or(Color::RGB32());
+            f32 r, g, b, a;
+            tmp_color.getColor(r, g, b, a);
+            out_color.setColor(r, g, b, a);
+        }
+
+        if (isRGBA32) {
+            Color::RGBA32 tmp_color = Object::getMetaValue<Color::RGBA32>(m_member, array_index)
+                                          .value_or(Color::RGBA32());
+            f32 r, g, b, a;
+            tmp_color.getColor(r, g, b, a);
+            out_color.setColor(r, g, b, a);
+        }
+
+        return out_color;
+    }
+
+    bool ColorProperty::setColor(int array_index, const Color::RGBAShader &color) {
+        const bool isRGB    = m_member->isTypeRGB();
+        const bool isRGBA   = m_member->isTypeRGBA();
+        const bool isRGB32  = m_member->isTypeRGB32();
+        const bool isRGBA32 = m_member->isTypeRGBA32();
+
+        if (isRGB) {
+            return Object::setMetaValue<Color::RGB8>(m_member, array_index,
+                                                     Color::RGB8(color.m_r, color.m_g, color.m_b))
+                .value_or(false);
+        }
+
+        if (isRGBA) {
+            return Object::setMetaValue<Color::RGBA8>(
+                       m_member, array_index,
+                       Color::RGBA8(color.m_r, color.m_g, color.m_b, color.m_a))
+                .value_or(false);
+        }
+
+        if (isRGB32) {
+            return Object::setMetaValue<Color::RGB32>(m_member, array_index,
+                                                      Color::RGB32(color.m_r, color.m_g, color.m_b))
+                .value_or(false);
+        }
+
+        if (isRGBA32) {
+            return Object::setMetaValue<Color::RGBA32>(
+                       m_member, array_index,
+                       Color::RGBA32(color.m_r, color.m_g, color.m_b, color.m_a))
+                .value_or(false);
+        }
+
+        return false;
     }
 
     void VectorProperty::init() {
@@ -983,40 +1064,59 @@ namespace Toolbox::UI {
 
         ImVec2 window_size        = ImGui::GetWindowSize();
         const bool collapse_lines = window_size.x < 350;
-        if (is_array || m_member->isEmpty()) {
-            if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
-                for (size_t i = 0; i < m_checked_state.size(); ++i) {
-                    std::string array_str = std::format("[{}]", i).c_str();
-                    if (ImGui::BeginGroupPanel(array_str.c_str(),
-                                               reinterpret_cast<bool *>(&m_array_open.at(i)), {})) {
-                        s64 &number = m_numbers.at(i);
-                        for (size_t j = 0; j < m_checked_state.at(0).size(); ++j) {
-                            if (ImGui::Checkbox(
-                                    enum_values.at(j).first.c_str(),
-                                    reinterpret_cast<bool *>(m_checked_state.at(i).data() + j))) {
-                                bool checked = m_checked_state.at(i).at(j);
-                                if (checked) {
-                                    if (enum_bitmasked) {
+
+        if (enum_bitmasked) {
+            if (is_array || m_member->isEmpty()) {
+                if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
+                    for (size_t i = 0; i < m_checked_state.size(); ++i) {
+                        std::string array_str = std::format("[{}]", i).c_str();
+                        if (ImGui::BeginGroupPanel(array_str.c_str(),
+                                                   reinterpret_cast<bool *>(&m_array_open.at(i)),
+                                                   {})) {
+                            s64 &number = m_numbers.at(i);
+                            for (size_t j = 0; j < m_checked_state.at(0).size(); ++j) {
+                                if (ImGui::Checkbox(enum_values.at(j).first.c_str(),
+                                                    reinterpret_cast<bool *>(
+                                                        m_checked_state.at(i).data() + j))) {
+                                    bool checked = m_checked_state.at(i).at(j);
+                                    if (checked) {
                                         number |= getEnumFlagValue(enum_values.at(j), enum_type);
                                     } else {
-                                        number = getEnumFlagValue(enum_values.at(j), enum_type);
-                                        for (size_t k = 0; k < m_checked_state.at(0).size(); ++k) {
-                                            m_checked_state.at(0).at(k) = false;
-                                        }
-                                        m_checked_state.at(0).at(j) = true;
-                                    }
-                                } else {
-                                    if (enum_bitmasked) {
                                         number &= ~getEnumFlagValue(enum_values.at(j), enum_type);
                                     }
                                 }
                             }
+                            if (Object::setMetaValue(m_member, i, number)) {
+                                any_changed = true;
+                            }
                         }
-                        if (Object::setMetaValue(m_member, i, number)) {
-                            any_changed = true;
+                        ImGui::EndGroupPanel();
+                    }
+                }
+                ImGui::EndGroupPanel();
+
+                if (any_changed && m_value_changed) {
+                    m_value_changed(m_member);
+                }
+                return any_changed;
+            }
+
+            if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
+                s64 &number = m_numbers.at(0);
+                for (size_t j = 0; j < m_checked_state.at(0).size(); ++j) {
+                    if (ImGui::Checkbox(
+                            enum_values.at(j).first.c_str(),
+                            reinterpret_cast<bool *>(m_checked_state.at(0).data() + j))) {
+                        bool checked = m_checked_state.at(0).at(j);
+                        if (checked) {
+                            number |= getEnumFlagValue(enum_values.at(j), enum_type);
+                        } else {
+                            number &= ~getEnumFlagValue(enum_values.at(j), enum_type);
                         }
                     }
-                    ImGui::EndGroupPanel();
+                }
+                if (Object::setMetaValue(m_member, 0, number)) {
+                    any_changed = true;
                 }
             }
             ImGui::EndGroupPanel();
@@ -1025,41 +1125,97 @@ namespace Toolbox::UI {
                 m_value_changed(m_member);
             }
             return any_changed;
-        }
+        } else {
+            if (is_array || m_member->isEmpty()) {
+                if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
+                    for (size_t i = 0; i < m_checked_state.size(); ++i) {
+                        std::vector<char> &checked_state = m_checked_state.at(i);
 
-        if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
-            s64 &number = m_numbers.at(0);
-            for (size_t j = 0; j < m_checked_state.at(0).size(); ++j) {
-                if (ImGui::Checkbox(enum_values.at(j).first.c_str(),
-                                    reinterpret_cast<bool *>(m_checked_state.at(0).data() + j))) {
-                    bool checked = m_checked_state.at(0).at(j);
-                    if (checked) {
-                        if (enum_bitmasked) {
-                            number |= getEnumFlagValue(enum_values.at(j), enum_type);
-                        } else {
-                            number = getEnumFlagValue(enum_values.at(j), enum_type);
-                            for (size_t k = 0; k < m_checked_state.at(0).size(); ++k) {
-                                m_checked_state.at(0).at(k) = false;
+                        const int selected_index = [&]() {
+                            for (int i = 0; i < checked_state.size(); ++i) {
+                                if (checked_state.at(i)) {
+                                    return i;
+                                }
                             }
-                            m_checked_state.at(0).at(j) = true;
-                        }
-                    } else {
-                        if (enum_bitmasked) {
-                            number &= ~getEnumFlagValue(enum_values.at(j), enum_type);
+                            return -1;
+                        }();
+
+                        s64 &number               = m_numbers.at(i);
+                        std::string preview_value = selected_index >= 0
+                                                        ? enum_values.at(selected_index).first
+                                                        : "[[Invalid State]]";
+                        if (ImGui::BeginCombo("##enum_combobox", preview_value.c_str())) {
+                            for (int j = 0; j < enum_values.size(); ++j) {
+                                std::string enum_str = enum_values.at(j).first;
+                                bool selected        = j == selected_index;
+                                if (ImGui::Selectable(enum_str.c_str(), &selected)) {
+                                    std::fill(checked_state.begin(), checked_state.end(), false);
+                                    number = getEnumFlagValue(enum_values.at(j), enum_type);
+                                    checked_state[j] = true;
+                                    any_changed      = true;
+
+                                    if (Object::setMetaValue(m_member, i, number).value_or(false)) {
+                                        any_changed = true;
+                                    }
+                                }
+                            }
+                            ImGui::EndCombo();
                         }
                     }
                 }
-            }
-            if (Object::setMetaValue(m_member, 0, number)) {
-                any_changed = true;
-            }
-        }
-        ImGui::EndGroupPanel();
+                ImGui::EndGroupPanel();
 
-        if (any_changed && m_value_changed) {
-            m_value_changed(m_member);
+                if (any_changed && m_value_changed) {
+                    m_value_changed(m_member);
+                }
+                return any_changed;
+            }
+
+            ImGui::Text(m_member->name().c_str());
+
+            if (!collapse_lines) {
+                ImGui::SameLine();
+                ImGui::Dummy({label_width - ImGui::CalcTextSize(m_member->name().c_str()).x, 0});
+                ImGui::SameLine();
+            }
+
+            std::vector<char> &checked_state = m_checked_state.at(0);
+
+            const int selected_index = [&]() {
+                for (int i = 0; i < checked_state.size(); ++i) {
+                    if (checked_state.at(i)) {
+                        return i;
+                    }
+                }
+                return -1;
+            }();
+
+            s64 &number               = m_numbers.at(0);
+            std::string preview_value = selected_index >= 0 ? enum_values.at(selected_index).first
+                                                            : "[[Invalid State]]";
+            if (ImGui::BeginCombo("##enum_combobox", preview_value.c_str())) {
+                for (int i = 0; i < enum_values.size(); ++i) {
+                    std::string enum_str = enum_values.at(i).first;
+                    bool selected        = i == selected_index;
+                    if (ImGui::Selectable(enum_str.c_str(), &selected)) {
+                        std::fill(checked_state.begin(), checked_state.end(), false);
+                        number           = getEnumFlagValue(enum_values.at(i), enum_type);
+                        checked_state[i] = true;
+                        any_changed      = true;
+
+                        if (Object::setMetaValue(m_member, 0, number).value_or(false)) {
+                            any_changed = true;
+                        }
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            if (any_changed && m_value_changed) {
+                m_value_changed(m_member);
+            }
+            return any_changed;
         }
-        return any_changed;
     }
 
     StructProperty::StructProperty(RefPtr<Object::MetaMember> prop)

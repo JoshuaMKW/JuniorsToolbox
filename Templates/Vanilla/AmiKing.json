@@ -39,7 +39,15 @@
             "Default": {
                 "Name": "アミキング",
                 "Dependencies": {
-                    "Managers": {},
+                    "Managers": {
+                        "EffectColumWaterManager": {
+                            "Name": "エフェクト水柱マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
                     "TablesBin": {},
                     "AssetPaths": [
                         "object/mapobj_amiking"
