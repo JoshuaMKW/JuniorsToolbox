@@ -48,10 +48,8 @@ public:
 public:
     ToolboxSceneVerifier() = delete;
     ToolboxSceneVerifier(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
-                         RefPtr<RailObjModel> rail_model,
-                         bool check_dependencies)
-        : m_object_model(object_model), m_table_model(table_model),
-          m_rail_model(rail_model),
+                         RefPtr<RailObjModel> rail_model, bool check_dependencies)
+        : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model),
           m_check_dependencies(check_dependencies) {}
 
     void tRun(void *param) override;
@@ -89,7 +87,7 @@ public:
 public:
     ToolboxSceneDependencyMender() = delete;
     ToolboxSceneDependencyMender(RefPtr<SceneObjModel> object_model,
-        RefPtr<SceneObjModel> table_model, RefPtr<RailObjModel> rail_model)
+                                 RefPtr<SceneObjModel> table_model, RefPtr<RailObjModel> rail_model)
         : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model) {}
 
     void tRun(void *param) override;
@@ -103,9 +101,45 @@ protected:
     // WARNING: This method is exhaustive and may take awhile to complete!
     [[nodiscard]] static bool RepairScene(RefPtr<SceneObjModel> object_model,
                                           RefPtr<SceneObjModel> table_model,
-                                          RefPtr<RailObjModel> rail_model,
-                                          bool check_dependencies, repair_progress_cb,
-                                          repair_change_cb, repair_error_cb);
+                                          RefPtr<RailObjModel> rail_model, bool check_dependencies,
+                                          repair_progress_cb, repair_change_cb, repair_error_cb);
+
+private:
+    RefPtr<SceneObjModel> m_object_model;
+    RefPtr<SceneObjModel> m_table_model;
+    RefPtr<RailObjModel> m_rail_model;
+
+    std::string m_progress_text;
+    std::vector<std::string> m_changes;
+    std::vector<std::string> m_errors;
+    bool m_successful = true;
+};
+
+class ToolboxScenePruner : public TaskThread<void> {
+public:
+    using prune_progress_cb = std::function<void(const std::string &progress_text)>;
+    using prune_change_cb   = std::function<void(const std::string &change_text)>;
+    using prune_error_cb    = std::function<void(const std::string &reason)>;
+
+public:
+    ToolboxScenePruner() = delete;
+    ToolboxScenePruner(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
+                       RefPtr<RailObjModel> rail_model)
+        : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model) {}
+
+    void tRun(void *param) override;
+
+    bool isValid() const { return m_successful; }
+    std::vector<std::string> getChanges() const { return m_changes; }
+    std::vector<std::string> getErrors() const { return m_errors; }
+    std::string getProgressText() const { return m_progress_text; }
+
+protected:
+    // WARNING: This method is exhaustive and may take awhile to complete!
+    [[nodiscard]] static bool PruneScene(RefPtr<SceneObjModel> object_model,
+                                         RefPtr<SceneObjModel> table_model,
+                                         RefPtr<RailObjModel> rail_model, bool check_dependencies,
+                                         prune_progress_cb, prune_change_cb, prune_error_cb);
 
 private:
     RefPtr<SceneObjModel> m_object_model;
@@ -365,7 +399,9 @@ namespace Toolbox::UI {
 
         ScopePtr<ToolboxSceneVerifier> m_scene_verifier;
         ScopePtr<ToolboxSceneDependencyMender> m_scene_mender;
+        ScopePtr<ToolboxScenePruner> m_scene_pruner;
         bool m_scene_validator_result_opened = false;
         bool m_scene_mender_result_opened    = false;
+        bool m_scene_pruner_result_opened    = false;
     };
 }  // namespace Toolbox::UI

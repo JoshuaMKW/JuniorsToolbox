@@ -54,7 +54,7 @@ constexpr float TreeNodeFramePaddingY = 4.0f;
 class SceneValidator {
 public:
     using size_fn    = std::function<bool(size_t)>;
-    using foreach_fn = std::function<void(RefPtr<SceneObjModel>, ModelIndex)>;
+    using foreach_obj_fn = std::function<void(RefPtr<SceneObjModel>, ModelIndex)>;
 
 public:
     SceneValidator(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
@@ -85,7 +85,7 @@ public:
     SceneValidator &scopeEscape();
 
     SceneValidator &scopeValidateDependencies(RefPtr<SceneObjModel> model, const ModelIndex &index);
-    SceneValidator &scopeForAll(RefPtr<SceneObjModel> model, foreach_fn);
+    SceneValidator &scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn);
 
     explicit operator bool() const { return m_valid; }
 
@@ -118,7 +118,7 @@ private:
 class SceneMender {
 public:
     using size_fn    = std::function<bool(size_t)>;
-    using foreach_fn = std::function<void(RefPtr<SceneObjModel>, ModelIndex)>;
+    using foreach_obj_fn = std::function<void(RefPtr<SceneObjModel>, ModelIndex)>;
 
 public:
     SceneMender(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
@@ -156,7 +156,7 @@ public:
     SceneMender &scopeFulfillRailDependencies(RefPtr<SceneObjModel> model, const ModelIndex &index);
     SceneMender &scopeFulfillAssetDependencies(RefPtr<SceneObjModel> model,
                                                const ModelIndex &index);
-    SceneMender &scopeForAll(RefPtr<SceneObjModel> model, foreach_fn);
+    SceneMender &scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn);
 
     explicit operator bool() const { return m_valid; }
 
@@ -171,6 +171,73 @@ private:
     RefPtr<SceneObjModel> m_object_model;
     RefPtr<SceneObjModel> m_table_model;
     RefPtr<RailObjModel> m_rail_model;
+
+    bool m_check_dependencies;
+
+    bool m_valid;
+
+    int m_processed_objects = 0;
+};
+
+class ScenePruner {
+public:
+    using size_fn    = std::function<bool(size_t)>;
+    using foreach_obj_fn = std::function<void(RefPtr<SceneObjModel>, ModelIndex)>;
+    using foreach_rail_fn = std::function<void(RefPtr<RailObjModel>, ModelIndex)>;
+
+public:
+    ScenePruner(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
+                RefPtr<RailObjModel> rail_model, bool check_dependencies = true)
+        : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model),
+          m_check_dependencies(check_dependencies), m_valid(true) {}
+
+public:
+    ScenePruner()                        = delete;
+    ScenePruner(const ScenePruner &)     = delete;
+    ScenePruner(ScenePruner &&) noexcept = delete;
+
+public:
+    void setProgressCallback(ToolboxScenePruner::prune_progress_cb cb) { m_progress_callback = cb; }
+    void setChangeCallback(ToolboxScenePruner::prune_change_cb cb) { m_change_callback = cb; }
+    void setErrorCallback(ToolboxScenePruner::prune_error_cb cb) { m_error_callback = cb; }
+
+    ScenePruner &addManagerDependency(const TemplateDependencies::ObjectInfo &manager_info);
+    ScenePruner &addRailDependency(const std::string &rail_name);
+
+    ScenePruner &scopeAssertObject(const std::string &obj_type, const std::string &obj_name);
+
+    ScenePruner &scopeEnter();
+    ScenePruner &scopeEscape();
+
+    ScenePruner &scopeCollectDependencies(RefPtr<SceneObjModel> model, const ModelIndex &index);
+    ScenePruner &scopePruneManagerIfUnused(RefPtr<SceneObjModel> model, const ModelIndex &index);
+
+    ScenePruner &scopePruneRailIfUnused(RefPtr<RailObjModel> model, const ModelIndex &index);
+
+    ScenePruner &scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn);
+    ScenePruner &scopeForAll(RefPtr<RailObjModel> model, foreach_rail_fn);
+
+    explicit operator bool() const { return m_valid; }
+
+protected:
+    struct ToolboxScopeDepenedencies {
+        std::vector<TemplateDependencies::ObjectInfo> m_managers;
+        std::unordered_set<std::string> m_rails;
+    };
+
+private:
+    ToolboxScenePruner::prune_progress_cb m_progress_callback;
+    ToolboxScenePruner::prune_change_cb m_change_callback;
+    ToolboxScenePruner::prune_error_cb m_error_callback;
+
+    std::stack<ModelIndex> m_parent_stack;
+    ModelIndex m_last_index;
+
+    RefPtr<SceneObjModel> m_object_model;
+    RefPtr<SceneObjModel> m_table_model;
+    RefPtr<RailObjModel> m_rail_model;
+
+    ToolboxScopeDepenedencies m_dependencies;
 
     bool m_check_dependencies;
 
@@ -779,6 +846,44 @@ namespace Toolbox::UI {
                             errors);
                     }
                     m_scene_mender_result_opened = true;
+                }
+            }
+        }
+
+        if (m_scene_pruner) {
+            if (m_scene_pruner->tIsAlive()) {
+                ImGui::OpenPopup("Scene Pruner");
+
+                ImGui::SetNextWindowSize({400.0f, 200.0f});
+                ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
+                                        ImGuiCond_Appearing, {0.5f, 0.5f});
+
+                if (ImGui::BeginPopupModal("Scene Pruner", nullptr, ImGuiWindowFlags_NoResize)) {
+                    ImGui::Text("Pruning scene, please wait...");
+                    ImGui::Separator();
+
+                    std::string progress_text = m_scene_pruner->getProgressText();
+
+                    ImGui::ProgressBar(-1.0f * ImGui::GetTime(), ImVec2(-FLT_MIN, 0.0f),
+                                       progress_text.c_str());
+                    ImGui::EndPopup();
+                }
+            } else if (m_scene_pruner->tIsKilled()) {
+                if (!m_scene_pruner_result_opened) {
+                    if (m_scene_pruner->isValid()) {
+                        std::vector<std::string> changes = m_scene_pruner->getChanges();
+                        MainApplication::instance().showSuccessModal(
+                            this, "Scene Pruner Result",
+                            changes.empty() ? "The scene was already pruned / efficient!"
+                                            : "Scene prune completed successfully!",
+                            changes);
+                    } else {
+                        std::vector<std::string> errors = m_scene_pruner->getErrors();
+                        MainApplication::instance().showErrorModal(
+                            this, "Scene Pruner Result", "Scene prune failed with errors!",
+                            errors);
+                    }
+                    m_scene_pruner_result_opened = true;
                 }
             }
         }
@@ -4107,6 +4212,13 @@ namespace Toolbox::UI {
                     m_scene_mender_result_opened = false;
                 }
 
+                if (ImGui::MenuItem("Prune Scene")) {
+                    m_scene_pruner = make_scoped<ToolboxScenePruner>(
+                        m_scene_object_model, m_table_object_model, m_rail_model);
+                    m_scene_pruner->tStart(true, nullptr);
+                    m_scene_pruner_result_opened = false;
+                }
+
                 if (is_verifying || is_repairing) {
                     ImGui::EndDisabled();
                 }
@@ -4186,6 +4298,14 @@ void ToolboxSceneVerifier::tRun(void *param) {
 
 void ToolboxSceneDependencyMender::tRun(void *param) {
     m_successful = RepairScene(
+        m_object_model, m_table_model, m_rail_model, true,
+        [this](const std::string &progress_text) { m_progress_text = progress_text; },
+        [this](const std::string &change_msg) { m_changes.push_back(change_msg); },
+        [this](const std::string &error_msg) { m_errors.push_back(error_msg); });
+}
+
+void ToolboxScenePruner::tRun(void *param) {
+    m_successful = PruneScene(
         m_object_model, m_table_model, m_rail_model, true,
         [this](const std::string &progress_text) { m_progress_text = progress_text; },
         [this](const std::string &change_msg) { m_changes.push_back(change_msg); },
@@ -4432,8 +4552,6 @@ bool ToolboxSceneDependencyMender::RepairScene(
                 .scopeEscape()
             .scopeEscape();
 
-    // clang-format on
-
     // Now we check for dependencies on ALL objects
 
     // We perform up to 3 resolutions (adding one dependency might need a chained dependency)
@@ -4461,6 +4579,51 @@ bool ToolboxSceneDependencyMender::RepairScene(
 
     return static_cast<bool>(mender);
 }
+
+bool ToolboxScenePruner::PruneScene(RefPtr<SceneObjModel> object_model,
+                                    RefPtr<SceneObjModel> table_model,
+                                    RefPtr<RailObjModel> rail_model, bool check_dependencies,
+                                    prune_progress_cb progress_cb, prune_change_cb change_cb,
+                                    prune_error_cb error_cb) {
+    ScenePruner pruner(object_model, table_model, rail_model, check_dependencies);
+    pruner.setProgressCallback(progress_cb);
+    pruner.setChangeCallback(change_cb);
+    pruner.setErrorCallback(error_cb);
+
+    pruner.scopeForAll(object_model, [&pruner](RefPtr<SceneObjModel> model, ModelIndex index) {
+        pruner.scopeCollectDependencies(model, index);
+    });
+
+    TemplateDependencies::ObjectInfo a;
+
+    const QualifiedName root_name = QualifiedName(to_str(u8"全体シーン"));
+    const QualifiedName manager_group_name = QualifiedName(to_str(u8"コンダクター初期化用"), root_name);
+    
+    pruner.addManagerDependency(TemplateDependencies::ObjectInfo {"MapObjBaseManager", to_str(u8"シャインマネージャー"),                 manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"MapObjManager",     to_str(u8"地形オブジェマネージャー"),              manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"MapObjBaseManager", to_str(u8"木マネージャー"),                       manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"MapObjBaseManager", to_str(u8"大型地形オブジェマネージャー"),          manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"MapObjBaseManager", to_str(u8"ファークリップ地形オブジェマネージャー"), manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"MapObjBaseManager", to_str(u8"乗り物マネージャー"),                   manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"ItemManager",       to_str(u8"アイテムマネージャー"),                 manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"PoolManager",       to_str(u8"水場マネージャー"),                    manager_group_name});
+
+    pruner.scopeAssertObject("GroupObj", to_str(u8"全体シーン"))
+            .scopeEnter()
+                .scopeAssertObject("GroupObj", to_str(u8"コンダクター初期化用"))
+                .scopeEnter()
+                    .scopeForAll(object_model, [&pruner](RefPtr<SceneObjModel> model, ModelIndex index) {
+                        pruner.scopePruneManagerIfUnused(model, index);
+                    })
+                .scopeEscape()
+            .scopeEscape();
+
+
+
+    return static_cast<bool>(pruner);
+}
+
+// clang-format on
 
 #undef VALIDATOR_LT
 #undef VALIDATOR_LE
@@ -4739,7 +4902,7 @@ SceneValidator &SceneValidator::scopeValidateDependencies(RefPtr<SceneObjModel> 
     return *this;
 }
 
-static void forEach(RefPtr<SceneObjModel> model, ModelIndex parent, SceneValidator::foreach_fn fn) {
+static void forEach(RefPtr<SceneObjModel> model, ModelIndex parent, SceneValidator::foreach_obj_fn fn) {
     const int64_t row_count = model->getRowCount(parent);
     for (int64_t row = 0; row < row_count; ++row) {
         ModelIndex child = model->getIndex(row, 0, parent);
@@ -4751,7 +4914,7 @@ static void forEach(RefPtr<SceneObjModel> model, ModelIndex parent, SceneValidat
     }
 }
 
-SceneValidator &SceneValidator::scopeForAll(RefPtr<SceneObjModel> model, foreach_fn fn) {
+SceneValidator &SceneValidator::scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn fn) {
     forEach(model, m_parent_stack.empty() ? ModelIndex() : m_parent_stack.top(), fn);
     return *this;
 }
@@ -4875,7 +5038,7 @@ SceneMender &SceneMender::scopeEscape() {
     return *this;
 }
 
-static void forEachM(RefPtr<SceneObjModel> model, ModelIndex parent, SceneMender::foreach_fn fn) {
+static void forEachM(RefPtr<SceneObjModel> model, ModelIndex parent, SceneMender::foreach_obj_fn fn) {
     const int64_t row_count = model->getRowCount(parent);
     for (int64_t row = 0; row < row_count; ++row) {
         ModelIndex child = model->getIndex(row, 0, parent);
@@ -5172,7 +5335,263 @@ SceneMender &SceneMender::scopeFulfillAssetDependencies(RefPtr<SceneObjModel> mo
     return *this;
 }
 
-SceneMender &SceneMender::scopeForAll(RefPtr<SceneObjModel> model, foreach_fn fn) {
-    forEachM(model, m_parent_stack.empty() ? ModelIndex() : m_parent_stack.top(), fn);
+static void forEachP(RefPtr<SceneObjModel> model, ModelIndex parent, ScenePruner::foreach_obj_fn fn) {
+    const int64_t row_count = model->getRowCount(parent);
+    for (int64_t row = 0; row < row_count; ++row) {
+        ModelIndex child = model->getIndex(row, 0, parent);
+        if (!model->validateIndex(child)) {
+            return;
+        }
+        fn(model, child);
+        forEachP(model, child, fn);
+    }
+}
+
+static void forEachP(RefPtr<RailObjModel> model, ModelIndex parent, ScenePruner::foreach_rail_fn fn) {
+    const int64_t row_count = model->getRowCount(parent);
+    for (int64_t row = 0; row < row_count; ++row) {
+        ModelIndex child = model->getIndex(row, 0, parent);
+        if (!model->validateIndex(child)) {
+            return;
+        }
+        fn(model, child);
+        forEachP(model, child, fn);
+    }
+}
+
+ScenePruner &
+ScenePruner::addManagerDependency(const TemplateDependencies::ObjectInfo &manager_info) {
+    m_dependencies.m_managers.push_back(manager_info);
+    return *this;
+}
+
+ScenePruner &ScenePruner::addRailDependency(const std::string &rail_name) {
+    m_dependencies.m_rails.insert(rail_name);
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopeAssertObject(const std::string &obj_type,
+                                            const std::string &obj_name) {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    if (m_parent_stack.empty()) {
+        ModelIndex root_index = m_object_model->getIndex(0, 0);
+        if (!m_object_model->validateIndex(root_index)) {
+            m_valid = false;
+            m_error_callback("Failed to find root object");
+            return *this;
+        }
+
+        std::string root_type = m_object_model->getObjectType(root_index);
+        std::string root_key  = m_object_model->getObjectKey(root_index);
+
+        if (root_type != obj_type || root_key != obj_name) {
+            m_valid = false;
+            m_error_callback(std::format("Failed to find root object of type '{}' with name '{}'",
+                                         obj_type, obj_name));
+            return *this;
+        }
+        m_last_index = root_index;
+        m_processed_objects += 1;
+        if (m_progress_callback) {
+            std::string progress_text = std::format("{} ({}) [{}]", root_type, root_key,
+                                                    static_cast<int>(m_processed_objects));
+            m_progress_callback(progress_text);
+        }
+        return *this;
+    }
+
+    ModelIndex group_index = m_parent_stack.top();
+    if (!m_object_model->validateIndex(group_index)) {
+        m_valid = false;
+        m_error_callback("Somehow the parent stack was corrupted while validating "
+                         "(concurrency?) Report this error to JoshuaMK");
+        return *this;
+    }
+
+    ModelIndex child_index = m_object_model->getIndex(obj_name, group_index);
+    if (!m_object_model->validateIndex(child_index)) {
+        m_valid = false;
+        m_error_callback(
+            std::format("Failed to find child object of type '{}' with name '{}' in parent '{}'",
+                        obj_type, obj_name, m_object_model->getObjectKey(group_index)));
+        return *this;
+    }
+
+    std::string child_type = m_object_model->getObjectType(child_index);
+    if (child_type != obj_type) {
+        m_valid = false;
+        m_error_callback(
+            std::format("Failed to find child object of type '{}' with name '{}' in parent '{}'",
+                        obj_type, obj_name, m_object_model->getObjectKey(group_index)));
+        return *this;
+    }
+
+    m_last_index = child_index;
+    m_processed_objects += 1;
+    if (m_progress_callback) {
+        std::string progress_text =
+            std::format("{} ({}) [{}]", obj_type, obj_name, static_cast<int>(m_processed_objects));
+        m_progress_callback(progress_text);
+    }
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopeEnter() {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    if (!m_object_model->validateIndex(m_last_index)) {
+        m_valid = false;
+        m_error_callback("Tried to enter the scope of a leaf object");
+        return *this;
+    }
+
+    m_parent_stack.push(m_last_index);
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopeEscape() {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    if (m_parent_stack.empty()) {
+        m_valid = false;
+        m_error_callback("Unbalanced scope when validating scene");
+        return *this;
+    }
+
+    m_parent_stack.pop();
+    return *this;
+}
+
+SceneMender &SceneMender::scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn fn) {
+    forEachP(model, m_parent_stack.empty() ? ModelIndex() : m_parent_stack.top(), fn);
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopeCollectDependencies(RefPtr<SceneObjModel> model,
+                                                   const ModelIndex &index) {
+    if (!m_check_dependencies || !model->validateIndex(index)) {
+        return *this;
+    }
+
+    RefPtr<ISceneObject> object = model->getObjectRef(index);
+    std::string obj_type        = model->getObjectType(index);
+    std::string obj_key         = model->getObjectKey(index);
+
+    auto template_ = TemplateFactory::create(obj_type, true);
+    if (!template_) {
+        m_valid = false;
+        m_error_callback(
+            std::format("Object '{} ({})': Failed to load template!", obj_type, obj_key));
+        return *this;
+    }
+
+    std::optional<TemplateWizard> wizard = template_.value()->getWizard(object->getWizardName());
+    if (!wizard) {
+        wizard = template_.value()->getWizard("Default");
+        if (!wizard) {
+            m_valid = false;
+            m_error_callback(std::format("Object '{} ({})': Failed to load the wizard '{}'!",
+                                         obj_type, obj_key, object->getWizardName()));
+            return *this;
+        }
+    }
+
+    m_dependencies.m_managers.insert(m_dependencies.m_managers.end(),
+                                     wizard->m_dependencies.m_managers.begin(),
+                                     wizard->m_dependencies.m_managers.end());
+
+    auto rail_member_result = object->getMember("Rail");
+    if (rail_member_result.value_or(nullptr)) {
+        RefPtr<MetaMember> rail_member = rail_member_result.value();
+        std::string rail_dependency    = getMetaValue<std::string>(rail_member).value();
+        if (!rail_dependency.empty() && rail_dependency != "(null)") {
+            m_dependencies.m_rails.insert(rail_dependency);
+        }
+    }
+
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopePruneManagerIfUnused(RefPtr<SceneObjModel> model,
+                                                    const ModelIndex &index) {
+    m_processed_objects += 1;
+
+    const std::string manager_type = model->getObjectType(index);
+    const std::string manager_name = model->getObjectKey(index);
+
+    for (const TemplateDependencies::ObjectInfo &manager : m_dependencies.m_managers) {
+        ModelIndex group_index = m_object_model->getIndex(manager.m_ancestry);
+        if (!m_object_model->validateIndex(group_index)) {
+            m_valid = false;
+            m_error_callback(std::format("Provided manager ancestry '{}' is not a group object!",
+                                         manager.m_ancestry.toString()));
+            continue;
+        }
+
+        ModelIndex manager_index =
+            m_object_model->getIndex(manager.m_type, manager.m_name, group_index);
+
+        if (!m_object_model->validateIndex(manager_index)) {
+            continue;
+        }
+
+        // Manager matches a running dependency
+        if (manager_index == index) {
+            return *this;
+        }
+    }
+
+    // Remove the manager since it is not depended upon
+    if (model->removeIndex(index)) {
+        std::string change_text =
+            std::format("Pruned unused manager '{} ({})'", manager_type, manager_name);
+        m_change_callback(change_text);
+    } else {
+        m_valid = false;
+        std::string failed_text =
+            std::format("Failed to prune unused manager '{} ({})'", manager_type, manager_name);
+        m_error_callback(failed_text);
+    }
+
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopePruneRailIfUnused(RefPtr<RailObjModel> model,
+                                                 const ModelIndex &index) {
+    const std::string rail_name = model -> getRailKey(index);
+    if (m_dependencies.m_rails.contains(rail_name)) {
+        return *this;
+    }
+
+    // Remove the rail since it is not depended upon
+    if (model->removeIndex(index)) {
+        std::string change_text = std::format("Pruned unused rail '{}'", rail_name);
+        m_change_callback(change_text);
+    } else {
+        m_valid                 = false;
+        std::string failed_text = std::format("Failed to prune unused rail '{}'", rail_name);
+        m_error_callback(failed_text);
+    }
+
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn fn) {
+    forEachP(model, m_parent_stack.empty() ? ModelIndex() : m_parent_stack.top(), fn);
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopeForAll(RefPtr<RailObjModel> model, foreach_rail_fn fn) {
+    forEachP(model, m_parent_stack.empty() ? ModelIndex() : m_parent_stack.top(), fn);
     return *this;
 }
