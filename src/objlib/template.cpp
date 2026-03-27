@@ -902,11 +902,6 @@ namespace Toolbox::Object {
         return;
     }
 
-    struct TemplateLoadInfo {
-        std::string m_type;
-        bool m_is_custom;
-    };
-
     Result<void, FSError> TemplateFactory::initialize(const fs_path &cache_path) {
         s_cache_path = cache_path;
 
@@ -926,6 +921,11 @@ namespace Toolbox::Object {
         const fs_path load_custom_path = cwd / "Templates/Custom";
 
         if (!templates_preloaded) {
+            struct TemplateLoadInfo {
+                std::string m_type;
+                bool m_is_custom;
+            };
+
             std::vector<TemplateLoadInfo> template_infos;
             template_infos.reserve(1024);
 
@@ -947,7 +947,7 @@ namespace Toolbox::Object {
                 template_infos.emplace_back(type_str, true);
             }
 
-            std::for_each(std::execution::par_unseq, template_infos.begin(), template_infos.end(),
+            std::for_each(std::execution::par, template_infos.begin(), template_infos.end(),
                           [](const TemplateLoadInfo &info) {
                               Template::threadLoadTemplate(info.m_type, info.m_is_custom);
                           });
@@ -1047,9 +1047,18 @@ namespace Toolbox::Object {
         Template::json_t blob_json;
         in.stream() >> blob_json;
 
-        for (auto &item : blob_json.items()) {
-            Template::threadLoadTemplateBlob(item.key(), item.value(), is_custom);
+        std::vector<Template::json_t::iterator> json_iters;
+        json_iters.reserve(blob_json.size());
+
+        // 2. Populate the vector (Standard iterators are bidirectional)
+        for (auto it = blob_json.begin(); it != blob_json.end(); ++it) {
+            json_iters.emplace_back(it);
         }
+
+        std::for_each(std::execution::par, json_iters.begin(), json_iters.end(),
+                      [is_custom](const Template::json_t::iterator &info) {
+                          Template::threadLoadTemplateBlob(info.key(), info.value(), is_custom);
+                      });
 
         return {};
     }
@@ -1063,50 +1072,53 @@ namespace Toolbox::Object {
         Template::json_t blob_json;
 
         {
-            std::vector<std::thread> threads;
+            const fs_path &cwd              = cwd_result.value();
+            const fs_path load_from_path =
+                cwd / (is_custom ? "Templates/Custom" : "Templates/Vanilla");
 
-            auto &cwd              = cwd_result.value();
-            fs_path load_from_path = cwd / (is_custom ? "Templates/Custom" : "Templates/Vanilla");
+            std::vector<fs_path> save_infos;
+            save_infos.reserve(1024);
 
             for (auto &subpath : std::filesystem::directory_iterator{load_from_path}) {
-                auto type_str = subpath.path().stem().string();
-                threads.push_back(std::thread(
-                    [&](const std::string &type_str, const std::filesystem::path &path) {
-                        if (std::filesystem::exists(path) &&
-                            !std::filesystem::is_regular_file(path)) {
-                            return;
-                        }
+                if (!Filesystem::is_regular_file(subpath.path()).value_or(false)) {
+                    continue;
+                }
 
-                        std::ifstream file(path, std::ios::in);
-                        if (!file.is_open()) {
-                            TOOLBOX_ERROR_V("[TEMPLATE_FACTORY] Failed to open template json {}",
-                                            path.filename().string());
-                            return;
-                        }
-
-                        Deserializer in(file.rdbuf());
-                        Template::json_t t_json;
-                        in.stream() >> t_json;
-
-                        s_templates_mutex.lock();
-                        for (auto &[key, value] : t_json.items()) {
-                            blob_json[key] = value;
-                        }
-                        s_templates_mutex.unlock();
-
-                        file.close();
-                    },
-                    type_str, subpath.path()));
+                save_infos.emplace_back(subpath.path());
             }
 
-            for (auto &th : threads) {
-                th.join();
+            std::vector<std::optional<Template::json_t>> parsed_jsons(save_infos.size());
+
+            std::transform(
+                std::execution::par_unseq, save_infos.begin(), save_infos.end(),
+                parsed_jsons.begin(), [](const fs_path &path) -> std::optional<Template::json_t> {
+                    std::ifstream file(path, std::ios::in);
+                    if (!file.is_open()) {
+                        TOOLBOX_ERROR_V("[TEMPLATE_FACTORY] Failed to open template json {}",
+                                        path.filename().string());
+                        return std::nullopt;
+                    }
+
+                    Deserializer in(file.rdbuf());
+                    Template::json_t t_json;
+                    in.stream() >> t_json;
+
+                    // Return the parsed JSON. Move semantics handle this efficiently
+                    // behind the scenes without heavy copying.
+                    return t_json;
+                });
+
+            for (auto &parsed_opt : parsed_jsons) {
+                if (parsed_opt.has_value()) {
+                    blob_json.update(std::move(parsed_opt.value()));
+                }
             }
         }
 
-        auto blob_path = s_cache_path / (is_custom ? "blob_custom.json" : "blob.json");
-        if (!std::filesystem::exists(blob_path.parent_path())) {
-            auto result = Toolbox::Filesystem::create_directories(blob_path.parent_path());
+        const fs_path blob_path = s_cache_path / (is_custom ? "blob_custom.json" : "blob.json");
+        
+        if (!Filesystem::exists(blob_path.parent_path()).value_or(false)) {
+            auto result = Filesystem::create_directories(blob_path.parent_path());
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -1114,10 +1126,11 @@ namespace Toolbox::Object {
                 TOOLBOX_ERROR("[TEMPLATE_FACTORY] Failed to create cache directory!");
             }
         }
-        Toolbox::Filesystem::is_directory(blob_path.parent_path())
+
+        Filesystem::is_directory(blob_path.parent_path())
             .and_then([&](bool is_dir) {
                 if (!is_dir) {
-                    return Toolbox::Filesystem::create_directory(blob_path.parent_path());
+                    return Filesystem::create_directory(blob_path.parent_path());
                 }
                 return Result<bool, FSError>();
             })
