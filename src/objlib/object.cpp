@@ -1169,10 +1169,6 @@ namespace Toolbox::Object {
             // Write the size marker for now
             out.write<u32>(0);
 
-            if (m_type == "MapObjManager") {
-                __debugbreak();
-            }
-
             NameRef type_ref(m_type);
             type_ref.serialize(out);
 
