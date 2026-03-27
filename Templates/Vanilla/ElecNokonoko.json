@@ -88,6 +88,13 @@
                     "SpawnID": -1
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [ "dennoko/dennoko_wait1.bck" ],
+                "Materials": "dennoko/dennoko_model1.bmt",
+                "Model": "dennoko/dennoko_model1.bmd"
+            }
         }
     }
 }
