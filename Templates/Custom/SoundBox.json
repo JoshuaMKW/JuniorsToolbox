@@ -83,7 +83,7 @@
                         "ID": 0,
                         "Name": "なし"
                     },
-                    "ParticleName": "((null))",
+                    "ParticleName": "(null)",
                     "SoundID": -1,
                     "Volume": 1.0,
                     "Pitch": 1.0,

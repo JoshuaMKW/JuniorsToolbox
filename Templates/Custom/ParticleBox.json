@@ -87,7 +87,7 @@
                         "ID": 0,
                         "Name": "なし"
                     },
-                    "ParticleName": "((null))",
+                    "ParticleName": "(null)",
                     "ParticleID": -1,
                     "SpawnRate": 15,
                     "SpawnScale": 1.0,

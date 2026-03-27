@@ -12,8 +12,6 @@
 #include "core/threaded.hpp"
 #include "core/timing.hpp"
 
-#include "model/objmodel.hpp"
-
 #include "IconsForkAwesome.h"
 #include "gui/appmain/application.hpp"
 #include "gui/appmain/project/events.hpp"
@@ -60,8 +58,8 @@ public:
 
 public:
     SceneValidator(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
-                   bool check_dependencies = true)
-        : m_object_model(object_model), m_table_model(table_model),
+                   RefPtr<RailObjModel> rail_model, bool check_dependencies = true)
+        : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model),
           m_check_dependencies(check_dependencies), m_valid(true) {
         m_total_objects =
             static_cast<double>(object_model->getObjectCount() + table_model->getObjectCount());
@@ -100,6 +98,8 @@ private:
 
     RefPtr<SceneObjModel> m_object_model;
     RefPtr<SceneObjModel> m_table_model;
+    RefPtr<RailObjModel> m_rail_model;
+
     bool m_check_dependencies;
 
     bool m_valid;
@@ -122,8 +122,8 @@ public:
 
 public:
     SceneMender(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
-                bool check_dependencies = true)
-        : m_object_model(object_model), m_table_model(table_model),
+                RefPtr<RailObjModel> rail_model, bool check_dependencies = true)
+        : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model),
           m_check_dependencies(check_dependencies), m_valid(true) {}
 
 public:
@@ -153,6 +153,7 @@ public:
                                                  const ModelIndex &index);
     SceneMender &scopeFulfillTableBinDependencies(RefPtr<SceneObjModel> model,
                                                   const ModelIndex &index);
+    SceneMender &scopeFulfillRailDependencies(RefPtr<SceneObjModel> model, const ModelIndex &index);
     SceneMender &scopeFulfillAssetDependencies(RefPtr<SceneObjModel> model,
                                                const ModelIndex &index);
     SceneMender &scopeForAll(RefPtr<SceneObjModel> model, foreach_fn);
@@ -169,6 +170,8 @@ private:
 
     RefPtr<SceneObjModel> m_object_model;
     RefPtr<SceneObjModel> m_table_model;
+    RefPtr<RailObjModel> m_rail_model;
+
     bool m_check_dependencies;
 
     bool m_valid;
@@ -286,6 +289,16 @@ namespace Toolbox::UI {
                     ModelIndex rail_index                    = m_rail_model->getIndex(i, 0);
                     m_rail_visible_map[rail_index.getUUID()] = true;
                 }
+
+                // TODO: this probably causes spurious data races!
+                m_rail_model->addEventListener(
+                    getUUID(),
+                    [&](ModelIndex index, int flags) {
+                        if (m_rail_model->isIndexRail(index)) {
+                            m_rail_visible_map[index.getUUID()] = true;
+                        }
+                    },
+                    ModelEventFlags::EVENT_INDEX_ADDED);
 
                 m_renderer.initializeData(m_rail_model);
                 return true;
@@ -2783,19 +2796,18 @@ namespace Toolbox::UI {
                 },
                 [this](ModelIndex index) {
                     ModelIndex parent_index = m_rail_model->getParent(index);
-                    int64_t sibling_index   = m_rail_model->getRow(index);
-                    int64_t sibling_count   = m_rail_model->getRowCount(parent_index);
 
                     Rail::Rail::node_ptr_t new_node = std::make_shared<Rail::RailNode>();
 
                     ModelIndex result;
                     if (m_rail_model->validateIndex(parent_index)) {
                         // This means a node is selected
-                        result =
-                            m_rail_model->insertRailNode(new_node, sibling_index, parent_index);
+                        int64_t sibling_row = m_rail_model->getRow(index);
+                        result = m_rail_model->insertRailNode(new_node, sibling_row, parent_index);
                     } else {
                         // This means a rail is selected, so we insert at the end of the rail
-                        result = m_rail_model->insertRailNode(new_node, sibling_count, index);
+                        int64_t child_count = m_rail_model->getRowCount(index);
+                        result = m_rail_model->insertRailNode(new_node, child_count, index);
                     }
 
                     if (!m_rail_model->isIndexRailNode(result)) {
@@ -2813,8 +2825,6 @@ namespace Toolbox::UI {
                 },
                 [this](ModelIndex index) {
                     ModelIndex parent_index = m_rail_model->getParent(index);
-                    int64_t sibling_index   = m_rail_model->getRow(index);
-                    int64_t sibling_count   = m_rail_model->getRowCount(parent_index);
 
                     glm::vec3 translation;
                     m_renderer.getCameraTranslation(translation);
@@ -2823,11 +2833,12 @@ namespace Toolbox::UI {
                     ModelIndex result;
                     if (m_rail_model->validateIndex(parent_index)) {
                         // This means a node is selected
-                        result =
-                            m_rail_model->insertRailNode(new_node, sibling_index, parent_index);
+                        int64_t sibling_row = m_rail_model->getRow(index);
+                        result = m_rail_model->insertRailNode(new_node, sibling_row, parent_index);
                     } else {
                         // This means a rail is selected, so we insert at the end of the rail
-                        result = m_rail_model->insertRailNode(new_node, sibling_count, index);
+                        int64_t child_count = m_rail_model->getRowCount(index);
+                        result = m_rail_model->insertRailNode(new_node, child_count, index);
                     }
 
                     if (!m_rail_model->isIndexRailNode(result)) {
@@ -3626,7 +3637,7 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::loadMimeRail(Buffer &buffer, size_t index) {
-        Rail::Rail rail("((null))");
+        Rail::Rail rail("(null)");
 
         bool is_internal = buffer.get<bool>(0);  // Internal
         u16 orig_index   = buffer.get<u16>(1);   // Index
@@ -4077,21 +4088,21 @@ namespace Toolbox::UI {
 
                 if (ImGui::MenuItem("Verify Scene")) {
                     m_scene_verifier = make_scoped<ToolboxSceneVerifier>(
-                        m_scene_object_model, m_table_object_model, false);
+                        m_scene_object_model, m_table_object_model, m_rail_model, false);
                     m_scene_verifier->tStart(true, nullptr);
                     m_scene_validator_result_opened = false;
                 }
 
                 if (ImGui::MenuItem("Verify Scene & Dependencies")) {
                     m_scene_verifier = make_scoped<ToolboxSceneVerifier>(
-                        m_scene_object_model, m_table_object_model, true);
+                        m_scene_object_model, m_table_object_model, m_rail_model, true);
                     m_scene_verifier->tStart(true, nullptr);
                     m_scene_validator_result_opened = false;
                 }
 
                 if (ImGui::MenuItem("Repair Dependencies")) {
                     m_scene_mender = make_scoped<ToolboxSceneDependencyMender>(
-                        m_scene_object_model, m_table_object_model);
+                        m_scene_object_model, m_table_object_model, m_rail_model);
                     m_scene_mender->tStart(true, nullptr);
                     m_scene_mender_result_opened = false;
                 }
@@ -4165,7 +4176,7 @@ namespace Toolbox::UI {
 
 void ToolboxSceneVerifier::tRun(void *param) {
     m_successful = ValidateScene(
-        m_object_model, m_table_model, m_check_dependencies,
+        m_object_model, m_table_model, m_rail_model, m_check_dependencies,
         [this](double progress, const std::string &progress_text) {
             setProgress(progress);
             m_progress_text = progress_text;
@@ -4175,18 +4186,19 @@ void ToolboxSceneVerifier::tRun(void *param) {
 
 void ToolboxSceneDependencyMender::tRun(void *param) {
     m_successful = RepairScene(
-        m_object_model, m_table_model, true,
+        m_object_model, m_table_model, m_rail_model, true,
         [this](const std::string &progress_text) { m_progress_text = progress_text; },
         [this](const std::string &change_msg) { m_changes.push_back(change_msg); },
         [this](const std::string &error_msg) { m_errors.push_back(error_msg); });
 }
 
 bool ToolboxSceneVerifier::ValidateScene(RefPtr<SceneObjModel> object_model,
-                                         RefPtr<SceneObjModel> table_model, bool check_dependencies,
+                                         RefPtr<SceneObjModel> table_model,
+                                         RefPtr<RailObjModel> rail_model, bool check_dependencies,
                                          validate_progress_cb progress_cb,
                                          validate_error_cb error_cb) {
     // The goal here is to test that the scene is loadable and all objects are valid.
-    SceneValidator validate(object_model, table_model, check_dependencies);
+    SceneValidator validate(object_model, table_model, rail_model, check_dependencies);
     validate.setProgressCallback(progress_cb);
     validate.setErrorCallback(error_cb);
 
@@ -4312,10 +4324,11 @@ bool ToolboxSceneVerifier::ValidateScene(RefPtr<SceneObjModel> object_model,
 }
 
 bool ToolboxSceneDependencyMender::RepairScene(
-    RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model, bool check_dependencies,
-    repair_progress_cb progress_cb, repair_change_cb change_cb, repair_error_cb error_cb) {
+    RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
+    RefPtr<RailObjModel> rail_model, bool check_dependencies, repair_progress_cb progress_cb,
+    repair_change_cb change_cb, repair_error_cb error_cb) {
     // The goal here is to test that the scene is loadable and all objects are valid.
-    SceneMender mender(object_model, table_model, check_dependencies);
+    SceneMender mender(object_model, table_model, rail_model, check_dependencies);
     mender.setProgressCallback(progress_cb);
     mender.setChangeCallback(change_cb);
     mender.setErrorCallback(error_cb);
@@ -4433,6 +4446,14 @@ bool ToolboxSceneDependencyMender::RepairScene(
             mender.scopeFulfillTableBinDependencies(model, index);
         });
     }
+
+    mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
+        mender.scopeFulfillRailDependencies(model, index);
+    });
+
+    mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
+        mender.scopeFulfillRailDependencies(model, index);
+    });
 
     mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
         mender.scopeFulfillAssetDependencies(model, index);
@@ -4575,7 +4596,7 @@ SceneValidator &SceneValidator::scopeEscape() {
 
 SceneValidator &SceneValidator::scopeValidateDependencies(RefPtr<SceneObjModel> model,
                                                           const ModelIndex &index) {
-    if (!m_check_dependencies || !model || !model->validateIndex(index)) {
+    if (!m_check_dependencies || !model->validateIndex(index)) {
         return *this;
     }
 
@@ -4655,6 +4676,42 @@ SceneValidator &SceneValidator::scopeValidateDependencies(RefPtr<SceneObjModel> 
                 m_error_callback(
                     std::format("Object '{} ({})': Failed to find required asset '{}'!", obj_type,
                                 obj_key, relative_path.string()));
+            }
+        }
+    }
+
+    // Check for rail dependency
+    {
+
+        RefPtr<ISceneObject> object = model->getObjectRef(index);
+        auto rail_member_result     = object->getMember("Rail");
+        if (rail_member_result.value_or(nullptr)) {
+            bool needs_rail = true;
+
+            RefPtr<MetaMember> rail_member = rail_member_result.value();
+            std::string rail_dependency    = getMetaValue<std::string>(rail_member).value();
+            if (!rail_dependency.empty() && rail_dependency != "(null)") {
+                const size_t rail_count = m_rail_model->getRowCount(ModelIndex());
+                for (size_t i = 0; i < rail_count; ++i) {
+                    ModelIndex rail_index = m_rail_model->getIndex(i, 0);
+                    if (!m_rail_model->validateIndex(rail_index)) {
+                        break;
+                    }
+
+                    std::string rail_name = m_rail_model->getRailKey(rail_index);
+                    if (rail_dependency == rail_name) {
+                        needs_rail = false;
+                        break;
+                    }
+                }
+            } else {
+                needs_rail = false;
+            }
+
+            if (needs_rail) {
+                m_valid = false;
+                m_error_callback(std::format("Object '{} ({})': Failed to find required rail '{}'!",
+                                             obj_type, obj_key, rail_dependency));
             }
         }
     }
@@ -4990,6 +5047,53 @@ SceneMender &SceneMender::scopeFulfillTableBinDependencies(RefPtr<SceneObjModel>
         }
     }
 
+    return *this;
+}
+
+SceneMender &SceneMender::scopeFulfillRailDependencies(RefPtr<SceneObjModel> model,
+                                                       const ModelIndex &index) {
+    if (!m_check_dependencies) {
+        return *this;
+    }
+
+    RefPtr<ISceneObject> object = model->getObjectRef(index);
+    auto rail_member_result     = object->getMember("Rail");
+    if (!rail_member_result.value_or(nullptr)) {
+        return *this;
+    }
+
+    RefPtr<MetaMember> rail_member = rail_member_result.value();
+    std::string rail_dependency    = getMetaValue<std::string>(rail_member).value();
+    if (rail_dependency.empty() || rail_dependency == "(null)") {
+        return *this;
+    }
+
+    const size_t rail_count = m_rail_model->getRowCount(ModelIndex());
+    for (size_t i = 0; i < rail_count; ++i) {
+        ModelIndex rail_index = m_rail_model->getIndex(i, 0);
+        if (!m_rail_model->validateIndex(rail_index)) {
+            break;
+        }
+
+        std::string rail_name = m_rail_model->getRailKey(rail_index);
+        if (rail_dependency == rail_name) {
+            return *this;
+        }
+    }
+
+    RefPtr<Rail::Rail> new_rail = make_referable<Rail::Rail>(rail_dependency);
+    ModelIndex new_rail_index   = m_rail_model->insertRail(new_rail, rail_count);
+    if (!m_rail_model->validateIndex(new_rail_index)) {
+        m_valid = false;
+        m_error_callback(std::format("Failed to create rail {} as dependency of object '{} ({})'!",
+                                     rail_dependency, object->type(), object->getNameRef().name()));
+        return *this;
+    }
+
+    std::string change_text =
+        std::format("Created rail {} as dependency of object '{} ({})'!", rail_dependency,
+                    object->type(), object->getNameRef().name());
+    m_change_callback(change_text);
     return *this;
 }
 

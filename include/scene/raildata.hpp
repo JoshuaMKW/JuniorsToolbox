@@ -11,8 +11,6 @@
 #include <string>
 #include <vector>
 
-using namespace Toolbox::Rail;
-
 namespace Toolbox {
 
     class RailData : public ISerializable, public ISmartResource {

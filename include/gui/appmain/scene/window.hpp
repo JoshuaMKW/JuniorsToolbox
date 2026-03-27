@@ -48,8 +48,10 @@ public:
 public:
     ToolboxSceneVerifier() = delete;
     ToolboxSceneVerifier(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
+                         RefPtr<RailObjModel> rail_model,
                          bool check_dependencies)
         : m_object_model(object_model), m_table_model(table_model),
+          m_rail_model(rail_model),
           m_check_dependencies(check_dependencies) {}
 
     void tRun(void *param) override;
@@ -62,12 +64,15 @@ protected:
     // WARNING: This method is exhaustive and may take awhile to complete!
     [[nodiscard]] static bool ValidateScene(RefPtr<SceneObjModel> object_model,
                                             RefPtr<SceneObjModel> table_model,
+                                            RefPtr<RailObjModel> rail_model,
                                             bool check_dependencies, validate_progress_cb,
                                             validate_error_cb);
 
 private:
     RefPtr<SceneObjModel> m_object_model;
     RefPtr<SceneObjModel> m_table_model;
+    RefPtr<RailObjModel> m_rail_model;
+
     bool m_check_dependencies = true;
 
     std::string m_progress_text;
@@ -84,8 +89,8 @@ public:
 public:
     ToolboxSceneDependencyMender() = delete;
     ToolboxSceneDependencyMender(RefPtr<SceneObjModel> object_model,
-                                 RefPtr<SceneObjModel> table_model)
-        : m_object_model(object_model), m_table_model(table_model) {}
+        RefPtr<SceneObjModel> table_model, RefPtr<RailObjModel> rail_model)
+        : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model) {}
 
     void tRun(void *param) override;
 
@@ -98,12 +103,14 @@ protected:
     // WARNING: This method is exhaustive and may take awhile to complete!
     [[nodiscard]] static bool RepairScene(RefPtr<SceneObjModel> object_model,
                                           RefPtr<SceneObjModel> table_model,
+                                          RefPtr<RailObjModel> rail_model,
                                           bool check_dependencies, repair_progress_cb,
                                           repair_change_cb, repair_error_cb);
 
 private:
     RefPtr<SceneObjModel> m_object_model;
     RefPtr<SceneObjModel> m_table_model;
+    RefPtr<RailObjModel> m_rail_model;
 
     std::string m_progress_text;
     std::vector<std::string> m_changes;
