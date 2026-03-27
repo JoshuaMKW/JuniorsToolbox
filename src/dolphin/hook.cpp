@@ -10,6 +10,7 @@
 #include "dolphin/hook.hpp"
 
 #include "core/threaded.hpp"
+#include "platform/process.hpp"
 
 #ifdef TOOLBOX_PLATFORM_LINUX
 #include <fcntl.h>
@@ -352,6 +353,10 @@ namespace Toolbox::Dolphin {
                                     "Tried to read bytes to a protected memory region!");
         }
 
+        if (!processGateCheck()) {
+            return make_error<void>("SHARED_MEMORY", "Application was shutdown externally!");
+        }
+
         const char *addr_buf = static_cast<const char *>(m_mem_view) + true_address;
         memcpy(buf, addr_buf, size);
         return {};
@@ -370,6 +375,10 @@ namespace Toolbox::Dolphin {
                                     "Tried to write bytes to a protected memory region!");
         }
 
+        if (!processGateCheck()) {
+            return make_error<void>("SHARED_MEMORY", "Application was shutdown externally!");
+        }
+
         char *addr_buf = static_cast<char *>(m_mem_view) + true_address;
         memcpy(addr_buf, buf, size);
         return {};
@@ -386,6 +395,10 @@ namespace Toolbox::Dolphin {
         if (true_address >= m_mem_size) {
             return make_error<void>("SHARED_MEMORY",
                                     "Tried to read bytes to a protected memory region!");
+        }
+
+        if (!processGateCheck()) {
+            return make_error<void>("SHARED_MEMORY", "Application was shutdown externally!");
         }
 
         const char *addr_buf = static_cast<const char *>(m_mem_view) + true_address;
@@ -417,6 +430,11 @@ namespace Toolbox::Dolphin {
                                     "Tried to read bytes to a protected memory region!");
         }
 
+        if (!processGateCheck()) {
+            return make_error<void>("SHARED_MEMORY",
+                                    "Application was shutdown externally!");
+        }
+
         char *addr_buf = static_cast<char *>(m_mem_view) + true_address;
 
         size_t i = 0;
@@ -431,6 +449,27 @@ namespace Toolbox::Dolphin {
 
         addr_buf[i] = '\0';
         return {};
+    }
+
+    bool DolphinHookManager::processGateCheck() {
+        if (m_proc_is_spawned) {
+            if (!Platform::IsFastProcessRunning(m_proc_info)) {
+                m_proc_is_spawned = false;
+                m_proc_info       = Platform::ProcessInformation{};
+                m_mem_handle      = NULL_MEMHANDLE;
+                m_mem_view        = nullptr;
+                return false;
+            }
+        } else {
+            if (!Platform::IsExProcessRunning(m_proc_info)) {
+                m_proc_is_spawned = false;
+                m_proc_info       = Platform::ProcessInformation{};
+                m_mem_handle      = NULL_MEMHANDLE;
+                m_mem_view        = nullptr;
+                return false;
+            }
+        }
+        return true;
     }
 
 }  // namespace Toolbox::Dolphin
