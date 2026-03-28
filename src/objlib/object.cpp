@@ -885,7 +885,7 @@ namespace Toolbox::Object {
                     if (!v_result) {
                         return false;
                     }
-                    
+
                     if (v_result.value() == object_str) {
                         bool updated = m_wizard != wizard.m_name;
                         if (updated) {
@@ -939,6 +939,11 @@ namespace Toolbox::Object {
 
         m_scene_resource_path = asset_path;
 
+        const fs_path global_path = asset_path.parent_path()
+                                        .parent_path()
+                                        .parent_path()
+                                        .parent_path();  // files/data/scene/X/scene -> files/
+
         // if (type() == "Shine") {
         //     __debugbreak();
         // }
@@ -989,8 +994,11 @@ namespace Toolbox::Object {
 
         // Load model data
 
-        std::filesystem::path model_path = asset_path / model_file.value();
-        std::string model_name           = model_path.stem().string();
+        const std::filesystem::path model_path = model_file.value().starts_with('/')
+                                                     ? global_path / model_file.value().substr(1)
+                                                     : asset_path / model_file.value();
+
+        std::string model_name = model_path.stem().string();
         std::transform(model_name.begin(), model_name.end(), model_name.begin(), ::tolower);
 
         if (resource_cache.m_model.count(model_name) == 0) {
@@ -1016,12 +1024,15 @@ namespace Toolbox::Object {
 
         // Load material data
 
-        std::filesystem::path mat_path = asset_path / mat_file.value();
-        std::string mat_name           = mat_path.stem().string();
+        const fs_path mat_path = mat_file.value().starts_with('/')
+                                     ? global_path / mat_file.value().substr(1)
+                                     : asset_path / mat_file.value();
+
+        std::string mat_name = mat_path.stem().string();
         std::transform(mat_name.begin(), mat_name.end(), mat_name.begin(), ::tolower);
 
         auto mat_path_exists_res = Toolbox::Filesystem::is_regular_file(mat_path);
-        if (mat_path_exists_res && mat_path_exists_res.value()) {
+        if (mat_path_exists_res.value_or(false)) {
             bStream::CFileStream mat_stream(mat_path.string(), bStream::Endianess::Big,
                                             bStream::OpenMode::In);
 
@@ -1074,8 +1085,10 @@ namespace Toolbox::Object {
         }
 
         for (auto &[tex_name, new_tex_path] : render_info->m_texture_swap_map) {
-            std::filesystem::path tex_path = asset_path / new_tex_path;
-            std::string tex_name_lower     = tex_name;
+            const fs_path tex_path     = new_tex_path.starts_with('/')
+                                             ? global_path / new_tex_path.substr(1)
+                                             : asset_path / new_tex_path;
+            std::string tex_name_lower = tex_name;
             std::transform(tex_name_lower.begin(), tex_name_lower.end(), tex_name_lower.begin(),
                            ::tolower);
             bool tex_path_exists = Filesystem::is_regular_file(tex_path).value_or(false);
@@ -1088,8 +1101,9 @@ namespace Toolbox::Object {
         }
 
         for (auto &anim_file : render_info->m_file_animations) {
-            std::filesystem::path anim_path = asset_path / anim_file;
-            std::string anim_name           = anim_path.stem().string();
+            const fs_path anim_path = anim_file.starts_with('/') ? global_path / anim_file.substr(1)
+                                                                 : asset_path / anim_file;
+            std::string anim_name   = anim_path.stem().string();
 
             auto anim_path_exists_res = Filesystem::is_regular_file(anim_path);
             if (anim_path_exists_res && anim_path_exists_res.value()) {
@@ -1575,7 +1589,7 @@ namespace Toolbox::Object {
         return true;
     }
 
-    bool IsObjectMonte(ISceneObject* object) {
+    bool IsObjectMonte(ISceneObject *object) {
         const u16 type_code = NameRef(object->type()).code();
         return std::any_of(s_monte_types.begin(), s_monte_types.end(),
                            [&](u16 code) { return code == type_code; });

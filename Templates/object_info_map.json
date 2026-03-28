@@ -24,52 +24,52 @@
     },
     "BananaTree": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/bananatree.bmd",
         "Textures": {}
     },
     "BasketReverse": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/basket.bmd",
         "Textures": {}
     },
     "BiaBell": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/biabell.bck" ],
+        "Model": "mapobj/biabell.bmd",
         "Textures": {}
     },
     "BiaBridge": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/biabridge.bmd",
         "Textures": {}
     },
     "BiaDoor": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/biadoor.bmd",
         "Textures": {}
     },
     "BiaTurnBridge": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/biaturnbridge.bmd",
         "Textures": {}
     },
     "BiaWaterPollution": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "map/map/biawaterpollution.btk" ],
+        "Model": "map/map/biawaterpollution.bmd",
         "Textures": {}
     },
     "BiaWatermill00": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/biawatermill00.bck" ],
+        "Model": "mapobj/biawatermill00.bmd",
         "Textures": {}
     },
     "BiaWatermill01": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/biawatermill01.bck" ],
+        "Model": "mapobj/biawatermill01.bmd",
         "Textures": {}
     },
     "BiaWatermillVertical": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/biawatermillvertical.bmd",
         "Textures": {}
     },
     "BiancoAirWall": {
@@ -83,18 +83,19 @@
         "Textures": {}
     },
     "BiancoRiver": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "map/map/biancoriver.btk" ],
+        "Model": "map/map/biancoriver.bmd",
         "Textures": {}
     },
     "BrickBlock": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/brickblock.bck" ],
+        "Materials": "mapobj/brickblock.bmt",
+        "Model": "mapobj/brickblock.bmd",
         "Textures": {}
     },
     "Buoy": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/buoy.bmd",
         "Textures": {}
     },
     "ChangeStage": {
@@ -103,13 +104,13 @@
         "Textures": {}
     },
     "ChestRevolve": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/chestrevolve.bck" ],
+        "Model": "mapobj/chestrevolve.bmd",
         "Textures": {}
     },
     "ChipShine": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/chip_shine_model1.bmd",
         "Textures": {}
     },
     "ChipSign": {
@@ -118,18 +119,18 @@
         "Model": "mapobj/chip_sign_model1.bmd"
     },
     "Closet": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/closetopen.bck" ],
+        "Model": "mapobj/closet.bmd",
         "Textures": {}
     },
     "Coaster": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/coaster.bmd",
         "Textures": {}
     },
     "CoinFish": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/coinfish.bck" ],
+        "Model": "mapobj/coinfish.bmd",
         "Textures": {}
     },
     "DokanGate": {
@@ -138,8 +139,8 @@
         "Textures": {}
     },
     "Donchou": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/donchou.bck" ],
+        "Model": "mapobj/donchou.bmd",
         "Textures": {}
     },
     "ElasticCode": {

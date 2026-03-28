@@ -213,7 +213,6 @@ public:
 
     ScenePruner &scopeCollectDependencies(RefPtr<SceneObjModel> model, const ModelIndex &index);
     ScenePruner &scopePruneManagerIfUnused(RefPtr<SceneObjModel> model, const ModelIndex &index);
-
     ScenePruner &scopePruneRailIfUnused(RefPtr<RailObjModel> model, const ModelIndex &index);
 
     ScenePruner &scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn);
@@ -225,6 +224,7 @@ protected:
     struct ToolboxScopeDepenedencies {
         std::vector<TemplateDependencies::ObjectInfo> m_managers;
         std::unordered_set<std::string> m_rails;
+        std::unordered_set<fs_path> m_asset_paths;
     };
 
 private:
@@ -2952,7 +2952,7 @@ namespace Toolbox::UI {
                     return;
                 })
             .addOption(
-                "Insert Node", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                "Insert Node", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_N},
                 [this](ModelIndex index) -> bool {
                     return m_rail_selection_mgr.getState().count() == 1;
                 },
@@ -2981,7 +2981,8 @@ namespace Toolbox::UI {
                     m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addOption(
-                "Insert Node At Camera", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                "Insert Node At Camera",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_N},
                 [this](ModelIndex index) -> bool {
                     return m_rail_selection_mgr.getState().count() == 1;
                 },
@@ -3650,8 +3651,7 @@ namespace Toolbox::UI {
                 ModelIndex new_rail_index = m_rail_model->insertRail(
                     std::move(new_rail), m_rail_model->getRowCount(ModelIndex()));
                 if (m_rail_model->validateIndex(new_rail_index)) {
-                    m_rail_visible_map[new_rail_index.getUUID()] = true;
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                    m_rail_selection_mgr.actionSelectIndex(new_rail_index, true);
                     m_update_render_objs = true;
                 }
             });
@@ -5482,6 +5482,48 @@ ScenePruner &ScenePruner::finalize() {
             continue;
         }
     }
+
+    std::vector<fs_path> asset_paths_to_remove;
+
+    const fs_path scene_root_path = m_object_model->getScenePath();
+    for (const Filesystem::directory_entry dir_entry :
+         Filesystem::recursive_directory_iterator(scene_root_path)) {
+        const fs_path &scene_path = dir_entry.path().lexically_normal();
+        if (!m_dependencies.m_asset_paths.contains(scene_path)) {
+            const fs_path rel_path =
+                Filesystem::relative(scene_path, scene_root_path).value_or(fs_path());
+
+            bool is_map_path = false;
+            fs_path test_path = rel_path;
+            while (!test_path.empty()) {
+                if (test_path.filename().string() == "map") {
+                    is_map_path = true;
+                    break;
+                }
+                test_path = test_path.parent_path();
+            }
+
+            if (is_map_path) {
+                continue;
+            }
+
+            asset_paths_to_remove.push_back(rel_path);
+        }
+    }
+
+    for (const fs_path& remove_path : asset_paths_to_remove) {
+        if (!Filesystem::remove_all(remove_path).value_or(false)) {
+            m_valid = false;
+            std::string failed_text =
+                std::format("Failed to prune unused asset path '{}'", remove_path.string());
+            m_error_callback(failed_text);
+            continue;
+        }
+        std::string change_text =
+            std::format("Pruned unused asset path '{}'", remove_path.string());
+        m_change_callback(change_text);
+    }
+
     return *this;
 }
 
@@ -5645,6 +5687,32 @@ ScenePruner &ScenePruner::scopeCollectDependencies(RefPtr<SceneObjModel> model,
         }
     }
 
+    for (const fs_path &asset_path : wizard->m_dependencies.m_asset_paths) {
+        // Assets for an object are found in the subdirectory at SceneAssets/{asset_path}/...
+        const fs_path abs_asset_path =
+            (Filesystem::current_path().value_or(".") / "SceneAssets" / asset_path)
+                .lexically_normal();
+
+        if (!Filesystem::is_directory(abs_asset_path).value_or(false)) {
+            continue;
+        }
+
+        const fs_path &scene_root_path = m_object_model->getScenePath();
+
+        for (const Filesystem::directory_entry dir_entry :
+             Filesystem::recursive_directory_iterator(abs_asset_path)) {
+
+            const fs_path relative_path =
+                Filesystem::relative(dir_entry.path(), abs_asset_path).value_or(dir_entry.path());
+            const fs_path scene_path = scene_root_path / relative_path;
+
+            if (!Filesystem::exists(scene_path).value_or(false)) {
+                continue;
+            }
+
+            m_dependencies.m_asset_paths.insert(scene_path.lexically_normal());
+        }
+    }
     return *this;
 }
 
