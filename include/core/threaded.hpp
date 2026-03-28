@@ -69,6 +69,22 @@ namespace Toolbox {
 
         bool tIsAlive() const { return _m_started && !tIsKilled(); }
 
+        Threaded<_ExitT> &operator=(Threaded<_ExitT> &&other) {
+            if (this != &other) {
+                _m_started  = other._m_started;
+                _m_detached = other._m_detached;
+                _m_killed   = other._m_killed;
+
+                _m_thread = std::move(other._m_thread);
+
+                _m_kill_flag.store(other._m_kill_flag.load());
+
+                _m_start_cb = std::move(other._m_start_cb);
+                _m_exit_cb  = std::move(other._m_exit_cb);
+            }
+            return *this;
+        }
+
     protected:
         bool tIsSignalKill() const { return _m_kill_flag.load(); }
 
@@ -117,6 +133,18 @@ namespace Toolbox {
         }
 
         double getProgress() const { return _m_progress; }
+
+        TaskThread<_ExitT> &operator=(TaskThread<_ExitT> &&other) {
+            if (this != &other) {
+                Threaded<_ExitT>::operator=(std::move(other));
+
+                _m_progress    = other._m_progress;
+                _m_progress_cb = std::move(other._m_progress_cb);
+
+                _m_prog_flag.store(other._m_prog_flag.load());
+            }
+            return *this;
+        }
 
     protected:
         void setProgress(double progress) {

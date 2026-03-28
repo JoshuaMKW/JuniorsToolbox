@@ -1,8 +1,8 @@
 // #include <GLFW/glfw3.h>
 
 #include <J3D/Material/J3DUniformBufferObject.hpp>
-#include <J3D/Rendering/J3DRendering.hpp>
 #include <J3D/Picking/J3DPicking.hpp>
+#include <J3D/Rendering/J3DRendering.hpp>
 
 #include <iostream>
 #include <unordered_set>
@@ -11,9 +11,9 @@
 #include "core/log.hpp"
 
 #include "gui/appmain/application.hpp"
-#include "gui/logging/errors.hpp"
 #include "gui/appmain/scene/renderer.hpp"
 #include "gui/appmain/settings/settings.hpp"
+#include "gui/logging/errors.hpp"
 #include "gui/util.hpp"
 
 #include <glm/gtx/euler_angles.hpp>
@@ -107,13 +107,14 @@ static bool intersectRayOBB(const glm::vec3 &rayOrigin, const glm::vec3 &rayDire
     glm::vec4 localRayDirection = invTransform * glm::vec4(rayDirection, 0.0f);
 
     // Perform AABB intersection test in local space
-    return intersectRayAABB(glm::vec3(localRayOrigin), glm::vec3(localRayDirection),
-                            obbMin, obbMax, intersectionDistance);
+    return intersectRayAABB(glm::vec3(localRayOrigin), glm::vec3(localRayDirection), obbMin, obbMax,
+                            intersectionDistance);
 }
 
-static bool intersectRaySphere(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
-                               const glm::vec3 &sphereCenter, float sphereRadius,
-                               float &intersectionDistance) {// Vector from Ray Origin to Sphere Center
+static bool
+intersectRaySphere(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection,
+                   const glm::vec3 &sphereCenter, float sphereRadius,
+                   float &intersectionDistance) {  // Vector from Ray Origin to Sphere Center
     glm::vec3 L = sphereCenter - rayOrigin;
 
     // Project L onto the ray direction (tca = distance to the closest point on ray to center)
@@ -153,7 +154,7 @@ static bool intersectRaySphere(const glm::vec3 &rayOrigin, const glm::vec3 &rayD
 
 namespace Toolbox::UI {
     namespace Render {
-        void PacketSort(J3D::Rendering::RenderPacketVector& packets) {
+        void PacketSort(J3D::Rendering::RenderPacketVector &packets) {
             std::sort(packets.begin(), packets.end(),
                       [](const J3DRenderPacket &a, const J3DRenderPacket &b) -> bool {
                           // Sort bias
@@ -302,8 +303,7 @@ namespace Toolbox::UI {
     }  // namespace Render
 
     Renderer::Renderer() {
-        m_camera.setPerspective(glm::radians(70.0f), 16.0f / 9.0f, 10.0f,
-                                100000.0f);
+        m_camera.setPerspective(glm::radians(70.0f), 16.0f / 9.0f, 10.0f, 100000.0f);
         m_camera.setOrientAndPosition({0, 1, 0}, {0, 0, 1}, {0, 0, 0});
         m_camera.updateCamera();
 
@@ -331,7 +331,7 @@ namespace Toolbox::UI {
         m_gizmo_op   = ImGuizmo::OPERATION::TRANSLATE;
         m_gizmo_mode = ImGuizmo::WORLD;
 
-        m_gizmo_matrix = glm::identity<glm::mat4x4>();
+        m_gizmo_matrix      = glm::identity<glm::mat4x4>();
         m_gizmo_matrix_prev = glm::identity<glm::mat4x4>();
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -345,7 +345,8 @@ namespace Toolbox::UI {
         J3D::Picking::DestroyFramebuffer();
     }
 
-    void Renderer::render(const std::vector<ISceneObject::RenderInfo> &renderables, TimeStep delta_time, bool calc_animations) {
+    void Renderer::render(const std::vector<ISceneObject::RenderInfo> &renderables,
+                          TimeStep delta_time, bool calc_animations) {
         ImGuiStyle &style = ImGui::GetStyle();
 
         ImVec2 window_pos = ImGui::GetWindowPos();
@@ -443,7 +444,7 @@ namespace Toolbox::UI {
                 sky_it->m_model->SetTranslation(position);
             }
 
-            std::vector<RefPtr<J3DModelInstance>> models = {};
+            std::vector<RefPtr<J3DModelInstance>> models      = {};
             std::vector<RefPtr<J3DModelInstance>> pick_models = {};
             models.reserve(renderables.size());
             pick_models.reserve(renderables.size());
@@ -534,8 +535,7 @@ namespace Toolbox::UI {
     }
 
     void Renderer::viewportEnd() {
-        ImGui::Image((ImTextureID)m_tex_id, m_render_size,
-                     {0.0f, 1.0f}, {1.0f, 0.0f});
+        ImGui::Image((ImTextureID)m_tex_id, m_render_size, {0.0f, 1.0f}, {1.0f, 0.0f});
 
         if (m_render_gizmo) {
             bool shift_held = Input::GetKey(Input::KeyCode::KEY_LEFTSHIFT);
@@ -559,7 +559,7 @@ namespace Toolbox::UI {
             const bool was_updating = m_gizmo_active;
 
             m_gizmo_matrix_prev = m_gizmo_matrix;
-            m_gizmo_updated = ImGuizmo::Manipulate(
+            m_gizmo_updated     = ImGuizmo::Manipulate(
                 glm::value_ptr(m_camera.getViewMatrix()), glm::value_ptr(m_camera.getProjMatrix()),
                 m_gizmo_op, m_gizmo_mode, glm::value_ptr(m_gizmo_matrix), nullptr,
                 ctrl_held ? snap : nullptr);
@@ -572,8 +572,8 @@ namespace Toolbox::UI {
 
             if (was_updating && !m_gizmo_active) {
                 // Finished manipulating
-                //m_gizmo_matrix_start = glm::identity<glm::mat4x4>();
-                //TOOLBOX_DEBUG_LOG("Deinitializing start matrix!");
+                // m_gizmo_matrix_start = glm::identity<glm::mat4x4>();
+                // TOOLBOX_DEBUG_LOG("Deinitializing start matrix!");
             }
         }
 
@@ -679,9 +679,9 @@ namespace Toolbox::UI {
         }
 
         if (m_is_window_focused) {
-            bool translate_held   = settings.m_gizmo_translate_mode_keybind.isInputMatching();
-            bool rotate_held      = settings.m_gizmo_rotate_mode_keybind.isInputMatching();
-            bool scale_held       = settings.m_gizmo_scale_mode_keybind.isInputMatching();
+            bool translate_held = settings.m_gizmo_translate_mode_keybind.isInputMatching();
+            bool rotate_held    = settings.m_gizmo_rotate_mode_keybind.isInputMatching();
+            bool scale_held     = settings.m_gizmo_scale_mode_keybind.isInputMatching();
 
             if (translate_held) {
                 m_gizmo_op = ImGuizmo::OPERATION::TRANSLATE;
@@ -746,8 +746,10 @@ namespace Toolbox::UI {
     Renderer::selection_variant_t
     Renderer::findSelection(std::vector<ISceneObject::RenderInfo> renderables,
                             std::vector<RefPtr<Rail::RailNode>> rail_nodes, bool &should_reset) {
-        const bool left_click = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT);
-        const bool right_click = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT);
+        const bool left_click = Input::GetMouseButton(Input::MouseButton::BUTTON_LEFT) ||
+                                Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT);
+        const bool right_click = Input::GetMouseButton(Input::MouseButton::BUTTON_RIGHT) ||
+                                 Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT);
         if (!left_click && !right_click) {
             return std::monostate{};
         }
@@ -766,7 +768,7 @@ namespace Toolbox::UI {
         glm::vec3 selection_point = {mouse_pos.x - m_render_rect.Min.x,
                                      mouse_pos.y - m_render_rect.Min.y, 0};
 
-        should_reset = true;
+        should_reset = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_LEFT);
 
         // Generate ray from mouse position
         auto [rayOrigin, rayDirection] =
@@ -781,8 +783,7 @@ namespace Toolbox::UI {
         if (J3D::Picking::IsPickingEnabled()) {
             RefPtr<ISceneObject> object = findObjectByJ3DPicking(
                 renderables, static_cast<int>(selection_point.x),
-                                                   static_cast<int>(selection_point.y),
-                                                   nearest_intersection, s_selection_blacklist);
+                static_cast<int>(selection_point.y), nearest_intersection, s_selection_blacklist);
             if (object) {
                 selected_item = object;
             }
@@ -799,8 +800,7 @@ namespace Toolbox::UI {
             float this_intersection;
 
             if (intersectRaySphere(rayOrigin, rayDirection, node->getPosition(),
-                                   RENDERER_RAIL_NODE_DIAMETER / 2.0f,
-                                   this_intersection)) {
+                                   RENDERER_RAIL_NODE_DIAMETER / 2.0f, this_intersection)) {
                 // Intersection detected, check if nearest and use
                 if (this_intersection >= nearest_intersection) {
                     continue;

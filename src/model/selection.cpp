@@ -10,14 +10,6 @@ namespace Toolbox {
     }
 
     bool ModelSelectionState::deselect(const ModelIndex &index) {
-        if (!m_ref_model) {
-            return false;
-        }
-
-        if (!m_ref_model->validateIndex(index)) {
-            return false;
-        }
-
         return std::erase_if(m_selection, [&](const ModelIndex &it) { return index == it; }) > 0;
     }
 

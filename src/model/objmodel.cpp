@@ -170,8 +170,31 @@ namespace Toolbox {
 
     ModelIndex SceneObjModel::insertObject(RefPtr<ISceneObject> object, int64_t row,
                                            const ModelIndex &parent) {
-        std::unique_lock lock(m_mutex);
-        return insertObject_(object, row, parent);
+        ModelIndex result;
+
+        const Signal index_signal = createSignalForIndex_(parent, ModelEventFlags::EVENT_INSERT);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = insertObject_(object, row, parent);
+        }
+
+        if (validateIndex(result)) {
+            const Signal add_signal =
+                createSignalForIndex_(result, ModelEventFlags::EVENT_INDEX_ADDED);
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+            signalEventListeners(add_signal.first, add_signal.second | ModelEventFlags::EVENT_POST |
+                                                       ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
     }
 
     ModelIndex SceneObjModel::getParent(const ModelIndex &index) const {
@@ -221,9 +244,27 @@ namespace Toolbox {
                                                                       ModelInsertPolicy policy) {
         Result<IDataModel::index_container> result;
 
+        const Signal pre_signal = createSignalForIndex_(index, ModelEventFlags::EVENT_INSERT);
+
+        signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_PRE);
+
         {
             std::scoped_lock lock(m_mutex);
             result = insertMimeData_(index, data, policy);
+        }
+
+        if (result) {
+            for (const ModelIndex &new_index : result.value()) {
+                Signal index_signal =
+                    createSignalForIndex_(new_index, ModelEventFlags::EVENT_INDEX_ADDED);
+                signalEventListeners(index_signal.first, index_signal.second |
+                                                             ModelEventFlags::EVENT_POST |
+                                                             ModelEventFlags::EVENT_SUCCESS);
+            }
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST |
+                                                       ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST);
         }
 
         return result;

@@ -59,6 +59,8 @@ namespace Toolbox {
         bool m_is_drag_state   = false;
 
         bool m_deep_spans      = true;
+
+        bool m_deletion_state  = false;
         bool m_insertion_state = false;
     };
 

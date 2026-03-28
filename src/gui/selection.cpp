@@ -81,6 +81,8 @@ namespace Toolbox {
             return false;
         }
 
+        m_deletion_state = true;
+
         bool result                                = true;
         const IDataModel::index_container &indexes = m_selection.getSelection();
         for (const ModelIndex &s : indexes) {
@@ -88,6 +90,8 @@ namespace Toolbox {
         }
 
         m_selection.clearSelection();
+
+        m_deletion_state = false;
 
         return result;
     }
@@ -330,6 +334,20 @@ namespace Toolbox {
                 if (m_insertion_state) {
                     m_selection.selectSingle(index, true);
                     m_selection.setLastSelected(index);
+                }
+            }
+
+            return;
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) == ModelEventFlags::EVENT_INDEX_REMOVED) {
+            if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+                if ((flags & ModelEventFlags::EVENT_SUCCESS) == ModelEventFlags::EVENT_NONE) {
+                    return;
+                }
+
+                if (!m_deletion_state) {
+                    m_selection.deselect(index);
                 }
             }
 

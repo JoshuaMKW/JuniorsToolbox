@@ -53,7 +53,7 @@ constexpr float TreeNodeFramePaddingY = 4.0f;
 
 class SceneValidator {
 public:
-    using size_fn    = std::function<bool(size_t)>;
+    using size_fn        = std::function<bool(size_t)>;
     using foreach_obj_fn = std::function<void(RefPtr<SceneObjModel>, ModelIndex)>;
 
 public:
@@ -117,7 +117,7 @@ private:
 
 class SceneMender {
 public:
-    using size_fn    = std::function<bool(size_t)>;
+    using size_fn        = std::function<bool(size_t)>;
     using foreach_obj_fn = std::function<void(RefPtr<SceneObjModel>, ModelIndex)>;
 
 public:
@@ -181,8 +181,8 @@ private:
 
 class ScenePruner {
 public:
-    using size_fn    = std::function<bool(size_t)>;
-    using foreach_obj_fn = std::function<void(RefPtr<SceneObjModel>, ModelIndex)>;
+    using size_fn         = std::function<bool(size_t)>;
+    using foreach_obj_fn  = std::function<void(RefPtr<SceneObjModel>, ModelIndex)>;
     using foreach_rail_fn = std::function<void(RefPtr<RailObjModel>, ModelIndex)>;
 
 public:
@@ -200,6 +200,8 @@ public:
     void setProgressCallback(ToolboxScenePruner::prune_progress_cb cb) { m_progress_callback = cb; }
     void setChangeCallback(ToolboxScenePruner::prune_change_cb cb) { m_change_callback = cb; }
     void setErrorCallback(ToolboxScenePruner::prune_error_cb cb) { m_error_callback = cb; }
+
+    ScenePruner &finalize();
 
     ScenePruner &addManagerDependency(const TemplateDependencies::ObjectInfo &manager_info);
     ScenePruner &addRailDependency(const std::string &rail_name);
@@ -236,6 +238,8 @@ private:
     RefPtr<SceneObjModel> m_object_model;
     RefPtr<SceneObjModel> m_table_model;
     RefPtr<RailObjModel> m_rail_model;
+
+    std::vector<ModelIndex> m_indexes_to_prune;
 
     ToolboxScopeDepenedencies m_dependencies;
 
@@ -357,15 +361,61 @@ namespace Toolbox::UI {
                     m_rail_visible_map[rail_index.getUUID()] = true;
                 }
 
-                // TODO: this probably causes spurious data races!
+                m_scene_object_model->addEventListener(
+                    getUUID(),
+                    [&](ModelIndex index, int flags) {
+                        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) ==
+                            ModelEventFlags::EVENT_INDEX_ADDED) {
+                            m_selection_transforms_update_requested = true;
+                            return;
+                        }
+
+                        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+                            ModelEventFlags::EVENT_INDEX_REMOVED) {
+                            m_selection_transforms_update_requested = true;
+                            return;
+                        }
+                    },
+                    ModelEventFlags::EVENT_INDEX_ANY);
+
+                m_table_object_model->addEventListener(
+                    getUUID(),
+                    [&](ModelIndex index, int flags) {
+                        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) ==
+                            ModelEventFlags::EVENT_INDEX_ADDED) {
+                            m_selection_transforms_update_requested = true;
+                            return;
+                        }
+
+                        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+                            ModelEventFlags::EVENT_INDEX_REMOVED) {
+                            m_selection_transforms_update_requested = true;
+                            return;
+                        }
+                    },
+                    ModelEventFlags::EVENT_INDEX_ANY);
+
                 m_rail_model->addEventListener(
                     getUUID(),
                     [&](ModelIndex index, int flags) {
-                        if (m_rail_model->isIndexRail(index)) {
-                            m_rail_visible_map[index.getUUID()] = true;
+                        m_path_renderer_update_reqeusted = true;
+
+                        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) ==
+                            ModelEventFlags::EVENT_INDEX_ADDED) {
+                            if (m_rail_model->isIndexRail(index)) {
+                                m_rail_visible_map_update_request_index = index;
+                            }
+                            m_selection_transforms_update_requested = true;
+                            return;
+                        }
+
+                        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+                            ModelEventFlags::EVENT_INDEX_REMOVED) {
+                            m_selection_transforms_update_requested = true;
+                            return;
                         }
                     },
-                    ModelEventFlags::EVENT_INDEX_ADDED);
+                    ModelEventFlags::EVENT_INDEX_ANY);
 
                 m_renderer.initializeData(m_rail_model);
                 return true;
@@ -496,10 +546,25 @@ namespace Toolbox::UI {
             m_is_game_edit_mode = false;
         }
 
+        std::unique_lock<std::mutex> lock(m_scene_pruner.getOperationMutex());
+
+        ModelIndex rail_visibility_index = m_rail_visible_map_update_request_index;
+        if (m_rail_model->isIndexRail(rail_visibility_index)) {
+            m_rail_visible_map[rail_visibility_index.getUUID()] = true;
+            m_rail_visible_map_update_request_index             = ModelIndex();
+        }
+
+        if (m_path_renderer_update_reqeusted.load()) {
+            m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+            m_path_renderer_update_reqeusted.store(false);
+        }
+
         return;
     }
 
     void SceneWindow::onImGuiPostUpdate(TimeStep delta_time) {
+        std::unique_lock<std::mutex> lock(m_scene_pruner.getOperationMutex());
+
         const AppSettings &settings =
             MainApplication::instance().getSettingsManager().getCurrentProfile();
 
@@ -522,15 +587,19 @@ namespace Toolbox::UI {
                 Renderer::selection_variant_t selection =
                     m_renderer.findSelection(m_renderables, rendered_nodes, should_reset);
 
-                bool multi_select = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
+                const bool multi_select = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
+                const bool is_mouse_up = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT) ||
+                                         Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT);
 
-                if (should_reset && std::holds_alternative<std::monostate>(selection)) {
-                    m_scene_selection_mgr.getState().clearSelection();
-                    m_table_selection_mgr.getState().clearSelection();
-                    m_rail_selection_mgr.getState().clearSelection();
+                if (std::holds_alternative<std::monostate>(selection)) {
+                    if (should_reset) {
+                        m_scene_selection_mgr.getState().clearSelection();
+                        m_table_selection_mgr.getState().clearSelection();
+                        m_rail_selection_mgr.getState().clearSelection();
 
-                    m_selected_properties.clear();
-                    m_properties_render_handler = renderEmptyProperties;
+                        m_selected_properties.clear();
+                        m_properties_render_handler = renderEmptyProperties;
+                    }
                 } else if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
                     RefPtr<ISceneObject> obj = std::get<RefPtr<ISceneObject>>(selection);
                     processObjectSelection(obj, multi_select);
@@ -589,9 +658,9 @@ namespace Toolbox::UI {
         Game::TaskCommunicator &task_communicator =
             MainApplication::instance().getTaskCommunicator();
 
-        if (m_selection_transforms_needs_update) {
+        if (m_selection_transforms_update_requested.load()) {
             calcNewGizmoMatrixFromSelection();
-            m_selection_transforms_needs_update = false;
+            m_selection_transforms_update_requested.store(false);
         }
 
         bool should_update_paths =
@@ -606,16 +675,14 @@ namespace Toolbox::UI {
                 const IDataModel::index_container &obj_indexes =
                     m_scene_selection_mgr.getState().getSelection();
 
-                size_t i = 0;
                 for (const ModelIndex &index : obj_indexes) {
                     RefPtr<ISceneObject> obj = m_scene_object_model->getObjectRef(index);
                     if (!obj || !obj->getTransform()) {
                         continue;
                     }
-                    const Transform &obj_transform = m_selection_transforms[i];
+                    const Transform &obj_transform = m_selection_transforms[index.getUUID()];
                     Transform new_transform        = gizmo_total_delta * obj_transform;
                     obj->setTransform(new_transform);
-                    i++;
                 }
             }
 
@@ -624,16 +691,14 @@ namespace Toolbox::UI {
                 const IDataModel::index_container &obj_indexes =
                     m_table_selection_mgr.getState().getSelection();
 
-                size_t i = 0;
                 for (const ModelIndex &index : obj_indexes) {
                     RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(index);
                     if (!obj || !obj->getTransform()) {
                         continue;
                     }
-                    const Transform &obj_transform = m_selection_transforms[i];
+                    const Transform &obj_transform = m_selection_transforms[index.getUUID()];
                     Transform new_transform        = gizmo_total_delta * obj_transform;
                     obj->setTransform(new_transform);
-                    i++;
                 }
             }
 
@@ -644,7 +709,6 @@ namespace Toolbox::UI {
                 glm::mat4x4 gizmo_delta   = m_renderer.getGizmoFrameDelta();
                 Transform delta_transform = Transform::FromMat4x4(gizmo_delta);
 
-                size_t i = 0;
                 for (const ModelIndex &index : rail_indexes) {
                     RailData::rail_ptr_t rail = m_rail_model->getRailRef(index);
 
@@ -652,16 +716,14 @@ namespace Toolbox::UI {
                     if (is_node) {
                         Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
 
-                        const Transform &node_transform = m_selection_transforms[i];
+                        const Transform &node_transform = m_selection_transforms[index.getUUID()];
                         Transform new_transform         = gizmo_total_delta * node_transform;
 
                         rail->setNodePosition(node, new_transform.m_translation);
                     } else {
-                        const Transform &rail_transform = m_selection_transforms[i];
+                        const Transform &rail_transform = m_selection_transforms[index.getUUID()];
                         rail->transform(gizmo_delta);
                     }
-
-                    i++;
                 }
 
                 should_update_paths = true;
@@ -677,8 +739,8 @@ namespace Toolbox::UI {
 
         // Refresh the selection transforms so new gizmo manips don't reset
         if (!m_renderer.isGizmoActive() && m_gizmo_maniped) {
-            m_selection_transforms_needs_update = true;
-            m_gizmo_maniped                     = false;
+            m_selection_transforms_update_requested = true;
+            m_gizmo_maniped                         = false;
         }
 
         if (m_is_game_edit_mode) {
@@ -759,6 +821,8 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::onRenderBody(TimeStep deltaTime) {
+        std::unique_lock<std::mutex> lock(m_scene_pruner.getOperationMutex());
+
         renderHierarchy();
         renderProperties();
         renderRailEditor();
@@ -777,114 +841,107 @@ namespace Toolbox::UI {
     void SceneWindow::renderSanitizationSteps() {
         const ImGuiStyle &style = ImGui::GetStyle();
 
-        if (m_scene_verifier) {
-            if (m_scene_verifier->tIsAlive()) {
-                ImGui::OpenPopup("Scene Validator");
+        if (m_scene_verifier.tIsAlive()) {
+            ImGui::OpenPopup("Scene Validator");
 
-                ImGui::SetNextWindowSize({400.0f, 200.0f});
-                ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
-                                        ImGuiCond_Appearing, {0.5f, 0.5f});
+            ImGui::SetNextWindowSize({400.0f, 200.0f});
+            ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
+                                    ImGuiCond_Appearing, {0.5f, 0.5f});
 
-                if (ImGui::BeginPopupModal("Scene Validator", nullptr, ImGuiWindowFlags_NoResize)) {
-                    ImGui::Text("Validating scene, please wait...");
-                    ImGui::Separator();
+            if (ImGui::BeginPopupModal("Scene Validator", nullptr, ImGuiWindowFlags_NoResize)) {
+                ImGui::Text("Validating scene, please wait...");
+                ImGui::Separator();
 
-                    float progress            = m_scene_verifier->getProgress();
-                    std::string progress_text = m_scene_verifier->getProgressText();
+                float progress            = m_scene_verifier.getProgress();
+                std::string progress_text = m_scene_verifier.getProgressText();
 
-                    ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0.0f), progress_text.c_str());
-                    ImGui::EndPopup();
+                ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0.0f), progress_text.c_str());
+                ImGui::EndPopup();
+            }
+        } else if (m_scene_verifier.tIsKilled()) {
+            if (!m_scene_validator_result_opened) {
+                if (m_scene_verifier.isValid()) {
+                    MainApplication::instance().showSuccessModal(
+                        this, "Scene Validator Result",
+                        "Scene validation completed successfully!");
+                } else {
+                    std::vector<std::string> errors = m_scene_verifier.getErrors();
+                    MainApplication::instance().showErrorModal(
+                        this, "Scene Validator Result", "Scene validation failed with errors!",
+                        errors);
                 }
-            } else if (m_scene_verifier->tIsKilled()) {
-                if (!m_scene_validator_result_opened) {
-                    if (m_scene_verifier->isValid()) {
-                        MainApplication::instance().showSuccessModal(
-                            this, "Scene Validator Result",
-                            "Scene validation completed successfully!");
-                    } else {
-                        std::vector<std::string> errors = m_scene_verifier->getErrors();
-                        MainApplication::instance().showErrorModal(
-                            this, "Scene Validator Result", "Scene validation failed with errors!",
-                            errors);
-                    }
-                    m_scene_validator_result_opened = true;
-                }
+                m_scene_validator_result_opened = true;
             }
         }
 
-        if (m_scene_mender) {
-            if (m_scene_mender->tIsAlive()) {
-                ImGui::OpenPopup("Scene Repair");
+        if (m_scene_mender.tIsAlive()) {
+            ImGui::OpenPopup("Scene Repair");
 
-                ImGui::SetNextWindowSize({400.0f, 200.0f});
-                ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
-                                        ImGuiCond_Appearing, {0.5f, 0.5f});
+            ImGui::SetNextWindowSize({400.0f, 200.0f});
+            ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
+                                    ImGuiCond_Appearing, {0.5f, 0.5f});
 
-                if (ImGui::BeginPopupModal("Scene Repair", nullptr, ImGuiWindowFlags_NoResize)) {
-                    ImGui::Text("Validating scene, please wait...");
-                    ImGui::Separator();
+            if (ImGui::BeginPopupModal("Scene Repair", nullptr, ImGuiWindowFlags_NoResize)) {
+                ImGui::Text("Validating scene, please wait...");
+                ImGui::Separator();
 
-                    std::string progress_text = m_scene_mender->getProgressText();
+                std::string progress_text = m_scene_mender.getProgressText();
 
-                    ImGui::ProgressBar(-1.0f * ImGui::GetTime(), ImVec2(-FLT_MIN, 0.0f),
-                                       progress_text.c_str());
-                    ImGui::EndPopup();
+                ImGui::ProgressBar(-1.0f * ImGui::GetTime(), ImVec2(-FLT_MIN, 0.0f),
+                                    progress_text.c_str());
+                ImGui::EndPopup();
+            }
+        } else if (m_scene_mender.tIsKilled()) {
+            if (!m_scene_mender_result_opened) {
+                if (m_scene_mender.isValid()) {
+                    std::vector<std::string> changes = m_scene_mender.getChanges();
+                    MainApplication::instance().showSuccessModal(
+                        this, "Scene Repair Result",
+                        changes.empty() ? "The scene was already valid!"
+                                        : "Scene repair completed successfully!",
+                        changes);
+                } else {
+                    std::vector<std::string> errors = m_scene_mender.getErrors();
+                    MainApplication::instance().showErrorModal(
+                        this, "Scene Repair Result", "Scene repair failed with errors!",
+                        errors);
                 }
-            } else if (m_scene_mender->tIsKilled()) {
-                if (!m_scene_mender_result_opened) {
-                    if (m_scene_mender->isValid()) {
-                        std::vector<std::string> changes = m_scene_mender->getChanges();
-                        MainApplication::instance().showSuccessModal(
-                            this, "Scene Repair Result",
-                            changes.empty() ? "The scene was already valid!"
-                                            : "Scene repair completed successfully!",
-                            changes);
-                    } else {
-                        std::vector<std::string> errors = m_scene_mender->getErrors();
-                        MainApplication::instance().showErrorModal(
-                            this, "Scene Repair Result", "Scene repair failed with errors!",
-                            errors);
-                    }
-                    m_scene_mender_result_opened = true;
-                }
+                m_scene_mender_result_opened = true;
             }
         }
 
-        if (m_scene_pruner) {
-            if (m_scene_pruner->tIsAlive()) {
-                ImGui::OpenPopup("Scene Pruner");
+        if (m_scene_pruner.tIsAlive()) {
+            ImGui::OpenPopup("Scene Pruner");
 
-                ImGui::SetNextWindowSize({400.0f, 200.0f});
-                ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
-                                        ImGuiCond_Appearing, {0.5f, 0.5f});
+            ImGui::SetNextWindowSize({400.0f, 200.0f});
+            ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
+                                    ImGuiCond_Appearing, {0.5f, 0.5f});
 
-                if (ImGui::BeginPopupModal("Scene Pruner", nullptr, ImGuiWindowFlags_NoResize)) {
-                    ImGui::Text("Pruning scene, please wait...");
-                    ImGui::Separator();
+            if (ImGui::BeginPopupModal("Scene Pruner", nullptr, ImGuiWindowFlags_NoResize)) {
+                ImGui::Text("Pruning scene, please wait...");
+                ImGui::Separator();
 
-                    std::string progress_text = m_scene_pruner->getProgressText();
+                std::string progress_text = m_scene_pruner.getProgressText();
 
-                    ImGui::ProgressBar(-1.0f * ImGui::GetTime(), ImVec2(-FLT_MIN, 0.0f),
-                                       progress_text.c_str());
-                    ImGui::EndPopup();
+                ImGui::ProgressBar(-1.0f * ImGui::GetTime(), ImVec2(-FLT_MIN, 0.0f),
+                                    progress_text.c_str());
+                ImGui::EndPopup();
+            }
+        } else if (m_scene_pruner.tIsKilled()) {
+            if (!m_scene_pruner_result_opened) {
+                if (m_scene_pruner.isValid()) {
+                    std::vector<std::string> changes = m_scene_pruner.getChanges();
+                    MainApplication::instance().showSuccessModal(
+                        this, "Scene Pruner Result",
+                        changes.empty() ? "The scene was already pruned / efficient!"
+                                        : "Scene prune completed successfully!",
+                        changes);
+                } else {
+                    std::vector<std::string> errors = m_scene_pruner.getErrors();
+                    MainApplication::instance().showErrorModal(
+                        this, "Scene Pruner Result", "Scene prune failed with errors!", errors);
                 }
-            } else if (m_scene_pruner->tIsKilled()) {
-                if (!m_scene_pruner_result_opened) {
-                    if (m_scene_pruner->isValid()) {
-                        std::vector<std::string> changes = m_scene_pruner->getChanges();
-                        MainApplication::instance().showSuccessModal(
-                            this, "Scene Pruner Result",
-                            changes.empty() ? "The scene was already pruned / efficient!"
-                                            : "Scene prune completed successfully!",
-                            changes);
-                    } else {
-                        std::vector<std::string> errors = m_scene_pruner->getErrors();
-                        MainApplication::instance().showErrorModal(
-                            this, "Scene Pruner Result", "Scene prune failed with errors!",
-                            errors);
-                    }
-                    m_scene_pruner_result_opened = true;
-                }
+                m_scene_pruner_result_opened = true;
             }
         }
     }
@@ -1142,7 +1199,7 @@ namespace Toolbox::UI {
                             regeneratePropertiesForObject(node);
                         }
 
-                        m_selection_transforms_needs_update = true;
+                        m_selection_transforms_update_requested = true;
                     }
 
                     m_properties_render_handler = renderObjectProperties;
@@ -1248,7 +1305,7 @@ namespace Toolbox::UI {
                             regeneratePropertiesForObject(node);
                         }
 
-                        m_selection_transforms_needs_update = true;
+                        m_selection_transforms_update_requested = true;
                     }
 
                     m_properties_render_handler = renderObjectProperties;
@@ -1435,7 +1492,7 @@ namespace Toolbox::UI {
                             regeneratePropertiesForObject(node);
                         }
 
-                        m_selection_transforms_needs_update = true;
+                        m_selection_transforms_update_requested = true;
                     }
 
                     m_properties_render_handler = renderObjectProperties;
@@ -1541,7 +1598,7 @@ namespace Toolbox::UI {
                             regeneratePropertiesForObject(node);
                         }
 
-                        m_selection_transforms_needs_update = true;
+                        m_selection_transforms_update_requested = true;
                     }
 
                     m_properties_render_handler = renderObjectProperties;
@@ -2047,7 +2104,7 @@ namespace Toolbox::UI {
                         m_scene_selection_mgr.getState().clearSelection();
                         m_table_selection_mgr.getState().clearSelection();
 
-                        m_selection_transforms_needs_update = true;
+                        m_selection_transforms_update_requested = true;
 
                         m_properties_render_handler = renderRailProperties;
                     }
@@ -2139,7 +2196,7 @@ namespace Toolbox::UI {
                                 m_scene_selection_mgr.getState().clearSelection();
                                 m_table_selection_mgr.getState().clearSelection();
 
-                                m_selection_transforms_needs_update = true;
+                                m_selection_transforms_update_requested = true;
 
                                 m_properties_render_handler = renderRailNodeProperties;
                             }
@@ -3831,7 +3888,7 @@ namespace Toolbox::UI {
             regeneratePropertiesForObject(node);
         }
 
-        m_selection_transforms_needs_update = true;
+        m_selection_transforms_update_requested = true;
 
         m_properties_render_handler = renderObjectProperties;
 
@@ -3872,7 +3929,7 @@ namespace Toolbox::UI {
 
         m_wants_rail_context_menu = true;
 
-        m_selection_transforms_needs_update = true;
+        m_selection_transforms_update_requested = true;
 
         m_selected_properties.clear();
         m_properties_render_handler = renderRailProperties;
@@ -3914,7 +3971,7 @@ namespace Toolbox::UI {
 
         m_wants_rail_context_menu = true;
 
-        m_selection_transforms_needs_update = true;
+        m_selection_transforms_update_requested = true;
 
         m_selected_properties.clear();
         m_properties_render_handler = renderRailNodeProperties;
@@ -3948,8 +4005,6 @@ namespace Toolbox::UI {
         m_selection_transforms.clear();
 
         if (total_selected_objects > 0) {
-            m_selection_transforms.reserve(total_selected_objects);
-
             for (const ModelIndex &index : m_scene_selection_mgr.getState().getSelection()) {
                 RefPtr<ISceneObject> obj               = m_scene_object_model->getObjectRef(index);
                 std::optional<Transform> obj_transform = obj->getTransform();
@@ -3957,8 +4012,9 @@ namespace Toolbox::UI {
                     continue;
                 }
 
-                m_selection_transforms.emplace_back(obj_transform.value());
-                combined_transform.m_translation += m_selection_transforms.back().m_translation;
+                const Transform &transform = obj_transform.value();
+                m_selection_transforms[index.getUUID()] = transform;
+                combined_transform.m_translation += transform.m_translation;
             }
 
             for (const ModelIndex &index : m_table_selection_mgr.getState().getSelection()) {
@@ -3968,15 +4024,14 @@ namespace Toolbox::UI {
                     continue;
                 }
 
-                m_selection_transforms.emplace_back(obj_transform.value());
-                combined_transform.m_translation += m_selection_transforms.back().m_translation;
+                const Transform &transform              = obj_transform.value();
+                m_selection_transforms[index.getUUID()] = transform;
+                combined_transform.m_translation += transform.m_translation;
             }
 
             combined_transform.m_translation /= total_selected_objects;
             m_renderer.setGizmoTransform(combined_transform);
         } else if (total_selected_rails_and_nodes > 0) {
-            m_selection_transforms.reserve(total_selected_rails_and_nodes);
-
             for (const ModelIndex &index : m_rail_selection_mgr.getState().getSelection()) {
                 glm::vec3 center;
                 if (m_rail_model->isIndexRail(index)) {
@@ -3986,9 +4041,9 @@ namespace Toolbox::UI {
                     Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
                     center                      = node->getPosition();
                 }
-                m_selection_transforms.push_back(
-                    Transform(center, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}));
-                combined_transform.m_translation += center;
+                Transform transform = Transform(center, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f});
+                m_selection_transforms[index.getUUID()] = transform;
+                combined_transform.m_translation += transform.m_translation;
             }
 
             combined_transform.m_translation /= total_selected_rails_and_nodes;
@@ -4184,38 +4239,38 @@ namespace Toolbox::UI {
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Validation")) {
-                const bool is_verifying = m_scene_verifier && m_scene_verifier->tIsAlive();
-                const bool is_repairing = m_scene_mender && m_scene_mender->tIsAlive();
+                const bool is_verifying = m_scene_verifier.tIsAlive();
+                const bool is_repairing = m_scene_mender.tIsAlive();
 
                 if (is_verifying || is_repairing) {
                     ImGui::BeginDisabled();
                 }
 
                 if (ImGui::MenuItem("Verify Scene")) {
-                    m_scene_verifier = make_scoped<ToolboxSceneVerifier>(
+                    m_scene_verifier = ToolboxSceneVerifier(
                         m_scene_object_model, m_table_object_model, m_rail_model, false);
-                    m_scene_verifier->tStart(true, nullptr);
+                    m_scene_verifier.tStart(true, nullptr);
                     m_scene_validator_result_opened = false;
                 }
 
                 if (ImGui::MenuItem("Verify Scene & Dependencies")) {
-                    m_scene_verifier = make_scoped<ToolboxSceneVerifier>(
+                    m_scene_verifier = ToolboxSceneVerifier(
                         m_scene_object_model, m_table_object_model, m_rail_model, true);
-                    m_scene_verifier->tStart(true, nullptr);
+                    m_scene_verifier.tStart(true, nullptr);
                     m_scene_validator_result_opened = false;
                 }
 
                 if (ImGui::MenuItem("Repair Dependencies")) {
-                    m_scene_mender = make_scoped<ToolboxSceneDependencyMender>(
+                    m_scene_mender = ToolboxSceneDependencyMender(
                         m_scene_object_model, m_table_object_model, m_rail_model);
-                    m_scene_mender->tStart(true, nullptr);
+                    m_scene_mender.tStart(true, nullptr);
                     m_scene_mender_result_opened = false;
                 }
 
                 if (ImGui::MenuItem("Prune Scene")) {
-                    m_scene_pruner = make_scoped<ToolboxScenePruner>(
+                    m_scene_pruner = ToolboxScenePruner(
                         m_scene_object_model, m_table_object_model, m_rail_model);
-                    m_scene_pruner->tStart(true, nullptr);
+                    m_scene_pruner.tStart(true, nullptr);
                     m_scene_pruner_result_opened = false;
                 }
 
@@ -4287,6 +4342,11 @@ namespace Toolbox::UI {
 }  // namespace Toolbox::UI
 
 void ToolboxSceneVerifier::tRun(void *param) {
+    if (!m_object_model || !m_table_model || !m_rail_model) {
+        m_successful = false;
+        return;
+    }
+
     m_successful = ValidateScene(
         m_object_model, m_table_model, m_rail_model, m_check_dependencies,
         [this](double progress, const std::string &progress_text) {
@@ -4297,6 +4357,11 @@ void ToolboxSceneVerifier::tRun(void *param) {
 }
 
 void ToolboxSceneDependencyMender::tRun(void *param) {
+    if (!m_object_model || !m_table_model || !m_rail_model) {
+        m_successful = false;
+        return;
+    }
+
     m_successful = RepairScene(
         m_object_model, m_table_model, m_rail_model, true,
         [this](const std::string &progress_text) { m_progress_text = progress_text; },
@@ -4305,8 +4370,13 @@ void ToolboxSceneDependencyMender::tRun(void *param) {
 }
 
 void ToolboxScenePruner::tRun(void *param) {
+    if (!m_object_model || !m_table_model || !m_rail_model) {
+        m_successful = false;
+        return;
+    }
+
     m_successful = PruneScene(
-        m_object_model, m_table_model, m_rail_model, true,
+        m_object_model, m_table_model, m_rail_model, m_operation_mutex, true,
         [this](const std::string &progress_text) { m_progress_text = progress_text; },
         [this](const std::string &change_msg) { m_changes.push_back(change_msg); },
         [this](const std::string &error_msg) { m_errors.push_back(error_msg); });
@@ -4582,7 +4652,7 @@ bool ToolboxSceneDependencyMender::RepairScene(
 
 bool ToolboxScenePruner::PruneScene(RefPtr<SceneObjModel> object_model,
                                     RefPtr<SceneObjModel> table_model,
-                                    RefPtr<RailObjModel> rail_model, bool check_dependencies,
+                                    RefPtr<RailObjModel> rail_model, std::mutex &operation_mutex, bool check_dependencies,
                                     prune_progress_cb progress_cb, prune_change_cb change_cb,
                                     prune_error_cb error_cb) {
     ScenePruner pruner(object_model, table_model, rail_model, check_dependencies);
@@ -4618,7 +4688,14 @@ bool ToolboxScenePruner::PruneScene(RefPtr<SceneObjModel> object_model,
                 .scopeEscape()
             .scopeEscape();
 
+    pruner.scopeForAll(rail_model, [&pruner](RefPtr<RailObjModel> model, ModelIndex index) {
+                        pruner.scopePruneRailIfUnused(model, index);
+                    });
 
+    {
+        std::unique_lock<std::mutex> operation_lock(operation_mutex);
+        pruner.finalize();
+    }
 
     return static_cast<bool>(pruner);
 }
@@ -4902,7 +4979,8 @@ SceneValidator &SceneValidator::scopeValidateDependencies(RefPtr<SceneObjModel> 
     return *this;
 }
 
-static void forEach(RefPtr<SceneObjModel> model, ModelIndex parent, SceneValidator::foreach_obj_fn fn) {
+static void forEach(RefPtr<SceneObjModel> model, ModelIndex parent,
+                    SceneValidator::foreach_obj_fn fn) {
     const int64_t row_count = model->getRowCount(parent);
     for (int64_t row = 0; row < row_count; ++row) {
         ModelIndex child = model->getIndex(row, 0, parent);
@@ -4910,7 +4988,9 @@ static void forEach(RefPtr<SceneObjModel> model, ModelIndex parent, SceneValidat
             return;
         }
         fn(model, child);
-        forEach(model, child, fn);
+        if (model->validateIndex(child)) {
+            forEach(model, child, fn);
+        }
     }
 }
 
@@ -5038,7 +5118,8 @@ SceneMender &SceneMender::scopeEscape() {
     return *this;
 }
 
-static void forEachM(RefPtr<SceneObjModel> model, ModelIndex parent, SceneMender::foreach_obj_fn fn) {
+static void forEachM(RefPtr<SceneObjModel> model, ModelIndex parent,
+                     SceneMender::foreach_obj_fn fn) {
     const int64_t row_count = model->getRowCount(parent);
     for (int64_t row = 0; row < row_count; ++row) {
         ModelIndex child = model->getIndex(row, 0, parent);
@@ -5046,7 +5127,9 @@ static void forEachM(RefPtr<SceneObjModel> model, ModelIndex parent, SceneMender
             return;
         }
         fn(model, child);
-        forEachM(model, child, fn);
+        if (model->validateIndex(child)) {
+            forEachM(model, child, fn);
+        }
     }
 }
 
@@ -5335,7 +5418,8 @@ SceneMender &SceneMender::scopeFulfillAssetDependencies(RefPtr<SceneObjModel> mo
     return *this;
 }
 
-static void forEachP(RefPtr<SceneObjModel> model, ModelIndex parent, ScenePruner::foreach_obj_fn fn) {
+static void forEachP(RefPtr<SceneObjModel> model, ModelIndex parent,
+                     ScenePruner::foreach_obj_fn fn) {
     const int64_t row_count = model->getRowCount(parent);
     for (int64_t row = 0; row < row_count; ++row) {
         ModelIndex child = model->getIndex(row, 0, parent);
@@ -5343,11 +5427,14 @@ static void forEachP(RefPtr<SceneObjModel> model, ModelIndex parent, ScenePruner
             return;
         }
         fn(model, child);
-        forEachP(model, child, fn);
+        if (model->validateIndex(child)) {
+            forEachP(model, child, fn);
+        }
     }
 }
 
-static void forEachP(RefPtr<RailObjModel> model, ModelIndex parent, ScenePruner::foreach_rail_fn fn) {
+static void forEachP(RefPtr<RailObjModel> model, ModelIndex parent,
+                     ScenePruner::foreach_rail_fn fn) {
     const int64_t row_count = model->getRowCount(parent);
     for (int64_t row = 0; row < row_count; ++row) {
         ModelIndex child = model->getIndex(row, 0, parent);
@@ -5355,8 +5442,47 @@ static void forEachP(RefPtr<RailObjModel> model, ModelIndex parent, ScenePruner:
             return;
         }
         fn(model, child);
-        forEachP(model, child, fn);
+        if (model->validateIndex(child)) {
+            forEachP(model, child, fn);
+        }
     }
+}
+
+ScenePruner &ScenePruner::finalize() {
+    for (const ModelIndex &index : m_indexes_to_prune) {
+        if (m_object_model->validateIndex(index)) {
+            const std::string manager_type = m_object_model->getObjectType(index);
+            const std::string manager_name = m_object_model->getObjectKey(index);
+
+            if (m_object_model->removeIndex(index)) {
+                std::string change_text =
+                    std::format("Pruned unused manager '{} ({})'", manager_type, manager_name);
+                m_change_callback(change_text);
+            } else {
+                m_valid                 = false;
+                std::string failed_text = std::format("Failed to prune unused manager '{} ({})'",
+                                                      manager_type, manager_name);
+                m_error_callback(failed_text);
+            }
+            continue;
+        }
+
+        if (m_rail_model->validateIndex(index)) {
+            const std::string rail_name = m_rail_model->getRailKey(index);
+
+            if (m_rail_model->removeIndex(index)) {
+                std::string change_text = std::format("Pruned unused rail '{}'", rail_name);
+                m_change_callback(change_text);
+            } else {
+                m_valid = false;
+                std::string failed_text =
+                    std::format("Failed to prune unused rail '{}'", rail_name);
+                m_error_callback(failed_text);
+            }
+            continue;
+        }
+    }
+    return *this;
 }
 
 ScenePruner &
@@ -5524,10 +5650,11 @@ ScenePruner &ScenePruner::scopeCollectDependencies(RefPtr<SceneObjModel> model,
 
 ScenePruner &ScenePruner::scopePruneManagerIfUnused(RefPtr<SceneObjModel> model,
                                                     const ModelIndex &index) {
-    m_processed_objects += 1;
+    if (!m_valid) {
+        return *this;
+    }
 
-    const std::string manager_type = model->getObjectType(index);
-    const std::string manager_name = model->getObjectKey(index);
+    m_processed_objects += 1;
 
     for (const TemplateDependencies::ObjectInfo &manager : m_dependencies.m_managers) {
         ModelIndex group_index = m_object_model->getIndex(manager.m_ancestry);
@@ -5552,36 +5679,23 @@ ScenePruner &ScenePruner::scopePruneManagerIfUnused(RefPtr<SceneObjModel> model,
     }
 
     // Remove the manager since it is not depended upon
-    if (model->removeIndex(index)) {
-        std::string change_text =
-            std::format("Pruned unused manager '{} ({})'", manager_type, manager_name);
-        m_change_callback(change_text);
-    } else {
-        m_valid = false;
-        std::string failed_text =
-            std::format("Failed to prune unused manager '{} ({})'", manager_type, manager_name);
-        m_error_callback(failed_text);
-    }
+    m_indexes_to_prune.push_back(index);
 
     return *this;
 }
 
 ScenePruner &ScenePruner::scopePruneRailIfUnused(RefPtr<RailObjModel> model,
                                                  const ModelIndex &index) {
-    const std::string rail_name = model -> getRailKey(index);
+    if (!model->isIndexRail(index)) {
+        return *this;
+    }
+
+    const std::string rail_name = model->getRailKey(index);
     if (m_dependencies.m_rails.contains(rail_name)) {
         return *this;
     }
 
-    // Remove the rail since it is not depended upon
-    if (model->removeIndex(index)) {
-        std::string change_text = std::format("Pruned unused rail '{}'", rail_name);
-        m_change_callback(change_text);
-    } else {
-        m_valid                 = false;
-        std::string failed_text = std::format("Failed to prune unused rail '{}'", rail_name);
-        m_error_callback(failed_text);
-    }
+    m_indexes_to_prune.push_back(index);
 
     return *this;
 }
