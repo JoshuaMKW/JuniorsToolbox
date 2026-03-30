@@ -150,12 +150,12 @@
     },
     "FenceWaterH": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/fencewaterh.bmd",
         "Textures": {}
     },
     "FenceWaterV": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/fencewaterv.bmd",
         "Textures": {}
     },
     "FerrisLOD": {
@@ -164,28 +164,28 @@
         "Textures": {}
     },
     "FerrisWheel": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/ferriswheel.bck" ],
+        "Model": "mapobj/ferriswheel.bmd",
         "Textures": {}
     },
     "FileLoadBlockA": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/fileloadblock.bck" ],
+        "Model": "mapobj/fileloadblocka.bmd",
         "Textures": {}
     },
     "FileLoadBlockB": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/fileloadblock.bck" ],
+        "Model": "mapobj/fileloadblockb.bmd",
         "Textures": {}
     },
     "FileLoadBlockC": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/fileloadblock.bck" ],
+        "Model": "mapobj/fileloadblockc.bmd",
         "Textures": {}
     },
     "FluffManager": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/watage.bmd",
         "Textures": {}
     },
     "FruitBanana": {
@@ -231,13 +231,13 @@
         "Textures": {}
     },
     "GateManta": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/gatemanta.bck" ],
+        "Model": "mapobj/gatemanta.bmd",
         "Textures": {}
     },
     "Gateshell": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/gateshell.bck" ],
+        "Model": "mapobj/gateshell.bmd",
         "Textures": {}
     },
     "GesoSurfBoard": {
@@ -251,8 +251,8 @@
         "Textures": {}
     },
     "GlassBreak": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/glassbreak.bck" ],
+        "Model": "mapobj/glassbreak.bmd",
         "Textures": {}
     },
     "GoalWatermelon": {
@@ -262,12 +262,12 @@
     },
     "HangingBridge": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/mon_bri.bmd",
         "Textures": {}
     },
     "HatoPop": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/hatopop_appear1.bck" ],
+        "Model": "mapobj/hatopop_model1.bmd",
         "Textures": {}
     },
     "HideObj": {
@@ -282,7 +282,7 @@
     },
     "IceBlock": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/iceblock.bmd",
         "Textures": {}
     },
     "IndirectObj": {
@@ -292,37 +292,39 @@
     },
     "JuiceBlock": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/juiceblock.bmd",
         "Textures": {}
     },
     "JumpMushroom": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/jumpkinoko.bmd",
         "Textures": {}
     },
     "KoopaJrSignM": {
-        "Textures": {},
         "Animations": [],
-        "Model": "mapobj/koopa_jr_sign.bmd"
+        "Model": "mapobj/koopa_jr_sign.bmd",
+        "Textures": {}
     },
     "KoopaJrSubmarine": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/koopajrsubmarine.bmd",
         "Textures": {}
     },
     "LampSeesaw": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/lampbianco.bmd",
         "Textures": {}
     },
     "LeafBoat": {
         "Animations": [],
-        "Model": "",
+        "Materials": "mapobj/leafboat.bmt",
+        "Model": "mapobj/leafboat.bmd",
         "Textures": {}
     },
     "LeafBoatRotten": {
         "Animations": [],
-        "Model": "",
+        "Materials": "mapobj/leafboat.bmt",
+        "Model": "mapobj/leafboatrotten.bmd",
         "Textures": {}
     },
     "MammaBlockRotate": {
