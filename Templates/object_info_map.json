@@ -846,7 +846,7 @@
         "Textures": {}
     },
     "balloonKoopaJr": {
-      "Animations": [ "mapobj/balloonkoopajr_wait.bck" ],
+        "Animations": [ "mapobj/balloonkoopajr_wait.bck" ],
         "Model": "mapobj/balloonkoopajr.bmd",
         "Textures": {}
     },
@@ -1228,8 +1228,10 @@
         "Textures": {}
     },
     "mareFall": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [
+            "mapobj/marefall.btk"
+        ],
+        "Model": "mapobj/marefall.bmd",
         "Textures": {}
     },
     "mareSeaPollutionS0": {
@@ -1249,7 +1251,7 @@
     },
     "mareWaterJump": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/marewaterjump.bmd",
         "Textures": {}
     },
     "maregate": {
@@ -1263,43 +1265,46 @@
         "Model": "mapobj/mariocap.bmd"
     },
     "merry": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/merry.bck" ],
+        "Model": "mapobj/merry.bmd",
         "Textures": {}
     },
     "mirrorL": {
         "Animations": [],
-        "Model": "",
+        "Materials": "mapobj/mirror.bmt",
+        "Model": "mapobj/mirrorl.bmd",
         "Textures": {}
     },
     "mirrorM": {
         "Animations": [],
-        "Model": "",
+        "Materials": "mapobj/mirror.bmt",
+        "Model": "mapobj/mirrorm.bmd",
         "Textures": {}
     },
     "mirrorS": {
         "Animations": [],
-        "Model": "",
+        "Materials": "mapobj/mirror.bmt",
+        "Model": "mapobj/mirrors.bmd",
         "Textures": {}
     },
     "monte_chair": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/monte_chair_model.bmd",
         "Textures": {}
     },
     "monumentshine": {
-        "Textures": {},
         "Animations": [],
-        "Model": "mapobj/monumentshine.bmd"
+        "Model": "mapobj/monumentshine.bmd",
+        "Textures": {}
     },
     "mushroom1up": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/mushroom1up.bmd",
         "Textures": {}
     },
     "mushroom1upR": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/mushroom1up.bmd",
         "Textures": {}
     },
     "mushroom1upX": {
@@ -1320,122 +1325,122 @@
     },
     "normallift": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/normalblock.bmd",
         "Textures": {}
     },
     "normalvariant0": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/normalvariant0.bmd",
         "Textures": {}
     },
     "normalvariant2": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/normalvariant2.bmd",
         "Textures": {}
     },
     "normalvariant3": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/normalvariant3.bmd",
         "Textures": {}
     },
     "nozzleDoor": {
-        "Textures": {},
         "Animations": [],
-        "Model": "mapobj/nozzledoor.bmd"
+        "Model": "mapobj/nozzledoor.bmd",
+        "Textures": {}
     },
     "palmLeaf": {
-        "Textures": {},
         "Animations": [],
-        "Model": "mapobj/palmleaf.bmd"
+        "Model": "mapobj/palmleaf.bmd",
+        "Textures": {}
     },
     "palmNatume": {
-        "Textures": {},
         "Animations": [],
-        "Model": "mapobj/palmnatume.bmd"
+        "Model": "mapobj/palmnatume.bmd",
+        "Textures": {}
     },
     "palmNormal": {
-        "Textures": {},
         "Animations": [],
-        "Model": "mapobj/palmnormal.bmd"
+        "Model": "mapobj/palmnormal.bmd",
+        "Textures": {}
     },
     "palmOugi": {
-        "Textures": {},
         "Animations": [],
-        "Model": "mapobj/palmogui.bmd"
+        "Model": "mapobj/palmogui.bmd",
+        "Textures": {}
     },
     "palmSago": {
-        "Textures": {},
         "Animations": [],
-        "Model": "mapobj/palmsago.bmd"
+        "Model": "mapobj/palmsago.bmd",
+        "Textures": {}
     },
     "pazul": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/pazul.bmd",
         "Textures": {}
     },
     "railblockb": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/allpurposeboardb.bmd",
         "Textures": {}
     },
     "railblockr": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/allpurposeboardr.bmd",
         "Textures": {}
     },
     "railblocky": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/allpurposeboardy.bmd",
         "Textures": {}
     },
     "railvariant1": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/railvariant1.bmd",
         "Textures": {}
     },
     "riccoArrow": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccoarrow.bmd",
         "Textures": {}
     },
     "riccoBasket": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccobasket.bmd",
         "Textures": {}
     },
     "riccoBoatL": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccoboatl.bmd",
         "Textures": {}
     },
     "riccoBoatS": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccoboats.bmd",
         "Textures": {}
     },
     "riccoFenceMaze": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccofencemaze.bmd",
         "Textures": {}
     },
     "riccoGangway": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccogangway.bmd",
         "Textures": {}
     },
     "riccoGrille": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccogrille.bmd",
         "Textures": {}
     },
     "riccoHericopter": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccohericopter.bmd",
         "Textures": {}
     },
     "riccoLog": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccolog.bmd",
         "Textures": {}
     },
     "riccoPole": {
@@ -1475,62 +1480,62 @@
     },
     "riccoShip": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccoship.bmd",
         "Textures": {}
     },
     "riccoShipDol": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccoshipdol.bmd",
         "Textures": {}
     },
     "riccoShipFish": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccoshipfish.bmd",
         "Textures": {}
     },
     "riccoShipGeso": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccoshipgeso.bmd",
         "Textures": {}
     },
     "riccoShipLog": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccoshiplog.bmd",
         "Textures": {}
     },
     "riccoStand": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccostand.bmd",
         "Textures": {}
     },
     "riccoStreetStall": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccostreetstall.bmd",
         "Textures": {}
     },
     "riccoSwitch": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccoswitch.bmd",
         "Textures": {}
     },
     "riccoSwitchShine": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/fruitdurian.bmd",
         "Textures": {}
     },
     "riccoWatermill": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccowaterill.bmd",
         "Textures": {}
     },
     "riccoYachtL": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccoyachtl.bmd",
         "Textures": {}
     },
     "riccoYachtS": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/riccoyachts.bmd",
         "Textures": {}
     },
     "rocket_nozzle_item": {
@@ -1541,52 +1546,52 @@
     },
     "rollblockb": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/allpurposeboardb.bmd",
         "Textures": {}
     },
     "rollblockr": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/allpurposeboardr.bmd",
         "Textures": {}
     },
     "rollblocky": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/allpurposeboardy.bmd",
         "Textures": {}
     },
     "rollvariant0": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/rollvariant0.bmd",
         "Textures": {}
     },
     "rollvariant1": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/rollvariant1.bmd",
         "Textures": {}
     },
     "rootPaku": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/rootpaku.bmd",
         "Textures": {}
     },
     "rulet00": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/rulet00.bck" ],
+        "Model": "mapobj/rulet00.bmd",
         "Textures": {}
     },
     "rulet01": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/rulet01.bck" ],
+        "Model": "mapobj/rulet01.bmd",
         "Textures": {}
     },
     "rulet02": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/rulet02.bck" ],
+        "Model": "mapobj/rulet02.bmd",
         "Textures": {}
     },
     "sand_block": {
-        "Animations": [],
-        "Model": "",
+        "Animations": [ "mapobj/sandblock.brk" ],
+        "Model": "mapobj/sandblock.bmd",
         "Textures": {}
     },
     "sea": {
@@ -1595,20 +1600,20 @@
         "Textures": {}
     },
     "shine": {
-        "Textures": {},
         "Animations": [
             "mapobj/shine_float.bck"
         ],
-        "Model": "mapobj/shine.bmd"
+        "Model": "mapobj/shine.bmd",
+        "Textures": {}
     },
     "srotRulet": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/srotrulet.bmd",
         "Textures": {}
     },
     "srotdram": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/srotdram.bmd",
         "Textures": {}
     },
     "star_sign": {
@@ -1618,7 +1623,7 @@
     },
     "submarine": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/submarine.bmd",
         "Textures": {}
     },
     "sun_mirror": {
@@ -1628,27 +1633,27 @@
     },
     "uirou": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/uirou.bmd",
         "Textures": {}
     },
     "ukisima": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/ukisima.bmd",
         "Textures": {}
     },
     "umaibou": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/umaibou.bmd",
         "Textures": {}
     },
     "viking": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/viking.bmd",
         "Textures": {}
     },
     "water_roll_block": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/water_roll_block.bmd",
         "Textures": {}
     },
     "watergun_item": {
@@ -1658,17 +1663,19 @@
     },
     "watermelon": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/watermelon.bmd",
         "Textures": {}
     },
     "wood_barrel": {
         "Animations": [],
-        "Model": "",
+        "Materials": "mapobj/barrel.bmt",
+        "Model": "mapobj/barrel_normal.bmd",
         "Textures": {}
     },
     "wood_barrel_once": {
         "Animations": [],
-        "Model": "",
+        "Materials": "mapobj/barrel.bmt",
+        "Model": "mapobj/barrel_normal.bmd",
         "Textures": {}
     },
     "yoshi_whistle_item": {
@@ -1678,7 +1685,7 @@
     },
     "yoshiblock": {
         "Animations": [],
-        "Model": "",
+        "Model": "mapobj/yoshiblock.bmd",
         "Textures": {}
     }
 }
