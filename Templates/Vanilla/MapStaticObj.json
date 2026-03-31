@@ -1172,50 +1172,6 @@
                     "Object": "TargetArrow"
                 }
             }
-        },
-        "Rendering": {
-            "滝つぼ": {
-                "Model": "mapobj/falls.bmd"
-            },
-            "鏡内空": {
-                "Animations": [
-                    "map/map/reflectsky.btk"
-                ],
-                "Model": "map/map/reflectsky.bmd"
-            },
-            "鏡内地形": {
-                "Model": "map/map/reflectparts.bmd"
-            },
-            "TopOfCorona": {
-                "Model": "mapobj/TopOfCorona.bmd"
-            },
-            "riccoSeaPollutionS0": {
-                "Model": "map/map/riccoseapollutions0.bmd"
-            },
-            "riccoSeaPollutionS1": {
-                "Model": "map/map/riccoseapollutions1.bmd"
-            },
-            "riccoSeaPollutionS2": {
-                "Model": "map/map/riccoseapollutions2.bmd"
-            },
-            "riccoSeaPollutionS3": {
-                "Model": "map/map/riccoseapollutions3.bmd"
-            },
-            "riccoSeaPollutionS4": {
-                "Model": "map/map/riccoseapollutions4.bmd"
-            },
-            "Mare5ExGate": {
-                "Model": "map/map/mare5exgate.bmd"
-            },
-            "mareSeaPollutionS0": {
-                "Model": "map/map/mareseapollutions0.bmd"
-            },
-            "mareSeaPollutionS12": {
-                "Model": "map/map/mareseapollutions12.bmd"
-            },
-            "mareSeaPollutionS34567": {
-                "Model": "map/map/mareseapollutions34567.bmd"
-            }
         }
     }
 }
