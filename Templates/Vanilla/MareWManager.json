@@ -24,7 +24,7 @@
                     "TablesBin": {},
                     "AssetPaths": [
                         "npc/npc_mare_shared",
-                        "npc/npc_marew"
+                        "npc/npc_marew_shared"
                     ]
                 },
                 "Members": {
