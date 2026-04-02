@@ -88,6 +88,10 @@
                     "SpawnID": -1
                 }
             }
+        },
+        "Rendering": {
+            "Materials": "sambohead/flower_blue.bmt",
+            "Model": "sambohead/flower.bmd"
         }
     }
 }

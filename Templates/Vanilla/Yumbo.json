@@ -88,6 +88,10 @@
                     "SpawnID": -1
                 }
             }
+        },
+        "Rendering": {
+            "Animations": [ "sambohead/flower_shoot.bck" ],
+            "Model": "sambohead/yumbo.bmd"
         }
     }
 }

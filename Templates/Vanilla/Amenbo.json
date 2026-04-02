@@ -88,6 +88,10 @@
                     "SpawnID": -1
                 }
             }
+        },
+        "Rendering": {
+            "Animations": [ "amenbo/amenbo_wait1_loop.bck" ],
+            "Model": "amenbo/amenbo_model1.bmd"
         }
     }
 }

@@ -93,6 +93,10 @@
                     "FlowerGroupID": 0
                 }
             }
+        },
+        "Rendering": {
+            "Animations": [ "samboflower/flower_wait.bck" ],
+            "Model": "samboflower/flower.bmd"
         }
     }
 }
