@@ -93,6 +93,12 @@
                     "SpawnID": -1
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [ "butterfly/butterfly_fly.bck" ],
+                "Model": "butterfly/butterflyc.bmd"
+            }
         }
     }
 }

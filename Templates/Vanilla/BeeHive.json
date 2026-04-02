@@ -98,6 +98,11 @@
                     "BeeSpawnID": -1
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Model": "beehive/bee_nest.bmd"
+            }
         }
     }
 }

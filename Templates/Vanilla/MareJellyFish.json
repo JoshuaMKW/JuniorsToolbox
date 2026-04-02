@@ -32,6 +32,11 @@
                     "SharedSetNum": 0
                 }
             }
+        },
+        "Rendering": {
+            "Animations": [ "marejellyfish/jellyfish.bck", "marejellyfish/jellyfish_a.brk" ],
+            "Model": "marejellyfish/jellyfish_a.bmd",
+            "Textures": {}
         }
     }
 }

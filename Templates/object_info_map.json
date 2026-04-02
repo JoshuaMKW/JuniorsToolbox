@@ -527,12 +527,12 @@
     },
     "ReflectParts": {
         "Animations": [],
-        //"Model": "map/map/reflectparts.bmd",
+        "Model": "",
         "Textures": {}
     },
     "ReflectSky": {
-        //"Animations": [ "map/map/reflectsky.btk" ],
-        //"Model": "map/map/reflectsky.bmd",
+        "Animations": [],
+        "Model": "",
         "Textures": {}
     },
     "SakuCasino": {
@@ -616,8 +616,8 @@
         "Textures": {}
     },
     "SeaIndirect": {
-        //"Animations": [ "map/map/seaindirect.btk" ],
-        //"Model": "map/map/seaindirect.bmd",
+        "Animations": [],
+        "Model": "",
         "Textures": {}
     },
     "ShellCup": {
