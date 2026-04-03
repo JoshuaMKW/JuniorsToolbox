@@ -39,7 +39,6 @@
     },
     "BiaBridge": {
         "Animations": [],
-        "Materials": "mapobj/bianco.bmt",
         "Model": "mapobj/biabridge.bmd",
         "Textures": {}
     },
@@ -888,6 +887,7 @@
     },
     "bigWindmill": {
         "Animations": [],
+        "Materials": "mapobj/bianco.bmt",
         "Model": "mapobj/bigwindmill.bmd",
         "Textures": {}
     },
