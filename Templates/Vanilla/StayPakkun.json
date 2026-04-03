@@ -88,6 +88,12 @@
                     "SpawnID": -1
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [ "pakkun/pakun_wait.bck" ],
+                "Model": "pakkun/pakun.bmd"
+            }
         }
     }
 }

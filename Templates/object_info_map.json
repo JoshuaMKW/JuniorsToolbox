@@ -144,7 +144,7 @@
         "Textures": {}
     },
     "Donchou": {
-        "Animations": [ "mapobj/donchou.bck" ],
+        "Animations": [],
         "Model": "mapobj/donchou.bmd",
         "Textures": {}
     },

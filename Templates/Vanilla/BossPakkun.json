@@ -128,6 +128,12 @@
                     "Rail": "(null)"
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [ "bosspakkun/bosspaku_wait.bck" ],
+                "Model": "bosspakkun/bosspaku_model.bmd"
+            }
         }
     }
 }
