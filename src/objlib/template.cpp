@@ -1006,6 +1006,15 @@ namespace Toolbox::Object {
                         }
                         info.m_file_animations = animations_json;
                     }
+                    if (val.contains("Materials")) {
+                        const Template::json_t &materials_json = val.at("Materials");
+                        if (!materials_json.is_string()) {
+                            return make_json_error<void>(
+                                "TemplateFactory",
+                                std::format("Materials field of object kind {} is not a list", key), 0);
+                        }
+                        info.m_file_materials = materials_json;
+                    }
                     if (val.contains("Model")) {
                         const Template::json_t &model_json = val.at("Model");
                         if (!model_json.is_string()) {

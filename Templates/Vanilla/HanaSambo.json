@@ -90,8 +90,10 @@
             }
         },
         "Rendering": {
-            "Animations":  [ "sambo/sambo_fhide.bck" ],
-            "Model": "sambo/sambo.bmd"
+            "Default": {
+                "Animations": [ "sambo/sambo_fhide.bck" ],
+                "Model": "sambo/sambod.bmd"
+            }
         }
     }
 }

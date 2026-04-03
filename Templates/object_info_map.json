@@ -39,6 +39,7 @@
     },
     "BiaBridge": {
         "Animations": [],
+        "Materials": "mapobj/bianco.bmt",
         "Model": "mapobj/biabridge.bmd",
         "Textures": {}
     },
@@ -49,6 +50,7 @@
     },
     "BiaTurnBridge": {
         "Animations": [],
+        "Materials": "mapobj/bianco.bmt",
         "Model": "mapobj/biaturnbridge.bmd",
         "Textures": {}
     },
@@ -59,16 +61,19 @@
     },
     "BiaWatermill00": {
         "Animations": [ "mapobj/biawatermill00.bck" ],
+        "Materials": "mapobj/bianco.bmt",
         "Model": "mapobj/biawatermill00.bmd",
         "Textures": {}
     },
     "BiaWatermill01": {
         "Animations": [ "mapobj/biawatermill01.bck" ],
+        "Materials": "mapobj/bianco.bmt",
         "Model": "mapobj/biawatermill01.bmd",
         "Textures": {}
     },
     "BiaWatermillVertical": {
         "Animations": [],
+        "Materials": "mapobj/bianco.bmt",
         "Model": "mapobj/biawatermillvertical.bmd",
         "Textures": {}
     },
@@ -401,6 +406,7 @@
     },
     "MiniWindmillL": {
         "Animations": [],
+        "Materials": "mapobj/bianco.bmt",
         "Model": "mapobj/miniwindmilll.bmd",
         "Textures": {}
     },
@@ -1207,6 +1213,7 @@
     },
     "lampBianco": {
         "Animations": [],
+        "Materials": "mapobj/bianco.bmt",
         "Model": "mapobj/lampbianco.bmd",
         "Textures": {}
     },

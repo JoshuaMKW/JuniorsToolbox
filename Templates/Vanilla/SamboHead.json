@@ -90,8 +90,10 @@
             }
         },
         "Rendering": {
-            "Materials": "sambohead/flower_blue.bmt",
-            "Model": "sambohead/flower.bmd"
+            "Default": {
+                "Materials": "sambohead/flower_blue.bmt",
+                "Model": "sambohead/flower.bmd"
+            }
         }
     }
 }

@@ -88,6 +88,12 @@
                     "SpawnID": -1
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [ "kazekun/kazekun_wait.bck" ],
+                "Model": "kazekun/kazekun.bmd"
+            }
         }
     }
 }

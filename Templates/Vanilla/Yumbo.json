@@ -90,8 +90,10 @@
             }
         },
         "Rendering": {
-            "Animations": [ "sambohead/flower_shoot.bck" ],
-            "Model": "sambohead/yumbo.bmd"
+            "Default": {
+                "Animations": [ "sambohead/flower_shoot.bck" ],
+                "Model": "sambohead/yumbo.bmd"
+            }
         }
     }
 }

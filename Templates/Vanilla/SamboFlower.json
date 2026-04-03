@@ -95,8 +95,11 @@
             }
         },
         "Rendering": {
-            "Animations": [ "samboflower/flower_wait.bck" ],
-            "Model": "samboflower/flower.bmd"
+            "Default": {
+                "Animations": [ "samboflower/flower_wait.bck" ],
+                "Materials": "samboflower/flower_orange.bmt",
+                "Model": "samboflower/flower.bmd"
+            }
         }
     }
 }
