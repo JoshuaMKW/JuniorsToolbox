@@ -185,9 +185,7 @@
         },
         "Rendering": {
             "Default": {
-                "Model": "map/map/map.bmd"
-            },
-            "マップ": {
+                "Animations": [ "map/map/map.btk" ],
                 "Model": "map/map/map.bmd"
             }
         }

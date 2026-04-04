@@ -666,9 +666,7 @@
         "Textures": {}
     },
     "SignTriangle": {
-        "Animations": [
-            "mapobj/3kaku_sign_erase.brk"
-        ],
+        "Animations": [],
         "Model": "mapobj/3kaku_sign.bmd",
         "Textures": {}
     },
@@ -805,7 +803,7 @@
     },
     "WoodBlockCone": {
         "Animations": [],
-        "Model": "mapobj/woodblockclone.bmd",
+        "Model": "mapobj/woodblockcone.bmd",
         "Textures": {}
     },
     "WoodBlockCube": {

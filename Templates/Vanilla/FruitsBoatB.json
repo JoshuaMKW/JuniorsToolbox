@@ -83,6 +83,14 @@
                     "Rail": "(null)"
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [
+                    "fruitsboatb/shipdolpic2.bck"
+                ],
+                "Model": "fruitsboatb/shipdolpic2.bmd"
+            }
         }
     }
 }

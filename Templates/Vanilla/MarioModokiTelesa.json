@@ -93,6 +93,16 @@
                     "Form": 120
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [
+                    "/data/common/bck/ma_wait.bck",
+                    "/data/mario/bck/ma_wait.bck",
+                    "kagemario/kagemario_scroll.btk"
+                ],
+                "Model": "telesa/modoki.bmd"
+            }
         }
     }
 }

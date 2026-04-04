@@ -90,6 +90,12 @@
                     "SpawnID": -1
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [ "telesa/telesa_wait.bck" ],
+                "Model": "telesa/telesa.bmd"
+            }
         }
     }
 }

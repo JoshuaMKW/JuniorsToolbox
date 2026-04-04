@@ -2,7 +2,7 @@
 
 using namespace Toolbox::Object;
 
-static void HelperSetWoodBlockMaterialColors(Toolbox::RefPtr<J3DModelData> model_data, Toolbox::Color::RGB32 color) {
+static void HelperSetWaterHitPictureHideObjMaterialColors(Toolbox::RefPtr<J3DModelData> model_data, Toolbox::Color::RGB32 color) {
     std::shared_ptr<J3DMaterial> mat_main = model_data->GetMaterials()[0];
 
     if (mat_main) {
@@ -10,13 +10,13 @@ static void HelperSetWoodBlockMaterialColors(Toolbox::RefPtr<J3DModelData> model
     }
 }
 
-void PhysicalSceneObject::HelperUpdateWoodblockRender() {
+void PhysicalSceneObject::HelperUpdateWaterHitPictureHideObjRender() {
     RefPtr<Object::MetaMember> color_member = getMember("Color").value_or(nullptr);
     if (!color_member) {
-        TOOLBOX_DEBUG_LOG("Failed to get parameter for WoodBlock!");
+        TOOLBOX_DEBUG_LOG("Failed to get parameter for WaterHitPictureHideObj!");
     } else {
         Color::RGB32 color        = getMetaValue<Color::RGB32>(color_member, 0).value();
-        HelperSetWoodBlockMaterialColors(m_model_data, color);
+        HelperSetWaterHitPictureHideObjMaterialColors(m_model_data, color);
     }
     // TODO: Figure out good solution for optional clothing models
 }

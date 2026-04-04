@@ -88,6 +88,12 @@
                     "SpawnID": -1
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [ "debutelesa/debutelesa_wait.bck" ],
+                "Model": "debutelesa/debutelesa.bmd"
+            }
         }
     }
 }

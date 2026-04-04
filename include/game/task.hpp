@@ -132,6 +132,8 @@ namespace Toolbox::Game {
 
         std::queue<std::function<bool(Dolphin::DolphinCommunicator &)>> m_task_queue;
         std::unordered_map<UUID64, u32> m_actor_address_map;
+        u8 mCurrentAreaID;
+        u8 mCurrentEpisodeID;
 
         bool m_started = false;
 

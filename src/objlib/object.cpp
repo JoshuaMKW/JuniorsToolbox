@@ -1158,6 +1158,16 @@ namespace Toolbox::Object {
             selected_model->SetScale(m_transform.value().m_scale);
         }
 
+        if (m_type == "HideObjPictureTwin") {
+            HelperUpdateHideObjPictureTwinRender();
+            return;
+        }
+
+        if (m_type == "WaterHitPictureHideObj") {
+            HelperUpdateWaterHitPictureHideObjRender();
+            return;
+        }
+
         if (m_type == "WoodBlock") {
             HelperUpdateWoodblockRender();
             return;

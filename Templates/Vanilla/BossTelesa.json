@@ -155,6 +155,13 @@
                     "Rail": "(null)"
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [ "btelesa/btelesa_wait.bck" ],
+                "Model": "btelesa/btelesa.bmd",
+                "Textures": {}
+            }
         }
     }
 }

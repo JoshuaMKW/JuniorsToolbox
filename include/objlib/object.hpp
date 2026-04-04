@@ -795,6 +795,8 @@ namespace Toolbox::Object {
         void HelperUpdateMonteRender();
 
         // Object Logic
+        void HelperUpdateHideObjPictureTwinRender();
+        void HelperUpdateWaterHitPictureHideObjRender();
         void HelperUpdateWoodblockRender();
 
     private:

@@ -459,7 +459,7 @@ namespace Toolbox::Game {
             return actor_ptr;
 
 #if 1
-        if (!isSceneLoaded()) {
+        if (!isSceneLoaded(mCurrentAreaID, mCurrentEpisodeID)) {
             return 0;
         }
 
@@ -803,6 +803,8 @@ namespace Toolbox::Game {
                             cb(communicator.read<u32>(0x800002E8).value());
                         TOOLBOX_INFO("[TASK] Successfully loaded the scene!");
                         s_is_loading_stage = false;
+                        mCurrentAreaID     = stage;
+                        mCurrentEpisodeID  = scenario;
                         return true;
                     }
                     return false;
@@ -997,9 +999,12 @@ namespace Toolbox::Game {
     Result<void> TaskCommunicator::taskRemoveSceneObject(RefPtr<ISceneObject> object,
                                                          RefPtr<GroupSceneObject> parent,
                                                          transact_complete_cb clone_complete_cb) {
-        if (!isSceneLoaded())
+        if (!isSceneLoaded()) {
+            mCurrentAreaID = 0xFF;
+            mCurrentEpisodeID = 0xFF;
             return make_error<void>(
                 "GAME TASK", "Failed to remove object from game scene (Scene isn't loaded)!");
+        }
 
         u32 obj_ptr = getActorPtr(object);
         if (obj_ptr == 0) {
@@ -1112,6 +1117,8 @@ namespace Toolbox::Game {
                                                          const std::string &new_name,
                                                          transact_complete_cb clone_complete_cb) {
         if (!isSceneLoaded()) {
+            mCurrentAreaID    = 0xFF;
+            mCurrentEpisodeID = 0xFF;
             return make_error<void>("GAME TASK",
                                     "Failed to rename object in game scene (Scene isn't loaded)!");
         }
@@ -1163,6 +1170,8 @@ namespace Toolbox::Game {
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         if (!isSceneLoaded()) {
+            mCurrentAreaID    = 0xFF;
+            mCurrentEpisodeID = 0xFF;
             return make_error<void>("GAME TASK",
                                     std::format("Failed to play camera demo \"{}\"!", demo_name));
         }
@@ -1294,6 +1303,8 @@ namespace Toolbox::Game {
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
+            mCurrentAreaID    = 0xFF;
+            mCurrentEpisodeID = 0xFF;
             return make_error<void>("GAME TASK",
                                     "Failed to set object transform in scene (Scene not loaded)!");
         }
@@ -1335,6 +1346,8 @@ namespace Toolbox::Game {
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
+            mCurrentAreaID    = 0xFF;
+            mCurrentEpisodeID = 0xFF;
             return make_error<void>("GAME TASK", "Failed to set object transform in scene!");
         }
 
@@ -1363,6 +1376,8 @@ namespace Toolbox::Game {
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
+            mCurrentAreaID    = 0xFF;
+            mCurrentEpisodeID = 0xFF;
             return make_error<void>("GAME TASK", "Failed to set object transform in scene!");
         }
 
@@ -1397,6 +1412,8 @@ namespace Toolbox::Game {
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         if (!isSceneLoaded()) {
+            mCurrentAreaID    = 0xFF;
+            mCurrentEpisodeID = 0xFF;
             return make_error<void>("GAME TASK", "Failed to set object translation in scene!");
         }
 
@@ -1413,6 +1430,8 @@ namespace Toolbox::Game {
         DolphinCommunicator &communicator = MainApplication::instance().getDolphinCommunicator();
 
         if (!isSceneLoaded()) {
+            mCurrentAreaID    = 0xFF;
+            mCurrentEpisodeID = 0xFF;
             return make_error<void>("GAME TASK",
                                     "Failed to set mario translation in scene (not loaded)!");
         }
@@ -1429,6 +1448,8 @@ namespace Toolbox::Game {
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
+            mCurrentAreaID    = 0xFF;
+            mCurrentEpisodeID = 0xFF;
             return make_error<void>("GAME TASK", "Failed to set object transform in scene!");
         }
 
@@ -1449,6 +1470,8 @@ namespace Toolbox::Game {
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
+            mCurrentAreaID    = 0xFF;
+            mCurrentEpisodeID = 0xFF;
             return make_error<void>("GAME TASK",
                                     "Failed to set mario transform in scene (not loaded)!");
         }
@@ -1491,6 +1514,8 @@ namespace Toolbox::Game {
 
         // This also checks for connected Dolphin
         if (!isSceneLoaded()) {
+            mCurrentAreaID    = 0xFF;
+            mCurrentEpisodeID = 0xFF;
             return make_error<void>("GAME TASK", "Failed to set object transform in scene!");
         }
 
