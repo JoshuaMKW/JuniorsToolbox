@@ -95,6 +95,12 @@
                     "SpawnID": -1
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [ "moepuku/moepuku_wait.bck" ],
+                "Model": "moepuku/default.bmd"
+            }
         }
     }
 }

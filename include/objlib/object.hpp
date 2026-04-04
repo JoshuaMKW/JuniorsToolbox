@@ -788,10 +788,14 @@ namespace Toolbox::Object {
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
     protected:
+        // NPC Logic
         void HelperUpdateKinojiRender();
         void HelperUpdateKinopioRender();
         void HelperUpdateMareRender();
         void HelperUpdateMonteRender();
+
+        // Object Logic
+        void HelperUpdateWoodblockRender();
 
     private:
         UUID64 m_UUID64;

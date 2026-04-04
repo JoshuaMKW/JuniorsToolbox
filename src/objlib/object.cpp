@@ -944,41 +944,43 @@ namespace Toolbox::Object {
                                         .parent_path()
                                         .parent_path();  // files/data/scene/X/scene -> files/
 
-        // if (type() == "Shine") {
-        //     __debugbreak();
-        // }
-
-#if 0
-        // Get model variable that exists in some objects
-        auto model_member_result = getMember("Model");
-        if (model_member_result) {
-            if (model_member_result.value()) {
-                std::string model_member_value =
+        // Special Better Sunshine Engine object that has dynamic render paths
+        if (type() == "GenericRailObj") {
+            auto model_member_result = getMember("Model");
+            if (model_member_result.value_or(nullptr)) {
+                const std::string model_field =
                     getMetaValue<std::string>(model_member_result.value()).value();
-                model_file = std::format("mapobj/{}.bmd", model_member_value);
+
+                render_info = make_scoped<TemplateRenderInfo>();
+                render_info->m_file_model = std::format("mapobj/{}.bmd", model_field);
+                render_info->m_file_animations = {
+                    std::format("mapobj/{}.bck", model_field),
+                    std::format("mapobj/{}.blk", model_field),
+                    std::format("mapobj/{}.bpk", model_field),
+                    std::format("mapobj/{}.brk", model_field),
+                    std::format("mapobj/{}.btp", model_field),
+                    std::format("mapobj/{}.btk", model_field),
+                };
             }
         } else {
-            return make_fs_error<void>(std::error_code(), model_member_result.error().m_message);
-        }
-#else
-        auto object_member_result = getMember("Object");
-        if (object_member_result.value_or(nullptr)) {
-            const std::string object_field =
-                getMetaValue<std::string>(object_member_result.value()).value();
-            render_info = TemplateFactory::findRenderInfo(object_field);
-        }
-#endif
-
-        if (!render_info) {
-            std::optional<TemplateWizard> wizard = m_template.getWizard(m_wizard);
-            if (!wizard) {
-                return make_fs_error<void>(
-                    std::error_code(),
-                    {std::format("[PhysicalObject] Failed to load render data for object {}",
-                                 m_type.name())});
+            auto object_member_result = getMember("Object");
+            if (object_member_result.value_or(nullptr)) {
+                const std::string object_field =
+                    getMetaValue<std::string>(object_member_result.value()).value();
+                render_info = TemplateFactory::findRenderInfo(object_field);
             }
 
-            render_info = make_scoped<TemplateRenderInfo>(wizard->m_render_info);
+            if (!render_info) {
+                std::optional<TemplateWizard> wizard = m_template.getWizard(m_wizard);
+                if (!wizard) {
+                    return make_fs_error<void>(
+                        std::error_code(),
+                        {std::format("[PhysicalObject] Failed to load render data for object {}",
+                                     m_type.name())});
+                }
+
+                render_info = make_scoped<TemplateRenderInfo>(wizard->m_render_info);
+            }
         }
 
         mat_file = render_info->m_file_materials;
@@ -1154,6 +1156,11 @@ namespace Toolbox::Object {
             selected_model->SetTranslation(m_transform.value().m_translation);
             selected_model->SetRotation(m_transform.value().m_rotation);
             selected_model->SetScale(m_transform.value().m_scale);
+        }
+
+        if (m_type == "WoodBlock") {
+            HelperUpdateWoodblockRender();
+            return;
         }
 
         if (m_type == "NPCKinopio") {

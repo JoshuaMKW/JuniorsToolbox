@@ -435,7 +435,7 @@
         "Textures": {}
     },
     "MuddyBoat": {
-        "Animations": [ "mapobj/muddyboat.bck", "mapobj/muddyboat.btk" ],
+        "Animations": [ "mapobj/muddyboat.btk" ],
         "Model": "mapobj/muddyboat.bmd",
         "Textures": {}
     },

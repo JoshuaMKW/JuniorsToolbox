@@ -93,6 +93,12 @@
                     "JumpVelocity": 20
                 }
             }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [ "moepuku/moepuku_wait.bck" ],
+                "Model": "moepuku/default.bmd"
+            }
         }
     }
 }
