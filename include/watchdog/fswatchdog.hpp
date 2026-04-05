@@ -8,6 +8,7 @@
 
 #include "core/memory.hpp"
 #include "core/threaded.hpp"
+#include "core/time/timepoint.hpp"
 #include "fsystem.hpp"
 #include "platform/process.hpp"
 
@@ -39,6 +40,7 @@ namespace Toolbox {
         bool m_is_file;
         bool m_is_open;
         ScopePtr<filewatch::FileWatch<fs_path>> m_watch;
+        TimePoint m_open_timepoint;
     };
 
 }  // namespace Toolbox

@@ -278,7 +278,7 @@ namespace Toolbox {
         UUID64 m_uuid;
 
         mutable std::mutex m_mutex;
-        FileSystemWatchdog m_watchdog;
+        mutable FileSystemWatchdog m_watchdog;
         std::unordered_map<UUID64, std::pair<event_listener_t, int>> m_listeners;
 
         fs_path m_root_path;

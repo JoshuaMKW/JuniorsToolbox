@@ -1012,7 +1012,7 @@ namespace Toolbox {
     }
 
     bool MainApplication::GCTimeInfo::isReadyToGC() const {
-        TimePoint now = std::chrono::high_resolution_clock::now();
+        TimePoint now = Toolbox::GetTime();
         TimeStep dur  = TimeStep(m_closed_time, now);
         return dur.seconds() >= m_seconds_to_close;
     }

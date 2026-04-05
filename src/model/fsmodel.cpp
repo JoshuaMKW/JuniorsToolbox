@@ -168,6 +168,7 @@ namespace Toolbox {
         {
             std::scoped_lock lock(m_mutex);
             m_watchdog.addPath(path);
+            m_watchdog.flagPathVisible(path, true);
             m_root_path = path;
 
             ModelIndex root = makeIndex(path, 0, ModelIndex());
@@ -941,6 +942,9 @@ namespace Toolbox {
         if (result) {
             ModelIndex parent = getParent_(index);
 
+            fs_path abs_path = m_root_path / index.data<_FileSystemIndexData>()->m_path;
+            m_watchdog.flagPathVisible(abs_path, false);
+
             // Remove all children as well
             std::vector<UUID64> children;
             children.reserve(1000);
@@ -1028,6 +1032,9 @@ namespace Toolbox {
 
         if (result) {
             ModelIndex parent = getParent_(index);
+
+            fs_path abs_path = m_root_path / index.data<_FileSystemIndexData>()->m_path;
+            m_watchdog.flagPathVisible(abs_path, false);
 
             m_path_map.erase(index.data<_FileSystemIndexData>()->m_path_hash);
             delete index.data<_FileSystemIndexData>();
@@ -1469,8 +1476,10 @@ namespace Toolbox {
 
         _FileSystemIndexData *data = index.data<_FileSystemIndexData>();
         for (UUID64 uuid : data->m_children) {
-            m_path_map.erase(m_index_map[uuid].data<_FileSystemIndexData>()->m_path_hash);
+            _FileSystemIndexData *child_data = m_index_map[uuid].data<_FileSystemIndexData>();
+            m_path_map.erase(child_data->m_path_hash);
             m_index_map.erase(uuid);
+            delete child_data;
         }
         data->m_children.clear();
 
@@ -1479,7 +1488,11 @@ namespace Toolbox {
 
             size_t i = 0;
             for (const auto &entry : Filesystem::directory_iterator(path)) {
-                makeIndex(entry.path(), i++, index);
+                ModelIndex new_index = makeIndex(entry.path(), i++, index);
+
+                // Mark the old path as invisible to watchdog
+                const fs_path abs_src_path = getRealPath_(new_index);
+                m_watchdog.flagPathVisible(abs_src_path, true);
             }
         }
     }
@@ -1677,6 +1690,10 @@ namespace Toolbox {
         }
 
         if (validateIndex(new_index)) {
+            // Mark the new path as visible to watchdog
+            const fs_path abs_src_path = getRealPath_(new_index);
+            m_watchdog.flagPathVisible(abs_src_path, true);
+
             const Signal folder_signal =
                 createSignalForIndex_(new_index, ModelEventFlags::EVENT_INDEX_ADDED);
             signalEventListeners(folder_signal.first, folder_signal.second |
@@ -1757,6 +1774,10 @@ namespace Toolbox {
         }
 
         if (validateIndex(new_index)) {
+            // Mark the new path as visible to watchdog
+            const fs_path abs_src_path = getRealPath_(new_index);
+            m_watchdog.flagPathVisible(abs_src_path, true);
+
             const Signal file_signal =
                 createSignalForIndex_(new_index, ModelEventFlags::EVENT_INDEX_ADDED);
             signalEventListeners(file_signal.first, file_signal.second |
@@ -1872,6 +1893,10 @@ namespace Toolbox {
                 return;
             }
 
+            // Mark the old path as invisible to watchdog
+            const fs_path abs_src_path = getRealPath_(index);
+            m_watchdog.flagPathVisible(abs_src_path, false);
+
             const Signal event_signal =
                 createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
 
@@ -1883,6 +1908,10 @@ namespace Toolbox {
             data->m_path               = new_path;
             data->m_name               = new_path.filename().string();
             data->m_parent_archive     = 0;  // Reset cache
+
+            // Mark the renamed path as visible to watchdog
+            const fs_path abs_dst_path = getRealPath_(index);
+            m_watchdog.flagPathVisible(abs_dst_path, true);
 
             // Reparent index if necessary
             ModelIndex parent = getParent_(index);
@@ -1945,6 +1974,8 @@ namespace Toolbox {
 
         {
             std::scoped_lock lock(m_mutex);
+
+            m_watchdog.flagPathVisible(path, false);
 
             if ((event_flags & FileSystemModelEventFlags::EVENT_IS_DIRECTORY) != 0) {
                 // Remove all children as well
@@ -2169,11 +2200,16 @@ namespace Toolbox {
             cacheIndex(src_parent);
         }
 
-        std::scoped_lock lock(m_cache_mutex);
+        bool is_valid_row;
+        int64_t source_row = -1;
+        {
+            std::unique_lock lock(m_cache_mutex);
+            is_valid_row = row < m_row_map[map_key].size();
+            source_row   = is_valid_row ? m_row_map[map_key][row] : -1;
+        }
 
-        if (row < m_row_map[map_key].size()) {
-            int64_t the_row = m_row_map[map_key][row];
-            return toProxyIndex(m_source_model->getIndex(the_row, column, src_parent));
+        if (is_valid_row) {
+            return toProxyIndex(m_source_model->getIndex(source_row, column, src_parent));
         }
 
         return ModelIndex();
@@ -2237,6 +2273,7 @@ namespace Toolbox {
     ScopePtr<MimeData> FileSystemModelSortFilterProxy::createMimeData(
         const IDataModel::index_container &indexes) const {
         IDataModel::index_container indexes_copy;
+        indexes_copy.reserve(indexes.size());
 
         for (const ModelIndex &idx : indexes) {
             indexes_copy.emplace_back(toSourceIndex(idx));
@@ -2283,6 +2320,8 @@ namespace Toolbox {
             return ModelIndex();
         }
 
+        std::unique_lock lock(m_cache_mutex);
+
         ModelIndex src_index =
             m_source_model->getIndex(index.data<_FileSystemIndexData>()->m_self_uuid);
         if (isSrcFiltered_(src_index.getUUID())) {
@@ -2297,8 +2336,11 @@ namespace Toolbox {
             return ModelIndex();
         }
 
-        if (isSrcFiltered_(index.getUUID())) {
-            return ModelIndex();
+        {
+            std::unique_lock lock(m_cache_mutex);
+            if (isSrcFiltered_(index.getUUID())) {
+                return ModelIndex();
+            }
         }
 
         ModelIndex proxy_index = ModelIndex(getUUID());
@@ -2316,9 +2358,17 @@ namespace Toolbox {
         }
 
         const u64 map_key = getCacheKey_(src_parent);
-        if (row < m_row_map[map_key].size()) {
-            int64_t the_row = m_row_map[map_key][row];
-            return toProxyIndex(m_source_model->getIndex(the_row, column, src_parent));
+
+        bool is_valid_row;
+        int64_t source_row = -1;
+        {
+            std::unique_lock lock(m_cache_mutex);
+            is_valid_row = row < m_row_map[map_key].size();
+            source_row   = is_valid_row ? m_row_map[map_key][row] : -1;
+        }
+
+        if (is_valid_row) {
+            return toProxyIndex(m_source_model->getIndex(source_row, column, src_parent));
         }
 
         return ModelIndex();
@@ -2352,6 +2402,8 @@ namespace Toolbox {
     }
 
     void FileSystemModelSortFilterProxy::cacheIndex(const ModelIndex &src_idx) const {
+        std::unique_lock lock(m_cache_mutex);
+
         const u64 map_key = getCacheKey_(src_idx);
 
         if (m_source_model->canFetchMore(src_idx)) {
@@ -2360,7 +2412,6 @@ namespace Toolbox {
 
         const size_t row_count = m_source_model->getRowCount(src_idx);
         if (row_count == 0) {
-            std::scoped_lock lock(m_cache_mutex);
             m_row_map[map_key].clear();
             return;
         }
@@ -2446,8 +2497,6 @@ namespace Toolbox {
             proxy_children[i] = sort_vec[i].m_uuid;
         }
 
-        std::scoped_lock lock(m_cache_mutex);
-
         // Build the row map
         m_row_map[map_key].clear();
         m_row_map[map_key].resize(proxy_children.size());
@@ -2477,21 +2526,49 @@ namespace Toolbox {
     }
 
     void FileSystemModelSortFilterProxy::fsUpdateEvent(const ModelIndex &path, int flags) {
-        if ((flags & FileSystemModelEventFlags::EVENT_FS_ANY) == ModelEventFlags::EVENT_NONE) {
+        if ((flags & ModelEventFlags::EVENT_ANY) == ModelEventFlags::EVENT_NONE) {
             return;
         }
 
-        // if ((flags & FileSystemModelEventFlags::EVENT_IS_FILE) &&
-        //     (flags & ModelEventFlags::EVENT_INDEX_MODIFIED)) {
-        //
-        // }
+        if ((flags & ModelEventFlags::EVENT_RESET) == ModelEventFlags::EVENT_RESET) {
+            reset();
+        }
+
+        if ((flags & ModelEventFlags::EVENT_PRE)) {
+            ModelIndex proxy_index = toProxyIndex(path);
+            if (!validateIndex(proxy_index)) {
+                return;
+            }
+
+            if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) != ModelEventFlags::EVENT_NONE) {
+                std::scoped_lock lock(m_cache_mutex);
+                m_row_map.erase(proxy_index.getUUID());
+                return;
+            }
+        }
 
         if ((flags & ModelEventFlags::EVENT_POST)) {
-            std::unique_lock lock(m_cache_mutex);
-            m_row_map.erase(path.getUUID());
+            ModelIndex proxy_index = toProxyIndex(path);
+            if (!validateIndex(proxy_index)) {
+                return;
+            }
 
-            ModelIndex parent = m_source_model->getParent(path);
-            m_row_map.erase(parent.getUUID());
+            if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) != ModelEventFlags::EVENT_NONE) {
+                cacheIndex(getParent(proxy_index));
+                return;
+            }
+
+            if ((flags & ModelEventFlags::EVENT_INDEX_MODIFIED) != ModelEventFlags::EVENT_NONE) {
+                cacheIndex(proxy_index);
+                return;
+            }
+        }
+
+        {
+            std::scoped_lock lock(m_cache_mutex);
+
+            m_filter_map.clear();
+            m_row_map.clear();
         }
     }
 

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "core/core.hpp"
+#include "core/time/timestep.hpp"
 #include "watchdog/fswatchdog.hpp"
 
 namespace Toolbox {
@@ -25,21 +26,30 @@ namespace Toolbox {
         m_sleep_end = Filesystem::file_time_type::clock::now();
     }
 
-    void FileSystemWatchdog::ignorePathOnce(const fs_path &path) { m_ignore_paths.emplace(path); }
+    void FileSystemWatchdog::ignorePathOnce(const fs_path &path) {
+        fs_path norm_path = path.lexically_normal();
+        m_ignore_paths.emplace(norm_path);
+    }
 
     void FileSystemWatchdog::ignorePathOnce(fs_path &&path) {
+        path = path.lexically_normal();
+
         m_ignore_paths.emplace(std::move(path));
     }
 
     void FileSystemWatchdog::flagPathVisible(const fs_path &path, bool visible) {
+        fs_path norm_path = path.lexically_normal();
+
         if (visible) {
-            m_visible_paths.emplace(path);
+            m_visible_paths.emplace(norm_path);
         } else {
-            m_visible_paths.erase(path);
+            m_visible_paths.erase(norm_path);
         }
     }
 
     void FileSystemWatchdog::flagPathVisible(fs_path &&path, bool visible) {
+        path = path.lexically_normal();
+
         if (visible) {
             m_visible_paths.emplace(std::move(path));
         } else {
@@ -48,15 +58,19 @@ namespace Toolbox {
     }
 
     void FileSystemWatchdog::addPath(const fs_path &path) {
+        fs_path norm_path = path.lexically_normal();
+
         std::scoped_lock lock(m_mutex);
-        if (Toolbox::Filesystem::is_directory(path).value_or(false)) {
-            m_dir_paths.emplace(this, path);
+        if (Toolbox::Filesystem::is_directory(norm_path).value_or(false)) {
+            m_dir_paths.emplace(this, norm_path);
         } else {
-            m_file_paths.emplace(this, path);
+            m_file_paths.emplace(this, norm_path);
         }
     }
 
     void FileSystemWatchdog::addPath(fs_path &&path) {
+        path = path.lexically_normal();
+
         std::scoped_lock lock(m_mutex);
         if (Toolbox::Filesystem::is_directory(path).value_or(false)) {
             m_dir_paths.emplace(this, std::move(path));
@@ -66,17 +80,19 @@ namespace Toolbox {
     }
 
     void FileSystemWatchdog::removePath(const fs_path &path) {
+        fs_path norm_path = path.lexically_normal();
+
         std::scoped_lock lock(m_mutex);
 
         for (auto it = m_dir_paths.begin(); it != m_dir_paths.end(); ++it) {
-            if (it->getPath() == path) {
+            if (it->getPath() == norm_path) {
                 m_dir_paths.erase(it);
                 return;
             }
         }
 
         for (auto it = m_file_paths.begin(); it != m_file_paths.end(); ++it) {
-            if (it->getPath() == path) {
+            if (it->getPath() == norm_path) {
                 m_file_paths.erase(it);
                 return;
             }
@@ -84,6 +100,8 @@ namespace Toolbox {
     }
 
     void FileSystemWatchdog::removePath(fs_path &&path) {
+        path = path.lexically_normal();
+
         std::scoped_lock lock(m_mutex);
 
         for (auto it = m_dir_paths.begin(); it != m_dir_paths.end(); ++it) {
@@ -196,11 +214,13 @@ namespace Toolbox {
     void PathWatcher_::watchDirectory(const fs_path &path) {
         m_watch =
             make_scoped<filewatch::FileWatch<fs_path>>(path, TOOLBOX_BIND_EVENT_FN(callback_));
+        m_open_timepoint = Toolbox::GetTime();
     }
 
     void PathWatcher_::watchFile(const fs_path &path) {
         m_watch =
             make_scoped<filewatch::FileWatch<fs_path>>(path, TOOLBOX_BIND_EVENT_FN(callback_));
+        m_open_timepoint = Toolbox::GetTime();
     }
 
     void PathWatcher_::closeDirectory() { m_watch.reset(); }
@@ -209,6 +229,13 @@ namespace Toolbox {
 
     void PathWatcher_::callback_(const fs_path &path, const filewatch::Event event) {
         std::scoped_lock lock(m_watchdog->m_mutex);
+
+        TimeStep dur = TimeStep(m_open_timepoint, Toolbox::GetTime());
+        if (event == filewatch::Event::modified && dur.milliseconds() < 200) {
+            // This is a workaround for filewatch sending modification events when a watch is
+            // first created.
+            return;
+        }
 
         fs_path abs_path = m_path / path;
 
