@@ -88,8 +88,12 @@ namespace Toolbox::UI {
                     std::string name   = std::format("[{}]", i);
                     ImGui::Text(name.c_str());
                     ImGui::SameLine();
-                    any_changed |= ImGui::Checkbox(id_str.c_str(),
-                                                   reinterpret_cast<bool *>(m_bools.data() + i));
+                    if (ImGui::Checkbox(id_str.c_str(),
+                                        reinterpret_cast<bool *>(m_bools.data() + i))) {
+                        if (Object::setMetaValue<bool>(m_member, i, m_bools[i])) {
+                            any_changed = true;
+                        }
+                    }
                 }
             }
             ImGui::EndGroupPanel();
@@ -108,7 +112,11 @@ namespace Toolbox::UI {
         }
 
         std::string id_str = std::format("##{}", m_member->name().c_str());
-        any_changed |= ImGui::Checkbox(id_str.c_str(), reinterpret_cast<bool *>(m_bools.data()));
+        if (ImGui::Checkbox(id_str.c_str(), reinterpret_cast<bool *>(m_bools.data()))) {
+            if (Object::setMetaValue<bool>(m_member, 0, m_bools[0])) {
+                any_changed = true;
+            }
+        }
 
         if (any_changed && m_value_changed) {
             m_value_changed(m_member);

@@ -546,6 +546,10 @@ namespace Toolbox::UI {
             m_is_game_edit_mode = false;
         }
 
+        if (!m_rail_model) {
+            return;
+        }
+
         std::unique_lock<std::mutex> lock(m_scene_pruner.getOperationMutex());
 
         ModelIndex rail_visibility_index = m_rail_visible_map_update_request_index;
