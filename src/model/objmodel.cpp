@@ -729,7 +729,7 @@ namespace Toolbox {
             }
 
             RefPtr<ISceneObject> object =
-                ObjectFactory::create(*obj_template.value(), obj_wizard, ".");
+                ObjectFactory::create(*obj_template.value(), obj_wizard, m_scene_path);
             if (!object) {
                 return make_serial_error<void>(
                     in, std::format("Failed to create object of type '{}' with wizard '{}'",
@@ -747,13 +747,7 @@ namespace Toolbox {
                 }
             }
 
-            fs_path asset_path = m_scene_path;
-            auto load_result   = object->loadDependencies(asset_path);
-            if (!load_result) {
-                return make_serial_error<void>(
-                    in, std::format("Failed to load render data for object {} ({})", obj_type,
-                                    obj_name));
-            }
+            object->sync();
 
             std::string new_name = findUniqueName_(index, std::string(object->getNameRef().name()));
             object->setNameRef(NameRef(new_name));

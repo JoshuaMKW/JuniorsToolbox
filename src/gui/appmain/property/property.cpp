@@ -1345,7 +1345,7 @@ namespace Toolbox::UI {
         } else if (meta_type == Object::MetaType::F64) {
             return make_scoped<DoubleProperty>(m_member);
         } else if (meta_type == Object::MetaType::BOOL) {
-            return make_scoped<FloatProperty>(m_member);
+            return make_scoped<BoolProperty>(m_member);
         } else {
             return make_scoped<NumberProperty>(m_member);
         }

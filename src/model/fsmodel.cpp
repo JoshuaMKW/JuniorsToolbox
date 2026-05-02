@@ -1706,7 +1706,7 @@ namespace Toolbox {
 
             parent = getIndex_(path.parent_path());
             if (!validateIndex(parent)) {
-                return;
+                return; 
             }
         }
 

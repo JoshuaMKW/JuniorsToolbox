@@ -828,6 +828,21 @@ namespace Toolbox::Object {
         return {};
     }
 
+    void PhysicalSceneObject::sync() {
+        const bool wizard_reassigned = reassignWizardBasedOnFields();
+
+        auto transform_value_ptr = getMember("Transform").value();
+        if (transform_value_ptr) {
+            m_transform = getMetaValue<Transform>(transform_value_ptr).value();
+        }
+
+        std::filesystem::path asset_path = m_scene_resource_path;
+        auto load_result                 = loadRenderData(asset_path, getResourceCache());
+        if (!load_result) {
+            return;
+        }
+    }
+
     void PhysicalSceneObject::dump(std::ostream &out, size_t indention,
                                    size_t indention_width) const {
         indention_width          = std::min(indention_width, size_t(8));
@@ -1232,6 +1247,7 @@ namespace Toolbox::Object {
 
     Result<void, SerialError> PhysicalSceneObject::gameDeserialize(Deserializer &in) {
         auto scene_path = std::filesystem::path(in.filepath()).parent_path();
+        m_scene_resource_path = scene_path.parent_path();
 
         // Metadata
         auto length           = in.read<u32, std::endian::big>();
@@ -1309,21 +1325,7 @@ namespace Toolbox::Object {
         // Skip padding/unknown data
         in.seek(endpos, std::ios::beg);
 
-        const bool wizard_reassigned = reassignWizardBasedOnFields();
-
-        auto transform_value_ptr = getMember("Transform").value();
-        if (transform_value_ptr) {
-            m_transform = getMetaValue<Transform>(transform_value_ptr).value();
-        }
-
-        std::filesystem::path asset_path = scene_path.parent_path();
-        auto load_result                 = loadRenderData(asset_path, getResourceCache());
-        if (!load_result) {
-            return make_serial_error<void>(
-                in, std::format("Failed to load render data for object {} ({})!", m_type.name(),
-                                m_nameref.name()));
-        }
-
+        sync();
         return {};
     }
 

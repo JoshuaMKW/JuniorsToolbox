@@ -196,6 +196,8 @@ namespace Toolbox::Object {
                                                        ResourceCache &resource_cache,
                                                        std::vector<J3DLight> &scene_lights) = 0;
 
+        virtual void sync() = 0;
+
         virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
 
     public:
@@ -375,6 +377,8 @@ namespace Toolbox::Object {
                                                std::vector<RenderInfo> &renderables,
                                                ResourceCache &resource_cache,
                                                std::vector<J3DLight> &scene_lights) override;
+
+        void sync() override {}
 
         u32 getGamePtr() const override { return m_game_ptr; }
         void setGamePtr(u32 ptr) override { m_game_ptr = ptr; }
@@ -562,7 +566,7 @@ namespace Toolbox::Object {
         PhysicalSceneObject() = default;
 
         PhysicalSceneObject(const Template &template_)
-            : ISceneObject(), m_nameref(), m_transform() {
+            : ISceneObject(), m_nameref(), m_transform(Transform::Identity()) {
             m_template = template_;
             m_type     = template_.type();
 
@@ -762,6 +766,8 @@ namespace Toolbox::Object {
                                                std::vector<RenderInfo> &renderables,
                                                ResourceCache &resource_cache,
                                                std::vector<J3DLight> &scene_lights) override;
+
+        void sync() override;
 
         u32 getGamePtr() const override { return m_game_ptr; }
         void setGamePtr(u32 ptr) override { m_game_ptr = ptr; }
