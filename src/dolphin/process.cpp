@@ -32,7 +32,7 @@ namespace Toolbox::Dolphin {
                 m_hook_flag.store(false);
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(m_refresh_rate));
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     }
 

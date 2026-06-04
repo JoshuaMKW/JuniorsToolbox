@@ -1,0 +1,55 @@
+﻿{
+    "Sun Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "SilhouetteGXColor1": {
+                "Type": "RGBA",
+                "ArraySize": 1
+            },
+            "SilhouetteGXMask1": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SilhouetteGXColor2": {
+                "Type": "RGBA",
+                "ArraySize": 1
+            },
+            "SilhouetteGXMask2": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "BossHanaSlidePtclDist": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "太陽マネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "SilhouetteGXColor1": [
+                        0,
+                        0,
+                        39,
+                        119
+                    ],
+                    "SilhouetteGXMask1": 255,
+                    "SilhouetteGXColor2": [
+                        0,
+                        0,
+                        0,
+                        120
+                    ],
+                    "SilhouetteGXMask2": 195,
+                    "BossHanaSlidePtclDist": 0
+                }
+            }
+        }
+    }
+}

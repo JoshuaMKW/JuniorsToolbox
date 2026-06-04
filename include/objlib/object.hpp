@@ -74,6 +74,53 @@ namespace Toolbox::Object {
     inline ResourceCache &getResourceCache() { return s_resource_cache; }
     inline void clearResourceCache() { s_resource_cache = ResourceCache(); }
 
+    bool IsObjectMonte(ISceneObject *object);
+
+    class ObjectRenderController {
+    public:
+        ObjectRenderController()                                   = default;
+        ObjectRenderController(const ObjectRenderController &)     = default;
+        ObjectRenderController(ObjectRenderController &&) noexcept = default;
+
+        ~ObjectRenderController() { clear(); }
+
+        ObjectRenderController &clear();
+
+        ObjectRenderController &addRenderModel(RefPtr<J3DModelInstance> model);
+        ObjectRenderController &addAnimation(AnimationType type,
+                                             RefPtr<J3DAnimationInstance> animation);
+        ObjectRenderController &selectRenderModel(int model_idx);
+
+        J3DLight getLightData(int index);
+
+        [[nodiscard]] size_t getRenderModelCount() const { return m_model_instances.size(); }
+        [[nodiscard]] RefPtr<J3DModelInstance> getRenderModel() const;
+        [[nodiscard]] RefPtr<J3DModelInstance> getRenderModel(int model_index) const;
+
+        [[nodiscard]] size_t getAnimationFrames(AnimationType type) const;
+        [[nodiscard]] float getAnimationFrame(AnimationType type) const;
+        void setAnimationFrame(size_t frame, AnimationType type);
+
+        bool startAnimation(AnimationType type, int anim_idx);
+        bool startAnimation(AnimationType type, const std::string &anim_name);
+        bool stopAnimation(AnimationType type);
+
+        RefPtr<J3DAnimationInstance> getAnimationControl(AnimationType type) const;
+
+    private:
+        int m_selected_model_idx = -1;
+
+        std::vector<RefPtr<J3DModelInstance>> m_model_instances;
+
+        std::unordered_map<AnimationType, int> m_active_animation_map;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_bck;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_blk;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_bpk;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_brk;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_btp;
+        std::vector<RefPtr<J3DAnimationInstance>> m_animations_btk;
+    };
+
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
     class ISceneObject : public IGameSerializable, public ISmartResource, public IUnique {
@@ -123,7 +170,7 @@ namespace Toolbox::Object {
         virtual Result<void, ObjectGroupError> removeChild(RefPtr<ISceneObject> object) = 0;
         virtual Result<void, ObjectGroupError> removeChild(const QualifiedName &name)   = 0;
         virtual Result<void, ObjectGroupError> removeChild(size_t index)                = 0;
-        [[nodiscard]] virtual std::vector<RefPtr<ISceneObject>> getChildren()           = 0;
+        [[nodiscard]] virtual const std::vector<RefPtr<ISceneObject>> &getChildren()    = 0;
         [[nodiscard]] virtual RefPtr<ISceneObject> getChild(const QualifiedName &name)  = 0;
         [[nodiscard]] virtual RefPtr<ISceneObject> getChild(UUID64 id)                  = 0;
         [[nodiscard]] virtual RefPtr<ISceneObject>
@@ -135,50 +182,41 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual std::optional<BoundingBox> getBoundingBox() const = 0;
 
-        [[nodiscard]] virtual Result<void, BaseError> loadDependencies(const fs_path &dependencies_path) = 0;
-
-        [[nodiscard]] virtual std::optional<std::filesystem::path> getAnimationsPath() const = 0;
-        [[nodiscard]] virtual std::optional<std::string_view>
-        getAnimationName(AnimationType type) const                                = 0;
-        virtual bool loadAnimationData(std::string_view name, AnimationType type) = 0;
-
-        [[nodiscard]] virtual J3DLight getLightData(int index) = 0;
+        [[nodiscard]] virtual Result<void, BaseError>
+        loadDependencies(const fs_path &dependencies_path) = 0;
 
         [[nodiscard]] virtual bool getCanPerform() const   = 0;
         [[nodiscard]] virtual bool getIsPerforming() const = 0;
         virtual void setIsPerforming(bool performing)      = 0;
+
+        virtual void refreshRenderState() = 0;
 
         virtual Result<void, ObjectError> performScene(float delta_time, bool animate,
                                                        std::vector<RenderInfo> &renderables,
                                                        ResourceCache &resource_cache,
                                                        std::vector<J3DLight> &scene_lights) = 0;
 
-        virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
+        virtual void sync() = 0;
 
-    protected:
-        /* PROTECTED ABSTRACT INTERFACE */
-        [[nodiscard]] virtual std::weak_ptr<J3DAnimationInstance>
-        getAnimationControl(AnimationType type) const = 0;
+        virtual void dump(std::ostream &out, size_t indention, size_t indention_width) const = 0;
 
     public:
         [[nodiscard]] QualifiedName getQualifiedName() const;
 
+        [[nodiscard]] virtual RefPtr<ObjectRenderController> getRenderController() const = 0;
+
         [[nodiscard]] RefPtr<ISceneObject> getChild(const std::string &name) {
             return getChild(QualifiedName(name));
         }
-
-        [[nodiscard]] size_t getAnimationFrames(AnimationType type) const;
-        [[nodiscard]] float getAnimationFrame(AnimationType type) const;
-        void setAnimationFrame(size_t frame, AnimationType type);
-
-        bool startAnimation(AnimationType type);
-        bool stopAnimation(AnimationType type);
 
         virtual u32 getGamePtr() const   = 0;
         virtual void setGamePtr(u32 ptr) = 0;
 
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
+
+    protected:
+        virtual bool reassignWizardBasedOnFields() = 0;
     };
 
     class VirtualSceneObject : public ISceneObject {
@@ -189,7 +227,7 @@ namespace Toolbox::Object {
 
         VirtualSceneObject(const Template &template_) : ISceneObject(), m_nameref() {
             m_template = template_;
-            m_type = template_.type();
+            m_type     = template_.type();
 
             auto wizard = template_.getWizard();
             if (!wizard)
@@ -202,11 +240,15 @@ namespace Toolbox::Object {
         VirtualSceneObject(const Template &template_, std::string_view wizard_name)
             : ISceneObject(), m_nameref() {
             m_template = template_;
-            m_type = template_.type();
+            m_type     = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);
-            if (!wizard)
-                return;
+            if (!wizard) {
+                wizard = template_.getWizard();
+                if (!wizard) {
+                    return;
+                }
+            }
 
             m_template = template_;
             applyWizard(*wizard);
@@ -297,7 +339,11 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override { return {}; }
+        [[nodiscard]] const std::vector<RefPtr<ISceneObject>> &getChildren() override {
+            static std::vector<RefPtr<ISceneObject>> s_null = {};
+            return s_null;
+        }
+
         [[nodiscard]] RefPtr<ISceneObject> getChild(const QualifiedName &name) override {
             return nullptr;
         }
@@ -317,25 +363,22 @@ namespace Toolbox::Object {
         [[nodiscard]] Result<void, BaseError>
         loadDependencies(const fs_path &dependencies_path) override;
 
-        [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
-            return {};
+        [[nodiscard]] RefPtr<ObjectRenderController> getRenderController() const override {
+            return nullptr;
         }
-        [[nodiscard]] std::optional<std::string_view>
-        getAnimationName(AnimationType type) const override {
-            return {};
-        }
-        bool loadAnimationData(std::string_view name, AnimationType type) override { return false; }
-
-        [[nodiscard]] J3DLight getLightData(int index) override { return {}; }
 
         [[nodiscard]] bool getCanPerform() const { return false; }
         [[nodiscard]] bool getIsPerforming() const { return false; }
         void setIsPerforming(bool performing) {}
 
+        void refreshRenderState() override {}
+
         Result<void, ObjectError> performScene(float delta_time, bool animate,
                                                std::vector<RenderInfo> &renderables,
                                                ResourceCache &resource_cache,
                                                std::vector<J3DLight> &scene_lights) override;
+
+        void sync() override {}
 
         u32 getGamePtr() const override { return m_game_ptr; }
         void setGamePtr(u32 ptr) override { m_game_ptr = ptr; }
@@ -343,12 +386,8 @@ namespace Toolbox::Object {
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
     protected:
-        [[nodiscard]] std::weak_ptr<J3DAnimationInstance>
-        getAnimationControl(AnimationType type) const override {
-            return {};
-        }
-
         void applyWizard(const TemplateWizard &wizard);
+        bool reassignWizardBasedOnFields() override { return false; }
 
     public:
         // Inherited via IGameSerializable
@@ -451,7 +490,7 @@ namespace Toolbox::Object {
         Result<void, ObjectGroupError> removeChild(RefPtr<ISceneObject> child) override;
         Result<void, ObjectGroupError> removeChild(const QualifiedName &name) override;
         Result<void, ObjectGroupError> removeChild(size_t index) override;
-        [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override;
+        [[nodiscard]] const std::vector<RefPtr<ISceneObject>> &getChildren() override;
         [[nodiscard]] RefPtr<ISceneObject> getChild(const QualifiedName &name) override;
         [[nodiscard]] RefPtr<ISceneObject> getChild(UUID64 id) override;
         [[nodiscard]] RefPtr<ISceneObject>
@@ -527,9 +566,9 @@ namespace Toolbox::Object {
         PhysicalSceneObject() = default;
 
         PhysicalSceneObject(const Template &template_)
-            : ISceneObject(), m_nameref(), m_transform() {
+            : ISceneObject(), m_nameref(), m_transform(Transform::Identity()) {
             m_template = template_;
-            m_type = template_.type();
+            m_type     = template_.type();
 
             auto wizard = template_.getWizard();
             if (!wizard)
@@ -541,11 +580,15 @@ namespace Toolbox::Object {
         PhysicalSceneObject(const Template &template_, std::string_view wizard_name)
             : ISceneObject(), m_nameref(), m_transform() {
             m_template = template_;
-            m_type = template_.type();
+            m_type     = template_.type();
 
             auto wizard = template_.getWizard(wizard_name);
-            if (!wizard)
-                return;
+            if (!wizard) {
+                wizard = template_.getWizard();
+                if (!wizard) {
+                    return;
+                }
+            }
 
             applyWizard(*wizard);
         }
@@ -573,14 +616,7 @@ namespace Toolbox::Object {
         PhysicalSceneObject(PhysicalSceneObject &&)      = default;
 
     public:
-        ~PhysicalSceneObject() override {
-            m_data.clear();
-            try {
-                m_model_instance.reset();
-            } catch (...) {
-                return;
-            }
-        }
+        ~PhysicalSceneObject() override { m_data.clear(); }
 
         [[nodiscard]] bool isGroupObject() const override { return false; }
 
@@ -642,7 +678,11 @@ namespace Toolbox::Object {
             return std::unexpected(err);
         }
 
-        [[nodiscard]] std::vector<RefPtr<ISceneObject>> getChildren() override { return {}; }
+        [[nodiscard]] const std::vector<RefPtr<ISceneObject>> &getChildren() override {
+            static std::vector<RefPtr<ISceneObject>> s_null = {};
+            return s_null;
+        }
+
         [[nodiscard]] RefPtr<ISceneObject> getChild(const QualifiedName &name) override {
             return {};
         }
@@ -656,12 +696,13 @@ namespace Toolbox::Object {
 
         [[nodiscard]] std::optional<Transform> getTransform() const override { return m_transform; }
         Result<void, MetaError> setTransform(const Transform &transform) override {
-            // TODO: Set the properties transform too
             m_transform = transform;
-            if (m_model_instance) {
-                m_model_instance->SetTranslation(transform.m_translation);
-                m_model_instance->SetRotation(transform.m_rotation);
-                m_model_instance->SetScale(transform.m_scale);
+
+            RefPtr<J3DModelInstance> selected_model = m_render_controller->getRenderModel();
+            if (selected_model) {
+                selected_model->SetTranslation(transform.m_translation);
+                selected_model->SetRotation(transform.m_rotation);
+                selected_model->SetScale(transform.m_scale);
             }
 
             auto transform_value_ptr = getMember("Transform").value();
@@ -681,7 +722,8 @@ namespace Toolbox::Object {
         }
 
         [[nodiscard]] std::optional<BoundingBox> getBoundingBox() const override {
-            if (!m_model_instance)
+            RefPtr<J3DModelInstance> selected_model = m_render_controller->getRenderModel();
+            if (!selected_model)
                 return {};
 
             std::optional<Transform> transform = getTransform();
@@ -691,7 +733,7 @@ namespace Toolbox::Object {
             glm::vec3 center, size;
 
             glm::vec3 min, max;
-            m_model_instance->GetBoundingBox(min, max);
+            selected_model->GetBoundingBox(min, max);
 
             max.x *= transform->m_scale.x;
             max.y *= transform->m_scale.y;
@@ -710,24 +752,22 @@ namespace Toolbox::Object {
         [[nodiscard]] Result<void, BaseError>
         loadDependencies(const fs_path &dependencies_path) override;
 
-        [[nodiscard]] std::optional<std::filesystem::path> getAnimationsPath() const override {
-            return "./scene/mapobj/";
+        [[nodiscard]] RefPtr<ObjectRenderController> getRenderController() const override {
+            return m_render_controller;
         }
-        std::optional<std::string_view> getAnimationName(AnimationType type) const override {
-            return {};
-        }
-        bool loadAnimationData(std::string_view name, AnimationType type) override { return false; }
-
-        J3DLight getLightData(int index) override { return m_model_instance->GetLight(index); }
 
         [[nodiscard]] bool getCanPerform() const { return true; }
         [[nodiscard]] bool getIsPerforming() const { return m_is_performing; }
         void setIsPerforming(bool performing) { m_is_performing = performing; }
 
+        void refreshRenderState() override;
+
         Result<void, ObjectError> performScene(float delta_time, bool animate,
                                                std::vector<RenderInfo> &renderables,
                                                ResourceCache &resource_cache,
                                                std::vector<J3DLight> &scene_lights) override;
+
+        void sync() override;
 
         u32 getGamePtr() const override { return m_game_ptr; }
         void setGamePtr(u32 ptr) override { m_game_ptr = ptr; }
@@ -735,15 +775,13 @@ namespace Toolbox::Object {
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
     protected:
-        std::weak_ptr<J3DAnimationInstance> getAnimationControl(AnimationType type) const override {
-            return {};
-        }
-
         void applyWizard(const TemplateWizard &wizard);
+        bool reassignWizardBasedOnFields() override;
 
         Result<void, FSError> loadRenderData(const std::filesystem::path &asset_path,
-                                             const TemplateRenderInfo &info,
                                              ResourceCache &resource_cache);
+
+        void bareRefreshRenderState_();
 
     public:
         // Inherited via IGameSerializable
@@ -753,53 +791,19 @@ namespace Toolbox::Object {
         Result<void, SerialError> gameSerialize(Serializer &out) const override;
         Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
-        ScopePtr<ISmartResource> clone(bool deep) const override {
-            auto obj         = make_scoped<PhysicalSceneObject>();
-            obj->m_type      = m_type;
-            obj->m_nameref   = m_nameref;
-            obj->m_parent    = nullptr;
-            obj->m_transform = m_transform;
-
-            obj->m_scene_resource_path = m_scene_resource_path;
-
-            obj->m_members.reserve(m_members.size());
-            if (deep) {
-                for (const auto &member : m_members) {
-                    auto new_member = make_deep_clone<MetaMember>(member);
-                    obj->m_members.push_back(std::move(new_member));
-                }
-            } else {
-                for (const auto &member : m_members) {
-                    auto new_member = make_clone<MetaMember>(member);
-                    obj->m_members.push_back(std::move(new_member));
-                }
-            }
-#if 0
-            if (m_model_instance)
-                obj->m_model_instance = make_referable<J3DModelInstance>(*m_model_instance);
-
-            if (m_model_data)
-                obj->m_model_data = make_referable<J3DModelData>(*m_model_data);
-#else
-
-            obj->m_template = m_template;
-            obj->m_wizard   = m_wizard;
-
-            std::optional<TemplateWizard> wizard = m_template.getWizard(obj->m_wizard);
-            if (wizard) {
-                obj->loadRenderData(obj->m_scene_resource_path, wizard->m_render_info,
-                                    getResourceCache());
-            }
-#endif
-
-            return obj;
-        }
+        ScopePtr<ISmartResource> clone(bool deep) const override;
 
     protected:
+        // NPC Logic
         void HelperUpdateKinojiRender();
         void HelperUpdateKinopioRender();
         void HelperUpdateMareRender();
         void HelperUpdateMonteRender();
+
+        // Object Logic
+        void HelperUpdateHideObjPictureTwinRender();
+        void HelperUpdateWaterHitPictureHideObjRender();
+        void HelperUpdateWoodblockRender();
 
     private:
         UUID64 m_UUID64;
@@ -813,7 +817,6 @@ namespace Toolbox::Object {
         mutable MetaStruct::CacheMemberT m_member_cache;
 
         std::optional<Transform> m_transform;
-        RefPtr<J3DModelInstance> m_model_instance;
         RefPtr<J3DModelData> m_model_data;
 
         bool m_is_performing = true;
@@ -823,6 +826,8 @@ namespace Toolbox::Object {
         bool m_include_custom = false;
         Template m_template;
         std::string m_wizard;
+
+        RefPtr<ObjectRenderController> m_render_controller;
 
         fs_path m_scene_resource_path;
     };

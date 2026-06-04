@@ -50,6 +50,8 @@ namespace Toolbox::Object {
         MTX34,
         RGB,
         RGBA,
+        RGB32,
+        RGBA32,
         UNKNOWN,
     };
 
@@ -109,12 +111,20 @@ namespace Toolbox::Object {
         static constexpr MetaType value = MetaType::MTX34;
     };
 
-    template <> struct map_to_type_enum<Color::RGB24> {
+    template <> struct map_to_type_enum<Color::RGB8> {
         static constexpr MetaType value = MetaType::RGB;
     };
 
-    template <> struct map_to_type_enum<Color::RGBA32> {
+    template <> struct map_to_type_enum<Color::RGBA8> {
         static constexpr MetaType value = MetaType::RGBA;
+    };
+
+    template <> struct map_to_type_enum<Color::RGB32> {
+        static constexpr MetaType value = MetaType::RGB32;
+    };
+
+    template <> struct map_to_type_enum<Color::RGBA32> {
+        static constexpr MetaType value = MetaType::RGBA32;
     };
 
     template <typename T, bool comment = false>
@@ -216,6 +226,18 @@ namespace Toolbox::Object {
         static constexpr size_t alignment      = 1;
     };
 
+    template <> struct meta_type_info<MetaType::RGB32> {
+        static constexpr std::string_view name = "rgb32";
+        static constexpr size_t size           = 12;
+        static constexpr size_t alignment      = 4;
+    };
+
+    template <> struct meta_type_info<MetaType::RGBA32> {
+        static constexpr std::string_view name = "rgba32";
+        static constexpr size_t size           = 16;
+        static constexpr size_t alignment      = 4;
+    };
+
     constexpr std::string_view meta_type_name(MetaType type) {
         switch (type) {
         case MetaType::BOOL:
@@ -248,6 +270,10 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::RGB>::name;
         case MetaType::RGBA:
             return meta_type_info<MetaType::RGBA>::name;
+        case MetaType::RGB32:
+            return meta_type_info<MetaType::RGB32>::name;
+        case MetaType::RGBA32:
+            return meta_type_info<MetaType::RGBA32>::name;
         case MetaType::UNKNOWN:
         default:
             return meta_type_info<MetaType::UNKNOWN>::name;
@@ -286,6 +312,10 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::RGB>::size;
         case MetaType::RGBA:
             return meta_type_info<MetaType::RGBA>::size;
+        case MetaType::RGB32:
+            return meta_type_info<MetaType::RGB32>::size;
+        case MetaType::RGBA32:
+            return meta_type_info<MetaType::RGBA32>::size;
         case MetaType::UNKNOWN:
         default:
             return meta_type_info<MetaType::UNKNOWN>::size;
@@ -322,6 +352,10 @@ namespace Toolbox::Object {
             return meta_type_info<MetaType::RGB>::alignment;
         case MetaType::RGBA:
             return meta_type_info<MetaType::RGBA>::alignment;
+        case MetaType::RGB32:
+            return meta_type_info<MetaType::RGB32>::alignment;
+        case MetaType::RGBA32:
+            return meta_type_info<MetaType::RGBA32>::alignment;
         case MetaType::UNKNOWN:
         default:
             return meta_type_info<MetaType::UNKNOWN>::alignment;
@@ -680,11 +714,39 @@ namespace Toolbox::Object {
     }
 
     inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value,
-                                                const Color::RGB24 &value, MetaType type) {
+                                                const Color::RGB8 &value, MetaType type) {
         try {
             switch (type) {
             case MetaType::RGB:
-                return meta_value->set<Color::RGB24>(value);
+                return meta_value->set<Color::RGB8>(value);
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value,
+                                                const Color::RGBA8 &value, MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::RGBA:
+                return meta_value->set<Color::RGBA8>(value);
+            default:
+                return false;
+            }
+        } catch (std::exception &e) {
+            return make_meta_error<bool>(e.what(), "T", magic_enum::enum_name(type));
+        }
+    }
+
+    inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value,
+                                                const Color::RGB32 &value, MetaType type) {
+        try {
+            switch (type) {
+            case MetaType::RGB32:
+                return meta_value->set<Color::RGB32>(value);
             default:
                 return false;
             }
@@ -697,7 +759,7 @@ namespace Toolbox::Object {
                                                 const Color::RGBA32 &value, MetaType type) {
         try {
             switch (type) {
-            case MetaType::RGBA:
+            case MetaType::RGBA32:
                 return meta_value->set<Color::RGBA32>(value);
             default:
                 return false;

@@ -41,21 +41,41 @@ namespace Toolbox::Object {
             return {};
         }
 
+
+
         Result<void, SerialError> deserialize(Deserializer &in) override {
-            m_name_hash     = in.read<u16, std::endian::big>();
-            auto str_result = String::fromGameEncoding(in.readString<std::endian::big>());
+            const u16 proposed_hash        = in.read<u16, std::endian::big>();
+            const std::string encoded_name = in.readString<std::endian::big>();
+            const u16 calculated_hash      = calcKeyCode(encoded_name);
+
+            auto str_result = String::fromGameEncoding(encoded_name);
             if (!str_result) {
                 return make_serial_error<void>(in, str_result.error().m_message[0]);
             }
-            m_name = str_result.value();
+
+            m_name      = str_result.value();
+            m_name_hash = calculated_hash;
+
+            if (proposed_hash != calculated_hash) {
+                TOOLBOX_WARN_V(
+                    "[NameRef] Proposed hash {} did not match calculated hash {} for string {}",
+                    proposed_hash, calculated_hash, m_name);
+            }
+
             return {};
         }
 
         [[nodiscard]] static constexpr u16 calcKeyCode(std::string_view str) {
             u32 code = 0;
-            for (auto &ch : str) {
+
+            for (size_t i = 0; i < str.length(); ++i) {
+                const u8 ch = static_cast<u8>(str[i]);
+                if (ch == '\0') {
+                    break;
+                }
                 code = ch + (code * 3);
             }
+
             return code & 0xFFFF;
         }
 

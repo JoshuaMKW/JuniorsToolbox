@@ -113,7 +113,7 @@ namespace Toolbox::Scene {
             return "";
         }
 
-        std::vector<RefPtr<ISceneObject>> scene_list = root->getChildren();
+        const std::vector<RefPtr<ISceneObject>> &scene_list = root->getChildren();
         if (scene >= scene_list.size()) {
             LogError(make_error<std::string>("SCENE_LAYOUT",
                                              std::format("Scene {} doesn't exist!", scene))
@@ -121,7 +121,7 @@ namespace Toolbox::Scene {
             return "";
         }
 
-        std::vector<RefPtr<ISceneObject>> scenario_list = scene_list[scene]->getChildren();
+        const std::vector<RefPtr<ISceneObject>> &scenario_list = scene_list[scene]->getChildren();
         if (scenario >= scenario_list.size()) {
             LogError(make_error<std::string>(
                          "SCENE_LAYOUT",
@@ -163,7 +163,7 @@ namespace Toolbox::Scene {
             return false;
         }
 
-        std::vector<RefPtr<ISceneObject>> scene_list = root->getChildren();
+        const std::vector<RefPtr<ISceneObject>> &scene_list = root->getChildren();
         if (scene >= scene_list.size()) {
             LogError(make_error<std::string>("SCENE_LAYOUT",
                                              std::format("Scene {} doesn't exist!", scene))
@@ -171,7 +171,7 @@ namespace Toolbox::Scene {
             return false;
         }
 
-        std::vector<RefPtr<ISceneObject>> scenario_list = scene_list[scene]->getChildren();
+        const std::vector<RefPtr<ISceneObject>> &scenario_list = scene_list[scene]->getChildren();
         if (scenario >= scenario_list.size()) {
             LogError(make_error<std::string>(
                          "SCENE_LAYOUT",
@@ -214,17 +214,17 @@ namespace Toolbox::Scene {
             return false;
         }
 
-        std::vector<RefPtr<ISceneObject>> groups = root->getChildren();
+        const std::vector<RefPtr<ISceneObject>> &groups = root->getChildren();
         if (groups.empty()) {
             LogError(make_error<std::string>("SCENE_LAYOUT", "stageArc.bin stagelist doesn't exist!")
                          .error());
             return false;
         }
 
-        std::vector<RefPtr<ISceneObject>> scene_list = groups[0]->getChildren();
+        const std::vector<RefPtr<ISceneObject>> &scene_list = groups[0]->getChildren();
 
         for (size_t i = 0; i < scene_list.size(); ++i) {
-            std::vector<RefPtr<ISceneObject>> scenario_list = scene_list[i]->getChildren();
+            const std::vector<RefPtr<ISceneObject>> &scenario_list = scene_list[i]->getChildren();
             for (size_t j = 0; j < scenario_list.size(); ++j) {
                 std::string name;
 
@@ -269,7 +269,7 @@ namespace Toolbox::Scene {
             return 0;
         }
 
-        std::vector<RefPtr<ISceneObject>> scene_list = root->getChildren();
+        const std::vector<RefPtr<ISceneObject>> &scene_list = root->getChildren();
         if (scene >= scene_list.size()) {
             LogError(make_error<std::optional<size_t>>(
                          "SCENE_LAYOUT", std::format("Scene {} doesn't exist!", scene))
@@ -418,7 +418,7 @@ namespace Toolbox::Scene {
         }
 
         RefPtr<ISceneObject> src_scene_obj                  = root->getChildren()[src_scene];
-        std::vector<RefPtr<ISceneObject>> src_scenario_list = src_scene_obj->getChildren();
+        const std::vector<RefPtr<ISceneObject>> &src_scenario_list = src_scene_obj->getChildren();
 
         if (src_scenario >= src_scenario_list.size()) {
             LogError(make_error<bool>("SCENE_LAYOUT", "Invalid scenario index!").error());
@@ -426,16 +426,17 @@ namespace Toolbox::Scene {
         }
 
         RefPtr<ISceneObject> dst_scene_obj = root->getChildren()[dst_scene];
-        std::vector<RefPtr<ISceneObject>> dst_scenario_list;
         if (src_scene == dst_scene) {
-            dst_scenario_list = src_scenario_list;
+            if (dst_scenario >= src_scenario_list.size()) {
+                LogError(make_error<bool>("SCENE_LAYOUT", "Invalid scenario index!").error());
+                return false;
+            }
         } else {
-            dst_scenario_list = root->getChildren()[dst_scene]->getChildren();
-        }
-
-        if (dst_scenario >= dst_scenario_list.size()) {
-            LogError(make_error<bool>("SCENE_LAYOUT", "Invalid scenario index!").error());
-            return false;
+            const std::vector<RefPtr<ISceneObject>> &dst_scenario_list = dst_scene_obj->getChildren();
+            if (dst_scenario >= dst_scenario_list.size()) {
+                LogError(make_error<bool>("SCENE_LAYOUT", "Invalid scenario index!").error());
+                return false;
+            }
         }
 
         RefPtr<ISceneObject> scenario = src_scenario_list[src_scenario];
@@ -504,7 +505,7 @@ namespace Toolbox::Scene {
         }
 
         RefPtr<ISceneObject> scene_obj = root->getChildren()[scene];
-        std::vector<RefPtr<ISceneObject>> scenario_list = scene_obj->getChildren();
+        const std::vector<RefPtr<ISceneObject>> &scenario_list = scene_obj->getChildren();
 
         if (scenario >= scenario_list.size()) {
             LogError(make_error<bool>("SCENE_LAYOUT", "Invalid scenario index!").error());

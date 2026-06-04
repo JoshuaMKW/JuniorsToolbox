@@ -121,8 +121,8 @@ namespace Toolbox::UI {
             return;
         }
 
-        const char *hostname = netpp::get_ip_address_info(CLIENT_HOST).m_ipv4;
-        if (!m_http_github_client->connect(hostname, CLIENT_PORT)) {
+        netpp::HostIPInfo ipinfo  = netpp::get_ip_address_info(CLIENT_HOST);
+        if (!m_http_github_client->connect(ipinfo.m_ipv4, CLIENT_PORT, 1000)) {  // Timeout after 1 second
             TOOLBOX_ERROR("[UPDATER] Failed to connect HTTPS client for updater!");
             m_is_valid = false;
             close();

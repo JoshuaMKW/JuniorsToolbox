@@ -1638,7 +1638,7 @@ namespace Toolbox {
             cacheIndex_(src_parent);
         }
 
-        if (row < (int64_t)m_row_map[map_key].size()) {
+        if (row >= 0 && row < (int64_t)m_row_map[map_key].size()) {
             int64_t the_row = m_row_map[map_key][row];
             return toProxyIndex(m_source_model->getIndex(the_row, column, src_parent));
         }

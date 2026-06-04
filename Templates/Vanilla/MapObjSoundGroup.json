@@ -1,0 +1,36 @@
+﻿{
+    "Sound Group": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "SoundName": {
+                "Type": "STRING",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Ocean Sounds": {
+                "Name": "通常の波音",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "SoundName": "ms_sea"
+                }
+            },
+            "Wharf Sounds": {
+                "Name": "波止場の波音",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "SoundName": "ms_harbor"
+                }
+            }
+        }
+    }
+}

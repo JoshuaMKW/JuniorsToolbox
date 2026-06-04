@@ -49,7 +49,11 @@ namespace Toolbox::Scene {
             if (m_root->getQualifiedName() == name) {
                 return m_root;
             }
-            return m_root->getChild(name);
+            if (name.depth() == 1) {
+                return nullptr;
+            }
+            QualifiedName child = QualifiedName(name.begin() + 1, name.end());
+            return m_root->getChild(child);
         }
 
         RefPtr<Object::ISceneObject> findObject(UUID64 id) const {

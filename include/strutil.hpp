@@ -15,14 +15,14 @@
 #include "core/error.hpp"
 
 #ifdef TOOLBOX_USE_ICONV
-#define GAME_ENCODING  "SHIFT_JIS"
+#define GAME_ENCODING  "cp932"
 #define IMGUI_ENCODING "UTF-8"
 #else
 //#ifndef TOOLBOX_USE_EXPLICIT_ICU_CONVERTERS
 //#define TOOLBOX_USE_EXPLICIT_ICU_CONVERTERS
 //#endif
 
-#define GAME_ENCODING  "Shift_JIS"
+#define GAME_ENCODING  "cp932"
 #define IMGUI_ENCODING "UTF-8"
 #endif
 

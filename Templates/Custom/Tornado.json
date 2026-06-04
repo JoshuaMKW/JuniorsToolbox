@@ -22,15 +22,15 @@
                 "Type": "STRING",
                 "ArraySize": 1
             },
-            "LightCount": {
+            "LightNum": {
                 "Type": "U32",
                 "ArraySize": 1
             },
             "LightArray": {
                 "Type": "LightInfo",
-                "ArraySize": "LightCount"
+                "ArraySize": "LightNum"
             },
-            "Model": {
+            "Object": {
                 "Type": "STRING",
                 "ArraySize": 1
             },
@@ -44,10 +44,6 @@
             },
             "FinalPush": {
                 "Type": "BYTE",
-                "ArraySize": 1
-            },
-            "DisplayModel": {
-                "Type": "COMMENT",
                 "ArraySize": 1
             }
         },
@@ -72,22 +68,21 @@
                             0
                         ],
                         [
-                            0,
-                            0,
-                            0
+                            1,
+                            1,
+                            1
                         ]
                     ],
                     "Character": "Generated from Bin Editor Template by Junior's Toolbox",
-                    "LightCount": 0,
+                    "LightNum": 0,
                     "LightArray": {
                         "ID": 0,
-                        "Name": "LightX"
+                        "Name": "なし"
                     },
-                    "Model": "Generated from Bin Editor Template by Junior's Toolbox",
+                    "Object": "Generated from Bin Editor Template by Junior's Toolbox",
                     "Rail": "(null)",
                     "Strength": 0,
-                    "FinalPush": 0,
-                    "DisplayModel": "Generated from Bin Editor Template by Junior's Toolbox"
+                    "FinalPush": 0
                 }
             }
         }

@@ -1,0 +1,37 @@
+﻿{
+    "Princess Peach Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SharedSetNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "ピーチ姫マネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "npc/npc_peach"
+                    ]
+                },
+                "Members": {
+                    "Character": "ピーチ姫マネージャー キャラ",
+                    "MaxNum": 1,
+                    "SharedSetNum": 0
+                }
+            }
+        }
+    }
+}

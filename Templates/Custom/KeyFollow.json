@@ -22,15 +22,15 @@
                 "Type": "STRING",
                 "ArraySize": 1
             },
-            "LightCount": {
+            "LightNum": {
                 "Type": "U32",
                 "ArraySize": 1
             },
             "LightArray": {
                 "Type": "LightInfo",
-                "ArraySize": "LightCount"
+                "ArraySize": "LightNum"
             },
-            "Model": {
+            "Object": {
                 "Type": "STRING",
                 "ArraySize": 1
             }
@@ -62,12 +62,12 @@
                         ]
                     ],
                     "Character": "KeyFollow キャラ",
-                    "LightCount": 0,
+                    "LightNum": 0,
                     "LightArray": {
                         "ID": 0,
-                        "Name": "LightX"
+                        "Name": "なし"
                     },
-                    "Model": "key_follow"
+                    "Object": "key_follow"
                 }
             }
         }

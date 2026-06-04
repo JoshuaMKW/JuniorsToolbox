@@ -1,0 +1,106 @@
+﻿{
+    "Red Fish": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Manager": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Rail": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "GroupNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SchoolEventID": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "回遊魚Ｄ",
+                "Dependencies": {
+                    "Managers": {
+                        "FishoidManager": {
+                            "Name": "回遊魚マネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "回遊魚マネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "回遊魚マネージャー",
+                    "Rail": "(null)",
+                    "GroupNum": 1,
+                    "SchoolEventID": -1
+                }
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [
+                    "fish_swim.bck"
+                ],
+                "Model": "fish/fishd.bmd"
+            }
+        }
+    }
+}

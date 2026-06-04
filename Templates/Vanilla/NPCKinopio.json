@@ -1,0 +1,446 @@
+﻿{
+    "Toad": {
+        "Enums": {
+            "Accessories": {
+                "Type": "INT",
+                "Flags": {
+                    "Sunglasses": "0x1"
+                },
+                "Multi": true
+            }
+        },
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Manager": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Rail": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "BodyColor": {
+                "Type": "INT",
+                "Min": 0,
+                "Max": 4,
+                "ArraySize": 1
+            },
+            "ClothesColor": {
+                "Type": "INT",
+                "Min": 0,
+                "Max": 4,
+                "ArraySize": 1
+            },
+            "PollutionValue": {
+                "Type": "INT",
+                "Min": 0,
+                "Max": 255,
+                "ArraySize": 1
+            },
+            "Acc1Color": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Acc2Color": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Acc3Color": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Accessory": {
+                "Type": "Accessories",
+                "ArraySize": 1
+            },
+            "Action": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ThrowFlag": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ThrowVelH": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ThrowVelV": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "RewardID": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "キノピオ",
+                "Dependencies": {
+                    "Managers": {
+                        "KinopioManager": {
+                            "Name": "キノピオマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1.25,
+                            1.25,
+                            1.25
+                        ]
+                    ],
+                    "Character": "キノピオマネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "キノピオマネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 1,
+                    "ClothesColor": 1,
+                    "PollutionValue": 0,
+                    "Acc1Color": 255,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": -1,
+                    "Action": 0,
+                    "ThrowFlag": 100,
+                    "ThrowVelH": -1,
+                    "ThrowVelV": -1,
+                    "RewardID": -1
+                }
+            },
+            "Yellow Toad": {
+                "Name": "キノピオＡ",
+                "Dependencies": {
+                    "Managers": {
+                        "KinopioManager": {
+                            "Name": "キノピオマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1.25,
+                            1.25,
+                            1.25
+                        ]
+                    ],
+                    "Character": "キノピオマネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "キノピオマネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 3,
+                    "ClothesColor": 3,
+                    "PollutionValue": 0,
+                    "Acc1Color": 255,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": -1,
+                    "Action": 0,
+                    "ThrowFlag": 100,
+                    "ThrowVelH": -1,
+                    "ThrowVelV": -1,
+                    "RewardID": -1
+                }
+            },
+            "Purple Toad": {
+                "Name": "キノピオＢ",
+                "Dependencies": {
+                    "Managers": {
+                        "KinopioManager": {
+                            "Name": "キノピオマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1.25,
+                            1.25,
+                            1.25
+                        ]
+                    ],
+                    "Character": "キノピオマネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "キノピオマネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 4,
+                    "ClothesColor": 4,
+                    "PollutionValue": 0,
+                    "Acc1Color": 255,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": -1,
+                    "Action": 0,
+                    "ThrowFlag": 100,
+                    "ThrowVelH": -1,
+                    "ThrowVelV": -1,
+                    "RewardID": -1
+                }
+            },
+            "Red Toad": {
+                "Name": "キノピオＣ",
+                "Dependencies": {
+                    "Managers": {
+                        "KinopioManager": {
+                            "Name": "キノピオマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1.25,
+                            1.25,
+                            1.25
+                        ]
+                    ],
+                    "Character": "キノピオマネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "キノピオマネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 1,
+                    "ClothesColor": 1,
+                    "PollutionValue": 0,
+                    "Acc1Color": 255,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": -1,
+                    "Action": 0,
+                    "ThrowFlag": 100,
+                    "ThrowVelH": -1,
+                    "ThrowVelV": -1,
+                    "RewardID": -1
+                }
+            },
+            "Green Toad": {
+                "Name": "キノピオＤ",
+                "Dependencies": {
+                    "Managers": {
+                        "KinopioManager": {
+                            "Name": "キノピオマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1.25,
+                            1.25,
+                            1.25
+                        ]
+                    ],
+                    "Character": "キノピオマネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "キノピオマネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 2,
+                    "ClothesColor": 2,
+                    "PollutionValue": 0,
+                    "Acc1Color": 255,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": -1,
+                    "Action": 0,
+                    "ThrowFlag": 100,
+                    "ThrowVelH": -1,
+                    "ThrowVelV": -1,
+                    "RewardID": -1
+                }
+            },
+            "Blue Toad": {
+                "Name": "キノピオＥ",
+                "Dependencies": {
+                    "Managers": {
+                        "KinopioManager": {
+                            "Name": "キノピオマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1.25,
+                            1.25,
+                            1.25
+                        ]
+                    ],
+                    "Character": "キノピオマネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "キノピオマネージャー",
+                    "Rail": "(null)",
+                    "BodyColor": 0,
+                    "ClothesColor": 0,
+                    "PollutionValue": 0,
+                    "Acc1Color": 255,
+                    "Acc2Color": 255,
+                    "Acc3Color": 255,
+                    "Accessory": -1,
+                    "Action": 0,
+                    "ThrowFlag": 100,
+                    "ThrowVelH": -1,
+                    "ThrowVelV": -1,
+                    "RewardID": -1
+                }
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Textures": {
+                    "H_ma_rak_dummy": "map/pollution/h_ma_rak.bti"
+                },
+                "Animations": [],
+                "Model": "kinopio/kinopio_body.bmd"
+            }
+        }
+    }
+}

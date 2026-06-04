@@ -157,7 +157,7 @@ namespace Toolbox::Object {
         MetaMember() = default;
 
     public:
-        [[nodiscard]] constexpr std::string name() const { return m_name; }
+        [[nodiscard]] constexpr const std::string &name() const { return m_name; }
         [[nodiscard]] constexpr MetaStruct *parent() const { return m_parent; }
 
         [[nodiscard]] QualifiedName qualifiedName() const;
@@ -253,6 +253,13 @@ namespace Toolbox::Object {
             return isTypeValue() &&
                    std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::RGBA;
         }
+        [[nodiscard]] bool isTypeRGB32() const {
+            return isTypeValue() && std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::RGB32;
+        }
+        [[nodiscard]] bool isTypeRGBA32() const {
+            return isTypeValue() &&
+                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::RGBA32;
+        }
         [[nodiscard]] bool isTypeUnknown() const {
             return isTypeValue() &&
                    std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::UNKNOWN;
@@ -267,7 +274,7 @@ namespace Toolbox::Object {
         void updateReferenceToList(const std::vector<RefPtr<MetaMember>> &list);
 
         void syncArray() {
-            size_t asize = arraysize();
+            const size_t asize = arraysize();
             if (m_values.size() == asize)
                 return;
 
@@ -469,6 +476,16 @@ namespace Toolbox::Object {
         }
         auto enum_result = std::get<RefPtr<MetaEnum>>(member->defaultValue());
         return enum_result->enums();
+    }
+
+    [[nodiscard]] inline Result<bool, MetaError>
+    getMetaEnumBitmasked(RefPtr<MetaMember> member) {
+        if (!member->isTypeEnum()) {
+            return make_meta_error<bool>(
+                "Can't get bitmasked flag of non-enum", "!enum", "MetaEnum");
+        }
+        auto enum_result = std::get<RefPtr<MetaEnum>>(member->defaultValue());
+        return enum_result->isBitMasked();
     }
 
 }  // namespace Toolbox::Object

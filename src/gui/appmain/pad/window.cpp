@@ -1351,7 +1351,7 @@ namespace Toolbox::UI {
             if (m_pad_recorder.isCameraInversed()) {
                 TOOLBOX_ERROR("[PAD RECORD] Player pointer is null. Please ensure that the game is "
                               "running and the player is loaded.");
-                RefPtr<RailNode> node = make_referable<RailNode>(0, 0, 0);
+                RefPtr<Rail::RailNode> node = make_referable<Rail::RailNode>(0, 0, 0);
                 m_pad_rail.addNode(node);
                 if (m_pad_rail.nodes().size() > 1) {
                     size_t prev_node_index = m_pad_rail.nodes().size() - 2;
@@ -1378,8 +1378,8 @@ namespace Toolbox::UI {
             glm::vec<3, s16> node_position = {static_cast<s16>(player_position.x),
                                               static_cast<s16>(player_position.y),
                                               static_cast<s16>(player_position.z)};
-            RefPtr<RailNode> node =
-                make_referable<RailNode>(node_position.x, node_position.y, node_position.z);
+            RefPtr<Rail::RailNode> node =
+                make_referable<Rail::RailNode>(node_position.x, node_position.y, node_position.z);
             m_pad_rail.addNode(node);
             if (m_pad_rail.nodes().size() > 1) {
                 size_t prev_node_index = m_pad_rail.nodes().size() - 2;
@@ -1433,7 +1433,7 @@ namespace Toolbox::UI {
         std::vector<NodeData> node_datas;
 
         std::vector<Rail::Rail::node_ptr_t> rail_nodes = m_pad_rail.nodes();
-        for (const RefPtr<RailNode> &node : rail_nodes) {
+        for (const RefPtr<Rail::RailNode> &node : rail_nodes) {
             NodeData node_data;
 
             glm::vec3 node_position   = node->getPosition();
@@ -1559,7 +1559,7 @@ namespace Toolbox::UI {
             MainApplication::instance().getTaskCommunicator();
 
         if (!m_pad_rail.nodes().empty()) {
-            RefPtr<RailNode> from_node = m_pad_rail.nodes()[from_link - 'A'];
+            RefPtr<Rail::RailNode> from_node = m_pad_rail.nodes()[from_link - 'A'];
 
             PadRecorder::PadFrameData data = m_pad_recorder.getPadFrameData(from_link, to_link, 0);
 

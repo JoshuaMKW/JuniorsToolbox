@@ -8,10 +8,10 @@
 #include <optional>
 
 namespace Toolbox::Object {
-    MetaStruct::MetaStruct(std::string_view name, std::vector<MetaMember> members) : m_name(name) {
-        for (const auto &m : members) {
-            auto p = make_referable<MetaMember>(m);
-            m_members.push_back(std::move(p));
+    MetaStruct::MetaStruct(std::string_view name, const std::vector<MetaMember> &members) : m_name(name) {
+        m_members.resize(members.size());
+        for (size_t i = 0; i < members.size(); ++i) {
+            m_members[i] = std::move(make_referable<MetaMember>(members[i]));
         }
     }
 

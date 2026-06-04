@@ -181,7 +181,7 @@ namespace Toolbox {
             m_resource_manager.includeResourcePath(cwd / "Images", true);
             m_resource_manager.includeResourcePath(cwd / "Images/Icons", true);
             m_resource_manager.includeResourcePath(cwd / "Images/Icons/Filesystem", true);
-            m_resource_manager.includeResourcePath(cwd / "Templates", false);
+            //m_resource_manager.includeResourcePath(cwd / "Templates", false);
             m_resource_manager.includeResourcePath(cwd / "Themes", true);
         }
 

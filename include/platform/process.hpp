@@ -38,6 +38,7 @@ namespace Toolbox::Platform {
         ProcessID m_thread_id      = std::numeric_limits<ProcessID>::max();
     };
 
+    bool IsFastProcessRunning(const ProcessInformation &process);
     bool IsExProcessRunning(const ProcessInformation &process);
     Result<ProcessInformation> CreateExProcess(const fs_path &program_path,
                                                std::string_view cmdargs, bool background_proc = false);

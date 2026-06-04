@@ -89,6 +89,16 @@ namespace Toolbox::Object {
             return {};
         }
 
+        [[nodiscard]] std::optional<TemplateWizard>
+        getWizardByObjName(std::string_view obj_name) const {
+            for (const auto &wizard : m_wizards) {
+                if (wizard.m_obj_name == obj_name) {
+                    return wizard;
+                }
+            }
+            return {};
+        }
+
         Template &operator=(const Template &other) {
             m_type    = other.m_type;
             m_wizards = other.m_wizards;
@@ -124,8 +134,8 @@ namespace Toolbox::Object {
         std::optional<MetaMember>
         loadMemberPrimitive(std::string_view name, std::string_view type,
                             MetaMember::size_type array_size,
-                            const std::variant<s64, u64, float, double> &var_min,
-                            const std::variant<s64, u64, float, double> &var_max);
+                            const std::variant<std::monostate, s64, u64, float, double> &var_min,
+                            const std::variant<std::monostate, s64, u64, float, double> &var_max);
 
         Result<TemplateDependencies, JSONError> loadDependencies(const json_t &dependencies);
         Result<void, JSONError> loadMembers(const json_t &members, std::vector<MetaMember> &out);
@@ -154,6 +164,8 @@ namespace Toolbox::Object {
         static Result<void, FSError> initialize(const fs_path &cache_path);
         static create_t create(std::string_view type, bool include_custom);
         static std::vector<create_ret_t> createAll(bool include_custom);
+
+        static ScopePtr<TemplateRenderInfo> findRenderInfo(const std::string &obj_field);
 
         static Result<void, FSError> loadFromCacheBlob(bool is_custom);
         static Result<void, FSError> saveToCacheBlob(bool is_custom);

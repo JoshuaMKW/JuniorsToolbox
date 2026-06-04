@@ -1,0 +1,973 @@
+﻿{
+    "Camera Map Info": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Position": {
+                "Type": "VEC3F",
+                "ArraySize": 1
+            },
+            "Rotation": {
+                "Type": "VEC3F",
+                "ArraySize": 1
+            },
+            "CamKind": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "ReturnFlag": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Time": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "マップツールカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 0,
+                    "ReturnFlag": -1,
+                    "Time": 0
+                }
+            },
+            "Start Camera": {
+                "Name": "開始カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 22,
+                    "ReturnFlag": -1,
+                    "Time": 0
+                }
+            },
+            "After Start Camera": {
+                "Name": "開始後カメラ0",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 0,
+                    "ReturnFlag": -1,
+                    "Time": 0
+                }
+            },
+            "100 Coin Shine Camera": {
+                "Name": "シャイン（１００枚コイン用）カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 31,
+                    "ReturnFlag": -1,
+                    "Time": 960
+                }
+            },
+            "Red Coin Shine Camera": {
+                "Name": "赤コインシャインカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 31,
+                    "ReturnFlag": -1,
+                    "Time": 650
+                }
+            },
+            "Object Spawn Shine Camera": {
+                "Name": "シャイン（obj_name）カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 31,
+                    "ReturnFlag": -1,
+                    "Time": 960
+                }
+            },
+            "Boss Shine Camera": {
+                "Name": "ボスシャインカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 33,
+                    "ReturnFlag": -1,
+                    "Time": 720
+                }
+            },
+            "Eely-Mouth Boss Shine Camera": {
+                "Name": "ボスシャインカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 33,
+                    "ReturnFlag": -1,
+                    "Time": 960
+                }
+            },
+            "Gold Bird Shine Camera": {
+                "Name": "鳥シャインカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 33,
+                    "ReturnFlag": -1,
+                    "Time": 720
+                }
+            },
+            "Enemy Mario Event Shine Camera": {
+                "Name": "モンテマンシャインカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 33,
+                    "ReturnFlag": -1,
+                    "Time": 720
+                }
+            },
+            "Linked Graffiti A Camera": {
+                "Name": "ふたご落書きＡ００カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": 1,
+                    "Time": 360
+                }
+            },
+            "Linked Graffiti B Camera": {
+                "Name": "ふたご落書きＢ００カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": 1,
+                    "Time": 360
+                }
+            },
+            "Switch Object Camera": {
+                "Name": "オブジェスイッチ用カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": -1,
+                    "Time": 300
+                }
+            },
+            "Proto Piranha Appearance Camera": {
+                "Name": "gatekeeper_name出現カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 26,
+                    "ReturnFlag": 1,
+                    "Time": 600
+                }
+            },
+            "Proto Piranha Defeat Camera": {
+                "Name": "gatekeeper_name撃沈カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 26,
+                    "ReturnFlag": 1,
+                    "Time": 600
+                }
+            },
+            "Airstrip Runway Rise Camera": {
+                "Name": "空港坂上げカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": -1,
+                    "Time": 780
+                }
+            },
+            "Airstrip Runway Shine Camera": {
+                "Name": "落書きシャインカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 30,
+                    "ReturnFlag": -1,
+                    "Time": 900
+                }
+            },
+            "Gate Enter Camera": {
+                "Name": "gate_nameカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 23,
+                    "ReturnFlag": -1,
+                    "Time": 350
+                }
+            },
+            "Gate Enter Front Camera": {
+                "Name": "gate_name前カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 24,
+                    "ReturnFlag": -1,
+                    "Time": 350
+                }
+            },
+            "Boathouse Rise Camera": {
+                "Name": "マニ屋上げデモカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": -1,
+                    "Time": 1200
+                }
+            },
+            "Lighthouse Rise Camera": {
+                "Name": "灯台上げデモカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": -1,
+                    "Time": 1200
+                }
+            },
+            "TV Station Bell Shine Camera": {
+                "Name": "ドルピック鐘テレビ局カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 33,
+                    "ReturnFlag": -1,
+                    "Time": 800
+                }
+            },
+            "Police Station Bell Shine Camera": {
+                "Name": "ドルピック鐘警察署カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 33,
+                    "ReturnFlag": -1,
+                    "Time": 800
+                }
+            },
+            "Shine Sprite Monument Shine Camera": {
+                "Name": "モニュメントシャインカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 33,
+                    "ReturnFlag": -1,
+                    "Time": 1000
+                }
+            },
+            "Box Minigame Shine Camera": {
+                "Name": "木箱ゲーム用シャインカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 32,
+                    "ReturnFlag": -1,
+                    "Time": 800
+                }
+            },
+            "Fruit Tank Camera": {
+                "Name": "フルーツタンクカメラカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": -1,
+                    "Time": 200
+                }
+            },
+            "Small Tilt Mirror Camera": {
+                "Name": "ぐらぐら鏡Ｓカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": -1,
+                    "Time": 0
+                }
+            },
+            "Medium Tilt Mirror Camera": {
+                "Name": "ぐらぐら鏡Ｍカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": -1,
+                    "Time": 0
+                }
+            },
+            "Large Tilt Mirror Camera": {
+                "Name": "ぐらぐら鏡Ｌカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": -1,
+                    "Time": 0
+                }
+            },
+            "Illuminated Sun Stone Camera": {
+                "Name": "太陽石点灯カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": -1,
+                    "Time": 0
+                }
+            },
+            "Watermelon Goal Camera": {
+                "Name": "スイカゴールカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": -1,
+                    "Time": 900
+                }
+            },
+            "Watermelon Event Shine Camera": {
+                "Name": "スイカシャインカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 24,
+                    "ReturnFlag": -1,
+                    "Time": 900
+                }
+            },
+            "Sudden Appearance Shine Camera": {
+                "Name": "シャイン（いきなり出現）カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 33,
+                    "ReturnFlag": -1,
+                    "Time": 900
+                }
+            },
+            "Sunflower Recovery Camera": {
+                "Name": "ひまわりカメラ0",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 30,
+                    "ReturnFlag": 1,
+                    "Time": 500
+                }
+            },
+            "Sunflower Event Shine Camera": {
+                "Name": "ひまわりシャインカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 30,
+                    "ReturnFlag": 1,
+                    "Time": 700
+                }
+            },
+            "Ferris Wheel Boss Defeat Camera": {
+                "Name": "観覧車ボス撃沈カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 33,
+                    "ReturnFlag": 1,
+                    "Time": 800
+                }
+            },
+            "Ferris Wheel Normalization Camera": {
+                "Name": "観覧車正常化カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": -1,
+                    "Time": 800
+                }
+            },
+            "Ferris Wheel Shine Camera": {
+                "Name": "観覧車シャインカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 33,
+                    "ReturnFlag": -1,
+                    "Time": 800
+                }
+            },
+            "Hotel Delfino Rise Camera": {
+                "Name": "ホテル上げカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 25,
+                    "ReturnFlag": -1,
+                    "Time": 1800
+                }
+            },
+            "Hotel Delfino Shine Camera": {
+                "Name": "ホテル上げシャインカメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 31,
+                    "ReturnFlag": -1,
+                    "Time": 720
+                }
+            },
+            "Casino Curtain Camera": {
+                "Name": "どん帳カメラ",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "Rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "CamKind": 26,
+                    "ReturnFlag": 1,
+                    "Time": 500
+                }
+            }
+        }
+    }
+}

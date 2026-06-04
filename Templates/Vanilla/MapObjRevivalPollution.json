@@ -1,0 +1,44 @@
+﻿{
+    "Regenerating Pollution": {
+        "Enums": {},
+        "Structs": {
+            "RegionInfo": {
+                "Region": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Unknown1": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "RegionNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "RegionArray": {
+                "Type": "RegionInfo",
+                "ArraySize": "RegionNum"
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "復活落書き",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "RegionNum": 0,
+                    "RegionArray": {
+                        "Region": 0,
+                        "Unknown1": 0
+                    }
+                }
+            }
+        }
+    }
+}

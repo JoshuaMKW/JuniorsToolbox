@@ -1,0 +1,25 @@
+﻿{
+    "Scene Group": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "IndexNo": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "通常シーン",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "IndexNo": 0
+                }
+            }
+        }
+    }
+}

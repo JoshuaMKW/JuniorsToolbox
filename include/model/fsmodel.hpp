@@ -399,6 +399,7 @@ namespace Toolbox {
                                               const ModelIndex &parent = ModelIndex()) const;
 
         [[nodiscard]] bool isSrcFiltered_(const UUID64 &uuid) const;
+        [[nodiscard]] bool calcSrcFiltered_(const UUID64 &uuid) const;
 
         u64 getCacheKey_(const ModelIndex &src_idx) const;
         void cacheIndex(const ModelIndex &src_idx) const;

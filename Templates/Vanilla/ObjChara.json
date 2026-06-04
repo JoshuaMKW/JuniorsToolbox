@@ -1,0 +1,25 @@
+﻿{
+    "Object Character": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Path": {
+                "Type": "STRING",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "ObjChara",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Path": "(null)"
+                }
+            }
+        }
+    }
+}

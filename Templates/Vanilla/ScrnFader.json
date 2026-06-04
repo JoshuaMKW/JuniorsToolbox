@@ -1,0 +1,39 @@
+﻿{
+    "Fader": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Frames": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Color": {
+                "Type": "RGB32",
+                "ArraySize": 1
+            },
+            "Alpha": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "ScrnFader",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Frames": 255,
+                    "Color": [
+                        255,
+                        255,
+                        255
+                    ],
+                    "Alpha": 255
+                }
+            }
+        }
+    }
+}

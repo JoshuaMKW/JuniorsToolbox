@@ -1,0 +1,309 @@
+﻿{
+    "Proto Piranha": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Manager": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Rail": {
+                "Type": "STRING",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "ビアンコゲートキーパー",
+                "Dependencies": {
+                    "Managers": {
+                        "GateKeeperManager": {
+                            "Name": "ゲートキーパーマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ゲートキーパーマネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "ゲートキーパーマネージャー",
+                    "Rail": "(null)"
+                }
+            },
+            "Airstrip Runway/Bianco Square": {
+                "Name": "ゲートキーパー（ビアンコ）",
+                "Dependencies": {
+                    "Managers": {
+                        "GateKeeperManager": {
+                            "Name": "ゲートキーパーマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ゲートキーパーマネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "ゲートキーパーマネージャー",
+                    "Rail": "(null)"
+                }
+            },
+            "Road to the Big Windmill": {
+                "Name": "ゲートキーパー",
+                "Dependencies": {
+                    "Managers": {
+                        "GateKeeperManager": {
+                            "Name": "ゲートキーパーマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        },
+                        "GorogoroManager": {
+                            "Name": "ゴロゴロマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ゲートキーパーマネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "ゲートキーパーマネージャー",
+                    "Rail": "(null)"
+                }
+            },
+            "Boathouse": {
+                "Name": "ゲートキーパー（リコ）",
+                "Dependencies": {
+                    "Managers": {
+                        "GateKeeperManager": {
+                            "Name": "ゲートキーパーマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ゲートキーパーマネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "ゲートキーパーマネージャー",
+                    "Rail": "(null)"
+                }
+            },
+            "Lighthouse": {
+                "Name": "ゲートキーパー（マンマ）",
+                "Dependencies": {
+                    "Managers": {
+                        "GateKeeperManager": {
+                            "Name": "ゲートキーパーマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        },
+                        "DiffusionNameKuriManager": {
+                            "Name": "拡散ナメクリマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "ゲートキーパーマネージャー キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Manager": "ゲートキーパーマネージャー",
+                    "Rail": "(null)"
+                }
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Textures": {
+                    "Q_kepper_dummy_128IA4": "map/pollution/H_ma_rak.bti"
+                },
+                "Animations": [
+                    "gatekeeper/gene_pakkun_appear1.bck",
+                    "gatekeeper/gene_pakkun_appear1_end.bck",
+                    "gatekeeper/gene_pakkun_appear1_start.bck",
+                    "gatekeeper/gene_pakkun_damage1.bck",
+                    "gatekeeper/gene_pakkun_damage2.bck",
+                    "gatekeeper/gene_pakkun_dead1.bck",
+                    "gatekeeper/gene_pakkun_dead1.bpk",
+                    "gatekeeper/gene_pakkun_dive1.bck",
+                    "gatekeeper/gene_pakkun_iyaiya1.bck",
+                    "gatekeeper/gene_pakkun_shoot1.bck",
+                    "gatekeeper/gene_pakkun_tex0.btk",
+                    "gatekeeper/gene_pakkun_tex1.btk",
+                    "gatekeeper/gene_pakkun_towait2.bck",
+                    "gatekeeper/gene_pakkun_wait1.bck",
+                    "gatekeeper/gene_pakkun_wait2.bck",
+                    "gatekeeper/gene_pakkun_wait2_close.bck",
+                    "gatekeeper/gene_pakkun_wait2_end.bck",
+                    "gatekeeper/gene_pakkun_wait2_loop.bck",
+                    "gatekeeper/gene_pakkun_wait2_open.bck",
+                    "gatekeeper/gene_pakkun_wait2_openloop.bck",
+                    "gatekeeper/gene_pakkun_wait2_start.bck",
+                    "gatekeeper/gene_pakkun_wait3.bck",
+                    "gatekeeper/gene_pakkun_wait2_openloop.bck",
+                    "gatekeeper/gene_pakkun_wait2_loop.bck",
+                    "gatekeeper/gene_pakkun_wait2_open.bck"
+                ],
+                "Model": "gatekeeper/gene_pakkun_model1.bmd"
+            }
+        }
+    }
+}

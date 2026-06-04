@@ -1,0 +1,25 @@
+﻿{
+    "Index Group": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "IndexNo": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "IdxGroup",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "IndexNo": 0
+                }
+            }
+        }
+    }
+}

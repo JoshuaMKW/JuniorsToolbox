@@ -1,4 +1,4 @@
-#include <algorithm>
+﻿#include <algorithm>
 #include <compare>
 #include <set>
 
@@ -17,6 +17,8 @@ namespace Toolbox {
         UUID64 m_self_uuid                    = 0;
         RefPtr<Object::ISceneObject> m_object = nullptr;
         RefPtr<const ImageHandle> m_icon      = nullptr;
+
+        std::string m_display_text_cache = "";
 
         std::strong_ordering operator<=>(const _SceneIndexData &rhs) const {
             return m_object->getQualifiedName().toString() <=>
@@ -128,6 +130,19 @@ namespace Toolbox {
         return getIndex_(row, column, parent);
     }
 
+    ModelIndex SceneObjModel::getIndex(const QualifiedName &qual_name,
+                                       const ModelIndex &parent) const {
+        std::scoped_lock lock(m_mutex);
+        return getIndex_(qual_name, parent);
+    }
+
+    ModelIndex SceneObjModel::getIndex(const std::string &obj_type,
+                                       std::optional<std::string> obj_name,
+                                       const ModelIndex &parent) const {
+        std::scoped_lock lock(m_mutex);
+        return getIndex_(obj_type, obj_name, parent);
+    }
+
     bool SceneObjModel::removeIndex(const ModelIndex &index) {
         bool result;
 
@@ -155,8 +170,31 @@ namespace Toolbox {
 
     ModelIndex SceneObjModel::insertObject(RefPtr<ISceneObject> object, int64_t row,
                                            const ModelIndex &parent) {
-        std::unique_lock lock(m_mutex);
-        return insertObject_(object, row, parent);
+        ModelIndex result;
+
+        const Signal index_signal = createSignalForIndex_(parent, ModelEventFlags::EVENT_INSERT);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = insertObject_(object, row, parent);
+        }
+
+        if (validateIndex(result)) {
+            const Signal add_signal =
+                createSignalForIndex_(result, ModelEventFlags::EVENT_INDEX_ADDED);
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+            signalEventListeners(add_signal.first, add_signal.second | ModelEventFlags::EVENT_POST |
+                                                       ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
     }
 
     ModelIndex SceneObjModel::getParent(const ModelIndex &index) const {
@@ -206,9 +244,27 @@ namespace Toolbox {
                                                                       ModelInsertPolicy policy) {
         Result<IDataModel::index_container> result;
 
+        const Signal pre_signal = createSignalForIndex_(index, ModelEventFlags::EVENT_INSERT);
+
+        signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_PRE);
+
         {
             std::scoped_lock lock(m_mutex);
             result = insertMimeData_(index, data, policy);
+        }
+
+        if (result) {
+            for (const ModelIndex &new_index : result.value()) {
+                Signal index_signal =
+                    createSignalForIndex_(new_index, ModelEventFlags::EVENT_INDEX_ADDED);
+                signalEventListeners(index_signal.first, index_signal.second |
+                                                             ModelEventFlags::EVENT_POST |
+                                                             ModelEventFlags::EVENT_SUCCESS);
+            }
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST |
+                                                       ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST);
         }
 
         return result;
@@ -270,7 +326,7 @@ namespace Toolbox {
 
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY:
-            return std::format("{} ({})", object->type(), object->getNameRef().name());
+            return index.data<_SceneIndexData>()->m_display_text_cache;
         case ModelDataRole::DATA_ROLE_TOOLTIP:
             return "Tooltip unimplemented!";
         case ModelDataRole::DATA_ROLE_DECORATION: {
@@ -316,6 +372,8 @@ namespace Toolbox {
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_KEY: {
             object->setNameRef(NameRef(std::any_cast<std::string>(data)));
+            index.data<_SceneIndexData>()->m_display_text_cache =
+                std::format("{} ({})", object->type(), object->getNameRef().name());
             break;
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_GAME_ADDR: {
@@ -359,13 +417,11 @@ namespace Toolbox {
     }
 
     ModelIndex SceneObjModel::getIndex_(RefPtr<ISceneObject> object) const {
-        for (const auto &[k, v] : m_index_map) {
-            RefPtr<ISceneObject> other = v.data<_SceneIndexData>()->m_object;
-            if (other->getUUID() == object->getUUID()) {
-                return v;
-            }
+        const UUID64 obj_uuid = object->getUUID();
+        if (!m_obj_to_index_map.contains(obj_uuid)) {
+            return ModelIndex();
         }
-        return ModelIndex();
+        return m_obj_to_index_map.at(obj_uuid);
     }
 
     ModelIndex SceneObjModel::getIndex_(const UUID64 &uuid) const {
@@ -381,17 +437,91 @@ namespace Toolbox {
             if (row != 0 || column != 0) {
                 return ModelIndex();
             }
-            return m_index_map[m_root_index];
+            return m_index_map.at(m_root_index);
         }
 
-        RefPtr<ISceneObject> parent_obj            = parent.data<_SceneIndexData>()->m_object;
-        std::vector<RefPtr<ISceneObject>> children = parent_obj->getChildren();
+        RefPtr<ISceneObject> parent_obj = parent.data<_SceneIndexData>()->m_object;
+        const std::vector<RefPtr<ISceneObject>> &children = parent_obj->getChildren();
 
         if (row < 0 || row >= static_cast<int64_t>(children.size()) || column != 0) {
             return ModelIndex();
         }
 
         RefPtr<ISceneObject> child_obj = children[row];
+        return getIndex_(child_obj);
+    }
+
+    ModelIndex SceneObjModel::getIndex_(const QualifiedName &qual_name,
+                                        const ModelIndex &parent) const {
+        if (!validateIndex(parent)) {
+            ModelIndex root_index         = m_index_map.at(m_root_index);
+
+            RefPtr<ISceneObject> root_obj = root_index.data<_SceneIndexData>()->m_object;
+
+            std::string root_name = std::string(root_obj->getNameRef().name());
+            if (root_name == qual_name[0]) {
+                if (qual_name.depth() == 1) {
+                    return root_index;
+                }
+                
+                RefPtr<ISceneObject> child_obj =
+                    root_obj->getChild(QualifiedName(qual_name.begin() + 1, qual_name.end()));
+                if (!child_obj) {
+                    return ModelIndex();
+                }
+
+                return getIndex_(child_obj);
+            }
+            return ModelIndex();
+        }
+
+        RefPtr<ISceneObject> parent_obj = parent.data<_SceneIndexData>()->m_object;
+        RefPtr<ISceneObject> child_obj  = parent_obj->getChild(qual_name);
+        if (!child_obj) {
+            return ModelIndex();
+        }
+
+        return getIndex_(child_obj);
+    }
+
+    ModelIndex SceneObjModel::getIndex_(const std::string &obj_type,
+                                        std::optional<std::string> obj_name,
+                                        const ModelIndex &parent) const {
+        if (!validateIndex(parent)) {
+            ModelIndex root_index = m_index_map.at(m_root_index);
+
+            RefPtr<ISceneObject> root_obj = root_index.data<_SceneIndexData>()->m_object;
+            std::string root_type = std::string(root_obj->type());
+            if (root_type != obj_type) {
+                RefPtr<ISceneObject> child_obj = root_obj->getChildByType(obj_type, obj_name);
+                if (!child_obj) {
+                    return ModelIndex();
+                }
+
+                return getIndex_(child_obj);
+            }
+
+            if (obj_name.has_value()) {
+                std::string root_name = std::string(root_obj->getNameRef().name());
+                if (root_name != obj_name.value()) {
+                    RefPtr<ISceneObject> child_obj = root_obj->getChildByType(obj_type, obj_name);
+                    if (!child_obj) {
+                        return ModelIndex();
+                    }
+
+                    return getIndex_(child_obj);
+                }
+            }
+
+            return root_index;
+        }
+
+        RefPtr<ISceneObject> parent_obj = parent.data<_SceneIndexData>()->m_object;
+        RefPtr<ISceneObject> child_obj  = parent_obj->getChildByType(obj_type, obj_name);
+        if (!child_obj) {
+            return ModelIndex();
+        }
+
         return getIndex_(child_obj);
     }
 
@@ -414,7 +544,10 @@ namespace Toolbox {
         }
 
         const UUID64 uuid = index.getUUID();
+        m_obj_to_index_map.erase(this_data->m_object->getUUID());
         m_index_map.erase(uuid);
+
+        delete this_data;
         return true;
     }
 
@@ -596,7 +729,7 @@ namespace Toolbox {
             }
 
             RefPtr<ISceneObject> object =
-                ObjectFactory::create(*obj_template.value(), obj_wizard, ".");
+                ObjectFactory::create(*obj_template.value(), obj_wizard, m_scene_path);
             if (!object) {
                 return make_serial_error<void>(
                     in, std::format("Failed to create object of type '{}' with wizard '{}'",
@@ -614,13 +747,7 @@ namespace Toolbox {
                 }
             }
 
-            fs_path asset_path = m_scene_path;
-            auto load_result   = object->loadDependencies(asset_path);
-            if (!load_result) {
-                return make_serial_error<void>(
-                    in, std::format("Failed to load render data for object {} ({})", obj_type,
-                                    obj_name));
-            }
+            object->sync();
 
             std::string new_name = findUniqueName_(index, std::string(object->getNameRef().name()));
             object->setNameRef(NameRef(new_name));
@@ -729,10 +856,13 @@ namespace Toolbox {
         new_data->m_self_uuid     = new_index.getUUID();
         new_data->m_object        = object;
         new_data->m_icon          = nullptr;
+        new_data->m_display_text_cache =
+            std::format("{} ({})", object->type(), object->getNameRef().name());
 
         new_index.setData(new_data);
 
-        m_index_map[new_index.getUUID()] = new_index;
+        m_index_map[new_index.getUUID()]      = new_index;
+        m_obj_to_index_map[object->getUUID()] = new_index;
 
         if (row == 0 && !validateIndex(parent)) {
             m_root_index = new_index.getUUID();

@@ -228,15 +228,9 @@ namespace Toolbox::UI {
                     return false;
                 }(pinned);
 
-                const fs_path folder_path     = m_tree_proxy->getRealPath(pinned);
-                const std::string folder_name = folder_path.filename().string();
-                const std::string parent_path_name =
-                    is_child_of_root
-                        ? Filesystem::relative(folder_path.parent_path(),
-                                               m_file_system_model->getRoot().parent_path())
-                              .value()
-                              .string()
-                        : "";
+                const fs_path folder_rel_path    = m_tree_proxy->getPath(pinned);
+                const std::string folder_rel_str = folder_rel_path.string();
+                const std::string folder_name    = folder_rel_path.filename().string(); 
 
                 ImVec2 size = ImGui::CalcItemSize({0, 0}, pin_size.x + style.FramePadding.x * 2.0f,
                                                   pin_size.y + style.FramePadding.y * 2.0f);
@@ -247,7 +241,7 @@ namespace Toolbox::UI {
 
                 const ImVec2 cursor_pos = ImGui::GetCursorPos();
 
-                std::string button_id = std::format("##{}", folder_path.string());
+                std::string button_id = std::format("##{}", folder_rel_str);
 
                 if (ImGui::Button(button_id.c_str(), {shortcut_width, 0.0f})) {
                     setViewIndex(m_tree_proxy->toSourceIndex(pinned), false);
@@ -256,9 +250,8 @@ namespace Toolbox::UI {
                 const ImVec2 main_label_size = ImGui::CalcTextSize(
                     folder_name.c_str(), folder_name.c_str() + folder_name.size(), true);
 
-                const ImVec2 sub_label_size =
-                    ImGui::CalcTextSize(parent_path_name.c_str(),
-                                        parent_path_name.c_str() + parent_path_name.size(), true);
+                const ImVec2 sub_label_size = ImGui::CalcTextSize(
+                    folder_rel_str.c_str(), folder_rel_str.c_str() + folder_rel_str.size(), true);
 
                 // Render a helper tag that shows the parent path
                 const ImVec2 button_pos  = ImGui::GetItemRectMin();
@@ -301,8 +294,8 @@ namespace Toolbox::UI {
                 ImGui::PushStyleColor(ImGuiCol_Text, color);
                 ImGui::RenderTextEllipsis(
                     ImGui::GetWindowDrawList(), sub_label_bb.Min, sub_label_bb.Max,
-                    sub_label_bb.Max.x, parent_path_name.c_str(),
-                    parent_path_name.c_str() + parent_path_name.size(), &sub_label_size);
+                    sub_label_bb.Max.x, folder_rel_str.c_str(),
+                    folder_rel_str.c_str() + folder_rel_str.size(), &sub_label_size);
                 ImGui::PopStyleColor();
 
                 const ImRect item_rect = {ImGui::GetItemRectMin(), ImGui::GetItemRectMax()};

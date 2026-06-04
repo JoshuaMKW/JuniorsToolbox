@@ -99,7 +99,7 @@ namespace Toolbox::UI {
                                           std::vector<RefPtr<Rail::RailNode>> rail_nodes,
                                           bool &should_reset);
 
-        void render(const std::vector<ISceneObject::RenderInfo> &renderables, TimeStep delta_time);
+        void render(const std::vector<ISceneObject::RenderInfo> &renderables, TimeStep delta_time, bool calc_animations = true);
 
     protected:
         void initializePaths(RefPtr<RailObjModel> model,

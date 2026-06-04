@@ -1,0 +1,25 @@
+﻿{
+    "Simple Character": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Path": {
+                "Type": "STRING",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "SmplChara",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Path": "(null)"
+                }
+            }
+        }
+    }
+}

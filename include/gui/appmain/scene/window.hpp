@@ -33,15 +33,24 @@
 #include "model/railmodel.hpp"
 #include "model/selection.hpp"
 
+#include "objlib/utf8_to_sjis.hpp"
+
 #include "raildialog.hpp"
 #include <gui/context_menu.hpp>
 #include <imgui.h>
 
 class ToolboxSceneVerifier : public TaskThread<void> {
 public:
-    ToolboxSceneVerifier() = delete;
-    ToolboxSceneVerifier(RefPtr<const Scene::SceneInstance> scene, bool check_dependencies)
-        : m_scene(scene), m_check_dependencies(check_dependencies) {}
+    using validate_progress_cb =
+        std::function<void(double progress, const std::string &progress_text)>;
+    using validate_error_cb = std::function<void(const std::string &reason)>;
+
+public:
+    ToolboxSceneVerifier() = default;
+    ToolboxSceneVerifier(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
+                         RefPtr<RailObjModel> rail_model, bool check_dependencies)
+        : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model),
+          m_check_dependencies(check_dependencies) {}
 
     void tRun(void *param) override;
 
@@ -49,8 +58,21 @@ public:
     std::vector<std::string> getErrors() const { return m_errors; }
     std::string getProgressText() const { return m_progress_text; }
 
+    ToolboxSceneVerifier &operator=(ToolboxSceneVerifier &&other) noexcept = default;
+
+protected:
+    // WARNING: This method is exhaustive and may take awhile to complete!
+    [[nodiscard]] static bool ValidateScene(RefPtr<SceneObjModel> object_model,
+                                            RefPtr<SceneObjModel> table_model,
+                                            RefPtr<RailObjModel> rail_model,
+                                            bool check_dependencies, validate_progress_cb,
+                                            validate_error_cb);
+
 private:
-    RefPtr<const Scene::SceneInstance> m_scene;
+    RefPtr<SceneObjModel> m_object_model;
+    RefPtr<SceneObjModel> m_table_model;
+    RefPtr<RailObjModel> m_rail_model;
+
     bool m_check_dependencies = true;
 
     std::string m_progress_text;
@@ -60,8 +82,15 @@ private:
 
 class ToolboxSceneDependencyMender : public TaskThread<void> {
 public:
-    ToolboxSceneDependencyMender() = delete;
-    ToolboxSceneDependencyMender(RefPtr<const Scene::SceneInstance> scene) : m_scene(scene) {}
+    using repair_progress_cb = std::function<void(const std::string &progress_text)>;
+    using repair_change_cb   = std::function<void(const std::string &change_text)>;
+    using repair_error_cb    = std::function<void(const std::string &reason)>;
+
+public:
+    ToolboxSceneDependencyMender() = default;
+    ToolboxSceneDependencyMender(RefPtr<SceneObjModel> object_model,
+                                 RefPtr<SceneObjModel> table_model, RefPtr<RailObjModel> rail_model)
+        : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model) {}
 
     void tRun(void *param) override;
 
@@ -70,13 +99,81 @@ public:
     std::vector<std::string> getErrors() const { return m_errors; }
     std::string getProgressText() const { return m_progress_text; }
 
+    ToolboxSceneDependencyMender &
+    operator=(ToolboxSceneDependencyMender &&other) noexcept = default;
+
+protected:
+    // WARNING: This method is exhaustive and may take awhile to complete!
+    [[nodiscard]] static bool RepairScene(RefPtr<SceneObjModel> object_model,
+                                          RefPtr<SceneObjModel> table_model,
+                                          RefPtr<RailObjModel> rail_model, bool check_dependencies,
+                                          repair_progress_cb, repair_change_cb, repair_error_cb);
+
 private:
-    RefPtr<const Scene::SceneInstance> m_scene;
+    RefPtr<SceneObjModel> m_object_model;
+    RefPtr<SceneObjModel> m_table_model;
+    RefPtr<RailObjModel> m_rail_model;
 
     std::string m_progress_text;
     std::vector<std::string> m_changes;
     std::vector<std::string> m_errors;
     bool m_successful = true;
+};
+
+class ToolboxScenePruner : public TaskThread<void> {
+public:
+    using prune_progress_cb = std::function<void(const std::string &progress_text)>;
+    using prune_change_cb   = std::function<void(const std::string &change_text)>;
+    using prune_error_cb    = std::function<void(const std::string &reason)>;
+
+public:
+    ToolboxScenePruner() = default;
+    ToolboxScenePruner(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
+                       RefPtr<RailObjModel> rail_model)
+        : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model) {}
+
+    void tRun(void *param) override;
+
+    bool isValid() const { return m_successful; }
+    std::vector<std::string> getChanges() const { return m_changes; }
+    std::vector<std::string> getErrors() const { return m_errors; }
+    std::string getProgressText() const { return m_progress_text; }
+
+    std::mutex &getOperationMutex() {
+        return m_operation_mutex;
+    }
+
+    ToolboxScenePruner& operator=(ToolboxScenePruner&& other) noexcept {
+        m_object_model = std::move(other.m_object_model);
+        m_table_model  = std::move(other.m_table_model);
+        m_rail_model   = std::move(other.m_rail_model);
+
+        m_progress_text = std::move(other.m_progress_text);
+        m_changes       = std::move(other.m_changes);
+        m_errors       = std::move(other.m_errors);
+
+        m_successful = other.m_successful;
+        return *this;
+    }
+
+protected:
+    // WARNING: This method is exhaustive and may take awhile to complete!
+    [[nodiscard]] static bool PruneScene(RefPtr<SceneObjModel> object_model,
+                                         RefPtr<SceneObjModel> table_model,
+                                         RefPtr<RailObjModel> rail_model, std::mutex &operation_mutex, bool check_dependencies,
+                                         prune_progress_cb, prune_change_cb, prune_error_cb);
+
+private:
+    RefPtr<SceneObjModel> m_object_model;
+    RefPtr<SceneObjModel> m_table_model;
+    RefPtr<RailObjModel> m_rail_model;
+
+    std::string m_progress_text;
+    std::vector<std::string> m_changes;
+    std::vector<std::string> m_errors;
+    bool m_successful = true;
+
+    std::mutex m_operation_mutex;
 };
 
 namespace Toolbox::UI {
@@ -164,6 +261,8 @@ namespace Toolbox::UI {
 
         std::optional<float> calculateFocusScrollForSceneObjectSelection();
         std::optional<float> calculateFocusScrollForSceneRailSelection();
+
+        void regeneratePropertiesForObject(RefPtr<ISceneObject> object);
 
     private:
         void _moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id, size_t orig_index,
@@ -277,9 +376,8 @@ namespace Toolbox::UI {
         std::vector<ISceneObject::RenderInfo> m_renderables = {};
         ResourceCache m_resource_cache;
 
-        std::vector<Transform> m_selection_transforms;
-        bool m_selection_transforms_needs_update = false;
-        bool m_gizmo_maniped                     = false;
+        std::map<UUID64, Transform> m_selection_transforms;
+        bool m_gizmo_maniped = false;
 
         // Docking facilities
         ImGuiID m_dock_space_id          = 0;
@@ -309,7 +407,10 @@ namespace Toolbox::UI {
         std::map<std::string, render_layer_cb> m_render_layers;
 
         // Event Stuff
-        bool m_control_disable_requested = false;
+        std::atomic<bool> m_control_disable_requested                   = false;
+        std::atomic<bool> m_path_renderer_update_reqeusted              = false;
+        std::atomic<bool> m_selection_transforms_update_requested       = false;
+        ModelIndex m_rail_visible_map_update_request_index;
 
         // Drag drop stuff
         UUID64 m_object_parent_uuid;
@@ -322,9 +423,14 @@ namespace Toolbox::UI {
 
         Toolbox::Buffer m_drop_target_buffer;
 
-        ScopePtr<ToolboxSceneVerifier> m_scene_verifier;
-        ScopePtr<ToolboxSceneDependencyMender> m_scene_mender;
+        ToolboxSceneVerifier m_scene_verifier;
+        ToolboxSceneDependencyMender m_scene_mender;
+        ToolboxScenePruner m_scene_pruner;
         bool m_scene_validator_result_opened = false;
         bool m_scene_mender_result_opened    = false;
+        bool m_scene_pruner_result_opened    = false;
+
+        bool m_gizmo_was_dragged = false;
+        const TimeStep m_select_after_gizmo_delay = TimeStep(0.1);
     };
 }  // namespace Toolbox::UI

@@ -87,6 +87,9 @@ namespace Toolbox::Dolphin {
         ImageHandle captureXFBAsTexture(int width, int height, u32 xfb_start, int xfb_width,
                                         int xfb_height);
 
+    protected:
+        bool processGateCheck();
+
     private:
         fs_path m_dolphin_path;
 

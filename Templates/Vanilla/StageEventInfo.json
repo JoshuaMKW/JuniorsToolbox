@@ -1,0 +1,60 @@
+﻿{
+    "Stage Event Info": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Unknown1": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Unknown2": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Unknown3": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Unknown4": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Unknown5": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Unknown6": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "Unknown7": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "SysFlagID": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "-1",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Unknown1": 0,
+                    "Unknown2": "なし",
+                    "Unknown3": "なし",
+                    "Unknown4": "なし",
+                    "Unknown5": "なし",
+                    "Unknown6": "なし",
+                    "Unknown7": "なし",
+                    "SysFlagID": -1
+                }
+            }
+        }
+    }
+}

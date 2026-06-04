@@ -1,0 +1,80 @@
+﻿{
+    "Sun": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "太陽モデル",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_sun"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            200000,
+                            500000,
+                            200000
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            30,
+                            30,
+                            30
+                        ]
+                    ],
+                    "Character": "太陽モデル キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    }
+                }
+            }
+        },
+        "Rendering": {
+            "Default": {
+                "Animations": [
+                    "sun/model.btk"
+                ],
+                "Model": "sun/model.bmd"
+            }
+        }
+    }
+}

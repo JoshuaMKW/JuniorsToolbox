@@ -1,0 +1,30 @@
+﻿{
+    "Ambient Color": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Color": {
+                "Type": "RGBA",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "AmbColor",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Color": [
+                        255,
+                        255,
+                        255,
+                        255
+                    ]
+                }
+            }
+        }
+    }
+}

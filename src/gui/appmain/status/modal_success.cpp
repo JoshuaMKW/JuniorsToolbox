@@ -26,8 +26,8 @@ namespace Toolbox::UI {
         ImGui::SetNextWindowClass(&modal_class);
 
         const float modal_scalar = ImGui::GetFontSize() / 16.0f;
-        ImVec2 modal_size        = {400.0f * modal_scalar,
-                             m_extra_info.empty() ? 0.0f : 300.0f * modal_scalar};
+        ImVec2 modal_size        = {500.0f * modal_scalar,
+                             m_extra_info.empty() ? 0.0f : 400.0f * modal_scalar};
         ImGui::SetNextWindowSize(modal_size);
 
         ImVec2 modal_pos = m_parent ? m_parent->getPos() + m_parent->getSize() / 2.0f

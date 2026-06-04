@@ -1,0 +1,63 @@
+﻿{
+    "Wire Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "Unknown1": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "DrawWidth": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            },
+            "DrawHeight": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            },
+            "UpperSurfaceColor": {
+                "Type": "RGB32",
+                "ArraySize": 1
+            },
+            "LowerSurfaceColor": {
+                "Type": "RGB32",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "ワイヤーマネージャー",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "Character": "ワイヤーマネージャー キャラ",
+                    "MaxNum": 200,
+                    "Unknown1": 10,
+                    "DrawWidth": 10,
+                    "DrawHeight": 20,
+                    "UpperSurfaceColor": [
+                        200,
+                        200,
+                        200
+                    ],
+                    "LowerSurfaceColor": [
+                        128,
+                        128,
+                        128
+                    ]
+                }
+            }
+        }
+    }
+}

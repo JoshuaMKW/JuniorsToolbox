@@ -258,6 +258,25 @@ namespace Toolbox::Platform {
         return {};
     }
 
+    bool IsFastProcessRunning(const ProcessInformation &process) {
+        if (process.m_process == nullptr || process.m_process == INVALID_HANDLE_VALUE) {
+            return false;
+        }
+
+        DWORD waitResult = WaitForSingleObject(process.m_process, 0);
+
+        if (waitResult == WAIT_TIMEOUT) {
+            // The process is still running (the object is non-signaled)
+            return true;
+        } else if (waitResult == WAIT_OBJECT_0) {
+            // The process has terminated (the object is signaled)
+            return false;
+        }
+
+        // Fallback for errors (e.g., WAIT_FAILED)
+        return false;
+    }
+
     bool IsExProcessRunning(const ProcessInformation &process) {
         if (process.m_process_id == std::numeric_limits<Platform::ProcessID>::max()) {
             return false;

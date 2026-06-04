@@ -207,7 +207,7 @@ namespace Toolbox::Input {
         s_mouse_position_y = point.y;
 
         // Poll mouse inputs
-        for (int i = 0; i < c_buttons_max; i++) {
+        for (int i = 0; i < 3; i++) {
             int states[3]           = {VK_LBUTTON, VK_RBUTTON, VK_MBUTTON};
             s_mouse_buttons_down[i] = GetAsyncKeyState(states[i]) & 0x8000;
         }

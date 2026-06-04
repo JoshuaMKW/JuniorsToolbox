@@ -1,4 +1,4 @@
-#if defined(_MSC_VER)
+﻿#if defined(_MSC_VER)
 #define _USE_MATH_DEFINES
 #endif
 
@@ -11,8 +11,6 @@
 #include "core/log.hpp"
 #include "core/threaded.hpp"
 #include "core/timing.hpp"
-
-#include "model/objmodel.hpp"
 
 #include "IconsForkAwesome.h"
 #include "gui/appmain/application.hpp"
@@ -52,6 +50,205 @@ using namespace Toolbox;
 using namespace Toolbox::Scene;
 
 constexpr float TreeNodeFramePaddingY = 4.0f;
+
+class SceneValidator {
+public:
+    using size_fn        = std::function<bool(size_t)>;
+    using foreach_obj_fn = std::function<void(RefPtr<SceneObjModel>, ModelIndex)>;
+
+public:
+    SceneValidator(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
+                   RefPtr<RailObjModel> rail_model, bool check_dependencies = true)
+        : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model),
+          m_check_dependencies(check_dependencies), m_valid(true) {
+        m_total_objects =
+            static_cast<double>(object_model->getObjectCount() + table_model->getObjectCount());
+    }
+
+public:
+    SceneValidator()                           = delete;
+    SceneValidator(const SceneValidator &)     = delete;
+    SceneValidator(SceneValidator &&) noexcept = delete;
+
+public:
+    void setProgressCallback(ToolboxSceneVerifier::validate_progress_cb cb) {
+        m_progress_callback = cb;
+    }
+    void setErrorCallback(ToolboxSceneVerifier::validate_error_cb cb) { m_error_callback = cb; }
+
+    // Test that an object exists
+    SceneValidator &scopeAssertObject(const std::string &obj_type, const std::string &obj_name);
+
+    // Test that the group scope is a given size
+    SceneValidator &scopeAssertSize(size_fn predicate);
+    SceneValidator &scopeEnter();
+    SceneValidator &scopeEscape();
+
+    SceneValidator &scopeValidateDependencies(RefPtr<SceneObjModel> model, const ModelIndex &index);
+    SceneValidator &scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn);
+
+    explicit operator bool() const { return m_valid; }
+
+private:
+    ToolboxSceneVerifier::validate_progress_cb m_progress_callback;
+    ToolboxSceneVerifier::validate_error_cb m_error_callback;
+
+    std::stack<ModelIndex> m_parent_stack;
+    ModelIndex m_last_index;
+
+    RefPtr<SceneObjModel> m_object_model;
+    RefPtr<SceneObjModel> m_table_model;
+    RefPtr<RailObjModel> m_rail_model;
+
+    bool m_check_dependencies;
+
+    bool m_valid;
+
+    double m_processed_objects = 0;
+    double m_total_objects     = 0;
+};
+
+#define VALIDATOR_LT(x) [](size_t v) -> bool { return v < (x); }
+#define VALIDATOR_LE(x) [](size_t v) -> bool { return v <= (x); }
+#define VALIDATOR_GT(x) [](size_t v) -> bool { return v > (x); }
+#define VALIDATOR_GE(x) [](size_t v) -> bool { return v >= (x); }
+#define VALIDATOR_NE(x) [](size_t v) -> bool { return v != (x); }
+#define VALIDATOR_EQ(x) [](size_t v) -> bool { return v == (x); }
+
+class SceneMender {
+public:
+    using size_fn        = std::function<bool(size_t)>;
+    using foreach_obj_fn = std::function<void(RefPtr<SceneObjModel>, ModelIndex)>;
+
+public:
+    SceneMender(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
+                RefPtr<RailObjModel> rail_model, bool check_dependencies = true)
+        : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model),
+          m_check_dependencies(check_dependencies), m_valid(true) {}
+
+public:
+    SceneMender()                        = delete;
+    SceneMender(const SceneMender &)     = delete;
+    SceneMender(SceneMender &&) noexcept = delete;
+
+public:
+    void setProgressCallback(ToolboxSceneDependencyMender::repair_progress_cb cb) {
+        m_progress_callback = cb;
+    }
+    void setChangeCallback(ToolboxSceneDependencyMender::repair_change_cb cb) {
+        m_change_callback = cb;
+    }
+    void setErrorCallback(ToolboxSceneDependencyMender::repair_error_cb cb) {
+        m_error_callback = cb;
+    }
+
+    // Test that an object exists
+    SceneMender &scopeTryCreateObjectDefault(const std::string &obj_type,
+                                             const std::string &obj_name);
+
+    SceneMender &scopeEnter();
+    SceneMender &scopeEscape();
+
+    SceneMender &scopeFulfillManagerDependencies(RefPtr<SceneObjModel> model,
+                                                 const ModelIndex &index);
+    SceneMender &scopeFulfillTableBinDependencies(RefPtr<SceneObjModel> model,
+                                                  const ModelIndex &index);
+    SceneMender &scopeFulfillRailDependencies(RefPtr<SceneObjModel> model, const ModelIndex &index);
+    SceneMender &scopeFulfillAssetDependencies(RefPtr<SceneObjModel> model,
+                                               const ModelIndex &index);
+    SceneMender &scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn);
+
+    explicit operator bool() const { return m_valid; }
+
+private:
+    ToolboxSceneDependencyMender::repair_progress_cb m_progress_callback;
+    ToolboxSceneDependencyMender::repair_change_cb m_change_callback;
+    ToolboxSceneDependencyMender::repair_error_cb m_error_callback;
+
+    std::stack<ModelIndex> m_parent_stack;
+    ModelIndex m_last_index;
+
+    RefPtr<SceneObjModel> m_object_model;
+    RefPtr<SceneObjModel> m_table_model;
+    RefPtr<RailObjModel> m_rail_model;
+
+    bool m_check_dependencies;
+
+    bool m_valid;
+
+    int m_processed_objects = 0;
+};
+
+class ScenePruner {
+public:
+    using size_fn         = std::function<bool(size_t)>;
+    using foreach_obj_fn  = std::function<void(RefPtr<SceneObjModel>, ModelIndex)>;
+    using foreach_rail_fn = std::function<void(RefPtr<RailObjModel>, ModelIndex)>;
+
+public:
+    ScenePruner(RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
+                RefPtr<RailObjModel> rail_model, bool check_dependencies = true)
+        : m_object_model(object_model), m_table_model(table_model), m_rail_model(rail_model),
+          m_check_dependencies(check_dependencies), m_valid(true) {}
+
+public:
+    ScenePruner()                        = delete;
+    ScenePruner(const ScenePruner &)     = delete;
+    ScenePruner(ScenePruner &&) noexcept = delete;
+
+public:
+    void setProgressCallback(ToolboxScenePruner::prune_progress_cb cb) { m_progress_callback = cb; }
+    void setChangeCallback(ToolboxScenePruner::prune_change_cb cb) { m_change_callback = cb; }
+    void setErrorCallback(ToolboxScenePruner::prune_error_cb cb) { m_error_callback = cb; }
+
+    ScenePruner &finalize();
+
+    ScenePruner &addManagerDependency(const TemplateDependencies::ObjectInfo &manager_info);
+    ScenePruner &addRailDependency(const std::string &rail_name);
+
+    ScenePruner &scopeAssertObject(const std::string &obj_type, const std::string &obj_name);
+
+    ScenePruner &scopeEnter();
+    ScenePruner &scopeEscape();
+
+    ScenePruner &scopeCollectDependencies(RefPtr<SceneObjModel> model, const ModelIndex &index);
+    ScenePruner &scopePruneManagerIfUnused(RefPtr<SceneObjModel> model, const ModelIndex &index);
+    ScenePruner &scopePruneRailIfUnused(RefPtr<RailObjModel> model, const ModelIndex &index);
+
+    ScenePruner &scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn);
+    ScenePruner &scopeForAll(RefPtr<RailObjModel> model, foreach_rail_fn);
+
+    explicit operator bool() const { return m_valid; }
+
+protected:
+    struct ToolboxScopeDepenedencies {
+        std::vector<TemplateDependencies::ObjectInfo> m_managers;
+        std::unordered_set<std::string> m_rails;
+        std::unordered_set<fs_path> m_asset_paths;
+    };
+
+private:
+    ToolboxScenePruner::prune_progress_cb m_progress_callback;
+    ToolboxScenePruner::prune_change_cb m_change_callback;
+    ToolboxScenePruner::prune_error_cb m_error_callback;
+
+    std::stack<ModelIndex> m_parent_stack;
+    ModelIndex m_last_index;
+
+    RefPtr<SceneObjModel> m_object_model;
+    RefPtr<SceneObjModel> m_table_model;
+    RefPtr<RailObjModel> m_rail_model;
+
+    std::vector<ModelIndex> m_indexes_to_prune;
+
+    ToolboxScopeDepenedencies m_dependencies;
+
+    bool m_check_dependencies;
+
+    bool m_valid;
+
+    int m_processed_objects = 0;
+};
 
 namespace Toolbox::UI {
 
@@ -163,6 +360,62 @@ namespace Toolbox::UI {
                     ModelIndex rail_index                    = m_rail_model->getIndex(i, 0);
                     m_rail_visible_map[rail_index.getUUID()] = true;
                 }
+
+                m_scene_object_model->addEventListener(
+                    getUUID(),
+                    [&](ModelIndex index, int flags) {
+                        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) ==
+                            ModelEventFlags::EVENT_INDEX_ADDED) {
+                            m_selection_transforms_update_requested = true;
+                            return;
+                        }
+
+                        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+                            ModelEventFlags::EVENT_INDEX_REMOVED) {
+                            m_selection_transforms_update_requested = true;
+                            return;
+                        }
+                    },
+                    ModelEventFlags::EVENT_INDEX_ANY);
+
+                m_table_object_model->addEventListener(
+                    getUUID(),
+                    [&](ModelIndex index, int flags) {
+                        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) ==
+                            ModelEventFlags::EVENT_INDEX_ADDED) {
+                            m_selection_transforms_update_requested = true;
+                            return;
+                        }
+
+                        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+                            ModelEventFlags::EVENT_INDEX_REMOVED) {
+                            m_selection_transforms_update_requested = true;
+                            return;
+                        }
+                    },
+                    ModelEventFlags::EVENT_INDEX_ANY);
+
+                m_rail_model->addEventListener(
+                    getUUID(),
+                    [&](ModelIndex index, int flags) {
+                        m_path_renderer_update_reqeusted = true;
+
+                        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) ==
+                            ModelEventFlags::EVENT_INDEX_ADDED) {
+                            if (m_rail_model->isIndexRail(index)) {
+                                m_rail_visible_map_update_request_index = index;
+                            }
+                            m_selection_transforms_update_requested = true;
+                            return;
+                        }
+
+                        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+                            ModelEventFlags::EVENT_INDEX_REMOVED) {
+                            m_selection_transforms_update_requested = true;
+                            return;
+                        }
+                    },
+                    ModelEventFlags::EVENT_INDEX_ANY);
 
                 m_renderer.initializeData(m_rail_model);
                 return true;
@@ -293,10 +546,29 @@ namespace Toolbox::UI {
             m_is_game_edit_mode = false;
         }
 
+        if (!m_rail_model) {
+            return;
+        }
+
+        std::unique_lock<std::mutex> lock(m_scene_pruner.getOperationMutex());
+
+        ModelIndex rail_visibility_index = m_rail_visible_map_update_request_index;
+        if (m_rail_model->isIndexRail(rail_visibility_index)) {
+            m_rail_visible_map[rail_visibility_index.getUUID()] = true;
+            m_rail_visible_map_update_request_index             = ModelIndex();
+        }
+
+        if (m_path_renderer_update_reqeusted.load()) {
+            m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+            m_path_renderer_update_reqeusted.store(false);
+        }
+
         return;
     }
 
     void SceneWindow::onImGuiPostUpdate(TimeStep delta_time) {
+        std::unique_lock<std::mutex> lock(m_scene_pruner.getOperationMutex());
+
         const AppSettings &settings =
             MainApplication::instance().getSettingsManager().getCurrentProfile();
 
@@ -319,15 +591,19 @@ namespace Toolbox::UI {
                 Renderer::selection_variant_t selection =
                     m_renderer.findSelection(m_renderables, rendered_nodes, should_reset);
 
-                bool multi_select = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
+                const bool multi_select = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
+                const bool is_mouse_up = Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT) ||
+                                         Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT);
 
-                if (should_reset && std::holds_alternative<std::monostate>(selection)) {
-                    m_scene_selection_mgr.getState().clearSelection();
-                    m_table_selection_mgr.getState().clearSelection();
-                    m_rail_selection_mgr.getState().clearSelection();
+                if (std::holds_alternative<std::monostate>(selection)) {
+                    if (should_reset) {
+                        m_scene_selection_mgr.getState().clearSelection();
+                        m_table_selection_mgr.getState().clearSelection();
+                        m_rail_selection_mgr.getState().clearSelection();
 
-                    m_selected_properties.clear();
-                    m_properties_render_handler = renderEmptyProperties;
+                        m_selected_properties.clear();
+                        m_properties_render_handler = renderEmptyProperties;
+                    }
                 } else if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
                     RefPtr<ISceneObject> obj = std::get<RefPtr<ISceneObject>>(selection);
                     processObjectSelection(obj, multi_select);
@@ -356,20 +632,20 @@ namespace Toolbox::UI {
                     if (m_scene_selection_mgr.getState().count() > 0) {
                         const IDataModel::index_container &indexes =
                             m_scene_selection_mgr.getState().getSelection();
-                        std::all_of(indexes.begin(), indexes.end(), [this](const ModelIndex &node) {
-                            RefPtr<ISceneObject> obj = m_scene_object_model->getObjectRef(node);
-                            return obj && obj->getTransform().has_value();
-                        });
-                        return true;
+                        return std::all_of(
+                            indexes.begin(), indexes.end(), [this](const ModelIndex &node) {
+                                RefPtr<ISceneObject> obj = m_scene_object_model->getObjectRef(node);
+                                return obj && obj->getTransform().has_value();
+                            });
                     }
                     if (m_table_selection_mgr.getState().count() > 0) {
                         const IDataModel::index_container &indexes =
                             m_table_selection_mgr.getState().getSelection();
-                        std::all_of(indexes.begin(), indexes.end(), [this](const ModelIndex &node) {
-                            RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(node);
-                            return obj && obj->getTransform().has_value();
-                        });
-                        return true;
+                        return std::all_of(
+                            indexes.begin(), indexes.end(), [this](const ModelIndex &node) {
+                                RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(node);
+                                return obj && obj->getTransform().has_value();
+                            });
                     }
                     return false;
                 }();
@@ -386,15 +662,16 @@ namespace Toolbox::UI {
         Game::TaskCommunicator &task_communicator =
             MainApplication::instance().getTaskCommunicator();
 
-        if (m_selection_transforms_needs_update) {
+        if (m_selection_transforms_update_requested.load()) {
             calcNewGizmoMatrixFromSelection();
-            m_selection_transforms_needs_update = false;
+            m_selection_transforms_update_requested.store(false);
         }
 
         bool should_update_paths =
             m_renderer.isUniqueRailColors() != settings.m_is_unique_rail_color;
 
-        if (m_renderer.isGizmoManipulated()) {
+        if (m_renderer.isGizmoManipulated() &&
+            Input::GetMouseButton(Input::MouseButton::BUTTON_LEFT)) {
             glm::mat4x4 gizmo_total_delta = m_renderer.getGizmoTotalDelta();
 
             // Scene object transform manipulation
@@ -402,16 +679,14 @@ namespace Toolbox::UI {
                 const IDataModel::index_container &obj_indexes =
                     m_scene_selection_mgr.getState().getSelection();
 
-                size_t i = 0;
                 for (const ModelIndex &index : obj_indexes) {
                     RefPtr<ISceneObject> obj = m_scene_object_model->getObjectRef(index);
                     if (!obj || !obj->getTransform()) {
                         continue;
                     }
-                    const Transform &obj_transform = m_selection_transforms[i];
+                    const Transform &obj_transform = m_selection_transforms[index.getUUID()];
                     Transform new_transform        = gizmo_total_delta * obj_transform;
                     obj->setTransform(new_transform);
-                    i++;
                 }
             }
 
@@ -420,16 +695,14 @@ namespace Toolbox::UI {
                 const IDataModel::index_container &obj_indexes =
                     m_table_selection_mgr.getState().getSelection();
 
-                size_t i = 0;
                 for (const ModelIndex &index : obj_indexes) {
                     RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(index);
                     if (!obj || !obj->getTransform()) {
                         continue;
                     }
-                    const Transform &obj_transform = m_selection_transforms[i];
+                    const Transform &obj_transform = m_selection_transforms[index.getUUID()];
                     Transform new_transform        = gizmo_total_delta * obj_transform;
                     obj->setTransform(new_transform);
-                    i++;
                 }
             }
 
@@ -440,7 +713,6 @@ namespace Toolbox::UI {
                 glm::mat4x4 gizmo_delta   = m_renderer.getGizmoFrameDelta();
                 Transform delta_transform = Transform::FromMat4x4(gizmo_delta);
 
-                size_t i = 0;
                 for (const ModelIndex &index : rail_indexes) {
                     RailData::rail_ptr_t rail = m_rail_model->getRailRef(index);
 
@@ -448,16 +720,14 @@ namespace Toolbox::UI {
                     if (is_node) {
                         Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
 
-                        const Transform &node_transform = m_selection_transforms[i];
+                        const Transform &node_transform = m_selection_transforms[index.getUUID()];
                         Transform new_transform         = gizmo_total_delta * node_transform;
 
                         rail->setNodePosition(node, new_transform.m_translation);
                     } else {
-                        const Transform &rail_transform = m_selection_transforms[i];
+                        const Transform &rail_transform = m_selection_transforms[index.getUUID()];
                         rail->transform(gizmo_delta);
                     }
-
-                    i++;
                 }
 
                 should_update_paths = true;
@@ -473,8 +743,8 @@ namespace Toolbox::UI {
 
         // Refresh the selection transforms so new gizmo manips don't reset
         if (!m_renderer.isGizmoActive() && m_gizmo_maniped) {
-            m_selection_transforms_needs_update = true;
-            m_gizmo_maniped                     = false;
+            m_selection_transforms_update_requested = true;
+            m_gizmo_maniped                         = false;
         }
 
         if (m_is_game_edit_mode) {
@@ -555,6 +825,8 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::onRenderBody(TimeStep deltaTime) {
+        std::unique_lock<std::mutex> lock(m_scene_pruner.getOperationMutex());
+
         renderHierarchy();
         renderProperties();
         renderRailEditor();
@@ -573,74 +845,107 @@ namespace Toolbox::UI {
     void SceneWindow::renderSanitizationSteps() {
         const ImGuiStyle &style = ImGui::GetStyle();
 
-        if (m_scene_verifier) {
-            if (m_scene_verifier->tIsAlive()) {
-                ImGui::OpenPopup("Scene Validator");
+        if (m_scene_verifier.tIsAlive()) {
+            ImGui::OpenPopup("Scene Validator");
 
-                ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
-                                        ImGuiCond_Appearing, {0.5f, 0.5f});
+            ImGui::SetNextWindowSize({400.0f, 200.0f});
+            ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
+                                    ImGuiCond_Appearing, {0.5f, 0.5f});
 
-                if (ImGui::BeginPopupModal("Scene Validator", nullptr, ImGuiWindowFlags_NoResize)) {
-                    ImGui::Text("Validating scene, please wait...");
-                    ImGui::Separator();
+            if (ImGui::BeginPopupModal("Scene Validator", nullptr, ImGuiWindowFlags_NoResize)) {
+                ImGui::Text("Validating scene, please wait...");
+                ImGui::Separator();
 
-                    float progress            = m_scene_verifier->getProgress();
-                    std::string progress_text = m_scene_verifier->getProgressText();
+                float progress            = m_scene_verifier.getProgress();
+                std::string progress_text = m_scene_verifier.getProgressText();
 
-                    ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0.0f), progress_text.c_str());
-                    ImGui::EndPopup();
+                ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0.0f), progress_text.c_str());
+                ImGui::EndPopup();
+            }
+        } else if (m_scene_verifier.tIsKilled()) {
+            if (!m_scene_validator_result_opened) {
+                if (m_scene_verifier.isValid()) {
+                    MainApplication::instance().showSuccessModal(
+                        this, "Scene Validator Result",
+                        "Scene validation completed successfully!");
+                } else {
+                    std::vector<std::string> errors = m_scene_verifier.getErrors();
+                    MainApplication::instance().showErrorModal(
+                        this, "Scene Validator Result", "Scene validation failed with errors!",
+                        errors);
                 }
-            } else if (m_scene_verifier->tIsKilled()) {
-                if (!m_scene_validator_result_opened) {
-                    if (m_scene_verifier->isValid()) {
-                        MainApplication::instance().showSuccessModal(
-                            this, "Scene Validator Result",
-                            "Scene validation completed successfully!");
-                    } else {
-                        std::vector<std::string> errors = m_scene_verifier->getErrors();
-                        MainApplication::instance().showErrorModal(
-                            this, "Scene Validator Result", "Scene validation failed with errors!",
-                            errors);
-                    }
-                    m_scene_validator_result_opened = true;
-                }
+                m_scene_validator_result_opened = true;
             }
         }
 
-        if (m_scene_mender) {
-            if (m_scene_mender->tIsAlive()) {
-                ImGui::OpenPopup("Scene Repair");
+        if (m_scene_mender.tIsAlive()) {
+            ImGui::OpenPopup("Scene Repair");
 
-                ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
-                                        ImGuiCond_Appearing, {0.5f, 0.5f});
+            ImGui::SetNextWindowSize({400.0f, 200.0f});
+            ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
+                                    ImGuiCond_Appearing, {0.5f, 0.5f});
 
-                if (ImGui::BeginPopupModal("Scene Repair", nullptr, ImGuiWindowFlags_NoResize)) {
-                    ImGui::Text("Validating scene, please wait...");
-                    ImGui::Separator();
+            if (ImGui::BeginPopupModal("Scene Repair", nullptr, ImGuiWindowFlags_NoResize)) {
+                ImGui::Text("Validating scene, please wait...");
+                ImGui::Separator();
 
-                    std::string progress_text = m_scene_mender->getProgressText();
+                std::string progress_text = m_scene_mender.getProgressText();
 
-                    ImGui::ProgressBar(-1.0f * ImGui::GetTime(), ImVec2(-FLT_MIN, 0.0f),
-                                       progress_text.c_str());
-                    ImGui::EndPopup();
+                ImGui::ProgressBar(-1.0f * ImGui::GetTime(), ImVec2(-FLT_MIN, 0.0f),
+                                    progress_text.c_str());
+                ImGui::EndPopup();
+            }
+        } else if (m_scene_mender.tIsKilled()) {
+            if (!m_scene_mender_result_opened) {
+                if (m_scene_mender.isValid()) {
+                    std::vector<std::string> changes = m_scene_mender.getChanges();
+                    MainApplication::instance().showSuccessModal(
+                        this, "Scene Repair Result",
+                        changes.empty() ? "The scene was already valid!"
+                                        : "Scene repair completed successfully!",
+                        changes);
+                } else {
+                    std::vector<std::string> errors = m_scene_mender.getErrors();
+                    MainApplication::instance().showErrorModal(
+                        this, "Scene Repair Result", "Scene repair failed with errors!",
+                        errors);
                 }
-            } else if (m_scene_mender->tIsKilled()) {
-                if (!m_scene_mender_result_opened) {
-                    if (m_scene_mender->isValid()) {
-                        std::vector<std::string> changes = m_scene_mender->getChanges();
-                        MainApplication::instance().showSuccessModal(
-                            this, "Scene Repair Result",
-                            changes.empty() ? "The scene was already valid!"
-                                            : "Scene repair completed successfully!",
-                            changes);
-                    } else {
-                        std::vector<std::string> errors = m_scene_mender->getErrors();
-                        MainApplication::instance().showErrorModal(
-                            this, "Scene Repair Result", "Scene repair failed with errors!",
-                            errors);
-                    }
-                    m_scene_mender_result_opened = true;
+                m_scene_mender_result_opened = true;
+            }
+        }
+
+        if (m_scene_pruner.tIsAlive()) {
+            ImGui::OpenPopup("Scene Pruner");
+
+            ImGui::SetNextWindowSize({400.0f, 200.0f});
+            ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(),
+                                    ImGuiCond_Appearing, {0.5f, 0.5f});
+
+            if (ImGui::BeginPopupModal("Scene Pruner", nullptr, ImGuiWindowFlags_NoResize)) {
+                ImGui::Text("Pruning scene, please wait...");
+                ImGui::Separator();
+
+                std::string progress_text = m_scene_pruner.getProgressText();
+
+                ImGui::ProgressBar(-1.0f * ImGui::GetTime(), ImVec2(-FLT_MIN, 0.0f),
+                                    progress_text.c_str());
+                ImGui::EndPopup();
+            }
+        } else if (m_scene_pruner.tIsKilled()) {
+            if (!m_scene_pruner_result_opened) {
+                if (m_scene_pruner.isValid()) {
+                    std::vector<std::string> changes = m_scene_pruner.getChanges();
+                    MainApplication::instance().showSuccessModal(
+                        this, "Scene Pruner Result",
+                        changes.empty() ? "The scene was already pruned / efficient!"
+                                        : "Scene prune completed successfully!",
+                        changes);
+                } else {
+                    std::vector<std::string> errors = m_scene_pruner.getErrors();
+                    MainApplication::instance().showErrorModal(
+                        this, "Scene Pruner Result", "Scene prune failed with errors!", errors);
                 }
+                m_scene_pruner_result_opened = true;
             }
         }
     }
@@ -743,11 +1048,10 @@ namespace Toolbox::UI {
         bool multi_select     = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
         bool needs_scene_sync = node->getTransform() ? false : true;
 
-        std::string display_name = std::format("{} ({})", node->type(), node->getNameRef().name());
+        std::string display_name = m_scene_object_model->getDisplayText(index);
         bool is_filtered_out     = !m_hierarchy_filter.PassFilter(display_name.c_str());
 
-        std::string node_uid_str = getNodeUID(node);
-        ImGuiID tree_node_id     = static_cast<ImGuiID>(node->getUUID());
+        ImGuiID tree_node_id = static_cast<ImGuiID>(node->getUUID());
 
         const bool node_selected = m_scene_selection_mgr.getState().isSelected(index);
 
@@ -794,14 +1098,14 @@ namespace Toolbox::UI {
             } else {
 
                 if (node_visibility) {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected,
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected,
                                                   &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected);
                 }
 
                 m_tree_node_open_map[index] = node_open;
@@ -896,22 +1200,16 @@ namespace Toolbox::UI {
                         }
 
                         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
-                            for (auto &member : node->getMembers()) {
-                                member->syncArray();
-                                auto prop = createProperty(member);
-                                if (prop) {
-                                    m_selected_properties.push_back(std::move(prop));
-                                }
-                            }
+                            regeneratePropertiesForObject(node);
                         }
 
-                        m_selection_transforms_needs_update = true;
+                        m_selection_transforms_update_requested = true;
                     }
 
                     m_properties_render_handler = renderObjectProperties;
                 }
 
-                renderSceneHierarchyContextMenu(node_uid_str, index);
+                renderSceneHierarchyContextMenu(display_name, index);
 
                 if (node_open) {
                     for (size_t i = 0; i < m_scene_object_model->getRowCount(index); ++i) {
@@ -924,14 +1222,14 @@ namespace Toolbox::UI {
         } else {
             if (!is_filtered_out) {
                 if (node_visibility) {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected,
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected,
                                                   &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected);
                 }
 
                 m_tree_node_open_map[index] = node_open;
@@ -1008,22 +1306,16 @@ namespace Toolbox::UI {
                         }
 
                         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
-                            for (auto &member : node->getMembers()) {
-                                member->syncArray();
-                                auto prop = createProperty(member);
-                                if (prop) {
-                                    m_selected_properties.push_back(std::move(prop));
-                                }
-                            }
+                            regeneratePropertiesForObject(node);
                         }
 
-                        m_selection_transforms_needs_update = true;
+                        m_selection_transforms_update_requested = true;
                     }
 
                     m_properties_render_handler = renderObjectProperties;
                 }
 
-                renderSceneHierarchyContextMenu(node_uid_str, index);
+                renderSceneHierarchyContextMenu(display_name, index);
 
                 if (node_open) {
                     ImGui::TreePop();
@@ -1066,11 +1358,10 @@ namespace Toolbox::UI {
         bool multi_select     = Input::GetKey(KeyCode::KEY_LEFTCONTROL);
         bool needs_scene_sync = node->getTransform() ? false : true;
 
-        std::string display_name = std::format("{} ({})", node->type(), node->getNameRef().name());
+        std::string display_name = m_table_object_model->getDisplayText(index);
         bool is_filtered_out     = !m_hierarchy_filter.PassFilter(display_name.c_str());
 
-        std::string node_uid_str = getNodeUID(node);
-        ImGuiID tree_node_id     = static_cast<ImGuiID>(node->getUUID());
+        ImGuiID tree_node_id = static_cast<ImGuiID>(node->getUUID());
 
         const bool node_selected = m_table_selection_mgr.getState().isSelected(index);
 
@@ -1100,14 +1391,14 @@ namespace Toolbox::UI {
                 }
             } else {
                 if (node_visibility) {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected,
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected,
                                                   &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected);
                 }
 
                 m_tree_node_open_map[index] = node_open;
@@ -1202,22 +1493,16 @@ namespace Toolbox::UI {
                         }
 
                         if (m_table_selection_mgr.getState().getSelection().size() == 1) {
-                            for (auto &member : node->getMembers()) {
-                                member->syncArray();
-                                auto prop = createProperty(member);
-                                if (prop) {
-                                    m_selected_properties.push_back(std::move(prop));
-                                }
-                            }
+                            regeneratePropertiesForObject(node);
                         }
 
-                        m_selection_transforms_needs_update = true;
+                        m_selection_transforms_update_requested = true;
                     }
 
                     m_properties_render_handler = renderObjectProperties;
                 }
 
-                renderTableHierarchyContextMenu(node_uid_str, index);
+                renderTableHierarchyContextMenu(display_name, index);
 
                 if (node_open) {
                     for (size_t i = 0; i < m_table_object_model->getRowCount(index); ++i) {
@@ -1230,14 +1515,14 @@ namespace Toolbox::UI {
         } else {
             if (!is_filtered_out) {
                 if (node_visibility) {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected,
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected,
                                                   &node_visible);
                     if (node->getIsPerforming() != node_visible) {
                         node->setIsPerforming(node_visible);
                         m_update_render_objs = true;
                     }
                 } else {
-                    node_open = ImGui::TreeNodeEx(node_uid_str.c_str(), the_flags, node_selected);
+                    node_open = ImGui::TreeNodeEx(display_name.c_str(), the_flags, node_selected);
                 }
 
                 m_tree_node_open_map[index] = node_open;
@@ -1250,8 +1535,8 @@ namespace Toolbox::UI {
                     ImVec2 item_size = ImGui::GetItemRectSize();
                     ImVec2 item_pos  = ImGui::GetItemRectMin();
 
-                    //if (ImGui::BeginDragDropSource()) {
-                    //    int64_t node_index = m_table_object_model->getRow(index);
+                    // if (ImGui::BeginDragDropSource()) {
+                    //     int64_t node_index = m_table_object_model->getRow(index);
 
                     //    Toolbox::Buffer buffer;
                     //    saveMimeObject(buffer, node_index, get_shared_ptr(*node->getParent()));
@@ -1261,19 +1546,19 @@ namespace Toolbox::UI {
                     //    ImGui::EndDragDropSource();
                     //}
 
-                    //ImGuiDropFlags drop_flags = ImGuiDropFlags_None;
-                    //if (mouse_pos.y < item_pos.y + (item_size.y / 2)) {
-                    //    drop_flags = ImGuiDropFlags_InsertBefore;
-                    //} else {
-                    //    drop_flags = ImGuiDropFlags_InsertAfter;
-                    //}
+                    // ImGuiDropFlags drop_flags = ImGuiDropFlags_None;
+                    // if (mouse_pos.y < item_pos.y + (item_size.y / 2)) {
+                    //     drop_flags = ImGuiDropFlags_InsertBefore;
+                    // } else {
+                    //     drop_flags = ImGuiDropFlags_InsertAfter;
+                    // }
 
-                    //if (ImGui::BeginDragDropTarget()) {
-                    //    if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
-                    //            "toolbox/scene/object",
-                    //            ImGuiDragDropFlags_AcceptBeforeDelivery |
-                    //                ImGuiDragDropFlags_AcceptNoDrawDefaultRect |
-                    //                ImGuiDragDropFlags_SourceNoHoldToOpenOthers)) {
+                    // if (ImGui::BeginDragDropTarget()) {
+                    //     if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
+                    //             "toolbox/scene/object",
+                    //             ImGuiDragDropFlags_AcceptBeforeDelivery |
+                    //                 ImGuiDragDropFlags_AcceptNoDrawDefaultRect |
+                    //                 ImGuiDragDropFlags_SourceNoHoldToOpenOthers)) {
 
                     //        ImGui::RenderDragDropTargetRect(
                     //            ImGui::GetCurrentContext()->DragDropTargetRect,
@@ -1314,22 +1599,16 @@ namespace Toolbox::UI {
                         }
 
                         if (m_table_selection_mgr.getState().getSelection().size() == 1) {
-                            for (auto &member : node->getMembers()) {
-                                member->syncArray();
-                                auto prop = createProperty(member);
-                                if (prop) {
-                                    m_selected_properties.push_back(std::move(prop));
-                                }
-                            }
+                            regeneratePropertiesForObject(node);
                         }
 
-                        m_selection_transforms_needs_update = true;
+                        m_selection_transforms_update_requested = true;
                     }
 
                     m_properties_render_handler = renderObjectProperties;
                 }
 
-                renderTableHierarchyContextMenu(node_uid_str, index);
+                renderTableHierarchyContextMenu(display_name, index);
 
                 if (node_open) {
                     ImGui::TreePop();
@@ -1719,7 +1998,7 @@ namespace Toolbox::UI {
             }
 
             if (m_requested_rail_scroll_y.has_value()) {
-                const float window_height = ImGui::GetWindowHeight();
+                const float window_height   = ImGui::GetWindowHeight();
                 const float window_scroll_y = ImGui::GetScrollY();
 
                 if (fabsf(window_scroll_y - m_requested_rail_scroll_y.value()) >
@@ -1747,8 +2026,9 @@ namespace Toolbox::UI {
 
                 const bool this_node_is_view_ancestry =
                     !m_rail_selection_ancestry_for_view.empty() &&
-                    std::any_of(m_rail_selection_ancestry_for_view.begin(),
-                                m_rail_selection_ancestry_for_view.end(),
+                    std::any_of(
+                        m_rail_selection_ancestry_for_view.begin(),
+                        m_rail_selection_ancestry_for_view.end(),
                         [rail_index](const ModelIndex &other) { return other == rail_index; });
 
                 if (this_node_is_view_ancestry) {
@@ -1783,24 +2063,25 @@ namespace Toolbox::UI {
                     ImVec2 item_size = ImGui::GetItemRectSize();
                     ImVec2 item_pos  = ImGui::GetItemRectMin();
 
-                    //if (ImGui::BeginDragDropSource()) {
-                    //    Toolbox::Buffer buffer;
-                    //    saveMimeRail(buffer, i);
-                    //    ImGui::SetDragDropPayload("toolbox/scene/rail", buffer.buf(), buffer.size(),
-                    //                              ImGuiCond_Once);
-                    //    ImGui::Text("Rail: %s", rail->name().c_str());
-                    //    ImGui::EndDragDropSource();
-                    //}
+                    // if (ImGui::BeginDragDropSource()) {
+                    //     Toolbox::Buffer buffer;
+                    //     saveMimeRail(buffer, i);
+                    //     ImGui::SetDragDropPayload("toolbox/scene/rail", buffer.buf(),
+                    //     buffer.size(),
+                    //                               ImGuiCond_Once);
+                    //     ImGui::Text("Rail: %s", rail->name().c_str());
+                    //     ImGui::EndDragDropSource();
+                    // }
 
-                    //if (ImGui::BeginDragDropTarget()) {
-                    //    if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
-                    //            "toolbox/scene/rail",
-                    //            ImGuiDragDropFlags_AcceptBeforeDelivery |
-                    //                ImGuiDragDropFlags_SourceNoHoldToOpenOthers);
-                    //        payload && payload->IsDelivery()) {
-                    //        Toolbox::Buffer buffer;
-                    //        buffer.setBuf(payload->Data, payload->DataSize);
-                    //        buffer.copyTo(m_drop_target_buffer);
+                    // if (ImGui::BeginDragDropTarget()) {
+                    //     if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(
+                    //             "toolbox/scene/rail",
+                    //             ImGuiDragDropFlags_AcceptBeforeDelivery |
+                    //                 ImGuiDragDropFlags_SourceNoHoldToOpenOthers);
+                    //         payload && payload->IsDelivery()) {
+                    //         Toolbox::Buffer buffer;
+                    //         buffer.setBuf(payload->Data, payload->DataSize);
+                    //         buffer.copyTo(m_drop_target_buffer);
 
                     //        // Calculate index based on position relative to center
                     //        m_rail_drop_target = i;
@@ -1827,7 +2108,7 @@ namespace Toolbox::UI {
                         m_scene_selection_mgr.getState().clearSelection();
                         m_table_selection_mgr.getState().clearSelection();
 
-                        m_selection_transforms_needs_update = true;
+                        m_selection_transforms_update_requested = true;
 
                         m_properties_render_handler = renderRailProperties;
                     }
@@ -1919,7 +2200,7 @@ namespace Toolbox::UI {
                                 m_scene_selection_mgr.getState().clearSelection();
                                 m_table_selection_mgr.getState().clearSelection();
 
-                                m_selection_transforms_needs_update = true;
+                                m_selection_transforms_update_requested = true;
 
                                 m_properties_render_handler = renderRailNodeProperties;
                             }
@@ -2002,13 +2283,13 @@ namespace Toolbox::UI {
                 m_renderer.markDirty();
             }
 
-            //for (const ISceneObject::RenderInfo &render_info : m_renderables) {
-            //    ModelIndex obj_index = m_scene_object_model->getIndex(render_info.m_object);
-            //    const bool is_selected = m_scene_selection_mgr.getState().isSelected(obj_index);
-            //    for (RefPtr<J3DMaterial> material : render_info.m_model->GetMaterials()) {
-            //        material->SetSelected(is_selected);
-            //    }
-            //}
+            // for (const ISceneObject::RenderInfo &render_info : m_renderables) {
+            //     ModelIndex obj_index = m_scene_object_model->getIndex(render_info.m_object);
+            //     const bool is_selected = m_scene_selection_mgr.getState().isSelected(obj_index);
+            //     for (RefPtr<J3DMaterial> material : render_info.m_model->GetMaterials()) {
+            //         material->SetSelected(is_selected);
+            //     }
+            // }
         }
 
         std::string scene_view_str = ImWindowComponentTitle(*this, "Scene View");
@@ -2026,7 +2307,7 @@ namespace Toolbox::UI {
                 m_focused_window = EditorWindow::RENDER_VIEW;
             }
 
-            m_renderer.render(m_renderables, delta_time);
+            m_renderer.render(m_renderables, delta_time, !settings.m_is_rendering_simple);
 
             renderScenePeripherals(delta_time);
             renderPlaybackButtons(delta_time);
@@ -2053,6 +2334,9 @@ namespace Toolbox::UI {
                 m_rail_list_context_menu.tryRender(
                     m_rail_selection_mgr.getState().getLastSelected());
             }
+
+            // Stupid ImGui keeps crashing when SetCursorPos goes past the window
+            ImGui::Dummy({0.0f, 0.0f});
         }
         ImGui::End();
     }
@@ -2672,25 +2956,24 @@ namespace Toolbox::UI {
                     return;
                 })
             .addOption(
-                "Insert Node", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                "Insert Node", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_N},
                 [this](ModelIndex index) -> bool {
                     return m_rail_selection_mgr.getState().count() == 1;
                 },
                 [this](ModelIndex index) {
                     ModelIndex parent_index = m_rail_model->getParent(index);
-                    int64_t sibling_index   = m_rail_model->getRow(index);
-                    int64_t sibling_count   = m_rail_model->getRowCount(parent_index);
 
                     Rail::Rail::node_ptr_t new_node = std::make_shared<Rail::RailNode>();
 
                     ModelIndex result;
                     if (m_rail_model->validateIndex(parent_index)) {
                         // This means a node is selected
-                        result =
-                            m_rail_model->insertRailNode(new_node, sibling_index, parent_index);
+                        int64_t sibling_row = m_rail_model->getRow(index);
+                        result = m_rail_model->insertRailNode(new_node, sibling_row, parent_index);
                     } else {
                         // This means a rail is selected, so we insert at the end of the rail
-                        result = m_rail_model->insertRailNode(new_node, sibling_count, index);
+                        int64_t child_count = m_rail_model->getRowCount(index);
+                        result = m_rail_model->insertRailNode(new_node, child_count, index);
                     }
 
                     if (!m_rail_model->isIndexRailNode(result)) {
@@ -2702,14 +2985,13 @@ namespace Toolbox::UI {
                     m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addOption(
-                "Insert Node At Camera", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_N},
+                "Insert Node At Camera",
+                {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_N},
                 [this](ModelIndex index) -> bool {
                     return m_rail_selection_mgr.getState().count() == 1;
                 },
                 [this](ModelIndex index) {
                     ModelIndex parent_index = m_rail_model->getParent(index);
-                    int64_t sibling_index   = m_rail_model->getRow(index);
-                    int64_t sibling_count   = m_rail_model->getRowCount(parent_index);
 
                     glm::vec3 translation;
                     m_renderer.getCameraTranslation(translation);
@@ -2718,11 +3000,12 @@ namespace Toolbox::UI {
                     ModelIndex result;
                     if (m_rail_model->validateIndex(parent_index)) {
                         // This means a node is selected
-                        result =
-                            m_rail_model->insertRailNode(new_node, sibling_index, parent_index);
+                        int64_t sibling_row = m_rail_model->getRow(index);
+                        result = m_rail_model->insertRailNode(new_node, sibling_row, parent_index);
                     } else {
                         // This means a rail is selected, so we insert at the end of the rail
-                        result = m_rail_model->insertRailNode(new_node, sibling_count, index);
+                        int64_t child_count = m_rail_model->getRowCount(index);
+                        result = m_rail_model->insertRailNode(new_node, child_count, index);
                     }
 
                     if (!m_rail_model->isIndexRailNode(result)) {
@@ -3372,8 +3655,7 @@ namespace Toolbox::UI {
                 ModelIndex new_rail_index = m_rail_model->insertRail(
                     std::move(new_rail), m_rail_model->getRowCount(ModelIndex()));
                 if (m_rail_model->validateIndex(new_rail_index)) {
-                    m_rail_visible_map[new_rail_index.getUUID()] = true;
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                    m_rail_selection_mgr.actionSelectIndex(new_rail_index, true);
                     m_update_render_objs = true;
                 }
             });
@@ -3521,7 +3803,7 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::loadMimeRail(Buffer &buffer, size_t index) {
-        Rail::Rail rail("((null))");
+        Rail::Rail rail("(null)");
 
         bool is_internal = buffer.get<bool>(0);  // Internal
         u16 orig_index   = buffer.get<u16>(1);   // Index
@@ -3607,16 +3889,10 @@ namespace Toolbox::UI {
         m_selected_properties.clear();
 
         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
-            for (auto &member : node->getMembers()) {
-                member->syncArray();
-                auto prop = createProperty(member);
-                if (prop) {
-                    m_selected_properties.push_back(std::move(prop));
-                }
-            }
+            regeneratePropertiesForObject(node);
         }
 
-        m_selection_transforms_needs_update = true;
+        m_selection_transforms_update_requested = true;
 
         m_properties_render_handler = renderObjectProperties;
 
@@ -3657,7 +3933,7 @@ namespace Toolbox::UI {
 
         m_wants_rail_context_menu = true;
 
-        m_selection_transforms_needs_update = true;
+        m_selection_transforms_update_requested = true;
 
         m_selected_properties.clear();
         m_properties_render_handler = renderRailProperties;
@@ -3699,7 +3975,7 @@ namespace Toolbox::UI {
 
         m_wants_rail_context_menu = true;
 
-        m_selection_transforms_needs_update = true;
+        m_selection_transforms_update_requested = true;
 
         m_selected_properties.clear();
         m_properties_render_handler = renderRailNodeProperties;
@@ -3733,8 +4009,6 @@ namespace Toolbox::UI {
         m_selection_transforms.clear();
 
         if (total_selected_objects > 0) {
-            m_selection_transforms.reserve(total_selected_objects);
-
             for (const ModelIndex &index : m_scene_selection_mgr.getState().getSelection()) {
                 RefPtr<ISceneObject> obj               = m_scene_object_model->getObjectRef(index);
                 std::optional<Transform> obj_transform = obj->getTransform();
@@ -3742,8 +4016,9 @@ namespace Toolbox::UI {
                     continue;
                 }
 
-                m_selection_transforms.emplace_back(obj_transform.value());
-                combined_transform.m_translation += m_selection_transforms.back().m_translation;
+                const Transform &transform = obj_transform.value();
+                m_selection_transforms[index.getUUID()] = transform;
+                combined_transform.m_translation += transform.m_translation;
             }
 
             for (const ModelIndex &index : m_table_selection_mgr.getState().getSelection()) {
@@ -3753,15 +4028,14 @@ namespace Toolbox::UI {
                     continue;
                 }
 
-                m_selection_transforms.emplace_back(obj_transform.value());
-                combined_transform.m_translation += m_selection_transforms.back().m_translation;
+                const Transform &transform              = obj_transform.value();
+                m_selection_transforms[index.getUUID()] = transform;
+                combined_transform.m_translation += transform.m_translation;
             }
 
             combined_transform.m_translation /= total_selected_objects;
             m_renderer.setGizmoTransform(combined_transform);
         } else if (total_selected_rails_and_nodes > 0) {
-            m_selection_transforms.reserve(total_selected_rails_and_nodes);
-
             for (const ModelIndex &index : m_rail_selection_mgr.getState().getSelection()) {
                 glm::vec3 center;
                 if (m_rail_model->isIndexRail(index)) {
@@ -3771,9 +4045,9 @@ namespace Toolbox::UI {
                     Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
                     center                      = node->getPosition();
                 }
-                m_selection_transforms.push_back(
-                    Transform(center, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}));
-                combined_transform.m_translation += center;
+                Transform transform = Transform(center, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f});
+                m_selection_transforms[index.getUUID()] = transform;
+                combined_transform.m_translation += transform.m_translation;
             }
 
             combined_transform.m_translation /= total_selected_rails_and_nodes;
@@ -3788,13 +4062,14 @@ namespace Toolbox::UI {
 
         float desired_scroll = 0.0f;
 
-        const float row_height = ImGui::GetFontSize() + TreeNodeFramePaddingY * 2.0f;
+        const float row_height  = ImGui::GetFontSize() + TreeNodeFramePaddingY * 2.0f;
         const ImGuiStyle &style = ImGui::GetStyle();
 
         std::function<void(ModelIndex)> recursive_calc = [&](ModelIndex root) {
             desired_scroll += row_height + style.ItemSpacing.y;
 
-            const bool is_node_open = m_tree_node_open_map.contains(root) ? m_tree_node_open_map[root] : true;
+            const bool is_node_open =
+                m_tree_node_open_map.contains(root) ? m_tree_node_open_map[root] : true;
             if (!is_node_open) {
                 return;
             }
@@ -3868,6 +4143,18 @@ namespace Toolbox::UI {
         }
 
         return desired_scroll;
+    }
+
+    void SceneWindow::regeneratePropertiesForObject(RefPtr<ISceneObject> object) {
+        for (auto &member : object->getMembers()) {
+            member->syncArray();
+            auto prop = createProperty(member);
+            if (prop) {
+                prop->onValueChanged(
+                    [object](RefPtr<MetaMember> member) { object->refreshRenderState(); });
+                m_selected_properties.push_back(std::move(prop));
+            }
+        }
     }
 
     void SceneWindow::_moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id,
@@ -3956,32 +4243,39 @@ namespace Toolbox::UI {
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Validation")) {
-                const bool is_verifying = m_scene_verifier && m_scene_verifier->tIsAlive();
-                const bool is_repairing = m_scene_mender && m_scene_mender->tIsAlive();
+                const bool is_verifying = m_scene_verifier.tIsAlive();
+                const bool is_repairing = m_scene_mender.tIsAlive();
 
                 if (is_verifying || is_repairing) {
                     ImGui::BeginDisabled();
                 }
 
                 if (ImGui::MenuItem("Verify Scene")) {
-                    m_scene_verifier = make_scoped<ToolboxSceneVerifier>(
-                        ref_cast<const SceneInstance>(m_current_scene), false);
-                    m_scene_verifier->tStart(true, nullptr);
+                    m_scene_verifier = ToolboxSceneVerifier(
+                        m_scene_object_model, m_table_object_model, m_rail_model, false);
+                    m_scene_verifier.tStart(true, nullptr);
                     m_scene_validator_result_opened = false;
                 }
 
                 if (ImGui::MenuItem("Verify Scene & Dependencies")) {
-                    m_scene_verifier = make_scoped<ToolboxSceneVerifier>(
-                        ref_cast<const SceneInstance>(m_current_scene), true);
-                    m_scene_verifier->tStart(true, nullptr);
+                    m_scene_verifier = ToolboxSceneVerifier(
+                        m_scene_object_model, m_table_object_model, m_rail_model, true);
+                    m_scene_verifier.tStart(true, nullptr);
                     m_scene_validator_result_opened = false;
                 }
 
                 if (ImGui::MenuItem("Repair Dependencies")) {
-                    m_scene_mender = make_scoped<ToolboxSceneDependencyMender>(
-                        ref_cast<const SceneInstance>(m_current_scene));
-                    m_scene_mender->tStart(true, nullptr);
+                    m_scene_mender = ToolboxSceneDependencyMender(
+                        m_scene_object_model, m_table_object_model, m_rail_model);
+                    m_scene_mender.tStart(true, nullptr);
                     m_scene_mender_result_opened = false;
+                }
+
+                if (ImGui::MenuItem("Prune Scene")) {
+                    m_scene_pruner = ToolboxScenePruner(
+                        m_scene_object_model, m_table_object_model, m_rail_model);
+                    m_scene_pruner.tStart(true, nullptr);
+                    m_scene_pruner_result_opened = false;
                 }
 
                 if (is_verifying || is_repairing) {
@@ -4052,8 +4346,13 @@ namespace Toolbox::UI {
 }  // namespace Toolbox::UI
 
 void ToolboxSceneVerifier::tRun(void *param) {
-    m_successful = m_scene->validate(
-        m_check_dependencies,
+    if (!m_object_model || !m_table_model || !m_rail_model) {
+        m_successful = false;
+        return;
+    }
+
+    m_successful = ValidateScene(
+        m_object_model, m_table_model, m_rail_model, m_check_dependencies,
         [this](double progress, const std::string &progress_text) {
             setProgress(progress);
             m_progress_text = progress_text;
@@ -4062,8 +4361,1431 @@ void ToolboxSceneVerifier::tRun(void *param) {
 }
 
 void ToolboxSceneDependencyMender::tRun(void *param) {
-    m_successful = m_scene->repair(
-        true, [this](const std::string &progress_text) { m_progress_text = progress_text; },
+    if (!m_object_model || !m_table_model || !m_rail_model) {
+        m_successful = false;
+        return;
+    }
+
+    m_successful = RepairScene(
+        m_object_model, m_table_model, m_rail_model, true,
+        [this](const std::string &progress_text) { m_progress_text = progress_text; },
         [this](const std::string &change_msg) { m_changes.push_back(change_msg); },
         [this](const std::string &error_msg) { m_errors.push_back(error_msg); });
+}
+
+void ToolboxScenePruner::tRun(void *param) {
+    if (!m_object_model || !m_table_model || !m_rail_model) {
+        m_successful = false;
+        return;
+    }
+
+    m_successful = PruneScene(
+        m_object_model, m_table_model, m_rail_model, m_operation_mutex, true,
+        [this](const std::string &progress_text) { m_progress_text = progress_text; },
+        [this](const std::string &change_msg) { m_changes.push_back(change_msg); },
+        [this](const std::string &error_msg) { m_errors.push_back(error_msg); });
+}
+
+bool ToolboxSceneVerifier::ValidateScene(RefPtr<SceneObjModel> object_model,
+                                         RefPtr<SceneObjModel> table_model,
+                                         RefPtr<RailObjModel> rail_model, bool check_dependencies,
+                                         validate_progress_cb progress_cb,
+                                         validate_error_cb error_cb) {
+    // The goal here is to test that the scene is loadable and all objects are valid.
+    SceneValidator validate(object_model, table_model, rail_model, check_dependencies);
+    validate.setProgressCallback(progress_cb);
+    validate.setErrorCallback(error_cb);
+
+    // clang-format off
+
+        validate.scopeAssertObject("GroupObj", to_str(u8"全体シーン"))
+                .scopeEnter()
+                    .scopeAssertSize(VALIDATOR_GE(6))
+                    .scopeAssertObject("GroupObj", to_str(u8"コンダクター初期化用"))
+                    .scopeEnter()
+                        .scopeAssertSize(VALIDATOR_GE(7))
+                        .scopeAssertObject("MapObjBaseManager", to_str(u8"シャインマネージャー"))
+                        .scopeAssertObject("MapObjManager", to_str(u8"地形オブジェマネージャー"))
+                        .scopeAssertObject("MapObjBaseManager", to_str(u8"木マネージャー"))
+                        .scopeAssertObject("MapObjBaseManager", to_str(u8"大型地形オブジェマネージャー"))
+                        .scopeAssertObject("MapObjBaseManager", to_str(u8"ファークリップ地形オブジェマネージャー"))
+                        .scopeAssertObject("MapObjBaseManager", to_str(u8"乗り物マネージャー"))
+                        .scopeAssertObject("ItemManager", to_str(u8"アイテムマネージャー"))
+                    .scopeEscape()
+                    .scopeAssertObject("GroupObj", to_str(u8"鏡シーン"))
+                    .scopeEnter()
+                        .scopeAssertSize(VALIDATOR_GE(1))
+                        .scopeAssertObject("MirrorCamera", to_str(u8"鏡カメラ"))
+                    .scopeEscape()
+                    .scopeAssertObject("MirrorModelManager", to_str(u8"鏡表示モデル管理"))
+                    .scopeAssertObject("GroupObj", to_str(u8"スペキュラシーン"))
+                    .scopeAssertObject("GroupObj", to_str(u8"インダイレクトシーン"))
+                    .scopeAssertObject("MarScene", to_str(u8"通常シーン"))
+                    .scopeEnter()
+                        .scopeAssertSize(VALIDATOR_GE(4))
+                        .scopeAssertObject("AmbAry", to_str(u8"Ambient Group"))
+                        .scopeEnter()
+                            .scopeAssertSize(VALIDATOR_GE(6))
+                            .scopeAssertObject("AmbColor", to_str(u8"太陽アンビエント（プレイヤー）"))
+                            .scopeAssertObject("AmbColor", to_str(u8"影アンビエント（プレイヤー）"))
+                            .scopeAssertObject("AmbColor", to_str(u8"太陽アンビエント（オブジェクト）"))
+                            .scopeAssertObject("AmbColor", to_str(u8"影アンビエント（オブジェクト）"))
+                            .scopeAssertObject("AmbColor", to_str(u8"太陽アンビエント（敵）"))
+                            .scopeAssertObject("AmbColor", to_str(u8"影アンビエント（敵）"))
+                        .scopeEscape()
+                        .scopeAssertObject("LightAry", to_str(u8"Light Group"))
+                        .scopeEnter()
+                            .scopeAssertSize(VALIDATOR_GE(15))
+                            .scopeAssertObject("Light", to_str(u8"太陽（プレイヤー）"))
+                            .scopeAssertObject("Light", to_str(u8"太陽サブ（プレイヤー）"))
+                            .scopeAssertObject("Light", to_str(u8"影（プレイヤー）"))
+                            .scopeAssertObject("Light", to_str(u8"影サブ（プレイヤー）"))
+                            .scopeAssertObject("Light", to_str(u8"太陽スペキュラ（プレイヤー）"))
+                            .scopeAssertObject("Light", to_str(u8"太陽（オブジェクト）"))
+                            .scopeAssertObject("Light", to_str(u8"太陽サブ（オブジェクト）"))
+                            .scopeAssertObject("Light", to_str(u8"影（オブジェクト）"))
+                            .scopeAssertObject("Light", to_str(u8"影サブ（オブジェクト）"))
+                            .scopeAssertObject("Light", to_str(u8"太陽スペキュラ（オブジェクト）"))
+                            .scopeAssertObject("Light", to_str(u8"太陽（敵）"))
+                            .scopeAssertObject("Light", to_str(u8"太陽サブ（敵）"))
+                            .scopeAssertObject("Light", to_str(u8"影（敵）"))
+                            .scopeAssertObject("Light", to_str(u8"影サブ（敵）"))
+                            .scopeAssertObject("Light", to_str(u8"太陽スペキュラ（敵）"))
+                        .scopeEscape()
+                        .scopeAssertObject("Strategy", to_str(u8"ストラテジ"))
+                        .scopeEnter()
+                            .scopeAssertSize(VALIDATOR_GE(12))
+                            .scopeAssertObject("IdxGroup", to_str(u8"マップグループ"))
+                            .scopeEnter()
+                                .scopeAssertSize(VALIDATOR_GE(1))
+                                .scopeAssertObject("Map", to_str(u8"マップ"))
+                            .scopeEscape()
+                            .scopeAssertObject("IdxGroup", to_str(u8"空グループ"))
+                            .scopeEnter()
+                                .scopeAssertSize(VALIDATOR_GE(1))
+                                .scopeAssertObject("Sky", to_str(u8"空"))
+                            .scopeEscape()
+                            .scopeAssertObject("IdxGroup", to_str(u8"マネージャーグループ"))
+                            .scopeEnter()
+                                .scopeAssertSize(VALIDATOR_GE(12))
+                                .scopeAssertObject("SunMgr", to_str(u8"太陽マネージャー"))
+                                .scopeAssertObject("CubeCamera", to_str(u8"キューブ（カメラ）"))
+                                .scopeAssertObject("CubeMirror", to_str(u8"キューブ（鏡）"))
+                                .scopeAssertObject("CubeWire", to_str(u8"キューブ（ワイヤー）"))
+                                .scopeAssertObject("CubeStream", to_str(u8"キューブ（流れ）"))
+                                .scopeAssertObject("CubeShadow", to_str(u8"キューブ（影）"))
+                                .scopeAssertObject("CubeArea", to_str(u8"キューブ（エリア）"))
+                                .scopeAssertObject("CubeFastA", to_str(u8"キューブ（高速Ａ）"))
+                                .scopeAssertObject("CubeFastB", to_str(u8"キューブ（高速Ｂ）"))
+                                .scopeAssertObject("CubeFastC", to_str(u8"キューブ（高速Ｃ）"))
+                                .scopeAssertObject("CubeSoundChange", to_str(u8"キューブ（サウンド切り替え）"))
+                                .scopeAssertObject("CubeSoundEffect", to_str(u8"キューブ（サウンドエフェクト）"))
+                            .scopeEscape()
+                            .scopeAssertObject("IdxGroup", to_str(u8"オブジェクトグループ"))
+                            .scopeAssertObject("IdxGroup", to_str(u8"落書きグループ"))
+                            .scopeEnter()
+                                .scopeAssertSize(VALIDATOR_GE(1))
+                                .scopeAssertObject("Pollution", to_str(u8"落書き管理"))
+                            .scopeEscape()
+                            .scopeAssertObject("IdxGroup", to_str(u8"アイテムグループ"))
+                            .scopeAssertObject("IdxGroup", to_str(u8"プレーヤーグループ"))
+                            .scopeEnter()
+                                .scopeAssertSize(VALIDATOR_GE(1))
+                                .scopeAssertObject("Mario", to_str(u8"マリオ"))
+                            .scopeEscape()
+                            .scopeAssertObject("IdxGroup", to_str(u8"敵グループ"))
+                            .scopeAssertObject("IdxGroup", to_str(u8"ボスグループ"))
+                            .scopeAssertObject("IdxGroup", to_str(u8"ＮＰＣグループ"))
+                            .scopeAssertObject("IdxGroup", to_str(u8"水パーティクルグループ"))
+                            .scopeAssertObject("IdxGroup", to_str(u8"初期化用グループ"))
+                        .scopeEscape()
+                        .scopeAssertObject("GroupObj", to_str(u8"Cameras"))
+                        .scopeEnter()
+                            .scopeAssertSize(VALIDATOR_GE(1))
+                            .scopeAssertObject("PolarSubCamera", to_str(u8"camera 1"))
+                        .scopeEscape()
+                    .scopeEscape()
+                .scopeEscape();
+
+    // clang-format on
+
+    // Now we check for dependencies on ALL objects
+    validate.scopeForAll(object_model, [&validate](RefPtr<SceneObjModel> model, ModelIndex index) {
+        validate.scopeValidateDependencies(model, index);
+    });
+
+    return static_cast<bool>(validate);
+}
+
+bool ToolboxSceneDependencyMender::RepairScene(
+    RefPtr<SceneObjModel> object_model, RefPtr<SceneObjModel> table_model,
+    RefPtr<RailObjModel> rail_model, bool check_dependencies, repair_progress_cb progress_cb,
+    repair_change_cb change_cb, repair_error_cb error_cb) {
+    // The goal here is to test that the scene is loadable and all objects are valid.
+    SceneMender mender(object_model, table_model, rail_model, check_dependencies);
+    mender.setProgressCallback(progress_cb);
+    mender.setChangeCallback(change_cb);
+    mender.setErrorCallback(error_cb);
+
+    // clang-format off
+
+    mender.scopeTryCreateObjectDefault("GroupObj", to_str(u8"全体シーン"))
+            .scopeEnter()
+                .scopeTryCreateObjectDefault("GroupObj", to_str(u8"コンダクター初期化用"))
+                .scopeEnter()
+                    .scopeTryCreateObjectDefault("MapObjBaseManager", to_str(u8"シャインマネージャー"))
+                    .scopeTryCreateObjectDefault("MapObjManager", to_str(u8"地形オブジェマネージャー"))
+                    .scopeTryCreateObjectDefault("MapObjBaseManager", to_str(u8"木マネージャー"))
+                    .scopeTryCreateObjectDefault("MapObjBaseManager", to_str(u8"大型地形オブジェマネージャー"))
+                    .scopeTryCreateObjectDefault("MapObjBaseManager", to_str(u8"ファークリップ地形オブジェマネージャー"))
+                    .scopeTryCreateObjectDefault("MapObjBaseManager", to_str(u8"乗り物マネージャー"))
+                    .scopeTryCreateObjectDefault("ItemManager", to_str(u8"アイテムマネージャー"))
+                    .scopeTryCreateObjectDefault("PoolManager", to_str(u8"水場マネージャー"))
+                .scopeEscape()
+                .scopeTryCreateObjectDefault("GroupObj", to_str(u8"鏡シーン"))
+                .scopeEnter()
+                    .scopeTryCreateObjectDefault("MirrorCamera", to_str(u8"鏡カメラ"))
+                .scopeEscape()
+                .scopeTryCreateObjectDefault("MirrorModelManager", to_str(u8"鏡表示モデル管理"))
+                .scopeTryCreateObjectDefault("GroupObj", to_str(u8"スペキュラシーン"))
+                .scopeTryCreateObjectDefault("GroupObj", to_str(u8"インダイレクトシーン"))
+                .scopeTryCreateObjectDefault("MarScene", to_str(u8"通常シーン"))
+                .scopeEnter()
+                    .scopeTryCreateObjectDefault("AmbAry", to_str(u8"Ambient Group"))
+                    .scopeEnter()
+                        .scopeTryCreateObjectDefault("AmbColor", to_str(u8"太陽アンビエント（プレイヤー）"))
+                        .scopeTryCreateObjectDefault("AmbColor", to_str(u8"影アンビエント（プレイヤー）"))
+                        .scopeTryCreateObjectDefault("AmbColor", to_str(u8"太陽アンビエント（オブジェクト）"))
+                        .scopeTryCreateObjectDefault("AmbColor", to_str(u8"影アンビエント（オブジェクト）"))
+                        .scopeTryCreateObjectDefault("AmbColor", to_str(u8"太陽アンビエント（敵）"))
+                        .scopeTryCreateObjectDefault("AmbColor", to_str(u8"影アンビエント（敵）"))
+                    .scopeEscape()
+                    .scopeTryCreateObjectDefault("LightAry", to_str(u8"Light Group"))
+                    .scopeEnter()
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"太陽（プレイヤー）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"太陽サブ（プレイヤー）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"影（プレイヤー）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"影サブ（プレイヤー）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"太陽スペキュラ（プレイヤー）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"太陽（オブジェクト）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"太陽サブ（オブジェクト）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"影（オブジェクト）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"影サブ（オブジェクト）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"太陽スペキュラ（オブジェクト）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"太陽（敵）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"太陽サブ（敵）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"影（敵）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"影サブ（敵）"))
+                        .scopeTryCreateObjectDefault("Light", to_str(u8"太陽スペキュラ（敵）"))
+                    .scopeEscape()
+                    .scopeTryCreateObjectDefault("Strategy", to_str(u8"ストラテジ"))
+                    .scopeEnter()
+                        .scopeTryCreateObjectDefault("IdxGroup", to_str(u8"マップグループ"))
+                        .scopeEnter()
+                            .scopeTryCreateObjectDefault("Map", to_str(u8"マップ"))
+                        .scopeEscape()
+                        .scopeTryCreateObjectDefault("IdxGroup", to_str(u8"空グループ"))
+                        .scopeEnter()
+                            .scopeTryCreateObjectDefault("Sky", to_str(u8"空"))
+                        .scopeEscape()
+                        .scopeTryCreateObjectDefault("IdxGroup", to_str(u8"マネージャーグループ"))
+                        .scopeEnter()
+                            .scopeTryCreateObjectDefault("SunMgr", to_str(u8"太陽マネージャー"))
+                            .scopeTryCreateObjectDefault("CubeCamera", to_str(u8"キューブ（カメラ）"))
+                            .scopeTryCreateObjectDefault("CubeMirror", to_str(u8"キューブ（鏡）"))
+                            .scopeTryCreateObjectDefault("CubeWire", to_str(u8"キューブ（ワイヤー）"))
+                            .scopeTryCreateObjectDefault("CubeStream", to_str(u8"キューブ（流れ）"))
+                            .scopeTryCreateObjectDefault("CubeShadow", to_str(u8"キューブ（影）"))
+                            .scopeTryCreateObjectDefault("CubeArea", to_str(u8"キューブ（エリア）"))
+                            .scopeTryCreateObjectDefault("CubeFastA", to_str(u8"キューブ（高速Ａ）"))
+                            .scopeTryCreateObjectDefault("CubeFastB", to_str(u8"キューブ（高速Ｂ）"))
+                            .scopeTryCreateObjectDefault("CubeFastC", to_str(u8"キューブ（高速Ｃ）"))
+                            .scopeTryCreateObjectDefault("CubeSoundChange", to_str(u8"キューブ（サウンド切り替え）"))
+                            .scopeTryCreateObjectDefault("CubeSoundEffect", to_str(u8"キューブ（サウンドエフェクト）"))
+                        .scopeEscape()
+                        .scopeTryCreateObjectDefault("IdxGroup", to_str(u8"オブジェクトグループ"))
+                        .scopeTryCreateObjectDefault("IdxGroup", to_str(u8"落書きグループ"))
+                        .scopeEnter()
+                            .scopeTryCreateObjectDefault("Pollution", to_str(u8"落書き管理"))
+                        .scopeEscape()
+                        .scopeTryCreateObjectDefault("IdxGroup", to_str(u8"アイテムグループ"))
+                        .scopeTryCreateObjectDefault("IdxGroup", to_str(u8"プレーヤーグループ"))
+                        .scopeEnter()
+                            .scopeTryCreateObjectDefault("Mario", to_str(u8"マリオ"))
+                        .scopeEscape()
+                        .scopeTryCreateObjectDefault("IdxGroup", to_str(u8"敵グループ"))
+                        .scopeTryCreateObjectDefault("IdxGroup", to_str(u8"ボスグループ"))
+                        .scopeTryCreateObjectDefault("IdxGroup", to_str(u8"ＮＰＣグループ"))
+                        .scopeTryCreateObjectDefault("IdxGroup", to_str(u8"水パーティクルグループ"))
+                        .scopeTryCreateObjectDefault("IdxGroup", to_str(u8"初期化用グループ"))
+                    .scopeEscape()
+                    .scopeTryCreateObjectDefault("GroupObj", to_str(u8"Cameras"))
+                    .scopeEnter()
+                        .scopeTryCreateObjectDefault("PolarSubCamera", to_str(u8"camera 1"))
+                    .scopeEscape()
+                .scopeEscape()
+            .scopeEscape();
+
+    // Now we check for dependencies on ALL objects
+
+    // We perform up to 3 resolutions (adding one dependency might need a chained dependency)
+    for (size_t i = 0; i < 3; ++i) {
+        mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
+            mender.scopeFulfillManagerDependencies(model, index);
+        });
+
+        mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
+            mender.scopeFulfillTableBinDependencies(model, index);
+        });
+    }
+
+    mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
+        mender.scopeFulfillRailDependencies(model, index);
+    });
+
+    mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
+        mender.scopeFulfillRailDependencies(model, index);
+    });
+
+    mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
+        mender.scopeFulfillAssetDependencies(model, index);
+    });
+
+    return static_cast<bool>(mender);
+}
+
+bool ToolboxScenePruner::PruneScene(RefPtr<SceneObjModel> object_model,
+                                    RefPtr<SceneObjModel> table_model,
+                                    RefPtr<RailObjModel> rail_model, std::mutex &operation_mutex, bool check_dependencies,
+                                    prune_progress_cb progress_cb, prune_change_cb change_cb,
+                                    prune_error_cb error_cb) {
+    ScenePruner pruner(object_model, table_model, rail_model, check_dependencies);
+    pruner.setProgressCallback(progress_cb);
+    pruner.setChangeCallback(change_cb);
+    pruner.setErrorCallback(error_cb);
+
+    pruner.scopeForAll(object_model, [&pruner](RefPtr<SceneObjModel> model, ModelIndex index) {
+        pruner.scopeCollectDependencies(model, index);
+    });
+
+    TemplateDependencies::ObjectInfo a;
+
+    const QualifiedName root_name = QualifiedName(to_str(u8"全体シーン"));
+    const QualifiedName manager_group_name = QualifiedName(to_str(u8"コンダクター初期化用"), root_name);
+    
+    pruner.addManagerDependency(TemplateDependencies::ObjectInfo {"MapObjBaseManager", to_str(u8"シャインマネージャー"),                 manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"MapObjManager",     to_str(u8"地形オブジェマネージャー"),              manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"MapObjBaseManager", to_str(u8"木マネージャー"),                       manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"MapObjBaseManager", to_str(u8"大型地形オブジェマネージャー"),          manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"MapObjBaseManager", to_str(u8"ファークリップ地形オブジェマネージャー"), manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"MapObjBaseManager", to_str(u8"乗り物マネージャー"),                   manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"ItemManager",       to_str(u8"アイテムマネージャー"),                 manager_group_name})
+          .addManagerDependency(TemplateDependencies::ObjectInfo {"PoolManager",       to_str(u8"水場マネージャー"),                    manager_group_name});
+
+    pruner.scopeAssertObject("GroupObj", to_str(u8"全体シーン"))
+            .scopeEnter()
+                .scopeAssertObject("GroupObj", to_str(u8"コンダクター初期化用"))
+                .scopeEnter()
+                    .scopeForAll(object_model, [&pruner](RefPtr<SceneObjModel> model, ModelIndex index) {
+                        pruner.scopePruneManagerIfUnused(model, index);
+                    })
+                .scopeEscape()
+            .scopeEscape();
+
+    pruner.scopeForAll(rail_model, [&pruner](RefPtr<RailObjModel> model, ModelIndex index) {
+                        pruner.scopePruneRailIfUnused(model, index);
+                    });
+
+    {
+        std::unique_lock<std::mutex> operation_lock(operation_mutex);
+        pruner.finalize();
+    }
+
+    return static_cast<bool>(pruner);
+}
+
+// clang-format on
+
+#undef VALIDATOR_LT
+#undef VALIDATOR_LE
+#undef VALIDATOR_GT
+#undef VALIDATOR_GE
+#undef VALIDATOR_NE
+#undef VALIDATOR_EQ
+
+SceneValidator &SceneValidator::scopeAssertObject(const std::string &obj_type,
+                                                  const std::string &obj_name) {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    if (m_parent_stack.empty()) {
+        ModelIndex root_index = m_object_model->getIndex(0, 0);
+        if (!m_object_model->validateIndex(root_index)) {
+            m_valid = false;
+            m_error_callback("Failed to find root object");
+            return *this;
+        }
+
+        std::string root_type = m_object_model->getObjectType(root_index);
+        std::string root_key  = m_object_model->getObjectKey(root_index);
+
+        if (root_type != obj_type || root_key != obj_name) {
+            m_valid = false;
+            m_error_callback(std::format("Failed to find root object of type '{}' with name '{}'",
+                                         obj_type, obj_name));
+            return *this;
+        }
+        m_last_index = root_index;
+        m_processed_objects += 1;
+        if (m_progress_callback) {
+            std::string progress_text = std::format("{} ({}) [{}/{}]", root_type, root_key,
+                                                    static_cast<int>(m_processed_objects),
+                                                    static_cast<int>(m_total_objects));
+            m_progress_callback(m_processed_objects / m_total_objects, progress_text);
+        }
+        return *this;
+    }
+
+    ModelIndex group_index = m_parent_stack.top();
+    if (!m_object_model->validateIndex(group_index)) {
+        m_valid = false;
+        m_error_callback("Somehow the parent stack was corrupted while validating "
+                         "(concurrency?) Report this error to JoshuaMK");
+        return *this;
+    }
+
+    ModelIndex child_index = m_object_model->getIndex(obj_name, group_index);
+    if (!m_object_model->validateIndex(child_index)) {
+        m_valid = false;
+        m_error_callback(
+            std::format("Failed to find child object of type '{}' with name '{}' in parent '{}'",
+                        obj_type, obj_name, m_object_model->getObjectKey(group_index)));
+        return *this;
+    }
+
+    std::string child_type = m_object_model->getObjectType(child_index);
+    if (child_type != obj_type) {
+        m_valid = false;
+        m_error_callback(
+            std::format("Failed to find child object of type '{}' with name '{}' in parent '{}'",
+                        obj_type, obj_name, m_object_model->getObjectKey(group_index)));
+        return *this;
+    }
+
+    m_last_index = child_index;
+    m_processed_objects += 1;
+    if (m_progress_callback) {
+        std::string progress_text =
+            std::format("{} ({}) [{}/{}]", obj_type, obj_name,
+                        static_cast<int>(m_processed_objects), static_cast<int>(m_total_objects));
+        m_progress_callback(m_processed_objects / m_total_objects, progress_text);
+    }
+    return *this;
+}
+
+SceneValidator &SceneValidator::scopeAssertSize(size_fn predicate) {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    if (m_parent_stack.empty()) {
+        m_valid = false;
+        return *this;
+    }
+
+    ModelIndex group_index = m_parent_stack.top();
+    if (!m_object_model->validateIndex(group_index)) {
+        m_valid = false;
+        return *this;
+    }
+
+    m_valid = predicate(m_object_model->getRowCount(group_index));
+    return *this;
+}
+
+SceneValidator &SceneValidator::scopeEnter() {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    if (!m_object_model->validateIndex(m_last_index)) {
+        m_valid = false;
+        m_error_callback("Tried to enter the scope of a leaf object");
+        return *this;
+    }
+
+    m_parent_stack.push(m_last_index);
+    return *this;
+}
+
+SceneValidator &SceneValidator::scopeEscape() {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    if (m_parent_stack.empty()) {
+        m_valid = false;
+        m_error_callback("Unbalanced scope when validating scene");
+        return *this;
+    }
+
+    m_parent_stack.pop();
+    return *this;
+}
+
+SceneValidator &SceneValidator::scopeValidateDependencies(RefPtr<SceneObjModel> model,
+                                                          const ModelIndex &index) {
+    if (!m_check_dependencies || !model->validateIndex(index)) {
+        return *this;
+    }
+
+    RefPtr<ISceneObject> object = model->getObjectRef(index);
+    std::string obj_type        = model->getObjectType(index);
+    std::string obj_key         = model->getObjectKey(index);
+
+    auto template_ = TemplateFactory::create(obj_type, true);
+    if (!template_) {
+        m_valid = false;
+        m_error_callback(
+            std::format("Object '{} ({})': Failed to load template!", obj_type, obj_key));
+        return *this;
+    }
+
+    std::optional<TemplateWizard> wizard = template_.value()->getWizard(object->getWizardName());
+    if (!wizard) {
+        wizard = template_.value()->getWizard("Default");
+        if (!wizard) {
+            m_valid = false;
+            m_error_callback(std::format("Object '{} ({})': Failed to load the wizard '{}'!",
+                                         obj_type, obj_key, object->getWizardName()));
+            return *this;
+        }
+    }
+
+    const TemplateDependencies &dependencies = wizard->m_dependencies;
+    for (const TemplateDependencies::ObjectInfo &manager : dependencies.m_managers) {
+        ModelIndex group_index = m_object_model->getIndex(manager.m_ancestry);
+        if (!m_object_model->validateIndex(group_index)) {
+            // group_obj = m_scene_instance->getObjHierarchy()->findObject(manager.m_ancestry);
+            m_valid = false;
+            m_error_callback(std::format("Object '{} ({})': Failed to find required ancestor '{}' "
+                                         "of manager dependency '{} ({})'!",
+                                         obj_type, obj_key, manager.m_ancestry.toString(),
+                                         manager.m_type, manager.m_name));
+            continue;
+        }
+        ModelIndex manager_index =
+            m_object_model->getIndex(manager.m_type, manager.m_name, group_index);
+        if (!m_object_model->validateIndex(manager_index)) {
+            m_valid = false;
+            m_error_callback(
+                std::format("Object '{} ({})': Failed to find required manager object '{} ({})'!",
+                            obj_type, obj_key, manager.m_type, manager.m_name));
+        }
+    }
+
+    for (const std::string &asset_path : dependencies.m_asset_paths) {
+        // Assets for an object are found in the subdirectory at SceneAssets/{asset_path}/...
+        const fs_path abs_asset_path =
+            (Filesystem::current_path().value_or(".") / "SceneAssets" / asset_path)
+                .lexically_normal();
+
+        if (!Filesystem::is_directory(abs_asset_path).value_or(false)) {
+            m_valid = false;
+            m_error_callback(
+                std::format("Object '{} ({})': Invalid asset path '{}' (does not exist)!", obj_type,
+                            obj_key, asset_path));
+            continue;
+        }
+
+        const fs_path &scene_root_path = m_object_model->getScenePath();
+
+        for (const Filesystem::directory_entry dir_entry :
+             Filesystem::recursive_directory_iterator(abs_asset_path)) {
+            if (dir_entry.is_directory()) {
+                continue;
+            }
+
+            const fs_path relative_path =
+                Filesystem::relative(dir_entry.path(), abs_asset_path).value_or(dir_entry.path());
+            const fs_path scene_path = scene_root_path / relative_path;
+
+            if (!Filesystem::exists(scene_path).value_or(false)) {
+                m_valid = false;
+                m_error_callback(
+                    std::format("Object '{} ({})': Failed to find required asset '{}'!", obj_type,
+                                obj_key, relative_path.string()));
+            }
+        }
+    }
+
+    // Check for rail dependency
+    {
+
+        RefPtr<ISceneObject> object = model->getObjectRef(index);
+        auto rail_member_result     = object->getMember("Rail");
+        if (rail_member_result.value_or(nullptr)) {
+            bool needs_rail = true;
+
+            RefPtr<MetaMember> rail_member = rail_member_result.value();
+            std::string rail_dependency    = getMetaValue<std::string>(rail_member).value();
+            if (!rail_dependency.empty() && rail_dependency != "(null)") {
+                const size_t rail_count = m_rail_model->getRowCount(ModelIndex());
+                for (size_t i = 0; i < rail_count; ++i) {
+                    ModelIndex rail_index = m_rail_model->getIndex(i, 0);
+                    if (!m_rail_model->validateIndex(rail_index)) {
+                        break;
+                    }
+
+                    std::string rail_name = m_rail_model->getRailKey(rail_index);
+                    if (rail_dependency == rail_name) {
+                        needs_rail = false;
+                        break;
+                    }
+                }
+            } else {
+                needs_rail = false;
+            }
+
+            if (needs_rail) {
+                m_valid = false;
+                m_error_callback(std::format("Object '{} ({})': Failed to find required rail '{}'!",
+                                             obj_type, obj_key, rail_dependency));
+            }
+        }
+    }
+
+    for (const TemplateDependencies::ObjectInfo &obj : dependencies.m_table_objs) {
+        ModelIndex group_index = m_table_model->getIndex(obj.m_ancestry);
+        if (!m_table_model->validateIndex(group_index)) {
+            // group_obj = m_scene_instance->getObjHierarchy()->findObject(manager.m_ancestry);
+            m_valid = false;
+            m_error_callback(std::format("Object '{} ({})': Failed to find required ancestor '{}' "
+                                         "of tables.bin dependency '{} ({})'!",
+                                         obj_type, obj_key, obj.m_ancestry.toString(), obj.m_type,
+                                         obj.m_name));
+            continue;
+        }
+        ModelIndex table_index = m_table_model->getIndex(obj.m_type, obj.m_name, group_index);
+        if (!m_table_model->validateIndex(table_index)) {
+            m_valid = false;
+            m_error_callback(std::format(
+                "Object '{} ({})': Failed to find required tables.bin object '{} ({})'!", obj_type,
+                obj_key, obj.m_type, obj.m_name));
+        }
+    }
+
+    return *this;
+}
+
+static void forEach(RefPtr<SceneObjModel> model, ModelIndex parent,
+                    SceneValidator::foreach_obj_fn fn) {
+    const int64_t row_count = model->getRowCount(parent);
+    for (int64_t row = 0; row < row_count; ++row) {
+        ModelIndex child = model->getIndex(row, 0, parent);
+        if (!model->validateIndex(child)) {
+            return;
+        }
+        fn(model, child);
+        if (model->validateIndex(child)) {
+            forEach(model, child, fn);
+        }
+    }
+}
+
+SceneValidator &SceneValidator::scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn fn) {
+    forEach(model, m_parent_stack.empty() ? ModelIndex() : m_parent_stack.top(), fn);
+    return *this;
+}
+
+SceneMender &SceneMender::scopeTryCreateObjectDefault(const std::string &obj_type,
+                                                      const std::string &obj_name) {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    ModelIndex group_index;
+    if (!m_parent_stack.empty()) {
+        group_index = m_parent_stack.top();
+
+        if (!m_object_model->validateIndex(group_index)) {
+            m_valid = false;
+            m_error_callback("Somehow the parent stack was corrupted while validating "
+                             "(concurrency?) Report this error to JoshuaMK");
+            return *this;
+        }
+    }
+
+    bool needs_creation = true;
+
+    ModelIndex child_index = m_object_model->getIndex(obj_name, group_index);
+    if (m_object_model->validateIndex(child_index)) {
+        std::string child_type = m_object_model->getObjectType(child_index);
+        if (child_type == obj_type) {
+            needs_creation = false;
+        }
+    }
+
+    if (needs_creation) {
+        auto template_ = TemplateFactory::create(obj_type, true);
+        if (!template_) {
+            m_valid = false;
+            m_error_callback(
+                std::format("Failed to load template for object type '{}'!", obj_type));
+            return *this;
+        }
+
+        RefPtr<ISceneObject> new_obj;
+
+        std::optional<TemplateWizard> specialized_wizard =
+            template_.value()->getWizardByObjName(obj_name);
+        if (specialized_wizard) {
+            new_obj = ObjectFactory::create(*template_.value(), specialized_wizard.value().m_name,
+                                            m_object_model->getScenePath());
+        } else {
+            new_obj = ObjectFactory::create(*template_.value(), "Default",
+                                            m_object_model->getScenePath());
+        }
+
+        if (!new_obj) {
+            m_valid = false;
+            m_error_callback(
+                std::format("Failed to create default object of type '{}' with name '{}'!",
+                            obj_type, obj_name));
+            return *this;
+        }
+
+        new_obj->setNameRef(NameRef(obj_name));
+
+        std::string group_type = m_object_model->getObjectType(group_index);
+        std::string group_key  = m_object_model->getObjectKey(group_index);
+
+        const int64_t group_size = m_object_model->getRowCount(group_index);
+        child_index              = m_object_model->insertObject(new_obj, group_size, group_index);
+        if (!m_object_model->validateIndex(child_index)) {
+            m_valid = false;
+            m_error_callback(std::format("Failed to insert object [{} ({})] into [{} ({})]",
+                                         obj_type, obj_name, group_type, group_key));
+            return *this;
+        }
+
+        std::string change_text = std::format("Added object [{} ({})] to [{} ({})]", obj_type,
+                                              obj_name, group_type, group_key);
+        m_change_callback(change_text);
+    }
+
+    m_last_index = child_index;
+    m_processed_objects += 1;
+    if (m_progress_callback) {
+        std::string progress_text =
+            std::format("{} ({}) [{}]", obj_type, obj_name, m_processed_objects);
+        m_progress_callback(progress_text);
+    }
+    return *this;
+}
+
+SceneMender &SceneMender::scopeEnter() {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    if (!m_object_model->validateIndex(m_last_index)) {
+        m_valid = false;
+        m_error_callback("Tried to enter the scope of a leaf object");
+        return *this;
+    }
+
+    m_parent_stack.push(m_last_index);
+    return *this;
+}
+
+SceneMender &SceneMender::scopeEscape() {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    if (m_parent_stack.empty()) {
+        m_valid = false;
+        m_error_callback("Unbalanced scope when validating scene");
+        return *this;
+    }
+
+    m_parent_stack.pop();
+    return *this;
+}
+
+static void forEachM(RefPtr<SceneObjModel> model, ModelIndex parent,
+                     SceneMender::foreach_obj_fn fn) {
+    const int64_t row_count = model->getRowCount(parent);
+    for (int64_t row = 0; row < row_count; ++row) {
+        ModelIndex child = model->getIndex(row, 0, parent);
+        if (!model->validateIndex(child)) {
+            return;
+        }
+        fn(model, child);
+        if (model->validateIndex(child)) {
+            forEachM(model, child, fn);
+        }
+    }
+}
+
+SceneMender &SceneMender::scopeFulfillManagerDependencies(RefPtr<SceneObjModel> model,
+                                                          const ModelIndex &index) {
+    if (!m_check_dependencies) {
+        return *this;
+    }
+
+    RefPtr<ISceneObject> object = model->getObjectRef(index);
+    const std::string &obj_type = object->type();
+
+    auto template_ = TemplateFactory::create(obj_type, true);
+    if (!template_) {
+        m_valid = false;
+        m_error_callback(std::format("Failed to load template for object type '{}'!", obj_type));
+        return *this;
+    }
+
+    std::optional<TemplateWizard> wizard = template_.value()->getWizard(object->getWizardName());
+    if (!wizard) {
+        wizard = template_.value()->getWizard("Default");
+        if (!wizard) {
+            m_valid = false;
+            m_error_callback(std::format("Failed to load the wizard '{}' for object type '{}'!",
+                                         object->getWizardName(), obj_type));
+            return *this;
+        }
+    }
+
+    const TemplateDependencies &dependencies = wizard->m_dependencies;
+    for (const TemplateDependencies::ObjectInfo &manager : dependencies.m_managers) {
+        ModelIndex group_index = m_object_model->getIndex(manager.m_ancestry);
+        if (!m_object_model->validateIndex(group_index)) {
+            m_valid = false;
+            m_error_callback(std::format("Provided manager ancestry '{}' is not a group object!",
+                                         manager.m_ancestry.toString()));
+            continue;
+        }
+
+        ModelIndex manager_index =
+            m_object_model->getIndex(manager.m_type, manager.m_name, group_index);
+
+        if (!m_object_model->validateIndex(manager_index)) {
+            auto manager_template_ = TemplateFactory::create(manager.m_type, true);
+            if (!manager_template_) {
+                m_valid = false;
+                m_error_callback(
+                    std::format("Failed to load template for object type '{}'!", obj_type));
+                return *this;
+            }
+
+            RefPtr<ISceneObject> manager_obj = ObjectFactory::create(
+                *manager_template_.value(), "Default", m_object_model->getScenePath());
+            if (!manager_obj) {
+                m_valid = false;
+                m_error_callback(std::format("Failed to create manager object {} ({})",
+                                             manager.m_type, manager.m_name));
+                continue;
+            }
+
+            manager_obj->setNameRef(NameRef(manager.m_name));
+
+            const int64_t group_size = m_object_model->getRowCount(group_index);
+            manager_index = m_object_model->insertObject(manager_obj, group_size, group_index);
+            if (!m_object_model->validateIndex(manager_index)) {
+                m_valid = false;
+                m_error_callback(std::format("Failed to add manager '{}' to ancestry group '{}'",
+                                             manager.m_name, manager.m_ancestry.toString()));
+                continue;
+            }
+
+            std::string group_type = m_object_model->getObjectType(group_index);
+            std::string group_key  = m_object_model->getObjectKey(group_index);
+
+            std::string change_text =
+                std::format("Added manager [{} ({})] to [{} ({})]", manager.m_type, manager.m_name,
+                            group_type, group_key);
+            m_change_callback(change_text);
+        }
+    }
+
+    return *this;
+}
+
+SceneMender &SceneMender::scopeFulfillTableBinDependencies(RefPtr<SceneObjModel> model,
+                                                           const ModelIndex &index) {
+    if (!m_check_dependencies) {
+        return *this;
+    }
+
+    RefPtr<ISceneObject> object = model->getObjectRef(index);
+    const std::string &obj_type = object->type();
+
+    auto template_ = TemplateFactory::create(obj_type, true);
+    if (!template_) {
+        m_valid = false;
+        m_error_callback(std::format("Failed to load template for object type '{}'!", obj_type));
+        return *this;
+    }
+
+    std::optional<TemplateWizard> wizard = template_.value()->getWizard(object->getWizardName());
+    if (!wizard) {
+        wizard = template_.value()->getWizard("Default");
+        if (!wizard) {
+            m_valid = false;
+            m_error_callback(std::format("Failed to load the wizard '{}' for object type '{}'!",
+                                         object->getWizardName(), obj_type));
+            return *this;
+        }
+    }
+
+    const TemplateDependencies &dependencies = wizard->m_dependencies;
+
+    for (const TemplateDependencies::ObjectInfo &obj : dependencies.m_table_objs) {
+        ModelIndex group_index = m_table_model->getIndex(obj.m_ancestry);
+        if (!m_table_model->validateIndex(group_index)) {
+            m_valid = false;
+            m_error_callback(std::format("Provided tables.bin ancestry '{}' is not a group object!",
+                                         obj.m_ancestry.toString()));
+            continue;
+        }
+
+        ModelIndex table_obj_index = m_table_model->getIndex(obj.m_type, obj.m_name, group_index);
+
+        if (!m_table_model->validateIndex(table_obj_index)) {
+            auto table_obj_template_ = TemplateFactory::create(obj.m_type, true);
+            if (!table_obj_template_) {
+                m_valid = false;
+                m_error_callback(
+                    std::format("Failed to load template for object type '{}'!", obj_type));
+                return *this;
+            }
+
+            RefPtr<ISceneObject> table_obj = ObjectFactory::create(
+                *table_obj_template_.value(), "Default", m_table_model->getScenePath());
+            if (!table_obj) {
+                m_valid = false;
+                m_error_callback(std::format("Failed to create tables.bin object {} ({})",
+                                             obj.m_type, obj.m_name));
+                continue;
+            }
+
+            table_obj->setNameRef(NameRef(obj.m_name));
+
+            const int64_t group_size = m_table_model->getRowCount(group_index);
+            table_obj_index = m_table_model->insertObject(table_obj, group_size, group_index);
+            if (!m_table_model->validateIndex(table_obj_index)) {
+                m_valid = false;
+                m_error_callback(std::format("Failed to add tables.bin '{}' to ancestry group '{}'",
+                                             obj.m_name, obj.m_ancestry.toString()));
+                continue;
+            }
+
+            std::string group_type = m_table_model->getObjectType(group_index);
+            std::string group_key  = m_table_model->getObjectKey(group_index);
+
+            std::string change_text = std::format("Added tables.bin [{} ({})] to [{} ({})]",
+                                                  obj.m_type, obj.m_name, group_type, group_key);
+            m_change_callback(change_text);
+        }
+    }
+
+    return *this;
+}
+
+SceneMender &SceneMender::scopeFulfillRailDependencies(RefPtr<SceneObjModel> model,
+                                                       const ModelIndex &index) {
+    if (!m_check_dependencies) {
+        return *this;
+    }
+
+    RefPtr<ISceneObject> object = model->getObjectRef(index);
+    auto rail_member_result     = object->getMember("Rail");
+    if (!rail_member_result.value_or(nullptr)) {
+        return *this;
+    }
+
+    RefPtr<MetaMember> rail_member = rail_member_result.value();
+    std::string rail_dependency    = getMetaValue<std::string>(rail_member).value();
+    if (rail_dependency.empty() || rail_dependency == "(null)") {
+        return *this;
+    }
+
+    const size_t rail_count = m_rail_model->getRowCount(ModelIndex());
+    for (size_t i = 0; i < rail_count; ++i) {
+        ModelIndex rail_index = m_rail_model->getIndex(i, 0);
+        if (!m_rail_model->validateIndex(rail_index)) {
+            break;
+        }
+
+        std::string rail_name = m_rail_model->getRailKey(rail_index);
+        if (rail_dependency == rail_name) {
+            return *this;
+        }
+    }
+
+    RefPtr<Rail::Rail> new_rail = make_referable<Rail::Rail>(rail_dependency);
+    ModelIndex new_rail_index   = m_rail_model->insertRail(new_rail, rail_count);
+    if (!m_rail_model->validateIndex(new_rail_index)) {
+        m_valid = false;
+        m_error_callback(std::format("Failed to create rail {} as dependency of object '{} ({})'!",
+                                     rail_dependency, object->type(), object->getNameRef().name()));
+        return *this;
+    }
+
+    std::string change_text =
+        std::format("Created rail {} as dependency of object '{} ({})'!", rail_dependency,
+                    object->type(), object->getNameRef().name());
+    m_change_callback(change_text);
+    return *this;
+}
+
+SceneMender &SceneMender::scopeFulfillAssetDependencies(RefPtr<SceneObjModel> model,
+                                                        const ModelIndex &index) {
+    if (!m_check_dependencies) {
+        return *this;
+    }
+
+    RefPtr<ISceneObject> object = model->getObjectRef(index);
+    const std::string &obj_type = object->type();
+
+    auto template_ = TemplateFactory::create(obj_type, true);
+    if (!template_) {
+        m_valid = false;
+        m_error_callback(std::format("Failed to load template for object type '{}'!", obj_type));
+        return *this;
+    }
+
+    std::optional<TemplateWizard> wizard = template_.value()->getWizard(object->getWizardName());
+    if (!wizard) {
+        wizard = template_.value()->getWizard("Default");
+        if (!wizard) {
+            m_valid = false;
+            m_error_callback(std::format("Failed to load the wizard '{}' for object type '{}'!",
+                                         object->getWizardName(), obj_type));
+            return *this;
+        }
+    }
+
+    const TemplateDependencies &dependencies = wizard->m_dependencies;
+
+    for (const std::string &asset_path : dependencies.m_asset_paths) {
+        // Assets for an object are found in the subdirectory at SceneAssets/{asset_path}/...
+        const fs_path abs_asset_path =
+            (Filesystem::current_path().value_or(".") / "SceneAssets" / asset_path)
+                .lexically_normal();
+        for (const Filesystem::directory_entry dir_entry :
+             Filesystem::recursive_directory_iterator(abs_asset_path)) {
+            const fs_path relative_path =
+                Filesystem::relative(dir_entry.path(), abs_asset_path).value_or(dir_entry.path());
+            const fs_path scene_path = m_object_model->getScenePath() / relative_path;
+
+            if (dir_entry.is_directory()) {
+                if (!Filesystem::exists(scene_path).value_or(false)) {
+                    auto res = Filesystem::create_directories(scene_path);
+                    if (!res) {
+                        m_valid = false;
+                        m_error_callback(
+                            std::format("Failed to create directories for asset path '{}'",
+                                        scene_path.string()));
+                    }
+                }
+                continue;
+            }
+
+            if (!Filesystem::exists(dir_entry).value_or(false)) {
+                m_valid = false;
+                m_error_callback(
+                    std::format("Asset path '{}' does not exist!", dir_entry.path().string()));
+                continue;
+            }
+
+            if (Filesystem::is_regular_file(scene_path).value_or(false)) {
+                continue;
+            }
+
+            auto res = Filesystem::copy_file(dir_entry.path(), scene_path,
+                                             Filesystem::copy_options::overwrite_existing);
+            if (!res) {
+                m_valid = false;
+                m_error_callback(
+                    std::format("Failed to copy file for asset path '{}'", scene_path.string()));
+                continue;
+            }
+
+            std::string change_text =
+                std::format("Added asset path {} for object [{} ({})]", relative_path.string(),
+                            object->type(), object->getNameRef().name());
+            m_change_callback(change_text);
+        }
+    }
+
+    return *this;
+}
+
+static void forEachP(RefPtr<SceneObjModel> model, ModelIndex parent,
+                     ScenePruner::foreach_obj_fn fn) {
+    const int64_t row_count = model->getRowCount(parent);
+    for (int64_t row = 0; row < row_count; ++row) {
+        ModelIndex child = model->getIndex(row, 0, parent);
+        if (!model->validateIndex(child)) {
+            return;
+        }
+        fn(model, child);
+        if (model->validateIndex(child)) {
+            forEachP(model, child, fn);
+        }
+    }
+}
+
+static void forEachP(RefPtr<RailObjModel> model, ModelIndex parent,
+                     ScenePruner::foreach_rail_fn fn) {
+    const int64_t row_count = model->getRowCount(parent);
+    for (int64_t row = 0; row < row_count; ++row) {
+        ModelIndex child = model->getIndex(row, 0, parent);
+        if (!model->validateIndex(child)) {
+            return;
+        }
+        fn(model, child);
+        if (model->validateIndex(child)) {
+            forEachP(model, child, fn);
+        }
+    }
+}
+
+ScenePruner &ScenePruner::finalize() {
+    for (const ModelIndex &index : m_indexes_to_prune) {
+        if (m_object_model->validateIndex(index)) {
+            const std::string manager_type = m_object_model->getObjectType(index);
+            const std::string manager_name = m_object_model->getObjectKey(index);
+
+            if (m_object_model->removeIndex(index)) {
+                std::string change_text =
+                    std::format("Pruned unused manager '{} ({})'", manager_type, manager_name);
+                m_change_callback(change_text);
+            } else {
+                m_valid                 = false;
+                std::string failed_text = std::format("Failed to prune unused manager '{} ({})'",
+                                                      manager_type, manager_name);
+                m_error_callback(failed_text);
+            }
+            continue;
+        }
+
+        if (m_rail_model->validateIndex(index)) {
+            const std::string rail_name = m_rail_model->getRailKey(index);
+
+            if (m_rail_model->removeIndex(index)) {
+                std::string change_text = std::format("Pruned unused rail '{}'", rail_name);
+                m_change_callback(change_text);
+            } else {
+                m_valid = false;
+                std::string failed_text =
+                    std::format("Failed to prune unused rail '{}'", rail_name);
+                m_error_callback(failed_text);
+            }
+            continue;
+        }
+    }
+
+    std::vector<fs_path> asset_paths_to_remove;
+
+    const fs_path scene_root_path = m_object_model->getScenePath();
+    for (const Filesystem::directory_entry dir_entry :
+         Filesystem::recursive_directory_iterator(scene_root_path)) {
+        const fs_path &scene_path = dir_entry.path().lexically_normal();
+        if (!m_dependencies.m_asset_paths.contains(scene_path)) {
+            const fs_path rel_path =
+                Filesystem::relative(scene_path, scene_root_path).value_or(fs_path());
+
+            bool is_map_path = false;
+            fs_path test_path = rel_path;
+            while (!test_path.empty()) {
+                if (test_path.filename().string() == "map") {
+                    is_map_path = true;
+                    break;
+                }
+                test_path = test_path.parent_path();
+            }
+
+            if (is_map_path) {
+                continue;
+            }
+
+            asset_paths_to_remove.push_back(rel_path);
+        }
+    }
+
+    for (const fs_path& remove_path : asset_paths_to_remove) {
+        if (!Filesystem::remove_all(remove_path).value_or(false)) {
+            m_valid = false;
+            std::string failed_text =
+                std::format("Failed to prune unused asset path '{}'", remove_path.string());
+            m_error_callback(failed_text);
+            continue;
+        }
+        std::string change_text =
+            std::format("Pruned unused asset path '{}'", remove_path.string());
+        m_change_callback(change_text);
+    }
+
+    return *this;
+}
+
+ScenePruner &
+ScenePruner::addManagerDependency(const TemplateDependencies::ObjectInfo &manager_info) {
+    m_dependencies.m_managers.push_back(manager_info);
+    return *this;
+}
+
+ScenePruner &ScenePruner::addRailDependency(const std::string &rail_name) {
+    m_dependencies.m_rails.insert(rail_name);
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopeAssertObject(const std::string &obj_type,
+                                            const std::string &obj_name) {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    if (m_parent_stack.empty()) {
+        ModelIndex root_index = m_object_model->getIndex(0, 0);
+        if (!m_object_model->validateIndex(root_index)) {
+            m_valid = false;
+            m_error_callback("Failed to find root object");
+            return *this;
+        }
+
+        std::string root_type = m_object_model->getObjectType(root_index);
+        std::string root_key  = m_object_model->getObjectKey(root_index);
+
+        if (root_type != obj_type || root_key != obj_name) {
+            m_valid = false;
+            m_error_callback(std::format("Failed to find root object of type '{}' with name '{}'",
+                                         obj_type, obj_name));
+            return *this;
+        }
+        m_last_index = root_index;
+        m_processed_objects += 1;
+        if (m_progress_callback) {
+            std::string progress_text = std::format("{} ({}) [{}]", root_type, root_key,
+                                                    static_cast<int>(m_processed_objects));
+            m_progress_callback(progress_text);
+        }
+        return *this;
+    }
+
+    ModelIndex group_index = m_parent_stack.top();
+    if (!m_object_model->validateIndex(group_index)) {
+        m_valid = false;
+        m_error_callback("Somehow the parent stack was corrupted while validating "
+                         "(concurrency?) Report this error to JoshuaMK");
+        return *this;
+    }
+
+    ModelIndex child_index = m_object_model->getIndex(obj_name, group_index);
+    if (!m_object_model->validateIndex(child_index)) {
+        m_valid = false;
+        m_error_callback(
+            std::format("Failed to find child object of type '{}' with name '{}' in parent '{}'",
+                        obj_type, obj_name, m_object_model->getObjectKey(group_index)));
+        return *this;
+    }
+
+    std::string child_type = m_object_model->getObjectType(child_index);
+    if (child_type != obj_type) {
+        m_valid = false;
+        m_error_callback(
+            std::format("Failed to find child object of type '{}' with name '{}' in parent '{}'",
+                        obj_type, obj_name, m_object_model->getObjectKey(group_index)));
+        return *this;
+    }
+
+    m_last_index = child_index;
+    m_processed_objects += 1;
+    if (m_progress_callback) {
+        std::string progress_text =
+            std::format("{} ({}) [{}]", obj_type, obj_name, static_cast<int>(m_processed_objects));
+        m_progress_callback(progress_text);
+    }
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopeEnter() {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    if (!m_object_model->validateIndex(m_last_index)) {
+        m_valid = false;
+        m_error_callback("Tried to enter the scope of a leaf object");
+        return *this;
+    }
+
+    m_parent_stack.push(m_last_index);
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopeEscape() {
+    if (!m_error_callback) {
+        m_valid = false;
+        return *this;
+    }
+
+    if (m_parent_stack.empty()) {
+        m_valid = false;
+        m_error_callback("Unbalanced scope when validating scene");
+        return *this;
+    }
+
+    m_parent_stack.pop();
+    return *this;
+}
+
+SceneMender &SceneMender::scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn fn) {
+    forEachP(model, m_parent_stack.empty() ? ModelIndex() : m_parent_stack.top(), fn);
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopeCollectDependencies(RefPtr<SceneObjModel> model,
+                                                   const ModelIndex &index) {
+    if (!m_check_dependencies || !model->validateIndex(index)) {
+        return *this;
+    }
+
+    RefPtr<ISceneObject> object = model->getObjectRef(index);
+    std::string obj_type        = model->getObjectType(index);
+    std::string obj_key         = model->getObjectKey(index);
+
+    auto template_ = TemplateFactory::create(obj_type, true);
+    if (!template_) {
+        m_valid = false;
+        m_error_callback(
+            std::format("Object '{} ({})': Failed to load template!", obj_type, obj_key));
+        return *this;
+    }
+
+    std::optional<TemplateWizard> wizard = template_.value()->getWizard(object->getWizardName());
+    if (!wizard) {
+        wizard = template_.value()->getWizard("Default");
+        if (!wizard) {
+            m_valid = false;
+            m_error_callback(std::format("Object '{} ({})': Failed to load the wizard '{}'!",
+                                         obj_type, obj_key, object->getWizardName()));
+            return *this;
+        }
+    }
+
+    m_dependencies.m_managers.insert(m_dependencies.m_managers.end(),
+                                     wizard->m_dependencies.m_managers.begin(),
+                                     wizard->m_dependencies.m_managers.end());
+
+    auto rail_member_result = object->getMember("Rail");
+    if (rail_member_result.value_or(nullptr)) {
+        RefPtr<MetaMember> rail_member = rail_member_result.value();
+        std::string rail_dependency    = getMetaValue<std::string>(rail_member).value();
+        if (!rail_dependency.empty() && rail_dependency != "(null)") {
+            m_dependencies.m_rails.insert(rail_dependency);
+        }
+    }
+
+    for (const fs_path &asset_path : wizard->m_dependencies.m_asset_paths) {
+        // Assets for an object are found in the subdirectory at SceneAssets/{asset_path}/...
+        const fs_path abs_asset_path =
+            (Filesystem::current_path().value_or(".") / "SceneAssets" / asset_path)
+                .lexically_normal();
+
+        if (!Filesystem::is_directory(abs_asset_path).value_or(false)) {
+            continue;
+        }
+
+        const fs_path &scene_root_path = m_object_model->getScenePath();
+
+        for (const Filesystem::directory_entry dir_entry :
+             Filesystem::recursive_directory_iterator(abs_asset_path)) {
+
+            const fs_path relative_path =
+                Filesystem::relative(dir_entry.path(), abs_asset_path).value_or(dir_entry.path());
+            const fs_path scene_path = scene_root_path / relative_path;
+
+            if (!Filesystem::exists(scene_path).value_or(false)) {
+                continue;
+            }
+
+            m_dependencies.m_asset_paths.insert(scene_path.lexically_normal());
+        }
+    }
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopePruneManagerIfUnused(RefPtr<SceneObjModel> model,
+                                                    const ModelIndex &index) {
+    if (!m_valid) {
+        return *this;
+    }
+
+    m_processed_objects += 1;
+
+    for (const TemplateDependencies::ObjectInfo &manager : m_dependencies.m_managers) {
+        ModelIndex group_index = m_object_model->getIndex(manager.m_ancestry);
+        if (!m_object_model->validateIndex(group_index)) {
+            m_valid = false;
+            m_error_callback(std::format("Provided manager ancestry '{}' is not a group object!",
+                                         manager.m_ancestry.toString()));
+            continue;
+        }
+
+        ModelIndex manager_index =
+            m_object_model->getIndex(manager.m_type, manager.m_name, group_index);
+
+        if (!m_object_model->validateIndex(manager_index)) {
+            continue;
+        }
+
+        // Manager matches a running dependency
+        if (manager_index == index) {
+            return *this;
+        }
+    }
+
+    // Remove the manager since it is not depended upon
+    m_indexes_to_prune.push_back(index);
+
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopePruneRailIfUnused(RefPtr<RailObjModel> model,
+                                                 const ModelIndex &index) {
+    if (!model->isIndexRail(index)) {
+        return *this;
+    }
+
+    const std::string rail_name = model->getRailKey(index);
+    if (m_dependencies.m_rails.contains(rail_name)) {
+        return *this;
+    }
+
+    m_indexes_to_prune.push_back(index);
+
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopeForAll(RefPtr<SceneObjModel> model, foreach_obj_fn fn) {
+    forEachP(model, m_parent_stack.empty() ? ModelIndex() : m_parent_stack.top(), fn);
+    return *this;
+}
+
+ScenePruner &ScenePruner::scopeForAll(RefPtr<RailObjModel> model, foreach_rail_fn fn) {
+    forEachP(model, m_parent_stack.empty() ? ModelIndex() : m_parent_stack.top(), fn);
+    return *this;
 }

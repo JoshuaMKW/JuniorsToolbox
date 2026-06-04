@@ -1,0 +1,60 @@
+﻿{
+    "Hinokuri2 Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SharedSetNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "ヒノクリ２マネージャー",
+                "Dependencies": {
+                    "Managers": {
+                        "HamuKuriManager": {
+                            "Name": "ハムクリマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        },
+                        "NameKuriManager": {
+                            "Name": "ナメクリマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {
+                        "StageEnemyInfo": {
+                            "Name": "",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "敵出現テーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "enemy/enm_hinokuri2"
+                    ]
+                },
+                "Members": {
+                    "Character": "ヒノクリ２マネージャー キャラ",
+                    "MaxNum": 3,
+                    "SharedSetNum": 0
+                }
+            }
+        }
+    }
+}

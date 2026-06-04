@@ -1,0 +1,53 @@
+﻿{
+    "Pokey Manager": {
+        "Enums": {},
+        "Structs": {},
+        "Members": {
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "MaxNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SharedSetNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "ハナサンボマネージャー",
+                "Dependencies": {
+                    "Managers": {
+                        "SamboFlowerManager": {
+                            "Name": "サンボフラワーマネージャー",
+                            "Ancestry": [
+                                "全体シーン",
+                                "コンダクター初期化用"
+                            ]
+                        }
+                    },
+                    "TablesBin": {
+                        "StageEnemyInfo": {
+                            "Name": "",
+                            "Ancestry": [
+                                "データテーブル群",
+                                "敵出現テーブル"
+                            ]
+                        }
+                    },
+                    "AssetPaths": [
+                        "enemy/enm_sambo"
+                    ]
+                },
+                "Members": {
+                    "Character": "ハナサンボマネージャー キャラ",
+                    "MaxNum": 30,
+                    "SharedSetNum": 0
+                }
+            }
+        }
+    }
+}

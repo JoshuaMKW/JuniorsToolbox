@@ -1,0 +1,49 @@
+﻿{
+    "General Sink Event (Pollution Layers)": {
+        "Enums": {},
+        "Structs": {
+            "BuildingInfo": {
+                "Region": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "PollutionLayerIdx": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "BuildingNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "BuildingIdxInit": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "BuildingArray": {
+                "Type": "BuildingInfo",
+                "ArraySize": "BuildingNum"
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "イベント（地形沈む再汚染）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": []
+                },
+                "Members": {
+                    "BuildingNum": 0,
+                    "BuildingIdxInit": 1,
+                    "BuildingArray": {
+                        "Region": 0,
+                        "PollutionLayerIdx": 1
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,139 @@
+﻿{
+    "Wooden Box": {
+        "Enums": {},
+        "Structs": {
+            "LightInfo": {
+                "ID": {
+                    "Type": "INT",
+                    "ArraySize": 1
+                },
+                "Name": {
+                    "Type": "STRING",
+                    "ArraySize": 1
+                }
+            }
+        },
+        "Members": {
+            "Transform": {
+                "Type": "TRANSFORM",
+                "ArraySize": 1
+            },
+            "Character": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "LightNum": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "LightArray": {
+                "Type": "LightInfo",
+                "ArraySize": "LightNum"
+            },
+            "Object": {
+                "Type": "STRING",
+                "ArraySize": 1
+            },
+            "SpawnID": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SpawnVelH": {
+                "Type": "INT",
+                "ArraySize": 1
+            },
+            "SpawnVelV": {
+                "Type": "FLOAT",
+                "ArraySize": 1
+            },
+            "SpawnTimer": {
+                "Type": "INT",
+                "ArraySize": 1
+            }
+        },
+        "Wizard": {
+            "Default": {
+                "Name": "木箱（偽物）",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_coin_hit",
+                        "object/mapobj_woodbox"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "木箱（偽物） キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "WoodBox",
+                    "SpawnID": -1,
+                    "SpawnVelH": 100,
+                    "SpawnVelV": -1,
+                    "SpawnTimer": 120
+                }
+            },
+            "Minigame Box": {
+                "Name": "ゲーム木箱1",
+                "Dependencies": {
+                    "Managers": {},
+                    "TablesBin": {},
+                    "AssetPaths": [
+                        "object/mapobj_cmn_coin_hit",
+                        "object/mapobj_woodbox"
+                    ]
+                },
+                "Members": {
+                    "Transform": [
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1,
+                            1
+                        ]
+                    ],
+                    "Character": "木箱（偽物） キャラ",
+                    "LightNum": 0,
+                    "LightArray": {
+                        "ID": 0,
+                        "Name": "なし"
+                    },
+                    "Object": "WoodBox",
+                    "SpawnID": -1,
+                    "SpawnVelH": 100,
+                    "SpawnVelV": -1,
+                    "SpawnTimer": 120
+                }
+            }
+        }
+    }
+}

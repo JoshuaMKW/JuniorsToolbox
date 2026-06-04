@@ -1,4 +1,4 @@
-#include <chrono>
+﻿#include <chrono>
 #include <fstream>
 
 #include "gui/appmain/application.hpp"
@@ -334,12 +334,12 @@ namespace Toolbox {
 
         Toolbox::Filesystem::create_directories(folder_path)
             .and_then([&](bool created) {
-                #if 0
+#if 0
                 if (!created) {
                     return make_fs_error<bool>(std::error_code(),
                                                {"[PAD RECORD] Folder already exists."});
                 }
-                #endif
+#endif
                 return saveToFolder_(folder_path);
             })
             .and_then([&](bool success) {
@@ -560,9 +560,9 @@ namespace Toolbox {
 
         auto remove_it =
             std::find_if(m_pad_datas.begin(), m_pad_datas.end(),
-                          [from_link, to_link](const PadDataLinkInfo &info) {
-                              return info.m_from_link == from_link && info.m_to_link == to_link;
-                          });
+                         [from_link, to_link](const PadDataLinkInfo &info) {
+                             return info.m_from_link == from_link && info.m_to_link == to_link;
+                         });
         if (remove_it != m_pad_datas.end()) {
             m_pad_datas.erase(remove_it);
         }
@@ -992,8 +992,7 @@ namespace Toolbox {
                 m_is_viewing_shadow_mario = false;
                 return make_error<PadRecorder::PadFrameData>("PAD RECORD", "Scene is not loaded.");
             } else {
-                std::string shadow_mario_name =
-                    "\x83\x7D\x83\x8A\x83\x49\x83\x82\x83\x68\x83\x4C\x5F\x30";
+                const std::string shadow_mario_name = to_str(u8"マリオモドキ_0");
                 m_shadow_mario_ptr = task_communicator.getActorPtr(shadow_mario_name);
             }
         }
@@ -1043,7 +1042,8 @@ namespace Toolbox {
                 m_is_viewing_piantissimo = false;
                 return make_error<PadRecorder::PadFrameData>("PAD RECORD", "Scene is not loaded.");
             } else {
-                std::string piantissimo_name = "\x83\x82\x83\x93\x83\x65\x83\x7D\x83\x93";
+                const std::string piantissimo_name = to_str(u8"モンテマン");
+
                 m_piantissimo_ptr            = task_communicator.getActorPtr(piantissimo_name);
             }
         }
