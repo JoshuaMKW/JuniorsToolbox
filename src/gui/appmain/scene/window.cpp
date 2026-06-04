@@ -5400,6 +5400,13 @@ SceneMender &SceneMender::scopeFulfillAssetDependencies(RefPtr<SceneObjModel> mo
                 continue;
             }
 
+            if (!Filesystem::exists(dir_entry).value_or(false)) {
+                m_valid = false;
+                m_error_callback(
+                    std::format("Asset path '{}' does not exist!", dir_entry.path().string()));
+                continue;
+            }
+
             if (Filesystem::is_regular_file(scene_path).value_or(false)) {
                 continue;
             }
@@ -5410,6 +5417,7 @@ SceneMender &SceneMender::scopeFulfillAssetDependencies(RefPtr<SceneObjModel> mo
                 m_valid = false;
                 m_error_callback(
                     std::format("Failed to copy file for asset path '{}'", scene_path.string()));
+                continue;
             }
 
             std::string change_text =
