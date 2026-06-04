@@ -998,7 +998,7 @@ namespace Toolbox::RARC {
             current_child_offset += low_dir.children_count;
 
             if (node.folder.parent != -1) {
-                low_dir.magic = *reinterpret_cast<u32 *>(s_magic.data());
+                low_dir.magic = std::byteswap(*reinterpret_cast<u32 *>(s_magic.data()));
             } else {
                 low_dir.magic = 'ROOT';
             }
