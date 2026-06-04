@@ -58,8 +58,6 @@ public:
     std::vector<std::string> getErrors() const { return m_errors; }
     std::string getProgressText() const { return m_progress_text; }
 
-    ToolboxSceneVerifier &operator=(ToolboxSceneVerifier &&other) noexcept = default;
-
 protected:
     // WARNING: This method is exhaustive and may take awhile to complete!
     [[nodiscard]] static bool ValidateScene(RefPtr<SceneObjModel> object_model,
@@ -98,9 +96,6 @@ public:
     std::vector<std::string> getChanges() const { return m_changes; }
     std::vector<std::string> getErrors() const { return m_errors; }
     std::string getProgressText() const { return m_progress_text; }
-
-    ToolboxSceneDependencyMender &
-    operator=(ToolboxSceneDependencyMender &&other) noexcept = default;
 
 protected:
     // WARNING: This method is exhaustive and may take awhile to complete!
@@ -141,19 +136,6 @@ public:
 
     std::mutex &getOperationMutex() {
         return m_operation_mutex;
-    }
-
-    ToolboxScenePruner& operator=(ToolboxScenePruner&& other) noexcept {
-        m_object_model = std::move(other.m_object_model);
-        m_table_model  = std::move(other.m_table_model);
-        m_rail_model   = std::move(other.m_rail_model);
-
-        m_progress_text = std::move(other.m_progress_text);
-        m_changes       = std::move(other.m_changes);
-        m_errors       = std::move(other.m_errors);
-
-        m_successful = other.m_successful;
-        return *this;
     }
 
 protected:
@@ -423,9 +405,9 @@ namespace Toolbox::UI {
 
         Toolbox::Buffer m_drop_target_buffer;
 
-        ToolboxSceneVerifier m_scene_verifier;
-        ToolboxSceneDependencyMender m_scene_mender;
-        ToolboxScenePruner m_scene_pruner;
+        ScopePtr<ToolboxSceneVerifier> m_scene_verifier;
+        ScopePtr<ToolboxSceneDependencyMender> m_scene_mender;
+        ScopePtr<ToolboxScenePruner> m_scene_pruner;
         bool m_scene_validator_result_opened = false;
         bool m_scene_mender_result_opened    = false;
         bool m_scene_pruner_result_opened    = false;

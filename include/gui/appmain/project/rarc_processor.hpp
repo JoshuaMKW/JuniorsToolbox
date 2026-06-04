@@ -10,7 +10,9 @@ namespace Toolbox::UI {
         void tRun(void *param) override;
 
     public:
-        using task_cb = std::function<void()>;
+        using task_cb = std::function<void(const std::string &)>;
+
+        RarcProcessor() = default;
 
         void requestCompileArchive(const fs_path &src_path, const fs_path &dest_path, bool compress, task_cb on_complete = nullptr);
         void requestExtractArchive(const fs_path &arc_path, const fs_path &dest_path, task_cb on_complete = nullptr);

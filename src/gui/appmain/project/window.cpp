@@ -12,6 +12,14 @@
 
 namespace Toolbox::UI {
 
+    static void HandleProjectPackCompletionCallback(ImWindow *parent, const std::string &msg) {
+        MainApplication::instance().showSuccessModal(parent, "Pack Archive", msg);
+    }
+
+    static void HandleProjectUnpackCompletionCallback(ImWindow *parent, const std::string &msg) {
+        MainApplication::instance().showSuccessModal(parent, "Extract Archive", msg);
+    }
+
     ProjectPackEvent::ProjectPackEvent(const UUID64 &target_id, const fs_path &path, bool compress,
                                        RarcProcessor::task_cb on_complete)
         : BaseEvent(target_id, PROJECT_PACK_DIRECTORY) {
@@ -191,6 +199,14 @@ namespace Toolbox::UI {
         renderProjectFolderView();
 
         m_did_drag_drop = DragDropManager::instance().getCurrentDragAction() != nullptr;
+
+        for (auto it = m_rarc_processors.begin(); it != m_rarc_processors.end();) {
+            if (!it->tIsAlive()) {
+                it = m_rarc_processors.erase(it);
+            } else {
+                ++it;
+            }
+        }
     }
 
     void ProjectViewWindow::renderProjectTreeView() {
@@ -230,7 +246,7 @@ namespace Toolbox::UI {
 
                 const fs_path folder_rel_path    = m_tree_proxy->getPath(pinned);
                 const std::string folder_rel_str = folder_rel_path.string();
-                const std::string folder_name    = folder_rel_path.filename().string(); 
+                const std::string folder_name    = folder_rel_path.filename().string();
 
                 ImVec2 size = ImGui::CalcItemSize({0, 0}, pin_size.x + style.FramePadding.x * 2.0f,
                                                   pin_size.y + style.FramePadding.y * 2.0f);
@@ -805,7 +821,7 @@ namespace Toolbox::UI {
         m_pinned_selection_mgr.setDeepSpans(false);
 
         m_project_config.loadFromFile(m_project_root / ".ToolboxConfig.tbox");
-        
+
         for (const fs_path &pinned_folder_path : m_project_config.getPinnedFolders()) {
             ModelIndex pinned_index = m_tree_proxy->getIndex(pinned_folder_path);
             if (m_tree_proxy->validateIndex(pinned_index)) {
@@ -822,8 +838,6 @@ namespace Toolbox::UI {
     void ProjectViewWindow::onAttach() {
         ImWindow::onAttach();
         buildContextMenu();
-
-        m_rarc_processor.tStart(true, nullptr);
     }
 
     void ProjectViewWindow::onDetach() {
@@ -885,8 +899,12 @@ namespace Toolbox::UI {
             const fs_path &src_path          = pack_ev->getPath();
             fs_path dst_path                 = src_path;
             dst_path.replace_extension(pack_ev->wantsCompress() ? ".szs" : ".arc");
-            m_rarc_processor.requestCompileArchive(src_path, dst_path, pack_ev->wantsCompress(),
-                                                   pack_ev->cb());
+
+            m_rarc_processors.emplace_back();
+            m_rarc_processors.back().tStart(true, nullptr);
+            m_rarc_processors.back().requestCompileArchive(src_path, dst_path,
+                                                           pack_ev->wantsCompress(), pack_ev->cb());
+
             ev->accept();
             break;
         }
@@ -894,8 +912,12 @@ namespace Toolbox::UI {
             RefPtr<ProjectUnpackEvent> unpack_ev = ref_cast<ProjectUnpackEvent>(ev);
             const fs_path &src_path              = unpack_ev->getPath();
             fs_path dst_path                     = src_path;
-            m_rarc_processor.requestExtractArchive(src_path, src_path.parent_path(),
-                                                   unpack_ev->cb());
+
+            m_rarc_processors.emplace_back();
+            m_rarc_processors.back().tStart(true, nullptr);
+            m_rarc_processors.back().requestExtractArchive(src_path, src_path.parent_path(),
+                                                           unpack_ev->cb());
+
             ev->accept();
             break;
         }
@@ -1035,7 +1057,13 @@ namespace Toolbox::UI {
                     const IDataModel::index_container &selection =
                         m_folder_selection_mgr.getState().getSelection();
                     fs_path arc_path = m_view_proxy->getRealPath(selection[0]);
-                    m_rarc_processor.requestExtractArchive(arc_path, arc_path.parent_path());
+
+                    m_rarc_processors.emplace_back();
+                    m_rarc_processors.back().tStart(true, nullptr);
+                    m_rarc_processors.back().requestExtractArchive(
+                        arc_path, arc_path.parent_path(), [this](const std::string &msg) {
+                            HandleProjectUnpackCompletionCallback(this, msg);
+                        });
                 })
             .addOption(
                 "Compile to RARC",
@@ -1051,7 +1079,13 @@ namespace Toolbox::UI {
                     fs_path src_path = m_view_proxy->getRealPath(selection[0]);
                     fs_path dst_path = src_path;
                     dst_path.replace_extension(".arc");
-                    m_rarc_processor.requestCompileArchive(src_path, dst_path, false);
+
+                    m_rarc_processors.emplace_back();
+                    m_rarc_processors.back().tStart(true, nullptr);
+                    m_rarc_processors.back().requestCompileArchive(
+                        src_path, dst_path, false, [this](const std::string &msg) {
+                            HandleProjectPackCompletionCallback(this, msg);
+                        });
                 })
             .addOption(
                 "Compile to SZS",
@@ -1067,7 +1101,13 @@ namespace Toolbox::UI {
                     fs_path src_path = m_view_proxy->getRealPath(selection[0]);
                     fs_path dst_path = src_path;
                     dst_path.replace_extension(".szs");
-                    m_rarc_processor.requestCompileArchive(src_path, dst_path, true);
+
+                    m_rarc_processors.emplace_back();
+                    m_rarc_processors.back().tStart(true, nullptr);
+                    m_rarc_processors.back().requestCompileArchive(
+                        src_path, dst_path, true, [this](const std::string &msg) {
+                            HandleProjectPackCompletionCallback(this, msg);
+                        });
                 })
             .addOption(
                 "New Folder",
@@ -1201,7 +1241,13 @@ namespace Toolbox::UI {
                     const IDataModel::index_container &selection =
                         m_tree_selection_mgr.getState().getSelection();
                     fs_path arc_path = m_tree_proxy->getRealPath(index);
-                    m_rarc_processor.requestExtractArchive(arc_path, arc_path.parent_path());
+
+                    m_rarc_processors.emplace_back();
+                    m_rarc_processors.back().tStart(true, nullptr);
+                    m_rarc_processors.back().requestExtractArchive(
+                        arc_path, arc_path.parent_path(), [this](const std::string &msg) {
+                            HandleProjectUnpackCompletionCallback(this, msg);
+                        });
                 })
             .addOption(
                 "Compile to RARC",
@@ -1215,7 +1261,13 @@ namespace Toolbox::UI {
                     fs_path src_path = m_tree_proxy->getRealPath(index);
                     fs_path dst_path = src_path;
                     dst_path.replace_extension(".arc");
-                    m_rarc_processor.requestCompileArchive(src_path, dst_path, false);
+
+                    m_rarc_processors.emplace_back();
+                    m_rarc_processors.back().tStart(true, nullptr);
+                    m_rarc_processors.back().requestCompileArchive(
+                        src_path, dst_path, false, [this](const std::string &msg) {
+                            HandleProjectPackCompletionCallback(this, msg);
+                        });
                 })
             .addOption(
                 "Compile to SZS",
@@ -1231,7 +1283,13 @@ namespace Toolbox::UI {
                     fs_path src_path = m_tree_proxy->getRealPath(selection[0]);
                     fs_path dst_path = src_path;
                     dst_path.replace_extension(".szs");
-                    m_rarc_processor.requestCompileArchive(src_path, dst_path, true);
+
+                    m_rarc_processors.emplace_back();
+                    m_rarc_processors.back().tStart(true, nullptr);
+                    m_rarc_processors.back().requestCompileArchive(
+                        src_path, dst_path, true, [this](const std::string &msg) {
+                            HandleProjectPackCompletionCallback(this, msg);
+                        });
                 });
 
         m_pinned_view_context_menu = ContextMenu<ModelIndex>();
@@ -1253,7 +1311,7 @@ namespace Toolbox::UI {
                 KeyBind({KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTSHIFT, KeyCode::KEY_O}),
                 [this](const ModelIndex &index) { return m_tree_proxy->validateIndex(index); },
                 [this](const ModelIndex &index) {
-                    Toolbox::Platform::OpenFileExplorer(m_tree_proxy->getRealPath(index));
+                    Platform::OpenFileExplorer(m_tree_proxy->getRealPath(index));
                 })
             .addDivider()
             .addOption(
@@ -1634,7 +1692,7 @@ namespace Toolbox::UI {
 
             ModelInsertPolicy policy = ModelInsertPolicy::INSERT_CHILD;
             auto result = m_view_proxy->insertMimeData(m_view_proxy->toProxyIndex(m_view_index),
-                                                    maybe_data.value(), policy);
+                                                       maybe_data.value(), policy);
             if (!result) {
                 LogError(result.error());
             }

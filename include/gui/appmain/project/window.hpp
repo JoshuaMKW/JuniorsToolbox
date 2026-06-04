@@ -6,6 +6,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <queue>
 
 #include "core/memory.hpp"
 #include "fsystem.hpp"
@@ -135,7 +136,7 @@ namespace Toolbox::UI {
         ModelIndex m_view_index;
         std::vector<ModelIndex> m_pinned_folders;
 
-        RarcProcessor m_rarc_processor;
+        std::list<RarcProcessor> m_rarc_processors;
         std::unordered_map<std::string, ImageHandle> m_icon_map;
         ImagePainter m_icon_painter;
 

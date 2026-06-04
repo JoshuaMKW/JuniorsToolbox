@@ -106,7 +106,9 @@ namespace Toolbox::UI {
                         out.writeBytes(span_data);
 
                         if (m_on_complete_compile) {
-                            m_on_complete_compile();
+                            const std::string msg = std::format(
+                                "Successfully compiled and compressed the archive to '{}'", m_dest_path.string());
+                            m_on_complete_compile(msg);
                             m_on_complete_compile = nullptr;
                         }
                     }
@@ -126,7 +128,9 @@ namespace Toolbox::UI {
                     }
 
                     if (m_on_complete_compile) {
-                        m_on_complete_compile();
+                        const std::string msg = std::format(
+                            "Successfully compiled the archive to '{}'", m_dest_path.string());
+                        m_on_complete_compile(msg);
                         m_on_complete_compile = nullptr;
                     }
 
@@ -209,7 +213,9 @@ namespace Toolbox::UI {
                     }
 
                     if (m_on_complete_extract) {
-                        m_on_complete_extract();
+                        const std::string msg = std::format(
+                            "Successfully extracted the archive to '{}'", dest_folder.string());
+                        m_on_complete_extract(msg);
                         m_on_complete_extract = nullptr;
                     }
 
@@ -245,7 +251,9 @@ namespace Toolbox::UI {
                     }
 
                     if (m_on_complete_extract) {
-                        m_on_complete_extract();
+                        const std::string msg = std::format(
+                            "Successfully extracted the archive to '{}'", dest_folder.string());
+                        m_on_complete_extract(msg);
                         m_on_complete_extract = nullptr;
                     }
 
