@@ -192,12 +192,44 @@ namespace Toolbox {
     class ModelIndexListTransformer {
     public:
         ModelIndexListTransformer() = delete;
-        ModelIndexListTransformer(const IDataModel *model) : m_model(model) {}
+        ModelIndexListTransformer(RefPtr<IDataModel> model) : m_model(model) {}
 
         void pruneRedundantsForRecursiveTree(IDataModel::index_container &indexes) const;
 
     private:
-        const IDataModel *m_model;
+        RefPtr<IDataModel> m_model;
+    };
+
+    class ModelHistoryHandler {
+    private:
+        struct HistoryAction {
+            ModelIndex m_parent;
+            int64_t m_row;
+            int64_t m_column;
+            std::vector<uint8_t> m_serial_data;
+            ModelEventFlags m_action_flags;
+        };
+
+        // A frame may contain many actions, similar to a textbox undo/redo where each character
+        // typed is an action, but they are all undone/redone together.
+        struct HistoryFrame {
+            std::vector<HistoryAction> m_actions;
+        };
+    
+    public:
+        ModelHistoryHandler() = delete;
+        ModelHistoryHandler(RefPtr<IDataModel> model);
+
+        bool undoAction();
+        bool redoAction();
+        [[nodiscard]] bool hasHistory() const;
+
+    protected:
+        void updateHistory(const ModelIndex &index, int flags);
+
+    private:
+        RefPtr<IDataModel> m_model;
+        std::vector<HistoryFrame> m_history;
     };
 
 }  // namespace Toolbox
