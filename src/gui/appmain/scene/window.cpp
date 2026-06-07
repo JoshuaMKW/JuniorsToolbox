@@ -2934,7 +2934,6 @@ namespace Toolbox::UI {
                     task_communicator.setObjectTransformToMario(
                         ref_cast<PhysicalSceneObject>(this_obj));
                     m_update_render_objs = true;
-                    return;
                 })
             .addOption(
                 "Copy Player Position",
@@ -2961,7 +2960,7 @@ namespace Toolbox::UI {
 
                     RefPtr<ISceneObject> this_obj = m_scene_object_model->getObjectRef(index);
                     if (!this_obj) {
-                        return false;
+                        return;
                     }
 
                     task_communicator.setObjectTranslationToMario(

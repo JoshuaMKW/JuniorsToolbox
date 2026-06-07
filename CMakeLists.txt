@@ -68,6 +68,8 @@ file(GLOB TOOLBOX_SRC
 
     "src/gui/appmain/*.cpp"
     "include/gui/appmain/*.hpp"
+    "src/gui/appmain/bmgeditor/*.cpp"
+    "include/gui/appmain/bmgeditor/*.hpp"
     "src/gui/appmain/debugger/*.cpp"
     "include/gui/appmain/debugger/*.hpp"
     "src/gui/appmain/dolphin/*.cpp"
