@@ -33,7 +33,15 @@ namespace Toolbox {
         Result<void, SerialError> loadFromFile(const fs_path &path);
         Result<void, SerialError> saveToFile(const fs_path &path) const;
 
+        Result<void, FSError> initFromProjectRoot(const fs_path &path);
+
         // Metadata
+
+        u32 getProjectGameCode() const;
+        void setProjectGameCode(u32 code);
+
+        u16 getProjectMakerCode() const;
+        void setProjectMakerCode(u16 code);
 
         const std::string &getProjectName() const;
         void setProjectName(const std::string &name);
@@ -67,6 +75,9 @@ namespace Toolbox {
         //
 
     private:
+        u32 m_project_game_code;
+        u16 m_project_maker_code;
+
         std::string m_project_name    = "Unknown Project";
         std::string m_project_version = "v1.0.0";
         std::string m_author_name     = "Unknown Author";

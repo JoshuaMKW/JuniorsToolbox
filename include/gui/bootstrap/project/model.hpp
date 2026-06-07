@@ -28,6 +28,15 @@ namespace Toolbox {
         PROJECT_DATA_ROLE_AGE = ModelDataRole::DATA_ROLE_USER,
         PROJECT_DATA_ROLE_PINNED,
         PROJECT_DATA_ROLE_PATH,
+        PROJECT_DATA_ROLE_VERSION,
+        PROJECT_DATA_ROLE_GAME_CODE,
+        PROJECT_DATA_ROLE_MAKER_CODE,
+        PROJECT_DATA_ROLE_DISK_VERSION,
+        PROJECT_DATA_ROLE_SHORT_NAME,
+        PROJECT_DATA_ROLE_LONG_NAME,
+        PROJECT_DATA_ROLE_SHORT_MAKER,
+        PROJECT_DATA_ROLE_LONG_MAKER,
+        PROJECT_DATA_ROLE_DESCRIPTION,
     };
 
     class ProjectModel : public IDataModel {
@@ -66,6 +75,78 @@ namespace Toolbox {
 
         [[nodiscard]] fs_path getProjectPath(const ModelIndex &index) const {
             return std::any_cast<fs_path>(getData(index, ProjectDataRole::PROJECT_DATA_ROLE_PATH));
+        }
+
+        [[nodiscard]] std::string getProjectVersion(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_VERSION));
+        }
+        void setProjectVersion(const ModelIndex &index, const std::string &version) {
+            setData(index, version, ProjectDataRole::PROJECT_DATA_ROLE_VERSION);
+        }
+
+        [[nodiscard]] u32 getGameCode(const ModelIndex &index) const {
+            return std::any_cast<u32>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_GAME_CODE));
+        }
+        void setGameCode(const ModelIndex &index, u32 code) {
+            setData(index, code, ProjectDataRole::PROJECT_DATA_ROLE_GAME_CODE);
+        }
+
+        [[nodiscard]] u16 getMakerCode(const ModelIndex &index) const {
+            return std::any_cast<u16>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_MAKER_CODE));
+        }
+        void setMakerCode(const ModelIndex &index, u16 code) {
+            setData(index, code, ProjectDataRole::PROJECT_DATA_ROLE_MAKER_CODE);
+        }
+
+        [[nodiscard]] u8 getDiskVersion(const ModelIndex &index) const {
+            return std::any_cast<u8>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_DISK_VERSION));
+        }
+        void setDiskVersion(const ModelIndex &index, u8 version) {
+            setData(index, version, ProjectDataRole::PROJECT_DATA_ROLE_DISK_VERSION);
+        }
+
+        [[nodiscard]] std::string getGameName(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_SHORT_NAME));
+        }
+        void setGameName(const ModelIndex &index, const std::string &name) {
+            setData(index, name, ProjectDataRole::PROJECT_DATA_ROLE_SHORT_NAME);
+        }
+
+        [[nodiscard]] std::string getGameTitle(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_LONG_NAME));
+        }
+        void setGameTitle(const ModelIndex &index, const std::string &name) {
+            setData(index, name, ProjectDataRole::PROJECT_DATA_ROLE_LONG_NAME);
+        }
+
+        [[nodiscard]] std::string getDeveloperName(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_SHORT_MAKER));
+        }
+        void setDeveloperName(const ModelIndex &index, const std::string &maker) {
+            setData(index, maker, ProjectDataRole::PROJECT_DATA_ROLE_SHORT_MAKER);
+        }
+
+        [[nodiscard]] std::string getDeveloperTitle(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_LONG_MAKER));
+        }
+        void setDeveloperTitle(const ModelIndex &index, const std::string &maker) {
+            setData(index, maker, ProjectDataRole::PROJECT_DATA_ROLE_LONG_MAKER);
+        }
+
+        [[nodiscard]] std::string getDescription(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_DESCRIPTION));
+        }
+        void setDescription(const ModelIndex &index, const std::string &description) {
+            setData(index, description, ProjectDataRole::PROJECT_DATA_ROLE_DESCRIPTION);
         }
 
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
@@ -174,6 +255,7 @@ namespace Toolbox {
         }
 
         [[nodiscard]] bool isReadOnly() const override { return m_source_model->isReadOnly(); }
+        [[nodiscard]] bool isDirty() const { return m_is_dirty; }
 
         [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
 
@@ -187,13 +269,90 @@ namespace Toolbox {
             return std::any_cast<system_clock::time_point>(
                 getData(index, ProjectDataRole::PROJECT_DATA_ROLE_AGE));
         }
+        void setLastAccessed(const ModelIndex &index, system_clock::time_point time) {
+            setData(index, time, ProjectDataRole::PROJECT_DATA_ROLE_AGE);
+        }
 
         [[nodiscard]] bool getPinned(const ModelIndex &index) const {
             return std::any_cast<bool>(getData(index, ProjectDataRole::PROJECT_DATA_ROLE_PINNED));
         }
+        void setPinned(const ModelIndex &index, bool pinned) {
+            setData(index, pinned, ProjectDataRole::PROJECT_DATA_ROLE_PINNED);
+        }
 
         [[nodiscard]] fs_path getProjectPath(const ModelIndex &index) const {
             return std::any_cast<fs_path>(getData(index, ProjectDataRole::PROJECT_DATA_ROLE_PATH));
+        }
+
+        [[nodiscard]] std::string getProjectVersion(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_VERSION));
+        }
+        void setProjectVersion(const ModelIndex &index, const std::string &version) {
+            setData(index, version, ProjectDataRole::PROJECT_DATA_ROLE_VERSION);
+        }
+
+        [[nodiscard]] u32 getGameCode(const ModelIndex &index) const {
+            return std::any_cast<u32>(getData(index, ProjectDataRole::PROJECT_DATA_ROLE_GAME_CODE));
+        }
+        void setGameCode(const ModelIndex &index, u32 code) {
+            setData(index, code, ProjectDataRole::PROJECT_DATA_ROLE_GAME_CODE);
+        }
+
+        [[nodiscard]] u16 getMakerCode(const ModelIndex &index) const {
+            return std::any_cast<u16>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_MAKER_CODE));
+        }
+        void setMakerCode(const ModelIndex &index, u16 code) {
+            setData(index, code, ProjectDataRole::PROJECT_DATA_ROLE_MAKER_CODE);
+        }
+
+        [[nodiscard]] u8 getDiskVersion(const ModelIndex &index) const {
+            return std::any_cast<u8>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_DISK_VERSION));
+        }
+        void setDiskVersion(const ModelIndex &index, u8 version) {
+            setData(index, version, ProjectDataRole::PROJECT_DATA_ROLE_DISK_VERSION);
+        }
+
+        [[nodiscard]] std::string getGameName(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_SHORT_NAME));
+        }
+        void setGameName(const ModelIndex &index, const std::string &name) {
+            setData(index, name, ProjectDataRole::PROJECT_DATA_ROLE_SHORT_NAME);
+        }
+
+        [[nodiscard]] std::string getGameTitle(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_LONG_NAME));
+        }
+        void setGameTitle(const ModelIndex &index, const std::string &name) {
+            setData(index, name, ProjectDataRole::PROJECT_DATA_ROLE_LONG_NAME);
+        }
+
+        [[nodiscard]] std::string getDeveloperName(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_SHORT_MAKER));
+        }
+        void setDeveloperName(const ModelIndex &index, const std::string &maker) {
+            setData(index, maker, ProjectDataRole::PROJECT_DATA_ROLE_SHORT_MAKER);
+        }
+
+        [[nodiscard]] std::string getDeveloperTitle(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_LONG_MAKER));
+        }
+        void setDeveloperTitle(const ModelIndex &index, const std::string &maker) {
+            setData(index, maker, ProjectDataRole::PROJECT_DATA_ROLE_LONG_MAKER);
+        }
+
+        [[nodiscard]] std::string getDescription(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_DESCRIPTION));
+        }
+        void setDescription(const ModelIndex &index, const std::string &description) {
+            setData(index, description, ProjectDataRole::PROJECT_DATA_ROLE_DESCRIPTION);
         }
 
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
@@ -239,6 +398,8 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;
 
+        void flushCache() const;
+
     protected:
         [[nodiscard]] ModelIndex toProxyIndex(int64_t row, int64_t column,
                                               const ModelIndex &parent = ModelIndex()) const;
@@ -247,7 +408,6 @@ namespace Toolbox {
 
         u64 getCacheKey_(const ModelIndex &src_idx) const;
         void cacheIndex(const ModelIndex &src_idx) const;
-        void flushCache() const;
         bool isCached(const ModelIndex &src_idx) const;
 
         ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent) {
@@ -262,6 +422,7 @@ namespace Toolbox {
         RefPtr<ProjectModel> m_source_model = nullptr;
         std::string m_filter                   = "";
 
+        mutable bool m_is_dirty;
         mutable std::mutex m_cache_mutex;
         mutable std::unordered_map<UUID64, std::vector<int64_t>> m_row_map;
     };

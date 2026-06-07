@@ -4,6 +4,8 @@
 #include <netpp/netpp.h>
 #include <netpp/tls/security.h>
 
+#include <gcm.hpp>
+
 #include <iostream>
 #include <span>
 #include <string>
@@ -149,7 +151,7 @@ namespace Toolbox {
         glfwWindowHint(GLFW_SAMPLES, 4);
 
         m_render_window = glfwCreateWindow(
-            800, 700, "Junior's Toolbox " TOOLBOX_VERSION_TAG " (Launcher)", nullptr, nullptr);
+            1100, 800, "Junior's Toolbox " TOOLBOX_VERSION_TAG " (Launcher)", nullptr, nullptr);
         if (m_render_window == nullptr) {
             glfwTerminate();
             setExitCode(EXIT_CODE_FAILED_SETUP);
@@ -281,7 +283,9 @@ namespace Toolbox {
             } else {
                 ModelIndex new_project =
                     m_project_model->makeIndex(m_project_path.value(), 0, ModelIndex());
+
                 m_project_model->setLastAccessed(new_project, system_clock::now());
+                m_project_model->setPinned(new_project, false);
             }
             m_project_model->saveToJSON(getAppDataPath() / fs_path(".ToolboxProjectsCache.json"));
         }
@@ -513,6 +517,10 @@ namespace Toolbox {
         //            m_pending_drag_action = nullptr;
         // #endif
         //        }
+
+        if (m_sort_filter_proxy->isDirty()) {
+            m_sort_filter_proxy->flushCache();
+        }
     }
 
     void BootStrapApplication::renderBody() {
@@ -602,7 +610,10 @@ namespace Toolbox {
 
                     const system_clock::time_point project_tp =
                         m_sort_filter_proxy->getLastAccessed(project_index);
-                    const ProjectAgeCategory this_category = GetAgeCategoryForProject(project_tp);
+                    const ProjectAgeCategory this_category =
+                        m_sort_filter_proxy->getPinned(project_index)
+                            ? ProjectAgeCategory::AGE_PINNED
+                            : GetAgeCategoryForProject(project_tp);
 
                     if (this_category != current_category) {
                         should_render_projects = renderProjectAgeGroup(this_category);
@@ -935,6 +946,9 @@ namespace Toolbox {
     bool BootStrapApplication::renderProjectAgeGroup(ProjectAgeCategory category) {
         std::string category_name;
         switch (category) {
+        case ProjectAgeCategory::AGE_PINNED:
+            category_name = "Pinned";
+            break;
         case ProjectAgeCategory::AGE_DAY:
             category_name = "Today";
             break;
@@ -989,11 +1003,15 @@ namespace Toolbox {
     void BootStrapApplication::renderProjectRow(const ModelIndex &index) {
         const fs_path project_path                   = m_sort_filter_proxy->getProjectPath(index);
         const std::string project_name               = m_sort_filter_proxy->getDisplayText(index);
+        const std::string project_author             = m_sort_filter_proxy->getDeveloperName(index);
+        const std::string tooltip_text               = m_sort_filter_proxy->getToolTip(index);
         RefPtr<const ImageHandle> project_icon       = m_sort_filter_proxy->getDecoration(index);
         const bool project_pinned                    = m_sort_filter_proxy->getPinned(index);
         const system_clock::time_point last_accessed = m_sort_filter_proxy->getLastAccessed(index);
 
         const std::string last_accessed_str = GetDateStringForProject(last_accessed);
+
+        const std::string project_path_str = project_path.string();
 
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8.0f, 8.0f});
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {5.0f, 5.0f});
@@ -1008,6 +1026,8 @@ namespace Toolbox {
         const ImGuiID id =
             ImGui::GetID(TOOLBOX_FORMAT_FN("Project Row##{}", index.getUUID()).c_str());
 
+        ImGui::SetNextItemAllowOverlap();
+
         const ImRect bb(pos, pos + size);
         ImGui::ItemSize(size, style.FramePadding.y);
         if (!ImGui::ItemAdd(bb, id))
@@ -1016,10 +1036,31 @@ namespace Toolbox {
         bool hovered, held;
         bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held);
 
+        // Pin Button
+        const ImVec2 pin_button_size(16.0f, 16.0f);
+        const ImRect pin_button_bb(
+            pos + ImVec2(size.x - pin_button_size.x - style.FramePadding.x, style.FramePadding.y),
+            pos + ImVec2(size.x - style.FramePadding.x, pin_button_size.y + style.FramePadding.y));
+
+        const ImGuiID pin_id =
+            ImGui::GetID(TOOLBOX_FORMAT_FN("Project Row Pin##{}", index.getUUID()).c_str());
+
+        if (!ImGui::ItemAdd(pin_button_bb, pin_id))
+            return;
+
+        bool pin_hovered, pin_held;
+        bool pin_pressed = ImGui::ButtonBehavior(pin_button_bb, pin_id, &pin_hovered, &pin_held);
+
+        if (pin_pressed) {
+            m_sort_filter_proxy->setPinned(index, !project_pinned);
+        }
+
+        bool row_hovered = hovered || pin_hovered || pin_held;
+
         // Render background
-        ImU32 bg_color = held      ? ImGui::GetColorU32(ImGuiCol_FrameBgActive)
-                         : hovered ? ImGui::GetColorU32(ImGuiCol_FrameBgHovered)
-                                   : ImGui::GetColorU32(ImGuiCol_FrameBg);
+        ImU32 bg_color = held          ? ImGui::GetColorU32(ImGuiCol_FrameBgActive)
+                         : row_hovered ? ImGui::GetColorU32(ImGuiCol_FrameBgHovered)
+                                       : ImGui::GetColorU32(ImGuiCol_FrameBg);
         ImGui::RenderFrame(bb.Min, bb.Max, bg_color, true, style.FrameRounding);
 
         // Render project details
@@ -1053,7 +1094,6 @@ namespace Toolbox {
             // Project path
             {
                 ImGui::PushFont(nullptr, 14.0f);
-                const std::string project_path_str = project_path.string();
                 const ImVec2 text_size =
                     ImGui::CalcTextSize(project_path_str.c_str(),
                                         project_path_str.c_str() + project_path_str.size(), true);
@@ -1069,15 +1109,36 @@ namespace Toolbox {
                 ImGui::PopFont();
             }
 
+            if (hovered || pin_hovered || pin_held) {
+                ImGui::PushFont(nullptr, 14.0f);
+
+                // Render background
+                ImU32 pin_bg_color = pin_held      ? ImGui::GetColorU32(ImGuiCol_FrameBgActive)
+                                     : pin_hovered ? ImGui::GetColorU32(ImGuiCol_FrameBgHovered)
+                                                   : ImGui::GetColorU32(ImGuiCol_FrameBg);
+                ImGui::RenderFrame(pin_button_bb.Min, pin_button_bb.Max, pin_bg_color, true,
+                                   style.FrameRounding);
+                ImGui::RenderTextClipped(pin_button_bb.Min, pin_button_bb.Max,
+                                         project_pinned ? ICON_FA_THUMBTACK
+                                                        : ICON_FA_THUMBTACK_SLASH,
+                                         nullptr, nullptr, {0.5f, 0.5f});
+
+                ImGui::PopFont();
+            }
+
             // Last accessed date
             {
                 ImGui::PushFont(nullptr, 14.0f);
                 const ImVec2 text_size =
                     ImGui::CalcTextSize(last_accessed_str.c_str(),
                                         last_accessed_str.c_str() + last_accessed_str.size(), true);
-                const ImRect text_bb(
-                    pos + ImVec2(size.x - last_accessed_layout_size.x, style.FramePadding.y),
-                    pos + ImVec2(size.x - style.FramePadding.x, size.y - style.FramePadding.y));
+                const ImRect text_bb(pos + ImVec2(size.x - last_accessed_layout_size.x -
+                                                      pin_button_size.x - style.ItemSpacing.x -
+                                                      style.FramePadding.x,
+                                                  style.FramePadding.y),
+                                     pos + ImVec2(size.x - pin_button_size.x - style.ItemSpacing.x -
+                                                      style.FramePadding.x,
+                                                  size.y - style.FramePadding.y));
                 ImGui::RenderTextClipped(text_bb.Min, text_bb.Max, last_accessed_str.c_str(),
                                          last_accessed_str.c_str() + last_accessed_str.size(),
                                          &last_accessed_layout_size, {1.0f, 0.0f});
@@ -1087,6 +1148,40 @@ namespace Toolbox {
 
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(2);
+
+        if (hovered && GImGui->HoveredIdTimer > 0.3f) {
+            if (ImGui::BeginTooltipEx(ImGuiTooltipFlags_None, ImGuiWindowFlags_None)) {
+                ImGui::PushFont(nullptr, 16.0f);
+                ImGui::Text(tooltip_text.c_str());
+                ImGui::PopFont();
+
+                ImGui::Separator();
+
+                ImGui::PushFont(nullptr, 14.0f);
+                ImGui::PushStyleColor(ImGuiCol_Text,
+                                      ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+                ImGui::Text("Author:");
+                ImGui::PopStyleColor();
+
+                ImGui::SameLine();
+
+                ImGui::Text(project_author.c_str());
+                ImGui::PopFont();
+
+                ImGui::PushFont(nullptr, 14.0f);
+                ImGui::PushStyleColor(ImGuiCol_Text,
+                                      ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+                ImGui::Text("Path:");
+                ImGui::PopStyleColor();
+
+                ImGui::SameLine();
+
+                ImGui::Text(project_path_str.c_str());
+                ImGui::PopFont();
+
+                ImGui::EndTooltip();
+            }
+        }
 
         if (pressed) {
             m_project_path               = project_path;

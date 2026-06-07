@@ -40,6 +40,7 @@ namespace Toolbox::UI {
 
     enum class ProjectAgeCategory {
         AGE_NONE,
+        AGE_PINNED,
         AGE_DAY,
         AGE_WEEK,
         AGE_MONTH,

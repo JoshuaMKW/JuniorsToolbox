@@ -33,8 +33,20 @@ namespace Toolbox {
                                                const _ProjectIndexData &rhs, ModelSortOrder order) {
         // Sort by date
         if (order == ModelSortOrder::SORT_ASCENDING) {
+            if (lhs.m_pinned && !rhs.m_pinned) {
+                return false;
+            }
+            if (!lhs.m_pinned && rhs.m_pinned) {
+                return true;
+            }
             return lhs.m_date < rhs.m_date;
         } else {
+            if (lhs.m_pinned && !rhs.m_pinned) {
+                return true;
+            }
+            if (!lhs.m_pinned && rhs.m_pinned) {
+                return false;
+            }
             return lhs.m_date > rhs.m_date;
         }
     }
@@ -326,8 +338,11 @@ namespace Toolbox {
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY:
             return index.data<_ProjectIndexData>()->m_config.getProjectName();
-        case ModelDataRole::DATA_ROLE_TOOLTIP:
-            return "Tooltip unimplemented!";
+        case ModelDataRole::DATA_ROLE_TOOLTIP: {
+            _ProjectIndexData *data = index.data<_ProjectIndexData>();
+            return std::format("{} ({})", data->m_config.getProjectName(),
+                               data->m_config.getProjectVersion());
+        }
         case ModelDataRole::DATA_ROLE_DECORATION: {
             return index.data<_ProjectIndexData>()->m_icon;
         }
@@ -339,6 +354,33 @@ namespace Toolbox {
         }
         case ProjectDataRole::PROJECT_DATA_ROLE_PATH: {
             return index.data<_ProjectIndexData>()->m_path;
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_VERSION: {
+            return index.data<_ProjectIndexData>()->m_config.getProjectVersion();
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_GAME_CODE: {
+            return index.data<_ProjectIndexData>()->m_config.getProjectGameCode();
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_MAKER_CODE: {
+            return index.data<_ProjectIndexData>()->m_config.getProjectMakerCode();
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_DISK_VERSION: {
+            return 0;
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_SHORT_NAME: {
+            return index.data<_ProjectIndexData>()->m_config.getProjectName();
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_LONG_NAME: {
+            return index.data<_ProjectIndexData>()->m_config.getProjectName();
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_SHORT_MAKER: {
+            return index.data<_ProjectIndexData>()->m_config.getAuthorName();
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_LONG_MAKER: {
+            return index.data<_ProjectIndexData>()->m_config.getAuthorName();
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_DESCRIPTION: {
+            return index.data<_ProjectIndexData>()->m_config.getDescription();
         }
         default:
             return {};
@@ -370,6 +412,48 @@ namespace Toolbox {
         }
         case ProjectDataRole::PROJECT_DATA_ROLE_PATH: {
             index.data<_ProjectIndexData>()->m_path = std::any_cast<fs_path>(data);
+            break;
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_VERSION: {
+            index.data<_ProjectIndexData>()->m_config.setProjectVersion(std::any_cast<std::string>(data));
+            break;
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_GAME_CODE: {
+            index.data<_ProjectIndexData>()->m_config.setProjectGameCode(
+                std::any_cast<u32>(data));
+            break;
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_MAKER_CODE: {
+            index.data<_ProjectIndexData>()->m_config.setProjectMakerCode(
+                std::any_cast<u16>(data));
+            break;
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_DISK_VERSION: {
+            break;
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_SHORT_NAME: {
+            index.data<_ProjectIndexData>()->m_config.setProjectName(
+                std::any_cast<std::string>(data));
+            break;
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_LONG_NAME: {
+            index.data<_ProjectIndexData>()->m_config.setProjectName(
+                std::any_cast<std::string>(data));
+            break;
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_SHORT_MAKER: {
+            index.data<_ProjectIndexData>()->m_config.setAuthorName(
+                std::any_cast<std::string>(data));
+            break;
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_LONG_MAKER: {
+            index.data<_ProjectIndexData>()->m_config.setAuthorName(
+                std::any_cast<std::string>(data));
+            break;
+        }
+        case ProjectDataRole::PROJECT_DATA_ROLE_DESCRIPTION: {
+            index.data<_ProjectIndexData>()->m_config.setDescription(
+                std::any_cast<std::string>(data));
             break;
         }
         default:
@@ -508,7 +592,9 @@ namespace Toolbox {
         ProjectConfig project_config;
         auto result = project_config.loadFromFile(path / ".ToolboxConfig.tbox");
         if (!result) {
-            TOOLBOX_DEBUG_LOG("[ProjectModel] Encountered project entry without a valid config.");
+            TOOLBOX_DEBUG_LOG(
+                "[ProjectModel] Encountered project entry without a valid config. Initializing...");
+            project_config.initFromProjectRoot(path);
         }
 
         ModelIndex new_index(getUUID());
@@ -595,6 +681,10 @@ namespace Toolbox {
     void ProjectModelSortFilterProxy::setData(const ModelIndex &index, std::any data, int role) {
         ModelIndex &&source_index = toSourceIndex(index);
         m_source_model->setData(std::move(source_index), data, role);
+        if (role == ProjectDataRole::PROJECT_DATA_ROLE_AGE ||
+            role == ProjectDataRole::PROJECT_DATA_ROLE_PINNED) {
+            m_is_dirty = true;
+        }
     }
 
     ModelIndex ProjectModelSortFilterProxy::getIndex(const fs_path &path) const {
@@ -893,6 +983,7 @@ namespace Toolbox {
     void ProjectModelSortFilterProxy::flushCache() const {
         std::unique_lock lk(m_cache_mutex);
         m_row_map.clear();
+        m_is_dirty = false;
     }
 
     bool ProjectModelSortFilterProxy::isCached(const ModelIndex &index) const {

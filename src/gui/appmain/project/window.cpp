@@ -820,7 +820,11 @@ namespace Toolbox::UI {
         m_pinned_selection_mgr = ModelSelectionManager(m_tree_proxy);
         m_pinned_selection_mgr.setDeepSpans(false);
 
-        m_project_config.loadFromFile(m_project_root / ".ToolboxConfig.tbox");
+        if (!m_project_config.loadFromFile(m_project_root / ".ToolboxConfig.tbox")) {
+            TOOLBOX_DEBUG_LOG("No project config found, using defaults.");
+            m_project_config.initFromProjectRoot(m_project_root);
+        }
+
 
         for (const fs_path &pinned_folder_path : m_project_config.getPinnedFolders()) {
             ModelIndex pinned_index = m_tree_proxy->getIndex(pinned_folder_path);
