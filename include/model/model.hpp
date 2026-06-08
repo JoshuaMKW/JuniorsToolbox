@@ -12,7 +12,9 @@
 #include <variant>
 #include <vector>
 
+#include "core/keybind/keybind.hpp"
 #include "core/mimedata/mimedata.hpp"
+#include "core/time/timepoint.hpp"
 #include "core/types.hpp"
 #include "fsystem.hpp"
 #include "image/imagehandle.hpp"
@@ -200,36 +202,98 @@ namespace Toolbox {
         RefPtr<IDataModel> m_model;
     };
 
-    class ModelHistoryHandler {
+    class ModelHistoryHandler : public IUnique {
     private:
+        friend class ModelHistoryAggregate;
+
         struct HistoryAction {
             ModelIndex m_parent;
-            int64_t m_row;
-            int64_t m_column;
-            std::vector<uint8_t> m_serial_data;
-            ModelEventFlags m_action_flags;
+            int64_t m_row                  = -1;
+            int64_t m_column               = -1;
+            ScopePtr<MimeData> m_undo_data = nullptr;
+            ScopePtr<MimeData> m_redo_data = nullptr;
+            ModelEventFlags m_action_flags = ModelEventFlags::EVENT_NONE;
         };
 
         // A frame may contain many actions, similar to a textbox undo/redo where each character
         // typed is an action, but they are all undone/redone together.
         struct HistoryFrame {
             std::vector<HistoryAction> m_actions;
-        };
-    
-    public:
-        ModelHistoryHandler() = delete;
-        ModelHistoryHandler(RefPtr<IDataModel> model);
+            TimePoint m_timestamp;
 
-        bool undoAction();
-        bool redoAction();
-        [[nodiscard]] bool hasHistory() const;
+            bool operator<(const HistoryFrame &other) const {
+                return m_timestamp < other.m_timestamp;
+            }
+        };
 
     protected:
+        ModelHistoryHandler();
+
+    public:
+        ModelHistoryHandler(RefPtr<IDataModel> model);
+        virtual ~ModelHistoryHandler();
+
+        UUID64 getUUID() const override { return m_uuid; }
+
+        virtual void handleInputs();
+        virtual bool undoFrame();
+        virtual bool redoFrame();
+        [[nodiscard]] virtual bool hasHistory() const;
+
+    protected:
+        virtual TimePoint getUndoFrameTimepoint() const;
+        virtual TimePoint getRedoFrameTimepoint() const;
+
+        void trimHistoryToTimePoint(const TimePoint &point);
         void updateHistory(const ModelIndex &index, int flags);
 
+        using trim_cb =
+            std::function<void(const TimePoint &new_point, const TimePoint &trim_point)>;
+        void onHistoryTrimmed(trim_cb cb) { m_trim_cb = cb; }
+
     private:
+        UUID64 m_uuid;
+
         RefPtr<IDataModel> m_model;
         std::vector<HistoryFrame> m_history;
+        int64_t m_history_frame = -1;
+
+        KeyBind m_undo_keybind;
+        KeyBind m_redo_keybind;
+        bool m_keybind_used;
+
+        bool m_is_performing_undo_redo = false;
+        HistoryAction m_current_action;
+
+        trim_cb m_trim_cb;
+    };
+
+    class ModelHistoryAggregate : public ModelHistoryHandler {
+    public:
+        ModelHistoryAggregate() = delete;
+        ModelHistoryAggregate(const std::vector<RefPtr<ModelHistoryHandler>> &handlers);
+        ~ModelHistoryAggregate() override = default;
+
+        void addHandler(RefPtr<ModelHistoryHandler> handler) {
+            handler->onHistoryTrimmed(TOOLBOX_BIND_EVENT_FN(trimAllHistories));
+            m_handlers.push_back(handler);
+        }
+
+        bool undoFrame() override;
+        bool redoFrame() override;
+        [[nodiscard]] bool hasHistory() const override;
+
+    protected:
+        TimePoint getUndoFrameTimepoint() const override;
+        TimePoint getRedoFrameTimepoint() const override;
+
+        void trimAllHistories(const TimePoint &new_point, const TimePoint &trim_point);
+
+    private:
+        std::vector<RefPtr<ModelHistoryHandler>> m_handlers;
+        
+        // Merged timepoint between the handlers that the history aggregate is focused on
+        TimePoint m_frame_timepoint = TimePoint::min();
     };
 
 }  // namespace Toolbox

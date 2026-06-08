@@ -148,13 +148,13 @@ namespace Toolbox {
                 }
 
                 json_t proj_json;
-                proj_json["ProjectRootPath"]     = getProjectPath(index);
+                proj_json["ProjectRootPath"] = getProjectPath(index);
                 proj_json["ProjectIconPath"] = "files/opening.bnr";
                 proj_json["ProjectLastAccessed"] =
                     std::chrono::duration_cast<std::chrono::milliseconds>(
                         getLastAccessed(index).time_since_epoch())
                         .count();
-                proj_json["ProjectPinned"]       = getPinned(index);
+                proj_json["ProjectPinned"] = getPinned(index);
                 j.emplace_back(std::move(proj_json));
             }
             return Result<void, JSONError>();
@@ -255,8 +255,8 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    Result<IDataModel::index_container>
-    ProjectModel::insertMimeData(const ModelIndex &index, const MimeData &data,
+    Result<IDataModel::index_container> ProjectModel::insertMimeData(const ModelIndex &index,
+                                                                     const MimeData &data,
                                                                      ModelInsertPolicy policy) {
         Result<IDataModel::index_container> result;
 
@@ -389,7 +389,7 @@ namespace Toolbox {
 
     void ProjectModel::setData_(const ModelIndex &index, std::any data, int role) const {
         if (!validateIndex(index)) {
-            return;         
+            return;
         }
 
         switch (role) {
@@ -415,17 +415,16 @@ namespace Toolbox {
             break;
         }
         case ProjectDataRole::PROJECT_DATA_ROLE_VERSION: {
-            index.data<_ProjectIndexData>()->m_config.setProjectVersion(std::any_cast<std::string>(data));
+            index.data<_ProjectIndexData>()->m_config.setProjectVersion(
+                std::any_cast<std::string>(data));
             break;
         }
         case ProjectDataRole::PROJECT_DATA_ROLE_GAME_CODE: {
-            index.data<_ProjectIndexData>()->m_config.setProjectGameCode(
-                std::any_cast<u32>(data));
+            index.data<_ProjectIndexData>()->m_config.setProjectGameCode(std::any_cast<u32>(data));
             break;
         }
         case ProjectDataRole::PROJECT_DATA_ROLE_MAKER_CODE: {
-            index.data<_ProjectIndexData>()->m_config.setProjectMakerCode(
-                std::any_cast<u16>(data));
+            index.data<_ProjectIndexData>()->m_config.setProjectMakerCode(std::any_cast<u16>(data));
             break;
         }
         case ProjectDataRole::PROJECT_DATA_ROLE_DISK_VERSION: {
@@ -569,10 +568,11 @@ namespace Toolbox {
         return nullptr;
     }
 
-    Result<IDataModel::index_container>
-    ProjectModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
-                                       ModelInsertPolicy policy) {
-        return make_error<std::vector<ModelIndex>>("PROJECT_MODEL", "insertMimeData is unimplemented!");
+    Result<IDataModel::index_container> ProjectModel::insertMimeData_(const ModelIndex &index,
+                                                                      const MimeData &data,
+                                                                      ModelInsertPolicy policy) {
+        return make_error<std::vector<ModelIndex>>("PROJECT_MODEL",
+                                                   "insertMimeData is unimplemented!");
     }
 
     bool ProjectModel::canFetchMore_(const ModelIndex &index) const { return false; }
@@ -802,7 +802,7 @@ namespace Toolbox {
 
     Result<IDataModel::index_container>
     ProjectModelSortFilterProxy::insertMimeData(const ModelIndex &index, const MimeData &data,
-                                                     ModelInsertPolicy policy) {
+                                                ModelInsertPolicy policy) {
         ModelIndex &&source_index = toSourceIndex(index);
         return m_source_model->insertMimeData(std::move(source_index), data, policy);
     }

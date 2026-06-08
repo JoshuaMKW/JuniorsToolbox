@@ -291,7 +291,7 @@ namespace Toolbox::UI {
     SceneWindow::SceneWindow(const std::string &name) : ImWindow(name) {}
 
     bool SceneWindow::onLoadData(const fs_path &path) {
-        if (!Toolbox::Filesystem::exists(path)) {
+        if (!Toolbox::Filesystem::exists(path).value_or(false)) {
             return false;
         }
 
@@ -353,6 +353,17 @@ namespace Toolbox::UI {
                 m_scene_selection_mgr.setDeepSpans(false);
                 m_table_selection_mgr.setDeepSpans(false);
                 m_rail_selection_mgr.setDeepSpans(false);
+
+                RefPtr<ModelHistoryHandler> scene_history_handler =
+                    make_referable<ModelHistoryHandler>(m_scene_object_model);
+                RefPtr<ModelHistoryHandler> table_history_handler =
+                    make_referable<ModelHistoryHandler>(m_table_object_model);
+                RefPtr<ModelHistoryHandler> rail_history_handler =
+                    make_referable<ModelHistoryHandler>(m_rail_model);
+
+                m_history_aggregate_handler =
+                    make_referable<ModelHistoryAggregate>(std::vector<RefPtr<ModelHistoryHandler>>{
+                        scene_history_handler, table_history_handler, rail_history_handler});
 
                 // Initialize the rail visibility map
                 const int64_t rail_count = m_rail_model->getRowCount(ModelIndex());
@@ -858,6 +869,10 @@ namespace Toolbox::UI {
 
         m_scene_selection_ancestry_for_view.clear();
         m_rail_selection_ancestry_for_view.clear();
+
+        if (m_history_aggregate_handler->hasHistory()) {
+            m_history_aggregate_handler->handleInputs();
+        }
 
         if (m_scene_pruner) {
             m_scene_pruner->getOperationMutex().unlock();

@@ -319,6 +319,8 @@ namespace Toolbox::UI {
         ModelSelectionManager m_table_selection_mgr;
         ModelSelectionManager m_rail_selection_mgr;
 
+        RefPtr<ModelHistoryAggregate> m_history_aggregate_handler;
+
         ContextMenu<ModelIndex> m_scene_hierarchy_context_menu;
         ContextMenu<ModelIndex> m_table_hierarchy_context_menu;
         ContextMenu<ModelIndex> m_rail_list_context_menu;
