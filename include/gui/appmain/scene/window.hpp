@@ -235,9 +235,9 @@ namespace Toolbox::UI {
         void loadMimeRail(Buffer &buffer, size_t index);
         void loadMimeRailNode(Buffer &buffer, size_t index, UUID64 rail_id);
 
-        void processObjectSelection(RefPtr<Object::ISceneObject> node, bool is_multi);
-        void processRailSelection(RefPtr<Rail::Rail> node, bool is_multi);
-        void processRailNodeSelection(RefPtr<Rail::RailNode> node, bool is_multi);
+        void processObjectSelection(const ModelIndex &index, bool is_multi);
+        void processRailSelection(const ModelIndex &index, bool is_multi);
+        void processRailNodeSelection(const ModelIndex &index, bool is_multi);
 
         void calcNewGizmoMatrixFromSelection();
 
@@ -362,6 +362,7 @@ namespace Toolbox::UI {
 
         std::map<UUID64, Transform> m_selection_transforms;
         bool m_gizmo_maniped = false;
+        bool m_transform_action_made_explicit = false;
 
         // Docking facilities
         ImGuiID m_dock_space_id          = 0;

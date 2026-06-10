@@ -100,8 +100,18 @@ namespace Toolbox {
     }
 
     void SceneObjModel::setData(const ModelIndex &index, std::any data, int role) {
-        std::scoped_lock lock(m_mutex);
-        setData_(index, data, role);
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            setData_(index, data, role);
+        }
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
     }
 
     std::string SceneObjModel::findUniqueName(const ModelIndex &index,
@@ -345,30 +355,54 @@ namespace Toolbox {
             return object;  // We do this since objects are complex and may require direct
                             // interaction
         }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_WIZARD: {
+            return object->getWizardName();
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_VALUE: {
+            return {};
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_OFFSET: {
+            return {};
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_SIZE: {
+            return {};
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_TRANSFORM: {
+            return object->getTransform();
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_BOUNDING_BOX: {
+            return object->getBoundingBox();
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_CAN_PERFORM: {
+            return object->getCanPerform();
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_IS_PERFORMING: {
+            return object->getIsPerforming();
+        }
         default:
             return {};
         }
     }
 
-    void SceneObjModel::setData_(const ModelIndex &index, std::any data, int role) const {
+    bool SceneObjModel::setData_(const ModelIndex &index, std::any data, int role) const {
         if (!validateIndex(index)) {
-            return;
+            return false;
         }
 
         RefPtr<ISceneObject> object = index.data<_SceneIndexData>()->m_object;
         if (!object) {
-            return;
+            return false;
         }
 
         switch (role) {
         case ModelDataRole::DATA_ROLE_DISPLAY:
-            break;
+            return false;
         case ModelDataRole::DATA_ROLE_DECORATION: {
             index.data<_SceneIndexData>()->m_icon = std::any_cast<RefPtr<const ImageHandle>>(data);
-            break;
+            return true;
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_TYPE: {
-            break;
+            return false;
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_KEY: {
             object->setNameRef(NameRef(std::any_cast<std::string>(data)));
@@ -377,13 +411,38 @@ namespace Toolbox {
             break;
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_GAME_ADDR: {
-            break;
+            return false;
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_REF: {
-            break;
+            return false;
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_WIZARD: {
+            return false;
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_VALUE: {
+            return false;
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_OFFSET: {
+            return false;
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_SIZE: {
+            return false;
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_TRANSFORM: {
+            auto result = object->setTransform(std::any_cast<Transform>(data));
+            return result.has_value();
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_BOUNDING_BOX: {
+            return false;
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_CAN_PERFORM: {
+            return false;
+        }
+        case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_IS_PERFORMING: {
+            return false;
         }
         default:
-            return;
+            return false;
         }
     }
 
@@ -454,7 +513,7 @@ namespace Toolbox {
     ModelIndex SceneObjModel::getIndex_(const QualifiedName &qual_name,
                                         const ModelIndex &parent) const {
         if (!validateIndex(parent)) {
-            ModelIndex root_index         = m_index_map.at(m_root_index);
+            ModelIndex root_index = m_index_map.at(m_root_index);
 
             RefPtr<ISceneObject> root_obj = root_index.data<_SceneIndexData>()->m_object;
 
@@ -463,7 +522,7 @@ namespace Toolbox {
                 if (qual_name.depth() == 1) {
                     return root_index;
                 }
-                
+
                 RefPtr<ISceneObject> child_obj =
                     root_obj->getChild(QualifiedName(qual_name.begin() + 1, qual_name.end()));
                 if (!child_obj) {
@@ -491,7 +550,7 @@ namespace Toolbox {
             ModelIndex root_index = m_index_map.at(m_root_index);
 
             RefPtr<ISceneObject> root_obj = root_index.data<_SceneIndexData>()->m_object;
-            std::string root_type = std::string(root_obj->type());
+            std::string root_type         = std::string(root_obj->type());
             if (root_type != obj_type) {
                 RefPtr<ISceneObject> child_obj = root_obj->getChildByType(obj_type, obj_name);
                 if (!child_obj) {
@@ -872,6 +931,13 @@ namespace Toolbox {
     }
 
     void SceneObjModel::signalEventListeners(const ModelIndex &index, int flags) {
+        int this_event_flags =
+            flags & ~(EVENT_SUCCESS | EVENT_PRE | EVENT_POST | EVENT_SOFT | EVENT_RESET);
+        
+        if (this_event_flags == EVENT_INDEX_MODIFIED) {
+            flags |= ModelEventFlags::EVENT_SOFT;
+        }
+
         for (const auto &[key, listener] : m_listeners) {
             if ((listener.second & flags) != ModelEventFlags::EVENT_NONE) {
                 listener.first(index, (listener.second & flags));

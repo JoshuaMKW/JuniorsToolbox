@@ -30,7 +30,10 @@ namespace Toolbox {
         RAIL_DATA_ROLE_RAIL_KEY,
         RAIL_DATA_ROLE_RAIL_GAME_ADDR,
         RAIL_DATA_ROLE_RAIL_REF,
+        RAIL_DATA_ROLE_RAIL_CENTEROID,
+        RAIL_DATA_ROLE_RAIL_BOUNDING_BOX,
         RAIL_DATA_ROLE_RAIL_NODE_REF,
+        RAIL_DATA_ROLE_RAIL_NODE_TRANSLATION,
     };
 
     class RailObjModel : public IDataModel {
@@ -54,6 +57,23 @@ namespace Toolbox {
 
         [[nodiscard]] bool isIndexRailNode(const ModelIndex &index) const;
         [[nodiscard]] bool isIndexRail(const ModelIndex &index) const;
+
+        void transformRail(const ModelIndex &index, const glm::mat4x4 &deltaTransform);
+        void translateRail(const ModelIndex &index, const glm::vec3 &deltaTranslate);
+
+        Result<void, MetaError> addNodeConnection(const ModelIndex &index, const ModelIndex &to);
+        Result<void, MetaError> insertNodeConnection(const ModelIndex &index, size_t slot,
+                                                      const ModelIndex &to);
+        Result<void, MetaError> removeNodeConnection(const ModelIndex &index, size_t slot);
+        Result<void, MetaError> replaceNodeConnection(const ModelIndex &index, size_t slot,
+                                                       const ModelIndex &to);
+        Result<void, MetaError> clearNodeConnections(const ModelIndex &index);
+
+        Result<void, MetaError> connectNodeToNearest(const ModelIndex &index, size_t count);
+        Result<void, MetaError> connectNodeToPrev(const ModelIndex &index);
+        Result<void, MetaError> connectNodeToNext(const ModelIndex &index);
+        Result<void, MetaError> connectNodeToNeighbors(const ModelIndex &index, bool loop_ok);
+        Result<void, MetaError> connectNodeToReferrers(const ModelIndex &index);
 
         [[nodiscard]] std::string getRailType(const ModelIndex &index) const {
             return std::any_cast<std::string>(
@@ -83,6 +103,24 @@ namespace Toolbox {
                 getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_NODE_REF));
         }
 
+        [[nodiscard]] glm::vec3 getRailCenteroid(const ModelIndex& index) const {
+            return std::any_cast<glm::vec3>(
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_CENTEROID));
+        }
+
+        [[nodiscard]] BoundingBox getRailBoundingBox(const ModelIndex& index) const {
+            return std::any_cast<BoundingBox>(
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_BOUNDING_BOX));
+        }
+
+        [[nodiscard]] glm::vec3 getNodeTranslation(const ModelIndex &index) const {
+            return std::any_cast<glm::vec3>(
+                getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_NODE_TRANSLATION));
+        }
+        void setNodeTranslation(const ModelIndex &index, const glm::vec3 &translation) {
+            setData(index, translation, RailObjDataRole::RAIL_DATA_ROLE_RAIL_NODE_TRANSLATION);
+        }
+
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
         void setData(const ModelIndex &index, std::any data, int role) override;
 
@@ -97,7 +135,8 @@ namespace Toolbox {
                                           const ModelIndex &parent = ModelIndex()) const override;
 
         [[nodiscard]] virtual ModelIndex insertRail(RailData::rail_ptr_t rail, int64_t row);
-        [[nodiscard]] virtual ModelIndex insertRailNode(Rail::Rail::node_ptr_t rail, int64_t row, const ModelIndex &index);
+        [[nodiscard]] virtual ModelIndex insertRailNode(Rail::Rail::node_ptr_t rail, int64_t row,
+                                                        const ModelIndex &index);
         [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
@@ -140,6 +179,22 @@ namespace Toolbox {
         [[nodiscard]] virtual ModelIndex makeIndex(RailData::rail_ptr_t rail, int64_t row) const;
         [[nodiscard]] virtual ModelIndex makeIndex(Rail::Rail::node_ptr_t node, int64_t row,
                                                    const ModelIndex &parent) const;
+
+        void transformRail_(const ModelIndex &index, const glm::mat4x4 &deltaTransform);
+        void translateRail_(const ModelIndex &index, const glm::vec3 &deltaTranslate);
+
+        Result<void, MetaError> addNodeConnection_(const ModelIndex &index, const ModelIndex &to);
+        Result<void, MetaError> insertNodeConnection_(const ModelIndex &index, size_t slot, const ModelIndex &to);
+        Result<void, MetaError> removeNodeConnection_(const ModelIndex &index, size_t slot);
+        Result<void, MetaError> replaceNodeConnection_(const ModelIndex &index, size_t slot,
+                                                       const ModelIndex &to);
+        Result<void, MetaError> clearNodeConnections_(const ModelIndex &index);
+
+        Result<void, MetaError> connectNodeToNearest_(const ModelIndex &index, size_t count);
+        Result<void, MetaError> connectNodeToPrev_(const ModelIndex &index);
+        Result<void, MetaError> connectNodeToNext_(const ModelIndex &index);
+        Result<void, MetaError> connectNodeToNeighbors_(const ModelIndex &index, bool loop_ok);
+        Result<void, MetaError> connectNodeToReferrers_(const ModelIndex &index);
 
         // Implementation of public API for mutex locking reasons
         [[nodiscard]] std::any getData_(const ModelIndex &index, int role) const;

@@ -46,14 +46,15 @@ namespace Toolbox {
         EVENT_SUCCESS        = BIT(0),
         EVENT_PRE            = BIT(1),
         EVENT_POST           = BIT(2),
-        EVENT_RESET          = BIT(3),
-        EVENT_INSERT         = BIT(4),
-        EVENT_INDEX_ADDED    = BIT(5),
-        EVENT_INDEX_MODIFIED = BIT(6),
-        EVENT_INDEX_REMOVED  = BIT(7),
+        EVENT_SOFT           = BIT(3),
+        EVENT_RESET          = BIT(4),
+        EVENT_INSERT         = BIT(5),
+        EVENT_INDEX_ADDED    = BIT(6),
+        EVENT_INDEX_MODIFIED = BIT(7),
+        EVENT_INDEX_REMOVED  = BIT(8),
         EVENT_INDEX_ANY      = EVENT_INDEX_ADDED | EVENT_INDEX_MODIFIED | EVENT_INDEX_REMOVED,
         EVENT_ANY =
-            EVENT_SUCCESS | EVENT_PRE | EVENT_POST | EVENT_RESET | EVENT_INSERT | EVENT_INDEX_ANY,
+            EVENT_SUCCESS | EVENT_PRE | EVENT_POST | EVENT_SOFT | EVENT_RESET | EVENT_INSERT | EVENT_INDEX_ANY,
     };
 
     class ModelIndex final : public IUnique {
@@ -212,14 +213,29 @@ namespace Toolbox {
             int64_t m_column               = -1;
             ScopePtr<MimeData> m_undo_data = nullptr;
             ScopePtr<MimeData> m_redo_data = nullptr;
-            ModelEventFlags m_action_flags = ModelEventFlags::EVENT_NONE;
+            ModelEventFlags m_action_flags                      = ModelEventFlags::EVENT_NONE;
+
+            HistoryAction()                                     = default;
+            HistoryAction(HistoryAction &&) noexcept            = default;
+            HistoryAction &operator=(HistoryAction &&) noexcept = default;
+
+            HistoryAction(const HistoryAction &)            = delete;
+            HistoryAction &operator=(const HistoryAction &) = delete;
         };
 
         // A frame may contain many actions, similar to a textbox undo/redo where each character
         // typed is an action, but they are all undone/redone together.
         struct HistoryFrame {
-            std::vector<HistoryAction> m_actions;
+            std::list<HistoryAction> m_actions;
             TimePoint m_timestamp;
+            bool m_collapsed                                  = false;
+
+            HistoryFrame()                                    = default;
+            HistoryFrame(HistoryFrame &&) noexcept            = default;
+            HistoryFrame &operator=(HistoryFrame &&) noexcept = default;
+
+            HistoryFrame(const HistoryFrame &)            = delete;
+            HistoryFrame &operator=(const HistoryFrame &) = delete;
 
             bool operator<(const HistoryFrame &other) const {
                 return m_timestamp < other.m_timestamp;
@@ -238,11 +254,17 @@ namespace Toolbox {
         virtual void handleInputs();
         virtual bool undoFrame();
         virtual bool redoFrame();
-        [[nodiscard]] virtual bool hasHistory() const;
+        [[nodiscard]] virtual bool hasUndoHistory() const;
+        [[nodiscard]] virtual bool hasRedoHistory() const;
+
+        virtual void startExplicitFrame();
+        virtual void endExplicitFrame();
 
     protected:
         virtual TimePoint getUndoFrameTimepoint() const;
         virtual TimePoint getRedoFrameTimepoint() const;
+
+        bool tryCollapseFrame(HistoryFrame &frame);
 
         void trimHistoryToTimePoint(const TimePoint &point);
         void updateHistory(const ModelIndex &index, int flags);
@@ -266,22 +288,36 @@ namespace Toolbox {
         HistoryAction m_current_action;
 
         trim_cb m_trim_cb;
+
+        bool m_explicit_started   = false;
+        bool m_explicit_continuing = false;
+        bool m_explicit_finalized = false;
     };
 
     class ModelHistoryAggregate : public ModelHistoryHandler {
+    private:
+        struct AggregateFrame {
+            TimePoint m_first_frame = TimePoint::min();
+            TimePoint m_last_frame = TimePoint::max();
+        };
+    
     public:
         ModelHistoryAggregate() = delete;
-        ModelHistoryAggregate(const std::vector<RefPtr<ModelHistoryHandler>> &handlers);
+        ModelHistoryAggregate(std::vector<ScopePtr<ModelHistoryHandler>> &&handlers);
         ~ModelHistoryAggregate() override = default;
 
-        void addHandler(RefPtr<ModelHistoryHandler> handler) {
+        void addHandler(ScopePtr<ModelHistoryHandler> handler) {
             handler->onHistoryTrimmed(TOOLBOX_BIND_EVENT_FN(trimAllHistories));
-            m_handlers.push_back(handler);
+            m_handlers.push_back(std::move(handler));
         }
 
         bool undoFrame() override;
         bool redoFrame() override;
-        [[nodiscard]] bool hasHistory() const override;
+        [[nodiscard]] bool hasUndoHistory() const override;
+        [[nodiscard]] bool hasRedoHistory() const override;
+
+        void startExplicitFrame() override;
+        void endExplicitFrame() override;
 
     protected:
         TimePoint getUndoFrameTimepoint() const override;
@@ -289,9 +325,11 @@ namespace Toolbox {
 
         void trimAllHistories(const TimePoint &new_point, const TimePoint &trim_point);
 
-    private:
-        std::vector<RefPtr<ModelHistoryHandler>> m_handlers;
-        
+    private: 
+        std::vector<ScopePtr<ModelHistoryHandler>> m_handlers;
+        std::vector<AggregateFrame> m_frames;
+        AggregateFrame m_wip_frame;
+
         // Merged timepoint between the handlers that the history aggregate is focused on
         TimePoint m_frame_timepoint = TimePoint::min();
     };

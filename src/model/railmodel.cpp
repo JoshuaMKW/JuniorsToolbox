@@ -58,7 +58,7 @@ namespace Toolbox {
 
     ScopePtr<RailData> RailObjModel::bakeToRailData() const {
         ScopePtr<RailData> output = make_scoped<RailData>();
-        
+
         const size_t rail_count = getRowCount(ModelIndex());
         for (size_t i = 0; i < rail_count; ++i) {
             ModelIndex rail_index = getIndex(i, 0);
@@ -84,14 +84,334 @@ namespace Toolbox {
         return data->getRail() != nullptr && data->getNode() == nullptr;
     }
 
+    void RailObjModel::transformRail(const ModelIndex &index, const glm::mat4x4 &deltaTransform) {
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            transformRail_(index, deltaTransform);
+        }
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
+    }
+
+    void RailObjModel::translateRail(const ModelIndex &index, const glm::vec3 &deltaTranslate) {
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            translateRail_(index, deltaTranslate);
+        }
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
+    }
+
+    Result<void, MetaError> RailObjModel::addNodeConnection(const ModelIndex &index,
+                                                            const ModelIndex &to) {
+        Result<void, MetaError> result;
+
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = addNodeConnection_(index, to);
+        }
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
+
+        if (result) {
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
+    }
+
+    Result<void, MetaError> RailObjModel::insertNodeConnection(const ModelIndex &index, size_t slot,
+                                                               const ModelIndex &to) {
+        Result<void, MetaError> result;
+
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = insertNodeConnection_(index, slot, to);
+        }
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
+
+        if (result) {
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
+    }
+
+    Result<void, MetaError> RailObjModel::removeNodeConnection(const ModelIndex &index,
+                                                               size_t slot) {
+        Result<void, MetaError> result;
+
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = removeNodeConnection_(index, slot);
+        }
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
+
+        if (result) {
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
+    }
+
+    Result<void, MetaError> RailObjModel::replaceNodeConnection(const ModelIndex &index,
+                                                                size_t slot, const ModelIndex &to) {
+        Result<void, MetaError> result;
+
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = replaceNodeConnection(index, slot, to);
+        }
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
+
+        if (result) {
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
+    }
+
+    Result<void, MetaError> RailObjModel::clearNodeConnections(const ModelIndex &index) {
+        Result<void, MetaError> result;
+
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = clearNodeConnections_(index);
+        }
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
+
+        if (result) {
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
+    }
+
+    Result<void, MetaError> RailObjModel::connectNodeToNearest(const ModelIndex &index,
+                                                               size_t count) {
+        Result<void, MetaError> result;
+
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = connectNodeToNearest_(index, count);
+        }
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
+
+        if (result) {
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
+    }
+
+    Result<void, MetaError> RailObjModel::connectNodeToPrev(const ModelIndex &index) {
+        Result<void, MetaError> result;
+
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = connectNodeToPrev_(index);
+        }
+
+        if (result) {
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
+    }
+
+    Result<void, MetaError> RailObjModel::connectNodeToNext(const ModelIndex &index) {
+        Result<void, MetaError> result;
+
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = connectNodeToNext_(index);
+        }
+
+        if (result) {
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
+    }
+
+    Result<void, MetaError> RailObjModel::connectNodeToNeighbors(const ModelIndex &index,
+                                                                 bool loop_ok) {
+        Result<void, MetaError> result;
+
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = connectNodeToNeighbors_(index, loop_ok);
+        }
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
+
+        if (result) {
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
+    }
+
+    Result<void, MetaError> RailObjModel::connectNodeToReferrers(const ModelIndex &index) {
+        Result<void, MetaError> result;
+
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = connectNodeToReferrers_(index);
+        }
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
+
+        if (result) {
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
+    }
+
     std::any RailObjModel::getData(const ModelIndex &index, int role) const {
         std::scoped_lock lock(m_mutex);
         return getData_(index, role);
     }
 
     void RailObjModel::setData(const ModelIndex &index, std::any data, int role) {
-        std::scoped_lock lock(m_mutex);
-        setData_(index, data, role);
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            setData_(index, data, role);
+        }
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_POST |
+                                                     ModelEventFlags::EVENT_SUCCESS);
     }
 
     std::string RailObjModel::findUniqueName(const ModelIndex &index,
@@ -176,8 +496,7 @@ namespace Toolbox {
                                             const ModelIndex &parent) {
         ModelIndex result;
 
-        const Signal index_signal =
-            createSignalForIndex_(parent, ModelEventFlags::EVENT_INSERT);
+        const Signal index_signal = createSignalForIndex_(parent, ModelEventFlags::EVENT_INSERT);
 
         signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
 
@@ -192,9 +511,8 @@ namespace Toolbox {
             signalEventListeners(index_signal.first, index_signal.second |
                                                          ModelEventFlags::EVENT_POST |
                                                          ModelEventFlags::EVENT_SUCCESS);
-            signalEventListeners(add_signal.first, add_signal.second |
-                                                         ModelEventFlags::EVENT_POST |
-                                                         ModelEventFlags::EVENT_SUCCESS);
+            signalEventListeners(add_signal.first, add_signal.second | ModelEventFlags::EVENT_POST |
+                                                       ModelEventFlags::EVENT_SUCCESS);
         } else {
             signalEventListeners(index_signal.first,
                                  index_signal.second | ModelEventFlags::EVENT_POST);
@@ -245,9 +563,9 @@ namespace Toolbox {
         return createMimeData_(indexes);
     }
 
-    Result<IDataModel::index_container>
-    RailObjModel::insertMimeData(const ModelIndex &index, const MimeData &data,
-                                      ModelInsertPolicy policy) {
+    Result<IDataModel::index_container> RailObjModel::insertMimeData(const ModelIndex &index,
+                                                                     const MimeData &data,
+                                                                     ModelInsertPolicy policy) {
         Result<IDataModel::index_container> result;
 
         const Signal pre_signal = createSignalForIndex_(index, ModelEventFlags::EVENT_INSERT);
@@ -267,12 +585,10 @@ namespace Toolbox {
                                                              ModelEventFlags::EVENT_POST |
                                                              ModelEventFlags::EVENT_SUCCESS);
             }
-            signalEventListeners(pre_signal.first, pre_signal.second |
-                                                        ModelEventFlags::EVENT_POST |
-                                                        ModelEventFlags::EVENT_SUCCESS);
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST |
+                                                       ModelEventFlags::EVENT_SUCCESS);
         } else {
-            signalEventListeners(pre_signal.first,
-                                 pre_signal.second | ModelEventFlags::EVENT_POST);
+            signalEventListeners(pre_signal.first, pre_signal.second | ModelEventFlags::EVENT_POST);
         }
 
         return result;
@@ -331,7 +647,9 @@ namespace Toolbox {
         RailData::rail_ptr_t rail = data->getRail();
         TOOLBOX_CORE_ASSERT(rail && "Rail pointer is null for index");
 
-        if (Rail::Rail::node_ptr_t node = data->getNode()) {
+        Rail::Rail::node_ptr_t node = data->getNode();
+
+        if (node) {
             TOOLBOX_CORE_ASSERT(node->getRailUUID() == rail->getUUID() &&
                                 "RailNode's parent Rail UUID does not match Rail UUID for index");
             TOOLBOX_CORE_ASSERT(node && "RailNode pointer is null for index");
@@ -342,7 +660,13 @@ namespace Toolbox {
                 if (!node_index.has_value()) {
                     return "Invalid Node";
                 }
-                return std::format("Node {}", node_index.value());
+                std::string connections_str = "(";
+                for (size_t i = 0; i < node->getConnectionCount(); ++i) {
+                    connections_str +=
+                        std::format("{}, ", node->getConnectionValue(i).value_or(-1));
+                }
+                connections_str += ")";
+                return std::format("Node {}, {}", node_index.value(), connections_str);
             }
             case ModelDataRole::DATA_ROLE_TOOLTIP:
                 return "Tooltip unimplemented!";
@@ -370,6 +694,9 @@ namespace Toolbox {
             case RailObjDataRole::RAIL_DATA_ROLE_RAIL_NODE_REF: {
                 return node;  // We do this since nodes are complex and may require direct
                               // interaction
+            }
+            case RailObjDataRole::RAIL_DATA_ROLE_RAIL_NODE_TRANSLATION: {
+                return node->getPosition();
             }
             default:
                 return {};
@@ -399,6 +726,12 @@ namespace Toolbox {
             return rail;  // We do this since rails are complex and may require direct
                           // interaction
         }
+        case RailObjDataRole::RAIL_DATA_ROLE_RAIL_BOUNDING_BOX: {
+            return rail->getBoundingBox();
+        }
+        case RailObjDataRole::RAIL_DATA_ROLE_RAIL_CENTEROID: {
+            return rail->getCenteroid();
+        }
         default:
             return {};
         }
@@ -417,10 +750,19 @@ namespace Toolbox {
         RailData::rail_ptr_t rail = idata->getRail();
         TOOLBOX_CORE_ASSERT(rail && "Rail pointer is null for index");
 
-        if (Rail::Rail::node_ptr_t node = idata->getNode()) {
+        Rail::Rail::node_ptr_t node = idata->getNode();
+        if (node) {
             TOOLBOX_CORE_ASSERT(node->getRailUUID() == rail->getUUID() &&
                                 "RailNode's parent Rail UUID does not match Rail UUID for index");
             TOOLBOX_CORE_ASSERT(node && "RailNode pointer is null for index");
+
+            switch (role) {
+            case RailObjDataRole::RAIL_DATA_ROLE_RAIL_NODE_TRANSLATION: {
+                rail->setNodePosition(node, std::any_cast<glm::vec3>(data));
+            }
+            default:
+                return;
+            }
             return;
         }
 
@@ -479,7 +821,7 @@ namespace Toolbox {
     }
 
     ModelIndex RailObjModel::getIndex_(RailData::rail_ptr_t rail) const {
-        for (ModelIndex index : m_rail_indexes) {
+        for (const ModelIndex &index : m_rail_indexes) {
             _RailIndexData *data = index.data<_RailIndexData>();
             if (!data->hasValue()) {
                 continue;
@@ -681,6 +1023,10 @@ namespace Toolbox {
             return 0;
         }
 
+        if (data->getNode()) {
+            return 0;
+        }
+
         return m_node_list_map[data->getRail()->getUUID()].size();
     }
 
@@ -748,6 +1094,32 @@ namespace Toolbox {
             if (is_node) {
                 out.write<u64>(node->getUUID());
                 node->serialize(out);
+
+                // --- NEW: Capture incoming connections ---
+                ModelIndex parent = getParent_(index);
+                int64_t this_row  = getRow_(index);
+
+                std::vector<std::pair<u32, u32>> incoming_conns;  // <sibling_row, connection_index>
+                for (int64_t i = 0; i < getRowCount_(parent); ++i) {
+                    if (i == this_row) {
+                        continue;
+                    }
+
+                    ModelIndex sibling                  = getIndex_(i, 0, parent);
+                    Rail::Rail::node_ptr_t sibling_node = sibling.data<_RailIndexData>()->getNode();
+
+                    for (u16 j = 0; j < sibling_node->getConnectionCount(); ++j) {
+                        if (sibling_node->getConnectionValue(j).value_or(-1) == this_row) {
+                            incoming_conns.push_back({static_cast<u32>(i), static_cast<u32>(j)});
+                        }
+                    }
+                }
+
+                out.write<u32>(static_cast<u32>(incoming_conns.size()));
+                for (const auto &conn : incoming_conns) {
+                    out.write<u32>(conn.first);   // The row of the node pointing to us
+                    out.write<u32>(conn.second);  // The exact array index of the connection
+                }
             } else {
                 rail->serialize(out);
             }
@@ -780,11 +1152,12 @@ namespace Toolbox {
         return new_data;
     }
 
-    Result<IDataModel::index_container>
-    RailObjModel::insertMimeData_(const ModelIndex &index, const MimeData &data,
-                                       ModelInsertPolicy policy) {
+    Result<IDataModel::index_container> RailObjModel::insertMimeData_(const ModelIndex &index,
+                                                                      const MimeData &data,
+                                                                      ModelInsertPolicy policy) {
         if (!data.has_format("toolbox/scene/rail_model")) {
-            return make_error<std::vector<ModelIndex>>("RailObjModel", "Provided MIME data does not have RailObjModel data!");
+            return make_error<std::vector<ModelIndex>>(
+                "RailObjModel", "Provided MIME data does not have RailObjModel data!");
         }
 
         Buffer mime_data = data.get_data("toolbox/scene/rail_model").value();
@@ -809,23 +1182,41 @@ namespace Toolbox {
                 if (!result) {
                     return result;
                 }
+
                 ModelIndex node_index = insertRailNode_(node, row, parent);
                 if (!isIndexRailNode(node_index)) {
                     return make_serial_error<void>(in, "Failed to insert rail node into model!");
                 }
-
                 inserted_indexes.push_back(node_index);
+
+                // Restore incoming connections
+                RailData::rail_ptr_t parent_rail = parent.data<_RailIndexData>()->getRail();
+                u32 incoming_count               = in.read<u32>();
+
+                for (u32 i = 0; i < incoming_count; ++i) {
+                    u32 sibling_row = in.read<u32>();
+                    u32 conn_idx    = in.read<u32>();
+
+                    // Because insertRailNode_ shifts everything >= row up by 1,
+                    // we must adjust the sibling's row if it was located at or after the insertion
+                    // point.
+                    // if (rail_uuid == parent_rail->getUUID() && sibling_row >= row) {
+                    //    sibling_row++;
+                    //}
+
+                    parent_rail->insertConnection(sibling_row, conn_idx, static_cast<size_t>(row));
+                }
             } else {
-                #if 0
+#if 0
                 if (isIndexRail(parent)) {
                     return make_serial_error<void>(in,
                                                    "Cannot insert rail as child of another rail!");
                 }
-                #else
+#else
                 if (isIndexRail(parent)) {
                     row = spill_row++;
                 }
-                #endif
+#endif
 
                 RailData::rail_ptr_t rail = make_referable<Rail::Rail>("_dummy_name");
                 auto result               = rail->deserialize(in);
@@ -892,7 +1283,8 @@ namespace Toolbox {
             if (!result) {
                 TOOLBOX_ERROR_V("Failed to deserialize index from mime data: {}",
                                 result.error().m_message);
-                return make_error<std::vector<ModelIndex>>("RailObjModel", result.error().m_message);
+                return make_error<std::vector<ModelIndex>>("RailObjModel",
+                                                           result.error().m_message);
             }
         }
 
@@ -943,8 +1335,13 @@ namespace Toolbox {
             }
 
             for (int64_t i = 0; i < getRowCount_(parent); ++i) {
-                ModelIndex node_index = getIndex_(i, 0, parent);
+                if (i == row) {
+                    continue;
+                }
+
+                ModelIndex node_index             = getIndex_(i, 0, parent);
                 Rail::Rail::node_ptr_t other_node = node_index.data<_RailIndexData>()->getNode();
+
                 for (u16 j = 0; j < other_node->getConnectionCount(); ++j) {
                     auto val_result = other_node->getConnectionValue(j);
                     if (!val_result) {
@@ -1010,6 +1407,179 @@ namespace Toolbox {
         node_list.insert(node_list.begin() + row, new_index);
 
         return new_index;
+    }
+
+    void RailObjModel::translateRail_(const ModelIndex &index, const glm::vec3 &deltaTranslate) {
+        if (!isIndexRail(index)) {
+            return;
+        }
+
+        _RailIndexData *data      = index.data<_RailIndexData>();
+        RailData::rail_ptr_t rail = data->getRail();
+
+        rail->translate(deltaTranslate);
+    }
+
+    Result<void, MetaError> RailObjModel::addNodeConnection_(const ModelIndex &index,
+                                                             const ModelIndex &to) {
+        if (!isIndexRailNode(index) || !isIndexRailNode(to)) {
+            return {};
+        }
+
+        _RailIndexData *data        = index.data<_RailIndexData>();
+        RailData::rail_ptr_t rail   = data->getRail();
+        Rail::Rail::node_ptr_t node = data->getNode();
+
+        _RailIndexData *to_data        = to.data<_RailIndexData>();
+        RailData::rail_ptr_t to_rail   = to_data->getRail();
+        Rail::Rail::node_ptr_t to_node = to_data->getNode();
+
+        if (rail->getUUID() != to_rail->getUUID()) {
+            return {};
+        }
+
+        return rail->addConnection(node, to_node);
+    }
+
+    Result<void, MetaError> RailObjModel::insertNodeConnection_(const ModelIndex &index,
+                                                                size_t slot, const ModelIndex &to) {
+        if (!isIndexRailNode(index) || !isIndexRailNode(to)) {
+            return {};
+        }
+
+        _RailIndexData *data        = index.data<_RailIndexData>();
+        RailData::rail_ptr_t rail   = data->getRail();
+        Rail::Rail::node_ptr_t node = data->getNode();
+
+        _RailIndexData *to_data        = to.data<_RailIndexData>();
+        RailData::rail_ptr_t to_rail   = to_data->getRail();
+        Rail::Rail::node_ptr_t to_node = to_data->getNode();
+
+        if (rail->getUUID() != to_rail->getUUID()) {
+            return {};
+        }
+
+        return rail->insertConnection(node, slot, to_node);
+    }
+
+    Result<void, MetaError> RailObjModel::removeNodeConnection_(const ModelIndex &index,
+                                                                size_t slot) {
+        if (!isIndexRailNode(index)) {
+            return {};
+        }
+
+        _RailIndexData *data        = index.data<_RailIndexData>();
+        RailData::rail_ptr_t rail   = data->getRail();
+        Rail::Rail::node_ptr_t node = data->getNode();
+
+        return rail->removeConnection(node, slot);
+    }
+
+    Result<void, MetaError> RailObjModel::replaceNodeConnection_(const ModelIndex &index,
+                                                                 size_t slot,
+                                                                 const ModelIndex &to) {
+        if (!isIndexRailNode(index) || !isIndexRailNode(to)) {
+            return {};
+        }
+
+        _RailIndexData *data        = index.data<_RailIndexData>();
+        RailData::rail_ptr_t rail   = data->getRail();
+        Rail::Rail::node_ptr_t node = data->getNode();
+
+        _RailIndexData *to_data        = to.data<_RailIndexData>();
+        RailData::rail_ptr_t to_rail   = to_data->getRail();
+        Rail::Rail::node_ptr_t to_node = to_data->getNode();
+
+        if (rail->getUUID() != to_rail->getUUID()) {
+            return {};
+        }
+
+        return rail->replaceConnection(node, slot, to_node);
+    }
+
+    Result<void, MetaError> RailObjModel::clearNodeConnections_(const ModelIndex &index) {
+        if (!isIndexRailNode(index)) {
+            return {};
+        }
+
+        _RailIndexData *data        = index.data<_RailIndexData>();
+        RailData::rail_ptr_t rail   = data->getRail();
+        Rail::Rail::node_ptr_t node = data->getNode();
+
+        return rail->clearConnections(node);
+    }
+
+    Result<void, MetaError> RailObjModel::connectNodeToNearest_(const ModelIndex &index,
+                                                                size_t count) {
+        if (!isIndexRailNode(index)) {
+            return {};
+        }
+
+        _RailIndexData *data        = index.data<_RailIndexData>();
+        RailData::rail_ptr_t rail   = data->getRail();
+        Rail::Rail::node_ptr_t node = data->getNode();
+
+        return rail->connectNodeToNearest(node, count);
+    }
+
+    Result<void, MetaError> RailObjModel::connectNodeToPrev_(const ModelIndex &index) {
+        if (!isIndexRailNode(index)) {
+            return {};
+        }
+
+        _RailIndexData *data        = index.data<_RailIndexData>();
+        RailData::rail_ptr_t rail   = data->getRail();
+        Rail::Rail::node_ptr_t node = data->getNode();
+
+        return rail->connectNodeToPrev(node);
+    }
+
+    Result<void, MetaError> RailObjModel::connectNodeToNext_(const ModelIndex &index) {
+        if (!isIndexRailNode(index)) {
+            return {};
+        }
+
+        _RailIndexData *data        = index.data<_RailIndexData>();
+        RailData::rail_ptr_t rail   = data->getRail();
+        Rail::Rail::node_ptr_t node = data->getNode();
+
+        return rail->connectNodeToNext(node);
+    }
+
+    Result<void, MetaError> RailObjModel::connectNodeToNeighbors_(const ModelIndex &index,
+                                                                  bool loop_ok) {
+        if (!isIndexRailNode(index)) {
+            return {};
+        }
+
+        _RailIndexData *data        = index.data<_RailIndexData>();
+        RailData::rail_ptr_t rail   = data->getRail();
+        Rail::Rail::node_ptr_t node = data->getNode();
+
+        return rail->connectNodeToNeighbors(node, loop_ok);
+    }
+
+    Result<void, MetaError> RailObjModel::connectNodeToReferrers_(const ModelIndex &index) {
+        if (!isIndexRailNode(index)) {
+            return {};
+        }
+
+        _RailIndexData *data        = index.data<_RailIndexData>();
+        RailData::rail_ptr_t rail   = data->getRail();
+        Rail::Rail::node_ptr_t node = data->getNode();
+
+        return rail->connectNodeToReferrers(node);
+    }
+
+    void RailObjModel::transformRail_(const ModelIndex &index, const glm::mat4x4 &deltaTransform) {
+        if (!isIndexRail(index)) {
+            return;
+        }
+
+        _RailIndexData *data      = index.data<_RailIndexData>();
+        RailData::rail_ptr_t rail = data->getRail();
+
+        rail->transform(deltaTransform);
     }
 
     void RailObjModel::signalEventListeners(const ModelIndex &index, int flags) {

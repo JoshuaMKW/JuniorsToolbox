@@ -72,14 +72,32 @@ namespace Toolbox::Rail {
         return accum / static_cast<float>(node_count);
     }
 
+    BoundingBox Rail::getBoundingBox() const {
+        glm::vec3 min = {FLT_MAX, FLT_MAX, FLT_MAX}, max = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
+
+        for (auto &node : m_nodes) {
+            const glm::vec3 node_pos = node->getPosition();
+
+            min.x                    = std::min(min.x, node_pos.x);
+            min.y                    = std::min(min.y, node_pos.y);
+            min.z                    = std::min(min.z, node_pos.z);
+
+            max.x                    = std::max(max.x, node_pos.x);
+            max.y                    = std::max(max.y, node_pos.y);
+            max.z                    = std::max(max.z, node_pos.z);
+        }
+
+        const glm::vec3 center = {(min.x + max.x) / 2.0f, (min.y + max.y) / 2.0f,
+                                  (min.z + max.z) / 2.0f};
+        const glm::vec3 size   = {max.x - min.x, max.y - min.y, max.z - min.z};
+        
+        return BoundingBox(center, size);
+    }
+
     Rail &Rail::transform(const glm::mat4 &delta_matrix) {
         if (isTranslationOnly(delta_matrix)) {
-            for (auto &node : m_nodes) {
-                glm::vec3 pos = node->getPosition();
-                pos += glm::vec3(delta_matrix[3]);
-                node->setPosition(pos);
-            }
-            return *this;
+            const glm::vec3 translation = delta_matrix[3];
+            return translate(translation);
         }
 
         glm::vec3 center = getCenteroid();
@@ -441,7 +459,7 @@ namespace Toolbox::Rail {
     Result<void, MetaError> Rail::clearConnections(node_ptr_t node) {
         u16 connection_count = node->getConnectionCount();
         for (u16 i = 0; i < connection_count; ++i) {
-            auto result = removeConnection(node, static_cast<size_t>(connection_count - i - i));
+            auto result = removeConnection(node, static_cast<size_t>(connection_count - i - 1));
             if (!result) {
                 return result;
             }

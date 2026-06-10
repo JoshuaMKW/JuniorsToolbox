@@ -30,6 +30,14 @@ namespace Toolbox {
         SCENE_DATA_ROLE_OBJ_KEY,
         SCENE_DATA_ROLE_OBJ_GAME_ADDR,
         SCENE_DATA_ROLE_OBJ_REF,
+        SCENE_DATA_ROLE_OBJ_WIZARD,
+        SCENE_DATA_ROLE_OBJ_MEMBER_VALUE,
+        SCENE_DATA_ROLE_OBJ_MEMBER_OFFSET,
+        SCENE_DATA_ROLE_OBJ_MEMBER_SIZE,
+        SCENE_DATA_ROLE_OBJ_TRANSFORM,
+        SCENE_DATA_ROLE_OBJ_BOUNDING_BOX,
+        SCENE_DATA_ROLE_OBJ_CAN_PERFORM,
+        SCENE_DATA_ROLE_OBJ_IS_PERFORMING,
     };
 
     class SceneObjModel : public IDataModel {
@@ -78,6 +86,56 @@ namespace Toolbox {
         [[nodiscard]] RefPtr<ISceneObject> getObjectRef(const ModelIndex &index) const {
             return std::any_cast<RefPtr<ISceneObject>>(
                 getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_REF));
+        }
+
+        [[nodiscard]] std::string getWizardName(const ModelIndex &index) const {
+            return std::any_cast<std::string>(
+                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_WIZARD));
+        }
+        void setWizardName(const ModelIndex &index, const std::string &wizard_name) {
+            setData(index, wizard_name, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_WIZARD);
+        }
+
+        [[nodiscard]] MetaValue getMemberValue(const ModelIndex &index) const {
+            return std::any_cast<MetaValue>(
+                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_VALUE));
+        }
+        void setMemberValue(const ModelIndex &index, const MetaValue &value) {
+            setData(index, value, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_VALUE);
+        }
+
+        [[nodiscard]] u32 getMemberOffset(const ModelIndex &index) const {
+            return std::any_cast<u32>(
+                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_OFFSET));
+        }
+
+        [[nodiscard]] u32 getMemberSize(const ModelIndex &index) const {
+            return std::any_cast<u32>(
+                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_SIZE));
+        }
+
+        [[nodiscard]] std::optional<Transform> getObjectTransform(const ModelIndex &index) const {
+            return std::any_cast<std::optional<Transform>>(
+                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_TRANSFORM));
+        }
+        void setObjectTransform(const ModelIndex &index, const Transform &transform) {
+            setData(index, transform, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_TRANSFORM);
+        }
+
+        [[nodiscard]] std::optional<BoundingBox>
+        getObjectBoundingBox(const ModelIndex &index) const {
+            return std::any_cast<BoundingBox>(
+                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_BOUNDING_BOX));
+        }
+
+        [[nodiscard]] bool getObjectCanPerform(const ModelIndex &index) const {
+            return std::any_cast<bool>(
+                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_CAN_PERFORM));
+        }
+
+        [[nodiscard]] bool getObjectIsPerforming(const ModelIndex &index) const {
+            return std::any_cast<bool>(
+                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_IS_PERFORMING));
         }
 
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
@@ -142,7 +200,7 @@ namespace Toolbox {
 
         // Implementation of public API for mutex locking reasons
         [[nodiscard]] std::any getData_(const ModelIndex &index, int role) const;
-        void setData_(const ModelIndex &index, std::any data, int role) const;
+        bool setData_(const ModelIndex &index, std::any data, int role) const;
 
         [[nodiscard]] std::string findUniqueName_(const ModelIndex &index,
                                                   const std::string &name) const;
@@ -195,6 +253,9 @@ namespace Toolbox {
         mutable std::map<UUID64, ModelIndex> m_obj_to_index_map;
 
         fs_path m_scene_path;
+
+        ModelIndex m_last_event_index;
+        int m_last_event_flags = static_cast<int>(ModelEventFlags::EVENT_NONE);
     };
 
 }  // namespace Toolbox

@@ -354,16 +354,12 @@ namespace Toolbox::UI {
                 m_table_selection_mgr.setDeepSpans(false);
                 m_rail_selection_mgr.setDeepSpans(false);
 
-                RefPtr<ModelHistoryHandler> scene_history_handler =
-                    make_referable<ModelHistoryHandler>(m_scene_object_model);
-                RefPtr<ModelHistoryHandler> table_history_handler =
-                    make_referable<ModelHistoryHandler>(m_table_object_model);
-                RefPtr<ModelHistoryHandler> rail_history_handler =
-                    make_referable<ModelHistoryHandler>(m_rail_model);
+                std::vector<ScopePtr<ModelHistoryHandler>> history_handlers = {};
+                history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_scene_object_model));
+                history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_table_object_model));
+                history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_rail_model));
 
-                m_history_aggregate_handler =
-                    make_referable<ModelHistoryAggregate>(std::vector<RefPtr<ModelHistoryHandler>>{
-                        scene_history_handler, table_history_handler, rail_history_handler});
+                m_history_aggregate_handler = make_referable<ModelHistoryAggregate>(std::move(history_handlers));
 
                 // Initialize the rail visibility map
                 const int64_t rail_count = m_rail_model->getRowCount(ModelIndex());
@@ -593,6 +589,8 @@ namespace Toolbox::UI {
 
         if (m_current_scene) {
             std::vector<RefPtr<Rail::RailNode>> rendered_nodes;
+            rendered_nodes.reserve(64);
+
             const int64_t rail_count = m_rail_model->getRowCount(ModelIndex());
             for (int64_t row = 0; row < rail_count; ++row) {
                 ModelIndex rail_index = m_rail_model->getIndex(row, 0);
@@ -625,28 +623,21 @@ namespace Toolbox::UI {
                     }
                 } else if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
                     RefPtr<ISceneObject> obj = std::get<RefPtr<ISceneObject>>(selection);
-                    processObjectSelection(obj, multi_select);
+                    ModelIndex obj_index = m_scene_object_model->getIndex(obj);
+
+                    processObjectSelection(obj_index, multi_select);
                 } else if (std::holds_alternative<RefPtr<Rail::RailNode>>(selection)) {
                     RefPtr<Rail::RailNode> node = std::get<RefPtr<Rail::RailNode>>(selection);
+
+                    ModelIndex node_index = m_rail_model->getIndex(node);
 
                     // In this circumstance, select the whole rail
                     bool rail_selection_mode = Input::GetKey(KeyCode::KEY_LEFTALT);
                     if (rail_selection_mode) {
-                        RefPtr<RailData> rail_data = m_current_scene->getRailData();
-
-                        RailData::rail_ptr_t rail = rail_data->getRail(node->getRailUUID());
-                        if (!rail) {
-                            TOOLBOX_ERROR("Failed to find rail for node.");
-
-                            if (m_scene_pruner) {
-                                m_scene_pruner->getOperationMutex().unlock();
-                            }
-                            return;
-                        }
-
-                        processRailSelection(rail, multi_select);
+                        ModelIndex rail_index = m_rail_model->getParent(node_index);
+                        processRailSelection(rail_index, multi_select);
                     } else {
-                        processRailNodeSelection(node, multi_select);
+                        processRailNodeSelection(node_index, multi_select);
                     }
                 }
 
@@ -695,6 +686,10 @@ namespace Toolbox::UI {
 
         if (m_renderer.isGizmoManipulated() &&
             Input::GetMouseButton(Input::MouseButton::BUTTON_LEFT)) {
+            if (!m_transform_action_made_explicit) {
+                m_history_aggregate_handler->startExplicitFrame();
+            }
+
             glm::mat4x4 gizmo_total_delta = m_renderer.getGizmoTotalDelta();
 
             // Scene object transform manipulation
@@ -703,13 +698,14 @@ namespace Toolbox::UI {
                     m_scene_selection_mgr.getState().getSelection();
 
                 for (const ModelIndex &index : obj_indexes) {
-                    RefPtr<ISceneObject> obj = m_scene_object_model->getObjectRef(index);
-                    if (!obj || !obj->getTransform()) {
+                    std::optional<Transform> transform_result =
+                        m_scene_object_model->getObjectTransform(index);
+                    if (!transform_result) {
                         continue;
                     }
                     const Transform &obj_transform = m_selection_transforms[index.getUUID()];
                     Transform new_transform        = gizmo_total_delta * obj_transform;
-                    obj->setTransform(new_transform);
+                    m_scene_object_model->setObjectTransform(index, new_transform);
                 }
             }
 
@@ -719,13 +715,14 @@ namespace Toolbox::UI {
                     m_table_selection_mgr.getState().getSelection();
 
                 for (const ModelIndex &index : obj_indexes) {
-                    RefPtr<ISceneObject> obj = m_table_object_model->getObjectRef(index);
-                    if (!obj || !obj->getTransform()) {
+                    std::optional<Transform> transform_result =
+                        m_table_object_model->getObjectTransform(index);
+                    if (!transform_result) {
                         continue;
                     }
                     const Transform &obj_transform = m_selection_transforms[index.getUUID()];
                     Transform new_transform        = gizmo_total_delta * obj_transform;
-                    obj->setTransform(new_transform);
+                    m_table_object_model->setObjectTransform(index, new_transform);
                 }
             }
 
@@ -741,22 +738,21 @@ namespace Toolbox::UI {
 
                     const bool is_node = m_rail_model->isIndexRailNode(index);
                     if (is_node) {
-                        Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
-
                         const Transform &node_transform = m_selection_transforms[index.getUUID()];
                         Transform new_transform         = gizmo_total_delta * node_transform;
 
-                        rail->setNodePosition(node, new_transform.m_translation);
+                        m_rail_model->setNodeTranslation(index, new_transform.m_translation);
                     } else {
                         const Transform &rail_transform = m_selection_transforms[index.getUUID()];
-                        rail->transform(gizmo_delta);
+                        m_rail_model->transformRail(index, gizmo_delta);
                     }
                 }
 
                 should_update_paths = true;
             }
 
-            m_gizmo_maniped = true;
+            m_gizmo_maniped                  = true;
+            m_transform_action_made_explicit = true;
         }
 
         if (should_update_paths) {
@@ -768,6 +764,11 @@ namespace Toolbox::UI {
         if (!m_renderer.isGizmoActive() && m_gizmo_maniped) {
             m_selection_transforms_update_requested = true;
             m_gizmo_maniped                         = false;
+
+            if (m_transform_action_made_explicit) {
+                m_history_aggregate_handler->endExplicitFrame();
+            }
+            m_transform_action_made_explicit = false;
         }
 
         if (m_is_game_edit_mode) {
@@ -870,9 +871,7 @@ namespace Toolbox::UI {
         m_scene_selection_ancestry_for_view.clear();
         m_rail_selection_ancestry_for_view.clear();
 
-        if (m_history_aggregate_handler->hasHistory()) {
-            m_history_aggregate_handler->handleInputs();
-        }
+        m_history_aggregate_handler->handleInputs();
 
         if (m_scene_pruner) {
             m_scene_pruner->getOperationMutex().unlock();
@@ -2681,15 +2680,12 @@ namespace Toolbox::UI {
 
                     Transform transform = obj->getTransform().value();
                     m_renderer.getCameraTranslation(transform.m_translation);
-                    auto result = obj->setTransform(transform);
-                    if (!result) {
-                        LogError(
-                            make_error<void>("Scene Hierarchy",
-                                             "Failed to set transform of object when moving to "
-                                             "camera")
-                                .error());
-                        return;
+
+                    m_history_aggregate_handler->startExplicitFrame();
+                    {
+                        m_scene_object_model->setObjectTransform(index, transform);
                     }
+                    m_history_aggregate_handler->endExplicitFrame();
 
                     m_update_render_objs = true;
                     return;
@@ -2884,15 +2880,12 @@ namespace Toolbox::UI {
 
                     Transform transform = obj->getTransform().value();
                     m_renderer.getCameraTranslation(transform.m_translation);
-                    auto result = obj->setTransform(transform);
-                    if (!result) {
-                        LogError(
-                            make_error<void>("Scene Hierarchy",
-                                             "Failed to set transform of object when moving to "
-                                             "camera")
-                                .error());
-                        return;
+
+                    m_history_aggregate_handler->startExplicitFrame();
+                    {
+                        m_table_object_model->setObjectTransform(index, transform);
                     }
+                    m_history_aggregate_handler->endExplicitFrame();
 
                     m_update_render_objs = true;
                     return;
@@ -3084,22 +3077,28 @@ namespace Toolbox::UI {
                                });
                 },
                 [this](ModelIndex index) {
-                    std::vector<ModelIndex> selection_cpy =
+                    const IDataModel::index_container &selection =
                         m_rail_selection_mgr.getState().getSelection();
-                    std::erase(selection_cpy, index);
 
                     RailData::rail_ptr_t rail   = m_rail_model->getRailRef(index);
                     Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
 
-                    rail->clearConnections(node);
+                    m_history_aggregate_handler->startExplicitFrame();
 
-                    for (const ModelIndex &sel_index : selection_cpy) {
-                        Rail::Rail::node_ptr_t sel_node = m_rail_model->getRailNodeRef(sel_index);
-                        auto result                     = rail->addConnection(node, sel_node);
+                    m_rail_model->clearNodeConnections(index);
+
+                    for (const ModelIndex &sel_index : selection) {
+                        if (sel_index == index) {
+                            continue;
+                        }
+
+                        auto result = m_rail_model->addNodeConnection(index, sel_index);
                         if (!result) {
                             LogError(result.error());
                         }
                     }
+
+                    m_history_aggregate_handler->endExplicitFrame();
 
                     m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
@@ -3127,16 +3126,16 @@ namespace Toolbox::UI {
                     const std::vector<ModelIndex> &selection =
                         m_rail_selection_mgr.getState().getSelection();
 
-                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(index);
-                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+                    m_history_aggregate_handler->startExplicitFrame();
 
                     for (const ModelIndex &sel_index : selection) {
-                        Rail::Rail::node_ptr_t sel_node = m_rail_model->getRailNodeRef(sel_index);
-                        auto result                     = rail->connectNodeToNearest(sel_node, 1);
+                        auto result = m_rail_model->connectNodeToNearest(sel_index, 1);
                         if (!result) {
                             LogError(result.error());
                         }
                     }
+
+                    m_history_aggregate_handler->endExplicitFrame();
 
                     m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
@@ -3163,16 +3162,16 @@ namespace Toolbox::UI {
                     const std::vector<ModelIndex> &selection =
                         m_rail_selection_mgr.getState().getSelection();
 
-                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(index);
-                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+                    m_history_aggregate_handler->startExplicitFrame();
 
                     for (const ModelIndex &sel_index : selection) {
-                        Rail::Rail::node_ptr_t sel_node = m_rail_model->getRailNodeRef(sel_index);
-                        auto result = rail->connectNodeToNeighbors(sel_node, false);
+                        auto result = m_rail_model->connectNodeToNeighbors(sel_index, false);
                         if (!result) {
                             LogError(result.error());
                         }
                     }
+
+                    m_history_aggregate_handler->endExplicitFrame();
 
                     m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
@@ -3199,16 +3198,16 @@ namespace Toolbox::UI {
                     const std::vector<ModelIndex> &selection =
                         m_rail_selection_mgr.getState().getSelection();
 
-                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(index);
-                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+                    m_history_aggregate_handler->startExplicitFrame();
 
                     for (const ModelIndex &sel_index : selection) {
-                        Rail::Rail::node_ptr_t sel_node = m_rail_model->getRailNodeRef(sel_index);
-                        auto result                     = rail->connectNodeToNext(sel_node);
+                        auto result                     = m_rail_model->connectNodeToNext(sel_index);
                         if (!result) {
                             LogError(result.error());
                         }
                     }
+
+                    m_history_aggregate_handler->endExplicitFrame();
 
                     m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
@@ -3235,16 +3234,16 @@ namespace Toolbox::UI {
                     const std::vector<ModelIndex> &selection =
                         m_rail_selection_mgr.getState().getSelection();
 
-                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(index);
-                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+                    m_history_aggregate_handler->startExplicitFrame();
 
                     for (const ModelIndex &sel_index : selection) {
-                        Rail::Rail::node_ptr_t sel_node = m_rail_model->getRailNodeRef(sel_index);
-                        auto result                     = rail->connectNodeToPrev(sel_node);
+                        auto result                     = m_rail_model->connectNodeToPrev(sel_index);
                         if (!result) {
                             LogError(result.error());
                         }
                     }
+
+                    m_history_aggregate_handler->endExplicitFrame();
 
                     m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
@@ -3271,16 +3270,16 @@ namespace Toolbox::UI {
                     const std::vector<ModelIndex> &selection =
                         m_rail_selection_mgr.getState().getSelection();
 
-                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(index);
-                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
+                    m_history_aggregate_handler->startExplicitFrame();
 
                     for (const ModelIndex &sel_index : selection) {
-                        Rail::Rail::node_ptr_t sel_node = m_rail_model->getRailNodeRef(sel_index);
-                        auto result                     = rail->connectNodeToReferrers(sel_node);
+                        auto result = m_rail_model->connectNodeToReferrers(sel_index);
                         if (!result) {
                             LogError(result.error());
                         }
                     }
+                    
+                    m_history_aggregate_handler->endExplicitFrame();
 
                     m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
@@ -3325,21 +3324,14 @@ namespace Toolbox::UI {
                         return;
                     }
 
-                    ModelIndex rail_index = m_rail_model->getParent(index);
-                    if (!m_rail_model->isIndexRail(rail_index)) {
-                        return;
-                    }
-
-                    RailData::rail_ptr_t rail   = m_rail_model->getRailRef(rail_index);
-                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
-
                     glm::vec3 translation;
                     m_renderer.getCameraTranslation(translation);
-                    auto result = rail->setNodePosition(node, translation);
-                    if (!result) {
-                        LogError(result.error());
-                        return;
+
+                    m_history_aggregate_handler->startExplicitFrame();
+                    {
+                        m_rail_model->setNodeTranslation(index, translation);
                     }
+                    m_history_aggregate_handler->endExplicitFrame();
 
                     m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                     m_update_render_objs = true;
@@ -3881,8 +3873,8 @@ namespace Toolbox::UI {
             });
     }
 
-    void SceneWindow::processObjectSelection(RefPtr<Object::ISceneObject> node, bool is_multi) {
-        if (!node) {
+    void SceneWindow::processObjectSelection(const ModelIndex &index, bool is_multi) {
+        if (!m_scene_object_model->validateIndex(index)) {
             TOOLBOX_DEBUG_LOG("Hit object is null");
             return;
         }
@@ -3890,17 +3882,15 @@ namespace Toolbox::UI {
         const IDataModel::index_container &selection =
             m_scene_selection_mgr.getState().getSelection();
 
-        const ModelIndex new_obj_selection = m_scene_object_model->getIndex(node);
-
         // const bool is_object_selected =
         //     std::any_of(selection.begin(), selection.end(), new_obj_selection);
 
         m_rail_selection_mgr.getState().clearSelection();
 
         if (Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT)) {
-            m_scene_selection_mgr.actionSelectIndex(new_obj_selection, !is_multi, false, true);
+            m_scene_selection_mgr.actionSelectIndex(index, !is_multi, false, true);
 
-            ModelIndex tmp = new_obj_selection;
+            ModelIndex tmp = index;
             m_scene_selection_ancestry_for_view.clear();
             while (m_scene_object_model->validateIndex(tmp)) {
                 m_scene_selection_ancestry_for_view.emplace_back(tmp);
@@ -3909,9 +3899,9 @@ namespace Toolbox::UI {
         }
 
         if (Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT)) {
-            m_scene_selection_mgr.actionSelectIndexIfNew(new_obj_selection, true);
+            m_scene_selection_mgr.actionSelectIndexIfNew(index, true);
 
-            ModelIndex tmp = new_obj_selection;
+            ModelIndex tmp = index;
             m_scene_selection_ancestry_for_view.clear();
             while (m_scene_object_model->validateIndex(tmp)) {
                 m_scene_selection_ancestry_for_view.emplace_back(tmp);
@@ -3932,28 +3922,24 @@ namespace Toolbox::UI {
         m_selected_properties.clear();
 
         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
-            regeneratePropertiesForObject(node);
+            regeneratePropertiesForObject(m_scene_object_model->getObjectRef(index));
         }
 
         m_selection_transforms_update_requested = true;
 
         m_properties_render_handler = renderObjectProperties;
 
-        TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", node->type(), node->getNameRef().name());
+        //TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", node->type(), node->getNameRef().name());
     }
 
-    void SceneWindow::processRailSelection(RailData::rail_ptr_t node, bool is_multi) {
-        ImGuiID rail_id = static_cast<ImGuiID>(node->getUUID());
-
-        ModelIndex new_rail_selection = m_rail_model->getIndex(node);
-
+    void SceneWindow::processRailSelection(const ModelIndex &index, bool is_multi) {
         m_scene_selection_mgr.getState().clearSelection();
         m_table_selection_mgr.getState().clearSelection();
 
         if (Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT)) {
-            m_rail_selection_mgr.actionSelectIndex(new_rail_selection, !is_multi, false, true);
+            m_rail_selection_mgr.actionSelectIndex(index, !is_multi, false, true);
 
-            ModelIndex tmp = new_rail_selection;
+            ModelIndex tmp = index;
             m_rail_selection_ancestry_for_view.clear();
             while (m_rail_model->validateIndex(tmp)) {
                 m_rail_selection_ancestry_for_view.emplace_back(tmp);
@@ -3962,9 +3948,9 @@ namespace Toolbox::UI {
         }
 
         if (Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT)) {
-            m_rail_selection_mgr.actionSelectIndexIfNew(new_rail_selection, true);
+            m_rail_selection_mgr.actionSelectIndexIfNew(index, true);
 
-            ModelIndex tmp = new_rail_selection;
+            ModelIndex tmp = index;
             m_rail_selection_ancestry_for_view.clear();
             while (m_rail_model->validateIndex(tmp)) {
                 m_rail_selection_ancestry_for_view.emplace_back(tmp);
@@ -3981,21 +3967,17 @@ namespace Toolbox::UI {
         m_selected_properties.clear();
         m_properties_render_handler = renderRailProperties;
 
-        TOOLBOX_DEBUG_LOG_V("Hit rail \"{}\"", node->name());
+        //TOOLBOX_DEBUG_LOG_V("Hit rail \"{}\"", node->name());
     }
 
-    void SceneWindow::processRailNodeSelection(RefPtr<Rail::RailNode> node, bool is_multi) {
-        ImGuiID rail_id = static_cast<ImGuiID>(node->getUUID());
-
-        ModelIndex new_rail_selection = m_rail_model->getIndex(node);
-
+    void SceneWindow::processRailNodeSelection(const ModelIndex &index, bool is_multi) {
         m_scene_selection_mgr.getState().clearSelection();
         m_table_selection_mgr.getState().clearSelection();
 
         if (Input::GetMouseButtonUp(Input::MouseButton::BUTTON_LEFT)) {
-            m_rail_selection_mgr.actionSelectIndex(new_rail_selection, !is_multi, false, true);
+            m_rail_selection_mgr.actionSelectIndex(index, !is_multi, false, true);
 
-            ModelIndex tmp = new_rail_selection;
+            ModelIndex tmp = index;
             m_rail_selection_ancestry_for_view.clear();
             while (m_rail_model->validateIndex(tmp)) {
                 m_rail_selection_ancestry_for_view.emplace_back(tmp);
@@ -4004,9 +3986,9 @@ namespace Toolbox::UI {
         }
 
         if (Input::GetMouseButtonUp(Input::MouseButton::BUTTON_RIGHT)) {
-            m_rail_selection_mgr.actionSelectIndexIfNew(new_rail_selection, true);
+            m_rail_selection_mgr.actionSelectIndexIfNew(index, true);
 
-            ModelIndex tmp = new_rail_selection;
+            ModelIndex tmp = index;
             m_rail_selection_ancestry_for_view.clear();
             while (m_rail_model->validateIndex(tmp)) {
                 m_rail_selection_ancestry_for_view.emplace_back(tmp);
@@ -4023,19 +4005,19 @@ namespace Toolbox::UI {
         m_selected_properties.clear();
         m_properties_render_handler = renderRailNodeProperties;
 
-        // Debug log
-        {
-            RefPtr<RailData> rail_data = m_current_scene->getRailData();
+        //// Debug log
+        //{
+        //    ModelIndex node_index = m_rail_model->getIndex(node);
+        //    ModelIndex rail_index = m_rail_model->getParent(node_index);
 
-            RailData::rail_ptr_t rail = rail_data->getRail(node->getRailUUID());
-            if (!rail) {
-                TOOLBOX_ERROR("Failed to find rail for node.");
-                return;
-            }
+        //    if (!m_rail_model->validateIndex(rail_index)) {
+        //        TOOLBOX_ERROR("Failed to find rail for node.");
+        //        return;
+        //    }
 
-            TOOLBOX_DEBUG_LOG_V("Hit node {} of rail \"{}\"", rail->getNodeIndex(node).value(),
-                                rail->name());
-        }
+        //    TOOLBOX_DEBUG_LOG_V("Hit node {} of rail \"{}\"", m_rail_model->getRow(node_index),
+        //                        m_rail_model->getDisplayText(rail_index));
+        //}
     }
 
     void SceneWindow::calcNewGizmoMatrixFromSelection() {
@@ -4082,11 +4064,9 @@ namespace Toolbox::UI {
             for (const ModelIndex &index : m_rail_selection_mgr.getState().getSelection()) {
                 glm::vec3 center;
                 if (m_rail_model->isIndexRail(index)) {
-                    RailData::rail_ptr_t rail = m_rail_model->getRailRef(index);
-                    center                    = rail->getCenteroid();
+                    center = m_rail_model->getRailCenteroid(index);
                 } else {
-                    Rail::Rail::node_ptr_t node = m_rail_model->getRailNodeRef(index);
-                    center                      = node->getPosition();
+                    center = m_rail_model->getNodeTranslation(index);
                 }
                 Transform transform = Transform(center, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f});
                 m_selection_transforms[index.getUUID()] = transform;
@@ -4327,6 +4307,36 @@ namespace Toolbox::UI {
 
                 ImGui::EndMenu();
             }
+
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
+
+            const bool has_undo_history = m_history_aggregate_handler->hasUndoHistory();
+            const bool has_redo_history = m_history_aggregate_handler->hasRedoHistory();
+
+            if (!has_undo_history) {
+                ImGui::BeginDisabled();
+            }
+
+            if (ImGui::MenuItem(ICON_FA_ROTATE_LEFT)) {
+                m_history_aggregate_handler->undoFrame();
+            }
+
+            if (!has_undo_history) {
+                ImGui::EndDisabled();
+            }
+
+            if (!has_redo_history) {
+                ImGui::BeginDisabled();
+            }
+
+            if (ImGui::MenuItem(ICON_FA_ROTATE_RIGHT)) {
+                m_history_aggregate_handler->redoFrame();
+            }
+
+            if (!has_redo_history) {
+                ImGui::EndDisabled();
+            }
+
             ImGui::EndMenuBar();
         }
 
