@@ -26,6 +26,7 @@
 #include "gui/appmain/settings/settings.hpp"
 #include "gui/appmain/status/modal_failure.hpp"
 #include "gui/appmain/status/modal_info.hpp"
+#include "gui/appmain/status/modal_option.hpp"
 #include "gui/appmain/status/modal_success.hpp"
 #include "gui/appmain/themes.hpp"
 #include "gui/font.hpp"
@@ -139,6 +140,9 @@ namespace Toolbox {
                               const std::vector<std::string> &extra_info = {});
         void showErrorModal(ImWindow *parent, const std::string &title, const std::string &message,
                             const std::vector<std::string> &extra_info = {});
+        void showOptionModal(ImWindow *parent, const std::string &title, const std::string &message,
+                             const std::vector<std::string> &options,
+                             OptionModal::option_cb option_cb);
 
         bool registerDragDropSource(Platform::LowWindow window);
         void deregisterDragDropSource(Platform::LowWindow window);
@@ -235,6 +239,7 @@ namespace Toolbox {
         std::vector<InfoModal> m_info_modal_queue;
         std::vector<SuccessModal> m_success_modal_queue;
         std::vector<FailureModal> m_error_modal_queue;
+        std::vector<OptionModal> m_option_modal_queue;
     };
 
     class FileDialogFilter {

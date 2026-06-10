@@ -56,6 +56,8 @@ namespace Toolbox {
         m_model->removeEventListener(getUUID());
     }
 
+    int64_t ModelHistoryHandler::getCurrentFrame() const { return m_history_frame; }
+
     void ModelHistoryHandler::handleInputs() {
         if (m_keybind_used) {
             m_keybind_used = m_undo_keybind.isInputMatching() || m_redo_keybind.isInputMatching();
@@ -539,6 +541,22 @@ namespace Toolbox {
         for (ScopePtr<ModelHistoryHandler> &handler : handlers) {
             addHandler(std::move(handler));
         }
+    }
+
+    int64_t ModelHistoryAggregate::getCurrentFrame() const {
+        if (m_handlers.empty()) {
+            return -1;
+        }
+
+        int64_t current_aggregate_frame = -1;
+
+        // The global sequential frame index is equal to
+        // the sum of all local frame counts across the tracked handlers.
+        for (const ScopePtr<ModelHistoryHandler> &handler : m_handlers) {
+            current_aggregate_frame += (handler->getCurrentFrame() + 1);
+        }
+
+        return current_aggregate_frame;
     }
 
     bool ModelHistoryAggregate::undoFrame() {

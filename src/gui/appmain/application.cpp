@@ -493,6 +493,12 @@ namespace Toolbox {
         m_error_modal_queue.emplace_back(parent, title, message, extra_info);
     }
 
+    void MainApplication::showOptionModal(ImWindow *parent, const std::string &title,
+                                          const std::string &message,
+                                          const std::vector<std::string> &options, OptionModal::option_cb option_cb) {
+        m_option_modal_queue.emplace_back(parent, title, message, options, option_cb);
+    }
+
     bool MainApplication::registerDragDropSource(Platform::LowWindow window) {
         return m_drag_drop_source_delegate->initializeForWindow(window);
     }
@@ -646,21 +652,33 @@ namespace Toolbox {
                 if (modal.is_closed()) {
                     m_info_modal_queue.erase(m_info_modal_queue.begin());
                 }
-            } else {
+            } else if (!m_error_modal_queue.empty()) {
                 // Loop over queued status modals
-                if (!m_error_modal_queue.empty()) {
-                    FailureModal &modal = m_error_modal_queue.front();
-                    if (!modal.is_open()) {
-                        modal.open();
-                    }
+                FailureModal &modal = m_error_modal_queue.front();
+                if (!modal.is_open()) {
+                    modal.open();
+                }
 
-                    if (!modal.render()) {
-                        modal.close();  // It is somehow invisible
-                    }
+                if (!modal.render()) {
+                    modal.close();  // It is somehow invisible
+                }
 
-                    if (modal.is_closed()) {
-                        m_error_modal_queue.erase(m_error_modal_queue.begin());
-                    }
+                if (modal.is_closed()) {
+                    m_error_modal_queue.erase(m_error_modal_queue.begin());
+                }
+            } else if (!m_option_modal_queue.empty()) {
+                // Loop over queued status modals
+                OptionModal &modal = m_option_modal_queue.front();
+                if (!modal.is_open()) {
+                    modal.open();
+                }
+
+                if (!modal.render()) {
+                    modal.close();  // It is somehow invisible
+                }
+
+                if (modal.is_closed()) {
+                    m_option_modal_queue.erase(m_option_modal_queue.begin());
                 }
             }
 

@@ -281,7 +281,9 @@ namespace Toolbox::UI {
             return m_current_scene->rootPath() ? m_current_scene->rootPath().value().string()
                                                : "(unknown)";
         }
-        [[nodiscard]] bool unsaved() const override { return false; }
+        [[nodiscard]] bool unsaved() const override {
+            return m_saved_history_frame != m_history_aggregate_handler->getCurrentFrame();
+        }
 
         // Returns the supported file types, empty string is designed for a folder.
         [[nodiscard]] std::vector<std::string> extensions() const override {
@@ -320,6 +322,7 @@ namespace Toolbox::UI {
         ModelSelectionManager m_rail_selection_mgr;
 
         RefPtr<ModelHistoryAggregate> m_history_aggregate_handler;
+        int64_t m_saved_history_frame = -1;
 
         ContextMenu<ModelIndex> m_scene_hierarchy_context_menu;
         ContextMenu<ModelIndex> m_table_hierarchy_context_menu;

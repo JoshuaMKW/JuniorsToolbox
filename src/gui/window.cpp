@@ -39,14 +39,14 @@ namespace Toolbox::UI {
             return;
         }
         MainApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_RESIZE,
-                                                                    size);
+                                                                     size);
     }
     void ImWindow::setPos(const ImVec2 &pos) noexcept {
         if (pos == getPos()) {
             return;
         }
         MainApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_MOVE,
-                                                                    pos);
+                                                                     pos);
     }
 
     void ImWindow::setIcon(const std::string &icon_name) {
@@ -83,7 +83,7 @@ namespace Toolbox::UI {
 
     void ImWindow::close() {
         MainApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_CLOSE,
-                                                                    ImVec2{0, 0});
+                                                                     ImVec2{0, 0});
         defocus();
     }
 
@@ -97,17 +97,17 @@ namespace Toolbox::UI {
 
     void ImWindow::open() {
         MainApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_SHOW,
-                                                                    ImVec2{0, 0});
+                                                                     ImVec2{0, 0});
     }
 
     void ImWindow::hide() {
         MainApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_HIDE,
-                                                                    ImVec2{0, 0});
+                                                                     ImVec2{0, 0});
     }
 
     void ImWindow::show() {
         MainApplication::instance().dispatchEvent<WindowEvent, true>(getUUID(), EVENT_WINDOW_SHOW,
-                                                                    ImVec2{0, 0});
+                                                                     ImVec2{0, 0});
     }
 
     void ImWindow::onAttach() {
@@ -219,8 +219,7 @@ namespace Toolbox::UI {
                     glfwSetWindowUserPointer(window, this);
                     /*glfwSetDropCallback(static_cast<GLFWwindow *>(viewport->PlatformHandle),
                                         privDropCallback);*/
-                    m_low_handle =
-                        (Platform::LowWindow)viewport->PlatformHandleRaw;
+                    m_low_handle = (Platform::LowWindow)viewport->PlatformHandleRaw;
                     if (!Platform::GetWindowZOrder(m_low_handle, m_z_order)) {
                         m_z_order = -1;
                     }
@@ -285,8 +284,23 @@ namespace Toolbox::UI {
     }
 
     void ImWindow::onWindowEvent(RefPtr<WindowEvent> ev) {
-        ImProcessLayer::onWindowEvent(ev);
         switch (ev->getType()) {
+        case EVENT_WINDOW_CLOSE: {
+            if (m_force_close) {
+                ImProcessLayer::onWindowEvent(ev);
+                break;
+            }
+            if (unsaved()) {
+                MainApplication::instance().showOptionModal(
+                    this, "Unsaved Changes",
+                    "The window you are closing has unsaved changes.\n\nWould you like to save these "
+                    "changes before closing?",
+                    {"Yes", "No", "Cancel"}, TOOLBOX_BIND_EVENT_FN(optionSelected));
+                break;
+            }
+            ImProcessLayer::onWindowEvent(ev);
+            break;
+        }
         case EVENT_WINDOW_MOVE: {
             ImVec2 win_pos = ev->getGlobalPoint();
             setLayerPos(win_pos);
@@ -312,6 +326,7 @@ namespace Toolbox::UI {
             break;
         }
         default:
+            ImProcessLayer::onWindowEvent(ev);
             break;
         }
     }
@@ -325,6 +340,24 @@ namespace Toolbox::UI {
             t = name();
         }
         return t;
+    }
+
+    void ImWindow::optionSelected(int64_t option_idx) {
+        switch (option_idx) {
+        case 0:
+            if (!onSaveData(std::nullopt)) {
+                TOOLBOX_ERROR_V("[WINDOW] Failed to save on close!");
+            }
+            [[fallthrough]];
+        default:
+        case 1:
+            m_force_close = true;
+            close();
+            break;
+        case 2:
+            m_force_close = false;
+            break;
+        }
     }
 
 }  // namespace Toolbox::UI

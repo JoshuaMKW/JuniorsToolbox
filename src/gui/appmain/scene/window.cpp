@@ -498,6 +498,7 @@ namespace Toolbox::UI {
                 [&](const std::string &msg) { m_repack_io_busy = false; });
         }
 
+        m_saved_history_frame = m_history_aggregate_handler->getCurrentFrame();
         return true;
     }
 

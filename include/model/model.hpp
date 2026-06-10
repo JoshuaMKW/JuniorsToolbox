@@ -251,6 +251,8 @@ namespace Toolbox {
 
         UUID64 getUUID() const override { return m_uuid; }
 
+        virtual int64_t getCurrentFrame() const;
+
         virtual void handleInputs();
         virtual bool undoFrame();
         virtual bool redoFrame();
@@ -310,6 +312,8 @@ namespace Toolbox {
             handler->onHistoryTrimmed(TOOLBOX_BIND_EVENT_FN(trimAllHistories));
             m_handlers.push_back(std::move(handler));
         }
+
+        int64_t getCurrentFrame() const override;
 
         bool undoFrame() override;
         bool redoFrame() override;

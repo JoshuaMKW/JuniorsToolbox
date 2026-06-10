@@ -122,6 +122,8 @@ namespace Toolbox::UI {
         void setLayerSize(const ImVec2 &size) noexcept { ImProcessLayer::setSize(size); }
         void setLayerPos(const ImVec2 &pos) noexcept { ImProcessLayer::setPos(pos); }
 
+        void optionSelected(int64_t option_idx);
+
         UUID64 m_UUID64;
         ImGuiID m_sibling_id = 0;
 
@@ -153,6 +155,7 @@ namespace Toolbox::UI {
         ImVec2 m_next_pos  = {};
 
         bool m_first_render = true;
+        bool m_force_close  = false;
 
         int m_z_order = -1;
         int m_im_order = -1;
