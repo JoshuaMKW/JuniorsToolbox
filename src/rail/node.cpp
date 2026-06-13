@@ -18,27 +18,60 @@ namespace Toolbox::Rail {
 
         m_flags = make_referable<MetaMember>("Flags", MetaValue(flags));
 
-        MetaValue values_default = MetaValue(static_cast<s16>(-1));
+        // Values
+        {
+            MetaValue values_default = MetaValue(static_cast<s16>(-1));
 
-        std::vector<MetaValue> values;
-        values.push_back(values_default);
-        values.push_back(values_default);
-        values.push_back(values_default);
-        values.push_back(values_default);
+            std::vector<RefPtr<MetaValue>> values;
+            values.push_back(make_referable<MetaValue>(values_default));
+            values.push_back(make_referable<MetaValue>(values_default));
+            values.push_back(make_referable<MetaValue>(values_default));
+            values.push_back(make_referable<MetaValue>(values_default));
 
-        m_values = make_referable<MetaMember>("Values", values,
-                                                make_referable<MetaValue>(values_default));
+            m_values = MetaMemberBuilder()
+                           .setName("Values")
+                           .setArraySize(static_cast<u32>(4))
+                           .setValues(values, make_referable<MetaValue>(values_default))
+                           .finalize();
+        }
 
-        m_connection_count =
-            make_referable<MetaMember>("ConnectionCount", MetaValue(static_cast<u32>(0)));
+        // Connection count
+        {
+            MetaValue connection_count_default = MetaValue(static_cast<u32>(0));
 
-        auto connection_value          = m_connection_count->value<MetaValue>(0).value();
-        MetaMember::ReferenceInfo info = {connection_value, "ConnectionCount"};
+            m_connection_count =
+                MetaMemberBuilder()
+                    .setName("ConnectionCount")
+                    .setArraySize(static_cast<u32>(1))
+                    .setValues({make_referable<MetaValue>(connection_count_default)},
+                               make_referable<MetaValue>(connection_count_default))
+                    .finalize();
+        }
 
-        m_connections = make_referable<MetaMember>(
-            "Connections", info, make_referable<MetaValue>(MetaValue(static_cast<s16>(0))));
-        m_distances = make_referable<MetaMember>(
-            "Distances", info, make_referable<MetaValue>(MetaValue(static_cast<f32>(0))));
+        RefPtr<MetaValue> connection_value = m_connection_count->value<MetaValue>(0).value();
+        MetaMember::ReferenceInfo info     = {connection_value, "ConnectionCount"};
+
+        // Connections
+        {
+            MetaValue connections_default = MetaValue(static_cast<s16>(0));
+
+            m_connections = MetaMemberBuilder()
+                                .setName("Connections")
+                                .setArraySize(info)
+                                .setValues({}, make_referable<MetaValue>(connections_default))
+                                .finalize();
+        }
+
+        // Distances
+        {
+            MetaValue distances_default = MetaValue(0.0f);
+
+            m_distances = MetaMemberBuilder()
+                              .setName("Distances")
+                              .setArraySize(info)
+                              .setValues({}, make_referable<MetaValue>(distances_default))
+                              .finalize();
+        }
     }
 
     RailNode::RailNode(glm::vec3 pos)
@@ -58,9 +91,9 @@ namespace Toolbox::Rail {
         RefPtr<MetaValue> value_x = m_pos_x->value<MetaValue>(0).value();
         RefPtr<MetaValue> value_y = m_pos_y->value<MetaValue>(0).value();
         RefPtr<MetaValue> value_z = m_pos_z->value<MetaValue>(0).value();
-        x                                  = *value_x->get<s16>();
-        y                                  = *value_y->get<s16>();
-        z                                  = *value_z->get<s16>();
+        x                         = *value_x->get<s16>();
+        y                         = *value_y->get<s16>();
+        z                         = *value_z->get<s16>();
     }
 
     void RailNode::setPosition(const glm::vec3 &position) {
@@ -278,14 +311,13 @@ namespace Toolbox::Rail {
     }
 
     Result<void, MetaError> RailNode::setConnectionDistance(size_t connection,
-                                                                   const glm::vec3 &to_pos) {
+                                                            const glm::vec3 &to_pos) {
         glm::vec3 position = getPosition();
         glm::vec3 delta    = to_pos - position;
         return setConnectionDistance(connection, glm::length(delta));
     }
 
-    Result<void, MetaError> RailNode::setConnectionDistance(size_t connection,
-                                                                   f32 distance) {
+    Result<void, MetaError> RailNode::setConnectionDistance(size_t connection, f32 distance) {
         auto meta_distance = m_distances->value<MetaValue>(connection);
         if (!meta_distance) {
             return std::unexpected(meta_distance.error());

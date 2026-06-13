@@ -96,23 +96,16 @@ namespace Toolbox {
             setData(index, wizard_name, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_WIZARD);
         }
 
-        [[nodiscard]] MetaValue getMemberValue(const ModelIndex &index) const {
-            return std::any_cast<MetaValue>(
-                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_VALUE));
-        }
-        void setMemberValue(const ModelIndex &index, const MetaValue &value) {
-            setData(index, value, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_VALUE);
-        }
-
-        [[nodiscard]] u32 getMemberOffset(const ModelIndex &index) const {
-            return std::any_cast<u32>(
-                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_OFFSET));
-        }
-
-        [[nodiscard]] u32 getMemberSize(const ModelIndex &index) const {
-            return std::any_cast<u32>(
-                getData(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_MEMBER_SIZE));
-        }
+        [[nodiscard]] Result<MetaValue, MetaError> getMemberValue(const ModelIndex &index,
+                                                                       const QualifiedName &member,
+                                                                       size_t array_idx) const;
+        Result<void, MetaError> setMemberValue(const ModelIndex &index,
+                                                    const QualifiedName &member, size_t array_idx,
+                                                    const MetaValue &value);
+        [[nodiscard]] Result<u32, MetaScopeError>
+        getMemberOffset(const ModelIndex &index, const QualifiedName &member) const;
+        [[nodiscard]] Result<u32, MetaScopeError> getMemberSize(const ModelIndex &index,
+                                                                const QualifiedName &member) const;
 
         [[nodiscard]] std::optional<Transform> getObjectTransform(const ModelIndex &index) const {
             return std::any_cast<std::optional<Transform>>(
@@ -197,6 +190,17 @@ namespace Toolbox {
                                                        const ModelIndex &parent);
         [[nodiscard]] virtual ModelIndex makeIndex(RefPtr<ISceneObject> object, int64_t row,
                                                    const ModelIndex &parent) const;
+
+        [[nodiscard]] Result<MetaValue, MetaError> getMemberValue_(const ModelIndex &index,
+                                                                        const QualifiedName &member,
+                                                                        size_t array_idx) const;
+        Result<void, MetaError> setMemberValue_(const ModelIndex &index,
+                                                     const QualifiedName &member, size_t array_idx,
+                                                     const MetaValue &value);
+        [[nodiscard]] Result<u32, MetaScopeError>
+        getMemberOffset_(const ModelIndex &index, const QualifiedName &member) const;
+        [[nodiscard]] Result<u32, MetaScopeError> getMemberSize_(const ModelIndex &index,
+                                                                 const QualifiedName &member) const;
 
         // Implementation of public API for mutex locking reasons
         [[nodiscard]] std::any getData_(const ModelIndex &index, int role) const;

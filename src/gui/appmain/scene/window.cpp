@@ -4170,12 +4170,35 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::regeneratePropertiesForObject(RefPtr<ISceneObject> object) {
+        m_selected_properties.clear();
         for (auto &member : object->getMembers()) {
             member->syncArray();
-            auto prop = createProperty(member);
+
+            auto prop = createProperty(member, [this, object](RefPtr<MetaMember> member, size_t array_idx) -> MetaValue {
+                ModelIndex index = m_scene_object_model->getIndex(object);
+                auto result =
+                    m_scene_object_model->getMemberValue(index, member->qualifiedName(), array_idx);
+                if (!result) {
+                    LogError(result.error());
+                    return MetaValue();
+                }
+
+                return result.value();
+                },
+                [this, object](RefPtr<MetaMember> member, size_t array_idx,
+                               const MetaValue &value) {
+                    ModelIndex index = m_scene_object_model->getIndex(object);
+                    auto result      = m_scene_object_model->setMemberValue(
+                        index, member->qualifiedName(), array_idx, value);
+                    if (!result) {
+                        LogError(result.error());
+                        return false;
+                    }
+
+                    return true;
+                });
+
             if (prop) {
-                prop->onValueChanged(
-                    [object](RefPtr<MetaMember> member) { object->refreshRenderState(); });
                 m_selected_properties.push_back(std::move(prop));
             }
         }

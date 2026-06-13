@@ -724,7 +724,7 @@ namespace Toolbox::Object {
             }
         }
 
-        return nullptr;
+        return make_meta_error<MetaStruct::MemberT>(name, 0, "Failed to find member");
     }
 
     size_t PhysicalSceneObject::getMemberOffset(const QualifiedName &name, int index) const {
@@ -831,7 +831,7 @@ namespace Toolbox::Object {
     void PhysicalSceneObject::sync() {
         const bool wizard_reassigned = reassignWizardBasedOnFields();
 
-        auto transform_value_ptr = getMember("Transform").value();
+        auto transform_value_ptr = getMember("Transform").value_or(nullptr);
         if (transform_value_ptr) {
             m_transform = getMetaValue<Transform>(transform_value_ptr).value();
         }
@@ -887,11 +887,11 @@ namespace Toolbox::Object {
 
         for (const TemplateWizard &wizard : wizards) {
             bool has_object_field = false;
-            for (const MetaMember &member : wizard.m_init_members) {
-                if (member.name() == "Object") {
+            for (const RefPtr<MetaMember> &member : wizard.m_init_members) {
+                if (member->name() == "Object") {
                     has_object_field = true;
 
-                    auto value_result = member.value<MetaValue>(0);
+                    auto value_result = member->value<MetaValue>(0);
                     if (!value_result) {
                         return false;
                     }
@@ -1311,6 +1311,10 @@ namespace Toolbox::Object {
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
             auto &m                        = wizard->m_init_members[i];
             RefPtr<MetaMember> this_member = ref_cast<MetaMember>(make_deep_clone<MetaMember>(m));
+            //if (this_member->name() == "LightArray") {
+            //    __debugbreak();
+            //}
+
             this_member->updateReferenceToList(m_members);
 
             if (in.tell() < endpos) {

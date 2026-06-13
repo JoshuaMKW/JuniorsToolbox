@@ -4,6 +4,7 @@
 #include "gui/util.hpp"
 #include "objlib/meta/enum.hpp"
 #include "objlib/meta/member.hpp"
+#include "objlib/meta/value.hpp"
 #include "objlib/object.hpp"
 
 #include <imgui.h>
@@ -90,17 +91,18 @@ namespace Toolbox::UI {
                     ImGui::SameLine();
                     if (ImGui::Checkbox(id_str.c_str(),
                                         reinterpret_cast<bool *>(m_bools.data() + i))) {
-                        if (Object::setMetaValue<bool>(m_member, i, m_bools[i])) {
-                            any_changed = true;
+                        // if (Object::setMetaValue<bool>(m_member, i, m_bools[i])) {
+                        //     any_changed = true;
+                        // }
+                        if (m_value_setter) {
+                            MetaValue new_value = MetaValue(static_cast<bool>(m_bools[i]));
+                            any_changed |= m_value_setter(m_member, i, new_value);
                         }
                     }
                 }
             }
             ImGui::EndGroupPanel();
 
-            if (any_changed && m_value_changed) {
-                m_value_changed(m_member);
-            }
             return any_changed;
         }
 
@@ -113,23 +115,19 @@ namespace Toolbox::UI {
 
         std::string id_str = std::format("##{}", m_member->name().c_str());
         if (ImGui::Checkbox(id_str.c_str(), reinterpret_cast<bool *>(m_bools.data()))) {
-            if (Object::setMetaValue<bool>(m_member, 0, m_bools[0])) {
-                any_changed = true;
+            if (m_value_setter) {
+                MetaValue new_value = MetaValue(static_cast<bool>(m_bools[0]));
+                any_changed |= m_value_setter(m_member, 0, new_value);
             }
         }
 
-        if (any_changed && m_value_changed) {
-            m_value_changed(m_member);
-        }
         return any_changed;
     }
 
     void NumberProperty::init() {
         m_member->syncArray();
 
-        u32 member_array_size = m_member->arraysize();
-
-        m_numbers.resize(member_array_size);
+        const u32 member_array_size = m_member->arraysize();
         m_array_open.resize(member_array_size, true);
 
         if (member_array_size == 0) {
@@ -138,54 +136,36 @@ namespace Toolbox::UI {
 
         switch (Object::getMetaType(m_member).value()) {
         case Object::MetaType::S8:
-            for (size_t i = 0; i < m_numbers.size(); ++i) {
-                m_numbers.at(i) = Object::getMetaValue<s8>(m_member, i).value();
-            }
             m_min =
                 Object::getMetaValueMin<s8>(m_member, 0).value_or(std::numeric_limits<s8>::min());
             m_max =
                 Object::getMetaValueMax<s8>(m_member, 0).value_or(std::numeric_limits<s8>::max());
             break;
         case Object::MetaType::U8:
-            for (size_t i = 0; i < m_numbers.size(); ++i) {
-                m_numbers.at(i) = Object::getMetaValue<u8>(m_member, i).value();
-            }
             m_min =
                 Object::getMetaValueMin<u8>(m_member, 0).value_or(std::numeric_limits<u8>::min());
             m_max =
                 Object::getMetaValueMax<u8>(m_member, 0).value_or(std::numeric_limits<u8>::max());
             break;
         case Object::MetaType::S16:
-            for (size_t i = 0; i < m_numbers.size(); ++i) {
-                m_numbers.at(i) = Object::getMetaValue<s16>(m_member, i).value();
-            }
             m_min =
                 Object::getMetaValueMin<s16>(m_member, 0).value_or(std::numeric_limits<s16>::min());
             m_max =
                 Object::getMetaValueMax<s16>(m_member, 0).value_or(std::numeric_limits<s16>::max());
             break;
         case Object::MetaType::U16:
-            for (size_t i = 0; i < m_numbers.size(); ++i) {
-                m_numbers.at(i) = Object::getMetaValue<u16>(m_member, i).value();
-            }
             m_min =
                 Object::getMetaValueMin<u16>(m_member, 0).value_or(std::numeric_limits<u16>::min());
             m_max =
                 Object::getMetaValueMax<u16>(m_member, 0).value_or(std::numeric_limits<u16>::max());
             break;
         case Object::MetaType::S32:
-            for (size_t i = 0; i < m_numbers.size(); ++i) {
-                m_numbers.at(i) = Object::getMetaValue<s32>(m_member, i).value();
-            }
             m_min =
                 Object::getMetaValueMin<s32>(m_member, 0).value_or(std::numeric_limits<s32>::min());
             m_max =
                 Object::getMetaValueMax<s32>(m_member, 0).value_or(std::numeric_limits<s32>::max());
             break;
         case Object::MetaType::U32:
-            for (size_t i = 0; i < m_numbers.size(); ++i) {
-                m_numbers.at(i) = Object::getMetaValue<u32>(m_member, i).value();
-            }
             m_min =
                 Object::getMetaValueMin<u32>(m_member, 0).value_or(std::numeric_limits<u32>::min());
             m_max =
@@ -197,9 +177,6 @@ namespace Toolbox::UI {
                 "member \"{}\"",
                 magic_enum::enum_name(Object::getMetaType(m_member).value()),
                 m_member->qualifiedName().toString());
-            for (size_t i = 0; i < m_numbers.size(); ++i) {
-                m_numbers.at(i) = Object::getMetaValue<s32>(m_member, i).value();
-            }
             m_min =
                 Object::getMetaValueMin<u32>(m_member, 0).value_or(std::numeric_limits<s32>::min());
             m_max =
@@ -221,8 +198,9 @@ namespace Toolbox::UI {
                             m_member->qualifiedName().toString());
         }
 
-        if (m_numbers.size() != m_member->arraysize()) {
+        if (!m_initialized) {
             init();
+            m_initialized = true;
         }
 
         bool any_changed = false;
@@ -234,32 +212,37 @@ namespace Toolbox::UI {
 
         if (is_array || m_member->isEmpty()) {
             if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
-                for (size_t i = 0; i < m_numbers.size(); ++i) {
-                    std::string id_str = std::format("##{}-{}", m_member->name().c_str(), i);
-                    std::string name   = std::format("[{}]", i);
+                const u32 array_size = m_member->arraysize();
+                for (size_t i = 0; i < array_size; ++i) {
+                    const std::string id_str = std::format("##{}-{}", m_member->name().c_str(), i);
+                    const std::string name   = std::format("[{}]", i);
+
                     ImGui::Text(name.c_str());
+
                     ImGui::SameLine();
+
+                    MetaValue number = m_value_getter(m_member, i);
+                    s64 number_val   = getS64FromMetaValue(number);
+
                     if (ImGui::InputScalarCompact(
-                            id_str.c_str(), ImGuiDataType_S64, m_numbers.data() + i, &m_step,
+                            id_str.c_str(), ImGuiDataType_S64, &number_val, &m_step,
                             &m_step_fast, nullptr,
                             ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
-                        s64 &number = m_numbers.at(i);
-                        if (number > m_max) {
-                            number = m_min + (number - m_max);
-                        } else if (number < m_min) {
-                            number = m_max + (number - m_min);
+                        if (number_val > m_max) {
+                            number_val = m_min + (number_val - m_max);
+                        } else if (number_val < m_min) {
+                            number_val = m_max + (number_val - m_min);
                         }
-                        if (Object::setMetaValue(m_member, i, number)) {
-                            any_changed = true;
+                        if (m_value_setter) {
+                            MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                            setS64ToMetaValue(new_value, number_val);
+                            any_changed |= m_value_setter(m_member, i, new_value);
                         }
                     }
                 }
             }
             ImGui::EndGroupPanel();
 
-            if (any_changed && m_value_changed) {
-                m_value_changed(m_member);
-            }
             return any_changed;
         }
 
@@ -272,20 +255,64 @@ namespace Toolbox::UI {
         }
 
         std::string label = std::format("##{}", m_member->name().c_str());
+
+        MetaValue number = m_value_getter(m_member, 0);
+        s64 number_val   = getS64FromMetaValue(number);
+
         if (ImGui::InputScalarCompact(
-                label.c_str(), ImGuiDataType_S64, m_numbers.data(), &m_step, &m_step_fast, nullptr,
+                label.c_str(), ImGuiDataType_S64, &number_val, &m_step, &m_step_fast, nullptr,
                 ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
-            s64 &number = m_numbers.at(0);
-            number      = std::clamp(number, m_min, m_max);
-            if (Object::setMetaValue(m_member, 0, number)) {
-                any_changed = true;
+            if (number_val > m_max) {
+                number_val = m_min + (number_val - m_max);
+            } else if (number_val < m_min) {
+                number_val = m_max + (number_val - m_min);
+            }
+            if (m_value_setter) {
+                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                setS64ToMetaValue(new_value, number_val);
+                any_changed |= m_value_setter(m_member, 0, new_value);
             }
         }
 
-        if (any_changed && m_value_changed) {
-            m_value_changed(m_member);
-        }
         return any_changed;
+    }
+
+    s64 NumberProperty::getS64FromMetaValue(const MetaValue &value) const {
+        switch (value.type()) {
+        case MetaType::S8:
+            return static_cast<s64>(value.get<s8>().value());
+        case MetaType::U8:
+            return static_cast<s64>(value.get<u8>().value());
+        case MetaType::S16:
+            return static_cast<s64>(value.get<s16>().value());
+        case MetaType::U16:
+            return static_cast<s64>(value.get<u16>().value());
+        case MetaType::S32:
+            return static_cast<s64>(value.get<s32>().value());
+        case MetaType::U32:
+            return static_cast<s64>(value.get<u32>().value());
+        default:
+            return -1;
+        }
+    }
+
+    void NumberProperty::setS64ToMetaValue(Object::MetaValue &value, s64 number) {
+        switch (value.type()) {
+        case MetaType::S8:
+            value.set<s8>(static_cast<s8>(number));
+        case MetaType::U8:
+            value.set<u8>(static_cast<u8>(number));
+        case MetaType::S16:
+            value.set<s16>(static_cast<s16>(number));
+        case MetaType::U16:
+            value.set<u16>(static_cast<u16>(number));
+        case MetaType::S32:
+            value.set<s32>(static_cast<s32>(number));
+        case MetaType::U32:
+            value.set<u32>(static_cast<u32>(number));
+        default:
+            return;
+        }
     }
 
     void FloatProperty::init() {
@@ -349,17 +376,16 @@ namespace Toolbox::UI {
                         } else if (number < m_min) {
                             number = m_max + (number - m_min);
                         }
-                        if (Object::setMetaValue(m_member, i, number)) {
-                            any_changed = true;
+                        if (m_value_setter) {
+                            MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                            new_value.setVariant(number);
+                            any_changed |= m_value_setter(m_member, i, new_value);
                         }
                     }
                 }
             }
             ImGui::EndGroupPanel();
 
-            if (any_changed && m_value_changed) {
-                m_value_changed(m_member);
-            }
             return any_changed;
         }
 
@@ -377,14 +403,13 @@ namespace Toolbox::UI {
                 nullptr, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
             f32 &number = m_numbers.at(0);
             number      = std::clamp(number, m_min, m_max);
-            if (Object::setMetaValue(m_member, 0, number)) {
-                any_changed = true;
+            if (m_value_setter) {
+                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                new_value.setVariant(number);
+                any_changed |= m_value_setter(m_member, 0, new_value);
             }
         }
 
-        if (any_changed && m_value_changed) {
-            m_value_changed(m_member);
-        }
         return any_changed;
     }
 
@@ -451,17 +476,16 @@ namespace Toolbox::UI {
                         } else if (number < m_min) {
                             number = m_max + (number - m_min);
                         }
-                        if (Object::setMetaValue(m_member, i, number)) {
-                            any_changed = true;
+                        if (m_value_setter) {
+                            MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                            new_value.setVariant(number);
+                            any_changed |= m_value_setter(m_member, i, new_value);
                         }
                     }
                 }
             }
             ImGui::EndGroupPanel();
 
-            if (any_changed && m_value_changed) {
-                m_value_changed(m_member);
-            }
             return any_changed;
         }
 
@@ -479,14 +503,13 @@ namespace Toolbox::UI {
                 nullptr, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
             f64 &number = m_numbers.at(0);
             number      = std::clamp(number, m_min, m_max);
-            if (Object::setMetaValue(m_member, 0, number)) {
-                any_changed = true;
+            if (m_value_setter) {
+                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                new_value.setVariant(number);
+                any_changed |= m_value_setter(m_member, 0, new_value);
             }
         }
 
-        if (any_changed && m_value_changed) {
-            m_value_changed(m_member);
-        }
         return any_changed;
     }
 
@@ -538,14 +561,17 @@ namespace Toolbox::UI {
                         if (Object::setMetaValue(m_member, i, convertArrayToStringView(str_data))) {
                             any_changed = true;
                         }
+                        if (m_value_setter) {
+                            MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                            std::string str_opa = std::string(convertArrayToStringView(str_data));
+                            new_value.setVariant(str_opa);
+                            any_changed |= m_value_setter(m_member, i, new_value);
+                        }
                     }
                 }
             }
             ImGui::EndGroupPanel();
 
-            if (any_changed && m_value_changed) {
-                m_value_changed(m_member);
-            }
             return any_changed;
         }
 
@@ -560,14 +586,14 @@ namespace Toolbox::UI {
         std::string label = std::format("##{}", m_member->name().c_str());
         auto &str_data    = m_strings.at(0);
         if (ImGui::InputText(label.c_str(), str_data.data(), str_data.size())) {
-            if (Object::setMetaValue(m_member, 0, convertArrayToStringView(str_data))) {
-                any_changed = true;
+            if (m_value_setter) {
+                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                std::string str_opa = std::string(convertArrayToStringView(str_data));
+                new_value.setVariant(str_opa);
+                any_changed |= m_value_setter(m_member, 0, new_value);
             }
         }
 
-        if (any_changed && m_value_changed) {
-            m_value_changed(m_member);
-        }
         return any_changed;
     }
 
@@ -642,9 +668,6 @@ namespace Toolbox::UI {
             }
             ImGui::EndGroupPanel();
 
-            if (any_changed && m_value_changed) {
-                m_value_changed(m_member);
-            }
             return any_changed;
         }
 
@@ -672,9 +695,6 @@ namespace Toolbox::UI {
             }
         }
 
-        if (any_changed && m_value_changed) {
-            m_value_changed(m_member);
-        }
         return any_changed;
     }
 
@@ -687,24 +707,24 @@ namespace Toolbox::UI {
         const bool isRGBA32 = m_member->isTypeRGBA32();
 
         if (isRGB) {
-            Color::RGB8 tmp_color = Object::getMetaValue<Color::RGB8>(m_member, array_index)
-                                          .value_or(Color::RGB8());
+            Color::RGB8 tmp_color =
+                Object::getMetaValue<Color::RGB8>(m_member, array_index).value_or(Color::RGB8());
             f32 r, g, b, a;
             tmp_color.getColor(r, g, b, a);
             out_color.setColor(r, g, b, a);
         }
 
         if (isRGBA) {
-            Color::RGBA8 tmp_color = Object::getMetaValue<Color::RGBA8>(m_member, array_index)
-                                          .value_or(Color::RGBA8());
+            Color::RGBA8 tmp_color =
+                Object::getMetaValue<Color::RGBA8>(m_member, array_index).value_or(Color::RGBA8());
             f32 r, g, b, a;
             tmp_color.getColor(r, g, b, a);
             out_color.setColor(r, g, b, a);
         }
 
         if (isRGB32) {
-            Color::RGB32 tmp_color = Object::getMetaValue<Color::RGB32>(m_member, array_index)
-                                          .value_or(Color::RGB32());
+            Color::RGB32 tmp_color =
+                Object::getMetaValue<Color::RGB32>(m_member, array_index).value_or(Color::RGB32());
             f32 r, g, b, a;
             tmp_color.getColor(r, g, b, a);
             out_color.setColor(r, g, b, a);
@@ -728,29 +748,35 @@ namespace Toolbox::UI {
         const bool isRGBA32 = m_member->isTypeRGBA32();
 
         if (isRGB) {
-            return Object::setMetaValue<Color::RGB8>(m_member, array_index,
-                                                     Color::RGB8(color.m_r, color.m_g, color.m_b))
-                .value_or(false);
+            if (m_value_setter) {
+                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                new_value.setVariant(Color::RGB8(color.m_r, color.m_g, color.m_b));
+                return m_value_setter(m_member, array_index, new_value);
+            }
         }
 
         if (isRGBA) {
-            return Object::setMetaValue<Color::RGBA8>(
-                       m_member, array_index,
-                       Color::RGBA8(color.m_r, color.m_g, color.m_b, color.m_a))
-                .value_or(false);
+            if (m_value_setter) {
+                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                new_value.setVariant(Color::RGBA8(color.m_r, color.m_g, color.m_b, color.m_a));
+                return m_value_setter(m_member, array_index, new_value);
+            }
         }
 
         if (isRGB32) {
-            return Object::setMetaValue<Color::RGB32>(m_member, array_index,
-                                                      Color::RGB32(color.m_r, color.m_g, color.m_b))
-                .value_or(false);
+            if (m_value_setter) {
+                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                new_value.setVariant(Color::RGB32(color.m_r, color.m_g, color.m_b));
+                return m_value_setter(m_member, array_index, new_value);
+            }
         }
 
         if (isRGBA32) {
-            return Object::setMetaValue<Color::RGBA32>(
-                       m_member, array_index,
-                       Color::RGBA32(color.m_r, color.m_g, color.m_b, color.m_a))
-                .value_or(false);
+            if (m_value_setter) {
+                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                new_value.setVariant(Color::RGBA32(color.m_r, color.m_g, color.m_b, color.m_a));
+                return m_value_setter(m_member, array_index, new_value);
+            }
         }
 
         return false;
@@ -815,9 +841,10 @@ namespace Toolbox::UI {
                         if (ImGui::InputScalarCompactN("##vector", ImGuiDataType_Float,
                                                        reinterpret_cast<f32 *>(&m_vectors.at(i)), 3,
                                                        &m_step, &m_step_fast, "%.3f")) {
-                            if (Object::setMetaValue(m_member, 0, m_vectors.at(i),
-                                                     Object::MetaType::VEC3)) {
-                                any_changed = true;
+                            if (m_value_setter) {
+                                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                                new_value.setVariant(m_vectors.at(i));
+                                any_changed |= m_value_setter(m_member, i, new_value);
                             }
                         }
                         ImGui::Spacing();
@@ -835,9 +862,10 @@ namespace Toolbox::UI {
                 if (ImGui::InputScalarCompactN("##vector", ImGuiDataType_Float,
                                                reinterpret_cast<f32 *>(&m_vectors.at(0)), 3,
                                                &m_step, &m_step_fast, "%.3f")) {
-                    if (Object::setMetaValue(m_member, 0, m_vectors.at(0),
-                                             Object::MetaType::VEC3)) {
-                        any_changed = true;
+                    if (m_value_setter) {
+                        MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                        new_value.setVariant(m_vectors.at(0));
+                        any_changed |= m_value_setter(m_member, 0, new_value);
                     }
                 }
                 ImGui::Spacing();
@@ -845,9 +873,6 @@ namespace Toolbox::UI {
         }
         ImGui::ItemSize({0, 4});
 
-        if (any_changed && m_value_changed) {
-            m_value_changed(m_member);
-        }
         return any_changed;
     }
 
@@ -914,9 +939,10 @@ namespace Toolbox::UI {
                                 "##Translation", ImGuiDataType_Float,
                                 reinterpret_cast<f32 *>(&m_transforms.at(i).m_translation), 3,
                                 &m_step, &m_step_fast, "%.3f")) {
-                            if (Object::setMetaValue(m_member, 0, m_transforms.at(i),
-                                                     Object::MetaType::TRANSFORM)) {
-                                any_changed = true;
+                            if (m_value_setter) {
+                                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                                new_value.setVariant(m_transforms.at(i));
+                                any_changed |= m_value_setter(m_member, i, new_value);
                             }
                         }
                         ImGui::Spacing();
@@ -933,9 +959,10 @@ namespace Toolbox::UI {
                                 "##Rotation", ImGuiDataType_Float,
                                 reinterpret_cast<f32 *>(&m_transforms.at(i).m_rotation), 3, &m_step,
                                 &m_step_fast, "%.3f")) {
-                            if (Object::setMetaValue(m_member, 0, m_transforms.at(i),
-                                                     Object::MetaType::TRANSFORM)) {
-                                any_changed = true;
+                            if (m_value_setter) {
+                                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                                new_value.setVariant(m_transforms.at(i));
+                                any_changed |= m_value_setter(m_member, i, new_value);
                             }
                         }
                         ImGui::Spacing();
@@ -952,9 +979,10 @@ namespace Toolbox::UI {
                                 "##Scale", ImGuiDataType_Float,
                                 reinterpret_cast<f32 *>(&m_transforms.at(i).m_scale), 3, &m_step,
                                 &m_step_fast, "%.3f")) {
-                            if (Object::setMetaValue(m_member, 0, m_transforms.at(i),
-                                                     Object::MetaType::TRANSFORM)) {
-                                any_changed = true;
+                            if (m_value_setter) {
+                                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                                new_value.setVariant(m_transforms.at(i));
+                                any_changed |= m_value_setter(m_member, i, new_value);
                             }
                         }
                         ImGui::Spacing();
@@ -974,9 +1002,10 @@ namespace Toolbox::UI {
                         "##Translation", ImGuiDataType_Float,
                         reinterpret_cast<f32 *>(&m_transforms.at(0).m_translation), 3, &m_step,
                         &m_step_fast, "%.3f")) {
-                    if (Object::setMetaValue(m_member, 0, m_transforms.at(0),
-                                             Object::MetaType::TRANSFORM)) {
-                        any_changed = true;
+                    if (m_value_setter) {
+                        MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                        new_value.setVariant(m_transforms.at(0));
+                        any_changed |= m_value_setter(m_member, 0, new_value);
                     }
                 }
                 ImGui::Spacing();
@@ -993,9 +1022,10 @@ namespace Toolbox::UI {
                         "##Rotation", ImGuiDataType_Float,
                         reinterpret_cast<f32 *>(&m_transforms.at(0).m_rotation), 3, &m_step,
                         &m_step_fast, "%.3f")) {
-                    if (Object::setMetaValue(m_member, 0, m_transforms.at(0),
-                                             Object::MetaType::TRANSFORM)) {
-                        any_changed = true;
+                    if (m_value_setter) {
+                        MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                        new_value.setVariant(m_transforms.at(0));
+                        any_changed |= m_value_setter(m_member, 0, new_value);
                     }
                 }
                 ImGui::Spacing();
@@ -1011,9 +1041,10 @@ namespace Toolbox::UI {
                 if (ImGui::InputScalarCompactN("##Scale", ImGuiDataType_Float,
                                                reinterpret_cast<f32 *>(&m_transforms.at(0).m_scale),
                                                3, &m_step, &m_step_fast, "%.3f")) {
-                    if (Object::setMetaValue(m_member, 0, m_transforms.at(0),
-                                             Object::MetaType::TRANSFORM)) {
-                        any_changed = true;
+                    if (m_value_setter) {
+                        MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                        new_value.setVariant(m_transforms.at(0));
+                        any_changed |= m_value_setter(m_member, 0, new_value);
                     }
                 }
                 ImGui::Spacing();
@@ -1022,9 +1053,6 @@ namespace Toolbox::UI {
         }
         ImGui::ItemSize({0, 4});
 
-        if (any_changed && m_value_changed) {
-            m_value_changed(m_member);
-        }
         return any_changed;
     }
 
@@ -1047,25 +1075,31 @@ namespace Toolbox::UI {
         auto enum_type      = Object::getMetaType(m_member).value();
         bool enum_bitmasked = Object::getMetaEnumBitmasked(m_member).value();
 
-        if (m_numbers.size() != m_member->arraysize()) {
+        if (!m_initialized) {
             init();
-            m_checked_state.resize(m_numbers.size());
+
+            const u32 array_size = m_member->arraysize();
+            m_checked_state.resize(array_size);
+
             for (size_t i = 0; i < m_checked_state.size(); ++i) {
-                s64 value   = m_numbers.at(i);
+                MetaValue number = m_value_getter(m_member, i);
+                s64 number_val   = getS64FromMetaValue(number);
+
                 auto &state = m_checked_state.at(i);
                 m_checked_state.at(i).resize(enum_values.size());
                 for (size_t j = 0; j < enum_values.size(); ++j) {
                     if (enum_bitmasked) {
-                        if ((value & getEnumFlagValue(enum_values.at(j), enum_type)) != 0) {
+                        if ((number_val & getEnumFlagValue(enum_values.at(j), enum_type)) != 0) {
                             state.at(j) = true;
                         }
                     } else {
-                        if (value == getEnumFlagValue(enum_values.at(j), enum_type)) {
+                        if (number_val == getEnumFlagValue(enum_values.at(j), enum_type)) {
                             state.at(j) = true;
                         }
                     }
                 }
             }
+            m_initialized = true;
         }
 
         const bool is_array = m_member->isArray();
@@ -1081,21 +1115,27 @@ namespace Toolbox::UI {
                         if (ImGui::BeginGroupPanel(array_str.c_str(),
                                                    reinterpret_cast<bool *>(&m_array_open.at(i)),
                                                    {})) {
-                            s64 &number = m_numbers.at(i);
+                            MetaValue number = m_value_getter(m_member, i);
+                            s64 number_val   = getS64FromMetaValue(number);
+
                             for (size_t j = 0; j < m_checked_state.at(0).size(); ++j) {
                                 if (ImGui::Checkbox(enum_values.at(j).first.c_str(),
                                                     reinterpret_cast<bool *>(
                                                         m_checked_state.at(i).data() + j))) {
                                     bool checked = m_checked_state.at(i).at(j);
                                     if (checked) {
-                                        number |= getEnumFlagValue(enum_values.at(j), enum_type);
+                                        number_val |=
+                                            getEnumFlagValue(enum_values.at(j), enum_type);
                                     } else {
-                                        number &= ~getEnumFlagValue(enum_values.at(j), enum_type);
+                                        number_val &=
+                                            ~getEnumFlagValue(enum_values.at(j), enum_type);
                                     }
                                 }
                             }
-                            if (Object::setMetaValue(m_member, i, number)) {
-                                any_changed = true;
+                            if (m_value_setter) {
+                                MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                                setS64ToMetaValue(new_value, number_val);
+                                any_changed |= m_value_setter(m_member, i, new_value);
                             }
                         }
                         ImGui::EndGroupPanel();
@@ -1103,35 +1143,33 @@ namespace Toolbox::UI {
                 }
                 ImGui::EndGroupPanel();
 
-                if (any_changed && m_value_changed) {
-                    m_value_changed(m_member);
-                }
                 return any_changed;
             }
 
             if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
-                s64 &number = m_numbers.at(0);
+                MetaValue number = m_value_getter(m_member, 0);
+                s64 number_val   = getS64FromMetaValue(number);
+
                 for (size_t j = 0; j < m_checked_state.at(0).size(); ++j) {
                     if (ImGui::Checkbox(
                             enum_values.at(j).first.c_str(),
                             reinterpret_cast<bool *>(m_checked_state.at(0).data() + j))) {
                         bool checked = m_checked_state.at(0).at(j);
                         if (checked) {
-                            number |= getEnumFlagValue(enum_values.at(j), enum_type);
+                            number_val |= getEnumFlagValue(enum_values.at(j), enum_type);
                         } else {
-                            number &= ~getEnumFlagValue(enum_values.at(j), enum_type);
+                            number_val &= ~getEnumFlagValue(enum_values.at(j), enum_type);
                         }
                     }
                 }
-                if (Object::setMetaValue(m_member, 0, number)) {
-                    any_changed = true;
+                if (m_value_setter) {
+                    MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                    setS64ToMetaValue(new_value, number_val);
+                    any_changed |= m_value_setter(m_member, 0, new_value);
                 }
             }
             ImGui::EndGroupPanel();
 
-            if (any_changed && m_value_changed) {
-                m_value_changed(m_member);
-            }
             return any_changed;
         } else {
             if (is_array || m_member->isEmpty()) {
@@ -1148,7 +1186,9 @@ namespace Toolbox::UI {
                             return -1;
                         }();
 
-                        s64 &number               = m_numbers.at(i);
+                        MetaValue number = m_value_getter(m_member, i);
+                        s64 number_val   = getS64FromMetaValue(number);
+
                         std::string preview_value = selected_index >= 0
                                                         ? enum_values.at(selected_index).first
                                                         : "[[Invalid State]]";
@@ -1158,12 +1198,15 @@ namespace Toolbox::UI {
                                 bool selected        = j == selected_index;
                                 if (ImGui::Selectable(enum_str.c_str(), &selected)) {
                                     std::fill(checked_state.begin(), checked_state.end(), false);
-                                    number = getEnumFlagValue(enum_values.at(j), enum_type);
+                                    number_val = getEnumFlagValue(enum_values.at(j), enum_type);
                                     checked_state[j] = true;
                                     any_changed      = true;
 
-                                    if (Object::setMetaValue(m_member, i, number).value_or(false)) {
-                                        any_changed = true;
+                                    if (m_value_setter) {
+                                        MetaValue new_value =
+                                            MetaValue(getMetaType(m_member).value());
+                                        setS64ToMetaValue(new_value, number_val);
+                                        any_changed |= m_value_setter(m_member, i, new_value);
                                     }
                                 }
                             }
@@ -1173,9 +1216,6 @@ namespace Toolbox::UI {
                 }
                 ImGui::EndGroupPanel();
 
-                if (any_changed && m_value_changed) {
-                    m_value_changed(m_member);
-                }
                 return any_changed;
             }
 
@@ -1198,7 +1238,9 @@ namespace Toolbox::UI {
                 return -1;
             }();
 
-            s64 &number               = m_numbers.at(0);
+            MetaValue number          = m_value_getter(m_member, 0);
+            s64 number_val            = getS64FromMetaValue(number);
+
             std::string preview_value = selected_index >= 0 ? enum_values.at(selected_index).first
                                                             : "[[Invalid State]]";
             if (ImGui::BeginCombo("##enum_combobox", preview_value.c_str())) {
@@ -1207,37 +1249,36 @@ namespace Toolbox::UI {
                     bool selected        = i == selected_index;
                     if (ImGui::Selectable(enum_str.c_str(), &selected)) {
                         std::fill(checked_state.begin(), checked_state.end(), false);
-                        number           = getEnumFlagValue(enum_values.at(i), enum_type);
+                        number_val       = getEnumFlagValue(enum_values.at(i), enum_type);
                         checked_state[i] = true;
                         any_changed      = true;
 
-                        if (Object::setMetaValue(m_member, 0, number).value_or(false)) {
-                            any_changed = true;
+                        if (m_value_setter) {
+                            MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                            setS64ToMetaValue(new_value, number_val);
+                            any_changed |= m_value_setter(m_member, 0, new_value);
                         }
                     }
                 }
                 ImGui::EndCombo();
             }
 
-            if (any_changed && m_value_changed) {
-                m_value_changed(m_member);
-            }
             return any_changed;
         }
     }
 
-    StructProperty::StructProperty(RefPtr<Object::MetaMember> prop)
-        : IProperty(prop), m_open(true) {
-        prop->syncArray();
-        m_children_ary.resize(prop->arraysize());
-        m_array_open.resize(m_children_ary.size());
-        for (size_t i = 0; i < m_children_ary.size(); ++i) {
-            auto struct_ = prop->value<Object::MetaStruct>(i).value();
-            auto members = struct_->members();
-            for (size_t j = 0; j < members.size(); ++j) {
-                m_children_ary.at(i).push_back(createProperty(members.at(j)));
-            }
-        }
+    StructProperty::StructProperty(RefPtr<Object::MetaMember> prop, getter_cb getter, setter_cb setter)
+        : IProperty(prop, getter, setter), m_open(true) {
+        //prop->syncArray();
+        //m_children_ary.resize(prop->arraysize());
+        //m_array_open.resize(m_children_ary.size());
+        //for (size_t i = 0; i < m_children_ary.size(); ++i) {
+        //    auto struct_ = prop->value<Object::MetaStruct>(i).value();
+        //    auto members = struct_->members();
+        //    for (size_t j = 0; j < members.size(); ++j) {
+        //        m_children_ary.at(i).push_back(createProperty(members.at(j), getter, setter));
+        //    }
+        //}
     }
 
     void StructProperty::init() {
@@ -1263,7 +1304,7 @@ namespace Toolbox::UI {
             auto struct_ = m_member->value<Object::MetaStruct>(i).value();
             auto members = struct_->members();
             for (size_t j = 0; j < members.size(); ++j) {
-                auto new_prop = createProperty(members.at(j));
+                auto new_prop = createProperty(members.at(j), m_value_getter, m_value_setter);
                 new_prop->init();
                 m_children_ary.at(i).push_back(std::move(new_prop));
             }
@@ -1327,35 +1368,32 @@ namespace Toolbox::UI {
         }
         ImGui::ItemSize({0, 4});
 
-        if (any_changed && m_value_changed) {
-            m_value_changed(m_member);
-        }
         return any_changed;
     }
 
-    ScopePtr<IProperty> createProperty(RefPtr<Object::MetaMember> m_member) {
+    ScopePtr<IProperty> createProperty(RefPtr<Object::MetaMember> m_member, IProperty::getter_cb getter, IProperty::setter_cb setter) {
         auto meta_type = Object::getMetaType(m_member);
         if (m_member->isTypeStruct()) {
-            return make_scoped<StructProperty>(m_member);
+            return make_scoped<StructProperty>(m_member, getter, setter);
         } else if (m_member->isTypeEnum()) {
-            return make_scoped<EnumProperty>(m_member);
+            return make_scoped<EnumProperty>(m_member, getter, setter);
         } else if (meta_type == Object::MetaType::STRING) {
-            return make_scoped<StringProperty>(m_member);
+            return make_scoped<StringProperty>(m_member, getter, setter);
         } else if (meta_type == Object::MetaType::RGB || meta_type == Object::MetaType::RGBA ||
                    meta_type == Object::MetaType::RGB32 || meta_type == Object::MetaType::RGBA32) {
-            return make_scoped<ColorProperty>(m_member);
+            return make_scoped<ColorProperty>(m_member, getter, setter);
         } else if (meta_type == Object::MetaType::VEC3) {
-            return make_scoped<VectorProperty>(m_member);
+            return make_scoped<VectorProperty>(m_member, getter, setter);
         } else if (meta_type == Object::MetaType::TRANSFORM) {
-            return make_scoped<TransformProperty>(m_member);
+            return make_scoped<TransformProperty>(m_member, getter, setter);
         } else if (meta_type == Object::MetaType::F32) {
-            return make_scoped<FloatProperty>(m_member);
+            return make_scoped<FloatProperty>(m_member, getter, setter);
         } else if (meta_type == Object::MetaType::F64) {
-            return make_scoped<DoubleProperty>(m_member);
+            return make_scoped<DoubleProperty>(m_member, getter, setter);
         } else if (meta_type == Object::MetaType::BOOL) {
-            return make_scoped<BoolProperty>(m_member);
+            return make_scoped<BoolProperty>(m_member, getter, setter);
         } else {
-            return make_scoped<NumberProperty>(m_member);
+            return make_scoped<NumberProperty>(m_member, getter, setter);
         }
     }
 

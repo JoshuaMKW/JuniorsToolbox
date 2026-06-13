@@ -94,6 +94,53 @@ namespace Toolbox {
         return make_scoped<Scene::ObjectHierarchy>(name, ref_cast<GroupSceneObject>(root_obj));
     }
 
+    Result<MetaValue, MetaError> SceneObjModel::getMemberValue(const ModelIndex &index,
+                                                                    const QualifiedName &member,
+                                                                    size_t array_idx) const {
+        std::scoped_lock lock(m_mutex);
+        return getMemberValue_(index, member, array_idx);
+    }
+
+    Result<void, MetaError> SceneObjModel::setMemberValue(const ModelIndex &index,
+                                                               const QualifiedName &member,
+                                                               size_t array_idx,
+                                                               const MetaValue &value) {
+        Result<void, MetaError> result;
+
+        const Signal index_signal =
+            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+
+        signalEventListeners(index_signal.first, index_signal.second | ModelEventFlags::EVENT_PRE);
+
+        {
+            std::scoped_lock lock(m_mutex);
+            result = setMemberValue_(index, member, array_idx, value);
+        }
+
+        if (result) {
+            signalEventListeners(index_signal.first, index_signal.second |
+                                                         ModelEventFlags::EVENT_POST |
+                                                         ModelEventFlags::EVENT_SUCCESS);
+        } else {
+            signalEventListeners(index_signal.first,
+                                 index_signal.second | ModelEventFlags::EVENT_POST);
+        }
+
+        return result;
+    }
+
+    Result<u32, MetaScopeError> SceneObjModel::getMemberOffset(const ModelIndex &index,
+                                                               const QualifiedName &member) const {
+        std::scoped_lock lock(m_mutex);
+        return getMemberOffset_(index, member);
+    }
+
+    Result<u32, MetaScopeError> SceneObjModel::getMemberSize(const ModelIndex &index,
+                                                             const QualifiedName &member) const {
+        std::scoped_lock lock(m_mutex);
+        return getMemberSize_(index, member);
+    }
+
     std::any SceneObjModel::getData(const ModelIndex &index, int role) const {
         std::scoped_lock lock(m_mutex);
         return getData_(index, role);
@@ -707,7 +754,8 @@ namespace Toolbox {
             const std::vector<MetaStruct::MemberT> &members = object->getMembers();
             out.write<u32>(static_cast<u32>(members.size()));
 
-            for (const auto &member : members) {
+            for (auto &member : members) {
+                member->syncArray();
                 Result<void, SerialError> result = member->serialize(out);
                 if (!result) {
                     return result;
@@ -930,10 +978,194 @@ namespace Toolbox {
         return new_index;
     }
 
+    Result<MetaValue, MetaError> SceneObjModel::getMemberValue_(const ModelIndex &index,
+                                                                     const QualifiedName &member,
+                                                                     size_t array_idx) const {
+        RefPtr<ISceneObject> object = index.data<_SceneIndexData>()->m_object;
+        auto member_res             = object->getMember(member);
+        if (!member_res) {
+            return std::unexpected(member_res.error());
+        }
+        auto value_res = member_res.value()->value<MetaValue>(array_idx);
+        if (!value_res) {
+            return std::unexpected(value_res.error());
+        }
+        return *value_res.value();
+    }
+
+    Result<void, MetaError> SceneObjModel::setMemberValue_(const ModelIndex &index,
+                                                                const QualifiedName &member,
+                                                                size_t array_idx,
+                                                                const MetaValue &value) {
+        RefPtr<ISceneObject> object = index.data<_SceneIndexData>()->m_object;
+        auto member_res             = object->getMember(member);
+        if (!member_res) {
+            return std::unexpected(member_res.error());
+        }
+
+        RefPtr<MetaMember> member_ptr = member_res.value();
+
+        switch (value.type()) {
+        case MetaType::BOOL: {
+            auto result = setMetaValue<bool>(member_ptr, array_idx, value.get<bool>().value(), MetaType::BOOL);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::S8: {
+            auto result =
+                setMetaValue<s64>(member_ptr, array_idx, value.get<s8>().value(), MetaType::S8);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::U8: {
+            auto result =
+                setMetaValue<s64>(member_ptr, array_idx, value.get<u8>().value(), MetaType::U8);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::S16: {
+            auto result =
+                setMetaValue<s64>(member_ptr, array_idx, value.get<s16>().value(), MetaType::S16);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::U16: {
+            auto result =
+                setMetaValue<s64>(member_ptr, array_idx, value.get<u16>().value(), MetaType::U16);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::S32: {
+            auto result =
+                setMetaValue<s64>(member_ptr, array_idx, value.get<s32>().value(), MetaType::S32);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::U32: {
+            auto result =
+                setMetaValue<s64>(member_ptr, array_idx, value.get<u32>().value(), MetaType::U32);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::F32: {
+            auto result =
+                setMetaValue<f32>(member_ptr, array_idx, value.get<f32>().value(), MetaType::F32);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::F64: {
+            auto result =
+                setMetaValue<f64>(member_ptr, array_idx, value.get<f64>().value(), MetaType::F64);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::STRING: {
+            auto result = setMetaValue<std::string>(member_ptr, array_idx, value.get<std::string>().value(),
+                                           MetaType::STRING);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::VEC3: {
+            auto result = setMetaValue<glm::vec3>(member_ptr, array_idx, value.get<glm::vec3>().value(),
+                                           MetaType::VEC3);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::TRANSFORM: {
+            auto result = setMetaValue<Transform>(member_ptr, array_idx, value.get<Transform>().value(),
+                                           MetaType::TRANSFORM);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::MTX34: {
+            auto result = setMetaValue<glm::mat3x4>(member_ptr, array_idx, value.get<glm::mat3x4>().value(),
+                                           MetaType::MTX34);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::RGB: {
+            auto result = setMetaValue<Color::RGB8>(member_ptr, array_idx, value.get<Color::RGB8>().value(),
+                                           MetaType::RGB);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::RGBA: {
+            auto result = setMetaValue<Color::RGBA8>(member_ptr, array_idx, value.get<Color::RGBA8>().value(),
+                                           MetaType::RGBA);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::RGB32: {
+            auto result = setMetaValue<Color::RGB32>(member_ptr, array_idx, value.get<Color::RGB32>().value(),
+                                           MetaType::RGB32);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        case MetaType::RGBA32: {
+            auto result = setMetaValue<Color::RGBA32>(member_ptr, array_idx,
+                                           value.get<Color::RGBA32>().value(), MetaType::RGBA32);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            break;
+        }
+        default: {
+            return {};
+        }
+        }
+
+        member_ptr->syncArray();
+        return {};
+    }
+
+    Result<u32, MetaScopeError> SceneObjModel::getMemberOffset_(const ModelIndex &index,
+                                                                const QualifiedName &member) const {
+        RefPtr<ISceneObject> object = index.data<_SceneIndexData>()->m_object;
+        return object->getMemberOffset(member, 0);
+    }
+
+    Result<u32, MetaScopeError> SceneObjModel::getMemberSize_(const ModelIndex &index,
+                                                              const QualifiedName &member) const {
+        RefPtr<ISceneObject> object = index.data<_SceneIndexData>()->m_object;
+        return object->getMemberSize(member, 0);
+    }
+
     void SceneObjModel::signalEventListeners(const ModelIndex &index, int flags) {
         int this_event_flags =
             flags & ~(EVENT_SUCCESS | EVENT_PRE | EVENT_POST | EVENT_SOFT | EVENT_RESET);
-        
+
         if (this_event_flags == EVENT_INDEX_MODIFIED) {
             flags |= ModelEventFlags::EVENT_SOFT;
         }

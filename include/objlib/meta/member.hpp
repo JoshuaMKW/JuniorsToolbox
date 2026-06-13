@@ -33,7 +33,7 @@ namespace Toolbox::Object {
 
         auto pos = name_str.find('[');
         if (pos == std::string_view::npos)
-            return std::string_view::npos;
+            return 0;
 
         auto end = name_str.find(']', pos);
         if (end == std::string_view::npos) {
@@ -51,6 +51,9 @@ namespace Toolbox::Object {
     }
 
     class MetaMember : public IGameSerializable, public ISmartResource {
+    private:
+        friend class MetaMemberBuilder;
+
     public:
         struct ReferenceInfo {
             RefPtr<MetaValue> m_ref;
@@ -66,8 +69,6 @@ namespace Toolbox::Object {
             std::variant<RefPtr<const MetaStruct>, RefPtr<const MetaEnum>, RefPtr<const MetaValue>>;
         using size_type = std::variant<u32, ReferenceInfo>;
 
-        MetaMember(std::string_view name, const ReferenceInfo &arraysize, value_type default_value)
-            : m_name(name), m_values(), m_arraysize(arraysize), m_default(default_value) {}
         MetaMember(std::string_view name, const MetaValue &value)
             : m_name(name), m_values(), m_arraysize(static_cast<u32>(1)) {
             auto p = make_referable<MetaValue>(value);
@@ -86,69 +87,7 @@ namespace Toolbox::Object {
             m_values.emplace_back(std::move(p));
             m_default = make_referable<MetaEnum>(value);
         }
-        MetaMember(std::string_view name, const std::vector<MetaValue> &values,
-                   value_type default_value)
-            : m_name(name), m_values(), m_arraysize(static_cast<u32>(values.size())),
-              m_default(default_value) {
-            if (values.empty())
-                return;
-            for (const auto &value : values) {
-                auto p = make_referable<MetaValue>(value);
-                m_values.emplace_back(std::move(p));
-            }
-        }
-        MetaMember(std::string_view name, const std::vector<MetaStruct> &values,
-                   value_type default_value)
-            : m_name(name), m_values(), m_arraysize(static_cast<u32>(values.size())),
-              m_default(default_value) {
-            if (values.empty())
-                return;
-            for (const auto &value : values) {
-                auto p = make_referable<MetaStruct>(value);
-                m_values.emplace_back(std::move(p));
-            }
-        }
-        MetaMember(std::string_view name, const std::vector<MetaEnum> &values,
-                   value_type default_value)
-            : m_name(name), m_values(), m_arraysize(static_cast<u32>(values.size())),
-              m_default(default_value) {
-            if (values.empty())
-                return;
-            for (const auto &value : values) {
-                auto p = make_referable<MetaEnum>(value);
-                m_values.emplace_back(std::move(p));
-            }
-        }
-        MetaMember(std::string_view name, const std::vector<MetaValue> &values,
-                   const ReferenceInfo &arraysize, value_type default_value)
-            : m_name(name), m_values(), m_arraysize(arraysize), m_default(default_value) {
-            if (values.empty())
-                return;
-            for (size_t i = 0; i < arraysize.m_ref->get<u32>().value(); ++i) {
-                auto p = make_referable<MetaValue>(values[i]);
-                m_values.emplace_back(std::move(p));
-            }
-        }
-        MetaMember(std::string_view name, const std::vector<MetaStruct> &values,
-                   const ReferenceInfo &arraysize, value_type default_value)
-            : m_name(name), m_values(), m_arraysize(arraysize), m_default(default_value) {
-            if (values.empty())
-                return;
-            for (size_t i = 0; i < arraysize.m_ref->get<u32>().value(); ++i) {
-                auto p = make_referable<MetaStruct>(values[i]);
-                m_values.emplace_back(std::move(p));
-            }
-        }
-        MetaMember(std::string_view name, const std::vector<MetaEnum> &values,
-                   const ReferenceInfo &arraysize, value_type default_value)
-            : m_name(name), m_values(), m_arraysize(arraysize), m_default(default_value) {
-            if (values.empty())
-                return;
-            for (size_t i = 0; i < arraysize.m_ref->get<u32>().value(); ++i) {
-                auto p = make_referable<MetaEnum>(values[i]);
-                m_values.emplace_back(std::move(p));
-            }
-        }
+
         MetaMember(const MetaMember &) = default;
         MetaMember(MetaMember &&)      = default;
         ~MetaMember()                  = default;
@@ -156,9 +95,46 @@ namespace Toolbox::Object {
     protected:
         MetaMember() = default;
 
+        constexpr void setName(const std::string &name) { m_name = name; }
+        constexpr void setParent(MetaMember *parent) { m_parent = parent; }
+        constexpr void setParent(const MetaMember *parent) { m_parent = parent; }
+
+        void setArraySize(size_type array_size) { m_arraysize = array_size; }
+
+        void setValues(const std::vector<RefPtr<MetaValue>> &values, RefPtr<MetaValue> default_) {
+            const u32 array_size = arraysize();
+            TOOLBOX_CORE_ASSERT(values.size() == array_size);
+
+            for (u32 i = 0; i < array_size; ++i) {
+                m_values.emplace_back(values[i]);
+            }
+
+            m_default = default_;
+        }
+        void setEnums(const std::vector<RefPtr<MetaEnum>> &enums, RefPtr<MetaEnum> default_) {
+            const u32 array_size = arraysize();
+            TOOLBOX_CORE_ASSERT(enums.size() == array_size);
+
+            for (u32 i = 0; i < array_size; ++i) {
+                m_values.emplace_back(enums[i]);
+            }
+
+            m_default = default_;
+        }
+        void setStructs(const std::vector<RefPtr<MetaStruct>> &structs, RefPtr<MetaStruct> default_) {
+            const u32 array_size = arraysize();
+            TOOLBOX_CORE_ASSERT(structs.size() == array_size);
+
+            for (u32 i = 0; i < array_size; ++i) {
+                m_values.emplace_back(structs[i]);
+            }
+
+            m_default = default_;
+        }
+
     public:
         [[nodiscard]] constexpr const std::string &name() const { return m_name; }
-        [[nodiscard]] constexpr MetaStruct *parent() const { return m_parent; }
+        [[nodiscard]] constexpr const MetaMember *parent() const { return m_parent; }
 
         [[nodiscard]] QualifiedName qualifiedName() const;
 
@@ -254,7 +230,8 @@ namespace Toolbox::Object {
                    std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::RGBA;
         }
         [[nodiscard]] bool isTypeRGB32() const {
-            return isTypeValue() && std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::RGB32;
+            return isTypeValue() &&
+                   std::get<RefPtr<MetaValue>>(m_default)->type() == MetaType::RGB32;
         }
         [[nodiscard]] bool isTypeRGBA32() const {
             return isTypeValue() &&
@@ -272,6 +249,7 @@ namespace Toolbox::Object {
         bool operator==(const MetaMember &other) const;
 
         void updateReferenceToList(const std::vector<RefPtr<MetaMember>> &list);
+        void updateParentRefs();
 
         void syncArray() {
             const size_t asize = arraysize();
@@ -295,6 +273,8 @@ namespace Toolbox::Object {
                         make_deep_clone<MetaStruct>(std::get<RefPtr<MetaStruct>>(m_default)));
                 }
             }
+
+            updateParentRefs();
         }
 
         Result<void, SerialError> serialize(Serializer &out) const override;
@@ -317,7 +297,7 @@ namespace Toolbox::Object {
         std::vector<value_type> m_values;
         size_type m_arraysize;
         MetaMember::value_type m_default;
-        MetaStruct *m_parent = nullptr;
+        const MetaMember *m_parent = nullptr;
     };
 
     template <>
@@ -478,14 +458,73 @@ namespace Toolbox::Object {
         return enum_result->enums();
     }
 
-    [[nodiscard]] inline Result<bool, MetaError>
-    getMetaEnumBitmasked(RefPtr<MetaMember> member) {
+    [[nodiscard]] inline Result<bool, MetaError> getMetaEnumBitmasked(RefPtr<MetaMember> member) {
         if (!member->isTypeEnum()) {
-            return make_meta_error<bool>(
-                "Can't get bitmasked flag of non-enum", "!enum", "MetaEnum");
+            return make_meta_error<bool>("Can't get bitmasked flag of non-enum", "!enum",
+                                         "MetaEnum");
         }
         auto enum_result = std::get<RefPtr<MetaEnum>>(member->defaultValue());
         return enum_result->isBitMasked();
     }
+
+    class MetaMemberBuilder {
+    private:
+        class MetaMemberAccessor : public MetaMember {
+        public:
+            MetaMemberAccessor() : MetaMember() {}
+        };
+
+    public:
+        MetaMemberBuilder() {
+            m_build_member = make_referable<MetaMemberAccessor>();
+            m_finalized    = false;
+        }
+        ~MetaMemberBuilder() = default;
+
+        MetaMember *getParentPtr() { return m_build_member.get(); }
+
+        MetaMemberBuilder &setName(const std::string &name) {
+            TOOLBOX_CORE_ASSERT(!m_finalized);
+            m_build_member->setName(name);
+            return *this;
+        }
+
+        MetaMemberBuilder &setParent(const MetaMember *parent_ptr) {
+            TOOLBOX_CORE_ASSERT(!m_finalized);
+            m_build_member->setParent(parent_ptr);
+            return *this;
+        }
+        MetaMemberBuilder &setArraySize(MetaMember::size_type size) {
+            TOOLBOX_CORE_ASSERT(!m_finalized);
+            m_build_member->setArraySize(size);
+            return *this;
+        }
+        MetaMemberBuilder &setValues(const std::vector<RefPtr<MetaValue>> &values,
+                                     RefPtr<MetaValue> default_) {
+            TOOLBOX_CORE_ASSERT(!m_finalized);
+            m_build_member->setValues(values, default_);
+            return *this;
+        }
+        MetaMemberBuilder &setEnums(const std::vector<RefPtr<MetaEnum>> &enums, RefPtr<MetaEnum> default_) {
+            TOOLBOX_CORE_ASSERT(!m_finalized);
+            m_build_member->setEnums(enums, default_);
+            return *this;
+        }
+        MetaMemberBuilder& setStructs(const std::vector<RefPtr<MetaStruct>>& structs,
+                                      RefPtr<MetaStruct> default_) {
+            TOOLBOX_CORE_ASSERT(!m_finalized);
+            m_build_member->setStructs(structs, default_);
+            return *this;
+        }
+
+        RefPtr<MetaMember> finalize() {
+            m_finalized = true;
+            return m_build_member;
+        }
+
+    private:
+        RefPtr<MetaMember> m_build_member;
+        bool m_finalized;
+    };
 
 }  // namespace Toolbox::Object

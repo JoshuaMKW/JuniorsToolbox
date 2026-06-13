@@ -41,7 +41,7 @@ namespace Toolbox::Object {
     struct TemplateWizard {
         std::string m_name                    = "default_init";
         std::optional<std::string> m_obj_name = "";
-        std::vector<MetaMember> m_init_members;
+        std::vector<RefPtr<MetaMember>> m_init_members;
         TemplateDependencies m_dependencies;
         TemplateRenderInfo m_render_info;
 
@@ -125,20 +125,20 @@ namespace Toolbox::Object {
         Result<void, JSONError> cacheEnums(const json_t &enums);
         Result<void, JSONError> cacheStructs(const json_t &structs);
 
-        std::optional<MetaMember> loadMemberEnum(std::string_view name, std::string_view type,
+        RefPtr<MetaMember> loadMemberEnum(std::string_view name, std::string_view type,
                                                  MetaMember::size_type array_size);
 
-        std::optional<MetaMember> loadMemberStruct(std::string_view name, std::string_view type,
+        RefPtr<MetaMember> loadMemberStruct(std::string_view name, std::string_view type,
                                                    MetaMember::size_type array_size);
 
-        std::optional<MetaMember>
+        RefPtr<MetaMember>
         loadMemberPrimitive(std::string_view name, std::string_view type,
                             MetaMember::size_type array_size,
                             const std::variant<std::monostate, s64, u64, float, double> &var_min,
                             const std::variant<std::monostate, s64, u64, float, double> &var_max);
 
         Result<TemplateDependencies, JSONError> loadDependencies(const json_t &dependencies);
-        Result<void, JSONError> loadMembers(const json_t &members, std::vector<MetaMember> &out);
+        Result<void, JSONError> loadMembers(const json_t &members, std::vector<RefPtr<MetaMember>> &out);
         Result<void, JSONError> loadWizards(const json_t &wizards, const json_t &render_infos);
 
         static void threadLoadTemplate(const std::string &type, bool is_custom);

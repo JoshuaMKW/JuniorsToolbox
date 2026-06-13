@@ -159,7 +159,7 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual bool hasMember(const QualifiedName &name) const                   = 0;
         [[nodiscard]] virtual MetaStruct::GetMemberT getMember(const QualifiedName &name) const = 0;
-        [[nodiscard]] virtual std::vector<RefPtr<MetaMember>> getMembers() const                = 0;
+        [[nodiscard]] virtual const std::vector<RefPtr<MetaMember>> &getMembers() const                = 0;
         [[nodiscard]] virtual size_t getMemberOffset(const QualifiedName &name,
                                                      int index) const                           = 0;
         [[nodiscard]] virtual size_t getMemberSize(const QualifiedName &name, int index) const  = 0;
@@ -304,7 +304,7 @@ namespace Toolbox::Object {
 
         bool hasMember(const QualifiedName &name) const override;
         MetaStruct::GetMemberT getMember(const QualifiedName &name) const override;
-        std::vector<RefPtr<MetaMember>> getMembers() const override { return m_members; }
+        const std::vector<RefPtr<MetaMember>> &getMembers() const override { return m_members; }
         size_t getMemberOffset(const QualifiedName &name, int index) const override;
         size_t getMemberSize(const QualifiedName &name, int index) const override;
 
@@ -643,7 +643,7 @@ namespace Toolbox::Object {
 
         bool hasMember(const QualifiedName &name) const override;
         MetaStruct::GetMemberT getMember(const QualifiedName &name) const override;
-        std::vector<RefPtr<MetaMember>> getMembers() const override { return m_members; }
+        const std::vector<RefPtr<MetaMember>> &getMembers() const override { return m_members; }
         size_t getMemberOffset(const QualifiedName &name, int index) const override;
         size_t getMemberSize(const QualifiedName &name, int index) const override;
 
