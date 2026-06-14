@@ -1,5 +1,6 @@
 #include "gui/appmain/property/property.hpp"
 #include "core/log.hpp"
+#include "core/mathutil.hpp"
 #include "gui/imgui_ext.hpp"
 #include "gui/util.hpp"
 #include "objlib/meta/enum.hpp"
@@ -51,11 +52,7 @@ static u64 getEnumFlagValue(const MetaEnum::enum_type &enum_flag, MetaType type)
 namespace Toolbox::UI {
     void BoolProperty::init() {
         m_member->syncArray();
-        m_bools.resize(m_member->arraysize());
         m_array_open.resize(m_member->arraysize(), true);
-        for (size_t i = 0; i < m_bools.size(); ++i) {
-            m_bools.at(i) = Object::getMetaValue<bool>(m_member, i).value();
-        }
     }
 
     bool BoolProperty::render(float label_width) {
@@ -71,8 +68,9 @@ namespace Toolbox::UI {
                             m_member->qualifiedName().toString());
         }
 
-        if (m_bools.size() != m_member->arraysize()) {
+        if (!m_initialized) {
             init();
+            m_initialized = true;
         }
 
         bool any_changed = false;
@@ -84,18 +82,20 @@ namespace Toolbox::UI {
 
         if (is_array || m_member->isEmpty()) {
             if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
-                for (size_t i = 0; i < m_bools.size(); ++i) {
+                const u32 array_size = m_member->arraysize();
+                for (size_t i = 0; i < array_size; ++i) {
                     std::string id_str = std::format("##{}-{}", m_member->name().c_str(), i);
                     std::string name   = std::format("[{}]", i);
+
                     ImGui::Text(name.c_str());
                     ImGui::SameLine();
-                    if (ImGui::Checkbox(id_str.c_str(),
-                                        reinterpret_cast<bool *>(m_bools.data() + i))) {
-                        // if (Object::setMetaValue<bool>(m_member, i, m_bools[i])) {
-                        //     any_changed = true;
-                        // }
+
+                    MetaValue value = m_value_getter(m_member, i);
+                    bool value_bool   = value.get<bool>().value();
+
+                    if (ImGui::Checkbox(id_str.c_str(), &value_bool)) {
                         if (m_value_setter) {
-                            MetaValue new_value = MetaValue(static_cast<bool>(m_bools[i]));
+                            MetaValue new_value = MetaValue(value_bool);
                             any_changed |= m_value_setter(m_member, i, new_value);
                         }
                     }
@@ -113,10 +113,13 @@ namespace Toolbox::UI {
             ImGui::SameLine();
         }
 
+        MetaValue value = m_value_getter(m_member, 0);
+        bool value_bool = value.get<bool>().value();
+
         std::string id_str = std::format("##{}", m_member->name().c_str());
-        if (ImGui::Checkbox(id_str.c_str(), reinterpret_cast<bool *>(m_bools.data()))) {
+        if (ImGui::Checkbox(id_str.c_str(), &value_bool)) {
             if (m_value_setter) {
-                MetaValue new_value = MetaValue(static_cast<bool>(m_bools[0]));
+                MetaValue new_value = MetaValue(value_bool);
                 any_changed |= m_value_setter(m_member, 0, new_value);
             }
         }
@@ -300,16 +303,22 @@ namespace Toolbox::UI {
         switch (value.type()) {
         case MetaType::S8:
             value.set<s8>(static_cast<s8>(number));
+            return;
         case MetaType::U8:
             value.set<u8>(static_cast<u8>(number));
+            return;
         case MetaType::S16:
             value.set<s16>(static_cast<s16>(number));
+            return;
         case MetaType::U16:
             value.set<u16>(static_cast<u16>(number));
+            return;
         case MetaType::S32:
             value.set<s32>(static_cast<s32>(number));
+            return;
         case MetaType::U32:
             value.set<u32>(static_cast<u32>(number));
+            return;
         default:
             return;
         }
@@ -320,15 +329,10 @@ namespace Toolbox::UI {
 
         u32 member_array_size = m_member->arraysize();
 
-        m_numbers.resize(member_array_size);
         m_array_open.resize(member_array_size, true);
 
         if (member_array_size == 0) {
             return;
-        }
-
-        for (size_t i = 0; i < m_numbers.size(); ++i) {
-            m_numbers.at(i) = Object::getMetaValue<f32>(m_member, i).value();
         }
 
         m_min = Object::getMetaValueMin<f32>(m_member, 0).value_or(std::numeric_limits<f32>::min());
@@ -348,8 +352,9 @@ namespace Toolbox::UI {
                             m_member->qualifiedName().toString());
         }
 
-        if (m_numbers.size() != m_member->arraysize()) {
+        if (!m_initialized) {
             init();
+            m_initialized = true;
         }
 
         bool any_changed = false;
@@ -361,24 +366,26 @@ namespace Toolbox::UI {
 
         if (is_array || m_member->isEmpty()) {
             if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
-                for (size_t i = 0; i < m_numbers.size(); ++i) {
+                const u32 array_size = m_member->arraysize();
+                for (size_t i = 0; i < array_size; ++i) {
                     std::string id_str = std::format("##{}-{}", m_member->name().c_str(), i);
                     std::string name   = std::format("[{}]", i);
+
                     ImGui::Text(name.c_str());
                     ImGui::SameLine();
-                    if (ImGui::InputScalarCompact(
-                            id_str.c_str(), ImGuiDataType_Float, m_numbers.data() + i, &m_step,
+
+                    MetaValue value = m_value_getter(m_member, i);
+                    f32 value_flt   = value.get<f32>().value();
+
+                    if (ImGui::InputScalarCompact(id_str.c_str(), ImGuiDataType_Float, &value_flt,
+                                                  &m_step,
                             &m_step_fast, nullptr,
-                            ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
-                        f32 &number = m_numbers.at(i);
-                        if (number > m_max) {
-                            number = m_min + (number - m_max);
-                        } else if (number < m_min) {
-                            number = m_max + (number - m_min);
-                        }
+                                                  ImGuiInputTextFlags_CharsDecimal |
+                                                      ImGuiInputTextFlags_CharsNoBlank)) {
+                        value_flt = Toolbox::Wrap(value_flt, m_min, m_max);
                         if (m_value_setter) {
                             MetaValue new_value = MetaValue(getMetaType(m_member).value());
-                            new_value.setVariant(number);
+                            new_value.setVariant(value_flt);
                             any_changed |= m_value_setter(m_member, i, new_value);
                         }
                     }
@@ -397,15 +404,17 @@ namespace Toolbox::UI {
             ImGui::SameLine();
         }
 
+        MetaValue value = m_value_getter(m_member, 0);
+        f32 value_flt   = value.get<f32>().value();
+
         std::string label = std::format("##{}", m_member->name().c_str());
         if (ImGui::InputScalarCompact(
-                label.c_str(), ImGuiDataType_Float, m_numbers.data(), &m_step, &m_step_fast,
-                nullptr, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
-            f32 &number = m_numbers.at(0);
-            number      = std::clamp(number, m_min, m_max);
+                label.c_str(), ImGuiDataType_Float, &value_flt, &m_step, &m_step_fast, nullptr,
+                ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
+            value_flt = Toolbox::Wrap(value_flt, m_min, m_max);
             if (m_value_setter) {
                 MetaValue new_value = MetaValue(getMetaType(m_member).value());
-                new_value.setVariant(number);
+                new_value.setVariant(value_flt);
                 any_changed |= m_value_setter(m_member, 0, new_value);
             }
         }
@@ -418,17 +427,10 @@ namespace Toolbox::UI {
 
         u32 member_array_size = m_member->arraysize();
 
-        m_numbers.resize(member_array_size);
         m_array_open.resize(member_array_size, true);
 
         if (member_array_size == 0) {
             return;
-        }
-
-        RefPtr<MetaValue> value = m_member->value<MetaValue>(0).value();
-
-        for (size_t i = 0; i < m_numbers.size(); ++i) {
-            m_numbers.at(i) = Object::getMetaValue<f64>(m_member, i).value();
         }
 
         m_min = Object::getMetaValueMin<f64>(m_member, 0).value_or(std::numeric_limits<f64>::min());
@@ -448,8 +450,9 @@ namespace Toolbox::UI {
                             m_member->qualifiedName().toString());
         }
 
-        if (m_numbers.size() != m_member->arraysize()) {
+        if (!m_initialized) {
             init();
+            m_initialized = true;
         }
 
         bool any_changed = false;
@@ -461,24 +464,25 @@ namespace Toolbox::UI {
 
         if (is_array || m_member->isEmpty()) {
             if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
-                for (size_t i = 0; i < m_numbers.size(); ++i) {
+                const u32 array_size = m_member->arraysize();
+                for (size_t i = 0; i < array_size; ++i) {
                     std::string id_str = std::format("##{}-{}", m_member->name().c_str(), i);
                     std::string name   = std::format("[{}]", i);
+
                     ImGui::Text(name.c_str());
                     ImGui::SameLine();
-                    if (ImGui::InputScalarCompact(
-                            id_str.c_str(), ImGuiDataType_Double, m_numbers.data() + i, &m_step,
+
+                    MetaValue value = m_value_getter(m_member, i);
+                    f64 value_dbl   = value.get<f64>().value();
+
+                    if (ImGui::InputScalarCompact(id_str.c_str(), ImGuiDataType_Double, &value_dbl,
+                                                  &m_step,
                             &m_step_fast, nullptr,
                             ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
-                        f64 &number = m_numbers.at(i);
-                        if (number > m_max) {
-                            number = m_min + (number - m_max);
-                        } else if (number < m_min) {
-                            number = m_max + (number - m_min);
-                        }
+                        value_dbl = Toolbox::Wrap(value_dbl, m_min, m_max);
                         if (m_value_setter) {
                             MetaValue new_value = MetaValue(getMetaType(m_member).value());
-                            new_value.setVariant(number);
+                            new_value.setVariant(value_dbl);
                             any_changed |= m_value_setter(m_member, i, new_value);
                         }
                     }
@@ -497,15 +501,17 @@ namespace Toolbox::UI {
             ImGui::SameLine();
         }
 
+        MetaValue value = m_value_getter(m_member, 0);
+        f64 value_dbl = value.get<f64>().value();
+
         std::string label = std::format("##{}", m_member->name().c_str());
         if (ImGui::InputScalarCompact(
-                label.c_str(), ImGuiDataType_Double, m_numbers.data(), &m_step, &m_step_fast,
-                nullptr, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
-            f64 &number = m_numbers.at(0);
-            number      = std::clamp(number, m_min, m_max);
+                label.c_str(), ImGuiDataType_Double, &value_dbl, &m_step, &m_step_fast, nullptr,
+                ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
+            value_dbl = Toolbox::Wrap(value_dbl, m_min, m_max);
             if (m_value_setter) {
                 MetaValue new_value = MetaValue(getMetaType(m_member).value());
-                new_value.setVariant(number);
+                new_value.setVariant(value_dbl);
                 any_changed |= m_value_setter(m_member, 0, new_value);
             }
         }
@@ -515,14 +521,14 @@ namespace Toolbox::UI {
 
     void StringProperty::init() {
         m_member->syncArray();
-        m_strings.resize(m_member->arraysize());
+        //m_strings.resize(m_member->arraysize());
         m_array_open.resize(m_member->arraysize(), true);
 
-        for (size_t i = 0; i < m_strings.size(); ++i) {
-            std::string str = Object::getMetaValue<std::string>(m_member, i).value();
-            size_t size     = std::min(str.size(), size_t(128));
-            std::copy(str.begin(), str.begin() + size, m_strings.at(i).begin());
-        }
+        //for (size_t i = 0; i < m_strings.size(); ++i) {
+        //    std::string str = Object::getMetaValue<std::string>(m_member, i).value();
+        //    size_t size     = std::min(str.size(), size_t(128));
+        //    std::copy(str.begin(), str.begin() + size, m_strings.at(i).begin());
+        //}
     }
 
     bool StringProperty::render(float label_width) {
@@ -545,26 +551,33 @@ namespace Toolbox::UI {
         ImVec2 window_size        = ImGui::GetWindowSize();
         const bool collapse_lines = window_size.x < 350;
 
-        if (m_strings.size() != m_member->arraysize()) {
+        if (!m_initialized) {
             init();
+            m_initialized = true;
         }
 
         if (is_array || m_member->isEmpty()) {
             if (ImGui::BeginGroupPanel(m_member->name().c_str(), &m_open, {})) {
-                for (size_t i = 0; i < m_strings.size(); ++i) {
-                    auto &str_data     = m_strings.at(i);
+                const u32 array_size = m_member->arraysize();
+                for (size_t i = 0; i < array_size; ++i) {
                     std::string id_str = std::format("##{}-{}", m_member->name().c_str(), i);
                     std::string name   = std::format("[{}]", i);
+
                     ImGui::Text(name.c_str());
                     ImGui::SameLine();
-                    if (ImGui::InputText(id_str.c_str(), str_data.data(), str_data.size())) {
-                        if (Object::setMetaValue(m_member, i, convertArrayToStringView(str_data))) {
-                            any_changed = true;
-                        }
+
+                    MetaValue value = m_value_getter(m_member, i);
+                    std::string str_data = value.get<std::string>().value();
+
+                    std::array<char, 256> str_ary{};
+                    str_ary.fill('\0');
+                    std::strncpy(str_ary.data(), str_data.c_str(), str_data.size());
+
+                    if (ImGui::InputText(id_str.c_str(), str_ary.data(), str_ary.size())) {
                         if (m_value_setter) {
                             MetaValue new_value = MetaValue(getMetaType(m_member).value());
-                            std::string str_opa = std::string(convertArrayToStringView(str_data));
-                            new_value.setVariant(str_opa);
+                            std::string_view str_view = convertArrayToStringView(str_ary);
+                            new_value.set(str_view);
                             any_changed |= m_value_setter(m_member, i, new_value);
                         }
                     }
@@ -584,12 +597,19 @@ namespace Toolbox::UI {
         }
 
         std::string label = std::format("##{}", m_member->name().c_str());
-        auto &str_data    = m_strings.at(0);
-        if (ImGui::InputText(label.c_str(), str_data.data(), str_data.size())) {
+
+        MetaValue value      = m_value_getter(m_member, 0);
+        std::string str_data = value.get<std::string>().value();
+
+        std::array<char, 256> str_ary{};
+        str_ary.fill('\0');
+        std::strncpy(str_ary.data(), str_data.c_str(), str_data.size());
+
+        if (ImGui::InputText(label.c_str(), str_ary.data(), str_ary.size())) {
             if (m_value_setter) {
-                MetaValue new_value = MetaValue(getMetaType(m_member).value());
-                std::string str_opa = std::string(convertArrayToStringView(str_data));
-                new_value.setVariant(str_opa);
+                MetaValue new_value       = MetaValue(getMetaType(m_member).value());
+                std::string_view str_view = convertArrayToStringView(str_ary);
+                new_value.set(str_view);
                 any_changed |= m_value_setter(m_member, 0, new_value);
             }
         }

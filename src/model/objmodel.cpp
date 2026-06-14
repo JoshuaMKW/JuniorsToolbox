@@ -981,6 +981,9 @@ namespace Toolbox {
     Result<MetaValue, MetaError> SceneObjModel::getMemberValue_(const ModelIndex &index,
                                                                      const QualifiedName &member,
                                                                      size_t array_idx) const {
+        if (!validateIndex(index)) {
+            return make_meta_error<MetaValue>("SCENE_OBJ_MODEL", "Missing index", "Object Index");
+        }
         RefPtr<ISceneObject> object = index.data<_SceneIndexData>()->m_object;
         auto member_res             = object->getMember(member);
         if (!member_res) {

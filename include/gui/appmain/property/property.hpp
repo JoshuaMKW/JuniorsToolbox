@@ -45,7 +45,6 @@ namespace Toolbox::UI {
         bool render(float label_width) override;
 
     private:
-        std::vector<char> m_bools;
         bool m_open        = false;
         bool m_initialized = false;
     };
@@ -82,8 +81,6 @@ namespace Toolbox::UI {
         bool render(float label_width) override;
 
     private:
-        std::vector<f32> m_numbers;
-
         f32 m_min;
         f32 m_max;
         f32 m_step         = 1.0f;
@@ -102,8 +99,6 @@ namespace Toolbox::UI {
         bool render(float label_width) override;
 
     private:
-        std::vector<f64> m_numbers;
-
         f64 m_min;
         f64 m_max;
         f32 m_step         = 1.0f;
