@@ -36,6 +36,11 @@ namespace Toolbox::Object {
         std::optional<std::string> m_file_materials;
         std::vector<std::string> m_file_animations;
         std::unordered_map<std::string, std::string> m_texture_swap_map;
+
+        size_t m_hash;
+
+        bool operator==(const TemplateRenderInfo &info) const { return m_hash == info.m_hash; }
+        static size_t RecalculateHash(const TemplateRenderInfo &info);
     };
 
     struct TemplateWizard {
@@ -46,7 +51,7 @@ namespace Toolbox::Object {
         TemplateRenderInfo m_render_info;
 
         TemplateWizard &operator=(const TemplateWizard &other) {
-            m_name = other.m_name;
+            m_name     = other.m_name;
             m_obj_name = other.m_obj_name;
             m_init_members.clear();
             for (auto &m : other.m_init_members) {
@@ -126,10 +131,10 @@ namespace Toolbox::Object {
         Result<void, JSONError> cacheStructs(const json_t &structs);
 
         RefPtr<MetaMember> loadMemberEnum(std::string_view name, std::string_view type,
-                                                 MetaMember::size_type array_size);
+                                          MetaMember::size_type array_size);
 
         RefPtr<MetaMember> loadMemberStruct(std::string_view name, std::string_view type,
-                                                   MetaMember::size_type array_size);
+                                            MetaMember::size_type array_size);
 
         RefPtr<MetaMember>
         loadMemberPrimitive(std::string_view name, std::string_view type,
@@ -138,7 +143,8 @@ namespace Toolbox::Object {
                             const std::variant<std::monostate, s64, u64, float, double> &var_max);
 
         Result<TemplateDependencies, JSONError> loadDependencies(const json_t &dependencies);
-        Result<void, JSONError> loadMembers(const json_t &members, std::vector<RefPtr<MetaMember>> &out);
+        Result<void, JSONError> loadMembers(const json_t &members,
+                                            std::vector<RefPtr<MetaMember>> &out);
         Result<void, JSONError> loadWizards(const json_t &wizards, const json_t &render_infos);
 
         static void threadLoadTemplate(const std::string &type, bool is_custom);
@@ -175,3 +181,13 @@ namespace Toolbox::Object {
     };
 
 }  // namespace Toolbox::Object
+
+namespace std {
+
+    template <> struct hash<Toolbox::Object::TemplateRenderInfo> {
+        size_t operator()(const Toolbox::Object::TemplateRenderInfo &_Keyval) const noexcept {
+            return _Keyval.m_hash;
+        }
+    };
+
+}  // namespace std

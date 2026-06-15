@@ -188,6 +188,8 @@ namespace Toolbox::UI {
 
         void setStageScenario(u8 stage, u8 scenario);
 
+        void clearSelectedProperties();
+
     protected:
         ImGuiID onBuildDockspace() override;
         void onRenderMenuBar() override;

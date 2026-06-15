@@ -655,7 +655,8 @@ namespace Toolbox::Object {
                                      [&](const auto &e) { return e.name() == member_type; });
                     if (struct_it != m_struct_cache.end()) {
                         const char *mname = member_name.c_str();
-                        RefPtr<MetaMember> member       = loadMemberStruct(member_name, member_type, member_size);
+                        RefPtr<MetaMember> member =
+                            loadMemberStruct(member_name, member_type, member_size);
                         if (member) {
                             out.push_back(member);
                         }
@@ -782,7 +783,8 @@ namespace Toolbox::Object {
                 inst_enums.emplace_back(std::move(value));
             }
 
-            builder.setEnums(inst_enums, std::get<RefPtr<MetaEnum>>(default_member->defaultValue()));
+            builder.setEnums(inst_enums,
+                             std::get<RefPtr<MetaEnum>>(default_member->defaultValue()));
             return builder.finalize();
         }
 
@@ -887,6 +889,7 @@ namespace Toolbox::Object {
                 }
             }
 
+            wizard.m_render_info.m_hash = TemplateRenderInfo::RecalculateHash(wizard.m_render_info);
             m_wizards.emplace_back(std::move(wizard));
         }
 
@@ -1061,6 +1064,7 @@ namespace Toolbox::Object {
                         }
                         info.m_file_model = model_json;
                     }
+                    info.m_hash                = TemplateRenderInfo::RecalculateHash(info);
                     g_object_render_infos[key] = std::move(info);
                 }
 
@@ -1270,6 +1274,53 @@ namespace Toolbox::Object {
             return make_scoped<TemplateRenderInfo>(g_object_render_infos[obj_field]);
         }
         return nullptr;
+    }
+
+    size_t TemplateRenderInfo::RecalculateHash(const TemplateRenderInfo &info) {
+        size_t seed = 0;
+
+        // Helper to combine hashes (similar to boost::hash_combine)
+        auto hash_combine = [&seed](size_t hash_value) {
+            seed ^= hash_value + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        };
+
+        // Hash the optional model file
+        if (info.m_file_model) {
+            hash_combine(std::hash<std::string>{}(info.m_file_model.value()));
+        }
+
+        // Hash the optional material file
+        if (info.m_file_materials) {
+            hash_combine(std::hash<std::string>{}(info.m_file_materials.value()));
+        }
+
+        // Hash the vector of animations
+        for (const std::string &anim : info.m_file_animations) {
+            hash_combine(std::hash<std::string>{}(anim));
+        }
+
+        // Hash the unordered map of texture swaps.
+        // Note: Because it's an unordered_map, iterating and combining directly
+        // is order-dependent. To make the hash truly order-independent (so two maps
+        // with the same pairs inserted in different orders yield the same hash),
+        // we must XOR the pair hashes together or sort them first.
+        // XOR is faster and order-independent:
+        size_t map_hash = 0;
+        for (const auto &[key, val] : info.m_texture_swap_map) {
+            size_t pair_hash = 0;
+            size_t key_hash  = std::hash<std::string>{}(key);
+            size_t val_hash  = std::hash<std::string>{}(val);
+
+            // Combine key and value for this pair
+            pair_hash ^= key_hash + 0x9e3779b9 + (pair_hash << 6) + (pair_hash >> 2);
+            pair_hash ^= val_hash + 0x9e3779b9 + (pair_hash << 6) + (pair_hash >> 2);
+
+            // XOR into the total map hash (order-independent)
+            map_hash ^= pair_hash;
+        }
+        hash_combine(map_hash);
+
+        return seed;
     }
 
 }  // namespace Toolbox::Object

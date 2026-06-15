@@ -79,12 +79,16 @@ namespace Toolbox::Object {
     class ObjectRenderController {
     public:
         ObjectRenderController()                                   = default;
-        ObjectRenderController(const ObjectRenderController &)     = default;
-        ObjectRenderController(ObjectRenderController &&) noexcept = default;
+        ObjectRenderController(const ObjectRenderController &);
+        ObjectRenderController(ObjectRenderController &&) noexcept;
+
+        ObjectRenderController &operator=(const ObjectRenderController &other);
+        ObjectRenderController &operator=(ObjectRenderController &&other) noexcept;
 
         ~ObjectRenderController() { clear(); }
 
         ObjectRenderController &clear();
+        ObjectRenderController &resetState();
 
         ObjectRenderController &addRenderModel(RefPtr<J3DModelInstance> model);
         ObjectRenderController &addAnimation(AnimationType type,
@@ -216,6 +220,7 @@ namespace Toolbox::Object {
         void dump(std::ostream &out) const { dump(out, 0, 2); }
 
     protected:
+        virtual void setUUID(const UUID64 &uuid)   = 0;
         virtual bool reassignWizardBasedOnFields() = 0;
     };
 
@@ -386,6 +391,8 @@ namespace Toolbox::Object {
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
     protected:
+        void setUUID(const UUID64 &uuid) override { m_UUID64 = uuid; }
+
         void applyWizard(const TemplateWizard &wizard);
         bool reassignWizardBasedOnFields() override { return false; }
 
@@ -775,6 +782,8 @@ namespace Toolbox::Object {
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
     protected:
+        void setUUID(const UUID64 &uuid) override { m_UUID64 = uuid; }
+
         void applyWizard(const TemplateWizard &wizard);
         bool reassignWizardBasedOnFields() override;
 
@@ -838,9 +847,10 @@ namespace Toolbox::Object {
         using create_err_t = SerialError;
         using create_t     = Result<create_ret_t, create_err_t>;
 
-        static create_t create(Deserializer &in, bool include_custom);
+        static create_t create(Deserializer &in, bool include_custom,
+                               std::optional<UUID64> obj_uuid = std::nullopt);
         static create_ret_t create(const Template &template_, std::string_view wizard_name,
-                                   const fs_path &resource_path);
+                                   const fs_path &resource_path, std::optional<UUID64> obj_uuid = std::nullopt);
 
     protected:
         static bool isGroupObject(std::string_view type);

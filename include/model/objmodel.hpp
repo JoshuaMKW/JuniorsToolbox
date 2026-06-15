@@ -6,6 +6,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -97,11 +98,10 @@ namespace Toolbox {
         }
 
         [[nodiscard]] Result<MetaValue, MetaError> getMemberValue(const ModelIndex &index,
-                                                                       const QualifiedName &member,
-                                                                       size_t array_idx) const;
-        Result<void, MetaError> setMemberValue(const ModelIndex &index,
-                                                    const QualifiedName &member, size_t array_idx,
-                                                    const MetaValue &value);
+                                                                  const QualifiedName &member,
+                                                                  size_t array_idx) const;
+        Result<void, MetaError> setMemberValue(const ModelIndex &index, const QualifiedName &member,
+                                               size_t array_idx, const MetaValue &value);
         [[nodiscard]] Result<u32, MetaScopeError>
         getMemberOffset(const ModelIndex &index, const QualifiedName &member) const;
         [[nodiscard]] Result<u32, MetaScopeError> getMemberSize(const ModelIndex &index,
@@ -186,17 +186,19 @@ namespace Toolbox {
         [[nodiscard]] virtual Signal createSignalForIndex_(const ModelIndex &index,
                                                            ModelEventFlags base_event) const;
 
-        [[nodiscard]] virtual ModelIndex insertObject_(RefPtr<ISceneObject> object, int64_t row,
-                                                       const ModelIndex &parent);
-        [[nodiscard]] virtual ModelIndex makeIndex(RefPtr<ISceneObject> object, int64_t row,
-                                                   const ModelIndex &parent) const;
+        [[nodiscard]] virtual ModelIndex
+        insertObject_(RefPtr<ISceneObject> object, int64_t row, const ModelIndex &parent,
+                      std::optional<UUID64> index_uuid = std::nullopt);
+        [[nodiscard]] virtual ModelIndex
+        makeIndex(RefPtr<ISceneObject> object, int64_t row, const ModelIndex &parent,
+                  std::optional<UUID64> index_uuid = std::nullopt) const;
 
         [[nodiscard]] Result<MetaValue, MetaError> getMemberValue_(const ModelIndex &index,
-                                                                        const QualifiedName &member,
-                                                                        size_t array_idx) const;
+                                                                   const QualifiedName &member,
+                                                                   size_t array_idx) const;
         Result<void, MetaError> setMemberValue_(const ModelIndex &index,
-                                                     const QualifiedName &member, size_t array_idx,
-                                                     const MetaValue &value);
+                                                const QualifiedName &member, size_t array_idx,
+                                                const MetaValue &value);
         [[nodiscard]] Result<u32, MetaScopeError>
         getMemberOffset_(const ModelIndex &index, const QualifiedName &member) const;
         [[nodiscard]] Result<u32, MetaScopeError> getMemberSize_(const ModelIndex &index,
@@ -254,7 +256,7 @@ namespace Toolbox {
 
         mutable UUID64 m_root_index;
         mutable std::map<UUID64, ModelIndex> m_index_map;
-        mutable std::map<UUID64, ModelIndex> m_obj_to_index_map;
+        mutable std::unordered_map<UUID64, ModelIndex> m_obj_to_index_map;
 
         fs_path m_scene_path;
 

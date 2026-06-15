@@ -747,6 +747,7 @@ namespace Toolbox {
 
             RefPtr<ISceneObject> object = index.data<_SceneIndexData>()->m_object;
 
+            out.write(static_cast<u64>(object->getUUID()));
             out.writeString(object->type());
             out.writeString(object->getNameRef().name());
             out.writeString(object->getWizardName());
@@ -824,6 +825,7 @@ namespace Toolbox {
                                     Deserializer &in) -> Result<void, SerialError> {
             const UUID64 uuid = in.read<u64>();
 
+            const UUID64 obj_uuid        = in.read<u64>();
             const std::string obj_type   = in.readString();
             const std::string obj_name   = in.readString();
             const std::string obj_wizard = in.readString();
@@ -836,7 +838,7 @@ namespace Toolbox {
             }
 
             RefPtr<ISceneObject> object =
-                ObjectFactory::create(*obj_template.value(), obj_wizard, m_scene_path);
+                ObjectFactory::create(*obj_template.value(), obj_wizard, m_scene_path, obj_uuid);
             if (!object) {
                 return make_serial_error<void>(
                     in, std::format("Failed to create object of type '{}' with wizard '{}'",
@@ -859,7 +861,7 @@ namespace Toolbox {
             std::string new_name = findUniqueName_(index, std::string(object->getNameRef().name()));
             object->setNameRef(NameRef(new_name));
 
-            ModelIndex new_index = insertObject_(object, row, index);
+            ModelIndex new_index = insertObject_(object, row, index, uuid);
             if (!validateIndex(new_index)) {
                 return make_serial_error<void>(in, "Failed to insert mimedata object into model!");
             }
@@ -887,7 +889,7 @@ namespace Toolbox {
         }
 
         ModelIndex insert_index;
-        int64_t insert_row;
+        int64_t insert_row = -1;
         switch (policy) {
         case ModelInsertPolicy::INSERT_BEFORE:
             insert_row = getRow_(index);
@@ -930,8 +932,8 @@ namespace Toolbox {
     void SceneObjModel::fetchMore_(const ModelIndex &index) const { return; }
 
     ModelIndex SceneObjModel::insertObject_(RefPtr<ISceneObject> object, int64_t row,
-                                            const ModelIndex &parent) {
-        ModelIndex new_index = makeIndex(object, row, parent);
+                                            const ModelIndex &parent, std::optional<UUID64> index_uuid) {
+        ModelIndex new_index = makeIndex(object, row, parent, index_uuid);
         if (!validateIndex(new_index)) {
             return ModelIndex();
         }
@@ -952,12 +954,13 @@ namespace Toolbox {
     }
 
     ModelIndex SceneObjModel::makeIndex(RefPtr<ISceneObject> object, int64_t row,
-                                        const ModelIndex &parent) const {
+                                        const ModelIndex &parent,
+                                        std::optional<UUID64> index_uuid) const {
         if (row < 0 || row > m_index_map.size()) {
             return ModelIndex();
         }
 
-        ModelIndex new_index(getUUID());
+        ModelIndex new_index(getUUID(), index_uuid ? *index_uuid : UUID64());
 
         _SceneIndexData *new_data = new _SceneIndexData;
         new_data->m_self_uuid     = new_index.getUUID();
@@ -987,9 +990,20 @@ namespace Toolbox {
         RefPtr<ISceneObject> object = index.data<_SceneIndexData>()->m_object;
         auto member_res             = object->getMember(member);
         if (!member_res) {
-            return std::unexpected(member_res.error());
+            return std::unexpected(member_res.error()); 
         }
-        auto value_res = member_res.value()->value<MetaValue>(array_idx);
+
+        RefPtr<MetaMember> member_ptr = member_res.value();
+        if (member_ptr->isTypeEnum()) {
+            auto enum_res = member_ptr->value<MetaEnum>(array_idx);
+            if (!enum_res) {
+                return std::unexpected(enum_res.error());
+            }
+            RefPtr<MetaEnum> enum_ptr = enum_res.value();
+            return *enum_ptr->value();
+        }
+
+        auto value_res = member_ptr->value<MetaValue>(array_idx);
         if (!value_res) {
             return std::unexpected(value_res.error());
         }

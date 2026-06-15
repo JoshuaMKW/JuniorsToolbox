@@ -359,7 +359,8 @@ namespace Toolbox::UI {
                 history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_table_object_model));
                 history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_rail_model));
 
-                m_history_aggregate_handler = make_referable<ModelHistoryAggregate>(std::move(history_handlers));
+                m_history_aggregate_handler =
+                    make_referable<ModelHistoryAggregate>(std::move(history_handlers));
 
                 // Initialize the rail visibility map
                 const int64_t rail_count = m_rail_model->getRowCount(ModelIndex());
@@ -624,7 +625,7 @@ namespace Toolbox::UI {
                     }
                 } else if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
                     RefPtr<ISceneObject> obj = std::get<RefPtr<ISceneObject>>(selection);
-                    ModelIndex obj_index = m_scene_object_model->getIndex(obj);
+                    ModelIndex obj_index     = m_scene_object_model->getIndex(obj);
 
                     processObjectSelection(obj_index, multi_select);
                 } else if (std::holds_alternative<RefPtr<Rail::RailNode>>(selection)) {
@@ -2713,7 +2714,10 @@ namespace Toolbox::UI {
                        })
             .addDivider()
             .addOption("Delete", {KeyCode::KEY_DELETE},
-                       [this](ModelIndex index) { m_scene_selection_mgr.actionDeleteSelection(); })
+                       [this](ModelIndex index) {
+                           m_scene_selection_mgr.actionDeleteSelection();
+                           clearSelectedProperties();
+                       })
             .addDivider()
             .addOption(
                 "Copy Player Transform",
@@ -3202,7 +3206,7 @@ namespace Toolbox::UI {
                     m_history_aggregate_handler->startExplicitFrame();
 
                     for (const ModelIndex &sel_index : selection) {
-                        auto result                     = m_rail_model->connectNodeToNext(sel_index);
+                        auto result = m_rail_model->connectNodeToNext(sel_index);
                         if (!result) {
                             LogError(result.error());
                         }
@@ -3238,7 +3242,7 @@ namespace Toolbox::UI {
                     m_history_aggregate_handler->startExplicitFrame();
 
                     for (const ModelIndex &sel_index : selection) {
-                        auto result                     = m_rail_model->connectNodeToPrev(sel_index);
+                        auto result = m_rail_model->connectNodeToPrev(sel_index);
                         if (!result) {
                             LogError(result.error());
                         }
@@ -3279,7 +3283,7 @@ namespace Toolbox::UI {
                             LogError(result.error());
                         }
                     }
-                    
+
                     m_history_aggregate_handler->endExplicitFrame();
 
                     m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
@@ -3930,7 +3934,7 @@ namespace Toolbox::UI {
 
         m_properties_render_handler = renderObjectProperties;
 
-        //TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", node->type(), node->getNameRef().name());
+        // TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", node->type(), node->getNameRef().name());
     }
 
     void SceneWindow::processRailSelection(const ModelIndex &index, bool is_multi) {
@@ -3968,7 +3972,7 @@ namespace Toolbox::UI {
         m_selected_properties.clear();
         m_properties_render_handler = renderRailProperties;
 
-        //TOOLBOX_DEBUG_LOG_V("Hit rail \"{}\"", node->name());
+        // TOOLBOX_DEBUG_LOG_V("Hit rail \"{}\"", node->name());
     }
 
     void SceneWindow::processRailNodeSelection(const ModelIndex &index, bool is_multi) {
@@ -4174,16 +4178,18 @@ namespace Toolbox::UI {
         for (auto &member : object->getMembers()) {
             member->syncArray();
 
-            auto prop = createProperty(member, [this, object](RefPtr<MetaMember> member, size_t array_idx) -> MetaValue {
-                ModelIndex index = m_scene_object_model->getIndex(object);
-                auto result =
-                    m_scene_object_model->getMemberValue(index, member->qualifiedName(), array_idx);
-                if (!result) {
-                    LogError(result.error());
-                    return MetaValue();
-                }
+            auto prop = createProperty(
+                member,
+                [this, object](RefPtr<MetaMember> member, size_t array_idx) -> MetaValue {
+                    ModelIndex index = m_scene_object_model->getIndex(object);
+                    auto result      = m_scene_object_model->getMemberValue(
+                        index, member->qualifiedName(), array_idx);
+                    if (!result) {
+                        LogError(result.error());
+                        return MetaValue();
+                    }
 
-                return result.value();
+                    return result.value();
                 },
                 [this, object](RefPtr<MetaMember> member, size_t array_idx,
                                const MetaValue &value) {
@@ -4248,6 +4254,8 @@ namespace Toolbox::UI {
     void SceneWindow::setStageScenario(u8 stage, u8 scenario) {
         m_stage = stage, m_scenario = scenario;
     }
+
+    void SceneWindow::clearSelectedProperties() { m_selected_properties.clear(); }
 
     ImGuiID SceneWindow::onBuildDockspace() {
         ImGuiID dockspace_id = ImGui::GetID(std::to_string(getUUID()).c_str());
