@@ -182,7 +182,8 @@ namespace Toolbox::Object {
                        std::optional<std::string_view> name = std::nullopt) = 0;
 
         [[nodiscard]] virtual std::optional<Transform> getTransform() const      = 0;
-        virtual Result<void, MetaError> setTransform(const Transform &transform) = 0;
+        virtual Result<void, MetaError> setTransform(const Transform &transform,
+                                                     bool updateMembers)    = 0;
 
         [[nodiscard]] virtual std::optional<BoundingBox> getBoundingBox() const = 0;
 
@@ -361,7 +362,10 @@ namespace Toolbox::Object {
         }
 
         [[nodiscard]] std::optional<Transform> getTransform() const override { return {}; }
-        Result<void, MetaError> setTransform(const Transform &transform) override { return {}; }
+        Result<void, MetaError> setTransform(const Transform &transform,
+                                             bool updateMembers) override {
+            return {};
+        }
 
         [[nodiscard]] std::optional<BoundingBox> getBoundingBox() const override { return {}; }
 
@@ -702,7 +706,7 @@ namespace Toolbox::Object {
         }
 
         [[nodiscard]] std::optional<Transform> getTransform() const override { return m_transform; }
-        Result<void, MetaError> setTransform(const Transform &transform) override {
+        Result<void, MetaError> setTransform(const Transform &transform, bool updateMembers) override {
             m_transform = transform;
 
             RefPtr<J3DModelInstance> selected_model = m_render_controller->getRenderModel();
@@ -710,6 +714,10 @@ namespace Toolbox::Object {
                 selected_model->SetTranslation(transform.m_translation);
                 selected_model->SetRotation(transform.m_rotation);
                 selected_model->SetScale(transform.m_scale);
+            }
+
+            if (!updateMembers) {
+                return {};
             }
 
             auto transform_value_ptr = getMember("Transform").value();

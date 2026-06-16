@@ -288,7 +288,8 @@ namespace Toolbox::UI {
         return make_scoped<SceneCreateRailEvent>(*this);
     }
 
-    SceneWindow::SceneWindow(const std::string &name) : ImWindow(name) {}
+    SceneWindow::SceneWindow(const std::string &name)
+        : ImWindow(name), m_wants_rail_context_menu(false), m_wants_scene_context_menu(false) {}
 
     bool SceneWindow::onLoadData(const fs_path &path) {
         if (!Toolbox::Filesystem::exists(path).value_or(false)) {
@@ -383,6 +384,15 @@ namespace Toolbox::UI {
                             m_selection_transforms_update_requested = true;
                             return;
                         }
+
+                        if ((flags & ModelEventFlags::EVENT_INDEX_MODIFIED) ==
+                            ModelEventFlags::EVENT_INDEX_MODIFIED) {
+                            RefPtr<ISceneObject> object = m_scene_object_model->getObjectRef(index);
+                            if (object) {
+                                m_selection_transforms_update_requested = true;
+                                object->refreshRenderState();
+                            }
+                        }
                     },
                     ModelEventFlags::EVENT_INDEX_ANY);
 
@@ -399,6 +409,15 @@ namespace Toolbox::UI {
                             ModelEventFlags::EVENT_INDEX_REMOVED) {
                             m_selection_transforms_update_requested = true;
                             return;
+                        }
+
+                        if ((flags & ModelEventFlags::EVENT_INDEX_MODIFIED) ==
+                            ModelEventFlags::EVENT_INDEX_MODIFIED) {
+                            RefPtr<ISceneObject> object = m_scene_object_model->getObjectRef(index);
+                            if (object) {
+                                m_selection_transforms_update_requested = true;
+                                object->refreshRenderState();
+                            }
                         }
                     },
                     ModelEventFlags::EVENT_INDEX_ANY);
@@ -4194,14 +4213,19 @@ namespace Toolbox::UI {
                 [this, object](RefPtr<MetaMember> member, size_t array_idx,
                                const MetaValue &value) {
                     ModelIndex index = m_scene_object_model->getIndex(object);
-                    auto result      = m_scene_object_model->setMemberValue(
-                        index, member->qualifiedName(), array_idx, value);
-                    if (!result) {
-                        LogError(result.error());
-                        return false;
+                    if (value.type() == MetaType::TRANSFORM && member->qualifiedName() == "Transform") {
+                        m_scene_object_model->setObjectTransform(
+                            index, value.get<Transform>().value_or(Transform()));
+                        return true;
+                    } else {
+                        auto result = m_scene_object_model->setMemberValue(
+                            index, member->qualifiedName(), array_idx, value);
+                        if (!result) {
+                            LogError(result.error());
+                            return false;
+                        }
+                        return true;
                     }
-
-                    return true;
                 });
 
             if (prop) {

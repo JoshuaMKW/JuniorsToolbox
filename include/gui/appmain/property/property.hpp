@@ -136,7 +136,6 @@ namespace Toolbox::UI {
         bool setColor(int array_index, const Color::RGBAShader &color);
 
     private:
-        std::vector<Color::RGBAShader> m_colors;
         bool m_open        = false;
         s64 m_step         = 1;
         s64 m_step_fast    = 10;
@@ -153,7 +152,6 @@ namespace Toolbox::UI {
         bool render(float label_width) override;
 
     private:
-        std::vector<glm::vec3> m_vectors;
         f32 m_min          = -FLT_MAX;
         f32 m_max          = FLT_MAX;
         f32 m_step         = 1.0f;
@@ -172,7 +170,6 @@ namespace Toolbox::UI {
         bool render(float label_width) override;
 
     private:
-        std::vector<Object::Transform> m_transforms;
         f32 m_min          = -FLT_MAX;
         f32 m_max          = FLT_MAX;
         f32 m_step         = 1.0f;

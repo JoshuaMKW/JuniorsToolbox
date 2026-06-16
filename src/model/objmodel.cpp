@@ -476,7 +476,7 @@ namespace Toolbox {
             return false;
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_TRANSFORM: {
-            auto result = object->setTransform(std::any_cast<Transform>(data));
+            auto result = object->setTransform(std::any_cast<Transform>(data), true);
             return result.has_value();
         }
         case SceneObjDataRole::SCENE_DATA_ROLE_OBJ_BOUNDING_BOX: {
