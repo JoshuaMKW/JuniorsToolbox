@@ -91,7 +91,7 @@ namespace Toolbox::UI {
                     ImGui::SameLine();
 
                     MetaValue value = m_value_getter(m_member, i);
-                    bool value_bool   = value.get<bool>().value();
+                    bool value_bool = value.get<bool>().value();
 
                     if (ImGui::Checkbox(id_str.c_str(), &value_bool)) {
                         if (m_value_setter) {
@@ -227,10 +227,10 @@ namespace Toolbox::UI {
                     MetaValue number = m_value_getter(m_member, i);
                     s64 number_val   = getS64FromMetaValue(number);
 
-                    if (ImGui::InputScalarCompact(
-                            id_str.c_str(), ImGuiDataType_S64, &number_val, &m_step,
-                            &m_step_fast, nullptr,
-                            ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
+                    if (ImGui::InputScalarCompact(id_str.c_str(), ImGuiDataType_S64, &number_val,
+                                                  &m_step, &m_step_fast, nullptr,
+                                                  ImGuiInputTextFlags_CharsDecimal |
+                                                      ImGuiInputTextFlags_CharsNoBlank)) {
                         if (number_val > m_max) {
                             number_val = m_min + (number_val - m_max);
                         } else if (number_val < m_min) {
@@ -378,8 +378,7 @@ namespace Toolbox::UI {
                     f32 value_flt   = value.get<f32>().value();
 
                     if (ImGui::InputScalarCompact(id_str.c_str(), ImGuiDataType_Float, &value_flt,
-                                                  &m_step,
-                            &m_step_fast, nullptr,
+                                                  &m_step, &m_step_fast, nullptr,
                                                   ImGuiInputTextFlags_CharsDecimal |
                                                       ImGuiInputTextFlags_CharsNoBlank)) {
                         value_flt = Toolbox::Wrap(value_flt, m_min, m_max);
@@ -476,9 +475,9 @@ namespace Toolbox::UI {
                     f64 value_dbl   = value.get<f64>().value();
 
                     if (ImGui::InputScalarCompact(id_str.c_str(), ImGuiDataType_Double, &value_dbl,
-                                                  &m_step,
-                            &m_step_fast, nullptr,
-                            ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank)) {
+                                                  &m_step, &m_step_fast, nullptr,
+                                                  ImGuiInputTextFlags_CharsDecimal |
+                                                      ImGuiInputTextFlags_CharsNoBlank)) {
                         value_dbl = Toolbox::Wrap(value_dbl, m_min, m_max);
                         if (m_value_setter) {
                             MetaValue new_value = MetaValue(getMetaType(m_member).value());
@@ -502,7 +501,7 @@ namespace Toolbox::UI {
         }
 
         MetaValue value = m_value_getter(m_member, 0);
-        f64 value_dbl = value.get<f64>().value();
+        f64 value_dbl   = value.get<f64>().value();
 
         std::string label = std::format("##{}", m_member->name().c_str());
         if (ImGui::InputScalarCompact(
@@ -521,14 +520,14 @@ namespace Toolbox::UI {
 
     void StringProperty::init() {
         m_member->syncArray();
-        //m_strings.resize(m_member->arraysize());
+        // m_strings.resize(m_member->arraysize());
         m_array_open.resize(m_member->arraysize(), true);
 
-        //for (size_t i = 0; i < m_strings.size(); ++i) {
-        //    std::string str = Object::getMetaValue<std::string>(m_member, i).value();
-        //    size_t size     = std::min(str.size(), size_t(128));
-        //    std::copy(str.begin(), str.begin() + size, m_strings.at(i).begin());
-        //}
+        // for (size_t i = 0; i < m_strings.size(); ++i) {
+        //     std::string str = Object::getMetaValue<std::string>(m_member, i).value();
+        //     size_t size     = std::min(str.size(), size_t(128));
+        //     std::copy(str.begin(), str.begin() + size, m_strings.at(i).begin());
+        // }
     }
 
     bool StringProperty::render(float label_width) {
@@ -566,7 +565,7 @@ namespace Toolbox::UI {
                     ImGui::Text(name.c_str());
                     ImGui::SameLine();
 
-                    MetaValue value = m_value_getter(m_member, i);
+                    MetaValue value      = m_value_getter(m_member, i);
                     std::string str_data = value.get<std::string>().value();
 
                     std::array<char, 256> str_ary{};
@@ -575,7 +574,7 @@ namespace Toolbox::UI {
 
                     if (ImGui::InputText(id_str.c_str(), str_ary.data(), str_ary.size())) {
                         if (m_value_setter) {
-                            MetaValue new_value = MetaValue(getMetaType(m_member).value());
+                            MetaValue new_value       = MetaValue(getMetaType(m_member).value());
                             std::string_view str_view = convertArrayToStringView(str_ary);
                             new_value.set(str_view);
                             any_changed |= m_value_setter(m_member, i, new_value);
@@ -748,8 +747,9 @@ namespace Toolbox::UI {
         }
 
         if (isRGBA32) {
-            Color::RGBA32 tmp_color =
-                m_value_getter(m_member, array_index).get<Color::RGBA32>().value_or(Color::RGBA32());
+            Color::RGBA32 tmp_color = m_value_getter(m_member, array_index)
+                                          .get<Color::RGBA32>()
+                                          .value_or(Color::RGBA32());
             f32 r, g, b, a;
             tmp_color.getColor(r, g, b, a);
             out_color.setColor(r, g, b, a);
@@ -845,7 +845,7 @@ namespace Toolbox::UI {
                     if (ImGui::BeginGroupPanel(array_name.c_str(),
                                                reinterpret_cast<bool *>(m_array_open.data() + i),
                                                {})) {
-                        MetaValue value = m_value_getter(m_member, i);
+                        MetaValue value     = m_value_getter(m_member, i);
                         glm::vec3 value_vec = value.get<glm::vec3>().value();
 
                         ImGui::Text(m_member->name().c_str());
@@ -880,8 +880,8 @@ namespace Toolbox::UI {
                     ImGui::SameLine();
                 }
                 if (ImGui::InputScalarCompactN("##vector", ImGuiDataType_Float,
-                                               reinterpret_cast<f32 *>(&value_vec.x), 3,
-                                               &m_step, &m_step_fast, "%.3f")) {
+                                               reinterpret_cast<f32 *>(&value_vec.x), 3, &m_step,
+                                               &m_step_fast, "%.3f")) {
                     if (m_value_setter) {
                         MetaValue new_value = MetaValue(getMetaType(m_member).value());
                         new_value.setVariant(value_vec);
@@ -938,7 +938,7 @@ namespace Toolbox::UI {
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if (ImGui::CollapsingHeader(m_member->name().c_str())) {
             if (m_member->isArray() || m_member->isEmpty()) {
-                float label_width = 0;
+                float label_width    = 0;
                 const u32 array_size = m_member->arraysize();
                 for (size_t i = 0; i < array_size; ++i) {
                     std::string array_name = std::format("[{}]##{}", i, m_member->name().c_str());
@@ -948,7 +948,7 @@ namespace Toolbox::UI {
                         ImGui::PushID("Translation");
                         ImGui::Text("Translation");
 
-                        MetaValue value = m_value_getter(m_member, i);
+                        MetaValue value           = m_value_getter(m_member, i);
                         Transform value_transform = value.get<Transform>().value();
 
                         if (!collapse_lines) {
@@ -1262,8 +1262,8 @@ namespace Toolbox::UI {
                 return -1;
             }();
 
-            MetaValue number          = m_value_getter(m_member, 0);
-            s64 number_val            = getS64FromMetaValue(number);
+            MetaValue number = m_value_getter(m_member, 0);
+            s64 number_val   = getS64FromMetaValue(number);
 
             std::string preview_value = selected_index >= 0 ? enum_values.at(selected_index).first
                                                             : "[[Invalid State]]";
@@ -1291,48 +1291,60 @@ namespace Toolbox::UI {
         }
     }
 
-    StructProperty::StructProperty(RefPtr<Object::MetaMember> prop, getter_cb getter, setter_cb setter)
+    StructProperty::StructProperty(RefPtr<Object::MetaMember> prop, getter_cb getter,
+                                   setter_cb setter)
         : IProperty(prop, getter, setter), m_open(true) {
-        //prop->syncArray();
-        //m_children_ary.resize(prop->arraysize());
-        //m_array_open.resize(m_children_ary.size());
-        //for (size_t i = 0; i < m_children_ary.size(); ++i) {
-        //    auto struct_ = prop->value<Object::MetaStruct>(i).value();
-        //    auto members = struct_->members();
-        //    for (size_t j = 0; j < members.size(); ++j) {
-        //        m_children_ary.at(i).push_back(createProperty(members.at(j), getter, setter));
-        //    }
-        //}
+        // prop->syncArray();
+        // m_children_ary.resize(prop->arraysize());
+        // m_array_open.resize(m_children_ary.size());
+        // for (size_t i = 0; i < m_children_ary.size(); ++i) {
+        //     auto struct_ = prop->value<Object::MetaStruct>(i).value();
+        //     auto members = struct_->members();
+        //     for (size_t j = 0; j < members.size(); ++j) {
+        //         m_children_ary.at(i).push_back(createProperty(members.at(j), getter, setter));
+        //     }
+        // }
     }
 
     void StructProperty::init() {
         m_member->syncArray();
 
-        size_t min_end = std::min(m_children_ary.size(), size_t(m_member->arraysize()));
+        //size_t min_end = std::min(m_children_ary.size(), size_t(m_member->arraysize()));
         m_children_ary.resize(m_member->arraysize());
         m_array_open.resize(m_children_ary.size());
 
-        for (size_t i = 0; i < min_end; ++i) {
-            auto struct_ = m_member->value<Object::MetaStruct>(i).value();
-            auto members = struct_->members();
-            for (size_t j = 0; j < m_children_ary.at(i).size(); ++j) {
-                m_children_ary.at(i).at(j)->init();
-            }
-        }
-
-        if (min_end >= m_member->arraysize()) {
-            return;
-        }
-
-        for (size_t i = min_end; i < m_children_ary.size(); ++i) {
-            auto struct_ = m_member->value<Object::MetaStruct>(i).value();
-            auto members = struct_->members();
+        for (size_t i = 0; i < m_children_ary.size(); ++i) {
+            RefPtr<MetaStruct> struct_ = m_member->value<Object::MetaStruct>(i).value();
+            const std::vector<RefPtr<MetaMember>> &members = struct_->members();
             for (size_t j = 0; j < members.size(); ++j) {
-                auto new_prop = createProperty(members.at(j), m_value_getter, m_value_setter);
-                new_prop->init();
-                m_children_ary.at(i).push_back(std::move(new_prop));
+                ScopePtr<IProperty> property =
+                    createProperty(members.at(j), m_value_getter, m_value_setter);
+                property->init();
+                m_children_ary.at(i).push_back(std::move(property));
             }
         }
+
+        //for (size_t i = 0; i < min_end; ++i) {
+        //    RefPtr<MetaStruct> struct_ = m_member->value<Object::MetaStruct>(i).value();
+        //    const std::vector<RefPtr<MetaMember>> &members = struct_->members();
+        //    for (size_t j = 0; j < m_children_ary.at(i).size(); ++j) {
+        //        m_children_ary.at(i).at(j)->init();
+        //    }
+        //}
+
+        //if (min_end >= m_member->arraysize()) {
+        //    return;
+        //}
+
+        //for (size_t i = min_end; i < m_children_ary.size(); ++i) {
+        //    auto struct_ = m_member->value<Object::MetaStruct>(i).value();
+        //    auto members = struct_->members();
+        //    for (size_t j = 0; j < members.size(); ++j) {
+        //        auto new_prop = createProperty(members.at(j), m_value_getter, m_value_setter);
+        //        new_prop->init();
+        //        m_children_ary.at(i).push_back(std::move(new_prop));
+        //    }
+        //}
     }
 
     bool StructProperty::render(float label_width) {
@@ -1357,33 +1369,38 @@ namespace Toolbox::UI {
         ImGuiID struct_id = ImGui::GetID(m_member->name().c_str());
         // ImGui::PushID(struct_id);
         if (ImGui::CollapsingHeader(m_member->name().c_str())) {
-            if (m_children_ary.size() > 1) {
-                float label_width = 0;
-                for (size_t i = 0; i < m_children_ary.at(0).size(); ++i) {
+            if (m_member->isArray() || m_member->isEmpty()) {
+                float label_width    = 0;
+                const u32 array_size = m_children_ary.at(0).size();
+                for (size_t i = 0; i < array_size; ++i) {
                     label_width = std::max(label_width, m_children_ary.at(0).at(i)->labelSize().x);
                 }
                 for (size_t i = 0; i < m_children_ary.size(); ++i) {
-                    auto struct_ = m_member->value<Object::MetaStruct>(i).value();
-                    auto members = struct_->members();
+                    RefPtr<MetaStruct> struct_ = m_member->value<Object::MetaStruct>(i).value();
+                    const std::vector<RefPtr<MetaMember>> &members = struct_->members();
 
                     std::string array_name = std::format("[{}]##{}", i, m_member->name().c_str());
                     if (ImGui::BeginGroupPanel(array_name.c_str(),
                                                reinterpret_cast<bool *>(m_array_open.data() + i),
                                                {})) {
                         for (size_t j = 0; j < members.size(); ++j) {
+                            ImGui::PushID(static_cast<int>(i << 8 | j));
                             any_changed |= m_children_ary.at(i).at(j)->render(label_width);
+                            ImGui::PopID();
                             ImGui::ItemSize({0, 2});
                         }
                     }
                     ImGui::EndGroupPanel();
                 }
-            } else if (m_children_ary.size() == 1) {
-                float label_width = 0;
-                for (size_t i = 0; i < m_children_ary.at(0).size(); ++i) {
+            } else {
+                float label_width    = 0;
+                const u32 array_size = m_children_ary.at(0).size();
+                for (size_t i = 0; i < array_size; ++i) {
                     label_width = std::max(label_width, m_children_ary.at(0).at(i)->labelSize().x);
                 }
-                auto struct_ = m_member->value<Object::MetaStruct>(0).value();
-                auto members = struct_->members();
+
+                RefPtr<MetaStruct> struct_ = m_member->value<Object::MetaStruct>(0).value();
+                const std::vector<RefPtr<MetaMember>> &members = struct_->members();
                 for (size_t j = 0; j < members.size(); ++j) {
                     any_changed |= m_children_ary.at(0).at(j)->render(label_width);
                     ImGui::ItemSize({0, 2});
@@ -1395,7 +1412,8 @@ namespace Toolbox::UI {
         return any_changed;
     }
 
-    ScopePtr<IProperty> createProperty(RefPtr<Object::MetaMember> m_member, IProperty::getter_cb getter, IProperty::setter_cb setter) {
+    ScopePtr<IProperty> createProperty(RefPtr<Object::MetaMember> m_member,
+                                       IProperty::getter_cb getter, IProperty::setter_cb setter) {
         auto meta_type = Object::getMetaType(m_member);
         if (m_member->isTypeStruct()) {
             return make_scoped<StructProperty>(m_member, getter, setter);

@@ -248,6 +248,10 @@ namespace Toolbox::UI {
 
         void regeneratePropertiesForObject(RefPtr<ISceneObject> object);
 
+        void onObjectModelIndexEvent(const ModelIndex &index, int flags);
+        void onTableModelIndexEvent(const ModelIndex &index, int flags);
+        void onRailModelIndexEvent(const ModelIndex &index, int flags);
+
     private:
         void _moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id, size_t orig_index,
                        UUID64 orig_id, bool is_internal);

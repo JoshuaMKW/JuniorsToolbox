@@ -372,54 +372,11 @@ namespace Toolbox::UI {
 
                 m_scene_object_model->addEventListener(
                     getUUID(),
-                    [&](ModelIndex index, int flags) {
-                        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) ==
-                            ModelEventFlags::EVENT_INDEX_ADDED) {
-                            m_selection_transforms_update_requested = true;
-                            return;
-                        }
-
-                        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
-                            ModelEventFlags::EVENT_INDEX_REMOVED) {
-                            m_selection_transforms_update_requested = true;
-                            return;
-                        }
-
-                        if ((flags & ModelEventFlags::EVENT_INDEX_MODIFIED) ==
-                            ModelEventFlags::EVENT_INDEX_MODIFIED) {
-                            RefPtr<ISceneObject> object = m_scene_object_model->getObjectRef(index);
-                            if (object) {
-                                m_selection_transforms_update_requested = true;
-                                object->refreshRenderState();
-                            }
-                        }
-                    },
+                    TOOLBOX_BIND_EVENT_FN(onObjectModelIndexEvent),
                     ModelEventFlags::EVENT_INDEX_ANY);
 
                 m_table_object_model->addEventListener(
-                    getUUID(),
-                    [&](ModelIndex index, int flags) {
-                        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) ==
-                            ModelEventFlags::EVENT_INDEX_ADDED) {
-                            m_selection_transforms_update_requested = true;
-                            return;
-                        }
-
-                        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
-                            ModelEventFlags::EVENT_INDEX_REMOVED) {
-                            m_selection_transforms_update_requested = true;
-                            return;
-                        }
-
-                        if ((flags & ModelEventFlags::EVENT_INDEX_MODIFIED) ==
-                            ModelEventFlags::EVENT_INDEX_MODIFIED) {
-                            RefPtr<ISceneObject> object = m_scene_object_model->getObjectRef(index);
-                            if (object) {
-                                m_selection_transforms_update_requested = true;
-                                object->refreshRenderState();
-                            }
-                        }
-                    },
+                    getUUID(), TOOLBOX_BIND_EVENT_FN(onTableModelIndexEvent),
                     ModelEventFlags::EVENT_INDEX_ANY);
 
                 m_rail_model->addEventListener(
@@ -698,7 +655,11 @@ namespace Toolbox::UI {
             MainApplication::instance().getTaskCommunicator();
 
         if (m_selection_transforms_update_requested.load()) {
-            calcNewGizmoMatrixFromSelection();
+            // Prevent the base matrices from being overwritten mid-drag,
+            // otherwise gizmo_total_delta compounds exponentially to infinity.
+            if (!m_renderer.isGizmoActive()) {
+                calcNewGizmoMatrixFromSelection();
+            }
             m_selection_transforms_update_requested.store(false);
         }
 
@@ -4213,7 +4174,8 @@ namespace Toolbox::UI {
                 [this, object](RefPtr<MetaMember> member, size_t array_idx,
                                const MetaValue &value) {
                     ModelIndex index = m_scene_object_model->getIndex(object);
-                    if (value.type() == MetaType::TRANSFORM && member->qualifiedName() == "Transform") {
+                    if (value.type() == MetaType::TRANSFORM &&
+                        member->qualifiedName() == "Transform") {
                         m_scene_object_model->setObjectTransform(
                             index, value.get<Transform>().value_or(Transform()));
                         return true;
@@ -4233,6 +4195,41 @@ namespace Toolbox::UI {
             }
         }
     }
+
+    void SceneWindow::onObjectModelIndexEvent(const ModelIndex &index, int flags) {
+        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) == ModelEventFlags::EVENT_INDEX_ADDED) {
+            m_selection_transforms_update_requested = true;
+            RefPtr<ISceneObject> object             = m_scene_object_model->getObjectRef(index);
+            if (object) {
+                regeneratePropertiesForObject(object);
+            }
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+            ModelEventFlags::EVENT_INDEX_REMOVED) {
+            m_selection_transforms_update_requested = true;
+
+            if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
+                if (m_scene_selection_mgr.getState().isSelected(index) &&
+                    m_scene_selection_mgr.getState().count() == 1) {
+                    m_selected_properties.clear();
+                }
+            }
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_MODIFIED) ==
+            ModelEventFlags::EVENT_INDEX_MODIFIED) {
+            RefPtr<ISceneObject> object = m_scene_object_model->getObjectRef(index);
+            if (object) {
+                m_selection_transforms_update_requested = true;
+                object->refreshRenderState();
+            }
+        }
+    }
+
+    void SceneWindow::onTableModelIndexEvent(const ModelIndex &index, int flags) {}
+
+    void SceneWindow::onRailModelIndexEvent(const ModelIndex &index, int flags) {}
 
     void SceneWindow::_moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id,
                                 size_t orig_index, UUID64 orig_id, bool is_internal) {

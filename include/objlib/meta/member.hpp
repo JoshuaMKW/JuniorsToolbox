@@ -16,12 +16,17 @@
 
 namespace Toolbox::Object {
 
-    inline std::string makeNameArrayIndex(std::string_view name, size_t index) {
+    inline std::string makeNameArrayIndex(std::string_view name, int64_t index) {
+        if (index < 0) {
+            return std::string(name);
+        }
         return std::format("{}[{}]", name, index);
     }
 
-    inline void makeNameArrayIndex(QualifiedName &name, size_t scopeidx, size_t index) {
+    inline void makeNameArrayIndex(QualifiedName &name, size_t scopeidx, int64_t index) {
         if (scopeidx >= name.depth())
+            return;
+        if (index < 0)
             return;
         auto name_str  = std::string(name[scopeidx]);
         name[scopeidx] = makeNameArrayIndex(std::string_view(name_str), index);
@@ -47,7 +52,31 @@ namespace Toolbox::Object {
     }
 
     inline Result<size_t, MetaScopeError> getArrayIndex(std::string_view name) {
-        return getArrayIndex(name, 0);
+        auto pos = name.find('[');
+        if (pos == std::string_view::npos)
+            return 0;
+
+        auto end = name.find(']', pos);
+        if (end == std::string_view::npos) {
+            return make_meta_error<size_t>(name, static_cast<int>(pos),
+                                           "Array specifier missing end token `]'");
+        }
+
+        auto index = name.substr(pos + 1, end - pos - 1);
+        return std::stoi(std::string(index), nullptr, 0);
+    }
+
+    inline std::string_view getArrayName(std::string_view name) {
+        auto pos = name.find('[');
+        if (pos == std::string_view::npos)
+            return name;
+
+        auto end = name.find(']', pos);
+        if (end == std::string_view::npos) {
+            return name;
+        }
+
+        return name.substr(0, pos);
     }
 
     class MetaMember : public IGameSerializable, public ISmartResource {
@@ -96,8 +125,14 @@ namespace Toolbox::Object {
         MetaMember() = default;
 
         constexpr void setName(const std::string &name) { m_name = name; }
-        constexpr void setParent(MetaMember *parent) { m_parent = parent; }
-        constexpr void setParent(const MetaMember *parent) { m_parent = parent; }
+        constexpr void setParent(MetaMember *parent, int64_t array_idx) {
+            m_parent           = parent;
+            m_parent_array_idx = array_idx;
+        }
+        constexpr void setParent(const MetaMember *parent, int64_t array_idx) {
+            m_parent           = parent;
+            m_parent_array_idx = array_idx;
+        }
 
         void setArraySize(size_type array_size) { m_arraysize = array_size; }
 
@@ -298,6 +333,7 @@ namespace Toolbox::Object {
         size_type m_arraysize;
         MetaMember::value_type m_default;
         const MetaMember *m_parent = nullptr;
+        int64_t m_parent_array_idx = -1;
     };
 
     template <>
@@ -489,9 +525,9 @@ namespace Toolbox::Object {
             return *this;
         }
 
-        MetaMemberBuilder &setParent(const MetaMember *parent_ptr) {
+        MetaMemberBuilder &setParent(const MetaMember *parent_ptr, int64_t array_idx) {
             TOOLBOX_CORE_ASSERT(!m_finalized);
-            m_build_member->setParent(parent_ptr);
+            m_build_member->setParent(parent_ptr, array_idx);
             return *this;
         }
         MetaMemberBuilder &setArraySize(MetaMember::size_type size) {

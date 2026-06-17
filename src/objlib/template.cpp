@@ -723,7 +723,7 @@ namespace Toolbox::Object {
     }
 
     static Result<RefPtr<MetaMember>, JSONError>
-    loadWizardMember(const Template::json_t &member_json, MetaMember *parent_member,
+    loadWizardMember(const Template::json_t &member_json, MetaMember *parent_member, int64_t array_idx,
                      RefPtr<MetaMember> default_member) {
         default_member->syncArray();
 
@@ -731,7 +731,7 @@ namespace Toolbox::Object {
 
         MetaMemberBuilder builder;
         builder.setName(default_member->name());
-        builder.setParent(parent_member);
+        builder.setParent(parent_member, array_idx);
         builder.setArraySize(default_member->arraysize_());
 
         if (default_member->isTypeStruct()) {
@@ -754,7 +754,7 @@ namespace Toolbox::Object {
                     }
                     const Template::json_t &mbr_json = member_json[mbr->name()];
                     Result<RefPtr<MetaMember>, JSONError> member_result =
-                        loadWizardMember(mbr_json, parent_for_members, mbr);
+                        loadWizardMember(mbr_json, parent_for_members, i, mbr);
                     if (!member_result) {
                         return std::unexpected(member_result.error());
                     }
@@ -851,7 +851,7 @@ namespace Toolbox::Object {
 
                 if (member_it != default_wizard.m_init_members.end()) {
                     Result<RefPtr<MetaMember>, JSONError> member_result =
-                        loadWizardMember(member_info, nullptr, *member_it);
+                        loadWizardMember(member_info, nullptr, -1, *member_it);
                     if (!member_result) {
                         return std::unexpected(member_result.error());
                     }

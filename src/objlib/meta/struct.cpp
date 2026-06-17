@@ -125,12 +125,12 @@ namespace Toolbox::Object {
 
         if (deep) {
             for (auto &member : m_members) {
-                RefPtr<MetaMember> copy = ref_cast<MetaMember>(make_deep_clone<MetaMember>(member));
+                RefPtr<MetaMember> copy = make_deep_clone<MetaMember>(member);
                 struct_.m_members.push_back(copy);
             }
         } else {
             for (auto &member : m_members) {
-                RefPtr<MetaMember> copy = ref_cast<MetaMember>(make_clone<MetaMember>(member));
+                RefPtr<MetaMember> copy = make_clone<MetaMember>(member);
                 struct_.m_members.push_back(copy);
             }
         }

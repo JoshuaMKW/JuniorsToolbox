@@ -10,9 +10,11 @@ namespace Toolbox::Object {
 
     QualifiedName MetaMember::qualifiedName() const {
         const MetaMember *parent              = m_parent;
+        int64_t array_idx               = m_parent_array_idx;
         std::vector<std::string> scopes = {m_name};
         while (parent) {
-            scopes.push_back(std::string(parent->name()));
+            scopes.push_back(makeNameArrayIndex(parent->name(), array_idx));
+            array_idx = parent->m_parent_array_idx;
             parent = parent->parent();
         }
         std::reverse(scopes.begin(), scopes.end());
@@ -40,15 +42,18 @@ namespace Toolbox::Object {
     }
 
     void MetaMember::updateParentRefs() {
+        size_t array_idx = 0;
         for (auto &value : m_values) {
             if (!std::holds_alternative<RefPtr<MetaStruct>>(value)) {
+                array_idx += 1;
                 continue;
             }
             RefPtr<MetaStruct> struct_ = std::get<RefPtr<MetaStruct>>(value);
             for (RefPtr<MetaMember> member : struct_->members()) {
-                member->setParent(this);
+                member->setParent(this, array_idx);
                 member->updateParentRefs();
             }
+            array_idx += 1;
         }
     }
 

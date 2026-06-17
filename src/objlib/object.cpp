@@ -1,9 +1,9 @@
-#include <J3D/Animation/J3DAnimationLoader.hpp>
 #include <J3D/Animation/J3DAnimationInstance.hpp>
+#include <J3D/Animation/J3DAnimationLoader.hpp>
 #include <J3D/Animation/J3DColorAnimationInstance.hpp>
 #include <J3D/Animation/J3DJointAnimationInstance.hpp>
-#include <J3D/Animation/J3DTexMatrixAnimationInstance.hpp>
 #include <J3D/Animation/J3DTexIndexAnimationInstance.hpp>
+#include <J3D/Animation/J3DTexMatrixAnimationInstance.hpp>
 #include <J3D/Material/J3DMaterialTableLoader.hpp>
 #include <J3D/Texture/J3DTextureLoader.hpp>
 
@@ -720,24 +720,26 @@ namespace Toolbox::Object {
         if (m_member_cache.contains(name_str))
             return m_member_cache.at(name_str);
 
-        auto current_scope = name[0];
-        auto array_index   = getArrayIndex(name, 0);
+        std::string_view current_scope = name[0];
+        auto array_index               = getArrayIndex(name, 0);
         if (!array_index) {
             return std::unexpected(array_index.error());
         }
 
-        for (auto m : m_members) {
-            if (m->name() != current_scope)
+        std::string_view member_name = getArrayName(current_scope);
+
+        for (RefPtr<MetaMember> member : m_members) {
+            if (member->name() != member_name)
                 continue;
 
             if (name.depth() == 1) {
-                m_member_cache[name_str] = m;
-                return m;
+                m_member_cache[name_str] = member;
+                return member;
             }
 
-            if (m->isTypeStruct()) {
-                auto s      = m->value<MetaStruct>(*array_index).value();
-                auto member = s->getMember(QualifiedName(name.begin() + 1, name.end()));
+            if (member->isTypeStruct()) {
+                RefPtr<MetaStruct> struct_ = member->value<MetaStruct>(*array_index).value();
+                auto member = struct_->getMember(QualifiedName(name.begin() + 1, name.end()));
                 if (member.has_value()) {
                     m_member_cache[name_str] = member.value();
                 }
