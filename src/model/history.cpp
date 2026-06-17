@@ -5,10 +5,9 @@
 struct CollapseInfo {
     ModelIndex m_parent;
     int64_t m_row;
-    int64_t m_column;  // Optional but highly recommended: Provide an equality operator
-    // if you plan to use this struct in a std::unordered_map or std::unordered_set
+    int64_t m_column;
+
     bool operator==(const CollapseInfo &other) const {
-        // Assumes ModelIndex has operator== defined
         return m_parent == other.m_parent && m_row == other.m_row && m_column == other.m_column;
     }
 };
@@ -95,11 +94,11 @@ namespace Toolbox {
                 // Debug log the model
                 std::function<void(RefPtr<IDataModel>, ModelIndex, size_t)> printTree =
                     [&printTree](RefPtr<IDataModel> model, ModelIndex index, size_t depth) {
-                        if (model->validateIndex(index)) {
-                            TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ({}) - Index({}, {}): `{}'", depth,
-                                                model->getRow(index), model->getColumn(index),
-                                                model->getDisplayText(index));
-                        }
+                        //if (model->validateIndex(index)) {
+                        //    TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ({}) - Index({}, {}): `{}'", depth,
+                        //                        model->getRow(index), model->getColumn(index),
+                        //                        model->getDisplayText(index));
+                        //}
 
                         const size_t row_count = model->getRowCount(index);
                         for (size_t i = 0; i < row_count; ++i) {
@@ -108,9 +107,9 @@ namespace Toolbox {
                         }
                     };
 
-                TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
-                printTree(m_model, ModelIndex(), 0);
-                TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
+                //TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
+                //printTree(m_model, ModelIndex(), 0);
+                //TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
 
                 ModelIndex old_index =
                     m_model->getIndex(action.m_row, action.m_column, action.m_parent);
@@ -119,9 +118,9 @@ namespace Toolbox {
                     return false;
                 }
 
-                TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
-                printTree(m_model, ModelIndex(), 0);
-                TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
+                //TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
+                //printTree(m_model, ModelIndex(), 0);
+                //TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
 
                 const int64_t sibling_count = m_model->getRowCount(action.m_parent);
                 if (sibling_count == 0) {
@@ -157,9 +156,9 @@ namespace Toolbox {
                     }
                 }
 
-                TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
-                printTree(m_model, ModelIndex(), 0);
-                TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
+                //TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
+                //printTree(m_model, ModelIndex(), 0);
+                //TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
             }
 
             // We can only undo/redo index modifications, not insertions or resets.
