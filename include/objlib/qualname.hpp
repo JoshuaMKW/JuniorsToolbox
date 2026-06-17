@@ -135,3 +135,18 @@ namespace Toolbox::Object {
     };
 
 }  // namespace Toolbox::Object
+
+namespace std {
+    template <> struct hash<Toolbox::Object::QualifiedName> {
+        size_t operator()(const Toolbox::Object::QualifiedName &name) const {
+            size_t seed = 0;
+            std::hash<std::string> string_hasher;
+
+            for (const std::string &scope : name) {
+                seed ^= string_hasher(scope) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            }
+
+            return seed;
+        }
+    };
+}

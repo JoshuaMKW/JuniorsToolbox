@@ -25,11 +25,23 @@
 namespace Toolbox::Object {
 
     template <typename T>
-    static Result<T, JSONError> StringToTypedIntegral(const std::string &str) {
+    static Result<T, JSONError> StringToTypedIntegral(std::string_view str) {
         static_assert(std::is_integral_v<T>, "Return type must be integral!");
 
+        int base = 10;
+        if (str.starts_with("0x")) {
+            base = 16;
+            str  = str.substr(2);
+        } else if (str.starts_with("0o")) {
+            base = 7;
+            str  = str.substr(2);
+        } else if (str.starts_with("0b")) {
+            base = 2;
+            str  = str.substr(2);
+        }
+
         T value      = {};
-        auto [_, ec] = std::from_chars(str.c_str(), str.c_str() + str.size(), value, 16);
+        auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value, base);
         switch (ec) {
         case std::errc::invalid_argument:
             return make_json_error<T>("TEMPLATE", "Enum field had invalid number", 0);
@@ -38,6 +50,11 @@ namespace Toolbox::Object {
         default:
             break;
         }
+
+        if (ptr != str.data() + str.size()) {
+            return make_json_error<T>("TEMPLATE", "Enum field had invalid format", 0);
+        }
+
         return value;
     }
 
@@ -258,24 +275,54 @@ namespace Toolbox::Object {
                 std::string value_str = value.value().get<std::string>();
                 MetaValue meta_value(enum_type.value());
                 switch (enum_type.value()) {
-                case MetaType::S8:
-                    meta_value.set(StringToTypedIntegral<s8>(value_str));
+                case MetaType::S8: {
+                    auto result = StringToTypedIntegral<s8>(value_str);
+                    if (!result) {
+                        return std::unexpected(result.error());
+                    }
+                    meta_value.set(result.value());
                     break;
-                case MetaType::U8:
-                    meta_value.set(StringToTypedIntegral<u8>(value_str));
+                }
+                case MetaType::U8: {
+                    auto result = StringToTypedIntegral<u8>(value_str);
+                    if (!result) {
+                        return std::unexpected(result.error());
+                    }
+                    meta_value.set(result.value());
                     break;
-                case MetaType::S16:
-                    meta_value.set(StringToTypedIntegral<s16>(value_str));
+                }
+                case MetaType::S16: {
+                    auto result = StringToTypedIntegral<s16>(value_str);
+                    if (!result) {
+                        return std::unexpected(result.error());
+                    }
+                    meta_value.set(result.value());
                     break;
-                case MetaType::U16:
-                    meta_value.set(StringToTypedIntegral<u16>(value_str));
+                }
+                case MetaType::U16: {
+                    auto result = StringToTypedIntegral<u16>(value_str);
+                    if (!result) {
+                        return std::unexpected(result.error());
+                    }
+                    meta_value.set(result.value());
                     break;
-                case MetaType::S32:
-                    meta_value.set(StringToTypedIntegral<s32>(value_str));
+                }
+                case MetaType::S32: {
+                    auto result = StringToTypedIntegral<s32>(value_str);
+                    if (!result) {
+                        return std::unexpected(result.error());
+                    }
+                    meta_value.set(result.value());
                     break;
-                case MetaType::U32:
-                    meta_value.set(StringToTypedIntegral<u32>(value_str));
+                }
+                case MetaType::U32: {
+                    auto result = StringToTypedIntegral<u32>(value_str);
+                    if (!result) {
+                        return std::unexpected(result.error());
+                    }
+                    meta_value.set(result.value());
                     break;
+                }
                 default:
                     return make_json_error<void>("TEMPLATE", "Enum field must have integral type!",
                                                  0);
