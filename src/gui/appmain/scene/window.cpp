@@ -371,35 +371,16 @@ namespace Toolbox::UI {
                 }
 
                 m_scene_object_model->addEventListener(
-                    getUUID(),
-                    TOOLBOX_BIND_EVENT_FN(onObjectModelIndexEvent),
-                    ModelEventFlags::EVENT_INDEX_ANY);
+                    getUUID(), TOOLBOX_BIND_EVENT_FN(onObjectModelIndexEvent),
+                    ModelEventFlags::EVENT_ANY);
 
                 m_table_object_model->addEventListener(
                     getUUID(), TOOLBOX_BIND_EVENT_FN(onTableModelIndexEvent),
-                    ModelEventFlags::EVENT_INDEX_ANY);
+                    ModelEventFlags::EVENT_ANY);
 
-                m_rail_model->addEventListener(
-                    getUUID(),
-                    [&](ModelIndex index, int flags) {
-                        m_path_renderer_update_reqeusted = true;
-
-                        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) ==
-                            ModelEventFlags::EVENT_INDEX_ADDED) {
-                            if (m_rail_model->isIndexRail(index)) {
-                                m_rail_visible_map_update_request_index = index;
-                            }
-                            m_selection_transforms_update_requested = true;
-                            return;
-                        }
-
-                        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
-                            ModelEventFlags::EVENT_INDEX_REMOVED) {
-                            m_selection_transforms_update_requested = true;
-                            return;
-                        }
-                    },
-                    ModelEventFlags::EVENT_INDEX_ANY);
+                m_rail_model->addEventListener(getUUID(),
+                                               TOOLBOX_BIND_EVENT_FN(onRailModelIndexEvent),
+                                               ModelEventFlags::EVENT_ANY);
 
                 m_renderer.initializeData(m_rail_model);
                 return true;
@@ -4188,11 +4169,19 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::onObjectModelIndexEvent(const ModelIndex &index, int flags) {
+        const bool is_single_selected = m_scene_selection_mgr.getState().isSelected(index) &&
+                                        m_scene_selection_mgr.getState().count() == 1;
+
         if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) == ModelEventFlags::EVENT_INDEX_ADDED) {
             m_selection_transforms_update_requested = true;
-            RefPtr<ISceneObject> object             = m_scene_object_model->getObjectRef(index);
-            if (object) {
-                regeneratePropertiesForObject(object);
+
+            if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+                if (is_single_selected) {
+                    RefPtr<ISceneObject> object = m_scene_object_model->getObjectRef(index);
+                    if (object) {
+                        regeneratePropertiesForObject(object);
+                    }
+                }
             }
         }
 
@@ -4201,9 +4190,8 @@ namespace Toolbox::UI {
             m_selection_transforms_update_requested = true;
 
             if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
-                if (m_scene_selection_mgr.getState().isSelected(index) &&
-                    m_scene_selection_mgr.getState().count() == 1) {
-                    m_selected_properties.clear();
+                if (is_single_selected) {
+                    clearSelectedProperties();
                 }
             }
         }
@@ -4218,9 +4206,93 @@ namespace Toolbox::UI {
         }
     }
 
-    void SceneWindow::onTableModelIndexEvent(const ModelIndex &index, int flags) {}
+    void SceneWindow::onTableModelIndexEvent(const ModelIndex &index, int flags) {
+        const bool is_single_selected = m_table_selection_mgr.getState().isSelected(index) &&
+                                        m_table_selection_mgr.getState().count() == 1;
 
-    void SceneWindow::onRailModelIndexEvent(const ModelIndex &index, int flags) {}
+        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) == ModelEventFlags::EVENT_INDEX_ADDED) {
+            m_selection_transforms_update_requested = true;
+
+            if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+                if (is_single_selected) {
+                    RefPtr<ISceneObject> object = m_table_object_model->getObjectRef(index);
+                    if (object) {
+                        regeneratePropertiesForObject(object);
+                    }
+                }
+            }
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+            ModelEventFlags::EVENT_INDEX_REMOVED) {
+            m_selection_transforms_update_requested = true;
+
+            if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
+                if (is_single_selected) {
+                    clearSelectedProperties();
+                }
+            }
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_MODIFIED) ==
+            ModelEventFlags::EVENT_INDEX_MODIFIED) {
+            RefPtr<ISceneObject> object = m_table_object_model->getObjectRef(index);
+            if (object) {
+                m_selection_transforms_update_requested = true;
+                object->refreshRenderState();
+            }
+        }
+    }
+
+    void SceneWindow::onRailModelIndexEvent(const ModelIndex &index, int flags) {
+        const bool is_single_selected = m_rail_selection_mgr.getState().isSelected(index) &&
+                                        m_rail_selection_mgr.getState().count() == 1;
+
+        m_path_renderer_update_reqeusted = true;
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) == ModelEventFlags::EVENT_INDEX_ADDED) {
+            if (m_rail_model->isIndexRail(index)) {
+                m_rail_visible_map_update_request_index = index;
+
+                if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+                    if (is_single_selected) {
+                        RefPtr<Rail::Rail> rail = m_rail_model->getRailRef(index);
+                        if (rail) {
+                            m_properties_render_handler = renderRailProperties;
+                        }
+                    }
+                }
+            } else {
+                if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+                    if (is_single_selected) {
+                        RefPtr<Rail::RailNode> node = m_rail_model->getRailNodeRef(index);
+                        if (node) {
+                            m_properties_render_handler = renderRailNodeProperties;
+                        }
+                    }
+                }
+            }
+            m_selection_transforms_update_requested = true;
+            return;
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+            ModelEventFlags::EVENT_INDEX_REMOVED) {
+            m_selection_transforms_update_requested = true;
+
+            if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
+                if (is_single_selected) {
+                    clearSelectedProperties();
+                }
+            }
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+            ModelEventFlags::EVENT_INDEX_REMOVED) {
+            m_selection_transforms_update_requested = true;
+            return;
+        }
+    }
 
     void SceneWindow::_moveNode(const Rail::RailNode &node, size_t index, UUID64 rail_id,
                                 size_t orig_index, UUID64 orig_id, bool is_internal) {
