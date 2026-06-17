@@ -596,7 +596,7 @@ namespace Toolbox::UI {
                         m_table_selection_mgr.getState().clearSelection();
                         m_rail_selection_mgr.getState().clearSelection();
 
-                        m_selected_properties.clear();
+                        clearSelectedProperties();
                         m_properties_render_handler = renderEmptyProperties;
                     }
                 } else if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
@@ -1216,7 +1216,7 @@ namespace Toolbox::UI {
                         ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                        m_selected_properties.clear();
+                        clearSelectedProperties();
                         m_rail_selection_mgr.getState().clearSelection();
 
                         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
@@ -1230,8 +1230,6 @@ namespace Toolbox::UI {
 
                         m_selection_transforms_update_requested = true;
                     }
-
-                    m_properties_render_handler = renderObjectProperties;
                 }
 
                 renderSceneHierarchyContextMenu(display_name, index);
@@ -1322,7 +1320,7 @@ namespace Toolbox::UI {
                         ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                        m_selected_properties.clear();
+                        clearSelectedProperties();
                         m_rail_selection_mgr.getState().clearSelection();
 
                         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
@@ -1336,8 +1334,6 @@ namespace Toolbox::UI {
 
                         m_selection_transforms_update_requested = true;
                     }
-
-                    m_properties_render_handler = renderObjectProperties;
                 }
 
                 renderSceneHierarchyContextMenu(display_name, index);
@@ -1509,7 +1505,7 @@ namespace Toolbox::UI {
                         ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                        m_selected_properties.clear();
+                        clearSelectedProperties();
                         m_rail_selection_mgr.getState().clearSelection();
 
                         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
@@ -1523,8 +1519,6 @@ namespace Toolbox::UI {
 
                         m_selection_transforms_update_requested = true;
                     }
-
-                    m_properties_render_handler = renderObjectProperties;
                 }
 
                 renderTableHierarchyContextMenu(display_name, index);
@@ -1615,7 +1609,7 @@ namespace Toolbox::UI {
                         ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                        m_selected_properties.clear();
+                        clearSelectedProperties();
                         m_rail_selection_mgr.getState().clearSelection();
 
                         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
@@ -1629,8 +1623,6 @@ namespace Toolbox::UI {
 
                         m_selection_transforms_update_requested = true;
                     }
-
-                    m_properties_render_handler = renderObjectProperties;
                 }
 
                 renderTableHierarchyContextMenu(display_name, index);
@@ -3904,15 +3896,13 @@ namespace Toolbox::UI {
         m_wants_scene_context_menu =
             true;  // Tells the program to check for context menu on potential right click
 
-        m_selected_properties.clear();
+        clearSelectedProperties();
 
         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
             regeneratePropertiesForObject(m_scene_object_model->getObjectRef(index));
         }
 
         m_selection_transforms_update_requested = true;
-
-        m_properties_render_handler = renderObjectProperties;
 
         // TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", node->type(), node->getNameRef().name());
     }
@@ -3949,7 +3939,7 @@ namespace Toolbox::UI {
 
         m_selection_transforms_update_requested = true;
 
-        m_selected_properties.clear();
+        clearSelectedProperties();
         m_properties_render_handler = renderRailProperties;
 
         // TOOLBOX_DEBUG_LOG_V("Hit rail \"{}\"", node->name());
@@ -3987,7 +3977,7 @@ namespace Toolbox::UI {
 
         m_selection_transforms_update_requested = true;
 
-        m_selected_properties.clear();
+        clearSelectedProperties();
         m_properties_render_handler = renderRailNodeProperties;
 
         //// Debug log
@@ -4154,7 +4144,7 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::regeneratePropertiesForObject(RefPtr<ISceneObject> object) {
-        m_selected_properties.clear();
+        clearSelectedProperties();
         for (auto &member : object->getMembers()) {
             member->syncArray();
 
@@ -4194,6 +4184,7 @@ namespace Toolbox::UI {
                 m_selected_properties.push_back(std::move(prop));
             }
         }
+        m_properties_render_handler = renderObjectProperties;
     }
 
     void SceneWindow::onObjectModelIndexEvent(const ModelIndex &index, int flags) {
@@ -4276,7 +4267,10 @@ namespace Toolbox::UI {
         m_stage = stage, m_scenario = scenario;
     }
 
-    void SceneWindow::clearSelectedProperties() { m_selected_properties.clear(); }
+    void SceneWindow::clearSelectedProperties() {
+        m_selected_properties.clear();
+        m_properties_render_handler = renderEmptyProperties;
+    }
 
     ImGuiID SceneWindow::onBuildDockspace() {
         ImGuiID dockspace_id = ImGui::GetID(std::to_string(getUUID()).c_str());
