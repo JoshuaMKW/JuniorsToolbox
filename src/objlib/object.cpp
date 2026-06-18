@@ -31,20 +31,24 @@ static constexpr std::array s_monte_types = {
 
 namespace Toolbox::Object {
 
-    static std::unordered_map<UUID64, ObjectRenderController>
-        s_obj_to_render_controller;
+    // This cache system is horrible and will eventually be replaced once I decouple rendering from objects
+    static std::unordered_map<UUID64, ScopePtr<IRenderCache>> s_render_caches;
 
-    static RefPtr<ObjectRenderController>
-    GetRenderControllerForParameters(const UUID64 &uuid) {
-        if (s_obj_to_render_controller.contains(uuid)) {
-            return make_referable<ObjectRenderController>(s_obj_to_render_controller.at(uuid));
+    static RefPtr<ObjectRenderController> GetControllerFromParameters(const UUID64 &uuid) {
+        for (const auto &[_, cache] : s_render_caches) {
+            RefPtr<ObjectRenderController> controller = cache->getRenderControllerFromUUID(uuid);
+            if (controller) {
+                return controller;
+            }
         }
         return nullptr;
     }
 
-    static void SetRenderControllerForParameters(const UUID64 &uuid,
-                                                 RefPtr<ObjectRenderController> controller) {
-        s_obj_to_render_controller[uuid] = *controller;
+    static void SetControllerFromParameters(const UUID64& uuid,
+                                            RefPtr<ObjectRenderController> controller) {
+        for (const auto &[_, cache] : s_render_caches) {
+            cache->setRenderControllerFromUUID(uuid, controller);
+        }
     }
 
     /* INTERFACE */
@@ -687,6 +691,14 @@ namespace Toolbox::Object {
 
     /* PHYSICAL SCENE OBJECT */
 
+    PhysicalSceneObject::~PhysicalSceneObject() {
+        m_data.clear();
+        m_members.clear();
+        m_member_cache.clear();
+        m_model_data.reset();
+        m_render_controller.reset();
+    }
+
     std::span<u8> PhysicalSceneObject::getData() const {
         std::stringstream ostr;
 
@@ -1024,31 +1036,29 @@ namespace Toolbox::Object {
             return {};
         }
 
-        static const std::unordered_set<std::string> optimization_blacklist = {
-            // Helpers in loadRenderData
-            "nozzlebox",
-            "NozzleBox",  // Included both just in case m_type differs from model_name
-            "Sky",        // Modifies SortBias and Material table dynamically
+        //static const std::unordered_set<std::string> optimization_blacklist = {
+        //    // Helpers in loadRenderData
+        //    "nozzlebox",
+        //    "NozzleBox",  // Included both just in case m_type differs from model_name
+        //    "Sky",        // Modifies SortBias and Material table dynamically
 
-            // Helpers in bareRefreshRenderState_
-            "HideObjPictureTwin", "WaterHitPictureHideObj", "WoodBlock",
+        //    // Helpers in bareRefreshRenderState_
+        //    "HideObjPictureTwin", "WaterHitPictureHideObj", "WoodBlock",
 
-            // NPCs - Toads
-            "NPCKinojii", "NPCKinopio",
+        //    // NPCs - Toads
+        //    "NPCKinojii", "NPCKinopio",
 
-            // NPCs - Nokis (Mares)
-            "NPCMareM", "NPCMareMA", "NPCMareMB", "NPCMareMC",
+        //    // NPCs - Nokis (Mares)
+        //    "NPCMareM", "NPCMareMA", "NPCMareMB", "NPCMareMC",
 
-            // NPCs - Piantas (Montes)
-            "NPCMonteM", "NPCMonteMA", "NPCMonteMB", "NPCMonteMC", "NPCMonteMD", "NPCMonteME",
-            "NPCMonteMF", "NPCMonteMG", "NPCMonteMH", "NPCMonteW", "NPCMonteWA", "NPCMonteWB",
-            "NPCMonteWC",
-        
-            "Woodbox"
-        };
+        //    // NPCs - Piantas (Montes)
+        //    "NPCMonteM", "NPCMonteMA", "NPCMonteMB", "NPCMonteMC", "NPCMonteMD", "NPCMonteME",
+        //    "NPCMonteMF", "NPCMonteMG", "NPCMonteMH", "NPCMonteW", "NPCMonteWA", "NPCMonteWB",
+        //    "NPCMonteWC",
 
-        if (RefPtr<ObjectRenderController> controller =
-                GetRenderControllerForParameters(m_UUID64)) {
+        //    "Woodbox"};
+
+        if (RefPtr<ObjectRenderController> controller = GetControllerFromParameters(m_UUID64)) {
             m_render_controller = controller;
             bareRefreshRenderState_();
             return {};
@@ -1204,7 +1214,7 @@ namespace Toolbox::Object {
         m_render_controller->startAnimation(AnimationType::BTK, 0);
         m_render_controller->startAnimation(AnimationType::BTP, 0);
 
-        SetRenderControllerForParameters(m_UUID64, m_render_controller);
+        SetControllerFromParameters(m_UUID64, m_render_controller);
 
         // Initialize the render state
         bareRefreshRenderState_();
@@ -1749,6 +1759,33 @@ namespace Toolbox::Object {
         const u16 type_code = NameRef(object->type()).code();
         return std::any_of(s_monte_types.begin(), s_monte_types.end(),
                            [&](u16 code) { return code == type_code; });
+    }
+
+    RefPtr<ObjectRenderController>
+    TemplateRenderCache::getRenderControllerFromUUID(const UUID64 &uuid) const {
+        if (m_render_cache.contains(uuid)) {
+            return m_render_cache.at(uuid);
+        }
+        return nullptr;
+    }
+
+    void
+    TemplateRenderCache::setRenderControllerFromUUID(const UUID64 &uuid,
+                                                     RefPtr<ObjectRenderController> controller) {
+        m_render_cache[uuid] = controller;
+    }
+
+    void TemplateRenderCache::removeRenderControllerFromUUID(const UUID64 &uuid) {
+        m_render_cache.erase(uuid);
+    }
+
+    void SceneRenderCacheRegistry::AddSceneRenderCache(const UUID64 &scene,
+                                                       ScopePtr<IRenderCache> cache) {
+        s_render_caches[scene] = std::move(cache);
+    }
+
+    void SceneRenderCacheRegistry::RemoveSceneRenderCache(const UUID64 &scene) {
+        s_render_caches.erase(scene);
     }
 
 }  // namespace Toolbox::Object

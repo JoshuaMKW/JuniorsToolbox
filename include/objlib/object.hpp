@@ -78,7 +78,7 @@ namespace Toolbox::Object {
 
     class ObjectRenderController {
     public:
-        ObjectRenderController()                                   = default;
+        ObjectRenderController() = default;
         ObjectRenderController(const ObjectRenderController &);
         ObjectRenderController(ObjectRenderController &&) noexcept;
 
@@ -125,6 +125,43 @@ namespace Toolbox::Object {
         std::vector<RefPtr<J3DAnimationInstance>> m_animations_btk;
     };
 
+    class IRenderCache {
+    public:
+        virtual ~IRenderCache() {}
+
+        virtual RefPtr<ObjectRenderController>
+        getRenderControllerFromUUID(const UUID64 &uuid) const                               = 0;
+        virtual void setRenderControllerFromUUID(const UUID64 &uuid,
+                                                 RefPtr<ObjectRenderController> controller) = 0;
+        virtual void removeRenderControllerFromUUID(const UUID64 &uuid)                     = 0;
+    };
+
+    class TemplateRenderCache : public IRenderCache {
+    public:
+        TemplateRenderCache()                                     = default;
+        TemplateRenderCache(const TemplateRenderCache &)     = delete;
+        TemplateRenderCache(TemplateRenderCache &&) noexcept = default;
+        ~TemplateRenderCache() override                           = default;
+
+        TemplateRenderCache &operator=(const TemplateRenderCache &)     = delete;
+        TemplateRenderCache &operator=(TemplateRenderCache &&) noexcept = default;
+
+        RefPtr<ObjectRenderController>
+        getRenderControllerFromUUID(const UUID64 &uuid) const override;
+        void setRenderControllerFromUUID(const UUID64 &uuid,
+                                         RefPtr<ObjectRenderController> controller) override;
+        void removeRenderControllerFromUUID(const UUID64 &uuid) override;
+
+    private:
+        std::unordered_map<UUID64, RefPtr<ObjectRenderController>> m_render_cache;
+    };
+
+    class SceneRenderCacheRegistry {
+    public:
+        static void AddSceneRenderCache(const UUID64 &scene, ScopePtr<IRenderCache> cache);
+        static void RemoveSceneRenderCache(const UUID64 &scene);
+    };
+
     // A scene object capable of performing in a rendered context and
     // holding modifiable and exotic values
     class ISceneObject : public IGameSerializable, public ISmartResource, public IUnique {
@@ -163,7 +200,7 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual bool hasMember(const QualifiedName &name) const                   = 0;
         [[nodiscard]] virtual MetaStruct::GetMemberT getMember(const QualifiedName &name) const = 0;
-        [[nodiscard]] virtual const std::vector<RefPtr<MetaMember>> &getMembers() const                = 0;
+        [[nodiscard]] virtual const std::vector<RefPtr<MetaMember>> &getMembers() const         = 0;
         [[nodiscard]] virtual size_t getMemberOffset(const QualifiedName &name,
                                                      int index) const                           = 0;
         [[nodiscard]] virtual size_t getMemberSize(const QualifiedName &name, int index) const  = 0;
@@ -181,7 +218,7 @@ namespace Toolbox::Object {
         getChildByType(std::string_view type,
                        std::optional<std::string_view> name = std::nullopt) = 0;
 
-        [[nodiscard]] virtual std::optional<Transform> getTransform() const      = 0;
+        [[nodiscard]] virtual std::optional<Transform> getTransform() const = 0;
         virtual Result<void, MetaError> setTransform(const Transform &transform,
                                                      bool updateMembers)    = 0;
 
@@ -627,7 +664,7 @@ namespace Toolbox::Object {
         PhysicalSceneObject(PhysicalSceneObject &&)      = default;
 
     public:
-        ~PhysicalSceneObject() override { m_data.clear(); }
+        ~PhysicalSceneObject() override;
 
         [[nodiscard]] bool isGroupObject() const override { return false; }
 
@@ -706,7 +743,8 @@ namespace Toolbox::Object {
         }
 
         [[nodiscard]] std::optional<Transform> getTransform() const override { return m_transform; }
-        Result<void, MetaError> setTransform(const Transform &transform, bool updateMembers) override {
+        Result<void, MetaError> setTransform(const Transform &transform,
+                                             bool updateMembers) override {
             m_transform = transform;
 
             RefPtr<J3DModelInstance> selected_model = m_render_controller->getRenderModel();
@@ -858,7 +896,8 @@ namespace Toolbox::Object {
         static create_t create(Deserializer &in, bool include_custom,
                                std::optional<UUID64> obj_uuid = std::nullopt);
         static create_ret_t create(const Template &template_, std::string_view wizard_name,
-                                   const fs_path &resource_path, std::optional<UUID64> obj_uuid = std::nullopt);
+                                   const fs_path &resource_path,
+                                   std::optional<UUID64> obj_uuid = std::nullopt);
 
     protected:
         static bool isGroupObject(std::string_view type);
