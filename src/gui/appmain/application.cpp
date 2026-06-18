@@ -1022,6 +1022,7 @@ namespace Toolbox {
                 win->onDetach();
                 if (win->destroyOnClose()) {
                     it = m_windows.erase(it);
+                    removeLayer(win);
                     continue;
                 }
             }

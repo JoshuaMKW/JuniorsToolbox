@@ -30,13 +30,58 @@ namespace Toolbox::UI {
         template <typename _DataT> struct ContextOp;
         template <typename _DataT> struct ContextGroup;
 
-        template <typename _DataT> struct ContextEntry {
+        struct context_div_tag {};
+
+        template <typename _DataT> class ContextEntry {
+        public:
             enum Type {
                 TYPE_OP,
                 TYPE_GROUP,
                 TYPE_DIV,
             };
 
+            ContextEntry() = delete;
+            ContextEntry(context_div_tag) : m_type(Type::TYPE_DIV) {}
+            ContextEntry(ContextOp<_DataT> *op) : m_type(Type::TYPE_OP), m_op(op) {}
+            ContextEntry(ContextGroup<_DataT> *group) : m_type(Type::TYPE_GROUP), m_group(group) {}
+
+            ContextEntry(const ContextEntry &) = delete;
+            ContextEntry(ContextEntry &&other) noexcept { *this = std::move(other); }
+
+            ~ContextEntry() {
+                if (m_type == Type::TYPE_GROUP && m_group) {
+                    delete m_group;
+                } else if (m_type == Type::TYPE_OP && m_op) {
+                    delete m_op;
+                }
+            }
+
+            ContextEntry &operator=(const ContextEntry &) = delete;
+            ContextEntry &operator=(ContextEntry &&other) noexcept {
+                m_type = other.m_type;
+                if (m_type == Type::TYPE_GROUP) {
+                    m_group       = other.m_group;
+                    other.m_group = nullptr;
+                } else if (m_type == Type::TYPE_OP) {
+                    m_op       = other.m_op;
+                    other.m_op = nullptr;
+                }
+                return *this;
+            }
+
+            Type getType() const { return m_type; }
+
+            ContextOp<_DataT> *getOption() { return m_type == Type::TYPE_OP ? m_op : nullptr; }
+            ContextGroup<_DataT> *getGroup() { return m_type == Type::TYPE_GROUP ? m_group : nullptr; }
+
+            const ContextOp<_DataT> *getOption() const {
+                return m_type == Type::TYPE_OP ? m_op : nullptr;
+            }
+            const ContextGroup<_DataT> *getGroup() const {
+                return m_type == Type::TYPE_GROUP ? m_group : nullptr;
+            }
+
+        private:
             union {
                 ContextOp<_DataT> *m_op;
                 ContextGroup<_DataT> *m_group;
@@ -71,7 +116,12 @@ namespace Toolbox::UI {
         using option_t  = ContextOp<_DataT>;
 
         ContextMenu()  = default;
-        ~ContextMenu() = default;
+        ~ContextMenu()                                  = default;
+
+        ContextMenu(const ContextMenu &)                = delete;
+        ContextMenu &operator=(const ContextMenu &)     = delete;
+        ContextMenu(ContextMenu &&) noexcept            = default;
+        ContextMenu &operator=(ContextMenu &&) noexcept = default;
 
         group_t *addGroup(group_t *parent_group, std::string_view label);
 
@@ -147,11 +197,7 @@ namespace Toolbox::UI {
 
         group_t *group = new group_t;
         group->m_name  = label;
-
-        context_t entry = {};
-        entry.m_type    = context_t::TYPE_GROUP;
-        entry.m_group   = group;
-        parent_group->m_ops.emplace_back(entry);
+        parent_group->m_ops.emplace_back(group);
 
         return group;
     }
@@ -166,10 +212,7 @@ namespace Toolbox::UI {
                                         .m_keybind   = keybind,
                                         .m_condition = [](_DataT) { return true; },
                                         .m_op        = op};
-        context_t entry  = {};
-        entry.m_type     = context_t::TYPE_OP;
-        entry.m_op       = option;
-        parent_group->m_ops.emplace_back(entry);
+        parent_group->m_ops.emplace_back(option);
     }
 
     template <typename _DataT>
@@ -184,10 +227,7 @@ namespace Toolbox::UI {
                                         .m_keybind   = keybind,
                                         .m_condition = condition,
                                         .m_op        = op};
-        context_t entry  = {};
-        entry.m_type     = context_t::TYPE_OP;
-        entry.m_op       = option;
-        parent_group->m_ops.emplace_back(entry);
+        parent_group->m_ops.emplace_back(option);
     }
 
     template <typename _DataT> inline void ContextMenu<_DataT>::addDivider(group_t *parent_group) {
@@ -195,9 +235,7 @@ namespace Toolbox::UI {
             parent_group = &m_root_group;
         }
 
-        context_t entry = {};
-        entry.m_type    = context_t::TYPE_DIV;
-        parent_group->m_ops.emplace_back(entry);
+        parent_group->m_ops.emplace_back(context_div_tag{});
     }
 
     template <typename _DataT>
@@ -460,19 +498,19 @@ namespace Toolbox::UI {
         std::vector<size_t> valid_items = {};
         valid_items.reserve(group.m_ops.size());
 
-        int64_t sep_idx = -1;
+        int64_t sep_idx     = -1;
         bool sep_is_waiting = false;
 
         // Precalculate which dividers are valid to process
         for (size_t i = 0; i < group.m_ops.size(); ++i) {
             const context_t &entry = group.m_ops.at(i);
-            if (entry.m_type == context_t::TYPE_GROUP) {
+            if (entry.getType() == context_t::TYPE_GROUP) {
                 valid_items.push_back(i);
                 continue;
             }
-            
-            if (entry.m_type == context_t::TYPE_OP) {
-                if (entry.m_op->m_condition(ctx)) {
+
+            if (entry.getType() == context_t::TYPE_OP) {
+                if (entry.getOption()->m_condition(ctx)) {
                     if (sep_is_waiting) {
                         valid_items.push_back(sep_idx);
                         sep_is_waiting = false;
@@ -483,7 +521,7 @@ namespace Toolbox::UI {
             }
 
             if (!valid_items.empty() && !sep_is_waiting) {
-                sep_idx = i;
+                sep_idx        = i;
                 sep_is_waiting = true;
             }
         }
@@ -491,14 +529,14 @@ namespace Toolbox::UI {
         if (is_root) {
             for (size_t i : valid_items) {
                 const context_t &entry = group.m_ops.at(i);
-                if (entry.m_type == context_t::TYPE_GROUP) {
-                    if (renderGroup(*entry.m_group, ctx, false)) {
+                if (entry.getType() == context_t::TYPE_GROUP) {
+                    if (renderGroup(*entry.getGroup(), ctx, false)) {
                         return true;
                     }
                     last_item    = i;
                     last_was_sep = false;
-                } else if (entry.m_type == context_t::TYPE_OP) {
-                    if (renderOption(*entry.m_op, ctx)) {
+                } else if (entry.getType() == context_t::TYPE_OP) {
+                    if (renderOption(*entry.getOption(), ctx)) {
                         return true;
                     }
                     last_item    = i;
@@ -514,15 +552,15 @@ namespace Toolbox::UI {
         if (ImGui::BeginMenu(group.m_name.c_str(), true)) {
             for (size_t i : valid_items) {
                 const context_t &entry = group.m_ops.at(i);
-                if (entry.m_type == context_t::TYPE_GROUP) {
-                    if (renderGroup(*entry.m_group, ctx, false)) {
+                if (entry.getType() == context_t::TYPE_GROUP) {
+                    if (renderGroup(*entry.getGroup(), ctx, false)) {
                         ImGui::EndMenu();
                         return true;
                     }
                     last_item    = i;
                     last_was_sep = false;
-                } else if (entry.m_type == context_t::TYPE_OP) {
-                    if (renderOption(*entry.m_op, ctx)) {
+                } else if (entry.getType() == context_t::TYPE_OP) {
+                    if (renderOption(*entry.getOption(), ctx)) {
                         ImGui::EndMenu();
                         return true;
                     }
@@ -595,12 +633,12 @@ namespace Toolbox::UI {
     inline bool ContextMenu<_DataT>::processKeybindsGroup(group_t &group, const _DataT &ctx) {
         for (size_t i = 0; i < group.m_ops.size(); ++i) {
             context_t &entry = group.m_ops.at(i);
-            if (entry.m_type == context_t::TYPE_GROUP) {
-                if (processKeybindsGroup(*entry.m_group, ctx)) {
+            if (entry.getType() == context_t::TYPE_GROUP) {
+                if (processKeybindsGroup(*entry.getGroup(), ctx)) {
                     return true;
                 }
-            } else if (entry.m_type == context_t::TYPE_OP) {
-                if (processKeybindsOption(*entry.m_op, ctx)) {
+            } else if (entry.getType() == context_t::TYPE_OP) {
+                if (processKeybindsOption(*entry.getOption(), ctx)) {
                     return true;
                 }
             }
@@ -633,6 +671,7 @@ namespace Toolbox::UI {
 
     public:
         ContextMenuBuilder(menu_t *menu) : m_menu(menu) {}
+        ~ContextMenuBuilder() { m_group_stack.clear(); }
 
         ContextMenuBuilder &beginGroup(std::string_view group_name) {
             typename menu_t::group_t *parent_group = m_group_stack.empty() ? nullptr

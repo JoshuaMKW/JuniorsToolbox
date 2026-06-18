@@ -304,6 +304,9 @@ namespace Toolbox::UI {
                                              .getCurrentProfile()
                                              .m_is_custom_obj_allowed;
 
+        SceneRenderCacheRegistry::RemoveSceneRenderCache(getUUID());
+        SceneRenderCacheRegistry::AddSceneRenderCache(getUUID(), make_scoped<TemplateRenderCache>());
+
         if (Toolbox::Filesystem::is_directory(path)) {
             if (path.filename() != "scene") {
                 return false;
@@ -494,6 +497,8 @@ namespace Toolbox::UI {
 
         m_drop_target_buffer.free();
         m_current_scene.reset();
+
+        SceneRenderCacheRegistry::RemoveSceneRenderCache(getUUID());
     }
 
     void SceneWindow::onImGuiUpdate(TimeStep delta_time) {
