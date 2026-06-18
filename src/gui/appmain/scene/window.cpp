@@ -499,6 +499,12 @@ namespace Toolbox::UI {
     void SceneWindow::onImGuiUpdate(TimeStep delta_time) {
         m_renderer.inputUpdate(delta_time);
 
+        const ImGuiID focused_id = ImGui::GetFocusID();
+        if (m_last_focused_id != focused_id) {
+            m_last_focused_id = focused_id;
+            m_history_aggregate_handler->endExplicitFrame();
+        }
+
         calcDolphinVPMatrix();
 
         Game::TaskCommunicator &task_communicator =

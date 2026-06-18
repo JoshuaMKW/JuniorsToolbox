@@ -329,6 +329,7 @@ namespace Toolbox::UI {
 
         RefPtr<ModelHistoryAggregate> m_history_aggregate_handler;
         int64_t m_saved_history_frame = -1;
+        ImGuiID m_last_focused_id = 0;
 
         ContextMenu<ModelIndex> m_scene_hierarchy_context_menu;
         ContextMenu<ModelIndex> m_table_hierarchy_context_menu;

@@ -704,6 +704,10 @@ namespace Toolbox {
     }
 
     void ModelHistoryAggregate::startExplicitFrame() {
+        if (m_wip_frame.m_first_frame != TimePoint()) {
+            endExplicitFrame();
+        }
+
         ModelHistoryHandler::startExplicitFrame();
 
         for (ScopePtr<ModelHistoryHandler> &handler : m_handlers) {
@@ -716,13 +720,26 @@ namespace Toolbox {
     void ModelHistoryAggregate::endExplicitFrame() {
         ModelHistoryHandler::endExplicitFrame();
 
+        bool is_valid_frame = true;
+
+        if (m_wip_frame.m_first_frame == TimePoint()) {
+            TimePoint recent_time = getUndoFrameTimepoint();
+
+            if (recent_time == TimePoint::min()) {
+                is_valid_frame = false;
+            } else {
+                m_wip_frame.m_first_frame = recent_time;
+            }
+        }
+
         for (ScopePtr<ModelHistoryHandler> &handler : m_handlers) {
             handler->endExplicitFrame();
         }
 
-        m_wip_frame.m_last_frame = TimePoint::clock::now();
-
-        m_frames.push_back(m_wip_frame);
+        if (is_valid_frame) {
+            m_wip_frame.m_last_frame = TimePoint::clock::now();
+            m_frames.push_back(m_wip_frame);
+        }
 
         m_wip_frame = {};
     }
