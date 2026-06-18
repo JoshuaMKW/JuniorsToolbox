@@ -9,7 +9,8 @@ static std::string s_message_pool;
 
 namespace Toolbox::UI {
     void LoggingWindow::appendMessageToPool(const Log::AppLogger::LogMessage &message) {
-        AppSettings &settings = MainApplication::instance().getSettingsManager().getCurrentProfile();
+        AppSettings &settings =
+            MainApplication::instance().getSettingsManager().getCurrentProfile();
         if (settings.m_log_to_cout_cerr) {
             if (message.m_level == Log::ReportLevel::REPORT_ERROR)
                 std::cerr << message.m_message << std::endl;
@@ -105,38 +106,17 @@ namespace Toolbox::UI {
 
         if (ImGui::BeginChild(ImWindowComponentTitle(*this, "Log View").c_str(), {},
                               ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_None)) {
-            bool is_auto_scroll_mode = ImGui::GetScrollMaxY() - ImGui::GetScrollY() < 12.0f;
+            const bool is_auto_scroll_mode = ImGui::GetScrollMaxY() - ImGui::GetScrollY() < 12.0f;
 
             Log::AppLogger::LogLock lock = Log::AppLogger::instance().acquireReadLock();
-            auto &messages = Log::AppLogger::instance().messages();
-            size_t begin   = (size_t)std::max<s64>(
-                0, messages.size() - 5000);  // Have up to 5000 messages at once displayed
-            for (size_t i = begin; i < messages.size(); ++i) {
-                auto &message = messages[i];
-                switch (message.m_level) {
-                case Log::ReportLevel::REPORT_LOG:
-                    if (m_logging_level != Log::ReportLevel::REPORT_LOG)
-                        break;
-                    ImGui::TextColored({0.2f, 0.9f, 0.3f, 1.0f}, "[LOG]     - %s",
-                                       message.m_message.c_str());
-                    break;
-                case Log::ReportLevel::REPORT_WARNING:
-                    if (m_logging_level == Log::ReportLevel::REPORT_DEBUG ||
-                        m_logging_level == Log::ReportLevel::REPORT_ERROR)
-                        break;
-                    ImGui::TextColored({0.7f, 0.5f, 0.1f, 1.0f}, "[WARNING] - %s",
-                                       message.m_message.c_str());
-                    break;
-                case Log::ReportLevel::REPORT_ERROR:
-                    if (m_logging_level == Log::ReportLevel::REPORT_DEBUG)
-                        break;
-                    ImGui::TextColored({0.9f, 0.2f, 0.1f, 1.0f}, "[ERROR]   - %s",
-                                       message.m_message.c_str());
-                    break;
-                case Log::ReportLevel::REPORT_DEBUG:
-                    ImGui::TextColored({0.3f, 0.4f, 0.9f, 1.0f}, "[DEBUG]   - %s",
-                                       message.m_message.c_str());
-                    break;
+            auto &messages               = Log::AppLogger::instance().messages();
+
+            ImGuiListClipper clipper;
+            clipper.Begin(static_cast<int>(messages.size()), ImGui::GetTextLineHeightWithSpacing());
+
+            while (clipper.Step()) {
+                for (size_t i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                    renderMessage(messages[i].m_level, messages[i].m_message);
                 }
             }
 
@@ -150,6 +130,46 @@ namespace Toolbox::UI {
 
         if (mono_font) {
             ImGui::PopFont();
+        }
+    }
+
+    void LoggingWindow::renderMessage(Log::ReportLevel level, std::string_view message) {
+        switch (level) {
+        case Log::ReportLevel::REPORT_LOG:
+            if (m_logging_level != Log::ReportLevel::REPORT_LOG)
+                break;
+            ImGui::PushStyleColor(ImGuiCol_Text, {0.2f, 0.9f, 0.3f, 1.0f});
+            ImGui::TextUnformatted("[LOG]     -");
+            ImGui::SameLine();
+            ImGui::TextUnformatted(message.data(), message.data() + message.size());
+            ImGui::PopStyleColor();
+            break;
+        case Log::ReportLevel::REPORT_WARNING:
+            if (m_logging_level == Log::ReportLevel::REPORT_DEBUG ||
+                m_logging_level == Log::ReportLevel::REPORT_ERROR)
+                break;
+            ImGui::PushStyleColor(ImGuiCol_Text, {0.7f, 0.5f, 0.1f, 1.0f});
+            ImGui::TextUnformatted("[WARNING] -");
+            ImGui::SameLine();
+            ImGui::TextUnformatted(message.data(), message.data() + message.size());
+            ImGui::PopStyleColor();
+            break;
+        case Log::ReportLevel::REPORT_ERROR:
+            if (m_logging_level == Log::ReportLevel::REPORT_DEBUG)
+                break;
+            ImGui::PushStyleColor(ImGuiCol_Text, {0.9f, 0.2f, 0.1f, 1.0f});
+            ImGui::TextUnformatted("[ERROR]   -");
+            ImGui::SameLine();
+            ImGui::TextUnformatted(message.data(), message.data() + message.size());
+            ImGui::PopStyleColor();
+            break;
+        case Log::ReportLevel::REPORT_DEBUG:
+            ImGui::PushStyleColor(ImGuiCol_Text, {0.3f, 0.4f, 0.9f, 1.0f});
+            ImGui::TextUnformatted("[DEBUG]   -");
+            ImGui::SameLine();
+            ImGui::TextUnformatted(message.data(), message.data() + message.size());
+            ImGui::PopStyleColor();
+            break;
         }
     }
 

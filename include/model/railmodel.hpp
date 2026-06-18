@@ -63,10 +63,10 @@ namespace Toolbox {
 
         Result<void, MetaError> addNodeConnection(const ModelIndex &index, const ModelIndex &to);
         Result<void, MetaError> insertNodeConnection(const ModelIndex &index, size_t slot,
-                                                      const ModelIndex &to);
+                                                     const ModelIndex &to);
         Result<void, MetaError> removeNodeConnection(const ModelIndex &index, size_t slot);
         Result<void, MetaError> replaceNodeConnection(const ModelIndex &index, size_t slot,
-                                                       const ModelIndex &to);
+                                                      const ModelIndex &to);
         Result<void, MetaError> clearNodeConnections(const ModelIndex &index);
 
         Result<void, MetaError> connectNodeToNearest(const ModelIndex &index, size_t count);
@@ -103,12 +103,12 @@ namespace Toolbox {
                 getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_NODE_REF));
         }
 
-        [[nodiscard]] glm::vec3 getRailCenteroid(const ModelIndex& index) const {
+        [[nodiscard]] glm::vec3 getRailCenteroid(const ModelIndex &index) const {
             return std::any_cast<glm::vec3>(
                 getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_CENTEROID));
         }
 
-        [[nodiscard]] BoundingBox getRailBoundingBox(const ModelIndex& index) const {
+        [[nodiscard]] BoundingBox getRailBoundingBox(const ModelIndex &index) const {
             return std::any_cast<BoundingBox>(
                 getData(index, RailObjDataRole::RAIL_DATA_ROLE_RAIL_BOUNDING_BOX));
         }
@@ -176,15 +176,19 @@ namespace Toolbox {
         [[nodiscard]] virtual ModelIndex insertRail_(RailData::rail_ptr_t rail, int64_t row);
         [[nodiscard]] virtual ModelIndex insertRailNode_(Rail::Rail::node_ptr_t node, int64_t row,
                                                          const ModelIndex &parent);
-        [[nodiscard]] virtual ModelIndex makeIndex(RailData::rail_ptr_t rail, int64_t row) const;
-        [[nodiscard]] virtual ModelIndex makeIndex(Rail::Rail::node_ptr_t node, int64_t row,
-                                                   const ModelIndex &parent) const;
+        [[nodiscard]] virtual ModelIndex
+        makeIndex(RailData::rail_ptr_t rail, int64_t row,
+                  std::optional<UUID64> index_uuid = std::nullopt) const;
+        [[nodiscard]] virtual ModelIndex
+        makeIndex(Rail::Rail::node_ptr_t node, int64_t row, const ModelIndex &parent,
+                  std::optional<UUID64> index_uuid = std::nullopt) const;
 
         void transformRail_(const ModelIndex &index, const glm::mat4x4 &deltaTransform);
         void translateRail_(const ModelIndex &index, const glm::vec3 &deltaTranslate);
 
         Result<void, MetaError> addNodeConnection_(const ModelIndex &index, const ModelIndex &to);
-        Result<void, MetaError> insertNodeConnection_(const ModelIndex &index, size_t slot, const ModelIndex &to);
+        Result<void, MetaError> insertNodeConnection_(const ModelIndex &index, size_t slot,
+                                                      const ModelIndex &to);
         Result<void, MetaError> removeNodeConnection_(const ModelIndex &index, size_t slot);
         Result<void, MetaError> replaceNodeConnection_(const ModelIndex &index, size_t slot,
                                                        const ModelIndex &to);

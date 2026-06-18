@@ -8,10 +8,11 @@
 #include <optional>
 
 namespace Toolbox::Object {
-    MetaStruct::MetaStruct(std::string_view name, const std::vector<MetaMember> &members) : m_name(name) {
+    MetaStruct::MetaStruct(std::string_view name, const std::vector<MemberT> &members)
+        : m_name(name) {
         m_members.resize(members.size());
         for (size_t i = 0; i < members.size(); ++i) {
-            m_members[i] = std::move(make_referable<MetaMember>(members[i]));
+            m_members[i] = members[i];
         }
     }
 
@@ -63,17 +64,6 @@ namespace Toolbox::Object {
         return {};
     }
 
-    constexpr QualifiedName MetaStruct::getQualifiedName() const {
-        MetaStruct *parent              = m_parent;
-        std::vector<std::string> scopes = {m_name};
-        while (parent) {
-            scopes.push_back(parent->m_name);
-            parent = parent->m_parent;
-        }
-        std::reverse(scopes.begin(), scopes.end());
-        return QualifiedName(scopes);
-    }
-
     size_t MetaStruct::computeSize() const {
         return std::accumulate(
             m_members.begin(), m_members.end(), (size_t)0,
@@ -98,7 +88,7 @@ namespace Toolbox::Object {
     }
 
     bool MetaStruct::operator==(const MetaStruct &other) const {
-        return m_name == other.m_name && m_members == other.m_members && m_parent == other.m_parent;
+        return m_name == other.m_name && m_members == other.m_members;
     }
 
     Result<void, SerialError> MetaStruct::serialize(Serializer &out) const {
@@ -131,17 +121,16 @@ namespace Toolbox::Object {
 
     ScopePtr<ISmartResource> MetaStruct::clone(bool deep) const {
         MetaStruct struct_;
-        struct_.m_name   = m_name;
-        struct_.m_parent = m_parent;
+        struct_.m_name    = m_name;
 
         if (deep) {
             for (auto &member : m_members) {
-                RefPtr<MetaMember> copy = ref_cast<MetaMember>(make_deep_clone<MetaMember>(member));
+                RefPtr<MetaMember> copy = make_deep_clone<MetaMember>(member);
                 struct_.m_members.push_back(copy);
             }
         } else {
             for (auto &member : m_members) {
-                RefPtr<MetaMember> copy = ref_cast<MetaMember>(make_clone<MetaMember>(member));
+                RefPtr<MetaMember> copy = make_clone<MetaMember>(member);
                 struct_.m_members.push_back(copy);
             }
         }

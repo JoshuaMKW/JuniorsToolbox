@@ -79,12 +79,16 @@ namespace Toolbox::Object {
     class ObjectRenderController {
     public:
         ObjectRenderController()                                   = default;
-        ObjectRenderController(const ObjectRenderController &)     = default;
-        ObjectRenderController(ObjectRenderController &&) noexcept = default;
+        ObjectRenderController(const ObjectRenderController &);
+        ObjectRenderController(ObjectRenderController &&) noexcept;
+
+        ObjectRenderController &operator=(const ObjectRenderController &other);
+        ObjectRenderController &operator=(ObjectRenderController &&other) noexcept;
 
         ~ObjectRenderController() { clear(); }
 
         ObjectRenderController &clear();
+        ObjectRenderController &resetState();
 
         ObjectRenderController &addRenderModel(RefPtr<J3DModelInstance> model);
         ObjectRenderController &addAnimation(AnimationType type,
@@ -159,7 +163,7 @@ namespace Toolbox::Object {
 
         [[nodiscard]] virtual bool hasMember(const QualifiedName &name) const                   = 0;
         [[nodiscard]] virtual MetaStruct::GetMemberT getMember(const QualifiedName &name) const = 0;
-        [[nodiscard]] virtual std::vector<RefPtr<MetaMember>> getMembers() const                = 0;
+        [[nodiscard]] virtual const std::vector<RefPtr<MetaMember>> &getMembers() const                = 0;
         [[nodiscard]] virtual size_t getMemberOffset(const QualifiedName &name,
                                                      int index) const                           = 0;
         [[nodiscard]] virtual size_t getMemberSize(const QualifiedName &name, int index) const  = 0;
@@ -178,7 +182,8 @@ namespace Toolbox::Object {
                        std::optional<std::string_view> name = std::nullopt) = 0;
 
         [[nodiscard]] virtual std::optional<Transform> getTransform() const      = 0;
-        virtual Result<void, MetaError> setTransform(const Transform &transform) = 0;
+        virtual Result<void, MetaError> setTransform(const Transform &transform,
+                                                     bool updateMembers)    = 0;
 
         [[nodiscard]] virtual std::optional<BoundingBox> getBoundingBox() const = 0;
 
@@ -216,6 +221,7 @@ namespace Toolbox::Object {
         void dump(std::ostream &out) const { dump(out, 0, 2); }
 
     protected:
+        virtual void setUUID(const UUID64 &uuid)   = 0;
         virtual bool reassignWizardBasedOnFields() = 0;
     };
 
@@ -304,7 +310,7 @@ namespace Toolbox::Object {
 
         bool hasMember(const QualifiedName &name) const override;
         MetaStruct::GetMemberT getMember(const QualifiedName &name) const override;
-        std::vector<RefPtr<MetaMember>> getMembers() const override { return m_members; }
+        const std::vector<RefPtr<MetaMember>> &getMembers() const override { return m_members; }
         size_t getMemberOffset(const QualifiedName &name, int index) const override;
         size_t getMemberSize(const QualifiedName &name, int index) const override;
 
@@ -356,7 +362,10 @@ namespace Toolbox::Object {
         }
 
         [[nodiscard]] std::optional<Transform> getTransform() const override { return {}; }
-        Result<void, MetaError> setTransform(const Transform &transform) override { return {}; }
+        Result<void, MetaError> setTransform(const Transform &transform,
+                                             bool updateMembers) override {
+            return {};
+        }
 
         [[nodiscard]] std::optional<BoundingBox> getBoundingBox() const override { return {}; }
 
@@ -386,6 +395,8 @@ namespace Toolbox::Object {
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
     protected:
+        void setUUID(const UUID64 &uuid) override { m_UUID64 = uuid; }
+
         void applyWizard(const TemplateWizard &wizard);
         bool reassignWizardBasedOnFields() override { return false; }
 
@@ -643,7 +654,7 @@ namespace Toolbox::Object {
 
         bool hasMember(const QualifiedName &name) const override;
         MetaStruct::GetMemberT getMember(const QualifiedName &name) const override;
-        std::vector<RefPtr<MetaMember>> getMembers() const override { return m_members; }
+        const std::vector<RefPtr<MetaMember>> &getMembers() const override { return m_members; }
         size_t getMemberOffset(const QualifiedName &name, int index) const override;
         size_t getMemberSize(const QualifiedName &name, int index) const override;
 
@@ -695,7 +706,7 @@ namespace Toolbox::Object {
         }
 
         [[nodiscard]] std::optional<Transform> getTransform() const override { return m_transform; }
-        Result<void, MetaError> setTransform(const Transform &transform) override {
+        Result<void, MetaError> setTransform(const Transform &transform, bool updateMembers) override {
             m_transform = transform;
 
             RefPtr<J3DModelInstance> selected_model = m_render_controller->getRenderModel();
@@ -703,6 +714,10 @@ namespace Toolbox::Object {
                 selected_model->SetTranslation(transform.m_translation);
                 selected_model->SetRotation(transform.m_rotation);
                 selected_model->SetScale(transform.m_scale);
+            }
+
+            if (!updateMembers) {
+                return {};
             }
 
             auto transform_value_ptr = getMember("Transform").value();
@@ -775,6 +790,8 @@ namespace Toolbox::Object {
         void dump(std::ostream &out, size_t indention, size_t indention_width) const override;
 
     protected:
+        void setUUID(const UUID64 &uuid) override { m_UUID64 = uuid; }
+
         void applyWizard(const TemplateWizard &wizard);
         bool reassignWizardBasedOnFields() override;
 
@@ -838,9 +855,10 @@ namespace Toolbox::Object {
         using create_err_t = SerialError;
         using create_t     = Result<create_ret_t, create_err_t>;
 
-        static create_t create(Deserializer &in, bool include_custom);
+        static create_t create(Deserializer &in, bool include_custom,
+                               std::optional<UUID64> obj_uuid = std::nullopt);
         static create_ret_t create(const Template &template_, std::string_view wizard_name,
-                                   const fs_path &resource_path);
+                                   const fs_path &resource_path, std::optional<UUID64> obj_uuid = std::nullopt);
 
     protected:
         static bool isGroupObject(std::string_view type);

@@ -579,8 +579,8 @@ namespace Toolbox {
 
     void ProjectModel::fetchMore_(const ModelIndex &index) const { return; }
 
-    ModelIndex ProjectModel::makeIndex(const fs_path &path, int64_t row,
-                                       const ModelIndex &parent) const {
+    ModelIndex ProjectModel::makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent,
+                                       std::optional<UUID64> index_uuid) const {
         if (row < 0 || row > m_index_map.size()) {
             return ModelIndex();
         }
@@ -597,7 +597,7 @@ namespace Toolbox {
             project_config.initFromProjectRoot(path);
         }
 
-        ModelIndex new_index(getUUID());
+        ModelIndex new_index(getUUID(), index_uuid ? *index_uuid : UUID64());
 
         _ProjectIndexData *new_data = new _ProjectIndexData;
         new_data->m_self_uuid       = new_index.getUUID();

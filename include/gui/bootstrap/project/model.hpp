@@ -14,8 +14,8 @@
 #include "core/types.hpp"
 #include "fsystem.hpp"
 #include "image/imagehandle.hpp"
-#include "model/model.hpp"
 #include "jsonlib.hpp"
+#include "model/model.hpp"
 #include "unique.hpp"
 
 #include "watchdog/fswatchdog.hpp"
@@ -86,8 +86,7 @@ namespace Toolbox {
         }
 
         [[nodiscard]] u32 getGameCode(const ModelIndex &index) const {
-            return std::any_cast<u32>(
-                getData(index, ProjectDataRole::PROJECT_DATA_ROLE_GAME_CODE));
+            return std::any_cast<u32>(getData(index, ProjectDataRole::PROJECT_DATA_ROLE_GAME_CODE));
         }
         void setGameCode(const ModelIndex &index, u32 code) {
             setData(index, code, ProjectDataRole::PROJECT_DATA_ROLE_GAME_CODE);
@@ -158,8 +157,9 @@ namespace Toolbox {
         [[nodiscard]] ModelIndex getIndex(int64_t row, int64_t column,
                                           const ModelIndex &parent = ModelIndex()) const override;
 
-        [[nodiscard]] virtual ModelIndex makeIndex(const fs_path &path, int64_t row,
-                                     const ModelIndex &parent) const;
+        [[nodiscard]] virtual ModelIndex
+        makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent,
+                  std::optional<UUID64> index_uuid = std::nullopt) const;
         [[nodiscard]] bool removeIndex(const ModelIndex &index) override;
 
         [[nodiscard]] ModelIndex getParent(const ModelIndex &index) const override;
@@ -420,7 +420,7 @@ namespace Toolbox {
         UUID64 m_uuid;
 
         RefPtr<ProjectModel> m_source_model = nullptr;
-        std::string m_filter                   = "";
+        std::string m_filter                = "";
 
         mutable bool m_is_dirty;
         mutable std::mutex m_cache_mutex;

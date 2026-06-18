@@ -252,8 +252,8 @@ namespace Toolbox {
         void fetchMore_(const ModelIndex &index) const;
         // -- END -- //
 
-        virtual ModelIndex makeIndex(const fs_path &path, int64_t row,
-                                     const ModelIndex &parent) const;
+        virtual ModelIndex makeIndex(const fs_path &path, int64_t row, const ModelIndex &parent,
+                                     std::optional<UUID64> index_uuid = std::nullopt) const;
 
         ModelIndex getParentArchive_(const ModelIndex &index) const;
 

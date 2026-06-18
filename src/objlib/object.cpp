@@ -1,4 +1,9 @@
+#include <J3D/Animation/J3DAnimationInstance.hpp>
 #include <J3D/Animation/J3DAnimationLoader.hpp>
+#include <J3D/Animation/J3DColorAnimationInstance.hpp>
+#include <J3D/Animation/J3DJointAnimationInstance.hpp>
+#include <J3D/Animation/J3DTexIndexAnimationInstance.hpp>
+#include <J3D/Animation/J3DTexMatrixAnimationInstance.hpp>
 #include <J3D/Material/J3DMaterialTableLoader.hpp>
 #include <J3D/Texture/J3DTextureLoader.hpp>
 
@@ -25,6 +30,22 @@ static constexpr std::array s_monte_types = {
 };
 
 namespace Toolbox::Object {
+
+    static std::unordered_map<UUID64, ObjectRenderController>
+        s_obj_to_render_controller;
+
+    static RefPtr<ObjectRenderController>
+    GetRenderControllerForParameters(const UUID64 &uuid) {
+        if (s_obj_to_render_controller.contains(uuid)) {
+            return make_referable<ObjectRenderController>(s_obj_to_render_controller.at(uuid));
+        }
+        return nullptr;
+    }
+
+    static void SetRenderControllerForParameters(const UUID64 &uuid,
+                                                 RefPtr<ObjectRenderController> controller) {
+        s_obj_to_render_controller[uuid] = *controller;
+    }
 
     /* INTERFACE */
 
@@ -699,24 +720,26 @@ namespace Toolbox::Object {
         if (m_member_cache.contains(name_str))
             return m_member_cache.at(name_str);
 
-        auto current_scope = name[0];
-        auto array_index   = getArrayIndex(name, 0);
+        std::string_view current_scope = name[0];
+        auto array_index               = getArrayIndex(name, 0);
         if (!array_index) {
             return std::unexpected(array_index.error());
         }
 
-        for (auto m : m_members) {
-            if (m->name() != current_scope)
+        std::string_view member_name = getArrayName(current_scope);
+
+        for (RefPtr<MetaMember> member : m_members) {
+            if (member->name() != member_name)
                 continue;
 
             if (name.depth() == 1) {
-                m_member_cache[name_str] = m;
-                return m;
+                m_member_cache[name_str] = member;
+                return member;
             }
 
-            if (m->isTypeStruct()) {
-                auto s      = m->value<MetaStruct>(*array_index).value();
-                auto member = s->getMember(QualifiedName(name.begin() + 1, name.end()));
+            if (member->isTypeStruct()) {
+                RefPtr<MetaStruct> struct_ = member->value<MetaStruct>(*array_index).value();
+                auto member = struct_->getMember(QualifiedName(name.begin() + 1, name.end()));
                 if (member.has_value()) {
                     m_member_cache[name_str] = member.value();
                 }
@@ -724,7 +747,7 @@ namespace Toolbox::Object {
             }
         }
 
-        return nullptr;
+        return make_meta_error<MetaStruct::MemberT>(name, 0, "Failed to find member");
     }
 
     size_t PhysicalSceneObject::getMemberOffset(const QualifiedName &name, int index) const {
@@ -831,7 +854,7 @@ namespace Toolbox::Object {
     void PhysicalSceneObject::sync() {
         const bool wizard_reassigned = reassignWizardBasedOnFields();
 
-        auto transform_value_ptr = getMember("Transform").value();
+        auto transform_value_ptr = getMember("Transform").value_or(nullptr);
         if (transform_value_ptr) {
             m_transform = getMetaValue<Transform>(transform_value_ptr).value();
         }
@@ -887,11 +910,11 @@ namespace Toolbox::Object {
 
         for (const TemplateWizard &wizard : wizards) {
             bool has_object_field = false;
-            for (const MetaMember &member : wizard.m_init_members) {
-                if (member.name() == "Object") {
+            for (const RefPtr<MetaMember> &member : wizard.m_init_members) {
+                if (member->name() == "Object") {
                     has_object_field = true;
 
-                    auto value_result = member.value<MetaValue>(0);
+                    auto value_result = member->value<MetaValue>(0);
                     if (!value_result) {
                         return false;
                     }
@@ -949,9 +972,6 @@ namespace Toolbox::Object {
 
         ScopePtr<TemplateRenderInfo> render_info;
 
-        std::optional<std::string> model_file;
-        std::optional<std::string> mat_file;
-
         m_scene_resource_path = asset_path;
 
         const fs_path global_path = asset_path.parent_path()
@@ -966,8 +986,8 @@ namespace Toolbox::Object {
                 const std::string model_field =
                     getMetaValue<std::string>(model_member_result.value()).value();
 
-                render_info = make_scoped<TemplateRenderInfo>();
-                render_info->m_file_model = std::format("mapobj/{}.bmd", model_field);
+                render_info                    = make_scoped<TemplateRenderInfo>();
+                render_info->m_file_model      = std::format("mapobj/{}.bmd", model_field);
                 render_info->m_file_animations = {
                     std::format("mapobj/{}.bck", model_field),
                     std::format("mapobj/{}.blk", model_field),
@@ -976,6 +996,7 @@ namespace Toolbox::Object {
                     std::format("mapobj/{}.btp", model_field),
                     std::format("mapobj/{}.btk", model_field),
                 };
+                render_info->m_hash = TemplateRenderInfo::RecalculateHash(*render_info);
             }
         } else {
             auto object_member_result = getMember("Object");
@@ -998,22 +1019,47 @@ namespace Toolbox::Object {
             }
         }
 
-        mat_file = render_info->m_file_materials;
-
-        if (render_info->m_file_model) {
-            model_file = render_info->m_file_model;
+        // Early return since no model to animate etc.
+        if (!render_info->m_file_model) {
+            return {};
         }
 
-        // Early return since no model to animate etc.
-        if (!model_file) {
+        static const std::unordered_set<std::string> optimization_blacklist = {
+            // Helpers in loadRenderData
+            "nozzlebox",
+            "NozzleBox",  // Included both just in case m_type differs from model_name
+            "Sky",        // Modifies SortBias and Material table dynamically
+
+            // Helpers in bareRefreshRenderState_
+            "HideObjPictureTwin", "WaterHitPictureHideObj", "WoodBlock",
+
+            // NPCs - Toads
+            "NPCKinojii", "NPCKinopio",
+
+            // NPCs - Nokis (Mares)
+            "NPCMareM", "NPCMareMA", "NPCMareMB", "NPCMareMC",
+
+            // NPCs - Piantas (Montes)
+            "NPCMonteM", "NPCMonteMA", "NPCMonteMB", "NPCMonteMC", "NPCMonteMD", "NPCMonteME",
+            "NPCMonteMF", "NPCMonteMG", "NPCMonteMH", "NPCMonteW", "NPCMonteWA", "NPCMonteWB",
+            "NPCMonteWC",
+        
+            "Woodbox"
+        };
+
+        if (RefPtr<ObjectRenderController> controller =
+                GetRenderControllerForParameters(m_UUID64)) {
+            m_render_controller = controller;
+            bareRefreshRenderState_();
             return {};
         }
 
         // Load model data
 
-        const std::filesystem::path model_path = model_file.value().starts_with('/')
-                                                     ? global_path / model_file.value().substr(1)
-                                                     : asset_path / model_file.value();
+        const std::string &model_file          = render_info->m_file_model.value();
+        const std::filesystem::path model_path = model_file.starts_with('/')
+                                                     ? global_path / model_file.substr(1)
+                                                     : asset_path / model_file;
 
         std::string model_name = model_path.stem().string();
         std::transform(model_name.begin(), model_name.end(), model_name.begin(), ::tolower);
@@ -1035,8 +1081,10 @@ namespace Toolbox::Object {
 
         m_model_data = model_data;
 
+        std::optional<std::string> mat_file = render_info->m_file_materials;
         if (!mat_file) {
-            mat_file = model_file->replace(model_file->size() - 3, 3, "bmt");
+            mat_file = model_file;
+            mat_file->replace(mat_file->size() - 3, 3, "bmt");
         }
 
         // Load material data
@@ -1156,6 +1204,8 @@ namespace Toolbox::Object {
         m_render_controller->startAnimation(AnimationType::BTK, 0);
         m_render_controller->startAnimation(AnimationType::BTP, 0);
 
+        SetRenderControllerForParameters(m_UUID64, m_render_controller);
+
         // Initialize the render state
         bareRefreshRenderState_();
         return {};
@@ -1166,6 +1216,8 @@ namespace Toolbox::Object {
         if (!selected_model) {
             return;
         }
+
+        m_model_data = selected_model->GetModelData();
 
         if (m_transform.has_value()) {
             selected_model->SetTranslation(m_transform.value().m_translation);
@@ -1246,7 +1298,7 @@ namespace Toolbox::Object {
     }
 
     Result<void, SerialError> PhysicalSceneObject::gameDeserialize(Deserializer &in) {
-        auto scene_path = std::filesystem::path(in.filepath()).parent_path();
+        auto scene_path       = std::filesystem::path(in.filepath()).parent_path();
         m_scene_resource_path = scene_path.parent_path();
 
         // Metadata
@@ -1311,6 +1363,10 @@ namespace Toolbox::Object {
         for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
             auto &m                        = wizard->m_init_members[i];
             RefPtr<MetaMember> this_member = ref_cast<MetaMember>(make_deep_clone<MetaMember>(m));
+            // if (this_member->name() == "LightArray") {
+            //     __debugbreak();
+            // }
+
             this_member->updateReferenceToList(m_members);
 
             if (in.tell() < endpos) {
@@ -1358,9 +1414,13 @@ namespace Toolbox::Object {
         return obj;
     }
 
-    ObjectFactory::create_t ObjectFactory::create(Deserializer &in, bool include_custom) {
+    ObjectFactory::create_t ObjectFactory::create(Deserializer &in, bool include_custom,
+                                                  std::optional<UUID64> obj_uuid) {
         if (isGroupObject(in)) {
-            auto obj              = make_scoped<GroupSceneObject>();
+            auto obj = make_scoped<GroupSceneObject>();
+            if (obj_uuid) {
+                obj->setUUID(*obj_uuid);
+            }
             obj->m_include_custom = include_custom;
             auto result           = obj->gameDeserialize(in);
             if (!result) {
@@ -1368,7 +1428,10 @@ namespace Toolbox::Object {
             }
             return obj;
         } else {
-            auto obj              = make_scoped<PhysicalSceneObject>();
+            auto obj = make_scoped<PhysicalSceneObject>();
+            if (obj_uuid) {
+                obj->setUUID(*obj_uuid);
+            }
             obj->m_include_custom = include_custom;
             auto result           = obj->gameDeserialize(in);
             if (!result) {
@@ -1380,18 +1443,24 @@ namespace Toolbox::Object {
 
     ObjectFactory::create_ret_t ObjectFactory::create(const Template &template_,
                                                       std::string_view wizard_name,
-                                                      const fs_path &resource_path) {
+                                                      const fs_path &resource_path,
+                                                      std::optional<UUID64> obj_uuid) {
+        ScopePtr<ISceneObject> out_obj = nullptr;
         if (isGroupObject(template_.type())) {
-            return make_scoped<GroupSceneObject>(template_, wizard_name);
+            out_obj = make_scoped<GroupSceneObject>(template_, wizard_name);
         } else if (isPhysicalObject(template_.type())) {
             ScopePtr<PhysicalSceneObject> obj =
                 make_scoped<PhysicalSceneObject>(template_, wizard_name);
-
             obj->loadRenderData(resource_path, getResourceCache());
-            return obj;
+            out_obj = std::move(obj);
         } else {
-            return make_scoped<VirtualSceneObject>(template_, wizard_name);
+            out_obj = make_scoped<VirtualSceneObject>(template_, wizard_name);
         }
+
+        if (obj_uuid) {
+            out_obj->setUUID(*obj_uuid);
+        }
+        return out_obj;
     }
 
     static std::vector<u16> s_group_hashes = {16824, 15406, 28318, 18246, 43971, 9858, 25289, 33769,
@@ -1438,6 +1507,68 @@ namespace Toolbox::Object {
         return nullptr;
     }
 
+    ObjectRenderController::ObjectRenderController(const ObjectRenderController &other) {
+        *this = other;
+    }
+
+    ObjectRenderController::ObjectRenderController(ObjectRenderController &&other) noexcept {
+        *this = std::move(other);
+    }
+
+    ObjectRenderController &ObjectRenderController::operator=(const ObjectRenderController &other) {
+        m_selected_model_idx = other.m_selected_model_idx;
+
+        m_model_instances.resize(other.m_model_instances.size());
+        std::transform(
+            other.m_model_instances.begin(), other.m_model_instances.end(),
+            m_model_instances.begin(), [](const RefPtr<J3DModelInstance> &inst) {
+                RefPtr<J3DModelInstance> new_inst = inst->GetModelData()->CreateInstance();
+                if (inst->GetJointAnimation()) {
+                    new_inst->SetJointAnimation(
+                        make_referable<J3DJointAnimationInstance>(*inst->GetJointAnimation()));
+                }
+
+                if (inst->GetRegisterColorAnimation()) {
+                    new_inst->SetRegisterColorAnimation(make_referable<J3DColorAnimationInstance>(
+                        *inst->GetRegisterColorAnimation()));
+                }
+
+                if (inst->GetTexMatrixAnimation()) {
+                    new_inst->SetTexMatrixAnimation(make_referable<J3DTexMatrixAnimationInstance>(
+                        *inst->GetTexMatrixAnimation()));
+                }
+
+                if (inst->GetTexIndexAnimation()) {
+                    new_inst->SetTexIndexAnimation(make_referable<J3DTexIndexAnimationInstance>(
+                        *inst->GetTexIndexAnimation()));
+                }
+                return new_inst;
+            });
+
+        m_active_animation_map = other.m_active_animation_map;
+        m_animations_bck       = other.m_animations_bck;
+        m_animations_blk       = other.m_animations_blk;
+        m_animations_bpk       = other.m_animations_bpk;
+        m_animations_brk       = other.m_animations_brk;
+        m_animations_btp       = other.m_animations_btp;
+        m_animations_btk       = other.m_animations_btk;
+        return *this;
+    }
+
+    ObjectRenderController &
+    ObjectRenderController::operator=(ObjectRenderController &&other) noexcept {
+        m_selected_model_idx   = other.m_selected_model_idx;
+        m_model_instances      = std::move(other.m_model_instances);
+        m_active_animation_map = std::move(other.m_active_animation_map);
+        m_animations_bck       = std::move(other.m_animations_bck);
+        m_animations_blk       = std::move(other.m_animations_blk);
+        m_animations_bpk       = std::move(other.m_animations_bpk);
+        m_animations_brk       = std::move(other.m_animations_brk);
+        m_animations_btp       = std::move(other.m_animations_btp);
+        m_animations_btk       = std::move(other.m_animations_btk);
+        return *this;
+    }
+
     ObjectRenderController &ObjectRenderController::clear() {
         m_model_instances.clear();
         m_animations_bck.clear();
@@ -1448,6 +1579,12 @@ namespace Toolbox::Object {
         m_animations_btk.clear();
         m_active_animation_map.clear();
         m_selected_model_idx = -1;
+        return *this;
+    }
+
+    ObjectRenderController &ObjectRenderController::resetState() {
+        m_selected_model_idx = -1;
+        m_active_animation_map.clear();
         return *this;
     }
 

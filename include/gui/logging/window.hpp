@@ -75,6 +75,8 @@ namespace Toolbox::UI {
         void onRenderMenuBar() override;
         void onRenderBody(TimeStep delta_time) override;
 
+        void renderMessage(Log::ReportLevel level, std::string_view message);
+
     private:
         Log::ReportLevel m_logging_level = Log::ReportLevel::REPORT_INFO;
         uint32_t m_dock_space_id         = 0;

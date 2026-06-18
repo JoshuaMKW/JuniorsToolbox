@@ -1528,7 +1528,8 @@ namespace Toolbox {
     }
 
     ModelIndex FileSystemModel::makeIndex(const fs_path &path, int64_t row,
-                                          const ModelIndex &parent) const {
+                                          const ModelIndex &parent,
+                                          std::optional<UUID64> index_uuid) const {
         const fs_path rel_path = Filesystem::relative(path, m_root_path).value_or("");
         if (rel_path == "") {
             return ModelIndex();
@@ -1594,7 +1595,7 @@ namespace Toolbox {
             data->m_size = 0;
         }
 
-        ModelIndex index = ModelIndex(getUUID());
+        ModelIndex index = ModelIndex(getUUID(), index_uuid ? *index_uuid : UUID64());
 
         // Establish icon
         {

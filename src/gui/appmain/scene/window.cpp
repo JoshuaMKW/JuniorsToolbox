@@ -288,7 +288,8 @@ namespace Toolbox::UI {
         return make_scoped<SceneCreateRailEvent>(*this);
     }
 
-    SceneWindow::SceneWindow(const std::string &name) : ImWindow(name) {}
+    SceneWindow::SceneWindow(const std::string &name)
+        : ImWindow(name), m_wants_rail_context_menu(false), m_wants_scene_context_menu(false) {}
 
     bool SceneWindow::onLoadData(const fs_path &path) {
         if (!Toolbox::Filesystem::exists(path).value_or(false)) {
@@ -359,7 +360,8 @@ namespace Toolbox::UI {
                 history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_table_object_model));
                 history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_rail_model));
 
-                m_history_aggregate_handler = make_referable<ModelHistoryAggregate>(std::move(history_handlers));
+                m_history_aggregate_handler =
+                    make_referable<ModelHistoryAggregate>(std::move(history_handlers));
 
                 // Initialize the rail visibility map
                 const int64_t rail_count = m_rail_model->getRowCount(ModelIndex());
@@ -369,60 +371,16 @@ namespace Toolbox::UI {
                 }
 
                 m_scene_object_model->addEventListener(
-                    getUUID(),
-                    [&](ModelIndex index, int flags) {
-                        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) ==
-                            ModelEventFlags::EVENT_INDEX_ADDED) {
-                            m_selection_transforms_update_requested = true;
-                            return;
-                        }
-
-                        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
-                            ModelEventFlags::EVENT_INDEX_REMOVED) {
-                            m_selection_transforms_update_requested = true;
-                            return;
-                        }
-                    },
-                    ModelEventFlags::EVENT_INDEX_ANY);
+                    getUUID(), TOOLBOX_BIND_EVENT_FN(onObjectModelIndexEvent),
+                    ModelEventFlags::EVENT_ANY);
 
                 m_table_object_model->addEventListener(
-                    getUUID(),
-                    [&](ModelIndex index, int flags) {
-                        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) ==
-                            ModelEventFlags::EVENT_INDEX_ADDED) {
-                            m_selection_transforms_update_requested = true;
-                            return;
-                        }
+                    getUUID(), TOOLBOX_BIND_EVENT_FN(onTableModelIndexEvent),
+                    ModelEventFlags::EVENT_ANY);
 
-                        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
-                            ModelEventFlags::EVENT_INDEX_REMOVED) {
-                            m_selection_transforms_update_requested = true;
-                            return;
-                        }
-                    },
-                    ModelEventFlags::EVENT_INDEX_ANY);
-
-                m_rail_model->addEventListener(
-                    getUUID(),
-                    [&](ModelIndex index, int flags) {
-                        m_path_renderer_update_reqeusted = true;
-
-                        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) ==
-                            ModelEventFlags::EVENT_INDEX_ADDED) {
-                            if (m_rail_model->isIndexRail(index)) {
-                                m_rail_visible_map_update_request_index = index;
-                            }
-                            m_selection_transforms_update_requested = true;
-                            return;
-                        }
-
-                        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
-                            ModelEventFlags::EVENT_INDEX_REMOVED) {
-                            m_selection_transforms_update_requested = true;
-                            return;
-                        }
-                    },
-                    ModelEventFlags::EVENT_INDEX_ANY);
+                m_rail_model->addEventListener(getUUID(),
+                                               TOOLBOX_BIND_EVENT_FN(onRailModelIndexEvent),
+                                               ModelEventFlags::EVENT_ANY);
 
                 m_renderer.initializeData(m_rail_model);
                 return true;
@@ -541,6 +499,12 @@ namespace Toolbox::UI {
     void SceneWindow::onImGuiUpdate(TimeStep delta_time) {
         m_renderer.inputUpdate(delta_time);
 
+        const ImGuiID focused_id = ImGui::GetFocusID();
+        if (m_last_focused_id != focused_id) {
+            m_last_focused_id = focused_id;
+            m_history_aggregate_handler->endExplicitFrame();
+        }
+
         calcDolphinVPMatrix();
 
         Game::TaskCommunicator &task_communicator =
@@ -619,12 +583,12 @@ namespace Toolbox::UI {
                         m_table_selection_mgr.getState().clearSelection();
                         m_rail_selection_mgr.getState().clearSelection();
 
-                        m_selected_properties.clear();
+                        clearSelectedProperties();
                         m_properties_render_handler = renderEmptyProperties;
                     }
                 } else if (std::holds_alternative<RefPtr<ISceneObject>>(selection)) {
                     RefPtr<ISceneObject> obj = std::get<RefPtr<ISceneObject>>(selection);
-                    ModelIndex obj_index = m_scene_object_model->getIndex(obj);
+                    ModelIndex obj_index     = m_scene_object_model->getIndex(obj);
 
                     processObjectSelection(obj_index, multi_select);
                 } else if (std::holds_alternative<RefPtr<Rail::RailNode>>(selection)) {
@@ -678,7 +642,11 @@ namespace Toolbox::UI {
             MainApplication::instance().getTaskCommunicator();
 
         if (m_selection_transforms_update_requested.load()) {
-            calcNewGizmoMatrixFromSelection();
+            // Prevent the base matrices from being overwritten mid-drag,
+            // otherwise gizmo_total_delta compounds exponentially to infinity.
+            if (!m_renderer.isGizmoActive()) {
+                calcNewGizmoMatrixFromSelection();
+            }
             m_selection_transforms_update_requested.store(false);
         }
 
@@ -1235,7 +1203,7 @@ namespace Toolbox::UI {
                         ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                        m_selected_properties.clear();
+                        clearSelectedProperties();
                         m_rail_selection_mgr.getState().clearSelection();
 
                         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
@@ -1249,8 +1217,6 @@ namespace Toolbox::UI {
 
                         m_selection_transforms_update_requested = true;
                     }
-
-                    m_properties_render_handler = renderObjectProperties;
                 }
 
                 renderSceneHierarchyContextMenu(display_name, index);
@@ -1341,7 +1307,7 @@ namespace Toolbox::UI {
                         ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                        m_selected_properties.clear();
+                        clearSelectedProperties();
                         m_rail_selection_mgr.getState().clearSelection();
 
                         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
@@ -1355,8 +1321,6 @@ namespace Toolbox::UI {
 
                         m_selection_transforms_update_requested = true;
                     }
-
-                    m_properties_render_handler = renderObjectProperties;
                 }
 
                 renderSceneHierarchyContextMenu(display_name, index);
@@ -1528,7 +1492,7 @@ namespace Toolbox::UI {
                         ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                        m_selected_properties.clear();
+                        clearSelectedProperties();
                         m_rail_selection_mgr.getState().clearSelection();
 
                         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
@@ -1542,8 +1506,6 @@ namespace Toolbox::UI {
 
                         m_selection_transforms_update_requested = true;
                     }
-
-                    m_properties_render_handler = renderObjectProperties;
                 }
 
                 renderTableHierarchyContextMenu(display_name, index);
@@ -1634,7 +1596,7 @@ namespace Toolbox::UI {
                         ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
                         ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
-                        m_selected_properties.clear();
+                        clearSelectedProperties();
                         m_rail_selection_mgr.getState().clearSelection();
 
                         if (!Input::GetKey(Input::KeyCode::KEY_LEFTCONTROL) &&
@@ -1648,8 +1610,6 @@ namespace Toolbox::UI {
 
                         m_selection_transforms_update_requested = true;
                     }
-
-                    m_properties_render_handler = renderObjectProperties;
                 }
 
                 renderTableHierarchyContextMenu(display_name, index);
@@ -2357,15 +2317,13 @@ namespace Toolbox::UI {
             renderPlaybackButtons(delta_time);
 
             if (m_wants_scene_context_menu) {
-                if (m_scene_hierarchy_context_menu.tryOpen(0)) {
-                    m_wants_scene_context_menu = false;
-                }
+                m_scene_hierarchy_context_menu.tryOpen(0);
+                m_wants_scene_context_menu = false;
             }
 
             if (m_wants_rail_context_menu) {
-                if (m_rail_list_context_menu.tryOpen(0)) {
-                    m_wants_rail_context_menu = false;
-                }
+                m_rail_list_context_menu.tryOpen(0);
+                m_wants_rail_context_menu = false;
             }
 
             if (m_scene_selection_mgr.getState().count() > 0) {
@@ -2713,7 +2671,10 @@ namespace Toolbox::UI {
                        })
             .addDivider()
             .addOption("Delete", {KeyCode::KEY_DELETE},
-                       [this](ModelIndex index) { m_scene_selection_mgr.actionDeleteSelection(); })
+                       [this](ModelIndex index) {
+                           m_scene_selection_mgr.actionDeleteSelection();
+                           clearSelectedProperties();
+                       })
             .addDivider()
             .addOption(
                 "Copy Player Transform",
@@ -3202,7 +3163,7 @@ namespace Toolbox::UI {
                     m_history_aggregate_handler->startExplicitFrame();
 
                     for (const ModelIndex &sel_index : selection) {
-                        auto result                     = m_rail_model->connectNodeToNext(sel_index);
+                        auto result = m_rail_model->connectNodeToNext(sel_index);
                         if (!result) {
                             LogError(result.error());
                         }
@@ -3238,7 +3199,7 @@ namespace Toolbox::UI {
                     m_history_aggregate_handler->startExplicitFrame();
 
                     for (const ModelIndex &sel_index : selection) {
-                        auto result                     = m_rail_model->connectNodeToPrev(sel_index);
+                        auto result = m_rail_model->connectNodeToPrev(sel_index);
                         if (!result) {
                             LogError(result.error());
                         }
@@ -3279,7 +3240,7 @@ namespace Toolbox::UI {
                             LogError(result.error());
                         }
                     }
-                    
+
                     m_history_aggregate_handler->endExplicitFrame();
 
                     m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
@@ -3920,7 +3881,7 @@ namespace Toolbox::UI {
         m_wants_scene_context_menu =
             true;  // Tells the program to check for context menu on potential right click
 
-        m_selected_properties.clear();
+        clearSelectedProperties();
 
         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
             regeneratePropertiesForObject(m_scene_object_model->getObjectRef(index));
@@ -3928,9 +3889,7 @@ namespace Toolbox::UI {
 
         m_selection_transforms_update_requested = true;
 
-        m_properties_render_handler = renderObjectProperties;
-
-        //TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", node->type(), node->getNameRef().name());
+        // TOOLBOX_DEBUG_LOG_V("Hit object {} ({})", node->type(), node->getNameRef().name());
     }
 
     void SceneWindow::processRailSelection(const ModelIndex &index, bool is_multi) {
@@ -3965,10 +3924,10 @@ namespace Toolbox::UI {
 
         m_selection_transforms_update_requested = true;
 
-        m_selected_properties.clear();
+        clearSelectedProperties();
         m_properties_render_handler = renderRailProperties;
 
-        //TOOLBOX_DEBUG_LOG_V("Hit rail \"{}\"", node->name());
+        // TOOLBOX_DEBUG_LOG_V("Hit rail \"{}\"", node->name());
     }
 
     void SceneWindow::processRailNodeSelection(const ModelIndex &index, bool is_multi) {
@@ -4003,7 +3962,7 @@ namespace Toolbox::UI {
 
         m_selection_transforms_update_requested = true;
 
-        m_selected_properties.clear();
+        clearSelectedProperties();
         m_properties_render_handler = renderRailNodeProperties;
 
         //// Debug log
@@ -4170,14 +4129,172 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::regeneratePropertiesForObject(RefPtr<ISceneObject> object) {
+        clearSelectedProperties();
         for (auto &member : object->getMembers()) {
             member->syncArray();
-            auto prop = createProperty(member);
+
+            auto prop = createProperty(
+                member,
+                [this, object](RefPtr<MetaMember> member, size_t array_idx) -> MetaValue {
+                    ModelIndex index = m_scene_object_model->getIndex(object);
+                    auto result      = m_scene_object_model->getMemberValue(
+                        index, member->qualifiedName(), array_idx);
+                    if (!result) {
+                        LogError(result.error());
+                        return MetaValue();
+                    }
+
+                    return result.value();
+                },
+                [this, object](RefPtr<MetaMember> member, size_t array_idx,
+                               const MetaValue &value) {
+                    ModelIndex index = m_scene_object_model->getIndex(object);
+                    if (value.type() == MetaType::TRANSFORM &&
+                        member->qualifiedName() == "Transform") {
+                        m_scene_object_model->setObjectTransform(
+                            index, value.get<Transform>().value_or(Transform()));
+                        return true;
+                    } else {
+                        auto result = m_scene_object_model->setMemberValue(
+                            index, member->qualifiedName(), array_idx, value);
+                        if (!result) {
+                            LogError(result.error());
+                            return false;
+                        }
+                        return true;
+                    }
+                });
+
             if (prop) {
-                prop->onValueChanged(
-                    [object](RefPtr<MetaMember> member) { object->refreshRenderState(); });
                 m_selected_properties.push_back(std::move(prop));
             }
+        }
+        m_properties_render_handler = renderObjectProperties;
+    }
+
+    void SceneWindow::onObjectModelIndexEvent(const ModelIndex &index, int flags) {
+        const bool is_single_selected = m_scene_selection_mgr.getState().isSelected(index) &&
+                                        m_scene_selection_mgr.getState().count() == 1;
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) == ModelEventFlags::EVENT_INDEX_ADDED) {
+            m_selection_transforms_update_requested = true;
+
+            if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+                if (is_single_selected) {
+                    RefPtr<ISceneObject> object = m_scene_object_model->getObjectRef(index);
+                    if (object) {
+                        regeneratePropertiesForObject(object);
+                    }
+                }
+            }
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+            ModelEventFlags::EVENT_INDEX_REMOVED) {
+            m_selection_transforms_update_requested = true;
+
+            if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
+                if (is_single_selected) {
+                    clearSelectedProperties();
+                }
+            }
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_MODIFIED) ==
+            ModelEventFlags::EVENT_INDEX_MODIFIED) {
+            RefPtr<ISceneObject> object = m_scene_object_model->getObjectRef(index);
+            if (object) {
+                m_selection_transforms_update_requested = true;
+                object->refreshRenderState();
+            }
+        }
+    }
+
+    void SceneWindow::onTableModelIndexEvent(const ModelIndex &index, int flags) {
+        const bool is_single_selected = m_table_selection_mgr.getState().isSelected(index) &&
+                                        m_table_selection_mgr.getState().count() == 1;
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) == ModelEventFlags::EVENT_INDEX_ADDED) {
+            m_selection_transforms_update_requested = true;
+
+            if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+                if (is_single_selected) {
+                    RefPtr<ISceneObject> object = m_table_object_model->getObjectRef(index);
+                    if (object) {
+                        regeneratePropertiesForObject(object);
+                    }
+                }
+            }
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+            ModelEventFlags::EVENT_INDEX_REMOVED) {
+            m_selection_transforms_update_requested = true;
+
+            if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
+                if (is_single_selected) {
+                    clearSelectedProperties();
+                }
+            }
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_MODIFIED) ==
+            ModelEventFlags::EVENT_INDEX_MODIFIED) {
+            RefPtr<ISceneObject> object = m_table_object_model->getObjectRef(index);
+            if (object) {
+                m_selection_transforms_update_requested = true;
+                object->refreshRenderState();
+            }
+        }
+    }
+
+    void SceneWindow::onRailModelIndexEvent(const ModelIndex &index, int flags) {
+        const bool is_single_selected = m_rail_selection_mgr.getState().isSelected(index) &&
+                                        m_rail_selection_mgr.getState().count() == 1;
+
+        m_path_renderer_update_reqeusted = true;
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) == ModelEventFlags::EVENT_INDEX_ADDED) {
+            if (m_rail_model->isIndexRail(index)) {
+                m_rail_visible_map_update_request_index = index;
+
+                if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+                    if (is_single_selected) {
+                        RefPtr<Rail::Rail> rail = m_rail_model->getRailRef(index);
+                        if (rail) {
+                            m_properties_render_handler = renderRailProperties;
+                        }
+                    }
+                }
+            } else {
+                if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+                    if (is_single_selected) {
+                        RefPtr<Rail::RailNode> node = m_rail_model->getRailNodeRef(index);
+                        if (node) {
+                            m_properties_render_handler = renderRailNodeProperties;
+                        }
+                    }
+                }
+            }
+            m_selection_transforms_update_requested = true;
+            return;
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+            ModelEventFlags::EVENT_INDEX_REMOVED) {
+            m_selection_transforms_update_requested = true;
+
+            if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
+                if (is_single_selected) {
+                    clearSelectedProperties();
+                }
+            }
+        }
+
+        if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) ==
+            ModelEventFlags::EVENT_INDEX_REMOVED) {
+            m_selection_transforms_update_requested = true;
+            return;
         }
     }
 
@@ -4224,6 +4341,11 @@ namespace Toolbox::UI {
 
     void SceneWindow::setStageScenario(u8 stage, u8 scenario) {
         m_stage = stage, m_scenario = scenario;
+    }
+
+    void SceneWindow::clearSelectedProperties() {
+        m_selected_properties.clear();
+        m_properties_render_handler = renderEmptyProperties;
     }
 
     ImGuiID SceneWindow::onBuildDockspace() {

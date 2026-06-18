@@ -362,6 +362,66 @@ namespace Toolbox::Object {
         }
     }
 
+    template <typename T>
+    [[nodiscard]]
+    inline Result<T, std::string> getBuf(const Buffer &m_value_buf) {
+        T value{};
+        if (Deserializer::BytesToObject(m_value_buf, value, 0).has_value()) {
+            return value;
+        } else {
+            return std::unexpected("Failed to deserialize data into higher type");
+        }
+    }
+
+    template <>
+    [[nodiscard]]
+    inline Result<std::string, std::string> getBuf(const Buffer &m_value_buf) {
+        std::string out;
+        for (size_t i = 0; i < m_value_buf.size(); ++i) {
+            char ch = m_value_buf.get<char>(static_cast<uint32_t>(i));
+            if (ch == '\0')
+                break;
+
+            out.push_back(ch);
+        }
+        return out;
+    }
+
+    template <typename T>
+    [[nodiscard]]
+    inline bool setBuf(Buffer &m_value_buf, const T &value) {
+        bool ret = Serializer::ObjectToBytes(value, m_value_buf, 0).has_value();
+        return ret;
+    }
+
+    template <>
+    [[nodiscard]]
+    inline bool setBuf(Buffer &m_value_buf, const std::string &value) {
+        m_value_buf.resize(static_cast<uint32_t>(value.size() + 1));
+        for (size_t i = 0; i < value.size(); ++i) {
+            m_value_buf.set<char>(static_cast<uint32_t>(i), value[i]);
+        }
+        m_value_buf.set<char>(static_cast<uint32_t>(value.size()), '\0');
+        return true;
+    }
+
+    template <>
+    [[nodiscard]]
+    inline bool setBuf(Buffer &m_value_buf, const Buffer &value) {
+        value.copyTo(m_value_buf);
+        return true;
+    }
+
+    [[nodiscard]]
+    inline bool setBuf(Buffer &m_value_buf, std::string_view value) {
+        m_value_buf.resize(static_cast<uint32_t>(value.size() + 1));
+        for (size_t i = 0; i < value.size(); ++i) {
+            m_value_buf.set<char>(static_cast<uint32_t>(i), value[i]);
+        }
+        m_value_buf.set<char>(static_cast<uint32_t>(value.size()), '\0');
+        return true;
+    }
+
     class MetaValue : public IGameSerializable {
     public:
         MetaValue() {
@@ -502,6 +562,8 @@ namespace Toolbox::Object {
             }
         }
 
+        bool set(std::string_view value) { return setBuf(m_value_buf, value); }
+
         // NOTE: This does not change the underlying type, it only attempts
         // to assign the variant value as the existing type, or it returns false.
         bool setVariant(const std::any &variant);
@@ -538,56 +600,6 @@ namespace Toolbox::Object {
             double m_double_max;
         };
     };
-
-    template <typename T>
-    [[nodiscard]]
-    inline Result<T, std::string> getBuf(const Buffer &m_value_buf) {
-        T value{};
-        if (Deserializer::BytesToObject(m_value_buf, value, 0).has_value()) {
-            return value;
-        } else {
-            return std::unexpected("Failed to deserialize data into higher type");
-        }
-    }
-
-    template <>
-    [[nodiscard]]
-    inline Result<std::string, std::string> getBuf(const Buffer &m_value_buf) {
-        std::string out;
-        for (size_t i = 0; i < m_value_buf.size(); ++i) {
-            char ch = m_value_buf.get<char>(static_cast<uint32_t>(i));
-            if (ch == '\0')
-                break;
-
-            out.push_back(ch);
-        }
-        return out;
-    }
-
-    template <typename T>
-    [[nodiscard]]
-    inline bool setBuf(Buffer &m_value_buf, const T &value) {
-        bool ret = Serializer::ObjectToBytes(value, m_value_buf, 0).has_value();
-        return ret;
-    }
-
-    template <>
-    [[nodiscard]]
-    inline bool setBuf(Buffer &m_value_buf, const std::string &value) {
-        m_value_buf.resize(static_cast<uint32_t>(value.size() + 1));
-        for (size_t i = 0; i < value.size(); ++i) {
-            m_value_buf.set<char>(static_cast<uint32_t>(i), value[i]);
-        }
-        m_value_buf.set<char>(static_cast<uint32_t>(value.size()), '\0');
-        return true;
-    }
-
-    template <>
-    [[nodiscard]]
-    inline bool setBuf(Buffer &m_value_buf, const Buffer &value) {
-        value.copyTo(m_value_buf);
-        return true;
-    }
 
     inline Result<bool, MetaError> setMetaValue(RefPtr<MetaValue> meta_value, bool value,
                                                 MetaType type) {

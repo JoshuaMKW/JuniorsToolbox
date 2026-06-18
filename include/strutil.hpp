@@ -250,4 +250,39 @@ namespace Toolbox::String {
         return os.str();
     }
 
+    template <typename T> Result<T, EncodingError> StringToTypedIntegral(std::string_view str) {
+        static_assert(std::is_integral_v<T>, "Return type must be integral!");
+
+        int base = 10;
+        if (str.starts_with("0x")) {
+            base = 16;
+            str  = str.substr(2);
+        } else if (str.starts_with("0o")) {
+            base = 7;
+            str  = str.substr(2);
+        } else if (str.starts_with("0b")) {
+            base = 2;
+            str  = str.substr(2);
+        }
+
+        T value        = {};
+        auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value, base);
+        switch (ec) {
+        case std::errc::invalid_argument:
+            return make_encoding_error<T>("STRUTIL", "String had invalid number", "String", "Integer");
+        case std::errc::result_out_of_range:
+            return make_encoding_error<T>("STRUTIL", "String was out of range", "String",
+                                          "Integer");
+        default:
+            break;
+        }
+
+        if (ptr != str.data() + str.size()) {
+            return make_encoding_error<T>("STRUTIL", "String had invalid format", "String",
+                                          "Integer");
+        }
+
+        return value;
+    }
+
 }  // namespace Toolbox::String

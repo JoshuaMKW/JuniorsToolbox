@@ -1362,12 +1362,13 @@ namespace Toolbox {
         return new_index;
     }
 
-    ModelIndex RailObjModel::makeIndex(RailData::rail_ptr_t rail, int64_t row) const {
+    ModelIndex RailObjModel::makeIndex(RailData::rail_ptr_t rail, int64_t row,
+                                       std::optional<UUID64> index_uuid) const {
         if (row < 0 || row > m_index_map.size()) {
             return ModelIndex();
         }
 
-        ModelIndex new_index(getUUID());
+        ModelIndex new_index(getUUID(), index_uuid ? *index_uuid : UUID64());
 
         _RailIndexData *new_data = new _RailIndexData;
         new_data->m_self_uuid    = new_index.getUUID();
@@ -1383,7 +1384,8 @@ namespace Toolbox {
     }
 
     ModelIndex RailObjModel::makeIndex(Rail::Rail::node_ptr_t node, int64_t row,
-                                       const ModelIndex &parent) const {
+                                       const ModelIndex &parent,
+                                       std::optional<UUID64> index_uuid) const {
         _RailIndexData *parent_data = validateIndex(parent) ? parent.data<_RailIndexData>()
                                                             : nullptr;
         if (!parent_data || !parent_data->hasValue()) {
@@ -1393,7 +1395,7 @@ namespace Toolbox {
         RailData::rail_ptr_t rail          = parent_data->getRail();
         std::vector<ModelIndex> &node_list = m_node_list_map[rail->getUUID()];
 
-        ModelIndex new_index(getUUID());
+        ModelIndex new_index(getUUID(), index_uuid ? *index_uuid : UUID64());
 
         _RailIndexData *new_data = new _RailIndexData;
         new_data->m_self_uuid    = new_index.getUUID();
