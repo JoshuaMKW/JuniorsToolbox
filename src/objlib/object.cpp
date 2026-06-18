@@ -31,20 +31,20 @@ static constexpr std::array s_monte_types = {
 
 namespace Toolbox::Object {
 
-    static std::unordered_map<TemplateRenderInfo, ObjectRenderController>
+    static std::unordered_map<UUID64, ObjectRenderController>
         s_obj_to_render_controller;
 
     static RefPtr<ObjectRenderController>
-    GetRenderControllerForParameters(const TemplateRenderInfo &info) {
-        if (s_obj_to_render_controller.contains(info)) {
-            return make_referable<ObjectRenderController>(s_obj_to_render_controller.at(info));
+    GetRenderControllerForParameters(const UUID64 &uuid) {
+        if (s_obj_to_render_controller.contains(uuid)) {
+            return make_referable<ObjectRenderController>(s_obj_to_render_controller.at(uuid));
         }
         return nullptr;
     }
 
-    static void SetRenderControllerForParameters(const TemplateRenderInfo &info,
+    static void SetRenderControllerForParameters(const UUID64 &uuid,
                                                  RefPtr<ObjectRenderController> controller) {
-        s_obj_to_render_controller[info] = *controller;
+        s_obj_to_render_controller[uuid] = *controller;
     }
 
     /* INTERFACE */
@@ -1024,8 +1024,31 @@ namespace Toolbox::Object {
             return {};
         }
 
+        static const std::unordered_set<std::string> optimization_blacklist = {
+            // Helpers in loadRenderData
+            "nozzlebox",
+            "NozzleBox",  // Included both just in case m_type differs from model_name
+            "Sky",        // Modifies SortBias and Material table dynamically
+
+            // Helpers in bareRefreshRenderState_
+            "HideObjPictureTwin", "WaterHitPictureHideObj", "WoodBlock",
+
+            // NPCs - Toads
+            "NPCKinojii", "NPCKinopio",
+
+            // NPCs - Nokis (Mares)
+            "NPCMareM", "NPCMareMA", "NPCMareMB", "NPCMareMC",
+
+            // NPCs - Piantas (Montes)
+            "NPCMonteM", "NPCMonteMA", "NPCMonteMB", "NPCMonteMC", "NPCMonteMD", "NPCMonteME",
+            "NPCMonteMF", "NPCMonteMG", "NPCMonteMH", "NPCMonteW", "NPCMonteWA", "NPCMonteWB",
+            "NPCMonteWC",
+        
+            "Woodbox"
+        };
+
         if (RefPtr<ObjectRenderController> controller =
-                GetRenderControllerForParameters(*render_info)) {
+                GetRenderControllerForParameters(m_UUID64)) {
             m_render_controller = controller;
             bareRefreshRenderState_();
             return {};
@@ -1181,7 +1204,7 @@ namespace Toolbox::Object {
         m_render_controller->startAnimation(AnimationType::BTK, 0);
         m_render_controller->startAnimation(AnimationType::BTP, 0);
 
-        SetRenderControllerForParameters(*render_info, m_render_controller);
+        SetRenderControllerForParameters(m_UUID64, m_render_controller);
 
         // Initialize the render state
         bareRefreshRenderState_();
@@ -1193,6 +1216,8 @@ namespace Toolbox::Object {
         if (!selected_model) {
             return;
         }
+
+        m_model_data = selected_model->GetModelData();
 
         if (m_transform.has_value()) {
             selected_model->SetTranslation(m_transform.value().m_translation);

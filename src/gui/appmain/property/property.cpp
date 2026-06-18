@@ -1159,6 +1159,7 @@ namespace Toolbox::UI {
             if (ImGui::BeginGroupPanel(m_member->name().c_str(), &is_open, {})) {
                 MetaValue number = m_value_getter(m_member, 0);
                 s64 number_val   = getS64FromMetaValue(number);
+                s64 old_val      = number_val;
 
                 for (size_t j = 0; j < m_checked_state.at(0).size(); ++j) {
                     if (ImGui::Checkbox(
@@ -1172,7 +1173,7 @@ namespace Toolbox::UI {
                         }
                     }
                 }
-                if (m_value_setter) {
+                if (m_value_setter && number_val != old_val) {
                     MetaValue new_value = MetaValue(getMetaType(m_member).value());
                     setS64ToMetaValue(new_value, number_val);
                     any_changed |= m_value_setter(m_member, 0, new_value);

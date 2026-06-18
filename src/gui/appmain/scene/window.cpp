@@ -2317,15 +2317,13 @@ namespace Toolbox::UI {
             renderPlaybackButtons(delta_time);
 
             if (m_wants_scene_context_menu) {
-                if (m_scene_hierarchy_context_menu.tryOpen(0)) {
-                    m_wants_scene_context_menu = false;
-                }
+                m_scene_hierarchy_context_menu.tryOpen(0);
+                m_wants_scene_context_menu = false;
             }
 
             if (m_wants_rail_context_menu) {
-                if (m_rail_list_context_menu.tryOpen(0)) {
-                    m_wants_rail_context_menu = false;
-                }
+                m_rail_list_context_menu.tryOpen(0);
+                m_wants_rail_context_menu = false;
             }
 
             if (m_scene_selection_mgr.getState().count() > 0) {

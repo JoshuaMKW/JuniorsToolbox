@@ -722,7 +722,7 @@ namespace Toolbox {
 
         bool is_valid_frame = true;
 
-        if (m_wip_frame.m_first_frame == TimePoint()) {
+        if (m_wip_frame.m_first_frame == TimePoint::min()) {
             TimePoint recent_time = getUndoFrameTimepoint();
 
             if (recent_time == TimePoint::min()) {
