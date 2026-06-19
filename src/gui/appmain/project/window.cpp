@@ -695,6 +695,7 @@ namespace Toolbox::UI {
                     m_is_renaming = false;
                 }
 
+                // TODO: Figure out WHY this is getting triggered through the new item window
                 if (m_folder_selection_mgr.processDragState()) {
                     if (DragDropManager::instance().getCurrentDragAction() == nullptr) {
                         RefPtr<DragAction> action = DragDropManager::instance().createDragAction(
