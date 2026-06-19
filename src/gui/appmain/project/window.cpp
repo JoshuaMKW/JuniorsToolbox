@@ -695,39 +695,43 @@ namespace Toolbox::UI {
                     m_is_renaming = false;
                 }
 
-                // TODO: Figure out WHY this is getting triggered through the new item window
-                if (m_folder_selection_mgr.processDragState()) {
-                    if (DragDropManager::instance().getCurrentDragAction() == nullptr) {
-                        RefPtr<DragAction> action = DragDropManager::instance().createDragAction(
-                            getUUID(), getLowHandle(),
-                            std::move(*m_folder_selection_mgr.actionCopySelection().release()));
-                        if (action) {
-                            action->setHotSpot(mouse_pos);
-                            action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {
-                                auto urls_maybe = action->getPayload().get_urls();
-                                if (!urls_maybe) {
-                                    return;
-                                }
-                                std::vector<std::string> urls = urls_maybe.value();
+                if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows |
+                                           ImGuiFocusedFlags_NoPopupHierarchy)) {
+                    if (m_folder_selection_mgr.processDragState()) {
+                        if (DragDropManager::instance().getCurrentDragAction() == nullptr) {
+                            RefPtr<DragAction> action =
+                                DragDropManager::instance().createDragAction(
+                                    getUUID(), getLowHandle(),
+                                    std::move(
+                                        *m_folder_selection_mgr.actionCopySelection().release()));
+                            if (action) {
+                                action->setHotSpot(mouse_pos);
+                                action->setRender([action](const ImVec2 &pos, const ImVec2 &size) {
+                                    auto urls_maybe = action->getPayload().get_urls();
+                                    if (!urls_maybe) {
+                                        return;
+                                    }
+                                    std::vector<std::string> urls = urls_maybe.value();
 
-                                ImGuiStyle &style = ImGui::GetStyle();
+                                    ImGuiStyle &style = ImGui::GetStyle();
 
-                                size_t num_files       = urls.size();
-                                std::string file_count = std::format("{}", num_files);
-                                ImVec2 text_size       = ImGui::CalcTextSize(file_count.c_str());
+                                    size_t num_files       = urls.size();
+                                    std::string file_count = std::format("{}", num_files);
+                                    ImVec2 text_size = ImGui::CalcTextSize(file_count.c_str());
 
-                                ImDrawList *draw_list = ImGui::GetWindowDrawList();
-                                ImVec2 center         = pos + (size / 2.0f);
+                                    ImDrawList *draw_list = ImGui::GetWindowDrawList();
+                                    ImVec2 center         = pos + (size / 2.0f);
 
-                                ImGui::DrawSquare((size / 2.0f), size.x / 5.0f, IM_COL32_WHITE,
-                                                  ImGui::ColorConvertFloat4ToU32(
-                                                      style.Colors[ImGuiCol_HeaderActive]),
-                                                  1.0f);
+                                    ImGui::DrawSquare((size / 2.0f), size.x / 5.0f, IM_COL32_WHITE,
+                                                      ImGui::ColorConvertFloat4ToU32(
+                                                          style.Colors[ImGuiCol_HeaderActive]),
+                                                      1.0f);
 
-                                draw_list->AddText(center - (text_size / 2.0f), IM_COL32_WHITE,
-                                                   file_count.c_str(),
-                                                   file_count.c_str() + file_count.size());
-                            });
+                                    draw_list->AddText(center - (text_size / 2.0f), IM_COL32_WHITE,
+                                                       file_count.c_str(),
+                                                       file_count.c_str() + file_count.size());
+                                });
+                            }
                         }
                     }
                 }
@@ -825,7 +829,6 @@ namespace Toolbox::UI {
             TOOLBOX_DEBUG_LOG("No project config found, using defaults.");
             m_project_config.initFromProjectRoot(m_project_root);
         }
-
 
         for (const fs_path &pinned_folder_path : m_project_config.getPinnedFolders()) {
             ModelIndex pinned_index = m_tree_proxy->getIndex(pinned_folder_path);
