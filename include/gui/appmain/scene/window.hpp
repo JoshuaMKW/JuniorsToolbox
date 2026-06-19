@@ -183,7 +183,7 @@ namespace Toolbox::UI {
 
         void deregisterOverlay(const std::string &layer_name) { m_render_layers.erase(layer_name); }
 
-        void initToBasic() { m_current_scene = Scene::SceneInstance::BasicScene(); }
+        void initToBasicWithPath(const fs_path &parent_folder);
         void setIOContextPath(const fs_path &path) { m_io_context_path = path; }
 
         void setStageScenario(u8 stage, u8 scenario);
@@ -191,6 +191,8 @@ namespace Toolbox::UI {
         void clearSelectedProperties();
 
     protected:
+        void initializeModels();
+
         ImGuiID onBuildDockspace() override;
         void onRenderMenuBar() override;
         void onRenderBody(TimeStep delta_time) override;

@@ -87,8 +87,6 @@ namespace Toolbox::Scene {
 
     SceneInstance::~SceneInstance() {}
 
-    ScopePtr<SceneInstance> SceneInstance::BasicScene() { return nullptr; }
-
     Result<void, SerialError> SceneInstance::saveToPath(const fs_path &root) {
         auto scene_bin   = root / "map/scene.bin";
         auto tables_bin  = root / "map/tables.bin";

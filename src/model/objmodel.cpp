@@ -539,6 +539,10 @@ namespace Toolbox {
 
     ModelIndex SceneObjModel::getIndex_(int64_t row, int64_t column,
                                         const ModelIndex &parent) const {
+        if (m_index_map.empty()) {
+            return ModelIndex();
+        }
+
         if (!validateIndex(parent)) {
             if (row != 0 || column != 0) {
                 return ModelIndex();
@@ -559,6 +563,10 @@ namespace Toolbox {
 
     ModelIndex SceneObjModel::getIndex_(const QualifiedName &qual_name,
                                         const ModelIndex &parent) const {
+        if (m_index_map.empty()) {
+            return ModelIndex();
+        }
+
         if (!validateIndex(parent)) {
             ModelIndex root_index = m_index_map.at(m_root_index);
 
@@ -690,7 +698,7 @@ namespace Toolbox {
 
     size_t SceneObjModel::getRowCount_(const ModelIndex &index) const {
         if (!validateIndex(index)) {
-            return 1;
+            return m_index_map.empty() ? 0 : 1;
         }
 
         _SceneIndexData *data = index.data<_SceneIndexData>();

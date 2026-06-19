@@ -227,6 +227,9 @@ target_include_directories(JuniorsToolbox PRIVATE ${OPENSSL_INCLUDE_DIR})
 
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
+                       ${CMAKE_SOURCE_DIR}/AppData/ $<TARGET_FILE_DIR:JuniorsToolbox>/AppData/)
+add_custom_command(TARGET JuniorsToolbox PRE_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory
                        ${CMAKE_SOURCE_DIR}/Fonts/ $<TARGET_FILE_DIR:JuniorsToolbox>/Fonts/)
 add_custom_command(TARGET JuniorsToolbox PRE_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory

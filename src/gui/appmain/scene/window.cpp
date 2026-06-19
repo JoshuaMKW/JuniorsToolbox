@@ -289,7 +289,11 @@ namespace Toolbox::UI {
     }
 
     SceneWindow::SceneWindow(const std::string &name)
-        : ImWindow(name), m_wants_rail_context_menu(false), m_wants_scene_context_menu(false) {}
+        : ImWindow(name), m_wants_rail_context_menu(false), m_wants_scene_context_menu(false) {
+        m_scene_object_model = make_referable<SceneObjModel>();
+        m_table_object_model = make_referable<SceneObjModel>();
+        m_rail_model         = make_referable<RailObjModel>();
+    }
 
     bool SceneWindow::onLoadData(const fs_path &path) {
         if (!Toolbox::Filesystem::exists(path).value_or(false)) {
@@ -305,7 +309,8 @@ namespace Toolbox::UI {
                                              .m_is_custom_obj_allowed;
 
         SceneRenderCacheRegistry::RemoveSceneRenderCache(getUUID());
-        SceneRenderCacheRegistry::AddSceneRenderCache(getUUID(), make_scoped<TemplateRenderCache>());
+        SceneRenderCacheRegistry::AddSceneRenderCache(getUUID(),
+                                                      make_scoped<TemplateRenderCache>());
 
         if (Toolbox::Filesystem::is_directory(path)) {
             if (path.filename() != "scene") {
@@ -339,53 +344,16 @@ namespace Toolbox::UI {
             if (m_current_scene) {
                 m_io_context_path = path;
 
-                m_scene_object_model = make_referable<SceneObjModel>();
-                m_table_object_model = make_referable<SceneObjModel>();
-                m_rail_model         = make_referable<RailObjModel>();
+                if (m_current_scene) {
+                    m_scene_object_model->initialize(*m_current_scene->getObjHierarchy());
+                    m_table_object_model->initialize(*m_current_scene->getTableHierarchy());
+                    m_rail_model->initialize(*m_current_scene->getRailData());
 
-                m_scene_object_model->initialize(*m_current_scene->getObjHierarchy());
-                m_table_object_model->initialize(*m_current_scene->getTableHierarchy());
-                m_rail_model->initialize(*m_current_scene->getRailData());
-
-                m_scene_object_model->setScenePath(*m_current_scene->rootPath());
-                m_table_object_model->setScenePath(*m_current_scene->rootPath());
-
-                m_scene_selection_mgr = ModelSelectionManager(m_scene_object_model);
-                m_table_selection_mgr = ModelSelectionManager(m_table_object_model);
-                m_rail_selection_mgr  = ModelSelectionManager(m_rail_model);
-
-                m_scene_selection_mgr.setDeepSpans(false);
-                m_table_selection_mgr.setDeepSpans(false);
-                m_rail_selection_mgr.setDeepSpans(false);
-
-                std::vector<ScopePtr<ModelHistoryHandler>> history_handlers = {};
-                history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_scene_object_model));
-                history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_table_object_model));
-                history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_rail_model));
-
-                m_history_aggregate_handler =
-                    make_referable<ModelHistoryAggregate>(std::move(history_handlers));
-
-                // Initialize the rail visibility map
-                const int64_t rail_count = m_rail_model->getRowCount(ModelIndex());
-                for (int64_t i = 0; i < rail_count; ++i) {
-                    ModelIndex rail_index                    = m_rail_model->getIndex(i, 0);
-                    m_rail_visible_map[rail_index.getUUID()] = true;
+                    m_scene_object_model->setScenePath(*m_current_scene->rootPath());
+                    m_table_object_model->setScenePath(*m_current_scene->rootPath());
                 }
 
-                m_scene_object_model->addEventListener(
-                    getUUID(), TOOLBOX_BIND_EVENT_FN(onObjectModelIndexEvent),
-                    ModelEventFlags::EVENT_ANY);
-
-                m_table_object_model->addEventListener(
-                    getUUID(), TOOLBOX_BIND_EVENT_FN(onTableModelIndexEvent),
-                    ModelEventFlags::EVENT_ANY);
-
-                m_rail_model->addEventListener(getUUID(),
-                                               TOOLBOX_BIND_EVENT_FN(onRailModelIndexEvent),
-                                               ModelEventFlags::EVENT_ANY);
-
-                m_renderer.initializeData(m_rail_model);
+                initializeModels();
                 return true;
             }
 
@@ -474,6 +442,8 @@ namespace Toolbox::UI {
 
         buildCreateRailDialog();
         buildRenameRailDialog();
+
+        initializeModels();
     }
 
     void SceneWindow::onDetach() {
@@ -1013,7 +983,9 @@ namespace Toolbox::UI {
                 }
 
                 ModelIndex root_index = m_scene_object_model->getIndex(0, 0, ModelIndex());
-                renderSceneObjectTree(root_index);
+                if (m_scene_object_model->validateIndex(root_index)) {
+                    renderSceneObjectTree(root_index);
+                }
             }
 
             ImGui::Spacing();
@@ -1022,7 +994,9 @@ namespace Toolbox::UI {
 
             if (m_current_scene) {
                 ModelIndex root_index = m_table_object_model->getIndex(0, 0, ModelIndex());
-                renderTableObjectTree(root_index);
+                if (m_table_object_model->validateIndex(root_index)) {
+                    renderTableObjectTree(root_index);
+                }
             }
         }
         ImGui::End();
@@ -2281,12 +2255,16 @@ namespace Toolbox::UI {
         if (m_current_scene) {
             if (m_update_render_objs || !settings.m_is_rendering_simple) {
                 m_renderables.clear();
-                auto perform_result = m_current_scene->getObjHierarchy()->getRoot()->performScene(
-                    delta_time, !settings.m_is_rendering_simple, m_renderables, m_resource_cache,
-                    lights);
-                if (!perform_result) {
-                    const ObjectError &error = perform_result.error();
-                    LogError(error);
+                ModelIndex root_index = m_scene_object_model->getIndex(0, 0);
+                if (m_scene_object_model->validateIndex(root_index)) {
+                    RefPtr<ISceneObject> root_obj = m_scene_object_model->getObjectRef(root_index);
+                    auto perform_result =
+                        root_obj->performScene(delta_time, !settings.m_is_rendering_simple,
+                                               m_renderables, m_resource_cache, lights);
+                    if (!perform_result) {
+                        const ObjectError &error = perform_result.error();
+                        LogError(error);
+                    }
                 }
                 m_update_render_objs = false;
                 m_renderer.markDirty();
@@ -4344,6 +4322,39 @@ namespace Toolbox::UI {
             });
     }
 
+    void SceneWindow::initToBasicWithPath(const fs_path &parent_folder) {
+        const fs_path app_data_path =
+            MainApplication::instance().getAppDataPath() / "BasicScene" / "scene";
+
+        if (!Filesystem::is_directory(app_data_path).value_or(false)) {
+            const fs_path local_path = fs_path("AppData") / "BasicScene" / "scene";
+            if (!Filesystem::is_directory(local_path).value_or(false)) {
+                TOOLBOX_ERROR("[SCENE_WINDOW] Failed to load basic scene from local data");
+                return;
+            }
+            Filesystem::create_directories(app_data_path);
+            Filesystem::copy(local_path, app_data_path,
+                             Filesystem::copy_options::recursive |
+                                 Filesystem::copy_options::overwrite_existing);
+            if (!Filesystem::is_directory(app_data_path).value_or(false)) {
+                TOOLBOX_ERROR("[SCENE_WINDOW] Failed to load basic scene from APPDATA");
+                return;
+            }
+        }
+
+        const fs_path scene_path = parent_folder / "scene";
+
+        Filesystem::create_directories(scene_path);
+        Filesystem::copy(app_data_path, scene_path,
+                         Filesystem::copy_options::recursive |
+                             Filesystem::copy_options::overwrite_existing);
+
+        if (!onLoadData(scene_path)) {
+            TOOLBOX_ERROR("[SCENE_WINDOW] Failed to load basic scene!");
+            return;
+        }
+    }
+
     void SceneWindow::setStageScenario(u8 stage, u8 scenario) {
         m_stage = stage, m_scenario = scenario;
     }
@@ -4351,6 +4362,42 @@ namespace Toolbox::UI {
     void SceneWindow::clearSelectedProperties() {
         m_selected_properties.clear();
         m_properties_render_handler = renderEmptyProperties;
+    }
+
+    void SceneWindow::initializeModels() {
+        m_scene_selection_mgr = ModelSelectionManager(m_scene_object_model);
+        m_table_selection_mgr = ModelSelectionManager(m_table_object_model);
+        m_rail_selection_mgr  = ModelSelectionManager(m_rail_model);
+
+        m_scene_selection_mgr.setDeepSpans(false);
+        m_table_selection_mgr.setDeepSpans(false);
+        m_rail_selection_mgr.setDeepSpans(false);
+
+        std::vector<ScopePtr<ModelHistoryHandler>> history_handlers = {};
+        history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_scene_object_model));
+        history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_table_object_model));
+        history_handlers.push_back(make_scoped<ModelHistoryHandler>(m_rail_model));
+
+        m_history_aggregate_handler =
+            make_referable<ModelHistoryAggregate>(std::move(history_handlers));
+
+        // Initialize the rail visibility map
+        const int64_t rail_count = m_rail_model->getRowCount(ModelIndex());
+        for (int64_t i = 0; i < rail_count; ++i) {
+            ModelIndex rail_index                    = m_rail_model->getIndex(i, 0);
+            m_rail_visible_map[rail_index.getUUID()] = true;
+        }
+
+        m_scene_object_model->addEventListener(
+            getUUID(), TOOLBOX_BIND_EVENT_FN(onObjectModelIndexEvent), ModelEventFlags::EVENT_ANY);
+
+        m_table_object_model->addEventListener(
+            getUUID(), TOOLBOX_BIND_EVENT_FN(onTableModelIndexEvent), ModelEventFlags::EVENT_ANY);
+
+        m_rail_model->addEventListener(getUUID(), TOOLBOX_BIND_EVENT_FN(onRailModelIndexEvent),
+                                       ModelEventFlags::EVENT_ANY);
+
+        m_renderer.initializeData(m_rail_model);
     }
 
     ImGuiID SceneWindow::onBuildDockspace() {
@@ -5244,8 +5291,12 @@ SceneMender &SceneMender::scopeTryCreateObjectDefault(const std::string &obj_typ
 
         new_obj->setNameRef(NameRef(obj_name));
 
-        std::string group_type = m_object_model->getObjectType(group_index);
-        std::string group_key  = m_object_model->getObjectKey(group_index);
+        std::string group_type = "null";
+        std::string group_key  = "null";
+        if (m_object_model->validateIndex(group_index)) {
+            group_type = m_object_model->getObjectType(group_index);
+            group_key  = m_object_model->getObjectKey(group_index);
+        }
 
         const int64_t group_size = m_object_model->getRowCount(group_index);
         child_index              = m_object_model->insertObject(new_obj, group_size, group_index);

@@ -32,6 +32,24 @@ static const std::unordered_set<std::string> s_selection_blacklist = {
     "Sky",
 };
 
+struct OrthonormalBasis {
+    glm::vec3 m_up, m_right, m_forward;
+};
+static OrthonormalBasis GetBasisVectorsFromLookAt(const glm::vec3 &origin,
+    const glm::vec3& lookat) {
+    const glm::vec3 forward = glm::normalize(lookat - origin);
+
+    glm::vec3 world_up(0.0f, 1.0f, 0.0f);
+    if (glm::abs(glm::dot(forward, world_up)) > 0.999f) {
+        world_up = glm::vec3(0.0f, 0.0f, -1.0f);
+    }
+
+    const glm::vec3 right = glm::normalize(glm::cross(forward, world_up));
+    const glm::vec3 local_up = glm::normalize(glm::cross(right, forward));
+
+    return {local_up, right, forward};
+}
+
 // Utility function to convert 2D screen space coordinates to a 3D ray in world space
 static std::pair<glm::vec3, glm::vec3>
 getRayFromMouse(const glm::vec2 &mousePos, Toolbox::Camera &camera, const glm::vec4 &viewport) {
@@ -304,7 +322,12 @@ namespace Toolbox::UI {
 
     Renderer::Renderer() {
         m_camera.setPerspective(glm::radians(70.0f), 16.0f / 9.0f, 10.0f, 100000.0f);
-        m_camera.setOrientAndPosition({0, 1, 0}, {0, 0, 1}, {0, 0, 0});
+
+        const glm::vec3 camera_origin = {0.0f, 500.0f, 0.0f};
+        const glm::vec3 camera_lookat = {0.0f, 0.0f, 2000.0f};
+
+        m_camera.setOrientAndPosition({0.0f, 1.0f, 0.0f}, camera_lookat, camera_origin);
+
         m_camera.updateCamera();
 
         J3D::Picking::InitFramebuffer(800, 600);

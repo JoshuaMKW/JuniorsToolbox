@@ -20,8 +20,7 @@ namespace Toolbox::UI {
                              RefPtr<SceneWindow> window =
                                  MainApplication::instance().createWindow<SceneWindow>(
                                      "Scene Editor");
-                             window->initToBasic();
-                             window->setIOContextPath(context_path);
+                             window->initToBasicWithPath(context_path);
                              return window;
                          }),
         _BuiltinItemInfo("Message Data", ".bmg", "A message list with metadata descriptors.",

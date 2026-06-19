@@ -31,7 +31,6 @@ namespace Toolbox::Scene {
             SceneInstance scene;
             return make_scoped<SceneInstance>(std::move(scene));
         }
-        [[nodiscard]] static ScopePtr<SceneInstance> BasicScene();
 
         [[nodiscard]] std::optional<fs_path> rootPath() const { return m_root_path; }
 
