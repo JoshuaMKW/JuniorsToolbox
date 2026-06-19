@@ -80,6 +80,7 @@ namespace Toolbox {
         }
 
         m_is_performing_undo_redo = true;
+        TOOLBOX_ON_SCOPE_EXIT({ m_is_performing_undo_redo = false; })
 
         HistoryFrame &frame = m_history[m_history_frame];
         tryCollapseFrame(frame);
@@ -94,11 +95,12 @@ namespace Toolbox {
                 // Debug log the model
                 std::function<void(RefPtr<IDataModel>, ModelIndex, size_t)> printTree =
                     [&printTree](RefPtr<IDataModel> model, ModelIndex index, size_t depth) {
-                        //if (model->validateIndex(index)) {
-                        //    TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ({}) - Index({}, {}): `{}'", depth,
-                        //                        model->getRow(index), model->getColumn(index),
-                        //                        model->getDisplayText(index));
-                        //}
+                        // if (model->validateIndex(index)) {
+                        //     TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ({}) - Index({}, {}): `{}'",
+                        //     depth,
+                        //                         model->getRow(index), model->getColumn(index),
+                        //                         model->getDisplayText(index));
+                        // }
 
                         const size_t row_count = model->getRowCount(index);
                         for (size_t i = 0; i < row_count; ++i) {
@@ -107,9 +109,9 @@ namespace Toolbox {
                         }
                     };
 
-                //TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
-                //printTree(m_model, ModelIndex(), 0);
-                //TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
+                // TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
+                // printTree(m_model, ModelIndex(), 0);
+                // TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
 
                 ModelIndex old_index =
                     m_model->getIndex(action.m_row, action.m_column, action.m_parent);
@@ -118,9 +120,9 @@ namespace Toolbox {
                     return false;
                 }
 
-                //TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
-                //printTree(m_model, ModelIndex(), 0);
-                //TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
+                // TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
+                // printTree(m_model, ModelIndex(), 0);
+                // TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
 
                 const int64_t sibling_count = m_model->getRowCount(action.m_parent);
                 if (sibling_count == 0) {
@@ -156,9 +158,9 @@ namespace Toolbox {
                     }
                 }
 
-                //TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
-                //printTree(m_model, ModelIndex(), 0);
-                //TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
+                // TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
+                // printTree(m_model, ModelIndex(), 0);
+                // TOOLBOX_DEBUG_LOG_V("[MODEL_HISTORY] ===============");
             }
 
             // We can only undo/redo index modifications, not insertions or resets.
@@ -211,8 +213,7 @@ namespace Toolbox {
         }
 
         m_history_frame -= 1;
-
-        m_is_performing_undo_redo = false;
+        return true;
     }
 
     bool ModelHistoryHandler::redoFrame() {
@@ -223,6 +224,7 @@ namespace Toolbox {
         }
 
         m_is_performing_undo_redo = true;
+        TOOLBOX_ON_SCOPE_EXIT({ m_is_performing_undo_redo = false; })
 
         HistoryFrame &frame = m_history[redo_frame];
         tryCollapseFrame(frame);
@@ -325,8 +327,7 @@ namespace Toolbox {
         }
 
         m_history_frame += 1;
-
-        m_is_performing_undo_redo = false;
+        return true;
     }
 
     bool ModelHistoryHandler::hasUndoHistory() const {
@@ -340,6 +341,20 @@ namespace Toolbox {
 
     void ModelHistoryHandler::startExplicitFrame() { m_explicit_started = true; }
     void ModelHistoryHandler::endExplicitFrame() { m_explicit_finalized = true; }
+
+    void ModelHistoryHandler::resetHistory() {
+        m_history.clear();
+        m_history_frame = -1;
+
+        m_keybind_used            = false;
+        m_is_performing_undo_redo = false;
+
+        m_current_action = {};
+
+        m_explicit_started    = false;
+        m_explicit_continuing = false;
+        m_explicit_finalized  = false;
+    }
 
     TimePoint ModelHistoryHandler::getUndoFrameTimepoint() const {
         if (m_history_frame >= 0 && m_history_frame < m_history.size()) {
@@ -423,6 +438,17 @@ namespace Toolbox {
             return;
         }
 
+        // Ignore insertion events since we already capture add/remove events
+        if ((flags & EVENT_INSERT) == EVENT_INSERT) {
+            return;
+        }
+
+        // Ignore events spawned by the system, since these are side effects
+        // rather than user-invoked actions
+        if ((flags & EVENT_SYSTEM) == EVENT_SYSTEM) {
+            return;
+        }
+
         if ((flags & EVENT_RESET) == EVENT_RESET) {
             m_history.clear();
             return;
@@ -432,8 +458,30 @@ namespace Toolbox {
             return;
         }
 
+        const TimePoint new_timestamp = TimePoint::clock::now();
+
+        const bool is_frame_init  = m_current_action.m_action_flags == EVENT_NONE;
+        const bool is_event_soft    = (flags & EVENT_SOFT) == EVENT_SOFT;
+
+        auto eval_last_action_is_self = [&]() {
+            if (m_history.empty()) {
+                return false;
+            }
+
+            const HistoryFrame &last_frame = m_history.back();
+            if (!last_frame.m_actions.empty()) {
+                const HistoryAction &last_action = last_frame.m_actions.back();
+
+                if (last_action.m_row == m_current_action.m_row &&
+                    last_action.m_column == m_current_action.m_column &&
+                    last_action.m_parent == m_current_action.m_parent) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         if ((flags & EVENT_PRE) == EVENT_PRE) {
-            const bool is_frame_init = m_current_action.m_action_flags == EVENT_NONE;
             if (!is_frame_init) {
                 TOOLBOX_DEBUG_LOG("[MODEL_HISTORY] Received a pre event without a corresponding "
                                   "post event. Resetting the current frame...");
@@ -446,17 +494,9 @@ namespace Toolbox {
             m_current_action.m_column = m_model->getColumn(index);
             m_current_action.m_parent = m_model->getParent(index);
 
-            if (m_explicit_continuing &&
-                (m_current_action.m_action_flags & EVENT_INDEX_MODIFIED) == EVENT_INDEX_MODIFIED) {
-                m_current_action.m_action_flags =
-                    static_cast<ModelEventFlags>(m_current_action.m_action_flags | EVENT_SOFT);
-            }
-
             if ((flags & EVENT_INDEX_ADDED) == EVENT_NONE) {
                 m_current_action.m_undo_data = m_model->createMimeData({index});
             }
-
-            TimePoint new_timestamp = TimePoint::clock::now();
 
             if (m_trim_cb) {
                 TimePoint trim_timestamp = TimePoint::min();
@@ -467,30 +507,14 @@ namespace Toolbox {
                 }
 
                 m_trim_cb(new_timestamp, trim_timestamp);
-            } else {
-                m_history.erase(m_history.begin() + m_history_frame + 1, m_history.end());
             }
 
-            const bool is_action_soft =
-                (m_current_action.m_action_flags & EVENT_SOFT) == EVENT_SOFT;
+            if ((m_history_frame + 1) < m_history.size()) {
+                m_history.erase(m_history.begin() + (m_history_frame + 1), m_history.end());
+            }
 
-            const bool should_piggyback = is_action_soft && [&]() {
-                if (m_history.empty()) {
-                    return false;
-                }
 
-                const HistoryFrame &last_frame = m_history.back();
-                if (!last_frame.m_actions.empty()) {
-                    const HistoryAction &last_action = last_frame.m_actions.back();
-
-                    if (last_action.m_row == m_current_action.m_row &&
-                        last_action.m_column == m_current_action.m_column &&
-                        last_action.m_parent == m_current_action.m_parent) {
-                        return true;
-                    }
-                }
-                return false;
-            }();
+            const bool should_piggyback = is_event_soft && eval_last_action_is_self();
 
             const bool is_new_frame =
                 m_explicit_started || m_explicit_finalized ||
@@ -514,15 +538,58 @@ namespace Toolbox {
 
             m_explicit_started   = false;
             m_explicit_finalized = false;
-        } else {
-            if (m_current_action.m_action_flags == EVENT_NONE) {
+        }
+
+        if ((flags & EVENT_POST) == EVENT_POST) {
+            if ((flags & EVENT_INDEX_ADDED) == EVENT_INDEX_ADDED) {
+                if (!is_frame_init) {
+                    TOOLBOX_DEBUG_LOG(
+                        "[MODEL_HISTORY] Received an ADDED event with a dirty action "
+                        "Resetting the current frame...");
+                }
+
+                m_current_action.m_row          = m_model->getRow(index);
+                m_current_action.m_column       = m_model->getColumn(index);
+                m_current_action.m_parent       = m_model->getParent(index);
+                m_current_action.m_action_flags = static_cast<ModelEventFlags>(
+                    flags & ~(EVENT_SUCCESS | EVENT_PRE | EVENT_POST | EVENT_RESET));
+
+                if ((m_history_frame + 1) < m_history.size()) {
+                    m_history.erase(m_history.begin() + (m_history_frame + 1), m_history.end());
+                }
+
+                const bool should_piggyback = is_event_soft && eval_last_action_is_self();
+
+                const bool is_new_frame =
+                    m_explicit_started || m_explicit_finalized ||
+                    (is_frame_init && !should_piggyback && !m_explicit_continuing);
+
+                if (is_new_frame) {
+                    if (!m_history.empty()) {
+                        tryCollapseFrame(m_history.back());
+                    }
+
+                    m_history.emplace_back();
+                    m_history.back().m_timestamp = new_timestamp;
+                    m_history_frame += 1;
+                }
+
+                if (m_explicit_started) {
+                    m_explicit_continuing = true;
+                } else if (m_explicit_finalized) {
+                    m_explicit_continuing = false;
+                }
+
+                m_explicit_started   = false;
+                m_explicit_finalized = false;
+            }
+            // Only add events can have an empty state up to this point
+            else if (m_current_action.m_action_flags == EVENT_NONE) {
                 TOOLBOX_DEBUG_LOG("[MODEL_HISTORY] Received a post event without a corresponding "
                                   "pre event. Ignoring...");
                 return;
             }
-        }
 
-        if ((flags & EVENT_POST) == EVENT_POST) {
             if ((flags & EVENT_INDEX_REMOVED) == EVENT_NONE) {
                 m_current_action.m_redo_data = m_model->createMimeData({index});
             }
@@ -742,6 +809,17 @@ namespace Toolbox {
         }
 
         m_wip_frame = {};
+    }
+
+    void ModelHistoryAggregate::resetHistory() {
+        for (const ScopePtr<ModelHistoryHandler> &handler : m_handlers) {
+            handler->resetHistory();
+        }
+
+        m_frames.clear();
+        m_wip_frame = {};
+
+        m_frame_timepoint = TimePoint::min();
     }
 
     TimePoint ModelHistoryAggregate::getUndoFrameTimepoint() const {

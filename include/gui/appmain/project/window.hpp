@@ -124,9 +124,10 @@ namespace Toolbox::UI {
 
         fs_path m_project_root;
 
+        RefPtr<FileSystemModel> m_file_system_model;
         RefPtr<FileSystemModelSortFilterProxy> m_tree_proxy;
         RefPtr<FileSystemModelSortFilterProxy> m_view_proxy;
-        RefPtr<FileSystemModel> m_file_system_model;
+        RefPtr<ModelHistoryHandler> m_view_history_handler;
 
         ModelIndex m_last_selected_index;
         ModelSelectionManager m_folder_selection_mgr;

@@ -241,11 +241,11 @@ namespace Toolbox {
         if (validateIndex(result)) {
             const Signal add_signal =
                 createSignalForIndex_(result, ModelEventFlags::EVENT_INDEX_ADDED);
+            signalEventListeners(add_signal.first, add_signal.second | ModelEventFlags::EVENT_POST |
+                                                       ModelEventFlags::EVENT_SUCCESS);
             signalEventListeners(index_signal.first, index_signal.second |
                                                          ModelEventFlags::EVENT_POST |
                                                          ModelEventFlags::EVENT_SUCCESS);
-            signalEventListeners(add_signal.first, add_signal.second | ModelEventFlags::EVENT_POST |
-                                                       ModelEventFlags::EVENT_SUCCESS);
         } else {
             signalEventListeners(index_signal.first,
                                  index_signal.second | ModelEventFlags::EVENT_POST);

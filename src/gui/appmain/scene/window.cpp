@@ -815,7 +815,11 @@ namespace Toolbox::UI {
         m_scene_selection_ancestry_for_view.clear();
         m_rail_selection_ancestry_for_view.clear();
 
-        m_history_aggregate_handler->handleInputs();
+        if (ImGui::IsWindowFocused() ||
+            ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows |
+                                   ImGuiFocusedFlags_NoPopupHierarchy)) {
+            m_history_aggregate_handler->handleInputs();
+        }
 
         if (m_scene_pruner) {
             m_scene_pruner->getOperationMutex().unlock();

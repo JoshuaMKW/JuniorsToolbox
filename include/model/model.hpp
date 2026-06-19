@@ -47,11 +47,12 @@ namespace Toolbox {
         EVENT_PRE            = BIT(1),
         EVENT_POST           = BIT(2),
         EVENT_SOFT           = BIT(3),
-        EVENT_RESET          = BIT(4),
-        EVENT_INSERT         = BIT(5),
-        EVENT_INDEX_ADDED    = BIT(6),
-        EVENT_INDEX_MODIFIED = BIT(7),
-        EVENT_INDEX_REMOVED  = BIT(8),
+        EVENT_SYSTEM         = BIT(4),
+        EVENT_RESET          = BIT(5),
+        EVENT_INSERT         = BIT(6),
+        EVENT_INDEX_ADDED    = BIT(7),
+        EVENT_INDEX_MODIFIED = BIT(8),
+        EVENT_INDEX_REMOVED  = BIT(9),
         EVENT_INDEX_ANY      = EVENT_INDEX_ADDED | EVENT_INDEX_MODIFIED | EVENT_INDEX_REMOVED,
         EVENT_ANY =
             EVENT_SUCCESS | EVENT_PRE | EVENT_POST | EVENT_SOFT | EVENT_RESET | EVENT_INSERT | EVENT_INDEX_ANY,
@@ -262,6 +263,8 @@ namespace Toolbox {
         virtual void startExplicitFrame();
         virtual void endExplicitFrame();
 
+        virtual void resetHistory();
+
     protected:
         virtual TimePoint getUndoFrameTimepoint() const;
         virtual TimePoint getRedoFrameTimepoint() const;
@@ -322,6 +325,8 @@ namespace Toolbox {
 
         void startExplicitFrame() override;
         void endExplicitFrame() override;
+
+        void resetHistory() override;
 
     protected:
         TimePoint getUndoFrameTimepoint() const override;

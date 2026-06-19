@@ -198,14 +198,10 @@ namespace Toolbox::UI {
         ImGui::SameLine();
         renderProjectFolderView();
 
-        m_did_drag_drop = DragDropManager::instance().getCurrentDragAction() != nullptr;
-
-        for (auto it = m_rarc_processors.begin(); it != m_rarc_processors.end();) {
-            if (!it->tIsAlive()) {
-                it = m_rarc_processors.erase(it);
-            } else {
-                ++it;
-            }
+        if (ImGui::IsWindowFocused() ||
+            ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows |
+                                   ImGuiFocusedFlags_NoPopupHierarchy)) {
+            //m_view_history_handler->handleInputs();
         }
     }
 
@@ -812,6 +808,8 @@ namespace Toolbox::UI {
         m_view_proxy->setSourceModel(m_file_system_model);
         m_view_proxy->setSortRole(FileSystemModelSortRole::SORT_ROLE_NAME);
 
+        m_view_history_handler = make_referable<ModelHistoryHandler>(m_view_proxy);
+
         m_view_history_stack.clear();
         setViewIndex(m_file_system_model->getIndex(0, 0), false);
         m_file_system_model->watchPathForUpdates(m_view_index, true);
@@ -861,7 +859,19 @@ namespace Toolbox::UI {
         ImWindow::onDetach();
     }
 
-    void ProjectViewWindow::onImGuiUpdate(TimeStep delta_time) {}
+    void ProjectViewWindow::onImGuiUpdate(TimeStep delta_time) {
+        std::unique_lock lk(m_async_io_mutex);
+
+        m_did_drag_drop = DragDropManager::instance().getCurrentDragAction() != nullptr;
+
+        for (auto it = m_rarc_processors.begin(); it != m_rarc_processors.end();) {
+            if (!it->tIsAlive()) {
+                it = m_rarc_processors.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
 
     void ProjectViewWindow::onContextMenuEvent(RefPtr<ContextMenuEvent> ev) {}
 
@@ -1713,6 +1723,10 @@ namespace Toolbox::UI {
     }
 
     void ProjectViewWindow::setViewIndex(const ModelIndex &index, bool replace_present_history) {
+        if (m_view_index == index) {
+            return;
+        }
+
         m_view_index = index;
         m_view_history_stack.erase(m_view_history_stack.begin() + m_view_history_index,
                                    m_view_history_stack.end());
@@ -1722,6 +1736,7 @@ namespace Toolbox::UI {
             m_view_history_stack.emplace_back(index);
             m_view_history_index++;
         }
+        m_view_history_handler->resetHistory();
     }
 
     bool ProjectViewWindow::redoViewHistory() {
@@ -1734,6 +1749,7 @@ namespace Toolbox::UI {
         }
 
         m_view_index = m_view_history_stack[++m_view_history_index - 1];
+        m_view_history_handler->resetHistory();
         return true;
     }
 
@@ -1747,6 +1763,7 @@ namespace Toolbox::UI {
         }
 
         m_view_index = m_view_history_stack[--m_view_history_index - 1];
+        m_view_history_handler->resetHistory();
         return true;
     }
 

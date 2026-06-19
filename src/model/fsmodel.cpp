@@ -1718,11 +1718,13 @@ namespace Toolbox {
 
             parent = getIndex_(path.parent_path());
             if (!validateIndex(parent)) {
-                return; 
+                return;
             }
         }
 
-        const Signal event_signal = createSignalForIndex_(parent, ModelEventFlags::EVENT_INSERT);
+        const Signal event_signal = createSignalForIndex_(
+            parent, static_cast<ModelEventFlags>(ModelEventFlags::EVENT_INSERT |
+                                                 ModelEventFlags::EVENT_SYSTEM));
         signalEventListeners(event_signal.first, event_signal.second | ModelEventFlags::EVENT_PRE);
 
         {
@@ -1732,8 +1734,9 @@ namespace Toolbox {
         }
 
         if (validateIndex(new_index)) {
-            const Signal folder_signal =
-                createSignalForIndex_(new_index, ModelEventFlags::EVENT_INDEX_ADDED);
+            const Signal folder_signal = createSignalForIndex_(
+                new_index, static_cast<ModelEventFlags>(ModelEventFlags::EVENT_INDEX_ADDED |
+                                                        ModelEventFlags::EVENT_SYSTEM));
             signalEventListeners(folder_signal.first, folder_signal.second |
                                                           ModelEventFlags::EVENT_POST |
                                                           ModelEventFlags::EVENT_SUCCESS);
@@ -1759,8 +1762,9 @@ namespace Toolbox {
                 }
             }
 
-            const Signal event_signal =
-                createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+            const Signal event_signal = createSignalForIndex_(
+                index, static_cast<ModelEventFlags>(ModelEventFlags::EVENT_INDEX_MODIFIED |
+                                                    ModelEventFlags::EVENT_SYSTEM));
 
             // Signal before removal takes place
             signalEventListeners(event_signal.first,
@@ -1802,7 +1806,9 @@ namespace Toolbox {
             }
         }
 
-        const Signal event_signal = createSignalForIndex_(parent, ModelEventFlags::EVENT_INSERT);
+        const Signal event_signal = createSignalForIndex_(
+            parent, static_cast<ModelEventFlags>(ModelEventFlags::EVENT_INSERT |
+                                                 ModelEventFlags::EVENT_SYSTEM));
         signalEventListeners(event_signal.first, event_signal.second | ModelEventFlags::EVENT_PRE);
 
         {
@@ -1812,8 +1818,9 @@ namespace Toolbox {
         }
 
         if (validateIndex(new_index)) {
-            const Signal file_signal =
-                createSignalForIndex_(new_index, ModelEventFlags::EVENT_INDEX_ADDED);
+            const Signal file_signal = createSignalForIndex_(
+                new_index, static_cast<ModelEventFlags>(ModelEventFlags::EVENT_INDEX_ADDED |
+                                                        ModelEventFlags::EVENT_SYSTEM));
             signalEventListeners(file_signal.first, file_signal.second |
                                                         ModelEventFlags::EVENT_POST |
                                                         ModelEventFlags::EVENT_SUCCESS);
@@ -1839,8 +1846,9 @@ namespace Toolbox {
                 }
             }
 
-            const Signal event_signal =
-                createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+            const Signal event_signal = createSignalForIndex_(
+                index, static_cast<ModelEventFlags>(ModelEventFlags::EVENT_INDEX_MODIFIED |
+                                                    ModelEventFlags::EVENT_SYSTEM));
 
             // Signal before removal takes place
             signalEventListeners(event_signal.first,
@@ -1918,7 +1926,6 @@ namespace Toolbox {
 
     void FileSystemModel::pathRenamedDst(const fs_path &new_path) {
         ModelIndex index;
-        int event_flags = ModelEventFlags::EVENT_INDEX_MODIFIED;
 
         {
             std::scoped_lock lock(m_mutex);
@@ -1928,8 +1935,9 @@ namespace Toolbox {
                 return;
             }
 
-            const Signal event_signal =
-                createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_MODIFIED);
+            const Signal event_signal = createSignalForIndex_(
+                index, static_cast<ModelEventFlags>(ModelEventFlags::EVENT_INDEX_MODIFIED |
+                                                    ModelEventFlags::EVENT_SYSTEM));
 
             // Signal before removal takes place
             signalEventListeners(event_signal.first,
@@ -1978,8 +1986,6 @@ namespace Toolbox {
         ModelIndex index;
         ModelIndex parent;
 
-        int event_flags = ModelEventFlags::EVENT_INDEX_MODIFIED;
-
         {
             std::scoped_lock lock(m_mutex);
 
@@ -1994,8 +2000,9 @@ namespace Toolbox {
             }
         }
 
-        const Signal event_signal =
-            createSignalForIndex_(index, ModelEventFlags::EVENT_INDEX_REMOVED);
+        const Signal event_signal = createSignalForIndex_(
+            index, static_cast<ModelEventFlags>(ModelEventFlags::EVENT_INDEX_REMOVED |
+                                                ModelEventFlags::EVENT_SYSTEM));
 
         // Signal before removal takes place
         signalEventListeners(event_signal.first, event_signal.second | ModelEventFlags::EVENT_PRE);
@@ -2003,7 +2010,7 @@ namespace Toolbox {
         {
             std::scoped_lock lock(m_mutex);
 
-            if ((event_flags & FileSystemModelEventFlags::EVENT_IS_DIRECTORY) != 0) {
+            if (isDirectory_(index)) {
                 // Remove all children as well
                 std::vector<UUID64> children;
                 children.reserve(1000);
@@ -2386,7 +2393,7 @@ namespace Toolbox {
             return m_filter_map.at(src_uuid);
         }
 
-        const bool result = calcSrcFiltered_(src_uuid);
+        const bool result      = calcSrcFiltered_(src_uuid);
         m_filter_map[src_uuid] = result;
         return result;
     }

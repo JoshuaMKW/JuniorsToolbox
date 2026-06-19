@@ -1,3 +1,5 @@
+#pragma once
+
 #include <memory>
 
 #if !NDEBUG
@@ -28,6 +30,9 @@
 #define TOOLBOX_DEBUGBREAK()
 #endif
 
+#define __TOOLBOX_CONCAT_MACRO(a, b) a ## b
+#define TOOLBOX_CONCAT_MACRO(a, b)   __TOOLBOX_CONCAT_MACRO(a, b)
+
 #define TOOLBOX_EXPAND_MACRO(x)    x
 #define TOOLBOX_STRINGIFY_MACRO(x) #x
 
@@ -38,18 +43,45 @@
 #define SET_BIT(value, x, flag)                                                                    \
     {                                                                                              \
         (value) &= (BIT((x)));                                                                     \
-        (value) |= (((flag)&1) << (x));                                                            \
+        (value) |= (((flag) & 1) << (x));                                                          \
     }
 #define SET_SIG_BIT(value, x, flag, width)                                                         \
     {                                                                                              \
         (value) &= (SIG_BIT((x), (width)));                                                        \
-        (value) |= (((flag)&1) << ((width) - (x)));                                                \
+        (value) |= (((flag) & 1) << ((width) - (x)));                                              \
     }
 
 #define TOOLBOX_BIND_EVENT_FN(fn)                                                                  \
     [this](auto &&...args) -> decltype(auto) {                                                     \
         return this->fn(std::forward<decltype(args)>(args)...);                                    \
     }
+
+namespace Toolbox {
+
+    template <typename Callable> class RAIIGuard {
+    public:
+        static_assert(std::invocable<Callable>,
+                      "RAIIGuard requires an invocable to operate!");
+
+        RAIIGuard()                      = delete;
+        RAIIGuard(const RAIIGuard &)     = delete;
+        RAIIGuard(RAIIGuard &&) noexcept = default;
+
+        RAIIGuard(Callable guard) : m_guard(guard) {}
+        ~RAIIGuard() { m_guard(); }
+
+        RAIIGuard &operator=(const RAIIGuard &)     = delete;
+        RAIIGuard &operator=(RAIIGuard &&) noexcept = default;
+
+    private:
+        Callable m_guard;
+    };
+
+}  // namespace Toolbox
+
+#define __TOOLBOX_ON_SCOPE_EXIT(name, guard)                                                       \
+    const RAIIGuard TOOLBOX_CONCAT_MACRO(__guard, name)([&] { guard });
+#define TOOLBOX_ON_SCOPE_EXIT(guard)         __TOOLBOX_ON_SCOPE_EXIT(__COUNTER__, guard);
 
 #include "core/assert.hpp"
 #include "core/log.hpp"
