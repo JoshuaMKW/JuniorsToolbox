@@ -385,11 +385,9 @@ namespace Toolbox {
         void reset() override;
 
         void addEventListener(UUID64 uuid, event_listener_t listener, int allowed_flags) override {
-            m_source_model->addEventListener(uuid, listener, allowed_flags);
+            m_listeners[uuid] = {listener, allowed_flags};
         }
-        void removeEventListener(UUID64 uuid) override {
-            m_source_model->removeEventListener(uuid);
-        }
+        void removeEventListener(UUID64 uuid) override { m_listeners.erase(uuid); }
 
         [[nodiscard]] ModelIndex toSourceIndex(const ModelIndex &index) const;
         [[nodiscard]] ModelIndex toProxyIndex(const ModelIndex &index) const;
@@ -422,6 +420,7 @@ namespace Toolbox {
 
         bool m_dirs_only = false;
 
+        std::unordered_map<UUID64, std::pair<event_listener_t, int>> m_listeners;
         mutable std::mutex m_cache_mutex;
         mutable std::unordered_map<UUID64, bool> m_filter_map;
         mutable std::unordered_map<UUID64, std::vector<int64_t>> m_row_map;

@@ -548,19 +548,26 @@ namespace Toolbox {
     }
 
     void FileSystemModel::reset() {
-        std::scoped_lock lock(m_mutex);
+        Signal signal = createSignalForIndex_(ModelIndex(), EVENT_RESET);
+        signalEventListeners(signal.first, signal.second | EVENT_PRE);
 
-        m_watchdog.reset();
+        {
+            std::scoped_lock lock(m_mutex);
 
-        for (auto &[key, val] : m_index_map) {
-            _FileSystemIndexData *p = val.data<_FileSystemIndexData>();
-            if (p) {
-                delete p;
+            m_watchdog.reset();
+
+            for (auto &[key, val] : m_index_map) {
+                _FileSystemIndexData *p = val.data<_FileSystemIndexData>();
+                if (p) {
+                    delete p;
+                }
             }
+
+            m_index_map.clear();
+            m_path_map.clear();
         }
 
-        m_index_map.clear();
-        m_path_map.clear();
+        signalEventListeners(signal.first, signal.second | EVENT_POST | EVENT_SUCCESS);
     }
 
     void FileSystemModel::addEventListener(UUID64 uuid, event_listener_t listener,
@@ -626,6 +633,10 @@ namespace Toolbox {
                                            ModelEventFlags base_event) const {
         FileSystemModelEventFlags event_flags =
             (FileSystemModelEventFlags)ModelEventFlags::EVENT_NONE;
+        if (!validateIndex(index)) {
+            return {index, (int)base_event};
+        }
+
         if (validateIndex(getParentArchive_(index))) {
             event_flags |= FileSystemModelEventFlags::EVENT_IS_VIRTUAL;
         }
@@ -767,7 +778,7 @@ namespace Toolbox {
             return TypeMap().at(ext).m_name;
         }
         default:
-            return std::any();
+            return {};
         }
     }
 
@@ -2533,24 +2544,20 @@ namespace Toolbox {
     }
 
     void FileSystemModelSortFilterProxy::fsUpdateEvent(const ModelIndex &path, int flags) {
-        if ((flags & FileSystemModelEventFlags::EVENT_FS_ANY) == ModelEventFlags::EVENT_NONE) {
-            return;
+        // If it's a structural change, our caches are now invalid
+        if (flags & (EVENT_INDEX_ADDED | EVENT_INDEX_REMOVED | EVENT_RESET)) {
+            flushCache();
         }
 
-        // if ((flags & FileSystemModelEventFlags::EVENT_IS_FILE) &&
-        //     (flags & ModelEventFlags::EVENT_INDEX_MODIFIED)) {
-        //
-        // }
+        ModelIndex proxy_idx = toProxyIndex(path);
 
-        if ((flags & ModelEventFlags::EVENT_POST)) {
-            std::unique_lock lock(m_cache_mutex);
-            m_row_map.erase(path.getUUID());
+        // If the index is filtered out, we don't need to tell the view about it
+        if (!validateIndex(proxy_idx))
+            return;
 
-            ModelIndex parent = m_source_model->getParent(path);
-            m_row_map.erase(parent.getUUID());
-
-            if ((flags & ModelEventFlags::EVENT_INDEX_MODIFIED)) {
-                m_filter_map[path.getUUID()] = calcSrcFiltered_(path.getUUID());
+        for (const auto &[key, listener] : m_listeners) {
+            if ((listener.second & flags) != ModelEventFlags::EVENT_NONE) {
+                listener.first(proxy_idx, (listener.second & flags));
             }
         }
     }
