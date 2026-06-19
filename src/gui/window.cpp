@@ -302,14 +302,13 @@ namespace Toolbox::UI {
             break;
         }
         case EVENT_WINDOW_MOVE: {
-            ImVec2 win_pos = ev->getGlobalPoint();
-            setLayerPos(win_pos);
-            std::string window_name = std::format("{}###{}", title(), ev->getTargetId());
-            ImGui::SetWindowPos(window_name.c_str(), win_pos, ImGuiCond_Always);
-            ev->accept();
+            const std::string window_name = std::format("{}###{}", title(), ev->getTargetId());
+            ImGui::SetWindowPos(window_name.c_str(), ev->getGlobalPoint(), ImGuiCond_Always);
+            ImProcessLayer::onWindowEvent(ev);
             break;
         }
         case EVENT_WINDOW_RESIZE: {
+            const std::string window_name = std::format("{}###{}", title(), ev->getTargetId());
             ImVec2 win_size = ev->getSize();
             if (m_min_size) {
                 win_size.x = std::max(win_size.x, m_min_size->x);
@@ -319,10 +318,15 @@ namespace Toolbox::UI {
                 win_size.x = std::min(win_size.x, m_max_size->x);
                 win_size.y = std::min(win_size.y, m_max_size->y);
             }
-            setLayerSize(win_size);
-            std::string window_name = std::format("{}###{}", title(), ev->getTargetId());
+            ev->setSize(win_size);
             ImGui::SetWindowSize(window_name.c_str(), win_size, ImGuiCond_Always);
-            ev->accept();
+            ImProcessLayer::onWindowEvent(ev);
+            break;
+        }
+        case EVENT_WINDOW_SHOW: {
+            const std::string window_name = std::format("{}###{}", title(), ev->getTargetId());
+            ImGui::SetWindowFocus(window_name.c_str());
+            ImProcessLayer::onWindowEvent(ev);
             break;
         }
         default:

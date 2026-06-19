@@ -26,8 +26,10 @@ namespace Toolbox::UI {
 
         [[nodiscard]] bool isShowEvent() const noexcept { return getType() == EVENT_WINDOW_SHOW; }
 
-        [[nodiscard]] ImVec2 getGlobalPoint() const noexcept { return m_geo_data; }
-        [[nodiscard]] ImVec2 getSize() const noexcept { return m_geo_data; }
+        [[nodiscard]] const ImVec2 &getGlobalPoint() const noexcept { return m_geo_data; }
+        [[nodiscard]] const ImVec2 &getSize() const noexcept { return m_geo_data; }
+        [[nodiscard]] void setGlobalPoint(const ImVec2 &point) noexcept { m_geo_data = point; }
+        [[nodiscard]] void setSize(const ImVec2 &size) noexcept { m_geo_data = size; }
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
