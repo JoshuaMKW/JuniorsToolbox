@@ -2021,6 +2021,18 @@ namespace Toolbox::UI {
             ImRect rail_rect;
 
             const size_t rail_count = m_rail_model->getRowCount(ModelIndex());
+            if (rail_count == 0) {
+                const ImVec2 avail = ImGui::GetContentRegionMax();
+                const ImVec2 button_size = {avail.x * 0.8f, avail.y * 0.4f};
+
+                ImGui::SetCursorPos(
+                    {avail.x / 2.0f - button_size.x / 2.0f, avail.y / 2.0f - button_size.y / 2.0f});
+
+                if (ImGui::Button("Create New Rail", button_size, 5.0f, ImDrawFlags_RoundCornersAll)) {
+                    m_create_rail_dialog.open();
+                }
+            }
+
             for (size_t i = 0; i < rail_count; ++i) {
                 ModelIndex rail_index = m_rail_model->getIndex(i, 0, ModelIndex());
                 if (!m_rail_model->isIndexRail(rail_index)) {
@@ -2262,8 +2274,14 @@ namespace Toolbox::UI {
         ImGui::End();
 
         ModelIndex last_selected = m_rail_selection_mgr.getState().getLastSelected();
-        if (m_rail_model->isIndexRail(last_selected)) {
+
+        const bool is_rail_selected = m_rail_model->isIndexRail(last_selected);
+        const bool is_none_selected = !m_rail_model->validateIndex(last_selected);
+
+        if (is_rail_selected || is_none_selected) {
             m_create_rail_dialog.render(last_selected);
+        }
+        if (is_rail_selected) {
             m_rename_rail_dialog.render(last_selected);
         }
     }
@@ -3595,53 +3613,68 @@ namespace Toolbox::UI {
                     return;
                 }
 
+                const bool is_multi_node = node_count > 1;
+                const bool is_empty_node = node_count == 0;
+
                 f64 angle      = 0;
                 f64 angle_step = node_count == 0 ? 0 : (M_PI * 2) / node_count;
 
                 std::vector<Rail::Rail::node_ptr_t> new_nodes;
-                for (u16 i = 0; i < node_count; ++i) {
-                    s16 x = 0;
-                    s16 y = 0;
-                    s16 z = 0;
-                    if (loop) {
-                        x = static_cast<s16>(std::cos(angle) * node_distance);
-                        y = 0;
-                        z = static_cast<s16>(std::sin(angle) * node_distance);
-                    } else {
-                        x = 0;
-                        y = 0;
-                        z = i * node_distance;
+
+                if (is_multi_node) {
+                    for (u16 i = 0; i < node_count; ++i) {
+                        s16 x = 0;
+                        s16 y = 0;
+                        s16 z = 0;
+                        if (loop) {
+                            x = static_cast<s16>(std::cos(angle) * node_distance);
+                            y = 0;
+                            z = static_cast<s16>(std::sin(angle) * node_distance);
+                        } else {
+                            x = 0;
+                            y = 0;
+                            z = i * node_distance;
+                        }
+
+                        auto node = make_referable<Rail::RailNode>(x, y, z, 0);
+                        new_nodes.push_back(node);
+
+                        angle += angle_step;
                     }
+                } else if (!is_empty_node) {
+                    s16 x     = 0;
+                    s16 y     = 0;
+                    s16 z     = 0;
 
                     auto node = make_referable<Rail::RailNode>(x, y, z, 0);
                     new_nodes.push_back(node);
-
-                    angle += angle_step;
                 }
 
                 RailData::rail_ptr_t new_rail = make_referable<Rail::Rail>(name, new_nodes);
 
-                for (u16 i = 0; i < node_count; ++i) {
-                    auto result = new_rail->connectNodeToNeighbors(i, true);
-                    if (!result) {
-                        LogError(result.error());
-                    }
-                }
-
-                if (!loop) {
-                    // First
-                    {
-                        auto result = new_rail->removeConnection(0, 1);
+                if (is_multi_node) {
+                    for (u16 i = 0; i < node_count; ++i) {
+                        auto result = new_rail->connectNodeToNeighbors(i, true);
                         if (!result) {
                             LogError(result.error());
                         }
                     }
 
-                    // Last
-                    {
-                        auto result = new_rail->removeConnection(node_count - 1, 1);
-                        if (!result) {
-                            LogError(result.error());
+                    if (!loop) {
+                        // First
+                        {
+                            auto result = new_rail->removeConnection(0, 1);
+                            if (!result) {
+                                LogError(result.error());
+                            }
+                        }
+
+                        // Last
+                        {
+                            auto result = new_rail->removeConnection(node_count - 1, 1);
+                            if (!result) {
+                                LogError(result.error());
+                            }
                         }
                     }
                 }

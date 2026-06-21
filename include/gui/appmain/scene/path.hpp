@@ -70,7 +70,7 @@ namespace Toolbox::UI {
         std::vector<PathConnection> m_path_connections;
 
         GLsizei m_vertex_count;
-        std::vector<GLuint> m_path_starts;
+        std::vector<GLint> m_path_starts;
         std::vector<GLsizei> m_path_sizes;
     };
 }  // namespace Toolbox::UI

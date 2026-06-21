@@ -1,12 +1,12 @@
 #pragma once
 
 #include "boundbox.hpp"
-#include "smart_resource.hpp"
 #include "node.hpp"
-#include "unique.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/value.hpp"
 #include "serial.hpp"
+#include "smart_resource.hpp"
+#include "unique.hpp"
 #include <string>
 #include <vector>
 
@@ -14,13 +14,13 @@ using namespace Toolbox::Object;
 
 namespace Toolbox::Rail {
 
-    class Rail : public ISerializable, public ISmartResource, public IUnique {
+    class Rail : public IGameSerializable, public ISmartResource, public IUnique {
     public:
         using node_ptr_t = RefPtr<RailNode>;
 
         Rail() = delete;
         explicit Rail(std::string_view name) : m_name(name) {}
-        Rail(std::string_view name, std::vector<node_ptr_t> nodes) : m_name(name), m_nodes(nodes) {
+        Rail(std::string_view name, const std::vector<node_ptr_t> &nodes) : m_name(name), m_nodes(nodes) {
             for (auto &node : m_nodes) {
                 node->m_rail_uuid = getUUID();
             }
@@ -30,11 +30,14 @@ namespace Toolbox::Rail {
 
         ~Rail() = default;
 
-        Rail &operator=(const Rail &other) = default;
-        Rail &operator=(Rail &&other)      = default;
+        Rail &operator=(const Rail &other)     = default;
+        Rail &operator=(Rail &&other) noexcept = default;
 
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
+
+        Result<void, SerialError> gameSerialize(Serializer &out) const override;
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
         [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
 
@@ -111,15 +114,13 @@ namespace Toolbox::Rail {
         Result<void, MetaError> addConnection(node_ptr_t node, node_ptr_t to);
 
         Result<void, MetaError> insertConnection(size_t node, size_t index, size_t to);
-        Result<void, MetaError> insertConnection(node_ptr_t node, size_t index,
-                                                        node_ptr_t to);
+        Result<void, MetaError> insertConnection(node_ptr_t node, size_t index, node_ptr_t to);
 
         Result<void, MetaError> removeConnection(size_t node, size_t index);
         Result<void, MetaError> removeConnection(node_ptr_t node, size_t index);
 
         Result<void, MetaError> replaceConnection(size_t node, size_t index, size_t to);
-        Result<void, MetaError> replaceConnection(node_ptr_t node, size_t index,
-                                                         node_ptr_t to);
+        Result<void, MetaError> replaceConnection(node_ptr_t node, size_t index, node_ptr_t to);
 
         Result<void, MetaError> clearConnections(size_t node);
         Result<void, MetaError> clearConnections(node_ptr_t node);
@@ -128,8 +129,12 @@ namespace Toolbox::Rail {
 
         Result<void, MetaError> connectNodeToNearest(size_t node, size_t count);
         Result<void, MetaError> connectNodeToNearest(node_ptr_t node, size_t count);
-        Result<void, MetaError> connectNodeToNearest(size_t node) { return connectNodeToNearest(node, 1);}
-        Result<void, MetaError> connectNodeToNearest(node_ptr_t node) { return connectNodeToNearest(node, 1);}
+        Result<void, MetaError> connectNodeToNearest(size_t node) {
+            return connectNodeToNearest(node, 1);
+        }
+        Result<void, MetaError> connectNodeToNearest(node_ptr_t node) {
+            return connectNodeToNearest(node, 1);
+        }
 
         Result<void, MetaError> connectNodeToPrev(size_t node);
         Result<void, MetaError> connectNodeToPrev(node_ptr_t node);

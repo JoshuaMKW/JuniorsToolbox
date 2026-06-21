@@ -15,7 +15,7 @@
 
 namespace Toolbox::Scene {
 
-    class ObjectHierarchy : public ISerializable, public ISmartResource {
+    class ObjectHierarchy : public IGameSerializable, public ISmartResource {
     public:
         ObjectHierarchy() = default;
         ObjectHierarchy(std::string_view name) : m_name(name), m_root() {}
@@ -83,7 +83,37 @@ namespace Toolbox::Scene {
             SerialError err = {};
             bool error      = false;
 
-            ObjectFactory::create(in, m_include_custom)
+            ObjectFactory::create(ObjectFactory::project_io_tag{}, in, m_include_custom)
+                .and_then([&](auto &&obj) {
+                    m_root =
+                        std::static_pointer_cast<GroupSceneObject, ISceneObject>(std::move(obj));
+                    return Result<bool, SerialError>();
+                })
+                .or_else([&](SerialError &&e) {
+                    err   = std::move(e);
+                    error = true;
+                    return Result<bool, SerialError>();
+                });
+
+            if (error) {
+                return std::unexpected(err);
+            }
+
+            return Result<void, SerialError>();
+        }
+
+        Result<void, SerialError> gameSerialize(Serializer &out) const override {
+            if (!m_root) {
+                return make_serial_error<void>(out, "Root object is null");
+            }
+            return m_root->gameSerialize(out);
+        }
+
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override {
+            SerialError err = {};
+            bool error      = false;
+
+            ObjectFactory::create(ObjectFactory::game_io_tag{}, in, m_include_custom)
                 .and_then([&](auto &&obj) {
                     m_root =
                         std::static_pointer_cast<GroupSceneObject, ISceneObject>(std::move(obj));
@@ -124,4 +154,4 @@ namespace Toolbox::Scene {
         bool m_include_custom = false;
     };
 
-}
+}  // namespace Toolbox::Scene

@@ -501,11 +501,171 @@ namespace Toolbox::Object {
     }
 
     Result<void, SerialError> GroupSceneObject::serialize(Serializer &out) const {
-        return gameSerialize(out);
+        out.write<u64>(m_UUID64);
+
+        std::streampos start = out.tell();
+
+        out.pushBreakpoint();
+        {
+            // Write the size marker for now
+            out.write<u32>(0);
+
+            NameRef type_ref(m_type);
+            type_ref.serialize(out);
+
+            m_nameref.serialize(out);
+
+            // Members
+            bool late_group_size = (type_ref.code() == 15406 || type_ref.code() == 9858);
+            if (!late_group_size) {
+                auto result = m_group_size->gameSerialize(out);
+                if (!result) {
+                    return result;
+                }
+            }
+
+            for (auto &member : m_members) {
+                auto result = member->gameSerialize(out);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            }
+
+            if (late_group_size) {
+                auto result = m_group_size->gameSerialize(out);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            }
+
+            for (auto &child : m_children) {
+                auto result = child->gameSerialize(out);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+            }
+        }
+
+        u32 obj_size = static_cast<u32>(out.size() - start);
+
+        out.popBreakpoint();
+
+        // Write the size marker
+        out.write<u32, std::endian::big>(obj_size);
+        out.seek(0, std::ios::end);
+        return {};
     }
 
     Result<void, SerialError> GroupSceneObject::deserialize(Deserializer &in) {
-        return gameDeserialize(in);
+        m_UUID64 = in.read<u64>();
+
+        // Metadata
+        auto length           = in.read<u32, std::endian::big>();
+        std::streampos endpos = static_cast<std::size_t>(in.tell()) + length - 4;
+
+        // Type
+        NameRef obj_type;
+        {
+            auto result = obj_type.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        // Name
+        NameRef obj_name;
+        {
+            auto result = obj_name.deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        m_type = obj_type.name();
+        setNameRef(obj_name);
+
+        auto template_result = TemplateFactory::create(m_type, m_include_custom);
+        if (!template_result) {
+            auto error_v = template_result.error();
+            if (std::holds_alternative<FSError>(error_v)) {
+                auto error = std::get<FSError>(error_v);
+                return make_serial_error<void>(in, error.m_message[0]);
+            } else {
+                auto error = std::get<JSONError>(error_v);
+                return make_serial_error<void>(in, error.m_message[0]);
+            }
+        }
+
+        m_template                           = *template_result.value();
+        std::optional<TemplateWizard> wizard = m_template.getWizard(obj_name.name());
+        if (!wizard) {
+            const std::vector<TemplateWizard> &wizards = m_template.wizards();
+            for (const TemplateWizard &wz : wizards) {
+                if (wz.m_obj_name == obj_name.name()) {
+                    wizard = wz;
+                    break;
+                }
+            }
+            if (!wizard) {
+                wizard = m_template.getWizard("Default");
+                if (!wizard) {
+                    wizard = m_template.getWizard();
+                }
+            }
+        }
+
+        m_wizard = wizard->m_name;
+
+        // Members
+        bool late_group_size = (obj_type.code() == 15406 || obj_type.code() == 9858);
+        if (!late_group_size) {
+            m_group_size->gameDeserialize(in);
+        }
+
+        for (size_t i = 0; i < wizard->m_init_members.size(); ++i) {
+            if (in.tell() >= endpos) {
+                /*auto err = make_serial_error(
+                    in, std::format(
+                            "Unexpected end of file. {} ({}) expected {} members but only found {}",
+                            m_type, m_nameref.name(), wizard->m_init_members.size(), i + 1));
+                return std::unexpected(err);*/
+                break;
+            }
+            auto &m                        = wizard->m_init_members[i];
+            RefPtr<MetaMember> this_member = ref_cast<MetaMember>(make_deep_clone<MetaMember>(m));
+            this_member->updateReferenceToList(m_members);
+            auto result = this_member->gameDeserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            m_members.push_back(this_member);
+        }
+
+        if (late_group_size) {
+            m_group_size->gameDeserialize(in);
+        }
+
+        size_t num_children = getGroupSize();
+
+        // Children
+        for (size_t i = 0; i < num_children; ++i) {
+            if (in.tell() >= endpos) {
+                return make_serial_error<void>(
+                    in,
+                    std::format(
+                        "Unexpected end of file. {} ({}) expected {} children but only found {}",
+                        m_type, m_nameref.name(), num_children, i + 1));
+            }
+            ObjectFactory::create_t result =
+                ObjectFactory::create(ObjectFactory::project_io_tag{}, in, m_include_custom);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            addChild(std::move(result.value()));
+        }
+
+        in.seek(endpos, std::ios::beg);
+        return {};
     }
 
     Result<void, SerialError> GroupSceneObject::gameSerialize(Serializer &out) const {
@@ -660,7 +820,8 @@ namespace Toolbox::Object {
                         "Unexpected end of file. {} ({}) expected {} children but only found {}",
                         m_type, m_nameref.name(), num_children, i + 1));
             }
-            ObjectFactory::create_t result = ObjectFactory::create(in, m_include_custom);
+            ObjectFactory::create_t result =
+                ObjectFactory::create(ObjectFactory::game_io_tag{}, in, m_include_custom);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -1424,7 +1585,7 @@ namespace Toolbox::Object {
         return obj;
     }
 
-    ObjectFactory::create_t ObjectFactory::create(Deserializer &in, bool include_custom,
+    ObjectFactory::create_t ObjectFactory::create(game_io_tag, Deserializer &in, bool include_custom,
                                                   std::optional<UUID64> obj_uuid) {
         if (isGroupObject(in)) {
             auto obj = make_scoped<GroupSceneObject>();
@@ -1444,6 +1605,34 @@ namespace Toolbox::Object {
             }
             obj->m_include_custom = include_custom;
             auto result           = obj->gameDeserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            return obj;
+        }
+    }
+
+    ObjectFactory::create_t ObjectFactory::create(project_io_tag, Deserializer &in,
+                                                  bool include_custom,
+                                                  std::optional<UUID64> obj_uuid) {
+        if (isGroupObject(in)) {
+            auto obj = make_scoped<GroupSceneObject>();
+            if (obj_uuid) {
+                obj->setUUID(*obj_uuid);
+            }
+            obj->m_include_custom = include_custom;
+            auto result           = obj->deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            return obj;
+        } else {
+            auto obj = make_scoped<PhysicalSceneObject>();
+            if (obj_uuid) {
+                obj->setUUID(*obj_uuid);
+            }
+            obj->m_include_custom = include_custom;
+            auto result           = obj->deserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }

@@ -36,6 +36,16 @@ static bool isTranslationOnly(const glm::mat4 &m, float epsilon = 0.0001f) {
 namespace Toolbox::Rail {
 
     Result<void, SerialError> Rail::serialize(Serializer &out) const {
+        out.write<u64>(m_UUID64);
+        return gameSerialize(out);
+    }
+
+    Result<void, SerialError> Rail::deserialize(Deserializer &in) {
+        m_UUID64 = in.read<u64>();
+        return gameDeserialize(in);
+    }
+
+    Result<void, SerialError> Rail::gameSerialize(Serializer &out) const {
         out.writeString<std::endian::big>(m_name);
         out.write<u16, std::endian::big>(static_cast<u16>(m_nodes.size()));
         for (const auto &node : m_nodes) {
@@ -47,7 +57,7 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    Result<void, SerialError> Rail::deserialize(Deserializer &in) {
+    Result<void, SerialError> Rail::gameDeserialize(Deserializer &in) {
         m_name = in.readString<std::endian::big>();
         m_nodes.clear();
         u16 node_count = in.read<u16, std::endian::big>();

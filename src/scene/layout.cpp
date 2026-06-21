@@ -42,7 +42,7 @@ namespace Toolbox::Scene {
                 std::ifstream file(path, std::ios::binary);
                 Deserializer in(file.rdbuf());
 
-                m_scene_layout.deserialize(in).or_else([&](const SerialError &error) {
+                m_scene_layout.gameDeserialize(in).or_else([&](const SerialError &error) {
                     result = false;
                     LogError(error);
                     return Result<void, SerialError>();
@@ -88,7 +88,7 @@ namespace Toolbox::Scene {
                 std::ofstream file(path, std::ios::binary);
                 Serializer out(file.rdbuf());
 
-                m_scene_layout.serialize(out).or_else([&](const SerialError &error) {
+                m_scene_layout.gameSerialize(out).or_else([&](const SerialError &error) {
                     result = false;
                     LogError(error);
                     return Result<void, SerialError>();

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "smart_resource.hpp"
 #include "objlib/meta/member.hpp"
 #include "objlib/meta/value.hpp"
 #include "serial.hpp"
+#include "smart_resource.hpp"
 #include "unique.hpp"
 #include <string>
 #include <vector>
@@ -14,7 +14,7 @@ namespace Toolbox::Rail {
 
     class Rail;
 
-    class RailNode : public ISerializable, public ISmartResource, public IUnique {
+    class RailNode : public IGameSerializable, public ISmartResource, public IUnique {
     protected:
         friend class Rail;
 
@@ -25,9 +25,9 @@ namespace Toolbox::Rail {
         RailNode(s16 x, s16 y, s16 z, u32 flags);
         RailNode(glm::vec3 pos);
         RailNode(glm::vec3 pos, u32 flags);
-        RailNode(const RailNode &other) = default;
-        RailNode(RailNode &&other)      = default;
-        ~RailNode()                     = default;
+        RailNode(const RailNode &other)     = default;
+        RailNode(RailNode &&other) noexcept = default;
+        ~RailNode()                         = default;
 
         [[nodiscard]] UUID64 getUUID() const override { return m_UUID64; }
 
@@ -49,10 +49,13 @@ namespace Toolbox::Rail {
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
 
+        Result<void, SerialError> gameSerialize(Serializer &out) const override;
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override;
+
         ScopePtr<ISmartResource> clone(bool deep) const override;
 
-        RailNode &operator=(const RailNode &other) = default;
-        RailNode &operator=(RailNode &&other)      = default;
+        RailNode &operator=(const RailNode &other)     = default;
+        RailNode &operator=(RailNode &&other) noexcept = default;
 
         bool operator==(const RailNode &other) const;
 
@@ -71,8 +74,7 @@ namespace Toolbox::Rail {
         void setConnectionCount(u16 count);
         Result<void, MetaError> setConnectionValue(size_t index, s16 value);
 
-        Result<void, MetaError> setConnectionDistance(size_t connection,
-                                                             const glm::vec3 &to_pos);
+        Result<void, MetaError> setConnectionDistance(size_t connection, const glm::vec3 &to_pos);
         Result<void, MetaError> setConnectionDistance(size_t connection, f32 distance);
 
     private:

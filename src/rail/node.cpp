@@ -194,6 +194,16 @@ namespace Toolbox::Rail {
     }
 
     Result<void, SerialError> RailNode::serialize(Serializer &out) const {
+        out.write<u64>(m_UUID64);
+        return gameSerialize(out);
+    }
+
+    Result<void, SerialError> RailNode::deserialize(Deserializer &in) {
+        m_UUID64 = in.read<u64>();
+        return gameDeserialize(in);
+    }
+
+    Result<void, SerialError> RailNode::gameSerialize(Serializer &out) const {
         auto connection_count = getConnectionCount();
 
         {
@@ -257,7 +267,7 @@ namespace Toolbox::Rail {
         return {};
     }
 
-    Result<void, SerialError> RailNode::deserialize(Deserializer &in) {
+    Result<void, SerialError> RailNode::gameDeserialize(Deserializer &in) {
         auto x = in.read<s16, std::endian::big>();
         auto y = in.read<s16, std::endian::big>();
         auto z = in.read<s16, std::endian::big>();

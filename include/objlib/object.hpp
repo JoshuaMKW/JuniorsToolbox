@@ -893,7 +893,12 @@ namespace Toolbox::Object {
         using create_err_t = SerialError;
         using create_t     = Result<create_ret_t, create_err_t>;
 
-        static create_t create(Deserializer &in, bool include_custom,
+        struct game_io_tag {};
+        struct project_io_tag {};
+
+        static create_t create(game_io_tag, Deserializer &in, bool include_custom,
+                               std::optional<UUID64> obj_uuid = std::nullopt);
+        static create_t create(project_io_tag, Deserializer &in, bool include_custom,
                                std::optional<UUID64> obj_uuid = std::nullopt);
         static create_ret_t create(const Template &template_, std::string_view wizard_name,
                                    const fs_path &resource_path,

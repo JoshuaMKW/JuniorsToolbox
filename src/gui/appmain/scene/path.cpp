@@ -209,8 +209,6 @@ void main()
             return;
         }
 
-        glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-
         // TODO: Render shortened lines with arrow tips for connections, fix color relations
         m_path_connections.clear();
         m_path_connections.reserve(rail_count * 16);  // Estimate upper bound
@@ -261,8 +259,11 @@ void main()
         m_path_sizes.clear();
 
         for (auto &connection : m_path_connections) {
-            m_path_starts.push_back(static_cast<GLuint>(buffer.size()));
+            buffer.push_back(connection.m_point);
+
+            m_path_starts.push_back(static_cast<GLint>(buffer.size()));
             m_path_sizes.push_back(static_cast<GLsizei>(connection.m_connections.size() * 2));
+            
             // For the connecting points, we adjust back the end and add an arrowhead
             for (auto &point : connection.m_connections) {
                 buffer.push_back(connection.m_point);
@@ -271,6 +272,11 @@ void main()
         }
 
         m_vertex_count = static_cast<GLsizei>(buffer.size());
+        if (m_vertex_count == 0) {
+            return;
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 
         glBufferData(GL_ARRAY_BUFFER, sizeof(PathPoint) * buffer.size(), buffer.data(),
                      GL_DYNAMIC_DRAW);
@@ -281,6 +287,10 @@ void main()
         if (m_path_connections.size() == 0)
             return;
 
+        if (m_vertex_count == 0) {
+            return;
+        }
+
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
 
@@ -290,7 +300,7 @@ void main()
         glDisable(GL_CULL_FACE);
         glEnable(GL_PROGRAM_POINT_SIZE);
 
-        glm::mat4 mvp = camera->getProjMatrix() * camera->getViewMatrix() * glm::mat4(1.0);
+        const glm::mat4 mvp = camera->getProjMatrix() * camera->getViewMatrix() * glm::mat4(1.0);
 
         // Render the lines
         {
@@ -300,10 +310,10 @@ void main()
 
             glUniform1f(m_path_thickness_id, m_path_thickness);
             glUniform2f(m_path_resolution_id, m_resolution.x, m_resolution.y);
-            glUniformMatrix4fv(m_path_mvp_uniform_id, 1, 0, &mvp[0][0]);
+            glUniformMatrix4fv(m_path_mvp_uniform_id, 1, GL_FALSE, &mvp[0][0]);
 
             for (size_t i = 0; i < m_path_starts.size(); ++i) {
-                glDrawArrays(GL_LINE_STRIP, m_path_starts[i], m_path_sizes[i]);
+                glDrawArrays(GL_LINES, m_path_starts[i], m_path_sizes[i]);
             }
         }
 
@@ -311,13 +321,13 @@ void main()
         {
             glUseProgram(m_point_program);
             glUniform1f(m_point_size_id, m_point_size);
-            glUniformMatrix4fv(m_point_mvp_uniform_id, 1, 0, &mvp[0][0]);
+            glUniformMatrix4fv(m_point_mvp_uniform_id, 1, GL_FALSE, &mvp[0][0]);
 
             GLint start = 0;
             for (auto &connection : m_path_connections) {
-                // +1 for self
+                // +1 for self 
                 glDrawArrays(GL_POINTS, start, 1);
-                start += static_cast<GLint>(connection.m_connections.size() * 2);
+                start += 1 + static_cast<GLint>(connection.m_connections.size() * 2);
             }
         }
 

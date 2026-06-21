@@ -37,7 +37,7 @@ namespace Toolbox::Scene {
             std::ifstream file(scene_bin, std::ios::in | std::ios::binary);
             Deserializer in(file.rdbuf(), scene_bin.string());
 
-            Result<void, SerialError> result = scene->m_map_objects->deserialize(in);
+            Result<void, SerialError> result = scene->m_map_objects->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -48,7 +48,7 @@ namespace Toolbox::Scene {
             std::ifstream file(tables_bin, std::ios::in | std::ios::binary);
             Deserializer in(file.rdbuf());
 
-            Result<void, SerialError> result = scene->m_table_objects->deserialize(in);
+            Result<void, SerialError> result = scene->m_table_objects->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -59,7 +59,7 @@ namespace Toolbox::Scene {
             std::ifstream file(rail_bin, std::ios::in | std::ios::binary);
             Deserializer in(file.rdbuf());
 
-            Result<void, SerialError> result = scene->m_rail_info->deserialize(in);
+            Result<void, SerialError> result = scene->m_rail_info->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -97,7 +97,7 @@ namespace Toolbox::Scene {
             std::ofstream file(scene_bin, std::ios::out | std::ios::binary);
             Serializer out(file.rdbuf(), scene_bin.string());
 
-            auto result = m_map_objects->serialize(out);
+            auto result = m_map_objects->gameSerialize(out);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -107,7 +107,7 @@ namespace Toolbox::Scene {
             std::ofstream file(tables_bin, std::ios::out | std::ios::binary);
             Serializer out(file.rdbuf(), scene_bin.string());
 
-            auto result = m_table_objects->serialize(out);
+            auto result = m_table_objects->gameSerialize(out);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -117,7 +117,7 @@ namespace Toolbox::Scene {
             std::ofstream file(rail_bin, std::ios::out | std::ios::binary);
             Serializer out(file.rdbuf(), scene_bin.string());
 
-            auto result = m_rail_info->serialize(out);
+            auto result = m_rail_info->gameSerialize(out);
             if (!result) {
                 return std::unexpected(result.error());
             }

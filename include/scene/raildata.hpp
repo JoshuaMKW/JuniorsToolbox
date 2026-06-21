@@ -13,7 +13,7 @@
 
 namespace Toolbox {
 
-    class RailData : public ISerializable, public ISmartResource {
+    class RailData : public IGameSerializable, public ISmartResource {
     public:
         using rail_ptr_t = RefPtr<Rail::Rail>;
 
@@ -58,6 +58,9 @@ namespace Toolbox {
 
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
+
+        Result<void, SerialError> gameSerialize(Serializer &out) const override;
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
         ScopePtr<ISmartResource> clone(bool deep) const override;
 

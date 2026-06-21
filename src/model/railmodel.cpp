@@ -1183,7 +1183,7 @@ namespace Toolbox {
                     return result;
                 }
 
-                ModelIndex node_index = insertRailNode_(node, row, parent);
+                ModelIndex node_index = insertRailNode_(node, row, parent, index_uuid);
                 if (!isIndexRailNode(node_index)) {
                     return make_serial_error<void>(in, "Failed to insert rail node into model!");
                 }
@@ -1228,7 +1228,7 @@ namespace Toolbox {
                 std::string new_name = findUniqueName_(ModelIndex(), rail->name());
                 rail->setName(new_name);
 
-                ModelIndex rail_index = insertRail_(rail, row);
+                ModelIndex rail_index = insertRail_(rail, row, index_uuid);
                 if (!isIndexRail(rail_index)) {
                     return make_serial_error<void>(in, "Failed to insert rail into model!");
                 }
@@ -1295,8 +1295,9 @@ namespace Toolbox {
 
     void RailObjModel::fetchMore_(const ModelIndex &index) const { return; }
 
-    ModelIndex RailObjModel::insertRail_(RailData::rail_ptr_t rail, int64_t row) {
-        ModelIndex ret = makeIndex(rail, row);
+    ModelIndex RailObjModel::insertRail_(RailData::rail_ptr_t rail, int64_t row,
+                                         std::optional<UUID64> index_uuid) {
+        ModelIndex ret = makeIndex(rail, row, index_uuid);
         if (!validateIndex(ret)) {
             TOOLBOX_ERROR_V("[RAILMODEL] Failed to create index for rail \"{}\"!", rail->name());
             return ModelIndex();
@@ -1317,8 +1318,8 @@ namespace Toolbox {
     }
 
     ModelIndex RailObjModel::insertRailNode_(Rail::Rail::node_ptr_t node, int64_t row,
-                                             const ModelIndex &parent) {
-        ModelIndex new_index = makeIndex(node, row, parent);
+                                             const ModelIndex &parent, std::optional<UUID64> index_uuid) {
+        ModelIndex new_index = makeIndex(node, row, parent, index_uuid);
         if (!validateIndex(new_index)) {
             return ModelIndex();
         }
@@ -1585,6 +1586,13 @@ namespace Toolbox {
     }
 
     void RailObjModel::signalEventListeners(const ModelIndex &index, int flags) {
+        int this_event_flags =
+            flags & ~(EVENT_SUCCESS | EVENT_PRE | EVENT_POST | EVENT_SOFT | EVENT_RESET);
+
+        if (this_event_flags == EVENT_INDEX_MODIFIED) {
+            flags |= ModelEventFlags::EVENT_SOFT;
+        }
+
         for (const auto &[key, listener] : m_listeners) {
             if ((listener.second & flags) != ModelEventFlags::EVENT_NONE) {
                 listener.first(index, (listener.second & flags));

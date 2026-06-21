@@ -159,6 +159,70 @@ namespace Toolbox {
         }
     }
 
+    Result<void, SerialError> RailData::gameSerialize(Serializer &out) const {
+        size_t header_start = 0;
+
+        size_t name_start = 12 + 12 * m_rails.size();
+
+        size_t name_size = std::accumulate(m_rails.begin(), m_rails.end(), static_cast<size_t>(0),
+                                           [](size_t accum, RailData::rail_ptr_t rail) {
+                                               return accum + rail->name().size() + 1;
+                                           });
+
+        size_t data_start = name_start + ((name_size + 3) & ~3);
+
+        for (auto &rail : m_rails) {
+            out.seek(header_start, std::ios::beg);
+            out.write<u32, std::endian::big>(static_cast<u32>(rail->getNodeCount()));
+            out.write<u32, std::endian::big>(static_cast<u32>(name_start));
+            out.write<u32, std::endian::big>(static_cast<u32>(data_start));
+
+            out.seek(name_start, std::ios::beg);
+            out.writeCString(rail->name());
+
+            out.seek(data_start, std::ios::beg);
+            for (auto &node : rail->nodes()) {
+                node->gameSerialize(out);
+            }
+
+            header_start += 12;
+            name_start += rail->name().size() + 1;
+            data_start += 68 * rail->getNodeCount();
+        }
+
+        out.write<u32>(0);
+        out.write<u32>(0);
+        out.write<u32>(0);
+
+        return {};
+    }
+
+    Result<void, SerialError> RailData::gameDeserialize(Deserializer &in) {
+        while (true) {
+            size_t node_count = in.read<u32, std::endian::big>();
+            size_t name_pos   = in.read<u32, std::endian::big>();
+            size_t data_pos   = in.read<u32, std::endian::big>();
+
+            if (node_count == 0 && name_pos == 0 && data_pos == 0)
+                return {};
+
+            in.seek(name_pos, std::ios::beg);
+            auto name = in.readCString(128);
+
+            auto rail = make_referable<Rail::Rail>(name);
+
+            in.seek(data_pos, std::ios::beg);
+            for (size_t i = 0; i < node_count; ++i) {
+                auto node = make_referable<Rail::RailNode>();
+                node->gameDeserialize(in);
+                rail->addNode(node);
+            }
+
+            m_rails.push_back(rail);
+            in.seek(m_rails.size() * 12, std::ios::beg);
+        }
+    }
+
     ScopePtr<ISmartResource> RailData::clone(bool deep) const {
         std::vector<RailData::rail_ptr_t> rails;
         if (deep) {

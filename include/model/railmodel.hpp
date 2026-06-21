@@ -173,9 +173,11 @@ namespace Toolbox {
         [[nodiscard]] virtual Signal createSignalForIndex_(const ModelIndex &index,
                                                            ModelEventFlags base_event) const;
 
-        [[nodiscard]] virtual ModelIndex insertRail_(RailData::rail_ptr_t rail, int64_t row);
+        [[nodiscard]] virtual ModelIndex
+        insertRail_(RailData::rail_ptr_t rail, int64_t row,
+                    std::optional<UUID64> index_uuid = std::nullopt);
         [[nodiscard]] virtual ModelIndex insertRailNode_(Rail::Rail::node_ptr_t node, int64_t row,
-                                                         const ModelIndex &parent);
+                                                         const ModelIndex &parent, std::optional<UUID64> index_uuid = std::nullopt);
         [[nodiscard]] virtual ModelIndex
         makeIndex(RailData::rail_ptr_t rail, int64_t row,
                   std::optional<UUID64> index_uuid = std::nullopt) const;
