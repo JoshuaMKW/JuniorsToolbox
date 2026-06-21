@@ -123,6 +123,7 @@ namespace Toolbox::Scene {
             }
         }
 
+        #if 0
         {
             std::ofstream file(message_bin, std::ios::out | std::ios::binary);
             Serializer out(file.rdbuf(), scene_bin.string());
@@ -132,6 +133,7 @@ namespace Toolbox::Scene {
                 return std::unexpected(result.error());
             }
         }
+        #endif
 
         m_root_path = root;
         return {};
