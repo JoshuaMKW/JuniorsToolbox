@@ -1523,14 +1523,14 @@ namespace Toolbox::Game {
 
         u32 ptr = object->getGamePtr();
         if (ptr == 0) {
-            u32 new_ptr = getActorPtr(object);
-            object->setGamePtr(new_ptr);
-            if (new_ptr == 0) {
+            ptr = getActorPtr(object);
+            if (ptr == 0) {
                 return make_error<void>(
                     "GAME TASK", std::format("Failed to ptr to object \"{}\" in scene!", obj_name));
             }
             TOOLBOX_INFO_V("[GAME TASK] Pointer for object \"{}\" was found successfully!",
                            obj_name);
+            object->setGamePtr(ptr);
         }
 
         communicator.write<f32>(ptr + 0x10, transform.m_translation.x);

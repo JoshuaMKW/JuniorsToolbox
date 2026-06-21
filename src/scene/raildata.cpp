@@ -126,6 +126,10 @@ namespace Toolbox {
             data_start += 68 * rail->getNodeCount();
         }
 
+        out.write<u32>(0);
+        out.write<u32>(0);
+        out.write<u32>(0);
+
         return {};
     }
 

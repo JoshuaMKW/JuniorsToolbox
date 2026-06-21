@@ -936,35 +936,25 @@ namespace Toolbox {
 
         if (isDirectory_(index)) {
             Filesystem::remove_all(index_path)
-                .and_then([&](bool removed) {
-                    if (!removed) {
-                        TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove directory: {}",
-                                        index_path.string());
-                        return Result<bool, FSError>();
-                    }
+                .and_then([&](uintmax_t removed) {
                     result = true;
-                    return Result<bool, FSError>();
+                    return Result<uintmax_t, FSError>();
                 })
                 .or_else([&](const FSError &error) {
                     TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove directory: {}",
                                     error.m_message[0]);
-                    return Result<bool, FSError>();
+                    return Result<uintmax_t, FSError>();
                 });
         } else if (isArchive_(index)) {
             Filesystem::remove(index_path)
-                .and_then([&](bool removed) {
-                    if (!removed) {
-                        TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove archive: {}",
-                                        index_path.string());
-                        return Result<bool, FSError>();
-                    }
+                .and_then([&](uintmax_t removed) {
                     result = true;
-                    return Result<bool, FSError>();
+                    return Result<uintmax_t, FSError>();
                 })
                 .or_else([&](const FSError &error) {
                     TOOLBOX_ERROR_V("[FileSystemModel] Failed to remove archive: {}",
                                     error.m_message[0]);
-                    return Result<bool, FSError>();
+                    return Result<uintmax_t, FSError>();
                 });
         } else {
             TOOLBOX_ERROR("[FileSystemModel] Index is not a directory!");

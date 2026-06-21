@@ -3442,15 +3442,6 @@ namespace Toolbox::UI {
                 return;
             }
 
-            RefPtr<ISceneObject> object = m_scene_object_model->getObjectRef(new_object);
-            RefPtr<GroupSceneObject> parent_obj =
-                ref_cast<GroupSceneObject>(m_scene_object_model->getObjectRef(parent_index));
-
-            Game::TaskCommunicator &task_communicator =
-                MainApplication::instance().getTaskCommunicator();
-            task_communicator.taskAddSceneObject(
-                object, parent_obj, [object](u32 actor_ptr) { object->setGamePtr(actor_ptr); });
-
             m_update_render_objs = true;
             return;
         });
@@ -3509,15 +3500,6 @@ namespace Toolbox::UI {
                 LogError(result.error());
                 return;
             }
-
-            RefPtr<ISceneObject> object = m_table_object_model->getObjectRef(new_object);
-            RefPtr<GroupSceneObject> parent_obj =
-                ref_cast<GroupSceneObject>(m_table_object_model->getObjectRef(parent_index));
-
-            Game::TaskCommunicator &task_communicator =
-                MainApplication::instance().getTaskCommunicator();
-            task_communicator.taskAddSceneObject(
-                object, parent_obj, [object](u32 actor_ptr) { object->setGamePtr(actor_ptr); });
 
             m_update_render_objs = true;
             return;
@@ -4201,6 +4183,22 @@ namespace Toolbox::UI {
                         regeneratePropertiesForObject(object);
                     }
                 }
+
+                if (m_is_game_edit_mode) {
+                    ModelIndex parent_index = m_scene_object_model->getParent(index);
+                    RefPtr<GroupSceneObject> parent_obj =
+                        m_scene_object_model->validateIndex(parent_index)
+                            ? ref_cast<GroupSceneObject>(
+                                  m_scene_object_model->getObjectRef(parent_index))
+                            : nullptr;
+
+                    RefPtr<ISceneObject> object = m_scene_object_model->getObjectRef(index);
+                    if (object) {
+                        Game::TaskCommunicator &task_communicator =
+                            MainApplication::instance().getTaskCommunicator();
+                        task_communicator.taskAddSceneObject(object, parent_obj);
+                    }
+                }
             }
         }
 
@@ -4211,6 +4209,22 @@ namespace Toolbox::UI {
             if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
                 if (is_single_selected) {
                     clearSelectedProperties();
+                }
+
+                if (m_is_game_edit_mode) {
+                    ModelIndex parent_index = m_scene_object_model->getParent(index);
+                    RefPtr<GroupSceneObject> parent_obj =
+                        m_scene_object_model->validateIndex(parent_index)
+                            ? ref_cast<GroupSceneObject>(
+                                  m_scene_object_model->getObjectRef(parent_index))
+                            : nullptr;
+
+                    RefPtr<ISceneObject> object = m_scene_object_model->getObjectRef(index);
+                    if (object) {
+                        Game::TaskCommunicator &task_communicator =
+                            MainApplication::instance().getTaskCommunicator();
+                        task_communicator.taskRemoveSceneObject(object, parent_obj);
+                    }
                 }
             }
         }
@@ -4239,6 +4253,22 @@ namespace Toolbox::UI {
                         regeneratePropertiesForObject(object);
                     }
                 }
+
+                if (m_is_game_edit_mode) {
+                    ModelIndex parent_index = m_table_object_model->getParent(index);
+                    RefPtr<GroupSceneObject> parent_obj =
+                        m_table_object_model->validateIndex(parent_index)
+                            ? ref_cast<GroupSceneObject>(
+                                  m_table_object_model->getObjectRef(parent_index))
+                            : nullptr;
+
+                    RefPtr<ISceneObject> object = m_table_object_model->getObjectRef(index);
+                    if (object) {
+                        Game::TaskCommunicator &task_communicator =
+                            MainApplication::instance().getTaskCommunicator();
+                        task_communicator.taskAddSceneObject(object, parent_obj);
+                    }
+                }
             }
         }
 
@@ -4249,6 +4279,22 @@ namespace Toolbox::UI {
             if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
                 if (is_single_selected) {
                     clearSelectedProperties();
+                }
+            }
+
+            if (m_is_game_edit_mode) {
+                ModelIndex parent_index = m_table_object_model->getParent(index);
+                RefPtr<GroupSceneObject> parent_obj =
+                    m_table_object_model->validateIndex(parent_index)
+                        ? ref_cast<GroupSceneObject>(
+                              m_table_object_model->getObjectRef(parent_index))
+                        : nullptr;
+
+                RefPtr<ISceneObject> object = m_table_object_model->getObjectRef(index);
+                if (object) {
+                    Game::TaskCommunicator &task_communicator =
+                        MainApplication::instance().getTaskCommunicator();
+                    task_communicator.taskRemoveSceneObject(object, parent_obj);
                 }
             }
         }
@@ -5788,7 +5834,8 @@ ScenePruner &ScenePruner::finalize() {
     }
 
     for (const fs_path &remove_path : asset_paths_to_remove) {
-        if (!Filesystem::remove_all(remove_path).value_or(false)) {
+        const fs_path abs_remove_path = scene_root_path / remove_path;
+        if (!Filesystem::remove_all(abs_remove_path).has_value()) {
             m_valid = false;
             std::string failed_text =
                 std::format("Failed to prune unused asset path '{}'", remove_path.string());
