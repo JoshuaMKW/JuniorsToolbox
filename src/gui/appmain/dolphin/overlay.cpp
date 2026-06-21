@@ -28,6 +28,8 @@ namespace Toolbox::UI {
     }
 
     void DolphinOverlay::onAttach() {
+        ImWindow::onAttach();
+
         m_z_updater.tStart(false, nullptr);
     }
 

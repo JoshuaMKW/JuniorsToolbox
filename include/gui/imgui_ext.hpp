@@ -121,6 +121,9 @@ namespace ImGui {
     bool BeginMenuGroup(const char *str_id, float *hovered_delta, bool enabled = true);
     void EndMenuGroup();
 
+    bool SelectDockedWindow(const ImGuiID window_id, bool focus);
+    bool SelectDockedWindow(const char *window_name, bool focus);
+
 }  // namespace ImGui
 
 #define ImGuiViewportFlags_TransparentFrameBuffer (1 << 20)

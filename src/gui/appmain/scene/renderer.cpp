@@ -393,6 +393,10 @@ namespace Toolbox::UI {
         m_is_window_hovered = ImGui::IsWindowHovered();
         m_is_window_focused = ImGui::IsWindowFocused();
 
+        if (m_render_size.x <= 0 || m_render_size.y <= 0) {
+            return;
+        }
+
         bool middle_click      = Input::GetMouseButton(Input::MouseButton::BUTTON_MIDDLE);
         bool middle_click_down = Input::GetMouseButtonDown(Input::MouseButton::BUTTON_MIDDLE);
 

@@ -294,10 +294,10 @@ namespace Toolbox::UI {
         }
     }
 
-    void NewItemWindow::onAttach() {}
+    void NewItemWindow::onAttach() { ImWindow::onAttach(); }
 
-    void NewItemWindow::onDetach() {}
+    void NewItemWindow::onDetach() { ImWindow::onDetach(); }
 
-    void NewItemWindow::onImGuiUpdate(TimeStep delta_time) {}
+    void NewItemWindow::onImGuiUpdate(TimeStep delta_time) { ImWindow::onImGuiUpdate(delta_time); }
 
 }  // namespace Toolbox::UI

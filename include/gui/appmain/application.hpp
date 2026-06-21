@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 #include "core/application/application.hpp"
 
 #include <glad/glad.h>
@@ -61,6 +63,8 @@ namespace Toolbox {
 
         void onEvent(RefPtr<BaseEvent> ev) override;
 
+        const ImRect &getViewportRect() const { return m_viewport_rect; }
+
         void addWindow(RefPtr<ImWindow> window) { m_windows_to_add.emplace_back(window); }
 
         void removeWindow(RefPtr<ImWindow> window) {
@@ -77,7 +81,9 @@ namespace Toolbox {
         std::vector<RefPtr<ImWindow>> findWindows(const std::string &title);
 
         template <typename T, bool recycle = true, typename... Args>
-        RefPtr<T> createWindow(const std::string &name, Args &&...args) {
+        RefPtr<T> createWindow(const std::string &name, Args &&...args)
+        requires std::is_base_of_v<ImWindow, T>
+        {
             if constexpr (recycle) {
                 std::vector<RefPtr<ImWindow>> reuse_candidates = findWindows(name);
 
@@ -102,25 +108,34 @@ namespace Toolbox {
                 }
             }
 
-            RefPtr<T> window = make_referable<T>(name, std::forward<Args>(args)...);
-            window->open();
-            addWindow(window);
-            return window;
+            RefPtr<T> new_window = make_referable<T>(name, std::forward<Args>(args)...);
+            new_window->open();
+
+            ImVec2 new_window_pos = m_viewport_rect.Min + ImVec2(100.0f, 100.0f);
+
+            for (const RefPtr<ImWindow> &window : m_windows_to_add) {
+                const ImVec2 window_pos = window->getPos();
+                const ImVec2 pos_diff   = new_window_pos - window_pos;
+                if (ImDot(pos_diff, pos_diff) < 50.0f * 50.0f) {
+                    new_window_pos = window_pos + ImVec2(50.0f, 50.0f);
+                }
+            }
+
+            for (const RefPtr<ImWindow> &window : m_windows) {
+                const ImVec2 window_pos = window->getPos();
+                const ImVec2 pos_diff   = new_window_pos - window_pos;
+                if (ImDot(pos_diff, pos_diff) < 50.0f * 50.0f) {
+                    new_window_pos = window_pos + ImVec2(50.0f, 50.0f);
+                }
+            }
+
+            new_window->setPos(new_window_pos, ImWindow::no_event_tag{});
+
+            addWindow(new_window);
+            return new_window;
         }
 
         const fs_path &getAppDataPath() const;
-
-        TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> &getSceneObjectClipboard() {
-            return m_hierarchy_clipboard;
-        }
-
-        TypedDataClipboard<SelectionNodeInfo<Rail::Rail>> &getSceneRailClipboard() {
-            return m_rail_clipboard;
-        }
-
-        TypedDataClipboard<SelectionNodeInfo<Rail::RailNode>> &getSceneRailNodeClipboard() {
-            return m_rail_node_clipboard;
-        }
 
         DolphinCommunicator &getDolphinCommunicator() { return m_dolphin_communicator; }
         Game::TaskCommunicator &getTaskCommunicator() { return m_task_communicator; }
@@ -186,10 +201,6 @@ namespace Toolbox {
     private:
         UUID64 m_uuid;
 
-        TypedDataClipboard<SelectionNodeInfo<Object::ISceneObject>> m_hierarchy_clipboard;
-        TypedDataClipboard<SelectionNodeInfo<Rail::Rail>> m_rail_clipboard;
-        TypedDataClipboard<SelectionNodeInfo<Rail::RailNode>> m_rail_node_clipboard;
-
         ProjectManager m_project_manager;
 
         std::filesystem::path m_load_path = std::filesystem::current_path();
@@ -202,6 +213,7 @@ namespace Toolbox {
         TemplateFactory m_template_factory;
 
         GLFWwindow *m_render_window;
+        ImRect m_viewport_rect;
         std::vector<RefPtr<ImWindow>> m_windows;
 
         struct GCTimeInfo {

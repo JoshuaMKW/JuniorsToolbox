@@ -134,15 +134,14 @@ public:
     std::vector<std::string> getErrors() const { return m_errors; }
     std::string getProgressText() const { return m_progress_text; }
 
-    std::mutex &getOperationMutex() {
-        return m_operation_mutex;
-    }
+    std::mutex &getOperationMutex() { return m_operation_mutex; }
 
 protected:
     // WARNING: This method is exhaustive and may take awhile to complete!
     [[nodiscard]] static bool PruneScene(RefPtr<SceneObjModel> object_model,
                                          RefPtr<SceneObjModel> table_model,
-                                         RefPtr<RailObjModel> rail_model, std::mutex &operation_mutex, bool check_dependencies,
+                                         RefPtr<RailObjModel> rail_model,
+                                         std::mutex &operation_mutex, bool check_dependencies,
                                          prune_progress_cb, prune_change_cb, prune_error_cb);
 
 private:
@@ -331,7 +330,7 @@ namespace Toolbox::UI {
 
         RefPtr<ModelHistoryAggregate> m_history_aggregate_handler;
         int64_t m_saved_history_frame = -1;
-        ImGuiID m_last_focused_id = 0;
+        ImGuiID m_last_focused_id     = 0;
 
         ContextMenu<ModelIndex> m_scene_hierarchy_context_menu;
         ContextMenu<ModelIndex> m_table_hierarchy_context_menu;
@@ -373,7 +372,7 @@ namespace Toolbox::UI {
         ResourceCache m_resource_cache;
 
         std::map<UUID64, Transform> m_selection_transforms;
-        bool m_gizmo_maniped = false;
+        bool m_gizmo_maniped                  = false;
         bool m_transform_action_made_explicit = false;
 
         // Docking facilities
@@ -389,13 +388,16 @@ namespace Toolbox::UI {
 
         std::string m_selected_add_zone{""};
 
-        bool m_options_open = false;
+        bool m_options_open          = false;
+        int64_t m_wants_scene_focus_tab = 0;
+        bool m_first_frame           = true;
 
         bool m_is_save_default_ready  = false;
         bool m_is_save_as_dialog_open = false;
         bool m_is_verify_open         = false;
 
-        bool m_is_game_edit_mode = false;
+        bool m_is_game_edit_mode      = false;
+        bool m_game_edit_toggle_dirty = false;
 
         ImageHandle m_dolphin_image;
         ImagePainter m_dolphin_painter;
@@ -404,9 +406,9 @@ namespace Toolbox::UI {
         std::map<std::string, render_layer_cb> m_render_layers;
 
         // Event Stuff
-        std::atomic<bool> m_control_disable_requested                   = false;
-        std::atomic<bool> m_path_renderer_update_reqeusted              = false;
-        std::atomic<bool> m_selection_transforms_update_requested       = false;
+        std::atomic<bool> m_control_disable_requested             = false;
+        std::atomic<bool> m_path_renderer_update_reqeusted        = false;
+        std::atomic<bool> m_selection_transforms_update_requested = false;
         ModelIndex m_rail_visible_map_update_request_index;
 
         // Drag drop stuff
@@ -427,7 +429,7 @@ namespace Toolbox::UI {
         bool m_scene_mender_result_opened    = false;
         bool m_scene_pruner_result_opened    = false;
 
-        bool m_gizmo_was_dragged = false;
+        bool m_gizmo_was_dragged                  = false;
         const TimeStep m_select_after_gizmo_delay = TimeStep(0.1);
     };
 }  // namespace Toolbox::UI

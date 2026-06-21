@@ -432,6 +432,8 @@ namespace Toolbox::UI {
     }
 
     void SceneWindow::onAttach() {
+        ImWindow::onAttach();
+
         m_properties_render_handler = renderEmptyProperties;
 
         buildContextMenuSceneObj();
@@ -486,8 +488,16 @@ namespace Toolbox::UI {
             MainApplication::instance().getTaskCommunicator();
 
         if (task_communicator.isSceneLoaded()) {
-            if (Input::GetKeyDown(KeyCode::KEY_E)) {
-                m_is_game_edit_mode ^= true;
+            const KeyBind edit_bind = {KeyCode::KEY_LEFTALT, KeyCode::KEY_E};
+            if (!m_game_edit_toggle_dirty) {
+                if (edit_bind.isInputMatching()) {
+                    m_is_game_edit_mode ^= true;
+                    m_game_edit_toggle_dirty = true;
+                }
+            } else {
+                if (!edit_bind.isInputMatching()) {
+                    m_game_edit_toggle_dirty = false;
+                }
             }
         } else {
             m_is_game_edit_mode = false;
@@ -804,8 +814,8 @@ namespace Toolbox::UI {
         renderHierarchy();
         renderProperties();
         renderRailEditor();
-        renderScene(deltaTime);
         renderDolphin(deltaTime);
+        renderScene(deltaTime);
         renderSanitizationSteps();
 
         m_scene_hierarchy_context_menu.applyDeferredCmds();
@@ -824,6 +834,8 @@ namespace Toolbox::UI {
         if (m_scene_pruner) {
             m_scene_pruner->getOperationMutex().unlock();
         }
+
+        m_first_frame = false;
     }
 
     void SceneWindow::renderSanitizationSteps() {
@@ -2288,9 +2300,15 @@ namespace Toolbox::UI {
         ImGuiWindowClass sceneViewOverride;
         sceneViewOverride.ClassId                  = static_cast<ImGuiID>(getUUID());
         sceneViewOverride.ParentViewportId         = ImGui::GetCurrentWindow()->ViewportId;
-        sceneViewOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe;
+        sceneViewOverride.TabItemFlagsOverrideSet  = ImGuiTabItemFlags_Leading;
+        sceneViewOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_None;
         sceneViewOverride.DockingAllowUnclassed    = false;
         ImGui::SetNextWindowClass(&sceneViewOverride);
+
+        // if (m_wants_scene_focus_tab < 6) {
+        //     ImGui::SelectDockedWindow(scene_view_str.c_str(), true);
+        //     m_wants_scene_focus_tab += 1;
+        // }
 
         m_is_render_window_open = ImGui::Begin(scene_view_str.c_str());
         if (m_is_render_window_open) {
@@ -2447,7 +2465,8 @@ namespace Toolbox::UI {
         ImGuiWindowClass dolphinViewOverride;
         dolphinViewOverride.ClassId                  = static_cast<ImGuiID>(getUUID());
         dolphinViewOverride.ParentViewportId         = ImGui::GetCurrentWindow()->ViewportId;
-        dolphinViewOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe;
+        dolphinViewOverride.TabItemFlagsOverrideSet  = ImGuiTabItemFlags_None;
+        dolphinViewOverride.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_None;
         dolphinViewOverride.DockingAllowUnclassed    = false;
         ImGui::SetNextWindowClass(&dolphinViewOverride);
 

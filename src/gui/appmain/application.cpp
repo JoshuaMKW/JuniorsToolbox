@@ -27,11 +27,6 @@
 
 #include "dolphin/hook.hpp"
 
-#include "gui/dragdrop/dragdropmanager.hpp"
-#include "gui/font.hpp"
-#include "gui/imgui_ext.hpp"
-#include "gui/logging/errors.hpp"
-#include "gui/logging/window.hpp"
 #include "gui/appmain/application.hpp"
 #include "gui/appmain/debugger/window.hpp"
 #include "gui/appmain/pad/window.hpp"
@@ -44,6 +39,11 @@
 #include "gui/appmain/themes.hpp"
 #include "gui/appmain/updater/modal.hpp"
 #include "gui/appmain/window.hpp"
+#include "gui/dragdrop/dragdropmanager.hpp"
+#include "gui/font.hpp"
+#include "gui/imgui_ext.hpp"
+#include "gui/logging/errors.hpp"
+#include "gui/logging/window.hpp"
 #include "gui/util.hpp"
 
 #include "platform/service.hpp"
@@ -181,7 +181,7 @@ namespace Toolbox {
             m_resource_manager.includeResourcePath(cwd / "Images", true);
             m_resource_manager.includeResourcePath(cwd / "Images/Icons", true);
             m_resource_manager.includeResourcePath(cwd / "Images/Icons/Filesystem", true);
-            //m_resource_manager.includeResourcePath(cwd / "Templates", false);
+            // m_resource_manager.includeResourcePath(cwd / "Templates", false);
             m_resource_manager.includeResourcePath(cwd / "Themes", true);
         }
 
@@ -261,6 +261,17 @@ namespace Toolbox {
         platform_io.Platform_CreateWindow = ImGui_ImplGlfw_CreateWindow_Ex;
         platform_io.Renderer_RenderWindow = ImGui_ImplOpenGL3_RenderWindow_Ex;
 
+        // Update viewport dimensions
+        {
+            int xp, yp;
+            glfwGetWindowPos(m_render_window, &xp, &yp);
+
+            int xs, ys;
+            glfwGetWindowSize(m_render_window, &xs, &ys);
+
+            m_viewport_rect = ImRect(ImVec2(xp, yp), ImVec2(xs, ys));
+        }
+
         DragDropManager::instance().initialize();
         m_drag_drop_source_delegate = DragDropDelegateFactory::createDragDropSourceDelegate();
         m_drag_drop_target_delegate = DragDropDelegateFactory::createDragDropTargetDelegate();
@@ -332,6 +343,18 @@ namespace Toolbox {
         // Render logic
         {
             glfwPollEvents();
+
+            // Update viewport dimensions
+            {
+                int xp, yp;
+                glfwGetWindowPos(m_render_window, &xp, &yp);
+
+                int xs, ys;
+                glfwGetWindowSize(m_render_window, &xs, &ys);
+
+                m_viewport_rect = ImRect(ImVec2(xp, yp), ImVec2(xs, ys));
+            }
+
             Input::UpdateInputState();
 
             render(delta_time);
@@ -495,7 +518,8 @@ namespace Toolbox {
 
     void MainApplication::showOptionModal(ImWindow *parent, const std::string &title,
                                           const std::string &message,
-                                          const std::vector<std::string> &options, OptionModal::option_cb option_cb) {
+                                          const std::vector<std::string> &options,
+                                          OptionModal::option_cb option_cb) {
         m_option_modal_queue.emplace_back(parent, title, message, options, option_cb);
     }
 
@@ -873,13 +897,15 @@ namespace Toolbox {
                 Platform::TryOpenBrowserURL("https://smswiki.shoutwiki.com/wiki/Main_Page");
             }
             if (ImGui::MenuItem("Sunshine RAM Map")) {
-                Platform::TryOpenBrowserURL("https://docs.google.com/spreadsheets/d/1ElTW-akaTUF9OC2pIFR9-7aVPwpJ54AdEVJyJ_jvg0E");
+                Platform::TryOpenBrowserURL("https://docs.google.com/spreadsheets/d/"
+                                            "1ElTW-akaTUF9OC2pIFR9-7aVPwpJ54AdEVJyJ_jvg0E");
             }
             if (ImGui::MenuItem("Sunshine Decomp")) {
                 Platform::TryOpenBrowserURL("https://github.com/doldecomp/sms");
             }
             if (ImGui::MenuItem("Sunshine C++ Interfaces")) {
-                Platform::TryOpenBrowserURL("https://github.com/DotKuribo/SunshineHeaderInterface/tree/main/include");
+                Platform::TryOpenBrowserURL(
+                    "https://github.com/DotKuribo/SunshineHeaderInterface/tree/main/include");
             }
 
             ImGui::SeparatorText("This Program");

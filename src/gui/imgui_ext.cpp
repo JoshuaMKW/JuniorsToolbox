@@ -2518,6 +2518,32 @@ void ImGui::EndMenuGroup() {
     ImGui::EndPopup();
 }
 
+bool ImGui::SelectDockedWindow(const ImGuiID window_id, bool focus) {
+    ImGuiWindow *window = ImGui::FindWindowByID(window_id);
+    if (window && window->DockIsActive && window->DockNode) {
+        ImGuiTabBar *tabBar = window->DockNode->TabBar;
+        if (tabBar != nullptr) {
+            tabBar->SelectedTabId     = window->TabId;
+            tabBar->NextSelectedTabId = window->TabId;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ImGui::SelectDockedWindow(const char *window_name, bool focus) {
+    ImGuiWindow *window = ImGui::FindWindowByName(window_name);
+    if (window && window->DockIsActive && window->DockNode) {
+        ImGuiTabBar *tabBar = window->DockNode->TabBar;
+        if (tabBar != nullptr) {
+            tabBar->SelectedTabId = window->TabId;
+            tabBar->NextSelectedTabId = window->TabId;
+            return true;
+        }
+    }
+    return false;
+}
+
 bool ImGui::TreeNodeEx(const char *label, ImGuiTreeNodeFlags flags, bool focused, bool *visible) {
     ImGuiWindow *window = ImGui::GetCurrentWindow();
     if (window->SkipItems)

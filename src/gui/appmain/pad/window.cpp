@@ -1619,6 +1619,8 @@ namespace Toolbox::UI {
     }
 
     void PadInputWindow::onAttach() {
+        ImWindow::onAttach();
+
         ResourceManager &res_manager = MainApplication::instance().getResourceManager();
         UUID64 images_dir            = res_manager.getResourcePathUUID("Images");
 

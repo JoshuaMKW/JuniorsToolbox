@@ -79,6 +79,10 @@ namespace Toolbox::UI {
         void setSize(const ImVec2 &size) noexcept override;
         void setPos(const ImVec2 &pos) noexcept override;
 
+        struct no_event_tag {};
+        void setSize(const ImVec2 &size, no_event_tag) noexcept;
+        void setPos(const ImVec2 &pos, no_event_tag) noexcept;
+
         void setIcon(const std::string &icon_name);
         void setIcon(Buffer &&icon_data, const ImVec2 &icon_size);
 
@@ -124,7 +128,6 @@ namespace Toolbox::UI {
 
         void optionSelected(int64_t option_idx);
 
-        UUID64 m_UUID64;
         ImGuiID m_sibling_id = 0;
 
         ImWindow *m_parent = nullptr;
@@ -140,6 +143,7 @@ namespace Toolbox::UI {
     private:
         ImGuiID m_dockspace_id = std::numeric_limits<ImGuiID>::max();
 
+        bool m_docked_last_frame = true;  // Start as true for init reasons
         bool m_is_docking_set_up = false;
         bool m_is_resized        = false;
         bool m_is_repositioned   = false;

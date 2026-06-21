@@ -49,6 +49,12 @@ namespace Toolbox::UI {
                                                                      pos);
     }
 
+    void ImWindow::setSize(const ImVec2 &size, no_event_tag) noexcept {
+        ImProcessLayer::setSize(size);
+    }
+
+    void ImWindow::setPos(const ImVec2 &pos, no_event_tag) noexcept { ImProcessLayer::setPos(pos); }
+
     void ImWindow::setIcon(const std::string &icon_name) {
         ResourceManager &res_manager = MainApplication::instance().getResourceManager();
         UUID64 icon_dir              = res_manager.getResourcePathUUID("Images/Icons");
@@ -133,6 +139,7 @@ namespace Toolbox::UI {
         }
 
         setSize(init_size);
+        setIcon("toolbox.png");
     }
 
     void ImWindow::onDetach() {
@@ -148,13 +155,23 @@ namespace Toolbox::UI {
         ImGuiWindow *window     = ImGui::FindWindowByName(window_name.c_str());
         m_imgui_window          = window;
 
-        if (m_is_new_icon) {
+        if (m_icon_size.x > 0.0f && m_icon_size.y > 0.0f) {
             if (m_imgui_window && m_imgui_window->Viewport &&
                 m_imgui_window->Viewport->PlatformHandle) {
-                GLFWwindow *glfw_window = (GLFWwindow *)m_imgui_window->Viewport->PlatformHandle;
-                GLFWimage icon          = {m_icon_size.x, m_icon_size.y, m_icon_data.buf<u8>()};
-                glfwSetWindowIcon(glfw_window, 1, &icon);
-                m_is_new_icon = false;
+                const bool is_detached_viewport =
+                    !m_imgui_window->DockIsActive &&
+                    ImGui::GetMainViewport() != m_imgui_window->Viewport;
+                if (is_detached_viewport) {
+                    if (m_docked_last_frame) {
+                        GLFWwindow *glfw_window =
+                            (GLFWwindow *)m_imgui_window->Viewport->PlatformHandle;
+                        GLFWimage icon = {m_icon_size.x, m_icon_size.y, m_icon_data.buf<u8>()};
+                        glfwSetWindowIcon(glfw_window, 1, &icon);
+                        m_docked_last_frame = false;
+                    }
+                } else {
+                    m_docked_last_frame = true;
+                }
             }
         }
 
@@ -173,6 +190,8 @@ namespace Toolbox::UI {
         if (is_open) {
             m_prev_pos  = getPos();
             m_prev_size = getSize();
+
+            ImGui::SetNextWindowPos(m_prev_pos, ImGuiCond_Appearing);
 
             ImVec2 default_min = {0, 0};
             ImVec2 default_max = {FLT_MAX, FLT_MAX};
@@ -293,7 +312,8 @@ namespace Toolbox::UI {
             if (unsaved()) {
                 MainApplication::instance().showOptionModal(
                     this, "Unsaved Changes",
-                    "The window you are closing has unsaved changes.\n\nWould you like to save these "
+                    "The window you are closing has unsaved changes.\n\nWould you like to save "
+                    "these "
                     "changes before closing?",
                     {"Yes", "No", "Cancel"}, TOOLBOX_BIND_EVENT_FN(optionSelected));
                 break;
@@ -309,7 +329,7 @@ namespace Toolbox::UI {
         }
         case EVENT_WINDOW_RESIZE: {
             const std::string window_name = std::format("{}###{}", title(), ev->getTargetId());
-            ImVec2 win_size = ev->getSize();
+            ImVec2 win_size               = ev->getSize();
             if (m_min_size) {
                 win_size.x = std::max(win_size.x, m_min_size->x);
                 win_size.y = std::max(win_size.y, m_min_size->y);
