@@ -68,7 +68,7 @@ namespace Toolbox::UI {
         bool getGizmoVisible() const { return m_render_gizmo; }
         void setGizmoVisible(bool visible) {
             m_render_gizmo = visible;
-            ImGuizmo::Enable(visible);
+            //ImGuizmo::Enable(visible);
         }
 
         bool isGizmoActive() const { return m_gizmo_active; }

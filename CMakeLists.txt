@@ -3,7 +3,7 @@
 #
 cmake_minimum_required (VERSION 3.25)
 
-project(JuniorsToolbox VERSION 0.3.0)
+project(JuniorsToolbox VERSION 0.4.0)
 
 # Do this early in your root CMakeLists.txt
 if(CMAKE_WANTS_ASAN)
