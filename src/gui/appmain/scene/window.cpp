@@ -825,8 +825,9 @@ namespace Toolbox::UI {
         m_scene_selection_ancestry_for_view.clear();
         m_rail_selection_ancestry_for_view.clear();
 
-        if (ImGui::IsWindowFocused() ||
+        if (m_focused_window != EditorWindow::NONE || ImGui::IsWindowFocused() ||
             ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows |
+                                   ImGuiFocusedFlags_DockHierarchy |
                                    ImGuiFocusedFlags_NoPopupHierarchy)) {
             m_history_aggregate_handler->handleInputs();
         }
@@ -969,6 +970,8 @@ namespace Toolbox::UI {
 
             if (ImGui::IsWindowFocused()) {
                 m_focused_window = EditorWindow::OBJECT_TREE;
+            } else {
+                m_focused_window = EditorWindow::NONE;
             }
 
             ImGui::Text("Find Objects");
@@ -1650,6 +1653,8 @@ namespace Toolbox::UI {
         if (ImGui::Begin(properties_editor_str.c_str())) {
             if (ImGui::IsWindowFocused()) {
                 m_focused_window = EditorWindow::PROPERTY_EDITOR;
+            } else {
+                m_focused_window = EditorWindow::NONE;
             }
             if (m_properties_render_handler(*this)) {
                 m_update_render_objs = true;
@@ -1994,6 +1999,8 @@ namespace Toolbox::UI {
 
             if (ImGui::IsWindowFocused()) {
                 m_focused_window = EditorWindow::RAIL_TREE;
+            } else {
+                m_focused_window = EditorWindow::NONE;
             }
 
             if (m_requested_rail_scroll_y.has_value()) {
@@ -2314,6 +2321,8 @@ namespace Toolbox::UI {
         if (m_is_render_window_open) {
             if (ImGui::IsWindowFocused()) {
                 m_focused_window = EditorWindow::RENDER_VIEW;
+            } else {
+                m_focused_window = EditorWindow::NONE;
             }
 
             m_renderer.render(m_renderables, delta_time, !settings.m_is_rendering_simple);
