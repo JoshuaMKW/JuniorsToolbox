@@ -4515,7 +4515,7 @@ namespace Toolbox::UI {
                 ImGui::EndMenu();
             }
 
-            ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
             const bool has_undo_history = m_history_aggregate_handler->hasUndoHistory();
             const bool has_redo_history = m_history_aggregate_handler->hasRedoHistory();
