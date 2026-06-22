@@ -95,16 +95,16 @@ namespace Toolbox {
     }
 
     Result<MetaValue, MetaError> SceneObjModel::getMemberValue(const ModelIndex &index,
-                                                                    const QualifiedName &member,
-                                                                    size_t array_idx) const {
+                                                               const QualifiedName &member,
+                                                               size_t array_idx) const {
         std::scoped_lock lock(m_mutex);
         return getMemberValue_(index, member, array_idx);
     }
 
     Result<void, MetaError> SceneObjModel::setMemberValue(const ModelIndex &index,
-                                                               const QualifiedName &member,
-                                                               size_t array_idx,
-                                                               const MetaValue &value) {
+                                                          const QualifiedName &member,
+                                                          size_t array_idx,
+                                                          const MetaValue &value) {
         Result<void, MetaError> result;
 
         const Signal index_signal =
@@ -491,6 +491,8 @@ namespace Toolbox {
         default:
             return false;
         }
+
+        return false;
     }
 
     std::string SceneObjModel::findUniqueName_(const ModelIndex &index,
@@ -523,6 +525,9 @@ namespace Toolbox {
     }
 
     ModelIndex SceneObjModel::getIndex_(RefPtr<ISceneObject> object) const {
+        if (m_index_map.empty() || !m_index_map.contains(m_root_index)) {
+            return ModelIndex();
+        }
         const UUID64 obj_uuid = object->getUUID();
         if (!m_obj_to_index_map.contains(obj_uuid)) {
             return ModelIndex();
@@ -539,7 +544,7 @@ namespace Toolbox {
 
     ModelIndex SceneObjModel::getIndex_(int64_t row, int64_t column,
                                         const ModelIndex &parent) const {
-        if (m_index_map.empty()) {
+        if (m_index_map.empty() || !m_index_map.contains(m_root_index)) {
             return ModelIndex();
         }
 
@@ -563,7 +568,7 @@ namespace Toolbox {
 
     ModelIndex SceneObjModel::getIndex_(const QualifiedName &qual_name,
                                         const ModelIndex &parent) const {
-        if (m_index_map.empty()) {
+        if (m_index_map.empty() || !m_index_map.contains(m_root_index)) {
             return ModelIndex();
         }
 
@@ -601,6 +606,10 @@ namespace Toolbox {
     ModelIndex SceneObjModel::getIndex_(const std::string &obj_type,
                                         std::optional<std::string> obj_name,
                                         const ModelIndex &parent) const {
+        if (m_index_map.empty() || !m_index_map.contains(m_root_index)) {
+            return ModelIndex();
+        }
+
         if (!validateIndex(parent)) {
             ModelIndex root_index = m_index_map.at(m_root_index);
 
@@ -657,11 +666,7 @@ namespace Toolbox {
             }
         }
 
-        const UUID64 uuid = index.getUUID();
-        m_obj_to_index_map.erase(this_data->m_object->getUUID());
-        m_index_map.erase(uuid);
-
-        delete this_data;
+        destroySelfAndChildren(index);
         return true;
     }
 
@@ -690,7 +695,7 @@ namespace Toolbox {
 
     size_t SceneObjModel::getColumnCount_(const ModelIndex &index) const {
         if (!validateIndex(index)) {
-            return 1;
+            return m_index_map.empty() || !m_index_map.contains(m_root_index) ? 0 : 1;
         }
 
         return 1;
@@ -698,7 +703,7 @@ namespace Toolbox {
 
     size_t SceneObjModel::getRowCount_(const ModelIndex &index) const {
         if (!validateIndex(index)) {
-            return m_index_map.empty() ? 0 : 1;
+            return m_index_map.empty() || !m_index_map.contains(m_root_index) ? 0 : 1;
         }
 
         _SceneIndexData *data = index.data<_SceneIndexData>();
@@ -760,8 +765,13 @@ namespace Toolbox {
             out.writeString(object->getNameRef().name());
             out.writeString(object->getWizardName());
 
+            out.pushBreakpoint();
+            out.write<u32>(0);
+
             const std::vector<MetaStruct::MemberT> &members = object->getMembers();
             out.write<u32>(static_cast<u32>(members.size()));
+
+            const std::streampos out_pos = out.tell();
 
             for (auto &member : members) {
                 member->syncArray();
@@ -770,6 +780,12 @@ namespace Toolbox {
                     return result;
                 }
             }
+
+            const std::streampos out_next = out.tell();
+
+            out.popBreakpoint();
+            out.write<u32>(out_next - out_pos);
+            out.seek(out_next, std::ios::beg);
 
             size_t child_count = getRowCount_(index);
             out.write<u32>(static_cast<u32>(child_count));
@@ -854,14 +870,30 @@ namespace Toolbox {
             }
             object->setNameRef(NameRef(obj_name));
 
+            const u32 obj_member_size               = in.read<u32>();
             const u32 member_count                  = in.read<u32>();
             std::vector<RefPtr<MetaMember>> members = object->getMembers();
+
+            const std::streampos in_pos = in.tell();
+
             for (RefPtr<MetaMember> member : members) {
+                if (member->arraysize() > 0 && in.tell() - in_pos >= obj_member_size) {
+                    TOOLBOX_WARN_V("[OBJMODEL] Reached end of mimedata for object `{}' without "
+                                   "deserializing all members!", obj_type);
+                    break;
+                }
                 member->updateReferenceToList(members);
                 Result<void, SerialError> result = member->deserialize(in);
                 if (!result) {
                     return result;
                 }
+            }
+
+            if (in.tell() - in_pos < obj_member_size) {
+                TOOLBOX_WARN_V("[OBJMODEL] Deserialized all members of object `{}' without "
+                               "reaching the end of mimedata!",
+                               obj_type);
+                in.seek(std::streamoff(in_pos) + obj_member_size, std::ios::beg);
             }
 
             object->sync();
@@ -887,12 +919,14 @@ namespace Toolbox {
         };
 
         if (policy == ModelInsertPolicy::INSERT_CHILD) {
-            RefPtr<ISceneObject> object = std::any_cast<RefPtr<ISceneObject>>(
-                getData_(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_REF));
-            if (!object->isGroupObject()) {
-                // Inserting as a child of a node is not allowed, so we treat this as an "after"
-                // insertion
-                policy = ModelInsertPolicy::INSERT_AFTER;
+            if (validateIndex(index)) {
+                RefPtr<ISceneObject> object = std::any_cast<RefPtr<ISceneObject>>(
+                    getData_(index, SceneObjDataRole::SCENE_DATA_ROLE_OBJ_REF));
+                if (!object->isGroupObject()) {
+                    // Inserting as a child of a node is not allowed, so we treat this as an "after"
+                    // insertion
+                    policy = ModelInsertPolicy::INSERT_AFTER;
+                }
             }
         }
 
@@ -940,7 +974,8 @@ namespace Toolbox {
     void SceneObjModel::fetchMore_(const ModelIndex &index) const { return; }
 
     ModelIndex SceneObjModel::insertObject_(RefPtr<ISceneObject> object, int64_t row,
-                                            const ModelIndex &parent, std::optional<UUID64> index_uuid) {
+                                            const ModelIndex &parent,
+                                            std::optional<UUID64> index_uuid) {
         ModelIndex new_index = makeIndex(object, row, parent, index_uuid);
         if (!validateIndex(new_index)) {
             return ModelIndex();
@@ -990,15 +1025,15 @@ namespace Toolbox {
     }
 
     Result<MetaValue, MetaError> SceneObjModel::getMemberValue_(const ModelIndex &index,
-                                                                     const QualifiedName &member,
-                                                                     size_t array_idx) const {
+                                                                const QualifiedName &member,
+                                                                size_t array_idx) const {
         if (!validateIndex(index)) {
             return make_meta_error<MetaValue>("SCENE_OBJ_MODEL", "Missing index", "Object Index");
         }
         RefPtr<ISceneObject> object = index.data<_SceneIndexData>()->m_object;
         auto member_res             = object->getMember(member);
         if (!member_res) {
-            return std::unexpected(member_res.error()); 
+            return std::unexpected(member_res.error());
         }
 
         RefPtr<MetaMember> member_ptr = member_res.value();
@@ -1019,9 +1054,9 @@ namespace Toolbox {
     }
 
     Result<void, MetaError> SceneObjModel::setMemberValue_(const ModelIndex &index,
-                                                                const QualifiedName &member,
-                                                                size_t array_idx,
-                                                                const MetaValue &value) {
+                                                           const QualifiedName &member,
+                                                           size_t array_idx,
+                                                           const MetaValue &value) {
         RefPtr<ISceneObject> object = index.data<_SceneIndexData>()->m_object;
         auto member_res             = object->getMember(member);
         if (!member_res) {
@@ -1032,7 +1067,8 @@ namespace Toolbox {
 
         switch (value.type()) {
         case MetaType::BOOL: {
-            auto result = setMetaValue<bool>(member_ptr, array_idx, value.get<bool>().value(), MetaType::BOOL);
+            auto result = setMetaValue<bool>(member_ptr, array_idx, value.get<bool>().value(),
+                                             MetaType::BOOL);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -1103,64 +1139,64 @@ namespace Toolbox {
             break;
         }
         case MetaType::STRING: {
-            auto result = setMetaValue<std::string>(member_ptr, array_idx, value.get<std::string>().value(),
-                                           MetaType::STRING);
+            auto result = setMetaValue<std::string>(
+                member_ptr, array_idx, value.get<std::string>().value(), MetaType::STRING);
             if (!result) {
                 return std::unexpected(result.error());
             }
             break;
         }
         case MetaType::VEC3: {
-            auto result = setMetaValue<glm::vec3>(member_ptr, array_idx, value.get<glm::vec3>().value(),
-                                           MetaType::VEC3);
+            auto result = setMetaValue<glm::vec3>(member_ptr, array_idx,
+                                                  value.get<glm::vec3>().value(), MetaType::VEC3);
             if (!result) {
                 return std::unexpected(result.error());
             }
             break;
         }
         case MetaType::TRANSFORM: {
-            auto result = setMetaValue<Transform>(member_ptr, array_idx, value.get<Transform>().value(),
-                                           MetaType::TRANSFORM);
+            auto result = setMetaValue<Transform>(
+                member_ptr, array_idx, value.get<Transform>().value(), MetaType::TRANSFORM);
             if (!result) {
                 return std::unexpected(result.error());
             }
             break;
         }
         case MetaType::MTX34: {
-            auto result = setMetaValue<glm::mat3x4>(member_ptr, array_idx, value.get<glm::mat3x4>().value(),
-                                           MetaType::MTX34);
+            auto result = setMetaValue<glm::mat3x4>(
+                member_ptr, array_idx, value.get<glm::mat3x4>().value(), MetaType::MTX34);
             if (!result) {
                 return std::unexpected(result.error());
             }
             break;
         }
         case MetaType::RGB: {
-            auto result = setMetaValue<Color::RGB8>(member_ptr, array_idx, value.get<Color::RGB8>().value(),
-                                           MetaType::RGB);
+            auto result = setMetaValue<Color::RGB8>(
+                member_ptr, array_idx, value.get<Color::RGB8>().value(), MetaType::RGB);
             if (!result) {
                 return std::unexpected(result.error());
             }
             break;
         }
         case MetaType::RGBA: {
-            auto result = setMetaValue<Color::RGBA8>(member_ptr, array_idx, value.get<Color::RGBA8>().value(),
-                                           MetaType::RGBA);
+            auto result = setMetaValue<Color::RGBA8>(
+                member_ptr, array_idx, value.get<Color::RGBA8>().value(), MetaType::RGBA);
             if (!result) {
                 return std::unexpected(result.error());
             }
             break;
         }
         case MetaType::RGB32: {
-            auto result = setMetaValue<Color::RGB32>(member_ptr, array_idx, value.get<Color::RGB32>().value(),
-                                           MetaType::RGB32);
+            auto result = setMetaValue<Color::RGB32>(
+                member_ptr, array_idx, value.get<Color::RGB32>().value(), MetaType::RGB32);
             if (!result) {
                 return std::unexpected(result.error());
             }
             break;
         }
         case MetaType::RGBA32: {
-            auto result = setMetaValue<Color::RGBA32>(member_ptr, array_idx,
-                                           value.get<Color::RGBA32>().value(), MetaType::RGBA32);
+            auto result = setMetaValue<Color::RGBA32>(
+                member_ptr, array_idx, value.get<Color::RGBA32>().value(), MetaType::RGBA32);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -1185,6 +1221,47 @@ namespace Toolbox {
                                                               const QualifiedName &member) const {
         RefPtr<ISceneObject> object = index.data<_SceneIndexData>()->m_object;
         return object->getMemberSize(member, 0);
+    }
+
+    void SceneObjModel::destroySelfAndChildren(const ModelIndex &to_be_destroyed) {
+#if 0
+        std::vector<ModelIndex> children;
+        children.reserve(128);
+#else
+        std::unordered_set<ModelIndex> children;
+        children.reserve(128);
+        children.emplace(to_be_destroyed);
+#endif
+
+        for (auto &[k, v] : m_index_map) {
+            _SceneIndexData *data = v.data<_SceneIndexData>();
+            ModelIndex parent     = v;
+            while (true) {
+                parent = getParent_(parent);
+                if (!validateIndex(parent)) {
+                    break;
+                }
+#if 0
+                if (parent == to_be_destroyed) {
+                    children.emplace_back(v);
+                    break;
+                }
+#else
+                if (children.contains(parent)) {
+                    children.emplace(v);
+                    break;
+                }
+#endif
+            }
+        }
+
+        for (const ModelIndex &to_destroy : children) {
+            // removeIndex(to_destroy);
+            _SceneIndexData *data = to_destroy.data<_SceneIndexData>();
+            m_obj_to_index_map.erase(data->m_object->getUUID());
+            m_index_map.erase(to_destroy.getUUID());
+            delete data;
+        }
     }
 
     void SceneObjModel::signalEventListeners(const ModelIndex &index, int flags) {

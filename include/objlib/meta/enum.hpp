@@ -82,6 +82,9 @@ namespace Toolbox::Object {
         MetaEnum(MetaEnum &&other)      = default;
         ~MetaEnum()                     = default;
 
+        MetaEnum &operator=(const MetaEnum &)     = default;
+        MetaEnum &operator=(MetaEnum &&) noexcept = default;
+
         [[nodiscard]] MetaType type() const { return m_type; }
         [[nodiscard]] std::string_view name() const { return m_name; }
         [[nodiscard]] RefPtr<MetaValue> value() const { return m_cur_value; }

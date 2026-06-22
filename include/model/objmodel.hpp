@@ -244,6 +244,8 @@ namespace Toolbox {
         void fetchMore_(const ModelIndex &index) const;
         // -- END -- //
 
+        void destroySelfAndChildren(const ModelIndex &to_be_destroyed);
+
         void signalEventListeners(const ModelIndex &index, int flags);
 
         void pruneRedundantIndexes(IDataModel::index_container &indexes) const;

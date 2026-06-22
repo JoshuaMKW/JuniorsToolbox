@@ -9,8 +9,8 @@
 
 #include "core/memory.hpp"
 #include "errors.hpp"
-#include "objlib/qualname.hpp"
 #include "gameio.hpp"
+#include "objlib/qualname.hpp"
 #include "smart_resource.hpp"
 
 namespace Toolbox::Object {
@@ -25,9 +25,12 @@ namespace Toolbox::Object {
 
         MetaStruct(std::string_view name) : m_name(name) {}
         MetaStruct(std::string_view name, const std::vector<MemberT> &members);
-        MetaStruct(const MetaStruct &other) = default;
-        MetaStruct(MetaStruct &&other)      = default;
-        ~MetaStruct()                       = default;
+        MetaStruct(const MetaStruct &other)     = default;
+        MetaStruct(MetaStruct &&other) noexcept = default;
+        ~MetaStruct()                           = default;
+
+        MetaStruct &operator=(const MetaStruct &)     = default;
+        MetaStruct &operator=(MetaStruct &&) noexcept = default;
 
     protected:
         MetaStruct() = default;

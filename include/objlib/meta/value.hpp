@@ -506,13 +506,17 @@ namespace Toolbox::Object {
 
         ~MetaValue() override { m_value_buf.free(); }
 
-        MetaValue &operator=(const MetaValue &other) = default;
-        MetaValue &operator=(MetaValue &&other)      = default;
-        template <typename T> MetaValue &operator=(T &&value) {
-            set<T>(value);
+        MetaValue &operator=(const MetaValue &other)      = default;
+        MetaValue &operator=(MetaValue &&other) noexcept = default;
+        template <typename T> MetaValue &operator=(T &&value) noexcept
+        requires std::is_move_assignable_v<T>
+        {
+            set<T>(std::move(value));
             return *this;
         }
-        template <typename T> MetaValue &operator=(const T &value) {
+        template <typename T> MetaValue &operator=(const T &value)
+        requires std::is_copy_assignable_v<T>
+        {
             set<T>(value);
             return *this;
         }
@@ -541,7 +545,7 @@ namespace Toolbox::Object {
 
         void restoreMinMax();
 
-        template <typename T> bool set(const T &value) {
+        template <typename T> bool set(const T &value) requires std::is_copy_assignable_v<T> {
             m_type = map_to_type_enum<T>::value;
             if constexpr (!std::is_integral_v<T> && !std::is_floating_point_v<T>) {
                 return setBuf<T>(m_value_buf, value);

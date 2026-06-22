@@ -117,9 +117,12 @@ namespace Toolbox::Object {
             m_default = make_referable<MetaEnum>(value);
         }
 
-        MetaMember(const MetaMember &) = default;
-        MetaMember(MetaMember &&)      = default;
-        ~MetaMember()                  = default;
+        MetaMember(const MetaMember &)     = default;
+        MetaMember(MetaMember &&) noexcept = default;
+        ~MetaMember()                      = default;
+
+        MetaMember &operator=(const MetaMember &other) = default;
+        MetaMember &operator=(MetaMember &&other) noexcept = default;
 
     protected:
         MetaMember() = default;
@@ -156,7 +159,8 @@ namespace Toolbox::Object {
 
             m_default = default_;
         }
-        void setStructs(const std::vector<RefPtr<MetaStruct>> &structs, RefPtr<MetaStruct> default_) {
+        void setStructs(const std::vector<RefPtr<MetaStruct>> &structs,
+                        RefPtr<MetaStruct> default_) {
             const u32 array_size = arraysize();
             TOOLBOX_CORE_ASSERT(structs.size() == array_size);
 
@@ -541,12 +545,13 @@ namespace Toolbox::Object {
             m_build_member->setValues(values, default_);
             return *this;
         }
-        MetaMemberBuilder &setEnums(const std::vector<RefPtr<MetaEnum>> &enums, RefPtr<MetaEnum> default_) {
+        MetaMemberBuilder &setEnums(const std::vector<RefPtr<MetaEnum>> &enums,
+                                    RefPtr<MetaEnum> default_) {
             TOOLBOX_CORE_ASSERT(!m_finalized);
             m_build_member->setEnums(enums, default_);
             return *this;
         }
-        MetaMemberBuilder& setStructs(const std::vector<RefPtr<MetaStruct>>& structs,
+        MetaMemberBuilder &setStructs(const std::vector<RefPtr<MetaStruct>> &structs,
                                       RefPtr<MetaStruct> default_) {
             TOOLBOX_CORE_ASSERT(!m_finalized);
             m_build_member->setStructs(structs, default_);

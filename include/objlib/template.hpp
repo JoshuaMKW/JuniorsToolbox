@@ -50,17 +50,12 @@ namespace Toolbox::Object {
         TemplateDependencies m_dependencies;
         TemplateRenderInfo m_render_info;
 
-        TemplateWizard &operator=(const TemplateWizard &other) {
-            m_name     = other.m_name;
-            m_obj_name = other.m_obj_name;
-            m_init_members.clear();
-            for (auto &m : other.m_init_members) {
-                m_init_members.push_back(m);
-            }
-            m_dependencies = other.m_dependencies;
-            m_render_info  = other.m_render_info;
-            return *this;
-        }
+        TemplateWizard()                                = default;
+        TemplateWizard(const TemplateWizard &other)     = default;
+        TemplateWizard(TemplateWizard &&other) noexcept = default;
+
+        TemplateWizard &operator=(const TemplateWizard &other) = default;
+        TemplateWizard &operator=(TemplateWizard &&other) noexcept = default;
     };
 
     class Template : public ISerializable {
@@ -72,9 +67,25 @@ namespace Toolbox::Object {
         Template() = default;
         Template(std::string_view type, bool is_custom);
 
-        Template(const Template &) = default;
-        Template(Template &&)      = default;
-        ~Template()                = default;
+        Template(const Template &)     = default;
+        Template(Template &&) noexcept = default;
+        ~Template()                    = default;
+
+        Template &operator=(const Template &other) {
+            m_type         = other.m_type;
+            m_wizards      = other.m_wizards;
+            m_struct_cache = other.m_struct_cache;
+            m_enum_cache   = other.m_enum_cache;
+            return *this;
+        }
+
+        Template &operator=(Template &&other) noexcept {
+            m_type         = other.m_type;
+            m_wizards      = std::move(other.m_wizards);
+            m_struct_cache = std::move(other.m_struct_cache);
+            m_enum_cache   = std::move(other.m_enum_cache);
+            return *this;
+        }
 
     protected:
         Template(std::string_view type, Deserializer &in) : m_type(type) { deserialize(in); }
@@ -102,23 +113,6 @@ namespace Toolbox::Object {
                 }
             }
             return {};
-        }
-
-        Template &operator=(const Template &other) {
-            m_type    = other.m_type;
-            m_wizards = other.m_wizards;
-
-            m_struct_cache.clear();
-            for (auto &s : other.m_struct_cache) {
-                m_struct_cache.push_back(s);
-            }
-
-            m_enum_cache.clear();
-            for (auto &e : other.m_enum_cache) {
-                m_enum_cache.push_back(e);
-            }
-
-            return *this;
         }
 
         Result<void, SerialError> serialize(Serializer &out) const override;

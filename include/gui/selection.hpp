@@ -49,9 +49,13 @@ namespace Toolbox {
     protected:
         void updateSelection(const ModelIndex &index, int flags);
 
+        void collectChildrenOfIndexForRemove(const ModelIndex &index);
+
     private:
         UUID64 m_uuid;
         ModelSelectionState m_selection;
+
+        std::vector<ModelIndex> m_to_remove;
 
         Input::MouseButton m_drag_button;
         double m_drag_anchor_x = 0.0f;

@@ -9,6 +9,7 @@ namespace Toolbox {
         m_selection.setModel(model);
         model->addEventListener(getUUID(), TOOLBOX_BIND_EVENT_FN(updateSelection),
                                 ModelEventFlags::EVENT_ANY);
+        m_to_remove.reserve(512);
     }
 
     ModelSelectionManager::~ModelSelectionManager() {
@@ -341,17 +342,37 @@ namespace Toolbox {
         }
 
         if ((flags & ModelEventFlags::EVENT_INDEX_REMOVED) == ModelEventFlags::EVENT_INDEX_REMOVED) {
+            if ((flags & ModelEventFlags::EVENT_PRE) == ModelEventFlags::EVENT_PRE) {
+                m_to_remove.clear();
+                collectChildrenOfIndexForRemove(index);
+            }
+
             if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
                 if ((flags & ModelEventFlags::EVENT_SUCCESS) == ModelEventFlags::EVENT_NONE) {
                     return;
                 }
 
                 if (!m_deletion_state) {
-                    m_selection.deselect(index);
+                    for (const ModelIndex &remove_index : m_to_remove) {
+                        m_selection.deselect(remove_index);
+                    }
+                    m_to_remove.clear();
                 }
             }
 
             return;
+        }
+    }
+
+    void ModelSelectionManager::collectChildrenOfIndexForRemove(const ModelIndex &index) {
+        m_to_remove.push_back(index);
+        
+        RefPtr<IDataModel> model = m_selection.getModel();
+
+        const int64_t row_count = static_cast<int64_t>(model->getRowCount(index));
+        for (int64_t i = 0; i < row_count; ++i) {
+            ModelIndex child_index = model->getIndex(i, 0, index);
+            collectChildrenOfIndexForRemove(child_index);
         }
     }
 

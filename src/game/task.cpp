@@ -1163,6 +1163,8 @@ namespace Toolbox::Game {
         } else {
             return make_error<void>("TASK", "Timed out while removing object from game scene!");
         }
+
+        return {};
     }
 
     Result<void> TaskCommunicator::taskPlayCameraDemo(std::string_view demo_name,

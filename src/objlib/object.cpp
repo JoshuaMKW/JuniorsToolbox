@@ -1026,6 +1026,22 @@ namespace Toolbox::Object {
 
     void PhysicalSceneObject::sync() {
         const bool wizard_reassigned = reassignWizardBasedOnFields();
+        if (wizard_reassigned) {
+            std::optional<TemplateWizard> wizard = m_template.getWizard(m_wizard);
+            if (wizard) {
+                std::vector<RefPtr<MetaMember>> filtered_members;
+                filtered_members.reserve(m_members.size());
+                for (const RefPtr<MetaMember> &member : m_members) {
+                    if (std::any_of(wizard->m_init_members.begin(), wizard->m_init_members.end(),
+                        [&member](const RefPtr<MetaMember>& wizard_member) {
+                                        return wizard_member->name() == member->name();
+                                    })) {
+                        filtered_members.emplace_back(member);
+                    }
+                }
+                m_members = std::move(filtered_members);
+            }
+        }
 
         auto transform_value_ptr = getMember("Transform").value_or(nullptr);
         if (transform_value_ptr) {
@@ -1650,7 +1666,6 @@ namespace Toolbox::Object {
         } else if (isPhysicalObject(template_.type())) {
             ScopePtr<PhysicalSceneObject> obj =
                 make_scoped<PhysicalSceneObject>(template_, wizard_name);
-            obj->loadRenderData(resource_path, getResourceCache());
             out_obj = std::move(obj);
         } else {
             out_obj = make_scoped<VirtualSceneObject>(template_, wizard_name);
@@ -1659,6 +1674,8 @@ namespace Toolbox::Object {
         if (obj_uuid) {
             out_obj->setUUID(*obj_uuid);
         }
+
+        out_obj->loadDependencies(resource_path);
         return out_obj;
     }
 

@@ -3452,6 +3452,8 @@ namespace Toolbox::UI {
                 return;
             }
 
+            //new_object_result->sync();
+
             ModelIndex new_object = m_scene_object_model->insertObject(std::move(new_object_result),
                                                                        insert_index, parent_index);
             if (!m_scene_object_model->validateIndex(new_object)) {
@@ -3510,6 +3512,8 @@ namespace Toolbox::UI {
                 LogError(result.error());
                 return;
             }
+
+            //new_object_result->sync();
 
             ModelIndex new_object = m_table_object_model->insertObject(std::move(new_object_result),
                                                                        insert_index, parent_index);
@@ -4977,10 +4981,6 @@ bool ToolboxSceneDependencyMender::RepairScene(
             mender.scopeFulfillTableBinDependencies(model, index);
         });
     }
-
-    mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
-        mender.scopeFulfillRailDependencies(model, index);
-    });
 
     mender.scopeForAll(object_model, [&mender](RefPtr<SceneObjModel> model, ModelIndex index) {
         mender.scopeFulfillRailDependencies(model, index);
