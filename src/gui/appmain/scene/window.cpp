@@ -437,6 +437,7 @@ namespace Toolbox::UI {
         m_properties_render_handler = renderEmptyProperties;
 
         buildContextMenuSceneObj();
+        buildContextMenuTableObj();
         buildContextMenuRail();
 
         buildCreateObjDialog();
@@ -1210,7 +1211,7 @@ namespace Toolbox::UI {
                         }
 
                         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
-                            regeneratePropertiesForObject(node);
+                            regeneratePropertiesForObject(node, m_scene_object_model);
                         }
 
                         m_selection_transforms_update_requested = true;
@@ -1314,7 +1315,7 @@ namespace Toolbox::UI {
                         }
 
                         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
-                            regeneratePropertiesForObject(node);
+                            regeneratePropertiesForObject(node, m_scene_object_model);
                         }
 
                         m_selection_transforms_update_requested = true;
@@ -1499,7 +1500,7 @@ namespace Toolbox::UI {
                         }
 
                         if (m_table_selection_mgr.getState().getSelection().size() == 1) {
-                            regeneratePropertiesForObject(node);
+                            regeneratePropertiesForObject(node, m_table_object_model);
                         }
 
                         m_selection_transforms_update_requested = true;
@@ -1603,7 +1604,7 @@ namespace Toolbox::UI {
                         }
 
                         if (m_table_selection_mgr.getState().getSelection().size() == 1) {
-                            regeneratePropertiesForObject(node);
+                            regeneratePropertiesForObject(node, m_table_object_model);
                         }
 
                         m_selection_transforms_update_requested = true;
@@ -2022,13 +2023,14 @@ namespace Toolbox::UI {
 
             const size_t rail_count = m_rail_model->getRowCount(ModelIndex());
             if (rail_count == 0) {
-                const ImVec2 avail = ImGui::GetContentRegionMax();
+                const ImVec2 avail       = ImGui::GetContentRegionMax();
                 const ImVec2 button_size = {avail.x * 0.8f, avail.y * 0.4f};
 
                 ImGui::SetCursorPos(
                     {avail.x / 2.0f - button_size.x / 2.0f, avail.y / 2.0f - button_size.y / 2.0f});
 
-                if (ImGui::Button("Create New Rail", button_size, 5.0f, ImDrawFlags_RoundCornersAll)) {
+                if (ImGui::Button("Create New Rail", button_size, 5.0f,
+                                  ImDrawFlags_RoundCornersAll)) {
                     m_create_rail_dialog.open();
                 }
             }
@@ -2683,6 +2685,9 @@ namespace Toolbox::UI {
                     return;
                 })
             .addDivider()
+            .addOption("Select All", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_A},
+                       [this](ModelIndex index) { m_scene_selection_mgr.actionSelectAll(); })
+            .addDivider()
             .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
                        [this](ModelIndex index) {
                            ScopePtr<MimeData> copy_data =
@@ -2699,13 +2704,17 @@ namespace Toolbox::UI {
                                LogError(result.error());
                                return;
                            }
+                           m_history_aggregate_handler->startExplicitFrame();
                            m_scene_selection_mgr.actionPasteIntoSelection(result.value());
+                           m_history_aggregate_handler->endExplicitFrame();
                            m_update_render_objs = true;
                        })
             .addDivider()
             .addOption("Delete", {KeyCode::KEY_DELETE},
                        [this](ModelIndex index) {
+                           m_history_aggregate_handler->startExplicitFrame();
                            m_scene_selection_mgr.actionDeleteSelection();
+                           m_history_aggregate_handler->endExplicitFrame();
                            clearSelectedProperties();
                        })
             .addDivider()
@@ -2886,6 +2895,9 @@ namespace Toolbox::UI {
                     return;
                 })
             .addDivider()
+            .addOption("Select All", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_A},
+                       [this](ModelIndex index) { m_table_selection_mgr.actionSelectAll(); })
+            .addDivider()
             .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
                        [this](ModelIndex index) {
                            ScopePtr<MimeData> copy_data =
@@ -2902,12 +2914,18 @@ namespace Toolbox::UI {
                                LogError(result.error());
                                return;
                            }
+                           m_history_aggregate_handler->startExplicitFrame();
                            m_table_selection_mgr.actionPasteIntoSelection(result.value());
+                           m_history_aggregate_handler->endExplicitFrame();
                            m_update_render_objs = true;
                        })
             .addDivider()
             .addOption("Delete", {KeyCode::KEY_DELETE},
-                       [this](ModelIndex index) { m_table_selection_mgr.actionDeleteSelection(); })
+                       [this](ModelIndex index) {
+                           m_history_aggregate_handler->startExplicitFrame();
+                           m_table_selection_mgr.actionDeleteSelection();
+                           m_history_aggregate_handler->endExplicitFrame();
+                       })
             .addDivider()
             .addOption(
                 "Copy Player Transform",
@@ -3013,7 +3031,6 @@ namespace Toolbox::UI {
                                      .error());
                         return;
                     }
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addOption(
                 "Insert Node At Camera",
@@ -3045,7 +3062,6 @@ namespace Toolbox::UI {
                                      .error());
                         return;
                     }
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addDivider()
             .beginGroup("Node Connections")
@@ -3094,8 +3110,6 @@ namespace Toolbox::UI {
                     }
 
                     m_history_aggregate_handler->endExplicitFrame();
-
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addDivider()
             .addOption(
@@ -3131,8 +3145,6 @@ namespace Toolbox::UI {
                     }
 
                     m_history_aggregate_handler->endExplicitFrame();
-
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addOption(
                 "Connect to Neighbors",
@@ -3167,8 +3179,6 @@ namespace Toolbox::UI {
                     }
 
                     m_history_aggregate_handler->endExplicitFrame();
-
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addOption(
                 "Connect to Next",
@@ -3203,8 +3213,6 @@ namespace Toolbox::UI {
                     }
 
                     m_history_aggregate_handler->endExplicitFrame();
-
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addOption(
                 "Connect to Prev",
@@ -3239,8 +3247,6 @@ namespace Toolbox::UI {
                     }
 
                     m_history_aggregate_handler->endExplicitFrame();
-
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addOption(
                 "Connect to References",
@@ -3275,8 +3281,6 @@ namespace Toolbox::UI {
                     }
 
                     m_history_aggregate_handler->endExplicitFrame();
-
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .endGroup()
             .addOption(
@@ -3328,10 +3332,12 @@ namespace Toolbox::UI {
                     }
                     m_history_aggregate_handler->endExplicitFrame();
 
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                     m_update_render_objs = true;
                     return;
                 })
+            .addDivider()
+            .addOption("Select All", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_A},
+                       [this](ModelIndex index) { m_rail_selection_mgr.actionSelectAll(); })
             .addDivider()
             .addOption("Copy", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_C},
                        [this](ModelIndex index) {
@@ -3349,14 +3355,16 @@ namespace Toolbox::UI {
                                LogError(result.error());
                                return;
                            }
+                           m_history_aggregate_handler->startExplicitFrame();
                            m_rail_selection_mgr.actionPasteIntoSelection(result.value());
-                           m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                           m_history_aggregate_handler->endExplicitFrame();
                            m_update_render_objs = true;
                        })
             .addOption("Delete", {KeyCode::KEY_DELETE},
                        [this](ModelIndex index) {
+                           m_history_aggregate_handler->startExplicitFrame();
                            m_rail_selection_mgr.actionDeleteSelection();
-                           m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
+                           m_history_aggregate_handler->endExplicitFrame();
                            m_update_render_objs = true;
                        })
             .addDivider()
@@ -3376,10 +3384,10 @@ namespace Toolbox::UI {
                         if (!m_rail_model->isIndexRail(index)) {
                             return;
                         }
-                        RailData::rail_ptr_t rail = m_rail_model->getRailRef(index);
-                        rail->decimate(1);
+                        m_history_aggregate_handler->startExplicitFrame();
+                        m_rail_model->decimateRail(index, 1);
+                        m_history_aggregate_handler->endExplicitFrame();
                     }
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 })
             .addOption(
                 "Subdivide", {KeyCode::KEY_LEFTCONTROL, KeyCode::KEY_LEFTALT, KeyCode::KEY_S},
@@ -3397,10 +3405,10 @@ namespace Toolbox::UI {
                         if (!m_rail_model->isIndexRail(index)) {
                             return;
                         }
-                        RailData::rail_ptr_t rail = m_rail_model->getRailRef(index);
-                        rail->subdivide(1);
+                        m_history_aggregate_handler->startExplicitFrame();
+                        m_rail_model->subdivideRail(index, 1);
+                        m_history_aggregate_handler->endExplicitFrame();
                     }
-                    m_renderer.updatePaths(m_rail_model, m_rail_visible_map);
                 });
     }
 
@@ -3452,7 +3460,7 @@ namespace Toolbox::UI {
                 return;
             }
 
-            //new_object_result->sync();
+            // new_object_result->sync();
 
             ModelIndex new_object = m_scene_object_model->insertObject(std::move(new_object_result),
                                                                        insert_index, parent_index);
@@ -3513,7 +3521,7 @@ namespace Toolbox::UI {
                 return;
             }
 
-            //new_object_result->sync();
+            // new_object_result->sync();
 
             ModelIndex new_object = m_table_object_model->insertObject(std::move(new_object_result),
                                                                        insert_index, parent_index);
@@ -3646,9 +3654,9 @@ namespace Toolbox::UI {
                         angle += angle_step;
                     }
                 } else if (!is_empty_node) {
-                    s16 x     = 0;
-                    s16 y     = 0;
-                    s16 z     = 0;
+                    s16 x = 0;
+                    s16 y = 0;
+                    s16 z = 0;
 
                     auto node = make_referable<Rail::RailNode>(x, y, z, 0);
                     new_nodes.push_back(node);
@@ -3918,7 +3926,7 @@ namespace Toolbox::UI {
         clearSelectedProperties();
 
         if (m_scene_selection_mgr.getState().getSelection().size() == 1) {
-            regeneratePropertiesForObject(m_scene_object_model->getObjectRef(index));
+            regeneratePropertiesForObject(m_scene_object_model->getObjectRef(index), m_scene_object_model);
         }
 
         m_selection_transforms_update_requested = true;
@@ -4162,16 +4170,16 @@ namespace Toolbox::UI {
         return desired_scroll;
     }
 
-    void SceneWindow::regeneratePropertiesForObject(RefPtr<ISceneObject> object) {
+    void SceneWindow::regeneratePropertiesForObject(RefPtr<ISceneObject> object, RefPtr<SceneObjModel> model) {
         clearSelectedProperties();
         for (auto &member : object->getMembers()) {
             member->syncArray();
 
             auto prop = createProperty(
                 member,
-                [this, object](RefPtr<MetaMember> member, size_t array_idx) -> MetaValue {
-                    ModelIndex index = m_scene_object_model->getIndex(object);
-                    auto result      = m_scene_object_model->getMemberValue(
+                [model, object](RefPtr<MetaMember> member, size_t array_idx) -> MetaValue {
+                    ModelIndex index = model->getIndex(object);
+                    auto result      = model->getMemberValue(
                         index, member->qualifiedName(), array_idx);
                     if (!result) {
                         LogError(result.error());
@@ -4180,16 +4188,16 @@ namespace Toolbox::UI {
 
                     return result.value();
                 },
-                [this, object](RefPtr<MetaMember> member, size_t array_idx,
+                [model, object](RefPtr<MetaMember> member, size_t array_idx,
                                const MetaValue &value) {
-                    ModelIndex index = m_scene_object_model->getIndex(object);
+                    ModelIndex index = model->getIndex(object);
                     if (value.type() == MetaType::TRANSFORM &&
                         member->qualifiedName() == "Transform") {
-                        m_scene_object_model->setObjectTransform(
+                        model->setObjectTransform(
                             index, value.get<Transform>().value_or(Transform()));
                         return true;
                     } else {
-                        auto result = m_scene_object_model->setMemberValue(
+                        auto result = model->setMemberValue(
                             index, member->qualifiedName(), array_idx, value);
                         if (!result) {
                             LogError(result.error());
@@ -4217,7 +4225,7 @@ namespace Toolbox::UI {
                 if (is_single_selected) {
                     RefPtr<ISceneObject> object = m_scene_object_model->getObjectRef(index);
                     if (object) {
-                        regeneratePropertiesForObject(object);
+                        regeneratePropertiesForObject(object, m_scene_object_model);
                     }
                 }
 
@@ -4287,7 +4295,7 @@ namespace Toolbox::UI {
                 if (is_single_selected) {
                     RefPtr<ISceneObject> object = m_table_object_model->getObjectRef(index);
                     if (object) {
-                        regeneratePropertiesForObject(object);
+                        regeneratePropertiesForObject(object, m_table_object_model);
                     }
                 }
 
@@ -4350,7 +4358,9 @@ namespace Toolbox::UI {
         const bool is_single_selected = m_rail_selection_mgr.getState().isSelected(index) &&
                                         m_rail_selection_mgr.getState().count() == 1;
 
-        m_path_renderer_update_reqeusted = true;
+        if ((flags & ModelEventFlags::EVENT_POST) == ModelEventFlags::EVENT_POST) {
+            m_path_renderer_update_reqeusted = true;
+        }
 
         if ((flags & ModelEventFlags::EVENT_INDEX_ADDED) == ModelEventFlags::EVENT_INDEX_ADDED) {
             if (m_rail_model->isIndexRail(index)) {
@@ -4442,19 +4452,8 @@ namespace Toolbox::UI {
             MainApplication::instance().getAppDataPath() / "BasicScene" / "scene";
 
         if (!Filesystem::is_directory(app_data_path).value_or(false)) {
-            const fs_path local_path = fs_path("AppData") / "BasicScene" / "scene";
-            if (!Filesystem::is_directory(local_path).value_or(false)) {
-                TOOLBOX_ERROR("[SCENE_WINDOW] Failed to load basic scene from local data");
-                return;
-            }
-            Filesystem::create_directories(app_data_path);
-            Filesystem::copy(local_path, app_data_path,
-                             Filesystem::copy_options::recursive |
-                                 Filesystem::copy_options::overwrite_existing);
-            if (!Filesystem::is_directory(app_data_path).value_or(false)) {
-                TOOLBOX_ERROR("[SCENE_WINDOW] Failed to load basic scene from APPDATA");
-                return;
-            }
+            TOOLBOX_ERROR("[SCENE_WINDOW] Failed to load basic scene from APPDATA");
+            return;
         }
 
         const fs_path scene_path = parent_folder / "scene";
@@ -5263,6 +5262,26 @@ SceneValidator &SceneValidator::scopeValidateDependencies(RefPtr<SceneObjModel> 
         }
     }
 
+    // Try to restore dynamic assets using defaults
+    if (object->type() == "GenericRailObj") {
+        RefPtr<MetaMember> model_member_result = object->getMember("Model").value_or(nullptr);
+        if (model_member_result) {
+            auto member_str_result = getMetaValue<std::string>(model_member_result, 0);
+            if (member_str_result) {
+                const fs_path relative_path =
+                    fs_path("mapobj") / (member_str_result.value() + ".bmd");
+                const fs_path scene_path = m_object_model->getScenePath() / relative_path;
+
+                if (!Filesystem::is_regular_file(scene_path).value_or(false)) {
+                    m_valid = false;
+                    m_error_callback(
+                        std::format("Object '{} ({})': Failed to find required asset '{}'!",
+                                    obj_type, obj_key, relative_path.string()));
+                }
+            }
+        }
+    }
+
     // Check for rail dependency
     {
 
@@ -5770,6 +5789,38 @@ SceneMender &SceneMender::scopeFulfillAssetDependencies(RefPtr<SceneObjModel> mo
         }
     }
 
+    // Try to restore dynamic assets using defaults
+    if (object->type() == "GenericRailObj") {
+        RefPtr<MetaMember> model_member_result = object->getMember("Model").value_or(nullptr);
+        if (model_member_result) {
+            auto member_str_result = getMetaValue<std::string>(model_member_result, 0);
+            if (member_str_result) {
+                const fs_path relative_path =
+                    fs_path("mapobj") / (member_str_result.value() + ".bmd");
+                const fs_path scene_path = m_object_model->getScenePath() / relative_path;
+
+                if (!Filesystem::is_regular_file(scene_path).value_or(false)) {
+                    const fs_path &dummy_path =
+                        MainApplication::instance().getAppDataPath() / "Dummy.bmd";
+
+                    auto res = Filesystem::copy_file(dummy_path, scene_path,
+                                                     Filesystem::copy_options::overwrite_existing);
+                    if (!res) {
+                        m_valid = false;
+                        m_error_callback(std::format("Failed to copy file for asset path '{}'",
+                                                     scene_path.string()));
+                        return *this;
+                    }
+
+                    std::string change_text = std::format(
+                        "Added asset path {} for object [{} ({})]", relative_path.string(),
+                        object->type(), object->getNameRef().name());
+                    m_change_callback(change_text);
+                }
+            }
+        }
+    }
+
     return *this;
 }
 
@@ -6069,6 +6120,26 @@ ScenePruner &ScenePruner::scopeCollectDependencies(RefPtr<SceneObjModel> model,
             m_dependencies.m_asset_paths.insert(scene_path.lexically_normal());
         }
     }
+
+    // Try to restore dynamic assets using defaults
+    if (object->type() == "GenericRailObj") {
+        RefPtr<MetaMember> model_member_result = object->getMember("Model").value_or(nullptr);
+        if (model_member_result) {
+            auto member_str_result = getMetaValue<std::string>(model_member_result, 0);
+            if (member_str_result) {
+                const fs_path relative_path =
+                    fs_path("mapobj") / (member_str_result.value() + ".bmd");
+                const fs_path scene_path = m_object_model->getScenePath() / relative_path;
+
+                if (!Filesystem::exists(scene_path).value_or(false)) {
+                    return *this;
+                }
+
+                m_dependencies.m_asset_paths.insert(scene_path.lexically_normal());
+            }
+        }
+    }
+
     return *this;
 }
 

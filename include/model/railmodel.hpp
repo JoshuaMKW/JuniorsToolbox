@@ -124,6 +124,9 @@ namespace Toolbox {
         [[nodiscard]] std::any getData(const ModelIndex &index, int role) const override;
         void setData(const ModelIndex &index, std::any data, int role) override;
 
+        ModelIndex decimateRail(const ModelIndex &index, size_t steps);
+        ModelIndex subdivideRail(const ModelIndex &index, size_t steps);
+
         [[nodiscard]] std::string findUniqueName(const ModelIndex &index,
                                                  const std::string &name) const;
 
@@ -205,6 +208,10 @@ namespace Toolbox {
         // Implementation of public API for mutex locking reasons
         [[nodiscard]] std::any getData_(const ModelIndex &index, int role) const;
         void setData_(const ModelIndex &index, std::any data, int role) const;
+
+        void removeNodeModelIndicesForRailIndex_(const ModelIndex &index);
+        std::vector<ModelIndex> decimateRail_(const ModelIndex &index, size_t steps);
+        std::vector<ModelIndex> subdivideRail_(const ModelIndex &index, size_t steps);
 
         [[nodiscard]] std::string findUniqueName_(const ModelIndex &index,
                                                   const std::string &name) const;

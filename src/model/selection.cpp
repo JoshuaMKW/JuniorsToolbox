@@ -48,6 +48,17 @@ namespace Toolbox {
 
         if (a == b) {
             m_selection.emplace_back(a);
+            if (deep) {
+                int64_t column_a    = m_ref_model->getColumn(a);
+                int64_t child_count = m_ref_model->getRowCount(a);
+                if (child_count > 0) {
+                    ModelIndex c_a = m_ref_model->getIndex(0, column_a, a);
+                    ModelIndex c_b = m_ref_model->getIndex(child_count - 1, column_a, a);
+                    if (!selectSpan(c_a, c_b, true, deep)) {
+                        return false;
+                    }
+                }
+            }
             return true;
         }
 
@@ -77,7 +88,7 @@ namespace Toolbox {
             return false;
         }
 
-        while (row_a < row_b) {
+        while (row_a <= row_b) {
             m_selection.emplace_back(this_a);
             if (deep) {
                 int64_t child_count = m_ref_model->getRowCount(this_a);
@@ -105,7 +116,7 @@ namespace Toolbox {
         if (root_count > 0) {
             ModelIndex c_a = m_ref_model->getIndex(0, 0);
             ModelIndex c_b = m_ref_model->getIndex(root_count - 1, 0);
-            return selectSpan(c_a, c_b, false);
+            return selectSpan(c_a, c_b, false, true);
         }
 
         return true;

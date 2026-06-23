@@ -247,7 +247,8 @@ namespace Toolbox::UI {
         std::optional<float> calculateFocusScrollForSceneObjectSelection();
         std::optional<float> calculateFocusScrollForSceneRailSelection();
 
-        void regeneratePropertiesForObject(RefPtr<ISceneObject> object);
+        void regeneratePropertiesForObject(RefPtr<ISceneObject> object,
+                                           RefPtr<SceneObjModel> model);
 
         void onObjectModelIndexEvent(const ModelIndex &index, int flags);
         void onTableModelIndexEvent(const ModelIndex &index, int flags);

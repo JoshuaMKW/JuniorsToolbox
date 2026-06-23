@@ -85,7 +85,11 @@ namespace Toolbox {
         m_deletion_state = true;
 
         bool result                                = true;
-        const IDataModel::index_container &indexes = m_selection.getSelection();
+        IDataModel::index_container indexes = m_selection.getSelection();
+
+        ModelIndexListTransformer transformer(model);
+        transformer.pruneRedundantsForRecursiveTree(indexes);
+
         for (const ModelIndex &s : indexes) {
             result &= model->removeIndex(s);
         }
@@ -209,6 +213,8 @@ namespace Toolbox {
         m_selection.setLastSelected(index);
         return true;
     }
+
+    bool ModelSelectionManager::actionSelectAll() { return m_selection.selectAll(); }
 
     bool ModelSelectionManager::actionSelectIndexIfNew(const ModelIndex &index,
                                                        bool no_span_selections) {

@@ -37,19 +37,42 @@ namespace Toolbox::Rail {
 
     Result<void, SerialError> Rail::serialize(Serializer &out) const {
         out.write<u64>(m_UUID64);
-        return gameSerialize(out);
+
+        out.writeString<std::endian::big>(m_name);
+        out.write<u16, std::endian::big>(static_cast<u16>(m_nodes.size()));
+        for (const auto &node : m_nodes) {
+            auto result = node->serialize(out);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+        }
+
+        return {};
     }
 
     Result<void, SerialError> Rail::deserialize(Deserializer &in) {
         m_UUID64 = in.read<u64>();
-        return gameDeserialize(in);
+
+        m_name   = in.readString<std::endian::big>();
+        m_nodes.clear();
+        u16 node_count = in.read<u16, std::endian::big>();
+        for (u16 i = 0; i < node_count; ++i) {
+            auto node   = make_referable<RailNode>();
+            auto result = node->deserialize(in);
+            if (!result) {
+                return std::unexpected(result.error());
+            }
+            addNode(node);
+        }
+
+        return {};
     }
 
     Result<void, SerialError> Rail::gameSerialize(Serializer &out) const {
         out.writeString<std::endian::big>(m_name);
         out.write<u16, std::endian::big>(static_cast<u16>(m_nodes.size()));
         for (const auto &node : m_nodes) {
-            auto result = node->serialize(out);
+            auto result = node->gameSerialize(out);
             if (!result) {
                 return std::unexpected(result.error());
             }
@@ -63,7 +86,7 @@ namespace Toolbox::Rail {
         u16 node_count = in.read<u16, std::endian::big>();
         for (u16 i = 0; i < node_count; ++i) {
             auto node   = make_referable<RailNode>();
-            auto result = node->deserialize(in);
+            auto result = node->gameDeserialize(in);
             if (!result) {
                 return std::unexpected(result.error());
             }

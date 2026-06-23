@@ -185,6 +185,24 @@ namespace Toolbox {
             m_resource_manager.includeResourcePath(cwd / "Themes", true);
         }
 
+        // Copy local assets to AppData path
+        {
+            const fs_path app_data_path = MainApplication::instance().getAppDataPath();
+            const fs_path local_path = "AppData";
+            if (!Filesystem::is_directory(local_path).value_or(false)) {
+                TOOLBOX_ERROR("[INIT] Failed to find local AppData path");
+                return;
+            }
+            Filesystem::create_directories(app_data_path);
+            Filesystem::copy(local_path, app_data_path,
+                                Filesystem::copy_options::recursive |
+                                    Filesystem::copy_options::overwrite_existing);
+            if (!Filesystem::is_directory(app_data_path).value_or(false)) {
+                TOOLBOX_ERROR("[INIT] Failed to copy assets to APPDATA");
+                return;
+            }
+        }
+
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);

@@ -32,7 +32,8 @@
                     },
                     "AssetPaths": [
                         "enemy/enm_dorokuri",
-                        "enemy/enm_hamukuri_shared"
+                        "enemy/enm_hamukuri_shared",
+                        "object/mapobj_cmn_mariocap"
                     ]
                 },
                 "Members": {

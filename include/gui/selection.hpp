@@ -40,6 +40,7 @@ namespace Toolbox {
 
         bool actionSelectIndex(const ModelIndex &index, bool force_single = false,
                                bool clear_on_mouse_up = false, bool no_span_selections = false);
+        bool actionSelectAll();
 
         bool actionSelectIndexIfNew(const ModelIndex &index, bool no_span_selections = false);
         bool actionClearRequestExcIndex(const ModelIndex &index, bool is_left_button);

@@ -31,7 +31,8 @@
                         }
                     },
                     "AssetPaths": [
-                        "enemy/enm_hanekuri"
+                        "enemy/enm_hanekuri",
+                        "object/mapobj_cmn_mariocap"
                     ]
                 },
                 "Members": {

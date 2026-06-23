@@ -206,6 +206,7 @@ void main()
                                       const std::unordered_map<UUID64, bool> &visible_map) {
         const size_t rail_count = model->getRowCount(ModelIndex());
         if (rail_count == 0) {
+            m_path_connections.clear();
             return;
         }
 

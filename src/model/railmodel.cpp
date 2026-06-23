@@ -414,6 +414,84 @@ namespace Toolbox {
                                                      ModelEventFlags::EVENT_SUCCESS);
     }
 
+    ModelIndex RailObjModel::decimateRail(const ModelIndex &index, size_t steps) {
+        if (!isIndexRail(index)) {
+            TOOLBOX_ERROR(
+                "[RAILMODEL] Failed to decimate due to selection not being a rail");
+            return index;
+        }
+
+        const int64_t old_node_count = static_cast<int64_t>(getRowCount(index));
+        if (old_node_count <= 1) {
+            TOOLBOX_INFO(
+                "[RAILMODEL] Cannot decimate an already trivial rail");
+            return index;
+        }
+
+        const int64_t self_row = getRow_(index);
+
+        if (!removeIndex(index)) {
+            TOOLBOX_ERROR(
+                "[RAILMODEL] Failed to decimate rail because the rail was unable to be removed");
+            return index;
+        }
+
+        ModelIndex new_index;
+        {
+            std::scoped_lock lock(m_mutex);
+            RefPtr<Rail::Rail> rail = index.data<_RailIndexData>()->getRail();
+            m_node_list_map[rail->getUUID()].clear();
+
+            rail->decimate(steps);
+
+            new_index = insertRail_(rail, self_row, index.getUUID());
+        }
+
+        const Signal add_sig = createSignalForIndex_(new_index, ModelEventFlags::EVENT_INDEX_ADDED);
+        signalEventListeners(add_sig.first, add_sig.second | ModelEventFlags::EVENT_POST |
+                                                ModelEventFlags::EVENT_SUCCESS);
+
+        return new_index;
+    }
+
+    ModelIndex RailObjModel::subdivideRail(const ModelIndex &index, size_t steps) {
+        if (!isIndexRail(index)) {
+            TOOLBOX_ERROR("[RAILMODEL] Failed to subdivide due to selection not being a rail");
+            return index;
+        }
+
+        const int64_t old_node_count = static_cast<int64_t>(getRowCount(index));
+        if (old_node_count <= 1) {
+            TOOLBOX_INFO("[RAILMODEL] Cannot subdivide a trivial rail");
+            return index;
+        }
+
+        const int64_t self_row = getRow_(index);
+
+        if (!removeIndex(index)) {
+            TOOLBOX_ERROR(
+                "[RAILMODEL] Failed to subdivide rail because the rail was unable to be removed");
+            return index;
+        }
+
+        ModelIndex new_index;
+        {
+            std::scoped_lock lock(m_mutex);
+            RefPtr<Rail::Rail> rail = index.data<_RailIndexData>()->getRail();
+            m_node_list_map[rail->getUUID()].clear();
+
+            rail->subdivide(steps);
+
+            new_index = insertRail_(rail, self_row, index.getUUID());
+        }
+
+        const Signal add_sig = createSignalForIndex_(new_index, ModelEventFlags::EVENT_INDEX_ADDED);
+        signalEventListeners(add_sig.first, add_sig.second | ModelEventFlags::EVENT_POST |
+                                                ModelEventFlags::EVENT_SUCCESS);
+
+        return new_index;
+    }
+
     std::string RailObjModel::findUniqueName(const ModelIndex &index,
                                              const std::string &name) const {
         std::scoped_lock lock(m_mutex);
@@ -793,6 +871,80 @@ namespace Toolbox {
         return;
     }
 
+    void RailObjModel::removeNodeModelIndicesForRailIndex_(const ModelIndex &index) {
+        if (!isIndexRail(index)) {
+            return;
+        }
+
+        const int64_t old_node_count = static_cast<int64_t>(getRowCount_(index));
+        // if (old_node_count < 2) {
+        //     return;
+        // }
+
+        for (int64_t i = old_node_count - 1; i >= 0; --i) {
+            const ModelIndex node_index = getIndex_(i, 0, index);
+            m_index_map.erase(node_index.getUUID());
+        }
+    }
+
+    std::vector<ModelIndex> RailObjModel::decimateRail_(const ModelIndex &index, size_t steps) {
+        const int64_t old_node_count = static_cast<int64_t>(getRowCount_(index));
+        for (int64_t i = old_node_count - 1; i >= 0; --i) {
+            const ModelIndex node_index = getIndex_(i, 0, index);
+            m_index_map.erase(node_index.getUUID());
+        }
+
+        RefPtr<Rail::Rail> rail = index.data<_RailIndexData>()->getRail();
+        m_node_list_map[rail->getUUID()].clear();
+
+        rail->decimate(steps);
+
+        std::vector<ModelIndex> new_nodes;
+        new_nodes.reserve(32);
+
+        for (size_t i = 0; i < rail->getNodeCount(); ++i) {
+            RefPtr<Rail::RailNode> node = rail->nodes()[i];
+            ModelIndex node_index       = makeIndex(node, i, index);
+            if (!validateIndex(node_index)) {
+                TOOLBOX_ERROR_V("[RAILMODEL] Failed to create node index ({}) after decimation!",
+                                i);
+                break;
+            }
+            new_nodes.emplace_back(node_index);
+        }
+
+        return new_nodes;
+    }
+
+    std::vector<ModelIndex> RailObjModel::subdivideRail_(const ModelIndex &index, size_t steps) {
+        const int64_t old_node_count = static_cast<int64_t>(getRowCount_(index));
+        for (int64_t i = old_node_count - 1; i >= 0; --i) {
+            const ModelIndex node_index = getIndex_(i, 0, index);
+            m_index_map.erase(node_index.getUUID());
+        }
+
+        RefPtr<Rail::Rail> rail = index.data<_RailIndexData>()->getRail();
+        m_node_list_map[rail->getUUID()].clear();
+
+        rail->subdivide(steps);
+
+        std::vector<ModelIndex> new_nodes;
+        new_nodes.reserve(64);
+
+        for (size_t i = 0; i < rail->getNodeCount(); ++i) {
+            RefPtr<Rail::RailNode> node = rail->nodes()[i];
+            ModelIndex node_index       = makeIndex(node, i, index);
+            if (!validateIndex(node_index)) {
+                TOOLBOX_ERROR_V("[RAILMODEL] Failed to create node index ({}) after decimation!",
+                                i);
+                break;
+            }
+            new_nodes.emplace_back(node_index);
+        }
+
+        return new_nodes;
+    }
+
     std::string RailObjModel::findUniqueName_(const ModelIndex &index,
                                               const std::string &name) const {
         std::string result_name = name;
@@ -1095,7 +1247,6 @@ namespace Toolbox {
                 out.write<u64>(node->getUUID());
                 node->serialize(out);
 
-                // --- NEW: Capture incoming connections ---
                 ModelIndex parent = getParent_(index);
                 int64_t this_row  = getRow_(index);
 
@@ -1318,7 +1469,8 @@ namespace Toolbox {
     }
 
     ModelIndex RailObjModel::insertRailNode_(Rail::Rail::node_ptr_t node, int64_t row,
-                                             const ModelIndex &parent, std::optional<UUID64> index_uuid) {
+                                             const ModelIndex &parent,
+                                             std::optional<UUID64> index_uuid) {
         ModelIndex new_index = makeIndex(node, row, parent, index_uuid);
         if (!validateIndex(new_index)) {
             return ModelIndex();
