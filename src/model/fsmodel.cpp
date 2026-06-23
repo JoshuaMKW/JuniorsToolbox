@@ -2056,6 +2056,16 @@ namespace Toolbox {
         }
     }
 
+    FileSystemModelSortFilterProxy::~FileSystemModelSortFilterProxy() {
+        if (m_source_model) {
+            m_source_model->removeEventListener(getUUID());
+        }
+
+        m_listeners.clear();
+        m_filter_map.clear();
+        m_row_map.clear();
+    }
+
     RefPtr<FileSystemModel> FileSystemModelSortFilterProxy::getSourceModel() const {
         return m_source_model;
     }

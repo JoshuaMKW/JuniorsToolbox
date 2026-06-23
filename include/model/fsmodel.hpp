@@ -304,7 +304,7 @@ namespace Toolbox {
     class FileSystemModelSortFilterProxy : public IDataModel {
     public:
         FileSystemModelSortFilterProxy()  = default;
-        ~FileSystemModelSortFilterProxy() = default;
+        ~FileSystemModelSortFilterProxy();
 
         [[nodiscard]] bool validateIndex(const ModelIndex &index) const override {
             ModelIndex &&src_index = toSourceIndex(index);

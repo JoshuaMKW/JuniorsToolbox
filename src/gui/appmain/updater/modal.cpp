@@ -15,6 +15,8 @@
 #include "gui/appmain/updater/modal.hpp"
 #include "platform/webbrowser.hpp"
 
+#define TOOLBOX_PATREON_BUILD 1
+
 #define CLIENT_HOST     "api.github.com"
 #define CLIENT_PORT     "443"
 #define CLIENT_KEY_NAME "client_key.pem"
@@ -121,8 +123,9 @@ namespace Toolbox::UI {
             return;
         }
 
-        netpp::HostIPInfo ipinfo  = netpp::get_ip_address_info(CLIENT_HOST);
-        if (!m_http_github_client->connect(ipinfo.m_ipv4, CLIENT_PORT, 1000)) {  // Timeout after 1 second
+        netpp::HostIPInfo ipinfo = netpp::get_ip_address_info(CLIENT_HOST);
+        if (!m_http_github_client->connect(ipinfo.m_ipv4, CLIENT_PORT,
+                                           1000)) {  // Timeout after 1 second
             TOOLBOX_ERROR("[UPDATER] Failed to connect HTTPS client for updater!");
             m_is_valid = false;
             close();
@@ -247,9 +250,11 @@ namespace Toolbox::UI {
         float font_size           = font_manager.getCurrentFontSize();
         ImGui::PushFont(nullptr, font_size * 2.0f);
 
+#if TOOLBOX_PATREON_BUILD == 0
         if (valid_state) {
             ImGui::Text("A new update (%s) is available!", m_release_infos[0].m_version.c_str());
         }
+#endif
 
         float buttons_height     = ImGui::GetFrameHeight();
         float subtractive_height = ImGui::GetFrameHeightWithSpacing();
@@ -285,6 +290,21 @@ namespace Toolbox::UI {
                 return;
             }
 
+#if TOOLBOX_PATREON_BUILD
+            GitHubReleaseInfo info;
+            info.m_title   = "Patreon Build";
+            info.m_version = TOOLBOX_VERSION_TAG;
+            info.m_notes   = R"(
+## Junior's Toolbox Patreon Build
+Thanks for supporting me as I continue to develop this comprehensive modding software for Sunshine!
+
+If you are interested in helping development, there are a few ways you can do that:
+- Help develop [Junior's Toolbox](https://github.com/JoshuaMKW/JuniorsToolbox) by forking the repository and contributing pull requests.
+- Help spread the word! Encourage like-minded enthusiasts to subscribe to the [Patreon](https://www.patreon.com/cw/JoshuaMK).
+- Develop cool Sunshine mods! The more content we make as a community, the more people will be interested in helping!
+)";
+            renderGitHubReleaseInfo(info);
+#else
             size_t i = 0;
             for (const GitHubReleaseInfo &info : m_release_infos) {
                 std::string info_title = std::format("{} - {}", info.m_version, info.m_title);
@@ -302,11 +322,17 @@ namespace Toolbox::UI {
 
                 renderGitHubReleaseInfo(info);
             }
+#endif
         }
         ImGui::EndChild();
 
         ImGui::PushFont(nullptr, font_size * 2.0f);
 
+#if TOOLBOX_PATREON_BUILD
+        if (ImGui::Button("Let's Go!")) {
+            close();
+        }
+#else
         if (valid_state) {
             if (ImGui::Button("Maybe Later")) {
                 close();
@@ -319,6 +345,7 @@ namespace Toolbox::UI {
                 close();
             }
         }
+#endif
 
         ImGui::PopFont();
     }
@@ -462,7 +489,7 @@ void ExampleMarkdownFormatCallback(const ImGui::MarkdownFormatInfo &markdownForm
         break;
     case ImGui::MarkdownFormatType::NORMAL_TEXT:
     case ImGui::MarkdownFormatType::UNORDERED_LIST:
-    //case ImGui::MarkdownFormatType::ORDERED_LIST:
+    // case ImGui::MarkdownFormatType::ORDERED_LIST:
     case ImGui::MarkdownFormatType::LINK: {
         if (start_)
             ImGui::PushFont(T, font_size);
@@ -499,7 +526,7 @@ void Markdown(const std::string &markdown_) {
     // You can make your own Markdown function with your prefered string container and markdown
     // config. > C++14 can use ImGui::MarkdownConfig md_config{ LinkCallback, NULL, ImageCallback,
     // ICON_FA_LINK, { { H1, true }, { H2, true }, { H3, false } }, NULL };
-    //md_config.useComplexFormatting = false;
+    // md_config.useComplexFormatting = false;
 
     md_config.linkCallback    = LinkCallback;
     md_config.tooltipCallback = NULL;
@@ -517,8 +544,11 @@ void Markdown(const std::string &markdown_) {
 
     md_config.userData       = NULL;
     md_config.formatCallback = ExampleMarkdownFormatCallback;
-    md_config.formatFlags    = ImGuiMarkdownFormatFlags_GithubStyle | ImGuiMarkdownFormatFlags_IncludeAllListPrefixes | ImGuiMarkdownFormatFlags_ExoticIndents;
+    md_config.formatFlags    = ImGuiMarkdownFormatFlags_GithubStyle |
+                            ImGuiMarkdownFormatFlags_IncludeAllListPrefixes |
+                            ImGuiMarkdownFormatFlags_ExoticIndents;
 
+#if 0
     const char *text         = R"(   ## Fixes/Repairs
 
 - dwadw
@@ -532,6 +562,17 @@ void Markdown(const std::string &markdown_) {
 **FA WEF A FAWF**
 
 *fejoi*)";
+#elif 0
+    const char *text = R"(
+## Junior's Toolbox Patreon Build
+Thanks for supporting me as I continue to develop this comprehensive modding software for Sunshine!
 
-    ImGui::Markdown(text, strlen(text), md_config);
+If you are interested in helping development, there are a few ways you can do that:
+- Help develop [Junior's Toolbox](https://github.com/JoshuaMKW/JuniorsToolbox) by forking the repository and contributing pull requests.
+- Help spread the word! Encourage like-minded enthusiasts to subscribe to the [Patreon](https://www.patreon.com/cw/JoshuaMK).
+- Develop cool Sunshine mods! The more content we make as a community, the more people will be interested in helping!
+)";
+#endif
+
+    ImGui::Markdown(markdown_.c_str(), markdown_.size(), md_config);
 }
