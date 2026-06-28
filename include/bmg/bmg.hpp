@@ -1,8 +1,12 @@
 #pragma once
 
+#include "objlib/meta/gameio.hpp"
 #include "serial.hpp"
+#include "unique.hpp"
+
 #include <functional>
 #include <iostream>
+#include <magic_enum.hpp>
 #include <map>
 #include <memory>
 #include <span>
@@ -11,31 +15,35 @@
 
 namespace Toolbox::BMG {
 
-    class CmdMessage : public ISerializable {
+    class CmdMessage : public IGameSerializable {
     public:
         CmdMessage() = default;
         CmdMessage(const std::string &message) : m_message_data(message) {}
-        CmdMessage(const CmdMessage &) = default;
-        CmdMessage(CmdMessage &&)      = default;
-        ~CmdMessage()                  = default;
+        CmdMessage(const CmdMessage &)     = default;
+        CmdMessage(CmdMessage &&) noexcept = default;
+        ~CmdMessage()                      = default;
 
+        CmdMessage &operator=(const CmdMessage &)     = default;
+        CmdMessage &operator=(CmdMessage &&) noexcept = default;
+
+    public:
         [[nodiscard]] std::size_t getDataSize() const;
-        [[nodiscard]] std::string getString() const;
+        [[nodiscard]] const std::string &getString() const;
         [[nodiscard]] std::string getSimpleString() const;
 
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
 
-        CmdMessage &operator=(const CmdMessage &) = default;
-        CmdMessage &operator=(CmdMessage &&)      = default;
-
-        bool operator==(const CmdMessage &other) const {
-            return m_message_data == other.m_message_data;
-        }
+        Result<void, SerialError> gameSerialize(Serializer &out) const override;
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
         void dump(std::ostream &out, size_t indention, size_t indention_width) const;
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
+
+        bool operator==(const CmdMessage &other) const {
+            return m_message_data == other.m_message_data;
+        }
 
     protected:
         std::vector<std::string> getParts() const;
@@ -43,6 +51,7 @@ namespace Toolbox::BMG {
         static std::optional<std::string> commandFromRaw(std::span<const char> command);
 
     private:
+        UUID64 m_uuid;
         std::string m_message_data;
     };
 
@@ -184,36 +193,91 @@ namespace Toolbox::BMG {
         BGM_FANFARE                    = 130,
     };
 
-    class MessageData : public ISerializable {
+    enum class MessageFlagSize : u16 {
+        FLAG_SIZE_SYSTEM,
+        FLAG_SIZE_UNK8,
+        FLAG_SIZE_NPC,
+    };
+
+    class MessageData : public IGameSerializable {
     public:
-        struct Entry {
-            std::string m_name            = "";
-            CmdMessage m_message          = CmdMessage();
-            MessageSound m_sound          = MessageSound::NOTHING;
-            u16 m_start_frame             = 0;
-            u16 m_end_frame               = 0;
-            std::vector<char> m_unk_flags = {};
+        class Entry : public ISerializable, public IUnique {
+        public:
+            friend class MessageData;
+
+            Entry()                  = default;
+            Entry(const Entry &)     = default;
+            Entry(Entry &&) noexcept = default;
+            ~Entry()                 = default;
+
+            Entry &operator=(const Entry &)     = default;
+            Entry &operator=(Entry &&) noexcept = default;
+
+        public:
+            [[nodiscard]] UUID64 getUUID() const override { return m_uuid; }
+
+            const std::string &getName() const { return m_name; }
+            void setName(const std::string &name) { m_name = name; }
+
+            const CmdMessage &getMessage() const { return m_message; }
+            void setMessage(const CmdMessage &message) { m_message = message; }
+            void setMessage(CmdMessage &&message) noexcept { m_message = std::move(message); }
+
+            MessageSound getSoundID() const { return m_sound; }
+            void setSoundID(MessageSound sound) { m_sound = sound; }
+
+            u16 getStartFrame() const { return m_start_frame; }
+            void setStartFrame(u16 start_frame) { m_start_frame = start_frame; }
+
+            u16 getEndFrame() const { return m_end_frame; }
+            void setEndFrame(u16 end_frame) { m_end_frame = end_frame; }
+
+            const std::vector<char> &getUnknownFlags() const { return m_unk_flags; }
+
+            Result<void, SerialError> serialize(Serializer &out) const override;
+            Result<void, SerialError> deserialize(Deserializer &in) override;
 
             bool operator==(const Entry &other) const {
                 return m_name == other.m_name && m_message == other.m_message &&
                        m_sound == other.m_sound && m_start_frame == other.m_start_frame &&
                        m_end_frame == other.m_end_frame && m_unk_flags == other.m_unk_flags;
             }
+
+        protected:
+            CmdMessage &getMessage() { return m_message; }
+
+        private:
+            UUID64 m_uuid;
+
+            std::string m_name            = "";
+            CmdMessage m_message          = CmdMessage();
+            MessageSound m_sound          = MessageSound::NOTHING;
+            u16 m_start_frame             = 0;
+            u16 m_end_frame               = 0;
+            std::vector<char> m_unk_flags = {};
         };
 
+    public:
         MessageData() = default;
-        MessageData(std::vector<Entry> entries) : m_entries(std::move(entries)) {}
-        MessageData(std::vector<Entry> entries, u8 flag_size)
+        MessageData(std::vector<Entry> &&entries) : m_entries(std::move(entries)) {}
+        MessageData(std::vector<Entry> &&entries, MessageFlagSize flag_size)
             : m_entries(std::move(entries)), m_flag_size(flag_size) {}
-        MessageData(std::vector<Entry> entries, bool has_str1)
+        MessageData(std::vector<Entry> &&entries, bool has_str1)
             : m_entries(std::move(entries)), m_has_str1(has_str1) {}
-        MessageData(std::vector<Entry> entries, u8 flag_size, bool has_str1)
-            : m_entries(std::move(entries)), m_flag_size(m_flag_size), m_has_str1(has_str1) {}
-        MessageData(const MessageData &) = default;
-        MessageData(MessageData &&)      = default;
-        ~MessageData()                   = default;
+        MessageData(std::vector<Entry> &&entries, MessageFlagSize flag_size, bool has_str1)
+            : m_entries(std::move(entries)), m_flag_size(flag_size), m_has_str1(has_str1) {}
+        MessageData(const MessageData &)     = default;
+        MessageData(MessageData &&) noexcept = default;
+        ~MessageData()                       = default;
 
+        MessageData &operator=(const MessageData &)     = default;
+        MessageData &operator=(MessageData &&) noexcept = default;
+
+    public:
         const std::vector<Entry> &entries() const { return m_entries; }
+
+        bool isNTSC() const { return !m_has_str1; }
+        MessageFlagSize getFlagSize() const { return m_flag_size; }
 
         const std::optional<Entry> getEntry(std::string_view name);
         const std::optional<Entry> getEntry(size_t index);
@@ -227,14 +291,15 @@ namespace Toolbox::BMG {
         bool insertEntry(size_t index, const Entry &entry);
         void removeEntry(const Entry &entry);
 
-        MessageData &operator=(const MessageData &) = default;
-
         void dump(std::ostream &out, size_t indention, size_t indention_width) const;
         void dump(std::ostream &out, size_t indention) const { dump(out, indention, 2); }
         void dump(std::ostream &out) const { dump(out, 0, 2); }
 
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
+
+        Result<void, SerialError> gameSerialize(Serializer &out) const override;
+        Result<void, SerialError> gameDeserialize(Deserializer &in) override;
 
     protected:
         static bool isMagicValid(Deserializer &in);
@@ -243,10 +308,15 @@ namespace Toolbox::BMG {
     private:
         std::vector<Entry> m_entries = {};
 
-        u16 m_flag_size = 12;
+        MessageFlagSize m_flag_size = MessageFlagSize::FLAG_SIZE_NPC;
 
         // Message names, PAL only
         bool m_has_str1 = false;
     };
 
 }  // namespace Toolbox::BMG
+
+template <> struct magic_enum::customize::enum_range<Toolbox::BMG::MessageSound> {
+    static constexpr int min = 0;
+    static constexpr int max = 135;
+};

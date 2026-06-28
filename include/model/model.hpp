@@ -19,6 +19,7 @@
 #include "fsystem.hpp"
 #include "image/imagehandle.hpp"
 #include "unique.hpp"
+#include "smart_resource.hpp"
 
 namespace Toolbox {
 
@@ -112,10 +113,13 @@ namespace Toolbox {
         } m_data = {};
     };
 
-    class IDataModel : public IUnique {
+    class IDataModel : public IUnique, public Referable<IDataModel> {
     public:
         using index_container  = std::vector<ModelIndex>;
         using event_listener_t = std::function<void(const ModelIndex &index, int flags)>;
+
+        RefPtr<IDataModel> reference() { return shared_from_this(); }
+        RefPtr<const IDataModel> reference() const { return shared_from_this(); }
 
     public:
         [[nodiscard]] virtual bool validateIndex(const ModelIndex &index) const {
@@ -196,12 +200,12 @@ namespace Toolbox {
     class ModelIndexListTransformer {
     public:
         ModelIndexListTransformer() = delete;
-        ModelIndexListTransformer(RefPtr<IDataModel> model) : m_model(model) {}
+        ModelIndexListTransformer(RefPtr<const IDataModel> model) : m_model(model) {}
 
         void pruneRedundantsForRecursiveTree(IDataModel::index_container &indexes) const;
 
     private:
-        RefPtr<IDataModel> m_model;
+        RefPtr<const IDataModel> m_model;
     };
 
     class ModelHistoryHandler : public IUnique {
@@ -248,7 +252,13 @@ namespace Toolbox {
 
     public:
         ModelHistoryHandler(RefPtr<IDataModel> model);
+        
+        ModelHistoryHandler(const ModelHistoryHandler &) = delete;
+        ModelHistoryHandler(ModelHistoryHandler &&) noexcept = default;
         virtual ~ModelHistoryHandler();
+
+        ModelHistoryHandler &operator=(const ModelHistoryHandler &) = delete;
+        ModelHistoryHandler &operator=(ModelHistoryHandler &&) noexcept = default;
 
         UUID64 getUUID() const override { return m_uuid; }
 

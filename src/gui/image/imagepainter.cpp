@@ -22,6 +22,7 @@ namespace Toolbox::UI {
         ImGui::Image((ImTextureID)image.m_image_handle, size, m_uv0, m_uv1, m_tint_color,
                      m_border_color);
         ImGui::SetCursorScreenPos(orig_pos);
+        ImGui::Dummy({0, 0});
         return true;
     }
 

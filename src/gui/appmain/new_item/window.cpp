@@ -1,5 +1,6 @@
-#include "gui/appmain/new_item/window.hpp"
 #include "gui/appmain/application.hpp"
+#include "gui/appmain/bmgeditor/window.hpp"
+#include "gui/appmain/new_item/window.hpp"
 #include "gui/appmain/scene/window.hpp"
 
 #include "resource/resource.hpp"
@@ -25,7 +26,13 @@ namespace Toolbox::UI {
                          }),
         _BuiltinItemInfo("Message Data", ".bmg", "A message list with metadata descriptors.",
             "FileSystem/fs_bmg.png",
-            [](const fs_path &context_path) -> RefPtr<SceneWindow> { return nullptr; }),
+                         [](const fs_path &context_path) -> RefPtr<BMGEditorWindow> {
+                             RefPtr<BMGEditorWindow> window =
+                                 MainApplication::instance().createWindow<BMGEditorWindow>(
+                                     "BMG Editor");
+                             //window->onLoadData(context_path);
+                             return window;
+                         }),
         _BuiltinItemInfo(
             "Parameter Data", ".prm", "A parameter sheet for tuning behaviors.",
             "FileSystem/fs_prm.png",

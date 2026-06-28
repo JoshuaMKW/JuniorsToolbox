@@ -52,6 +52,30 @@ namespace Toolbox::BMG {
         {"\x1A\x05\x02\x00\x06"s,     "{record:race_noki}"   },
     };
 
+    static u16 GetValueFromMessageFlagSize(MessageFlagSize size) {
+        switch (size) {
+        case MessageFlagSize::FLAG_SIZE_SYSTEM:
+            return 4;
+        case MessageFlagSize::FLAG_SIZE_UNK8:
+            return 8;
+        case MessageFlagSize::FLAG_SIZE_NPC:
+            return 12;
+        }
+        return 0;
+    }
+
+    static MessageFlagSize GetMessageFlagSizeFromValue(u16 value) {
+        switch (value) {
+        case 4:
+            return MessageFlagSize::FLAG_SIZE_SYSTEM;
+        case 8:
+            return MessageFlagSize::FLAG_SIZE_UNK8;
+        case 12:
+            return MessageFlagSize::FLAG_SIZE_NPC;
+        }
+        return MessageFlagSize::FLAG_SIZE_NPC;
+    }
+
     std::size_t CmdMessage::getDataSize() const {
         std::vector<std::string> parts = getParts();
         size_t size                    = 0;
@@ -66,7 +90,7 @@ namespace Toolbox::BMG {
         return size;
     }
 
-    std::string CmdMessage::getString() const { return m_message_data; }
+    const std::string &CmdMessage::getString() const { return m_message_data; }
 
     std::string CmdMessage::getSimpleString() const {
         std::vector<std::string> parts = getParts();
@@ -81,6 +105,16 @@ namespace Toolbox::BMG {
     }
 
     Result<void, SerialError> CmdMessage::serialize(Serializer &out) const {
+        out.write<u64>(m_uuid);
+        return gameSerialize(out);
+    }
+
+    Result<void, SerialError> CmdMessage::deserialize(Deserializer &in) {
+        m_uuid = in.read<u64>();
+        return gameDeserialize(in);
+    }
+
+    Result<void, SerialError> CmdMessage::gameSerialize(Serializer &out) const {
         std::vector<std::string> parts = getParts();
         for (auto &part : parts) {
             auto result = rawFromCommand(part);
@@ -93,7 +127,7 @@ namespace Toolbox::BMG {
         return {};
     }
 
-    Result<void, SerialError> CmdMessage::deserialize(Deserializer &in) {
+    Result<void, SerialError> CmdMessage::gameDeserialize(Deserializer &in) {
         m_message_data.clear();
 
         while (true) {
@@ -297,7 +331,7 @@ namespace Toolbox::BMG {
 
     const std::optional<MessageData::Entry> MessageData::getEntry(std::string_view name) {
         for (auto &entry : m_entries) {
-            if (entry.m_name == name)
+            if (entry.getName() == name)
                 return entry;
         }
         return {};
@@ -314,13 +348,13 @@ namespace Toolbox::BMG {
     }
 
     size_t MessageData::getINF1Size() const {
-        return (0x10 + (m_entries.size() * m_flag_size) + 0x1F) & ~0x1F;
+        return (0x10 + (m_entries.size() * GetValueFromMessageFlagSize(m_flag_size)) + 0x1F) & ~0x1F;
     }
 
     size_t MessageData::getDAT1Size() const {
         size_t size = std::accumulate(
             m_entries.begin(), m_entries.end(), size_t(9),
-            [](size_t sum, const Entry &entry) { return sum + entry.m_message.getDataSize(); });
+            [](size_t sum, const Entry &entry) { return sum + entry.getMessage().getDataSize(); });
         return (size + 0x1F) & ~0x1F;
     }
 
@@ -330,7 +364,7 @@ namespace Toolbox::BMG {
 
         size_t size = std::accumulate(
             m_entries.begin(), m_entries.end(), size_t(9),
-            [](size_t sum, const Entry &entry) { return sum + entry.m_name.size() + 1; });
+            [](size_t sum, const Entry &entry) { return sum + entry.getName().size() + 1; });
         return (size + 0x1F) & ~0x1F;
     }
 
@@ -383,17 +417,25 @@ namespace Toolbox::BMG {
         out << indention_str << "BMG Data (Flag Size: " << static_cast<size_t>(m_flag_size) << ") {"
             << std::endl;
         for (auto &entry : m_entries) {
-            std::string name = entry.m_name.empty() ? "(Unknown)" : entry.m_name;
-            out << value_indention_str << name << " (" << entry.m_start_frame << ", "
-                << entry.m_end_frame << ", " << magic_enum::enum_name(entry.m_sound) << ") {"
+            std::string name = entry.getName().empty() ? "(Unknown)" : entry.getName();
+            out << value_indention_str << name << " (" << entry.getStartFrame() << ", "
+                << entry.getEndFrame() << ", " << magic_enum::enum_name(entry.getSoundID()) << ") {"
                 << std::endl;
-            entry.m_message.dump(out, indention + 2, indention_width);
+            entry.getMessage().dump(out, indention + 2, indention_width);
             out << value_indention_str << "}" << std::endl;
         }
         out << indention_str << "}" << std::endl;
     }
 
     Result<void, SerialError> MessageData::serialize(Serializer &out) const {
+        return gameSerialize(out);
+    }
+
+    Result<void, SerialError> MessageData::deserialize(Deserializer &in) {
+        return gameDeserialize(in);
+    }
+
+    Result<void, SerialError> MessageData::gameSerialize(Serializer &out) const {
         // Header
         out.write<u32, std::endian::big>('MESG');
         out.write<u32, std::endian::big>('bmg1');
@@ -405,7 +447,7 @@ namespace Toolbox::BMG {
         out.write<u32, std::endian::big>('INF1');
         out.write<u32, std::endian::big>(static_cast<u32>(getINF1Size()));
         out.write<u16, std::endian::big>(static_cast<u16>(m_entries.size()));
-        out.write<u16, std::endian::big>(m_flag_size);
+        out.write<u16, std::endian::big>(GetValueFromMessageFlagSize(m_flag_size));
         out.write<u32, std::endian::big>(0x80000);  // Unknown
 
         size_t data_offset = 1;  // Padding
@@ -413,27 +455,30 @@ namespace Toolbox::BMG {
 
         for (auto &entry : m_entries) {
             out.write<u32, std::endian::big>(static_cast<u32>(data_offset));
-            if (m_flag_size == 12) {
-                out.write<u16, std::endian::big>(entry.m_start_frame);
-                out.write<u16, std::endian::big>(entry.m_end_frame);
+            switch (m_flag_size) {
+            case MessageFlagSize::FLAG_SIZE_SYSTEM:
+                break;
+            case MessageFlagSize::FLAG_SIZE_UNK8:
+                out.writeBytes(entry.getUnknownFlags());
+                out.seek(std::max(size_t(0), 4 - entry.getUnknownFlags().size()));
+                break;
+            case MessageFlagSize::FLAG_SIZE_NPC:
+                out.write<u16, std::endian::big>(entry.getStartFrame());
+                out.write<u16, std::endian::big>(entry.getEndFrame());
                 if (m_has_str1) {
                     out.write<u16, std::endian::big>(static_cast<u32>(name_offset));
-                    out.write<u8>(static_cast<u8>(entry.m_sound));
+                    out.write<u8>(static_cast<u8>(entry.getSoundID()));
                     out.seek(1);
                 } else {
-                    out.write<u8>(static_cast<u8>(entry.m_sound));
+                    out.write<u8>(static_cast<u8>(entry.getSoundID()));
                     out.seek(3);
                 }
-            } else if (m_flag_size == 8) {
-                out.writeBytes(entry.m_unk_flags);
-                out.seek(std::max(size_t(0), 4 - entry.m_unk_flags.size()));
-            } else if (m_flag_size == 4) {
-                // Nothing to do
-            } else {
+                break;
+            default:
                 return make_serial_error<void>(out, "Invalid flag size");
             }
-            data_offset += entry.m_message.getDataSize();
-            name_offset += entry.m_name.size() + 1;
+            data_offset += entry.getMessage().getDataSize();
+            name_offset += entry.getName().size() + 1;
         }
 
         // Align stream
@@ -445,7 +490,7 @@ namespace Toolbox::BMG {
         out.write<char>(0);  // Padding
 
         for (auto &entry : m_entries) {
-            auto result = entry.m_message.serialize(out);
+            auto result = entry.getMessage().gameSerialize(out);
             if (!result)
                 return std::unexpected(result.error());
         }
@@ -460,7 +505,7 @@ namespace Toolbox::BMG {
             out.write<char>(0);  // Padding
 
             for (auto &entry : m_entries) {
-                out.writeCString(entry.m_name);
+                out.writeCString(entry.getName());
             }
         }
 
@@ -470,7 +515,7 @@ namespace Toolbox::BMG {
         return {};
     }
 
-    Result<void, SerialError> MessageData::deserialize(Deserializer &in) {
+    Result<void, SerialError> MessageData::gameDeserialize(Deserializer &in) {
         if (!isMagicValid(in)) {
             return make_serial_error<void>(in, "Magic of BMG is invalid! (Expected MESGbmg1)");
         }
@@ -495,7 +540,7 @@ namespace Toolbox::BMG {
         in.seek(0x10);  // Padding
 
         size_t message_count = 0;
-        m_flag_size          = 0;
+        m_flag_size          = MessageFlagSize::FLAG_SIZE_NPC;
 
         std::vector<size_t> data_offsets;
         std::vector<size_t> name_offsets;
@@ -513,27 +558,30 @@ namespace Toolbox::BMG {
                         -8);
                 }
                 message_count = in.read<u16, std::endian::big>();
-                m_flag_size   = in.read<u16, std::endian::big>();
+                m_flag_size   = GetMessageFlagSizeFromValue(in.read<u16, std::endian::big>());
                 in.seek(4);  // Unknown values
 
                 for (size_t j = 0; j < message_count; ++j) {
                     Entry entry;
                     data_offsets.push_back(in.read<u32, std::endian::big>());
-                    if (m_flag_size == 12) {
-                        entry.m_start_frame = in.read<u16, std::endian::big>();
-                        entry.m_end_frame   = in.read<u16, std::endian::big>();
+                    switch (m_flag_size) {
+                    case MessageFlagSize::FLAG_SIZE_SYSTEM:
+                        break;
+                    case MessageFlagSize::FLAG_SIZE_UNK8:
+                        entry.m_unk_flags.resize(4);
+                        in.readBytes(entry.m_unk_flags);
+                        break;
+                    case MessageFlagSize::FLAG_SIZE_NPC:
+                        entry.setStartFrame(in.read<u16, std::endian::big>());
+                        entry.setEndFrame(in.read<u16, std::endian::big>());
                         if (m_has_str1) {
                             name_offsets.push_back(in.read<u16, std::endian::big>());
                         }
-                        entry.m_sound = magic_enum::enum_cast<MessageSound>(in.read<u8>())
-                                            .value_or(MessageSound::NOTHING);
+                        entry.setSoundID(magic_enum::enum_cast<MessageSound>(in.read<u8>())
+                                             .value_or(MessageSound::NOTHING));
                         in.seek(m_has_str1 ? 1 : 3);
-                    } else if (m_flag_size == 8) {
-                        entry.m_unk_flags.resize(4);
-                        in.readBytes(entry.m_unk_flags);
-                    } else if (m_flag_size == 4) {
-                        // Nothing to do
-                    } else {
+                        break;
+                    default:
                         return make_serial_error<void>(in, "Invalid flag size");
                     }
                     m_entries.push_back(entry);
@@ -547,7 +595,7 @@ namespace Toolbox::BMG {
                 in.seek(1);  // Skip padding
                 for (size_t i = 0; i < m_entries.size(); ++i) {
                     in.seek(section_start + data_offsets[i] + 8, std::ios::beg);
-                    auto result = m_entries[i].m_message.deserialize(in);
+                    auto result = m_entries[i].getMessage().gameDeserialize(in);
                     if (!result)
                         return std::unexpected(result.error());
 
@@ -576,12 +624,36 @@ namespace Toolbox::BMG {
                 in.seek(1);  // Skip padding
                 for (size_t i = 0; i < m_entries.size(); ++i) {
                     in.seek(section_start + name_offsets[i] + 8, std::ios::beg);
-                    m_entries[i].m_name = in.readCString(
-                        section_size - (static_cast<size_t>(in.tell()) - section_start));
+                    m_entries[i].setName(in.readCString(
+                        section_size - (static_cast<size_t>(in.tell()) - section_start)));
                 }
             }
             in.alignTo(32);
         }
+
+        return {};
+    }
+
+    Result<void, SerialError> MessageData::Entry::serialize(Serializer &out) const {
+        out.writeString(m_name);
+
+        m_message.serialize(out);
+        out.write<u8>(static_cast<u8>(m_sound));
+        out.write<u16>(m_start_frame);
+        out.write<u16>(m_end_frame);
+        out.writeBytes(m_unk_flags);
+
+        return {};
+    }
+
+    Result<void, SerialError> MessageData::Entry::deserialize(Deserializer &in) {
+        m_name = in.readString();
+
+        m_message.deserialize(in);
+        m_sound       = static_cast<MessageSound>(in.read<u8>());
+        m_start_frame = in.read<u16>();
+        m_end_frame   = in.read<u16>();
+        in.readBytes(m_unk_flags);
 
         return {};
     }

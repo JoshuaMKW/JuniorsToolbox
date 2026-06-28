@@ -179,6 +179,7 @@ namespace Toolbox {
             m_resource_manager.includeResourcePath(cwd / "Fonts/Markdown", true);
             m_resource_manager.includeResourcePath(cwd / "Images", true);
             m_resource_manager.includeResourcePath(cwd / "Images", true);
+            m_resource_manager.includeResourcePath(cwd / "Images/BMGEditor", true);
             m_resource_manager.includeResourcePath(cwd / "Images/Icons", true);
             m_resource_manager.includeResourcePath(cwd / "Images/Icons/Filesystem", true);
             // m_resource_manager.includeResourcePath(cwd / "Templates", false);
@@ -188,15 +189,15 @@ namespace Toolbox {
         // Copy local assets to AppData path
         {
             const fs_path app_data_path = MainApplication::instance().getAppDataPath();
-            const fs_path local_path = "AppData";
+            const fs_path local_path    = "AppData";
             if (!Filesystem::is_directory(local_path).value_or(false)) {
                 TOOLBOX_ERROR("[INIT] Failed to find local AppData path");
                 return;
             }
             Filesystem::create_directories(app_data_path);
             Filesystem::copy(local_path, app_data_path,
-                                Filesystem::copy_options::recursive |
-                                    Filesystem::copy_options::overwrite_existing);
+                             Filesystem::copy_options::recursive |
+                                 Filesystem::copy_options::overwrite_existing);
             if (!Filesystem::is_directory(app_data_path).value_or(false)) {
                 TOOLBOX_ERROR("[INIT] Failed to copy assets to APPDATA");
                 return;
@@ -897,10 +898,6 @@ namespace Toolbox {
             }
 
             ImGui::SeparatorText("Asset Editors");
-
-            // if (ImGui::MenuItem("BMG")) {
-            //     // TODO: createWindow<BMGEditorWindow>("BMG Editor");
-            // }
 
             if (ImGui::MenuItem("PAD")) {
                 createWindow<PadInputWindow>("Pad Recorder");
