@@ -38,7 +38,7 @@ namespace Toolbox::UI {
 
         virtual size_t getPageCount(const BMG::MessageData::Entry &message) const = 0;
 
-        virtual bool render(ImagePainter &painter, const BMG::MessageData::Entry &message,
+        virtual bool render(const ImRect &render_rect, const BMG::MessageData::Entry &message,
                             size_t current_page) = 0;
     };
 
@@ -59,13 +59,13 @@ namespace Toolbox::UI {
         BMGEditorWindow(const std::string &name);
         ~BMGEditorWindow() = default;
 
-    protected:
+    public:
         static int GetExTextPaddingFromChar(char character);
         static int GetExTextPaddingFromChar(uint8_t character);
         static ImVec4 GetTextColorFromIndex(size_t index);
 
-        static u32 GetFruitIDFromIndex(size_t index);
-        static std::string GetSampleRecordFromIndex(size_t index);
+        static std::string_view GetFruitIDFromIndex(size_t index);
+        static std::string_view GetSampleRecordFromIndex(size_t index);
 
     protected:
         void onRenderMenuBar() override;
@@ -116,7 +116,11 @@ namespace Toolbox::UI {
             };
         }
 
-        [[nodiscard]] std::string context() const override { return "IMPLEMENT THIS"; }
+        [[nodiscard]] std::string context() const override {
+            if (m_io_context_path.empty())
+                return "(unknown)";
+            return m_io_context_path.string();
+        }
 
         [[nodiscard]] bool unsaved() const override { return false; }
 

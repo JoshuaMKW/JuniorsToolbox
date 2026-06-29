@@ -14,11 +14,13 @@ namespace Toolbox::UI {
         ImVec2 getUV1(const ImVec2 &uv1) const { return m_uv1; }
         ImVec4 getTintColor(const ImVec4 &color) const { return m_tint_color; }
         ImVec4 getBorderColor(const ImVec4 &color) const { return m_border_color; }
+        float getRotation() const { return m_rotation; }
 
         void setUV0(const ImVec2 &uv0) { m_uv0 = uv0; }
         void setUV1(const ImVec2 &uv1) { m_uv1 = uv1; }
         void setTintColor(const ImVec4 &color) { m_tint_color = color; }
         void setBorderColor(const ImVec4 &color) { m_border_color = color; }
+        void setRotation(float rotation) { m_rotation = rotation; }
 
         bool render(const ImageHandle &image) const;
         bool render(const ImageHandle &image, const ImVec2 &size) const;
@@ -27,10 +29,11 @@ namespace Toolbox::UI {
         bool renderOverlay(const ImageHandle &image, const ImVec2 &pos, const ImVec2 &size) const;
 
     private:
-        ImVec2 m_uv0 = {0, 0};
-        ImVec2 m_uv1 = {1, 1};
-        ImVec4 m_tint_color = {1, 1, 1, 1};
+        ImVec2 m_uv0          = {0, 0};
+        ImVec2 m_uv1          = {1, 1};
+        ImVec4 m_tint_color   = {1, 1, 1, 1};
         ImVec4 m_border_color = {0, 0, 0, 0};
+        float m_rotation      = 0.0f;
     };
 
 }  // namespace Toolbox::UI

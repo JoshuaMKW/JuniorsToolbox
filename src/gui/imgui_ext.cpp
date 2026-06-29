@@ -2364,6 +2364,148 @@ ImVec2 ImGui::CalcTextWrappedWithAlignRect(float align_x, float size_x, const ch
                   font_size * line_info_count + style.ItemSpacing.y * (line_info_count - 1));
 }
 
+float ImGui::TextSplineEx(float start_t, const Toolbox::ISpline2D *spline, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    ImGuiWindow *window = GetCurrentWindow();
+    if (window->SkipItems)
+        return start_t;
+
+    const ImGuiStyle &style = GetStyle();
+
+    ImDrawList *draw_list   = ImGui::GetWindowDrawList();
+    ImFont *font            = ImGui::GetFont();
+    ImFontBaked *font_baked = ImGui::GetFontBaked();
+    ImFontAtlas *atlas      = font->OwnerAtlas;
+
+    const ImVec2 cursor_screen_pos = ImGui::GetCursorScreenPos();
+    const float font_size = ImGui::GetFontSize();
+
+    const char *text, *text_end;
+    ImFormatStringToTempBufferV(&text, &text_end, fmt, args);
+    
+    float current_t = ImGui::TextSplineUnformattedEx(start_t, spline, text, text_end);
+
+    va_end(args);
+    return current_t;
+}
+
+void ImGui::TextSpline(const Toolbox::ISpline2D *spline, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    TextSplineEx(0.0f, spline, fmt, args);
+
+    va_end(args);
+}
+
+float ImGui::TextSplineUnformattedEx(float start_t, const Toolbox::ISpline2D *spline,
+                                    const char *text, const char *text_end) {
+    ImGuiWindow *window = GetCurrentWindow();
+    if (window->SkipItems)
+        return start_t;
+
+    const ImGuiStyle &style = GetStyle();
+
+    ImDrawList *draw_list   = ImGui::GetWindowDrawList();
+    ImFont *font            = ImGui::GetFont();
+    ImFontBaked *font_baked = ImGui::GetFontBaked();
+    ImFontAtlas *atlas      = font->OwnerAtlas;
+
+    const ImVec2 cursor_screen_pos = ImGui::GetCursorScreenPos();
+    const float font_size          = ImGui::GetFontSize();
+
+    if (text_end == nullptr) {
+        text_end = text + strlen(text);
+    }
+    const size_t text_len = std::distance(text, text_end);
+
+    const float spline_length = spline->getLength();
+
+    float current_t        = start_t;
+    float current_distance = spline->getLengthFromInterpolation(start_t);
+    float max_distance     = spline->getLength();
+
+    for (size_t i = 0; i < text_len; ++i) {
+        const char c = text[i];
+
+        if (current_distance >= max_distance) {
+            break;
+        }
+
+#if 0
+        const ImFontGlyph *glyph = font_baked->FindGlyph(c);
+        if (!glyph) {
+            continue;
+        }
+
+        Toolbox::ISpline2D::PathPoint point = spline->getInterpolatedPoint(current_t);
+
+        float cos_a = std::cos(point.m_tan_rotation);
+        float sin_a = std::sin(point.m_tan_rotation);
+
+        // Define the 4 corners of the character relative to a (0,0) origin
+        // glyph->X0/Y0/X1/Y1 handles the specific kerning/baseline offsets (like the tail of a 'y'
+        // hanging down)
+        ImVec2 p0(glyph->X0 * font_size, glyph->Y0 * font_size);  // Top Left
+        ImVec2 p1(glyph->X1 * font_size, glyph->Y0 * font_size);  // Top Right
+        ImVec2 p2(glyph->X1 * font_size, glyph->Y1 * font_size);  // Bottom Right
+        ImVec2 p3(glyph->X0 * font_size, glyph->Y1 * font_size);  // Bottom Left
+
+        auto rotate_and_translate = [&](const ImVec2 &p) {
+            return ImVec2(point.m_x + (p.x * cos_a - p.y * sin_a),
+                          point.m_y + (p.x * sin_a + p.y * cos_a));
+        };
+
+        draw_list->AddImageQuad(atlas->TexID, rotate_and_translate(p0), rotate_and_translate(p1),
+                                rotate_and_translate(p2), rotate_and_translate(p3),
+                                ImVec2(glyph->U0, glyph->V0),  // UV Top Left
+                                ImVec2(glyph->U1, glyph->V0),  // UV Top Right
+                                ImVec2(glyph->U1, glyph->V1),  // UV Bottom Right
+                                ImVec2(glyph->U0, glyph->V1),  // UV Bottom Left
+                                ImGui::GetColorU32(ImGuiCol_Text));
+
+        current_distance += glyph->AdvanceX * font_size;
+        current_t = spline->getInterpolationFromLength(current_distance);
+#else
+        const ImFontGlyph *glyph = font_baked->FindGlyph(c);
+        if (!glyph) {
+            continue;
+        }
+
+        Toolbox::ISpline2D::PathPoint point = spline->getInterpolatedPoint(current_t);
+
+        const float cos_a = std::cos(point.m_tan_rotation);
+        const float sin_a = std::sin(point.m_tan_rotation);
+
+        const int vtx_idx_begin = draw_list->_VtxCurrentIdx;
+
+        // Render the character as if it was drawn at exactly (0,0)
+        const ImVec2 pivot_in(0.0f, 0.0f);
+        const ImVec2 pivot_out = cursor_screen_pos + ImVec2(point.m_x, point.m_y);
+
+        font->RenderChar(draw_list, font_size, pivot_in, ImColor(style.Colors[ImGuiCol_Text]), c);
+
+        const int vtx_idx_end = draw_list->_VtxCurrentIdx;
+
+        // Rotate and offset the generated vertices
+        ShadeVertsTransformPos(draw_list, vtx_idx_begin, vtx_idx_end, pivot_in, cos_a, sin_a,
+                               pivot_out);
+
+        current_distance += glyph->AdvanceX;
+        current_t = spline->getInterpolationFromLength(current_distance);
+#endif
+    }
+
+    return current_t;
+}
+
+void ImGui::TextSplineUnformatted(const Toolbox::ISpline2D *spline, const char *text,
+                                  const char *text_end) {
+    TextSplineUnformattedEx(0.0f, spline, text, text_end);
+}
+
 static bool IsRootOfOpenMenuSet() {
     ImGuiContext &g     = *GImGui;
     ImGuiWindow *window = g.CurrentWindow;
@@ -2536,7 +2678,7 @@ bool ImGui::SelectDockedWindow(const char *window_name, bool focus) {
     if (window && window->DockIsActive && window->DockNode) {
         ImGuiTabBar *tabBar = window->DockNode->TabBar;
         if (tabBar != nullptr) {
-            tabBar->SelectedTabId = window->TabId;
+            tabBar->SelectedTabId     = window->TabId;
             tabBar->NextSelectedTabId = window->TabId;
             return true;
         }

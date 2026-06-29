@@ -77,7 +77,7 @@ namespace Toolbox::BMG {
     }
 
     std::size_t CmdMessage::getDataSize() const {
-        std::vector<std::string> parts = getParts();
+        std::vector<std::string_view> parts = getParts();
         size_t size                    = 0;
         for (const auto &part : parts) {
             auto result = rawFromCommand(part);
@@ -93,7 +93,7 @@ namespace Toolbox::BMG {
     const std::string &CmdMessage::getString() const { return m_message_data; }
 
     std::string CmdMessage::getSimpleString() const {
-        std::vector<std::string> parts = getParts();
+        std::vector<std::string_view> parts = getParts();
         std::string txt;
         for (const auto &part : parts) {
             auto result = rawFromCommand(part);
@@ -115,7 +115,7 @@ namespace Toolbox::BMG {
     }
 
     Result<void, SerialError> CmdMessage::gameSerialize(Serializer &out) const {
-        std::vector<std::string> parts = getParts();
+        std::vector<std::string_view> parts = getParts();
         for (auto &part : parts) {
             auto result = rawFromCommand(part);
             if (!result) {
@@ -191,33 +191,35 @@ namespace Toolbox::BMG {
         }
     }
 
-    std::vector<std::string> CmdMessage::getParts() const {
-        std::vector<std::string> parts;
+    std::vector<std::string_view> CmdMessage::getParts() const {
+        std::vector<std::string_view> parts;
 
         size_t bracket_l      = 0;
         size_t bracket_r      = 0;
         size_t next_bracket_l = 0;
 
-        if (m_message_data.find('{') == std::string::npos) {
-            parts.push_back(m_message_data);
+        std::string_view message_view = m_message_data;
+
+        if (message_view.find('{') == std::string::npos) {
+            parts.push_back(message_view);
             return parts;
         }
 
         while (bracket_r != std::string::npos) {
-            bracket_l = m_message_data.find('{', bracket_r);
+            bracket_l = message_view.find('{', bracket_r);
 
             // If no more commands, return the end
             if (bracket_l == std::string::npos) {
-                if ((bracket_r + 1) < m_message_data.size()) {
-                    parts.push_back(m_message_data.substr(bracket_r + 1));
+                if ((bracket_r + 1) < message_view.size()) {
+                    parts.push_back(message_view.substr(bracket_r + 1));
                 }
                 break;
             }
 
-            std::string text = m_message_data.substr(bracket_r, bracket_l);
+            std::string_view text = message_view.substr(bracket_r, bracket_l);
 
-            bracket_r      = m_message_data.find('}', bracket_l);
-            next_bracket_l = m_message_data.find('{', bracket_l + 1);
+            bracket_r      = message_view.find('}', bracket_l);
+            next_bracket_l = message_view.find('{', bracket_l + 1);
 
             const bool isCommandEnclosed =
                 bracket_r < next_bracket_l && bracket_r != std::string::npos;
@@ -228,19 +230,19 @@ namespace Toolbox::BMG {
 
             if (!isCommandEnclosed) {
                 if (bracket_r == std::string::npos) {
-                    std::string trailing_text = m_message_data.substr(bracket_l);  // to the end
+                    std::string_view trailing_text = message_view.substr(bracket_l);  // to the end
                     if (!trailing_text.empty())
                         parts.push_back(std::string(trailing_text));
                     break;
                 }
-                std::string trailing_text = m_message_data.substr(bracket_l, next_bracket_l);
+                std::string_view trailing_text = message_view.substr(bracket_l, next_bracket_l);
                 if (!trailing_text.empty())
                     parts.push_back(trailing_text);
                 bracket_r = next_bracket_l;  // skip the bracket
                 continue;
             }
 
-            std::string command = m_message_data.substr(bracket_l, bracket_r + 1);
+            std::string_view command = message_view.substr(bracket_l, bracket_r + 1);
             if (!command.empty())
                 parts.push_back(command);
         }
@@ -264,7 +266,7 @@ namespace Toolbox::BMG {
             return std::vector<char>{0x1A, 0x06, 0x00, 0x00, 0x00, command.back()};
         }
 
-        if (command.starts_with("{options:")) {
+        if (command.starts_with("{option:")) {
             size_t command_split = command.rfind(':');
             auto message         = command.substr(command_split + 1);
 

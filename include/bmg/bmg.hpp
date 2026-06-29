@@ -31,6 +31,8 @@ namespace Toolbox::BMG {
         [[nodiscard]] const std::string &getString() const;
         [[nodiscard]] std::string getSimpleString() const;
 
+        [[nodiscard]] std::vector<std::string_view> getParts() const;
+
         Result<void, SerialError> serialize(Serializer &out) const override;
         Result<void, SerialError> deserialize(Deserializer &in) override;
 
@@ -46,7 +48,6 @@ namespace Toolbox::BMG {
         }
 
     protected:
-        std::vector<std::string> getParts() const;
         static std::optional<std::vector<char>> rawFromCommand(std::string_view command);
         static std::optional<std::string> commandFromRaw(std::span<const char> command);
 

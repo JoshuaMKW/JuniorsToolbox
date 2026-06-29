@@ -5,6 +5,7 @@
 #include "gui/appmain/application.hpp"
 #include "gui/appmain/bmgeditor/window.hpp"
 #include "gui/logging/errors.hpp"
+#include "spline.hpp"
 
 constexpr float SplitterWidth = 6.0f;
 
@@ -12,14 +13,237 @@ namespace Toolbox::UI {
 
     class BMGEditorViewNPC final : public IBMGEditorView {
     public:
+        BMGEditorViewNPC(bool is_mirrored) {
+            static const std::vector<CatmullSpline2D::ControlPoint> control_points = {
+                {-1.0f, 0.8f},
+                {0.0f,  0.0f},
+                {1.0f,  0.0f},
+                {2.0f,  0.8f},
+            };
+
+            ScopePtr<CatmullSpline2D> spline = make_scoped<CatmullSpline2D>(control_points);
+            spline->setScale(400.0f);
+            // spline->setRotate(IM_PI * 0.15f);
+
+            m_talk_spline = std::move(spline);
+
+            ResourceManager &manager = MainApplication::instance().getResourceManager();
+
+            const UUID64 editor_dir_uuid = manager.getResourcePathUUID("Images/BMGEditor");
+
+            m_talk_line_image =
+                manager.getImageHandle("message_back.png", editor_dir_uuid).value_or(nullptr);
+            m_talk_button_image = manager.getImageHandle("message_button_back.png", editor_dir_uuid)
+                                      .value_or(nullptr);
+            m_talk_arrow_image =
+                manager.getImageHandle("message_cursor.png", editor_dir_uuid).value_or(nullptr);
+            m_talk_exit_image =
+                manager.getImageHandle("message_return.png", editor_dir_uuid).value_or(nullptr);
+            m_talk_option_image = manager.getImageHandle("message_option_back.png", editor_dir_uuid)
+                                      .value_or(nullptr);
+        }
         ~BMGEditorViewNPC() override = default;
 
         size_t getPageCount(const BMG::MessageData::Entry &message) const override { return 0; }
 
-        bool render(ImagePainter &painter, const BMG::MessageData::Entry &message,
+        bool render(const ImRect &render_rect, const BMG::MessageData::Entry &message,
                     size_t current_page) override {
-            return false;
+            m_talk_options[0] = "";
+            m_talk_options[1] = "";
+
+            const std::string &message_str = message.getMessage().getString();
+            if (message_str.empty()) {
+                return false;
+            }
+
+            const float render_factor = render_rect.GetSize().x / 600.0f;
+
+            const float font_size        = 15.0f;
+            const float scaled_font_size = font_size * render_factor;
+
+            ImGui::SetCursorScreenPos(render_rect.Min);
+
+            std::vector<std::string_view> message_lines;
+            message_lines.reserve(64);
+
+            size_t newline_pos = 0;
+            size_t current_pos = 0;
+            while (true) {
+                newline_pos = std::min(message_str.find('\n', current_pos), message_str.size());
+
+                message_lines.push_back(
+                    std::string_view(message_str.c_str() + current_pos, newline_pos - current_pos));
+
+                if (newline_pos + 1 >= message_str.size()) {
+                    break;
+                }
+
+                current_pos = newline_pos + 1;
+            }
+
+            const size_t render_line_base = (current_page * 3);
+            const size_t render_line_count =
+                std::clamp<size_t>(message_lines.size() - render_line_base, 0, 3);
+
+            ImFont *font = FontManager::instance().getFont("BMGEditor/sms_message");
+            ImGui::PushFont(font, scaled_font_size);
+
+            const ImVec4 text_color_backup = ImGui::GetStyle().Colors[ImGuiCol_Text];
+
+            ImagePainter message_painter;
+            message_painter.setRotation(IM_PI * 0.10f);
+            message_painter.setTintColor({1.0f, 1.0f, 1.0f, 0.8f});
+
+            for (size_t i = 0; i < render_line_count; ++i) {
+                ImGui::SetCursorScreenPos(render_rect.Min);
+
+                const ImVec2 spline_translation = {(285.0f - i * 7.0f) * render_factor,
+                                                   (22.0f + i * 23.0f) * render_factor};
+
+                if (m_talk_line_image) {
+                    const auto [image_width, image_height] = m_talk_line_image->size();
+                    const ImVec2 render_size =
+                        ImVec2(220.0f * render_factor,
+                               image_height * (220.0f / image_width) * render_factor);
+                    message_painter.render(*m_talk_line_image,
+                                           render_rect.Min + spline_translation +
+                                               ImVec2(-5.0f, -22.0f) * render_factor,
+                                           render_size);
+                }
+
+                m_talk_spline->setTranslate(spline_translation.x, spline_translation.y);
+                m_talk_spline->setRotate(IM_PI * 0.1125f);
+                m_talk_spline->setScale(210.0f * render_factor);
+
+                std::string_view line_text = message_lines[i];
+                renderLine(line_text);
+            }
+
+            ImGui::GetStyle().Colors[ImGuiCol_Text] = text_color_backup;
+
+            ImGui::PopFont();
+            return true;
         }
+
+        void renderLine(std::string_view line) {
+            size_t current_pos = 0;
+            size_t end_pos     = 0;
+
+            float spline_lerp = 0.0f;
+
+            while (true) {
+                if (current_pos >= line.size()) {
+                    break;
+                }
+
+                if (spline_lerp >= 1.0f) {
+                    break;
+                }
+
+                if (line.at(current_pos) == '{') {
+                    size_t r_pos = line.find('}', current_pos);
+                    if (r_pos != std::string_view::npos) {
+                        std::string_view command =
+                            line.substr(current_pos, r_pos - current_pos + 1);
+                        spline_lerp = renderCommand(spline_lerp, command);
+                        current_pos = r_pos + 1;
+                        continue;
+                    }
+                }
+
+                end_pos = line.find('{', current_pos);
+                if (end_pos == std::string_view::npos) {
+                    std::string_view trailing = line.substr(current_pos);
+                    spline_lerp = ImGui::TextSplineUnformattedEx(spline_lerp, m_talk_spline.get(),
+                                                                 trailing.data(),
+                                                                 trailing.data() + trailing.size());
+                    break;
+                }
+
+                std::string_view slice = line.substr(current_pos, end_pos - current_pos);
+                spline_lerp            = ImGui::TextSplineUnformattedEx(
+                    spline_lerp, m_talk_spline.get(), slice.data(), slice.data() + slice.size());
+                current_pos = end_pos;
+            }
+        }
+
+        float renderCommand(float spline_lerp, std::string_view command) {
+            if (command.starts_with("{speed:")) {
+                if (command.size() <= 7) {
+                    TOOLBOX_WARN("[BMG_PREVIEW] Received incomplete speed command!");
+                    return spline_lerp;
+                }
+
+                std::string_view speed_val = command.substr(7, command.size() - 7);
+                int speed                  = StringToTypedIntegral<int>(speed_val).value_or(0);
+                return spline_lerp;  // TODO: At some point we will emulate playing the message
+            }
+
+            if (command.starts_with("{option:")) {
+                if (command.size() <= 10) {
+                    TOOLBOX_WARN("[BMG_PREVIEW] Received incomplete option command!");
+                    return spline_lerp;
+                }
+
+                size_t command_split = command.rfind(':');
+                std::string_view message =
+                    command.substr(command_split + 1, command.size() - (command_split + 1) - 1);
+
+                u8 option =
+                    StringToTypedIntegral<u8>(command.substr(9, command_split - 9)).value_or(0);
+                if (option > 1) {
+                    return spline_lerp;
+                }
+
+                m_talk_options[option] = std::string(message);
+                return spline_lerp;
+            }
+
+            if (command.starts_with("{ctx:")) {
+                std::string_view ctx_val  = command.substr(5, command.size() - 5 - 1);
+                size_t ctx_idx            = StringToTypedIntegral<size_t>(ctx_val).value_or(0);
+                std::string_view fruit_id = BMGEditorWindow::GetFruitIDFromIndex(ctx_idx);
+                return ImGui::TextSplineUnformattedEx(spline_lerp, m_talk_spline.get(),
+                                                      fruit_id.data(),
+                                                      fruit_id.data() + fruit_id.size());
+            }
+
+            if (command.starts_with("{color:")) {
+                constexpr std::array<std::string_view, 6> ArrayColorNameToIdx = {
+                    "white", "white_alt", "red", "yellow", "blue", "green"};
+                std::string_view color_val = command.substr(7, command.size() - 7 - 1);
+
+                size_t color_idx = 0;
+                for (size_t i = 0; i < ArrayColorNameToIdx.size(); ++i) {
+                    if (color_val == ArrayColorNameToIdx[i]) {
+                        color_idx = i;
+                        break;
+                    }
+                }
+
+                ImGui::GetStyle().Colors[ImGuiCol_Text] =
+                    BMGEditorWindow::GetTextColorFromIndex(color_idx);
+                return spline_lerp;
+            }
+
+            if (command.starts_with("{record:")) {
+                std::string_view record_val = command.substr(8, command.size() - 8 - 1);
+                size_t record_idx           = StringToTypedIntegral<size_t>(record_val).value_or(0);
+                std::string_view record     = BMGEditorWindow::GetSampleRecordFromIndex(record_idx);
+                return ImGui::TextSplineUnformattedEx(spline_lerp, m_talk_spline.get(),
+                                                      record.data(), record.data() + record.size());
+            }
+        }
+
+    private:
+        ScopePtr<CatmullSpline2D> m_talk_spline;
+        std::array<std::string, 2> m_talk_options;
+
+        RefPtr<const ImageHandle> m_talk_line_image;
+        RefPtr<const ImageHandle> m_talk_button_image;
+        RefPtr<const ImageHandle> m_talk_arrow_image;
+        RefPtr<const ImageHandle> m_talk_exit_image;
+        RefPtr<const ImageHandle> m_talk_option_image;
     };
 
     class BMGEditorViewBillboard final : public IBMGEditorView {
@@ -28,7 +252,7 @@ namespace Toolbox::UI {
 
         size_t getPageCount(const BMG::MessageData::Entry &message) const override { return 0; }
 
-        bool render(ImagePainter &painter, const BMG::MessageData::Entry &message,
+        bool render(const ImRect &render_rect, const BMG::MessageData::Entry &message,
                     size_t current_page) override {
             return false;
         }
@@ -40,7 +264,7 @@ namespace Toolbox::UI {
 
         size_t getPageCount(const BMG::MessageData::Entry &message) const override { return 0; }
 
-        bool render(ImagePainter &painter, const BMG::MessageData::Entry &message,
+        bool render(const ImRect &render_rect, const BMG::MessageData::Entry &message,
                     size_t current_page) override {
             return false;
         }
@@ -52,7 +276,7 @@ namespace Toolbox::UI {
 
         size_t getPageCount(const BMG::MessageData::Entry &message) const override { return 0; }
 
-        bool render(ImagePainter &painter, const BMG::MessageData::Entry &message,
+        bool render(const ImRect &render_rect, const BMG::MessageData::Entry &message,
                     size_t current_page) override {
             return false;
         }
@@ -67,7 +291,7 @@ namespace Toolbox::UI {
         case BMG::MessageFlagSize::FLAG_SIZE_NPC: {
             switch (style) {
             case EditorViewStyle::STYLE_NPC:
-                return make_scoped<BMGEditorViewNPC>();
+                return make_scoped<BMGEditorViewNPC>(false);
             case EditorViewStyle::STYLE_BOARD:
                 return make_scoped<BMGEditorViewBillboard>();
             case EditorViewStyle::STYLE_DEBS:
@@ -108,11 +332,30 @@ namespace Toolbox::UI {
 
     int BMGEditorWindow::GetExTextPaddingFromChar(uint8_t character) { return 0; }
 
-    ImVec4 BMGEditorWindow::GetTextColorFromIndex(size_t index) { return ImVec4(); }
+    constexpr float ColorNrm(int color) { return static_cast<float>(color) / 255.0f; }
 
-    u32 BMGEditorWindow::GetFruitIDFromIndex(size_t index) { return u32(); }
+    ImVec4 BMGEditorWindow::GetTextColorFromIndex(size_t index) {
+        constexpr std::array<ImVec4, 6> TextColorArray = {
+            ImVec4(ColorNrm(0xFF), ColorNrm(0xFF), ColorNrm(0xFF), ColorNrm(0xFF)),
+            ImVec4(ColorNrm(0xFF), ColorNrm(0xFF), ColorNrm(0xFF), ColorNrm(0xFF)),
+            ImVec4(ColorNrm(0xFF), ColorNrm(0xB4), ColorNrm(0x8C), ColorNrm(0xFF)),
+            ImVec4(ColorNrm(0x6E), ColorNrm(0xE6), ColorNrm(0xFF), ColorNrm(0xFF)),
+            ImVec4(ColorNrm(0xFF), ColorNrm(0xFF), ColorNrm(0x00), ColorNrm(0xFF)),
+            ImVec4(ColorNrm(0xAA), ColorNrm(0xFF), ColorNrm(0x50), ColorNrm(0xFF))};
 
-    std::string BMGEditorWindow::GetSampleRecordFromIndex(size_t index) { return std::string(); }
+        return index < TextColorArray.size() ? TextColorArray[index] : TextColorArray[0];
+    }
+
+    std::string_view BMGEditorWindow::GetFruitIDFromIndex(size_t index) {
+        constexpr std::array<std::string_view, 4> FruitIDArray = {"3", "3", "3", "3"};
+        return index < FruitIDArray.size() ? FruitIDArray[index] : FruitIDArray[0];
+    }
+
+    std::string_view BMGEditorWindow::GetSampleRecordFromIndex(size_t index) {
+        constexpr std::array<std::string_view, 7> RecordArray = {
+            "00:30:00", "00:35:00", "30", "1", "", "", "00:40:00"};
+        return index < RecordArray.size() ? RecordArray[index] : RecordArray[0];
+    }
 
     void BMGEditorWindow::onRenderMenuBar() {
         if (ImGui::BeginMenuBar()) {
@@ -140,17 +383,20 @@ namespace Toolbox::UI {
             }
 
             if (ImGui::BeginMenu("Flag Size")) {
-                const bool is_system = m_bmg_model->getFlagSize() == BMG::MessageFlagSize::FLAG_SIZE_SYSTEM;
+                const bool is_system =
+                    m_bmg_model->getFlagSize() == BMG::MessageFlagSize::FLAG_SIZE_SYSTEM;
                 if (ImGui::MenuItem("4 (System)", nullptr, is_system)) {
                     m_bmg_model->setFlagSize(BMG::MessageFlagSize::FLAG_SIZE_SYSTEM);
                 }
 
-                const bool is_unk8 = m_bmg_model->getFlagSize() == BMG::MessageFlagSize::FLAG_SIZE_UNK8;
+                const bool is_unk8 =
+                    m_bmg_model->getFlagSize() == BMG::MessageFlagSize::FLAG_SIZE_UNK8;
                 if (ImGui::MenuItem("8 (Unknown)", nullptr, is_unk8)) {
                     m_bmg_model->setFlagSize(BMG::MessageFlagSize::FLAG_SIZE_UNK8);
                 }
 
-                const bool is_npc = m_bmg_model->getFlagSize() == BMG::MessageFlagSize::FLAG_SIZE_NPC;
+                const bool is_npc =
+                    m_bmg_model->getFlagSize() == BMG::MessageFlagSize::FLAG_SIZE_NPC;
                 if (ImGui::MenuItem("12 (NPC)", nullptr, is_npc)) {
                     m_bmg_model->setFlagSize(BMG::MessageFlagSize::FLAG_SIZE_NPC);
                 }
@@ -223,21 +469,20 @@ namespace Toolbox::UI {
             const ImVec2 avail_region    = ImGui::GetContentRegionAvail();
             const float list_min_width   = getMessageListMinWidth();
             const float editor_min_width = getEditorGroupMinWidth();
-            const float total_splitter_gap = SplitterWidth + (style.WindowPadding.x * 2.0f);
-            
+
             if (m_list_width <= 0.0f || m_editor_width <= 0.0f) {
-                m_list_width   = avail_region.x * 0.3f;
+                m_list_width = avail_region.x * 0.3f;
             }
 
-            m_editor_width = avail_region.x - m_list_width - total_splitter_gap;
+            m_editor_width = avail_region.x - m_list_width - SplitterWidth;
 
             if (m_editor_width < editor_min_width) {
                 m_editor_width = editor_min_width;
-                m_list_width   = avail_region.x - m_editor_width - total_splitter_gap;
+                m_list_width   = avail_region.x - m_editor_width - SplitterWidth;
             }
             if (m_list_width < list_min_width) {
                 m_list_width   = list_min_width;
-                m_editor_width = avail_region.x - m_list_width - total_splitter_gap;
+                m_editor_width = avail_region.x - m_list_width - SplitterWidth;
             }
 
             const ImGuiID splitter_id = ImGui::GetID("##ViewSplitter");
@@ -246,27 +491,52 @@ namespace Toolbox::UI {
                 // On Splitter
             }
 
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() - ImGui::GetStyle().WindowPadding.x);
             renderMessagesList();
 
-            ImGui::SameLine(0.0f, style.WindowPadding.x);
-            ImGui::InvisibleButton("##ViewSplitter", ImVec2(SplitterWidth, avail_region.y));
-            ImGui::SameLine(0.0f, style.WindowPadding.x);
+            ImGui::SameLine(0.0f, 0.0f);
+            ImGui::Dummy(ImVec2(SplitterWidth, avail_region.y));
+            ImGui::SameLine(0.0f, 0.0f);
 
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetStyle().WindowPadding.x);
             renderMessageEditorGroup();
         }
     }
 
     void BMGEditorWindow::renderMessagesList() {
+        ImGuiStyle &style = ImGui::GetStyle();
+
+        const ImVec2 orig_window_padding = style.WindowPadding;
+        const ImVec4 orig_border_color   = style.Colors[ImGuiCol_Border];
+        const ImVec4 orig_border_shadow  = style.Colors[ImGuiCol_BorderShadow];
+
+        const ImVec2 this_window_padding = {style.WindowPadding.x, 1.0f};
+        const ImVec4 this_border_color   = {0.0f, 0.0f, 0.0f, 0.0f};
+        const ImVec4 this_border_shadow  = {0.0f, 0.0f, 0.0f, 0.0f};
+
         const int64_t row_count = static_cast<int64_t>(m_bmg_model->getRowCount(ModelIndex()));
 
-        if (ImGui::BeginChild("##MessageListPane", ImVec2(m_list_width, 0.0f))) {
+        style.WindowPadding                 = this_window_padding;
+        style.Colors[ImGuiCol_Border]       = this_border_color;
+        style.Colors[ImGuiCol_BorderShadow] = this_border_shadow;
+
+        if (ImGui::BeginChild("##MessageListPane",
+                              ImVec2(m_list_width + style.WindowPadding.x, 0.0f),
+                              ImGuiChildFlags_Borders)) {
+            style.WindowPadding                 = orig_window_padding;
+            style.Colors[ImGuiCol_Border]       = orig_border_color;
+            style.Colors[ImGuiCol_BorderShadow] = orig_border_shadow;
+
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
             if (ImGui::InputTextWithHint("##MessageSearchBox", "Search for text here...",
                                          m_search_buf.data(), m_search_buf.size(),
                                          ImGuiInputTextFlags_AlwaysOverwrite)) {
                 // ...
             }
 
-            if (ImGui::BeginListBox("Messages", ImVec2(-FLT_MIN, -FLT_MIN))) {
+            // ImGui::TextUnformatted("Messages");
+            if (ImGui::BeginChild("##MessagesListBox", ImVec2(-FLT_MIN, -FLT_MIN),
+                                  ImGuiChildFlags_Borders)) {
                 const bool window_hovered = ImGui::IsWindowHovered();
 
                 for (int64_t i = 0; i < row_count; ++i) {
@@ -304,18 +574,28 @@ namespace Toolbox::UI {
                     }
                 }
             }
-            ImGui::EndListBox();
+            ImGui::EndChild();
         }
+
+        style.WindowPadding                 = this_window_padding;
+        style.Colors[ImGuiCol_Border]       = this_border_color;
+        style.Colors[ImGuiCol_BorderShadow] = this_border_shadow;
+
         ImGui::EndChild();
+
+        style.WindowPadding                 = orig_window_padding;
+        style.Colors[ImGuiCol_Border]       = orig_border_color;
+        style.Colors[ImGuiCol_BorderShadow] = orig_border_shadow;
     }
 
     void BMGEditorWindow::renderMessageEditorGroup() {
         const ImGuiStyle &style = ImGui::GetStyle();
 
-        if (ImGui::BeginChild("##EditorGroupPane", ImVec2(m_editor_width, 0.0f))) {
+        if (ImGui::BeginChild("##EditorGroupPane",
+                              ImVec2(m_editor_width - style.WindowPadding.x, 0.0f))) {
             renderMessageEditorMetadata();
 
-            ImGui::Separator();
+            // ImGui::Separator();
 
             const std::string text_editor_name = ImWindowComponentTitle(*this, "Text Editor");
             if (ImGui::BeginChild(text_editor_name.c_str(), {0.0f, 0.0f})) {
@@ -323,23 +603,22 @@ namespace Toolbox::UI {
                 const ImVec2 min_size     = ImVec2(500.0f, 300.0f);
 
                 const float text_min_width    = getEditorTextMinWidth();
-                const float preview_min_width  = getEditorPreviewMinWidth();
-                const float total_splitter_gap = SplitterWidth + (style.WindowPadding.x * 2.0f);
-                
+                const float preview_min_width = getEditorPreviewMinWidth();
+
                 // 2. Initialize inner widths on the first frame
                 if (m_text_width <= 0.0f || m_preview_width <= 0.0f) {
-                    m_text_width    = avail_region.x * 0.6f;
+                    m_text_width = avail_region.x * 0.6f;
                 }
 
-                m_preview_width = avail_region.x - m_text_width - total_splitter_gap;
+                m_preview_width = avail_region.x - m_text_width - SplitterWidth;
 
                 if (m_preview_width < preview_min_width) {
                     m_preview_width = preview_min_width;
-                    m_text_width    = avail_region.x - m_preview_width - total_splitter_gap;
+                    m_text_width    = avail_region.x - m_preview_width - SplitterWidth;
                 }
                 if (m_text_width < text_min_width) {
                     m_text_width    = text_min_width;
-                    m_preview_width = avail_region.x - m_text_width - total_splitter_gap;
+                    m_preview_width = avail_region.x - m_text_width - SplitterWidth;
                 }
 
                 const ImGuiID splitter_id = ImGui::GetID("##EditorSplitter");
@@ -348,19 +627,25 @@ namespace Toolbox::UI {
                     // On Splitter
                 }
 
-                if (ImGui::BeginChild("##TextBoxPane", ImVec2(m_text_width, 0.0f))) {
+                if (ImGui::BeginChild("##TextBoxPane", ImVec2(m_text_width, 0.0f),
+                                      ImGuiChildFlags_Borders)) {
                     renderMessageEditorTextbox();
                 }
                 ImGui::EndChild();
 
-                ImGui::SameLine(0.0f, style.WindowPadding.x);
-                ImGui::InvisibleButton("##EditorSplitter", ImVec2(SplitterWidth, avail_region.y));
-                ImGui::SameLine(0.0f, style.WindowPadding.x);
-                
-                if (ImGui::BeginChild("##PreviewPane", ImVec2(m_preview_width, 0.0f))) {
+                ImGuiWindow *window = ImGui::GetCurrentWindow();
+
+                ImGui::SameLine(0.0f, 0.0f);
+                ImGui::Dummy(ImVec2(SplitterWidth, avail_region.y));
+                ImGui::SameLine(0.0f, 0.0f);
+
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
+                if (ImGui::BeginChild("##PreviewPane", ImVec2(m_preview_width, 0.0f),
+                                      ImGuiChildFlags_Borders)) {
                     renderMessageEditorPreview();
                 }
                 ImGui::EndChild();
+                ImGui::PopStyleColor();
             }
             ImGui::EndChild();
         }
@@ -523,7 +808,10 @@ namespace Toolbox::UI {
             end_frame   = m_bmg_model->getMessageEndFrame(m_view_index);
         }
 
-        if (ImGui::BeginChild("##SoundFramePanel", ImVec2(m_editor_width * 0.7f, 90.0f))) {
+        const float panel_height =
+            ImGui::GetTextLineHeightWithSpacing() * 3.0f + ImGui::GetStyle().WindowPadding.y * 2.0f;
+
+        if (ImGui::BeginChild("##SoundFramePanel", ImVec2(m_editor_width * 0.7f, panel_height))) {
             if (!is_entry_selected) {
                 ImGui::BeginDisabled();
             }
@@ -573,7 +861,7 @@ namespace Toolbox::UI {
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
 
-        if (ImGui::BeginChild("##BackgroundControl", ImVec2(0.0f, 90.0f))) {
+        if (ImGui::BeginChild("##BackgroundControl", ImVec2(0.0f, panel_height))) {
             if (m_bmg_model->getFlagSize() != BMG::MessageFlagSize::FLAG_SIZE_NPC) {
                 ImGui::BeginDisabled();
             }
@@ -596,7 +884,8 @@ namespace Toolbox::UI {
             }
 
             static std::array<std::string, 3> s_style_items = {"NPC", "Board", "DEBS"};
-            std::string_view preview_style_label = s_style_items[static_cast<size_t>(m_selected_style)];
+            std::string_view preview_style_label =
+                s_style_items[static_cast<size_t>(m_selected_style)];
 
             if (ImGui::BeginCombo("##StyleComboBox", preview_style_label.data())) {
 
@@ -629,6 +918,9 @@ namespace Toolbox::UI {
 
     void BMGEditorWindow::renderMessageEditorPreview() {
         const ImVec2 avail_size = ImGui::GetContentRegionAvail();
+        const ImGuiStyle &style = ImGui::GetStyle();
+
+        ImRect render_rect = {ImGui::GetCursorPos(), ImGui::GetCursorPos() + avail_size};
 
         if (m_current_backdrop) {
             const auto [image_width, image_height] = m_current_backdrop->size();
@@ -644,9 +936,11 @@ namespace Toolbox::UI {
             const ImVec2 render_size =
                 ImVec2(image_width * render_factor, image_height * render_factor);
 
-            const ImVec2 render_pos =
-                ImGui::GetWindowPos() + ImVec2(avail_size.x / 2.0f - render_size.x / 2.0f,
-                                               avail_size.y / 2.0f - render_size.y / 2.0f);
+            const ImVec2 render_pos = ImGui::GetWindowPos() + style.WindowPadding +
+                                      ImVec2(avail_size.x / 2.0f - render_size.x / 2.0f,
+                                             avail_size.y / 2.0f - render_size.y / 2.0f);
+
+            render_rect = {render_pos, render_pos + render_size};
 
             m_backdrop_painter.render(*m_current_backdrop, render_pos, render_size);
         }
@@ -655,16 +949,14 @@ namespace Toolbox::UI {
             return;
         }
 
-        ImagePainter painter;
-
         if (!m_bmg_model->validateIndex(m_view_index)) {
             BMG::MessageData::Entry empty_entry;
-            m_editor_view->render(painter, empty_entry, 0);
+            m_editor_view->render(render_rect, empty_entry, 0);
             return;
         }
 
         BMG::MessageData::Entry selected_entry = m_bmg_model->getMessageEntry(m_view_index);
-        m_editor_view->render(painter, selected_entry, m_current_page);
+        m_editor_view->render(render_rect, selected_entry, m_current_page);
     }
 
     float BMGEditorWindow::getMessageListMinWidth() const {
@@ -679,12 +971,12 @@ namespace Toolbox::UI {
 
     float BMGEditorWindow::getEditorTextMinWidth() const {
         const float min_editor_width = getEditorGroupMinWidth();
-        return min_editor_width * 0.6f;
+        return min_editor_width * 0.3f;
     }
 
     float BMGEditorWindow::getEditorPreviewMinWidth() const {
         const float min_editor_width = getEditorGroupMinWidth();
-        return min_editor_width * 0.4f;
+        return min_editor_width * 0.7f;
     }
 
     float BMGEditorWindow::getMessageListMaxWidth() const { return 0.0f; }
@@ -751,6 +1043,7 @@ namespace Toolbox::UI {
         m_selection_mgr   = ModelSelectionManager(m_bmg_model);
         m_history_handler = make_scoped<ModelHistoryHandler>(m_bmg_model);
 
+        m_io_context_path = path;
         return true;
     }
 

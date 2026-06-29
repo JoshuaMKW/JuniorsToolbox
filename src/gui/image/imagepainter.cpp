@@ -1,5 +1,6 @@
 #pragma once
 
+#include <imgui/imgui_internal.h>
 #include "gui/image/imagepainter.hpp"
 
 namespace Toolbox::UI {
@@ -18,9 +19,28 @@ namespace Toolbox::UI {
             return false;
         }
         ImVec2 orig_pos = ImGui::GetCursorScreenPos();
-        ImGui::SetCursorScreenPos(pos);
+
+        ImDrawList *draw_list = ImGui::GetWindowDrawList();
+
+        const float cos_a = std::cosf(m_rotation);
+        const float sin_a = std::sinf(m_rotation);
+
+        const int vtx_idx_begin = draw_list->_VtxCurrentIdx;
+
+        const ImVec2 pivot_in = pos;
+        ImGui::SetCursorScreenPos(pivot_in);
+
+        const ImVec2 pivot_out = pos;
+
         ImGui::Image((ImTextureID)image.m_image_handle, size, m_uv0, m_uv1, m_tint_color,
                      m_border_color);
+
+        const int vtx_idx_end = draw_list->_VtxCurrentIdx;
+
+        // Rotate and offset the generated vertices
+        ImGui::ShadeVertsTransformPos(draw_list, vtx_idx_begin, vtx_idx_end, pivot_in, cos_a, sin_a,
+                                      pivot_out);
+
         ImGui::SetCursorScreenPos(orig_pos);
         ImGui::Dummy({0, 0});
         return true;
@@ -31,9 +51,29 @@ namespace Toolbox::UI {
         if (!image) {
             return false;
         }
+
         ImDrawList *draw_list = ImGui::GetForegroundDrawList();
-        draw_list->AddImage((ImTextureID)image.m_image_handle, pos, pos + size, m_uv0, m_uv1,
-                                     ImGui::ColorConvertFloat4ToU32(m_border_color));
+
+        const float cos_a = std::cosf(m_rotation);
+        const float sin_a = std::sinf(m_rotation);
+
+        const int vtx_idx_begin = draw_list->_VtxCurrentIdx;
+
+        const ImVec2 pivot_in = pos;
+        ImGui::SetCursorScreenPos(pivot_in);
+
+        const ImVec2 pivot_out = pos;
+
+        draw_list->AddImage((ImTextureID)image.m_image_handle, pivot_in, pivot_in + size, m_uv0,
+                            m_uv1,
+                            ImGui::ColorConvertFloat4ToU32(m_border_color));
+
+        const int vtx_idx_end = draw_list->_VtxCurrentIdx;
+
+        // Rotate and offset the generated vertices
+        ImGui::ShadeVertsTransformPos(draw_list, vtx_idx_begin, vtx_idx_end, pivot_in, cos_a, sin_a,
+                                      pivot_out);
+
         return true;
     }
 

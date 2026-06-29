@@ -5,6 +5,7 @@
 #include "core/memory.hpp"
 #include "image/imagebuilder.hpp"
 #include "image/imagehandle.hpp"
+#include "spline.hpp"
 
 #ifdef IM_ASSERT
 #undef IM_ASSERT
@@ -117,6 +118,12 @@ namespace ImGui {
     void TextColoredAndWidth(float width, ImVec4 col, const char *fmt, ...);
     void TextWrappedWithAlign(float align_x, float size_x, const char *fmt, ...);
     ImVec2 CalcTextWrappedWithAlignRect(float align_x, float size_x, const char *fmt, ...);
+
+    float TextSplineEx(float start_t, const Toolbox::ISpline2D *spline, const char *fmt, ...);
+    void TextSpline(const Toolbox::ISpline2D *spline, const char *fmt, ...);
+    float TextSplineUnformattedEx(float start_t, const Toolbox::ISpline2D *spline, const char *text,
+                               const char *text_end = nullptr);
+    void TextSplineUnformatted(const Toolbox::ISpline2D *spline, const char *text, const char *text_end = nullptr);
 
     bool BeginMenuGroup(const char *str_id, float *hovered_delta, bool enabled = true);
     void EndMenuGroup();
