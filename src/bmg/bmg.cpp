@@ -1,5 +1,6 @@
 #include "bmg/bmg.hpp"
 #include "magic_enum.hpp"
+#include "strutil.hpp"
 
 #include <algorithm>
 #include <format>
@@ -14,62 +15,86 @@ using namespace std::string_literals;
 
 namespace Toolbox::BMG {
 
-    static std::unordered_map<std::string, std::string> s_command_to_raw = {
-        {"{text:slow}",           "\x1A\x05\x00\x00\x00"s    },
-        {"{text:end_close}",      "\x1A\x05\x00\x00\x01"s    },
-        {"{ctx:bananas}",         "\x1A\x06\xFF\x00\x04\x00"s},
-        {"{ctx:coconuts}",        "\x1A\x06\xFF\x00\x04\x01"s},
-        {"{ctx:pineapples}",      "\x1A\x06\xFF\x00\x04\x02"s},
-        {"{ctx:durians}",         "\x1A\x06\xFF\x00\x04\x03"s},
-        {"{color:white}",         "\x1A\x06\xFF\x00\x00\x00"s},
-        {"{color:red}",           "\x1A\x06\xFF\x00\x00\x02"s},
-        {"{color:blue}",          "\x1A\x06\xFF\x00\x00\x03"s},
-        {"{color:yellow}",        "\x1A\x06\xFF\x00\x00\x04"s},
-        {"{color:green}",         "\x1A\x06\xFF\x00\x00\x05"s},
-        {"{record:race_pianta}",  "\x1A\x05\x02\x00\x00"s    },
-        {"{record:race_gelato}",  "\x1A\x05\x02\x00\x01"s    },
-        {"{record:crate_time}",   "\x1A\x05\x02\x00\x02"s    },
-        {"{record:bcoin_shines}", "\x1A\x05\x02\x00\x03"s    },
-        {"{record:race_noki}",    "\x1A\x05\x02\x00\x06"s    },
+    static std::unordered_map<std::string_view, std::string> s_command_to_raw = {
+        {"{{text:slow}}",           "\x1A\x05\x00\x00\x00"s    },
+        {"{{text:end_close}}",      "\x1A\x05\x00\x00\x01"s    },
+        {"{{ctx:bananas}}",         "\x1A\x06\xFF\x00\x04\x00"s},
+        {"{{ctx:coconuts}}",        "\x1A\x06\xFF\x00\x04\x01"s},
+        {"{{ctx:pineapples}}",      "\x1A\x06\xFF\x00\x04\x02"s},
+        {"{{ctx:durians}}",         "\x1A\x06\xFF\x00\x04\x03"s},
+        {"{{color:white}}",         "\x1A\x06\xFF\x00\x00\x00"s},
+        {"{{color:red}}",           "\x1A\x06\xFF\x00\x00\x02"s},
+        {"{{color:blue}}",          "\x1A\x06\xFF\x00\x00\x03"s},
+        {"{{color:yellow}}",        "\x1A\x06\xFF\x00\x00\x04"s},
+        {"{{color:green}}",         "\x1A\x06\xFF\x00\x00\x05"s},
+        {"{{record:race_pianta}}",  "\x1A\x05\x02\x00\x00"s    },
+        {"{{record:race_gelato}}",  "\x1A\x05\x02\x00\x01"s    },
+        {"{{record:crate_time}}",   "\x1A\x05\x02\x00\x02"s    },
+        {"{{record:bcoin_shines}}", "\x1A\x05\x02\x00\x03"s    },
+        {"{{record:race_noki}}",    "\x1A\x05\x02\x00\x06"s    },
     };
 
-    static std::unordered_map<std::string, std::string> s_raw_to_command = {
-        {"\x1A\x05\x00\x00\x00"s,     "{text:slow}"          },
-        {"\x1A\x05\x00\x00\x01"s,     "{text:end_close}"     },
-        {"\x1A\x06\xFF\x00\x04\x00"s, "{ctx:bananas}"        },
-        {"\x1A\x06\xFF\x00\x04\x01"s, "{ctx:coconuts}"       },
-        {"\x1A\x06\xFF\x00\x04\x02"s, "{ctx:pineapples}"     },
-        {"\x1A\x06\xFF\x00\x04\x03"s, "{ctx:durians}"        },
-        {"\x1A\x06\xFF\x00\x00\x00"s, "{color:white}"        },
-        {"\x1A\x06\xFF\x00\x00\x02"s, "{color:red}"          },
-        {"\x1A\x06\xFF\x00\x00\x03"s, "{color:blue}"         },
-        {"\x1A\x06\xFF\x00\x00\x04"s, "{color:yellow}"       },
-        {"\x1A\x06\xFF\x00\x00\x05"s, "{color:green}"        },
-        {"\x1A\x05\x02\x00\x00"s,     "{record:race_pianta}" },
-        {"\x1A\x05\x02\x00\x01"s,     "{record:race_gelato}" },
-        {"\x1A\x05\x02\x00\x02"s,     "{record:crate_time}"  },
-        {"\x1A\x05\x02\x00\x03"s,     "{record:bcoin_shines}"},
-        {"\x1A\x05\x02\x00\x06"s,     "{record:race_noki}"   },
+    static std::unordered_map<std::string_view, std::string> s_raw_to_command = {
+        {"\x1A\x05\x00\x00\x00"s,     "{{text:slow}}"          },
+        {"\x1A\x05\x00\x00\x01"s,     "{{text:end_close}}"     },
+        {"\x1A\x06\xFF\x00\x04\x00"s, "{{ctx:bananas}}"        },
+        {"\x1A\x06\xFF\x00\x04\x01"s, "{{ctx:coconuts}}"       },
+        {"\x1A\x06\xFF\x00\x04\x02"s, "{{ctx:pineapples}}"     },
+        {"\x1A\x06\xFF\x00\x04\x03"s, "{{ctx:durians}}"        },
+        {"\x1A\x06\xFF\x00\x00\x00"s, "{{color:white}}"        },
+        {"\x1A\x06\xFF\x00\x00\x02"s, "{{color:red}}"          },
+        {"\x1A\x06\xFF\x00\x00\x03"s, "{{color:blue}}"         },
+        {"\x1A\x06\xFF\x00\x00\x04"s, "{{color:yellow}}"       },
+        {"\x1A\x06\xFF\x00\x00\x05"s, "{{color:green}}"        },
+        {"\x1A\x05\x02\x00\x00"s,     "{{record:race_pianta}}" },
+        {"\x1A\x05\x02\x00\x01"s,     "{{record:race_gelato}}" },
+        {"\x1A\x05\x02\x00\x02"s,     "{{record:crate_time}}"  },
+        {"\x1A\x05\x02\x00\x03"s,     "{{record:bcoin_shines}}"},
+        {"\x1A\x05\x02\x00\x06"s,     "{{record:race_noki}}"   },
     };
+
+    static u16 GetValueFromMessageFlagSize(MessageFlagSize size) {
+        switch (size) {
+        case MessageFlagSize::FLAG_SIZE_SYSTEM:
+            return 4;
+        case MessageFlagSize::FLAG_SIZE_UNK8:
+            return 8;
+        case MessageFlagSize::FLAG_SIZE_NPC:
+            return 12;
+        }
+        return 0;
+    }
+
+    static MessageFlagSize GetMessageFlagSizeFromValue(u16 value) {
+        switch (value) {
+        case 4:
+            return MessageFlagSize::FLAG_SIZE_SYSTEM;
+        case 8:
+            return MessageFlagSize::FLAG_SIZE_UNK8;
+        case 12:
+            return MessageFlagSize::FLAG_SIZE_NPC;
+        }
+        return MessageFlagSize::FLAG_SIZE_NPC;
+    }
 
     std::size_t CmdMessage::getDataSize() const {
-        std::vector<std::string> parts = getParts();
+        std::vector<std::string_view> parts = getParts();
         size_t size                    = 0;
         for (const auto &part : parts) {
             auto result = rawFromCommand(part);
             if (!result) {
-                size += part.size() + 1;
+                size += part.size();
             } else {
                 size += result.value().size();
             }
         }
-        return size;
+        return size + 1;
     }
 
-    std::string CmdMessage::getString() const { return m_message_data; }
+    const std::string &CmdMessage::getString() const { return m_message_data; }
 
     std::string CmdMessage::getSimpleString() const {
-        std::vector<std::string> parts = getParts();
+        std::vector<std::string_view> parts = getParts();
         std::string txt;
         for (const auto &part : parts) {
             auto result = rawFromCommand(part);
@@ -81,19 +106,35 @@ namespace Toolbox::BMG {
     }
 
     Result<void, SerialError> CmdMessage::serialize(Serializer &out) const {
-        std::vector<std::string> parts = getParts();
-        for (auto &part : parts) {
+        out.write<u64>(m_uuid);
+        return gameSerialize(out);
+    }
+
+    Result<void, SerialError> CmdMessage::deserialize(Deserializer &in) {
+        m_uuid = in.read<u64>();
+        return gameDeserialize(in);
+    }
+
+    Result<void, SerialError> CmdMessage::gameSerialize(Serializer &out) const {
+        std::vector<std::string_view> parts = getParts();
+        for (size_t i = 0; i < parts.size(); ++i) {
+            std::string_view part = parts[i];
+            
             auto result = rawFromCommand(part);
             if (!result) {
                 out.writeCString(part);
+                if (i < parts.size() - 1) {
+                    out.seek(-1);  // Overwrite the null char
+                }
             } else {
                 out.writeBytes(result.value());
             }
         }
+
         return {};
     }
 
-    Result<void, SerialError> CmdMessage::deserialize(Deserializer &in) {
+    Result<void, SerialError> CmdMessage::gameDeserialize(Deserializer &in) {
         m_message_data.clear();
 
         while (true) {
@@ -157,84 +198,74 @@ namespace Toolbox::BMG {
         }
     }
 
-    std::vector<std::string> CmdMessage::getParts() const {
-        std::vector<std::string> parts;
+    std::vector<std::string_view> CmdMessage::getParts() const {
+        std::vector<std::string_view> parts;
 
-        size_t bracket_l      = 0;
-        size_t bracket_r      = 0;
-        size_t next_bracket_l = 0;
+        size_t current_pos = 0;
+        size_t end_pos     = 0;
 
-        if (m_message_data.find('{') == std::string::npos) {
-            parts.push_back(m_message_data);
-            return parts;
-        }
+        std::string_view message = m_message_data;
 
-        while (bracket_r != std::string::npos) {
-            bracket_l = m_message_data.find('{', bracket_r);
-
-            // If no more commands, return the end
-            if (bracket_l == std::string::npos) {
-                if ((bracket_r + 1) < m_message_data.size()) {
-                    parts.push_back(m_message_data.substr(bracket_r + 1));
-                }
+        while (true) {
+            if (current_pos >= message.size()) {
                 break;
             }
 
-            std::string text = m_message_data.substr(bracket_r, bracket_l);
+            const bool is_command_start = current_pos < message.size() - 1 &&
+                                          message.at(current_pos) == '{' &&
+                                          message.at(current_pos + 1) == '{';
+            if (is_command_start) {
+                size_t r_pos = message.find("}}", current_pos);
+                if (r_pos != std::string_view::npos) {
+                    std::string_view command = message.substr(current_pos, r_pos - current_pos + 2);
+                    parts.push_back(command);
 
-            bracket_r      = m_message_data.find('}', bracket_l);
-            next_bracket_l = m_message_data.find('{', bracket_l + 1);
-
-            const bool isCommandEnclosed =
-                bracket_r < next_bracket_l && bracket_r != std::string::npos;
-
-            if (!text.empty()) {
-                parts.push_back(std::string(text));
-            }
-
-            if (!isCommandEnclosed) {
-                if (bracket_r == std::string::npos) {
-                    std::string trailing_text = m_message_data.substr(bracket_l);  // to the end
-                    if (!trailing_text.empty())
-                        parts.push_back(std::string(trailing_text));
-                    break;
+                    current_pos              = r_pos + 2;
+                    continue;
                 }
-                std::string trailing_text = m_message_data.substr(bracket_l, next_bracket_l);
-                if (!trailing_text.empty())
-                    parts.push_back(trailing_text);
-                bracket_r = next_bracket_l;  // skip the bracket
-                continue;
+
+                std::string_view trailing = message.substr(current_pos);
+                parts.push_back(trailing);
+                break;
             }
 
-            std::string command = m_message_data.substr(bracket_l, bracket_r + 1);
-            if (!command.empty())
-                parts.push_back(command);
+            end_pos = message.find("{{", current_pos);
+            if (end_pos == std::string_view::npos) {
+                std::string_view trailing = message.substr(current_pos);
+                parts.push_back(trailing);
+                break;
+            }
+
+            std::string_view slice = message.substr(current_pos, end_pos - current_pos);
+            parts.push_back(slice);
+
+            current_pos = end_pos;
         }
 
         return parts;
     }
 
     std::optional<std::vector<char>> CmdMessage::rawFromCommand(std::string_view command) {
-        if (command.empty() || !command.starts_with('{') || !command.ends_with('}')) {
+        if (command.empty() || !command.starts_with("{{") || !command.ends_with("}}")) {
             return {};
         }
 
-        std::string command_str(command);
+        command = command.substr(1, command.size() - 2);
 
-        if (s_command_to_raw.contains(command_str)) {
-            return std::vector<char>(s_command_to_raw[command_str].begin(),
-                                     s_command_to_raw[command_str].end());
+        if (s_command_to_raw.contains(command)) {
+            const std::string &raw_str = s_command_to_raw[command];
+            return std::vector<char>(raw_str.begin(), raw_str.end());
         }
 
         if (command.starts_with("{speed:")) {
-            return std::vector<char>{0x1A, 0x06, 0x00, 0x00, 0x00, command.back()};
+            return std::vector<char>{0x1A, 0x06, 0x00, 0x00, 0x00, command[command.size() - 2]};
         }
 
-        if (command.starts_with("{options:")) {
+        if (command.starts_with("{option:")) {
             size_t command_split = command.rfind(':');
-            auto message         = command.substr(command_split + 1);
+            std::string_view message         = command.substr(command_split + 1, command.size() - (command_split + 1) - 1);
 
-            char option         = std::stoi(command_str.substr(9, command_split - 9));
+            u8 option         = String::StringToTypedIntegral<u8>(command.substr(9, command_split - 9 - 1)).value_or(0);
             size_t command_size = static_cast<char>(5 + message.size());
 
             std::vector<char> raw(command_size);
@@ -243,21 +274,25 @@ namespace Toolbox::BMG {
                 raw[1] = static_cast<char>(command_size);
                 raw[2] = 0x01;
                 raw[3] = 0x00;
-                raw[4] = option;
+                raw[4] = static_cast<char>(option);
             }
             std::copy(message.begin(), message.end(), raw.begin() + 5);
 
             return raw;
         }
 
-        std::vector<char> raw(command.size() + 2);
-        {
-            raw[0] = 0x1A;
-            raw[1] = static_cast<char>(command.size());
-            std::copy(command.begin(), command.end(), raw.end());
+        if (command.starts_with("{raw:")) {
+            std::string_view message = command.substr(5, command.size() - 1);
+            std::vector<char> raw(message.size() + 2);
+            {
+                raw[0] = 0x1A;
+                raw[1] = static_cast<char>(command.size());
+                std::copy(message.begin(), message.end(), raw.end());
+            }
+            return raw;
         }
 
-        return raw;
+        return {};
     }
 
     std::optional<std::string> CmdMessage::commandFromRaw(std::span<const char> command) {
@@ -273,31 +308,31 @@ namespace Toolbox::BMG {
             if (command[0] == 0x1A && command[1] == 0x06 && command[2] == 0x00 &&
                 command[3] == 0x00 && command[4] == 0x00) {
                 char buf[32];
-                std::snprintf(buf, 32, "{speed:%d}", command[5]);
+                std::snprintf(buf, 32, "{{speed:%d}}", command[5]);
                 return buf;
             }
 
             if (command[2] == 0x01 && command[3] == 0x00) {
                 char buf[32];
-                std::snprintf(buf, 32, "{option:%d:%s}", command[4],
+                std::snprintf(buf, 32, "{{option:%d:%s}}", command[4],
                               std::string(command.begin() + 5, command.end()).c_str());
                 return buf;
             }
         }
 
-        std::string txt = "{raw:";
+        std::string txt = "{{raw:";
         for (size_t i = 2; i < command.size(); i++) {
             char buf[6];
             std::snprintf(buf, 6, "\\x%02X", command[i]);
             txt += buf;
         }
-        txt += "}";
+        txt += "}}";
         return txt;
     }
 
     const std::optional<MessageData::Entry> MessageData::getEntry(std::string_view name) {
         for (auto &entry : m_entries) {
-            if (entry.m_name == name)
+            if (entry.getName() == name)
                 return entry;
         }
         return {};
@@ -314,13 +349,13 @@ namespace Toolbox::BMG {
     }
 
     size_t MessageData::getINF1Size() const {
-        return (0x10 + (m_entries.size() * m_flag_size) + 0x1F) & ~0x1F;
+        return (0x10 + (m_entries.size() * GetValueFromMessageFlagSize(m_flag_size)) + 0x1F) & ~0x1F;
     }
 
     size_t MessageData::getDAT1Size() const {
         size_t size = std::accumulate(
             m_entries.begin(), m_entries.end(), size_t(9),
-            [](size_t sum, const Entry &entry) { return sum + entry.m_message.getDataSize(); });
+            [](size_t sum, const Entry &entry) { return sum + entry.getMessage().getDataSize(); });
         return (size + 0x1F) & ~0x1F;
     }
 
@@ -330,7 +365,7 @@ namespace Toolbox::BMG {
 
         size_t size = std::accumulate(
             m_entries.begin(), m_entries.end(), size_t(9),
-            [](size_t sum, const Entry &entry) { return sum + entry.m_name.size() + 1; });
+            [](size_t sum, const Entry &entry) { return sum + entry.getName().size() + 1; });
         return (size + 0x1F) & ~0x1F;
     }
 
@@ -383,17 +418,25 @@ namespace Toolbox::BMG {
         out << indention_str << "BMG Data (Flag Size: " << static_cast<size_t>(m_flag_size) << ") {"
             << std::endl;
         for (auto &entry : m_entries) {
-            std::string name = entry.m_name.empty() ? "(Unknown)" : entry.m_name;
-            out << value_indention_str << name << " (" << entry.m_start_frame << ", "
-                << entry.m_end_frame << ", " << magic_enum::enum_name(entry.m_sound) << ") {"
+            std::string name = entry.getName().empty() ? "(Unknown)" : entry.getName();
+            out << value_indention_str << name << " (" << entry.getStartFrame() << ", "
+                << entry.getEndFrame() << ", " << magic_enum::enum_name(entry.getSoundID()) << ") {"
                 << std::endl;
-            entry.m_message.dump(out, indention + 2, indention_width);
+            entry.getMessage().dump(out, indention + 2, indention_width);
             out << value_indention_str << "}" << std::endl;
         }
         out << indention_str << "}" << std::endl;
     }
 
     Result<void, SerialError> MessageData::serialize(Serializer &out) const {
+        return gameSerialize(out);
+    }
+
+    Result<void, SerialError> MessageData::deserialize(Deserializer &in) {
+        return gameDeserialize(in);
+    }
+
+    Result<void, SerialError> MessageData::gameSerialize(Serializer &out) const {
         // Header
         out.write<u32, std::endian::big>('MESG');
         out.write<u32, std::endian::big>('bmg1');
@@ -405,7 +448,7 @@ namespace Toolbox::BMG {
         out.write<u32, std::endian::big>('INF1');
         out.write<u32, std::endian::big>(static_cast<u32>(getINF1Size()));
         out.write<u16, std::endian::big>(static_cast<u16>(m_entries.size()));
-        out.write<u16, std::endian::big>(m_flag_size);
+        out.write<u16, std::endian::big>(GetValueFromMessageFlagSize(m_flag_size));
         out.write<u32, std::endian::big>(0x80000);  // Unknown
 
         size_t data_offset = 1;  // Padding
@@ -413,27 +456,30 @@ namespace Toolbox::BMG {
 
         for (auto &entry : m_entries) {
             out.write<u32, std::endian::big>(static_cast<u32>(data_offset));
-            if (m_flag_size == 12) {
-                out.write<u16, std::endian::big>(entry.m_start_frame);
-                out.write<u16, std::endian::big>(entry.m_end_frame);
+            switch (m_flag_size) {
+            case MessageFlagSize::FLAG_SIZE_SYSTEM:
+                break;
+            case MessageFlagSize::FLAG_SIZE_UNK8:
+                out.writeBytes(entry.getUnknownFlags());
+                out.seek(std::max(size_t(0), 4 - entry.getUnknownFlags().size()));
+                break;
+            case MessageFlagSize::FLAG_SIZE_NPC:
+                out.write<u16, std::endian::big>(entry.getStartFrame());
+                out.write<u16, std::endian::big>(entry.getEndFrame());
                 if (m_has_str1) {
                     out.write<u16, std::endian::big>(static_cast<u32>(name_offset));
-                    out.write<u8>(static_cast<u8>(entry.m_sound));
+                    out.write<u8>(static_cast<u8>(entry.getSoundID()));
                     out.seek(1);
                 } else {
-                    out.write<u8>(static_cast<u8>(entry.m_sound));
+                    out.write<u8>(static_cast<u8>(entry.getSoundID()));
                     out.seek(3);
                 }
-            } else if (m_flag_size == 8) {
-                out.writeBytes(entry.m_unk_flags);
-                out.seek(std::max(size_t(0), 4 - entry.m_unk_flags.size()));
-            } else if (m_flag_size == 4) {
-                // Nothing to do
-            } else {
+                break;
+            default:
                 return make_serial_error<void>(out, "Invalid flag size");
             }
-            data_offset += entry.m_message.getDataSize();
-            name_offset += entry.m_name.size() + 1;
+            data_offset += entry.getMessage().getDataSize();
+            name_offset += entry.getName().size() + 1;
         }
 
         // Align stream
@@ -445,7 +491,7 @@ namespace Toolbox::BMG {
         out.write<char>(0);  // Padding
 
         for (auto &entry : m_entries) {
-            auto result = entry.m_message.serialize(out);
+            auto result = entry.getMessage().gameSerialize(out);
             if (!result)
                 return std::unexpected(result.error());
         }
@@ -460,7 +506,7 @@ namespace Toolbox::BMG {
             out.write<char>(0);  // Padding
 
             for (auto &entry : m_entries) {
-                out.writeCString(entry.m_name);
+                out.writeCString(entry.getName());
             }
         }
 
@@ -470,7 +516,7 @@ namespace Toolbox::BMG {
         return {};
     }
 
-    Result<void, SerialError> MessageData::deserialize(Deserializer &in) {
+    Result<void, SerialError> MessageData::gameDeserialize(Deserializer &in) {
         if (!isMagicValid(in)) {
             return make_serial_error<void>(in, "Magic of BMG is invalid! (Expected MESGbmg1)");
         }
@@ -495,7 +541,7 @@ namespace Toolbox::BMG {
         in.seek(0x10);  // Padding
 
         size_t message_count = 0;
-        m_flag_size          = 0;
+        m_flag_size          = MessageFlagSize::FLAG_SIZE_NPC;
 
         std::vector<size_t> data_offsets;
         std::vector<size_t> name_offsets;
@@ -513,27 +559,30 @@ namespace Toolbox::BMG {
                         -8);
                 }
                 message_count = in.read<u16, std::endian::big>();
-                m_flag_size   = in.read<u16, std::endian::big>();
+                m_flag_size   = GetMessageFlagSizeFromValue(in.read<u16, std::endian::big>());
                 in.seek(4);  // Unknown values
 
                 for (size_t j = 0; j < message_count; ++j) {
                     Entry entry;
                     data_offsets.push_back(in.read<u32, std::endian::big>());
-                    if (m_flag_size == 12) {
-                        entry.m_start_frame = in.read<u16, std::endian::big>();
-                        entry.m_end_frame   = in.read<u16, std::endian::big>();
+                    switch (m_flag_size) {
+                    case MessageFlagSize::FLAG_SIZE_SYSTEM:
+                        break;
+                    case MessageFlagSize::FLAG_SIZE_UNK8:
+                        entry.m_unk_flags.resize(4);
+                        in.readBytes(entry.m_unk_flags);
+                        break;
+                    case MessageFlagSize::FLAG_SIZE_NPC:
+                        entry.setStartFrame(in.read<u16, std::endian::big>());
+                        entry.setEndFrame(in.read<u16, std::endian::big>());
                         if (m_has_str1) {
                             name_offsets.push_back(in.read<u16, std::endian::big>());
                         }
-                        entry.m_sound = magic_enum::enum_cast<MessageSound>(in.read<u8>())
-                                            .value_or(MessageSound::NOTHING);
+                        entry.setSoundID(magic_enum::enum_cast<MessageSound>(in.read<u8>())
+                                             .value_or(MessageSound::NOTHING));
                         in.seek(m_has_str1 ? 1 : 3);
-                    } else if (m_flag_size == 8) {
-                        entry.m_unk_flags.resize(4);
-                        in.readBytes(entry.m_unk_flags);
-                    } else if (m_flag_size == 4) {
-                        // Nothing to do
-                    } else {
+                        break;
+                    default:
                         return make_serial_error<void>(in, "Invalid flag size");
                     }
                     m_entries.push_back(entry);
@@ -547,7 +596,7 @@ namespace Toolbox::BMG {
                 in.seek(1);  // Skip padding
                 for (size_t i = 0; i < m_entries.size(); ++i) {
                     in.seek(section_start + data_offsets[i] + 8, std::ios::beg);
-                    auto result = m_entries[i].m_message.deserialize(in);
+                    auto result = m_entries[i].getMessage().gameDeserialize(in);
                     if (!result)
                         return std::unexpected(result.error());
 
@@ -576,12 +625,36 @@ namespace Toolbox::BMG {
                 in.seek(1);  // Skip padding
                 for (size_t i = 0; i < m_entries.size(); ++i) {
                     in.seek(section_start + name_offsets[i] + 8, std::ios::beg);
-                    m_entries[i].m_name = in.readCString(
-                        section_size - (static_cast<size_t>(in.tell()) - section_start));
+                    m_entries[i].setName(in.readCString(
+                        section_size - (static_cast<size_t>(in.tell()) - section_start)));
                 }
             }
             in.alignTo(32);
         }
+
+        return {};
+    }
+
+    Result<void, SerialError> MessageData::Entry::serialize(Serializer &out) const {
+        out.writeString(m_name);
+
+        m_message.serialize(out);
+        out.write<u8>(static_cast<u8>(m_sound));
+        out.write<u16>(m_start_frame);
+        out.write<u16>(m_end_frame);
+        out.writeBytes(m_unk_flags);
+
+        return {};
+    }
+
+    Result<void, SerialError> MessageData::Entry::deserialize(Deserializer &in) {
+        m_name = in.readString();
+
+        m_message.deserialize(in);
+        m_sound       = static_cast<MessageSound>(in.read<u8>());
+        m_start_frame = in.read<u16>();
+        m_end_frame   = in.read<u16>();
+        in.readBytes(m_unk_flags);
 
         return {};
     }

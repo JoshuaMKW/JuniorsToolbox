@@ -114,6 +114,7 @@ namespace Toolbox::UI {
         void actionRenameIndex(const ModelIndex &index);
 
         bool actionOpenScene(const ModelIndex &index);
+        bool actionOpenBMG(const ModelIndex &index);
         bool actionOpenPad(const ModelIndex &index);
 
         bool isPathForScene(const ModelIndex &index) const;

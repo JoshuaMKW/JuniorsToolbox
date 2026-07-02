@@ -1,6 +1,8 @@
 #include "gui/appmain/project/window.hpp"
 #include "gui/appmain/application.hpp"
+#include "gui/appmain/bmgeditor/window.hpp"
 #include "gui/appmain/new_item/window.hpp"
+#include "gui/appmain/pad/window.hpp"
 #include "gui/appmain/project/events.hpp"
 #include "gui/dragdrop/dragdropmanager.hpp"
 #include "gui/logging/errors.hpp"
@@ -1355,6 +1357,10 @@ namespace Toolbox::UI {
 
     void ProjectViewWindow::actionOpenIndexes(const std::vector<ModelIndex> &indices) {
         for (auto &item_index : indices) {
+            if (actionOpenBMG(item_index)) {
+                continue;
+            }
+
             if (actionOpenPad(item_index)) {
                 continue;
             }
@@ -1466,6 +1472,38 @@ namespace Toolbox::UI {
         return false;
     }
 
+    bool ProjectViewWindow::actionOpenBMG(const ModelIndex &index) {
+        if (!m_view_proxy->isFile(index)) {
+            return false;
+        }
+
+        MainApplication &app = MainApplication::instance();
+
+        // *.bmg
+        fs_path bmg_path = m_view_proxy->getRealPath(index);
+        if (bmg_path.extension().string() != ".bmg") {
+            return false;
+        }
+
+        RefPtr<ImWindow> existing_editor = app.findWindow("BMG Editor", bmg_path.string());
+        if (existing_editor) {
+            existing_editor->focus();
+            return true;
+        }
+
+        RefPtr<BMGEditorWindow> window = app.createWindow<BMGEditorWindow>("BMG Editor");
+        if (!window->onLoadData(bmg_path)) {
+            app.showErrorModal(
+                this, name(),
+                "Failed to open the BMG for editing!\n\n - (Check application "
+                "log for details)");
+            app.removeWindow(window);
+            return false;
+        }
+
+        return true;
+    }
+
     bool ProjectViewWindow::actionOpenPad(const ModelIndex &index) {
         if (!m_view_proxy->isDirectory(index)) {
             return false;
@@ -1485,7 +1523,7 @@ namespace Toolbox::UI {
             return true;
         }
 
-        RefPtr<SceneWindow> window = app.createWindow<SceneWindow>("Pad Recorder");
+        RefPtr<PadInputWindow> window = app.createWindow<PadInputWindow>("Pad Recorder");
         if (!window->onLoadData(pad_path)) {
             app.showErrorModal(
                 this, name(),

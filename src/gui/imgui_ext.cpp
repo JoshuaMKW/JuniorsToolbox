@@ -2364,6 +2364,111 @@ ImVec2 ImGui::CalcTextWrappedWithAlignRect(float align_x, float size_x, const ch
                   font_size * line_info_count + style.ItemSpacing.y * (line_info_count - 1));
 }
 
+float ImGui::TextSplineEx(float start_t, const Toolbox::ISpline2D *spline, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    ImGuiWindow *window = GetCurrentWindow();
+    if (window->SkipItems)
+        return start_t;
+
+    const ImGuiStyle &style = GetStyle();
+
+    ImDrawList *draw_list   = ImGui::GetWindowDrawList();
+    ImFont *font            = ImGui::GetFont();
+    ImFontBaked *font_baked = ImGui::GetFontBaked();
+    ImFontAtlas *atlas      = font->OwnerAtlas;
+
+    const ImVec2 cursor_screen_pos = ImGui::GetCursorScreenPos();
+    const float font_size = ImGui::GetFontSize();
+
+    const char *text, *text_end;
+    ImFormatStringToTempBufferV(&text, &text_end, fmt, args);
+    
+    float current_t = ImGui::TextSplineUnformattedEx(start_t, spline, text, text_end);
+
+    va_end(args);
+    return current_t;
+}
+
+void ImGui::TextSpline(const Toolbox::ISpline2D *spline, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    TextSplineEx(0.0f, spline, fmt, args);
+
+    va_end(args);
+}
+
+float ImGui::TextSplineUnformattedEx(float start_t, const Toolbox::ISpline2D *spline,
+                                    const char *text, const char *text_end) {
+    ImGuiWindow *window = GetCurrentWindow();
+    if (window->SkipItems)
+        return start_t;
+
+    const ImGuiStyle &style = GetStyle();
+
+    ImDrawList *draw_list   = ImGui::GetWindowDrawList();
+    ImFont *font            = ImGui::GetFont();
+    ImFontBaked *font_baked = ImGui::GetFontBaked();
+    ImFontAtlas *atlas      = font->OwnerAtlas;
+
+    const ImVec2 cursor_screen_pos = ImGui::GetCursorScreenPos();
+    const float font_size          = ImGui::GetFontSize();
+
+    if (text_end == nullptr) {
+        text_end = text + strlen(text);
+    }
+    const size_t text_len = std::distance(text, text_end);
+
+    const float spline_length = spline->getLength();
+
+    float current_t        = start_t;
+    float current_distance = spline->getLengthFromInterpolation(start_t);
+    float max_distance     = spline->getLength();
+
+    for (size_t i = 0; i < text_len; ++i) {
+        ImWchar c = static_cast<ImWchar>(((const unsigned char *)text)[i]);
+
+        if (current_distance >= max_distance) {
+            break;
+        }
+
+        const ImFontGlyph *glyph = font_baked->FindGlyph(c);
+        if (!glyph) {
+            continue;
+        }
+
+        Toolbox::ISpline2D::PathPoint point = spline->getInterpolatedPoint(current_t);
+
+        const float cos_a = std::cosf(point.m_tan_rotation);
+        const float sin_a = std::sinf(point.m_tan_rotation);
+
+        const int vtx_idx_begin = draw_list->_VtxCurrentIdx;
+
+        const ImVec2 pivot_in(0.0f, 0.0f);
+        const ImVec2 pivot_out = cursor_screen_pos + ImVec2(point.m_x, point.m_y);
+
+        font->RenderChar(draw_list, font_size, pivot_in, ImColor(style.Colors[ImGuiCol_Text]), c);
+
+        const int vtx_idx_end = draw_list->_VtxCurrentIdx;
+
+        // Rotate and offset the generated vertices
+        ShadeVertsTransformPos(draw_list, vtx_idx_begin, vtx_idx_end, pivot_in, cos_a, sin_a,
+                               pivot_out);
+
+        current_distance += glyph->AdvanceX;
+        current_t = spline->getInterpolationFromLength(current_distance);
+    }
+
+    return current_t;
+}
+
+void ImGui::TextSplineUnformatted(const Toolbox::ISpline2D *spline, const char *text,
+                                  const char *text_end) {
+    TextSplineUnformattedEx(0.0f, spline, text, text_end);
+}
+
 static bool IsRootOfOpenMenuSet() {
     ImGuiContext &g     = *GImGui;
     ImGuiWindow *window = g.CurrentWindow;
@@ -2536,7 +2641,7 @@ bool ImGui::SelectDockedWindow(const char *window_name, bool focus) {
     if (window && window->DockIsActive && window->DockNode) {
         ImGuiTabBar *tabBar = window->DockNode->TabBar;
         if (tabBar != nullptr) {
-            tabBar->SelectedTabId = window->TabId;
+            tabBar->SelectedTabId     = window->TabId;
             tabBar->NextSelectedTabId = window->TabId;
             return true;
         }
