@@ -1,5 +1,6 @@
 #include "bmg/bmg.hpp"
 #include "magic_enum.hpp"
+#include "strutil.hpp"
 
 #include <algorithm>
 #include <format>
@@ -14,42 +15,42 @@ using namespace std::string_literals;
 
 namespace Toolbox::BMG {
 
-    static std::unordered_map<std::string, std::string> s_command_to_raw = {
-        {"{text:slow}",           "\x1A\x05\x00\x00\x00"s    },
-        {"{text:end_close}",      "\x1A\x05\x00\x00\x01"s    },
-        {"{ctx:bananas}",         "\x1A\x06\xFF\x00\x04\x00"s},
-        {"{ctx:coconuts}",        "\x1A\x06\xFF\x00\x04\x01"s},
-        {"{ctx:pineapples}",      "\x1A\x06\xFF\x00\x04\x02"s},
-        {"{ctx:durians}",         "\x1A\x06\xFF\x00\x04\x03"s},
-        {"{color:white}",         "\x1A\x06\xFF\x00\x00\x00"s},
-        {"{color:red}",           "\x1A\x06\xFF\x00\x00\x02"s},
-        {"{color:blue}",          "\x1A\x06\xFF\x00\x00\x03"s},
-        {"{color:yellow}",        "\x1A\x06\xFF\x00\x00\x04"s},
-        {"{color:green}",         "\x1A\x06\xFF\x00\x00\x05"s},
-        {"{record:race_pianta}",  "\x1A\x05\x02\x00\x00"s    },
-        {"{record:race_gelato}",  "\x1A\x05\x02\x00\x01"s    },
-        {"{record:crate_time}",   "\x1A\x05\x02\x00\x02"s    },
-        {"{record:bcoin_shines}", "\x1A\x05\x02\x00\x03"s    },
-        {"{record:race_noki}",    "\x1A\x05\x02\x00\x06"s    },
+    static std::unordered_map<std::string_view, std::string> s_command_to_raw = {
+        {"{{text:slow}}",           "\x1A\x05\x00\x00\x00"s    },
+        {"{{text:end_close}}",      "\x1A\x05\x00\x00\x01"s    },
+        {"{{ctx:bananas}}",         "\x1A\x06\xFF\x00\x04\x00"s},
+        {"{{ctx:coconuts}}",        "\x1A\x06\xFF\x00\x04\x01"s},
+        {"{{ctx:pineapples}}",      "\x1A\x06\xFF\x00\x04\x02"s},
+        {"{{ctx:durians}}",         "\x1A\x06\xFF\x00\x04\x03"s},
+        {"{{color:white}}",         "\x1A\x06\xFF\x00\x00\x00"s},
+        {"{{color:red}}",           "\x1A\x06\xFF\x00\x00\x02"s},
+        {"{{color:blue}}",          "\x1A\x06\xFF\x00\x00\x03"s},
+        {"{{color:yellow}}",        "\x1A\x06\xFF\x00\x00\x04"s},
+        {"{{color:green}}",         "\x1A\x06\xFF\x00\x00\x05"s},
+        {"{{record:race_pianta}}",  "\x1A\x05\x02\x00\x00"s    },
+        {"{{record:race_gelato}}",  "\x1A\x05\x02\x00\x01"s    },
+        {"{{record:crate_time}}",   "\x1A\x05\x02\x00\x02"s    },
+        {"{{record:bcoin_shines}}", "\x1A\x05\x02\x00\x03"s    },
+        {"{{record:race_noki}}",    "\x1A\x05\x02\x00\x06"s    },
     };
 
-    static std::unordered_map<std::string, std::string> s_raw_to_command = {
-        {"\x1A\x05\x00\x00\x00"s,     "{text:slow}"          },
-        {"\x1A\x05\x00\x00\x01"s,     "{text:end_close}"     },
-        {"\x1A\x06\xFF\x00\x04\x00"s, "{ctx:bananas}"        },
-        {"\x1A\x06\xFF\x00\x04\x01"s, "{ctx:coconuts}"       },
-        {"\x1A\x06\xFF\x00\x04\x02"s, "{ctx:pineapples}"     },
-        {"\x1A\x06\xFF\x00\x04\x03"s, "{ctx:durians}"        },
-        {"\x1A\x06\xFF\x00\x00\x00"s, "{color:white}"        },
-        {"\x1A\x06\xFF\x00\x00\x02"s, "{color:red}"          },
-        {"\x1A\x06\xFF\x00\x00\x03"s, "{color:blue}"         },
-        {"\x1A\x06\xFF\x00\x00\x04"s, "{color:yellow}"       },
-        {"\x1A\x06\xFF\x00\x00\x05"s, "{color:green}"        },
-        {"\x1A\x05\x02\x00\x00"s,     "{record:race_pianta}" },
-        {"\x1A\x05\x02\x00\x01"s,     "{record:race_gelato}" },
-        {"\x1A\x05\x02\x00\x02"s,     "{record:crate_time}"  },
-        {"\x1A\x05\x02\x00\x03"s,     "{record:bcoin_shines}"},
-        {"\x1A\x05\x02\x00\x06"s,     "{record:race_noki}"   },
+    static std::unordered_map<std::string_view, std::string> s_raw_to_command = {
+        {"\x1A\x05\x00\x00\x00"s,     "{{text:slow}}"          },
+        {"\x1A\x05\x00\x00\x01"s,     "{{text:end_close}}"     },
+        {"\x1A\x06\xFF\x00\x04\x00"s, "{{ctx:bananas}}"        },
+        {"\x1A\x06\xFF\x00\x04\x01"s, "{{ctx:coconuts}}"       },
+        {"\x1A\x06\xFF\x00\x04\x02"s, "{{ctx:pineapples}}"     },
+        {"\x1A\x06\xFF\x00\x04\x03"s, "{{ctx:durians}}"        },
+        {"\x1A\x06\xFF\x00\x00\x00"s, "{{color:white}}"        },
+        {"\x1A\x06\xFF\x00\x00\x02"s, "{{color:red}}"          },
+        {"\x1A\x06\xFF\x00\x00\x03"s, "{{color:blue}}"         },
+        {"\x1A\x06\xFF\x00\x00\x04"s, "{{color:yellow}}"       },
+        {"\x1A\x06\xFF\x00\x00\x05"s, "{{color:green}}"        },
+        {"\x1A\x05\x02\x00\x00"s,     "{{record:race_pianta}}" },
+        {"\x1A\x05\x02\x00\x01"s,     "{{record:race_gelato}}" },
+        {"\x1A\x05\x02\x00\x02"s,     "{{record:crate_time}}"  },
+        {"\x1A\x05\x02\x00\x03"s,     "{{record:bcoin_shines}}"},
+        {"\x1A\x05\x02\x00\x06"s,     "{{record:race_noki}}"   },
     };
 
     static u16 GetValueFromMessageFlagSize(MessageFlagSize size) {
@@ -82,12 +83,12 @@ namespace Toolbox::BMG {
         for (const auto &part : parts) {
             auto result = rawFromCommand(part);
             if (!result) {
-                size += part.size() + 1;
+                size += part.size();
             } else {
                 size += result.value().size();
             }
         }
-        return size;
+        return size + 1;
     }
 
     const std::string &CmdMessage::getString() const { return m_message_data; }
@@ -116,14 +117,20 @@ namespace Toolbox::BMG {
 
     Result<void, SerialError> CmdMessage::gameSerialize(Serializer &out) const {
         std::vector<std::string_view> parts = getParts();
-        for (auto &part : parts) {
+        for (size_t i = 0; i < parts.size(); ++i) {
+            std::string_view part = parts[i];
+            
             auto result = rawFromCommand(part);
             if (!result) {
                 out.writeCString(part);
+                if (i < parts.size() - 1) {
+                    out.seek(-1);  // Overwrite the null char
+                }
             } else {
                 out.writeBytes(result.value());
             }
         }
+
         return {};
     }
 
@@ -194,83 +201,71 @@ namespace Toolbox::BMG {
     std::vector<std::string_view> CmdMessage::getParts() const {
         std::vector<std::string_view> parts;
 
-        size_t bracket_l      = 0;
-        size_t bracket_r      = 0;
-        size_t next_bracket_l = 0;
+        size_t current_pos = 0;
+        size_t end_pos     = 0;
 
-        std::string_view message_view = m_message_data;
+        std::string_view message = m_message_data;
 
-        if (message_view.find('{') == std::string::npos) {
-            parts.push_back(message_view);
-            return parts;
-        }
-
-        while (bracket_r != std::string::npos) {
-            bracket_l = message_view.find('{', bracket_r);
-
-            // If no more commands, return the end
-            if (bracket_l == std::string::npos) {
-                if ((bracket_r + 1) < message_view.size()) {
-                    parts.push_back(message_view.substr(bracket_r + 1));
-                }
+        while (true) {
+            if (current_pos >= message.size()) {
                 break;
             }
 
-            std::string_view text = message_view.substr(bracket_r, bracket_l);
+            const bool is_command_start = current_pos < message.size() - 1 &&
+                                          message.at(current_pos) == '{' &&
+                                          message.at(current_pos + 1) == '{';
+            if (is_command_start) {
+                size_t r_pos = message.find("}}", current_pos);
+                if (r_pos != std::string_view::npos) {
+                    std::string_view command = message.substr(current_pos, r_pos - current_pos + 2);
+                    parts.push_back(command);
 
-            bracket_r      = message_view.find('}', bracket_l);
-            next_bracket_l = message_view.find('{', bracket_l + 1);
-
-            const bool isCommandEnclosed =
-                bracket_r < next_bracket_l && bracket_r != std::string::npos;
-
-            if (!text.empty()) {
-                parts.push_back(std::string(text));
-            }
-
-            if (!isCommandEnclosed) {
-                if (bracket_r == std::string::npos) {
-                    std::string_view trailing_text = message_view.substr(bracket_l);  // to the end
-                    if (!trailing_text.empty())
-                        parts.push_back(std::string(trailing_text));
-                    break;
+                    current_pos              = r_pos + 2;
+                    continue;
                 }
-                std::string_view trailing_text = message_view.substr(bracket_l, next_bracket_l);
-                if (!trailing_text.empty())
-                    parts.push_back(trailing_text);
-                bracket_r = next_bracket_l;  // skip the bracket
-                continue;
+
+                std::string_view trailing = message.substr(current_pos);
+                parts.push_back(trailing);
+                break;
             }
 
-            std::string_view command = message_view.substr(bracket_l, bracket_r + 1);
-            if (!command.empty())
-                parts.push_back(command);
+            end_pos = message.find("{{", current_pos);
+            if (end_pos == std::string_view::npos) {
+                std::string_view trailing = message.substr(current_pos);
+                parts.push_back(trailing);
+                break;
+            }
+
+            std::string_view slice = message.substr(current_pos, end_pos - current_pos);
+            parts.push_back(slice);
+
+            current_pos = end_pos;
         }
 
         return parts;
     }
 
     std::optional<std::vector<char>> CmdMessage::rawFromCommand(std::string_view command) {
-        if (command.empty() || !command.starts_with('{') || !command.ends_with('}')) {
+        if (command.empty() || !command.starts_with("{{") || !command.ends_with("}}")) {
             return {};
         }
 
-        std::string command_str(command);
+        command = command.substr(1, command.size() - 2);
 
-        if (s_command_to_raw.contains(command_str)) {
-            return std::vector<char>(s_command_to_raw[command_str].begin(),
-                                     s_command_to_raw[command_str].end());
+        if (s_command_to_raw.contains(command)) {
+            const std::string &raw_str = s_command_to_raw[command];
+            return std::vector<char>(raw_str.begin(), raw_str.end());
         }
 
         if (command.starts_with("{speed:")) {
-            return std::vector<char>{0x1A, 0x06, 0x00, 0x00, 0x00, command.back()};
+            return std::vector<char>{0x1A, 0x06, 0x00, 0x00, 0x00, command[command.size() - 2]};
         }
 
         if (command.starts_with("{option:")) {
             size_t command_split = command.rfind(':');
-            auto message         = command.substr(command_split + 1);
+            std::string_view message         = command.substr(command_split + 1, command.size() - (command_split + 1) - 1);
 
-            char option         = std::stoi(command_str.substr(9, command_split - 9));
+            u8 option         = String::StringToTypedIntegral<u8>(command.substr(9, command_split - 9 - 1)).value_or(0);
             size_t command_size = static_cast<char>(5 + message.size());
 
             std::vector<char> raw(command_size);
@@ -279,21 +274,25 @@ namespace Toolbox::BMG {
                 raw[1] = static_cast<char>(command_size);
                 raw[2] = 0x01;
                 raw[3] = 0x00;
-                raw[4] = option;
+                raw[4] = static_cast<char>(option);
             }
             std::copy(message.begin(), message.end(), raw.begin() + 5);
 
             return raw;
         }
 
-        std::vector<char> raw(command.size() + 2);
-        {
-            raw[0] = 0x1A;
-            raw[1] = static_cast<char>(command.size());
-            std::copy(command.begin(), command.end(), raw.end());
+        if (command.starts_with("{raw:")) {
+            std::string_view message = command.substr(5, command.size() - 1);
+            std::vector<char> raw(message.size() + 2);
+            {
+                raw[0] = 0x1A;
+                raw[1] = static_cast<char>(command.size());
+                std::copy(message.begin(), message.end(), raw.end());
+            }
+            return raw;
         }
 
-        return raw;
+        return {};
     }
 
     std::optional<std::string> CmdMessage::commandFromRaw(std::span<const char> command) {
@@ -309,25 +308,25 @@ namespace Toolbox::BMG {
             if (command[0] == 0x1A && command[1] == 0x06 && command[2] == 0x00 &&
                 command[3] == 0x00 && command[4] == 0x00) {
                 char buf[32];
-                std::snprintf(buf, 32, "{speed:%d}", command[5]);
+                std::snprintf(buf, 32, "{{speed:%d}}", command[5]);
                 return buf;
             }
 
             if (command[2] == 0x01 && command[3] == 0x00) {
                 char buf[32];
-                std::snprintf(buf, 32, "{option:%d:%s}", command[4],
+                std::snprintf(buf, 32, "{{option:%d:%s}}", command[4],
                               std::string(command.begin() + 5, command.end()).c_str());
                 return buf;
             }
         }
 
-        std::string txt = "{raw:";
+        std::string txt = "{{raw:";
         for (size_t i = 2; i < command.size(); i++) {
             char buf[6];
             std::snprintf(buf, 6, "\\x%02X", command[i]);
             txt += buf;
         }
-        txt += "}";
+        txt += "}}";
         return txt;
     }
 

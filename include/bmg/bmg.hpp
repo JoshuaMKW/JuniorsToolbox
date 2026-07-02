@@ -15,6 +15,8 @@
 
 namespace Toolbox::BMG {
 
+    constexpr std::string_view MessageEncoding = "cp1252";
+
     class CmdMessage : public IGameSerializable {
     public:
         CmdMessage() = default;

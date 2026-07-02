@@ -497,7 +497,7 @@ namespace Toolbox {
             std::string new_name = findUniqueName_(ModelIndex(), new_entry.getName());
             new_entry.setName(new_name);
 
-            ModelIndex message_index = insertMessageEntry_(new_entry, row, index_uuid);
+            ModelIndex message_index = insertMessageEntry_(new_entry, row);
             if (!validateIndex(message_index)) {
                 return make_serial_error<void>(in, "[BMG_MODEL] Failed to insert message into model!");
             }

@@ -36,10 +36,13 @@ namespace Toolbox::UI {
     public:
         virtual ~IBMGEditorView() = default;
 
-        virtual size_t getPageCount(const BMG::MessageData::Entry &message) const = 0;
+        virtual bool canPlayback() const                                                 = 0;
+        virtual bool isPlayback() const                                                  = 0;
+        virtual bool startPlayback()                                                     = 0;
+        virtual bool stopPlayback()                                                      = 0;
 
-        virtual bool render(const ImRect &render_rect, const BMG::MessageData::Entry &message,
-                            size_t current_page) = 0;
+        virtual bool render(TimeStep delta_time, const ImRect &render_rect,
+                            const BMG::MessageData::Entry &message) = 0;
     };
 
     enum class EditorViewStyle {
@@ -71,12 +74,14 @@ namespace Toolbox::UI {
         void onRenderMenuBar() override;
         void onRenderBody(TimeStep delta_time) override;
 
+        void renderPlaybackButtons();
+
         void renderMessagesList();
 
-        void renderMessageEditorGroup();
+        void renderMessageEditorGroup(TimeStep delta_time);
         void renderMessageEditorMetadata();
         void renderMessageEditorTextbox();
-        void renderMessageEditorPreview();
+        void renderMessageEditorPreview(TimeStep delta_time);
 
         float getMessageListMinWidth() const;
         float getEditorGroupMinWidth() const;
@@ -112,7 +117,7 @@ namespace Toolbox::UI {
 
         std::optional<ImVec2> minSize() const override {
             return {
-                {800, 600}
+                {1300, 600}
             };
         }
 
@@ -133,12 +138,14 @@ namespace Toolbox::UI {
         void onAttach() override;
         void onDetach() override;
         void onImGuiUpdate(TimeStep delta_time) override;
+        void onImGuiPostUpdate(TimeStep delta_time) override;
         void onContextMenuEvent(RefPtr<ContextMenuEvent> ev) override;
         void onDragEvent(RefPtr<DragEvent> ev) override;
         void onDropEvent(RefPtr<DropEvent> ev) override;
         void onEvent(RefPtr<BaseEvent> ev) override;
 
-        void buildContextMenu();
+        void buildListContextMenu();
+        void buildTextContextMenu();
 
     private:
         RefPtr<BMGModel> m_bmg_model;
@@ -150,18 +157,19 @@ namespace Toolbox::UI {
         RefPtr<const ImageHandle> m_current_backdrop;
         UUID64 m_backdrop_path_uuid;
 
+        ModelIndex m_view_index;
         ScopePtr<IBMGEditorView> m_editor_view;
         size_t m_current_page = 0;
 
         ContextMenu<ModelIndex> m_list_context_menu;
         ContextMenu<ModelIndex> m_text_context_menu;
 
-        ModelIndex m_view_index;
-        std::vector<ModelIndex> m_cut_indices;
-
+        std::string_view m_original_name;
+        std::array<char, 128> m_rename_buffer;
+        ModelIndex m_renaming_index;
         bool m_is_renaming = false;
-        char m_rename_buffer[128];
-        bool m_is_valid_name = true;
+
+        std::vector<ModelIndex> m_cut_indices;
 
         bool m_did_drag_drop = false;
 
@@ -181,7 +189,7 @@ namespace Toolbox::UI {
         float m_preview_width = 0.0f;
 
         fs_path m_io_context_path;
-        bool m_is_save_default_ready = false;
+        bool m_is_save_default_ready  = false;
         bool m_is_save_as_dialog_open = false;
     };
 

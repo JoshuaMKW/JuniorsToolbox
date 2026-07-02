@@ -1146,7 +1146,7 @@ namespace Toolbox {
         NFD_Init();
 
         if (self.m_control_info.m_is_directory) {
-            nfdpickfolderu8args_t args;
+            nfdpickfolderu8args_t args = {};
             args.defaultPath = self.m_control_info.m_starting_path.c_str();
             NFD_GetNativeWindowFromGLFWWindow(self.m_control_info.m_owner_window,
                                               &args.parentWindow);
@@ -1164,7 +1164,7 @@ namespace Toolbox {
                                       self.m_filters[i].second.c_str()};
                 }
             }
-            nfdopendialogu8args_t args;
+            nfdopendialogu8args_t args = {};
             args.filterList  = const_cast<const nfdu8filteritem_t *>(nfd_filters);
             args.filterCount = num_filters;
             args.defaultPath = self.m_control_info.m_starting_path.c_str();
@@ -1201,7 +1201,7 @@ namespace Toolbox {
                                       self.m_filters[i].second.c_str()};
                 }
             }
-            nfdsavedialogu8args_t args;
+            nfdsavedialogu8args_t args = {};
             args.filterList  = const_cast<const nfdu8filteritem_t *>(nfd_filters);
             args.filterCount = num_filters;
             args.defaultPath = self.m_control_info.m_starting_path.c_str();

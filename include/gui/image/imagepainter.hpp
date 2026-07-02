@@ -20,7 +20,10 @@ namespace Toolbox::UI {
         void setUV1(const ImVec2 &uv1) { m_uv1 = uv1; }
         void setTintColor(const ImVec4 &color) { m_tint_color = color; }
         void setBorderColor(const ImVec4 &color) { m_border_color = color; }
-        void setRotation(float rotation) { m_rotation = rotation; }
+        void setRotation(float rotation, const ImVec2 &pivot = ImVec2(0.5f, 0.5f)) {
+            m_rotation = rotation;
+            m_pivot    = pivot;
+        }
 
         bool render(const ImageHandle &image) const;
         bool render(const ImageHandle &image, const ImVec2 &size) const;
@@ -34,6 +37,7 @@ namespace Toolbox::UI {
         ImVec4 m_tint_color   = {1, 1, 1, 1};
         ImVec4 m_border_color = {0, 0, 0, 0};
         float m_rotation      = 0.0f;
+        ImVec2 m_pivot        = ImVec2(0.5f, 0.5f);
     };
 
 }  // namespace Toolbox::UI
